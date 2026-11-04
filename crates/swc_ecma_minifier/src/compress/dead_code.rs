@@ -139,13 +139,17 @@ pub(super) fn var_statement(
 }
 
 /// Whether `statement` declares a block-scoped name. Function declarations
-/// count: in a block they are block-scoped.
-fn is_lexical(ast: &Ast<'_>, statement: Stmt) -> bool {
-    let StmtData::Declaration(declaration) = ast.stmt_data(statement) else {
-        return false;
-    };
-    !matches!(ast.decl_data(declaration), DeclData::VariableDeclaration(declaration)
-        if declaration.kind(ast) == VariableKind::Var)
+/// count: in a block they are block-scoped. So do labeled function
+/// declarations, which also cannot be the body of an `if` or a loop.
+pub(super) fn is_lexical(ast: &Ast<'_>, statement: Stmt) -> bool {
+    match ast.stmt_data(statement) {
+        StmtData::Declaration(declaration) => {
+            !matches!(ast.decl_data(declaration), DeclData::VariableDeclaration(declaration)
+                if declaration.kind(ast) == VariableKind::Var)
+        }
+        StmtData::LabeledStatement(statement) => is_lexical(ast, statement.body(ast)),
+        _ => false,
+    }
 }
 
 /// Joins statements that replace a removed statement into one statement.

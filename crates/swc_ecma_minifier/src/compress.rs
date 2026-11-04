@@ -1,13 +1,14 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, AstUtf8, BinaryExpression, BinaryOperator, BindingIdentifier,
-    BindingPattern, BindingPatternData, BindingProperty, CallExpression, ConditionalExpression,
-    DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function, FunctionType, GetSpan,
-    IdentifierReference, IfStatement, LogicalExpression, LogicalOperator, NodeId, ObjectProperty,
-    Program, PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span, StaticBlock, Stmt,
-    StmtData, TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx,
-    TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator,
-    VariableKind, WhileStatement,
+    BindingPattern, BindingPatternData, BindingProperty, BlockStatement, CallExpression,
+    ConditionalExpression, DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function,
+    FunctionBody, FunctionType, GetSpan, IdentifierReference, IfStatement, LogicalExpression,
+    LogicalOperator, NodeId, ObjectProperty, Program, PropertyKey, PropertyKeyData,
+    SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData, SubRange, SwitchCase,
+    TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
+    WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
@@ -17,10 +18,12 @@ use crate::{CompressOptions, mangle::Renames};
 
 mod dead_code;
 mod effects;
+mod statements;
 mod value;
 
 use dead_code::{Branch, Hoisted};
 use effects::may_have_side_effects;
+use statements::StatementList;
 use value::{Value, skip_parentheses};
 
 #[derive(Default)]
@@ -130,6 +133,7 @@ pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions, mangle: bool
         function_starts: Vec::new(),
         branches: Vec::new(),
         reference_positions: FxHashSet::default(),
+        statement_list: StatementList::default(),
     };
     let _ = program.traverse_mut_with(&mut compressor, &mut TraverseMutCtx::new(ast, ()));
 }
@@ -159,6 +163,7 @@ struct Compressor {
     /// Conditional and logical expressions used as a callee, a tag, or a
     /// `delete` or `typeof` operand, where a reference keeps its receiver.
     reference_positions: FxHashSet<NodeId>,
+    statement_list: StatementList,
 }
 
 struct TypeofRewrite {
@@ -480,6 +485,93 @@ impl Compressor {
         Some((!prefix.is_empty()).then(|| dead_code::var_statement(ast, span, prefix)))
     }
 
+    fn compress_list(&mut self, ast: &mut Ast<'_>, list: SubRange<Stmt>) -> Option<SubRange<Stmt>> {
+        self.statement_list.compress(ast, &self.options, list)
+    }
+
+    /// Compresses a block that `exit_block_statement` left to the node that
+    /// holds it.
+    ///
+    /// An enclosing list merges the statements of a block without
+    /// block-scoped declarations. If the block built its own sequences and
+    /// declarator lists first, the enclosing list would copy them again, and
+    /// nested blocks would copy them once for each level.
+    fn compress_held_block(&mut self, ast: &mut Ast<'_>, block: BlockStatement) {
+        if self.options.blocks
+            && !statements::declares_lexical(ast, block)
+            && let Some(body) = self.compress_list(ast, block.body(ast))
+        {
+            block.set_body(ast, body);
+        }
+    }
+
+    /// Compresses a block body, and replaces it with its only statement.
+    fn compress_body(&mut self, ast: &mut Ast<'_>, body: Stmt) -> Stmt {
+        if let StmtData::BlockStatement(block) = ast.stmt_data(body) {
+            self.compress_held_block(ast, block);
+        }
+        statements::unwrap_block(ast, body)
+    }
+
+    /// Compresses the block bodies of a statement, and replaces them with
+    /// their only statement.
+    fn compress_bodies(&mut self, ast: &mut Ast<'_>, node: Stmt) {
+        match ast.stmt_data(node) {
+            StmtData::IfStatement(statement) => {
+                for body in [Some(statement.consequent(ast)), statement.alternate(ast)]
+                    .into_iter()
+                    .flatten()
+                {
+                    if let StmtData::BlockStatement(block) = ast.stmt_data(body) {
+                        self.compress_held_block(ast, block);
+                    }
+                }
+                statements::unwrap_if(ast, statement);
+            }
+            StmtData::WhileStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            // `do{a()}while(x)` is not longer than `do a();while(x)`, and
+            // some engines misparse a `do` body without braces.
+            StmtData::DoWhileStatement(statement) => {
+                if let StmtData::BlockStatement(block) = ast.stmt_data(statement.body(ast)) {
+                    self.compress_held_block(ast, block);
+                }
+            }
+            StmtData::ForStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            StmtData::ForInStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            StmtData::ForOfStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            StmtData::LabeledStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            StmtData::WithStatement(statement) => {
+                let body = self.compress_body(ast, statement.body(ast));
+                statement.set_body(ast, body);
+            }
+            StmtData::TryStatement(statement) => {
+                self.compress_held_block(ast, statement.block(ast));
+                if let Some(handler) = statement.handler(ast) {
+                    self.compress_held_block(ast, handler.body(ast));
+                }
+                if let Some(finalizer) = statement.finalizer(ast) {
+                    self.compress_held_block(ast, finalizer);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn enter_function_scope(&mut self) {
         if self.options.dead_code {
             self.function_starts.push(self.hoisted.len());
@@ -644,7 +736,7 @@ fn binary_operator_cost(operator: BinaryOperator) -> usize {
 impl<'ast> TraverseMut<'ast> for Compressor {
     fn exit_program(
         &mut self,
-        _node: Program,
+        node: Program,
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<Program> {
         // Forward uses can precede their declarations. Patch recorded handles on
@@ -662,6 +754,10 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             rewrite.binary.set_left(ctx.ast, left);
             rewrite.binary.set_right(ctx.ast, right);
             rewrite.binary.set_operator(ctx.ast, rewrite.operator);
+        }
+        let ast = &mut *ctx.ast;
+        if let Some(body) = self.compress_list(ast, node.body(ast)) {
+            node.set_body(ast, body);
         }
         TraverseAction::Continue
     }
@@ -723,11 +819,56 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         node: Stmt,
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<Stmt> {
-        if !self.options.dead_code {
-            return TraverseAction::Continue;
+        if self.options.dead_code
+            && let Some(replacement) = self.exit_branch(ctx.ast, node)
+        {
+            return TraverseAction::ReplaceSkip(replacement);
         }
-        self.exit_branch(ctx.ast, node)
-            .map_or(TraverseAction::Continue, TraverseAction::ReplaceSkip)
+        if self.options.blocks {
+            self.compress_bodies(ctx.ast, node);
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_block_statement(
+        &mut self,
+        node: BlockStatement,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<BlockStatement> {
+        // A block without block-scoped declarations is compressed by the
+        // node that holds it; see `compress_held_block`.
+        let ast = &mut *ctx.ast;
+        if (!self.options.blocks || statements::declares_lexical(ast, node))
+            && let Some(body) = self.compress_list(ast, node.body(ast))
+        {
+            node.set_body(ast, body);
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_function_body(
+        &mut self,
+        node: FunctionBody,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<FunctionBody> {
+        let ast = &mut *ctx.ast;
+        if let Some(body) = self.compress_list(ast, node.body(ast)) {
+            node.set_body(ast, body);
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_switch_case(
+        &mut self,
+        node: SwitchCase,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<SwitchCase> {
+        let ast = &mut *ctx.ast;
+        let consequent = node.consequent(ast);
+        if let Some(consequent) = self.compress_list(ast, consequent) {
+            node.set_consequent(ast, consequent);
+        }
+        TraverseAction::Continue
     }
 
     fn enter_variable_declaration(
@@ -793,9 +934,13 @@ impl<'ast> TraverseMut<'ast> for Compressor {
 
     fn exit_static_block(
         &mut self,
-        _node: StaticBlock,
-        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+        node: StaticBlock,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<StaticBlock> {
+        let ast = &mut *ctx.ast;
+        if let Some(body) = self.compress_list(ast, node.body(ast)) {
+            node.set_body(ast, body);
+        }
         self.exit_function_scope();
         TraverseAction::Continue
     }

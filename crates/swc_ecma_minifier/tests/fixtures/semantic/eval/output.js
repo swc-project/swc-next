@@ -1,1 +1,1 @@
-function f(){var unused=1;var x;eval(code);return[undefined,typeof x==="undefined",!0]}
+function f(){var unused=1,x;return eval(code),[undefined,typeof x==="undefined",!0]}

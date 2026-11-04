@@ -1,7 +1,7 @@
 minifier * terser
 ========================
-Positive Passed: 45/1577 (2.85%)
-Negative Passed: 608/610 (99.67%)
+Positive Passed: 89/1577 (5.64%)
+Negative Passed: 602/610 (98.69%)
 Panicked: 0/2187 (0.00%)
 Skipped: 353/2187 (16.14%)
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/arguments/arguments_and_destructuring_1/input.js - output differs from reference output
@@ -50,17 +50,11 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/assignment/o
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/async/async_function_declaration/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/async/async_function_expression/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/async/async_inline/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/async/for_await_of/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/async/for_await_of_2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/big_int/big_int_math/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/block_scope/do_not_hoist_let/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/block_scope/do_not_remove_anon_blocks_if_they_have_decls/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/block_scope/drop_undefined_vardef/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/block_scope/issue_334/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/block_scope/remove_unused_in_global_block/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/blocks/issue_1672_if/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/blocks/keep_some_blocks/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/blocks/remove_blocks/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/class_properties/class_expression_constant/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/class_properties/class_expression_properties_side_effects/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/class_properties/static_means_execution/input.js - output differs from reference output
@@ -110,8 +104,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_var
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/iife_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/iife_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/inner_lvalues/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_1537/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_1537_for_of/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_1562/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_1605_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_1605_2/input.js - output differs from reference output
@@ -147,7 +139,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_var
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2497/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2506/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_27/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2878/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2914_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2931/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/issue_2954_2/input.js - output differs from reference output
@@ -225,7 +216,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/const/issue_
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/const/issue_1194/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/const/issue_1396/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/const/regexp_literal_not_const/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/const/unused_regexp_literal/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/collapse_vars_assignment/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/collapse_vars_lvalues_drop_assign/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/collapse_vars_misc1/input.js - output differs from reference output
@@ -249,17 +239,11 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/th
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/try_catch_finally/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/dead_code/unsafe_builtin/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/debugger/drop_debugger/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_false/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_false_evaluate_true/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_true/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_true_conditionals_false/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_true_evaluate_false/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/defaults/defaults_undefined/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructure_empty_array_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructure_empty_array_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructure_empty_array_3/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructuring_remove_unused_1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructuring_remove_unused_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/destructuring_with_undefined_as_default_assignment/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/empty_object_destructuring_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/destructuring/empty_object_destructuring_2/input.js - output differs from reference output
@@ -363,8 +347,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/issue_t161_top_retain_8/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/issue_t161_top_retain_9/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/issue_t183/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/reassign_const/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_block_decls/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_block_decls_in_catch/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_circular_references_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_circular_references_2/input.js - output differs from reference output
@@ -374,7 +356,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_keep_harmony_destructuring/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_nested_function/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_null_conditional_chain/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/unused_var_in_catch/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/used_block_decls_in_catch/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/var_catch_toplevel/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/drop_unused/vardef_value/input.js - output differs from reference output
@@ -536,15 +517,12 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/inli
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2345/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2676/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2794_1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2794_4/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2794_6/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2874_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2874_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_2874_3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/issue_t80/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/new_target/input.js - output: parser: 'new.target' is only valid inside functions, class field initializers, or static blocks at 0..10
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/regression_cannot_use_of/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/regression_for_of_const/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/shorthand_keywords/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/harmony/typeof_arrow_functions/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/hoist/hoist_funs/input.js - output differs from reference output
@@ -592,17 +570,13 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/identity/inl
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/identity/inline_identity_lose_this/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/identity/inline_identity_undefined/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_if_return_return/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_6/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_7/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_8/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_return_same_value/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/if_var_return/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/issue_1089/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/issue_1437_conditionals/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/issue_2747/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/if_return/issue_512/input.js - output differs from reference output
@@ -625,14 +599,10 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1052/d
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1052/multiple_functions/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1052/not_hoisted_when_already_nested/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1052/single_function/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/Infinity_in_with_scope/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/assorted_Infinity_NaN_undefined_in_with_scope/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/assorted_Infinity_NaN_undefined_in_with_scope_keep_infinity/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/check_drop_unused_in_peer_function/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/compress_with_with_in_other_scope/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/with_in_function_scope/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/with_in_global_scope/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1105/with_using_existing_variable_outside_scope/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1212/issue_1212_debug_false/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1212/issue_1212_debug_true/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_126/concatenate_rhs_strings/input.js - output differs from reference output
@@ -712,11 +682,9 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_611/is
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_637/wrongly_optimized/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/cond_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/conditional/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/dead_code_const_annotation_regex/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/drop_console_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/drop_value/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/iife/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/limit_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/negate_iife_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/negate_iife_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_640/negate_iife_5_off/input.js - output differs from reference output
@@ -743,9 +711,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_t292/n
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_t50/issue_t50/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_t50/issue_t50_const/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_t50/issue_t50_let/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/join_vars/issue_1079_with_mixed/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/join_vars/issue_1079_with_vars/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/join_vars/only_vars/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/labels/labels_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/labels/labels_10/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/labels/labels_2/input.js - output differs from reference output
@@ -767,6 +732,12 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/drop_i
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/evaluate/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/init_side_effects/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_1648/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_beautify_braces/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_beautify_braces_ie8/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_beautify_ie8/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_braces/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_braces_ie8/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_186_ie8/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_2740_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_2740_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/loops/issue_2740_3/input.js - output differs from reference output
@@ -793,7 +764,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/negate_iife_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/negate_iife_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/negate_iife_5_off/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/negate_iife_issue_1073/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/negate_iife_nested/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/negate_iife/sequence_off/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/nullish/conditional_to_nullish_coalescing/input.js - output differs from reference output
@@ -1051,8 +1021,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/unsafe_evaluate_side_effect_free_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/var_assign_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/var_assign_2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/var_assign_4/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/var_assign_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/reduce_vars/variables_collision_in_immediately_invoked_func/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/regexp/regexp_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/regexp/unsafe_slashes/input.js - output differs from reference output
@@ -1076,22 +1044,16 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/ho
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/iife/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/issue_1758/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/issue_2062/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/issue_2313/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/issue_27/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_5/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_6/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/limit_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/limit_2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/make_sequences_1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/make_sequences_2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/make_sequences_3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/make_sequences_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/negate_iife_for/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/reassign_const/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/side_effects/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/side_effects_cascade_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/side_effects_cascade_2/input.js - output differs from reference output

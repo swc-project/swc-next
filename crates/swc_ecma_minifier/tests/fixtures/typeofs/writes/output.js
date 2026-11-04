@@ -1,1 +1,1 @@
-function f(){var a;a=source;return typeof a==="undefined"}
+function f(){var a;return a=source,typeof a==="undefined"}
