@@ -4,6 +4,7 @@ use testsuite::{
         Case,
         babel::BabelTransformCase,
         babel_parser::BabelParserCase,
+        minifier::{SwcMinifierCase, TerserMinifierCase},
         swc_resolver::SwcResolverCase,
         swc_transform::SwcTransformCase,
         test262::Test262Case,
@@ -13,8 +14,8 @@ use testsuite::{
         },
     },
     runner::{
-        Runner, codegen::CodegenRunner, parser::ParserRunner, semantic::SemanticRunner,
-        transform::TransformerRunner,
+        Runner, codegen::CodegenRunner, minifier::MinifierRunner, parser::ParserRunner,
+        semantic::SemanticRunner, transform::TransformerRunner,
     },
 };
 
@@ -24,6 +25,7 @@ enum RunnerName {
     Codegen,
     Transform,
     Semantic,
+    Minifier,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -36,6 +38,7 @@ enum CaseSet {
     #[value(name = "swc_resolver")]
     SwcResolver,
     Swc,
+    Terser,
 }
 
 #[derive(Parser)]
@@ -97,6 +100,11 @@ fn main() {
             run_filtered::<SemanticRunner, SwcResolverCase>(&args.filter)
         }
         RunnerName::Semantic => Err("`semantic` runner requires `--case swc_resolver`".into()),
+        RunnerName::Minifier => match args.case {
+            CaseSet::Terser => run_filtered::<MinifierRunner, TerserMinifierCase>(&args.filter),
+            CaseSet::Swc => run_filtered::<MinifierRunner, SwcMinifierCase>(&args.filter),
+            _ => Err("`minifier` runner requires `--case terser` or `--case swc`".into()),
+        },
     };
     println!("{:?}", res);
 }
@@ -109,8 +117,8 @@ where
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
-        CaseSet::SwcResolver | CaseSet::Swc => {
-            Err("parser/codegen do not run SWC transform/semantic cases".into())
+        CaseSet::SwcResolver | CaseSet::Swc | CaseSet::Terser => {
+            Err("parser/codegen do not run SWC transform/semantic/minifier cases".into())
         }
     }
 }
