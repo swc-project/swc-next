@@ -228,7 +228,7 @@ impl<'a> SymbolTracker<'a> {
                     .push(id);
             }
         }
-        for map in self.hoisting_variables.iter_mut().flatten() {
+        for map in self.hoisting_variables.maps.iter_mut() {
             for declaration in map.values_mut() {
                 *declaration = remap[declaration.index()];
             }

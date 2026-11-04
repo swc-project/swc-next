@@ -27,7 +27,7 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
-    binder::{Range, SymbolLinks, TsMemberIndex},
+    binder::{HoistingMaps, Range, SymbolLinks, TsMemberIndex},
     builder::SemanticBuilder,
     scope::ScopeTree,
 };
@@ -51,6 +51,13 @@ swc_next_allocator::define_nonmax_u32_index_type! {
     pub struct DeclarationId;
 }
 
+// Most scopes have no var declarations hoisting through them. Store compact
+// indices by scope and allocate maps only for scopes that need them.
+// Keep the var declaration, since its symbol may also contain functions.
+swc_next_allocator::define_nonmax_u32_index_type! {
+    struct HoistingMapId;
+}
+
 type Symbols = IndexSlice<SymbolId, [Symbol]>;
 type Declarations = IndexSlice<DeclarationId, [Declaration]>;
 type Scopes = IndexSlice<ScopeId, [scope::Scope]>;
@@ -60,10 +67,7 @@ type InternalNames<'a> = ArenaHashMap<'a, (ScopeId, AstWtf8), SymbolId>;
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
-// Most scopes have no var declarations hoisting through them.
-// Keep the var declaration, since its symbol may also contain functions.
-type HoistingMap<'a> =
-    Option<swc_next_allocator::boxed::Box<'a, ArenaHashMap<'a, &'a [u8], DeclarationId>>>;
+
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
 /// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
@@ -102,7 +106,7 @@ pub struct Semantic<'a> {
     use_ranges: ArenaIndexVec<'a, SymbolId, Range>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
     internal_names: InternalNames<'a>,
-    hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
+    hoisting_variables: HoistingMaps<'a>,
 
     /// Each node records one binding, reference, or created scope identity.
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
@@ -429,8 +433,8 @@ impl<'a> Semantic<'a> {
             .get(name)
             .copied()
             .or_else(|| {
-                self.hoisting_variables[scope_id]
-                    .as_deref()
+                self.hoisting_variables
+                    .get(scope_id)
                     .and_then(|bindings| bindings.get(name).copied())
                     .map(|declaration| self.declarations[declaration].symbol)
             })

@@ -4,7 +4,6 @@ use hashbrown::HashMap;
 use rustc_hash::FxBuildHasher;
 use swc_next_allocator::{
     Allocator, IndexSlice,
-    boxed::Box as ArenaBox,
     hash_map::HashMap as ArenaHashMap,
     vec::{ArenaIndexVec, ArenaVec},
 };
@@ -22,8 +21,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, Declarations, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps,
-    Scopes, Semantic, Symbols,
+    DeclarationId, Declarations, HoistingMapId, InternalNames, JsxUsage, NodeSemanticId,
+    Redeclarations, ScopeMap, ScopeMaps, Scopes, Semantic, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -960,7 +959,7 @@ pub(crate) struct TsMemberIndex<'a> {
     scope_views: Option<TsScopeViewIndex<'a>>,
     views: ArenaVec<'a, TsMemberView>,
     import_aliases: Option<TsImportAliasIndex<'a>>,
-    reference_values: Option<ArenaBox<'a, TsReferenceValues<'a>>>,
+    reference_values: Option<TsReferenceValues<'a>>,
 }
 
 impl TsMemberIndex<'_> {
@@ -1870,20 +1869,53 @@ impl<'a> SymbolLinks<'a> {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct HoistingMaps<'a> {
+    scopes: ArenaIndexVec<'a, ScopeId, Option<HoistingMapId>>,
+    maps: ArenaIndexVec<'a, HoistingMapId, ArenaHashMap<'a, &'a [u8], DeclarationId>>,
+}
+
+impl<'a> HoistingMaps<'a> {
+    fn new_in(capacity: usize, allocator: &'a Allocator) -> Self {
+        Self {
+            scopes: ArenaIndexVec::with_capacity_in(capacity, allocator),
+            maps: ArenaIndexVec::new_in(allocator),
+        }
+    }
+
+    pub(crate) fn get(&self, scope: ScopeId) -> Option<&ArenaHashMap<'a, &'a [u8], DeclarationId>> {
+        self.scopes
+            .get(scope)
+            .copied()
+            .flatten()
+            .map(|id| &self.maps[id])
+    }
+
+    fn get_or_insert(
+        &mut self,
+        scope: ScopeId,
+        allocator: &'a Allocator,
+    ) -> &mut ArenaHashMap<'a, &'a [u8], DeclarationId> {
+        let id = *self.scopes[scope]
+            .get_or_insert_with(|| self.maps.push(ArenaHashMap::new_in(allocator)));
+        &mut self.maps[id]
+    }
+}
+
 /// Collects symbols and references during the AST walk and finalizes
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
-    internal_names: crate::InternalNames<'a>,
+    internal_names: InternalNames<'a>,
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
     symbol_links: SymbolLinks<'a>,
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
-    jsx_usages: ArenaVec<'a, crate::JsxUsage>,
+    jsx_usages: ArenaVec<'a, JsxUsage>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
-    hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
+    hoisting_variables: HoistingMaps<'a>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
     ts_type_parameter_owners: ArenaHashMap<'a, ScopeId, SymbolId>,
     ts_type_parameters: ArenaHashMap<'a, SymbolId, ScopeMap<'a>>,
@@ -2078,7 +2110,7 @@ impl<'a> SymbolTracker<'a> {
         node_semantic.resize(nodes, NodeSemanticId::None);
         let mut tracker = Self {
             allocator,
-            internal_names: crate::InternalNames::new_in(allocator),
+            internal_names: InternalNames::new_in(allocator),
             symbols: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             symbol_links: SymbolLinks::new_in(allocator),
             references: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 4), allocator),
@@ -2087,7 +2119,7 @@ impl<'a> SymbolTracker<'a> {
             redeclarations: Redeclarations::new_in(allocator),
             node_semantic,
             scope_maps: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
-            hoisting_variables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            hoisting_variables: HoistingMaps::new_in(8usize.max(nodes / 16), allocator),
             annex_b_functions: ArenaVec::new_in(allocator),
             ts_type_parameter_owners: ArenaHashMap::new_in(allocator),
             ts_type_parameters: ArenaHashMap::new_in(allocator),
@@ -3430,10 +3462,8 @@ impl<'a> SymbolTracker<'a> {
                 if scope_id == declaration.scope {
                     break;
                 }
-                self.hoisting_variables[scope_id]
-                    .get_or_insert_with(|| {
-                        self.allocator.boxed(ArenaHashMap::new_in(self.allocator))
-                    })
+                self.hoisting_variables
+                    .get_or_insert(scope_id, self.allocator)
                     .entry(name)
                     .or_insert(declaration_id);
                 if tree.node_kind(scope.get(scope_id).node) == NodeKind::CatchClause
@@ -3744,13 +3774,13 @@ impl<'a> SymbolTracker<'a> {
     }
 
     fn sync_scope_maps(&mut self, count: usize) {
-        debug_assert_eq!(self.scope_maps.len(), self.hoisting_variables.len());
+        debug_assert_eq!(self.scope_maps.len(), self.hoisting_variables.scopes.len());
         let additional = count - self.scope_maps.len();
         self.scope_maps.reserve(additional);
-        self.hoisting_variables.reserve(additional);
+        self.hoisting_variables.scopes.reserve(additional);
         for _ in 0..additional {
             self.scope_maps.push(ScopeMap::new_in(self.allocator));
-            self.hoisting_variables.push(None);
+            self.hoisting_variables.scopes.push(None);
         }
     }
 
@@ -3930,7 +3960,7 @@ impl<'a> SymbolTracker<'a> {
             usage.is_fragment |= is_fragment;
             return;
         }
-        self.jsx_usages.push(crate::JsxUsage { scope, is_fragment });
+        self.jsx_usages.push(JsxUsage { scope, is_fragment });
     }
 
     pub fn add_jsx_opening_element_reference(
@@ -4203,7 +4233,6 @@ impl<'a> SymbolTracker<'a> {
     fn hoisting_declaration(&self, scope: ScopeId, name: &[u8]) -> Option<DeclarationId> {
         self.hoisting_variables
             .get(scope)
-            .and_then(Option::as_deref)
             .and_then(|map| map.get(name).copied())
     }
 
@@ -4410,7 +4439,7 @@ impl<'a> SymbolTracker<'a> {
         let reference_values = if reference_values.ranges.is_empty() {
             None
         } else {
-            Some(self.allocator.boxed(reference_values))
+            Some(reference_values)
         };
 
         Semantic {
