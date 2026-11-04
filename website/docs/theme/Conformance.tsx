@@ -2,8 +2,8 @@ import type { ConformanceKind, ConformanceResult, Count } from "../conformance-r
 
 declare const CONFORMANCE_REPORT: ConformanceResult[];
 const number = (value: number) => value.toLocaleString("en-US");
-const suiteNames: Record<string, string> = { test262: "Test262", typescript: "TypeScript", babel: "Babel", swc: "SWC", swc_resolver: "SWC resolver" };
-const suiteOrder = ["test262", "typescript", "babel", "swc", "swc_resolver"];
+const suiteNames: Record<string, string> = { test262: "Test262", typescript: "TypeScript", babel: "Babel", swc: "SWC", swc_resolver: "SWC resolver", terser: "Terser" };
+const suiteOrder = ["terser", "test262", "typescript", "babel", "swc", "swc_resolver"];
 
 function PassCount({ passed, total }: Count) {
   if (total === 0) return <span aria-label="No cases">—</span>;
