@@ -14,6 +14,10 @@ Prettier, and terser fixtures.
   expect the input unchanged. Fixtures without a reference output or with
   mangling are skipped, and code is not executed.
 
+SWC transform cases use `crates/swc/tests/compile`, selecting the nearest `.swcrc`
+for each input file. Unsupported compiler settings and snapshots requiring
+diagnostics, source maps, or declaration output are skipped.
+
 Semantic fixtures use SWC's legacy resolver as a reference, including its parser
 and identifier-marking model.
 

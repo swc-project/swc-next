@@ -4,10 +4,14 @@ use std::{
 };
 
 use jwalk::WalkDir;
+use rayon::prelude::*;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_transformer::{TransformerOptions, es2022::ES2022Options};
+use swc_next_ecma_codegen::Options as CodegenOptions;
+use swc_next_ecma_transformer::TransformerOptions;
 
 use super::{Case, TransformCase, fixtures};
+mod options;
+use options::Swcrc;
 
 #[derive(Debug)]
 pub struct SwcTransformCase {
@@ -15,39 +19,76 @@ pub struct SwcTransformCase {
     name: String,
     input: String,
     output: String,
-    pub requires_class_properties: bool,
+    options: Option<Swcrc>,
+    unsupported_snapshot: bool,
 }
 
 impl SwcTransformCase {
     fn try_read() -> io::Result<Vec<Self>> {
-        let fixture_dir =
-            fixtures().join("swc/crates/swc_ecma_transforms_compat/tests/static-blocks");
-        let mut cases = Vec::new();
-
-        for entry in WalkDir::new(&fixture_dir) {
+        let root = fixtures().join("swc/crates/swc/tests/compile");
+        let mut paths = Vec::new();
+        for entry in WalkDir::new(&root) {
             let entry = entry.map_err(io::Error::other)?;
-            if !entry.file_type().is_file() || entry.file_name() != "input.js" {
+            if !entry.file_type().is_dir() || entry.file_name() != "input" {
                 continue;
             }
-
-            let path = entry.path();
-            let case_dir = path.parent().unwrap();
-            let relative_dir = case_dir.strip_prefix(&fixture_dir).unwrap();
-            let output_path = case_dir.join("output.js");
-            let requires_class_properties = relative_dir.starts_with("class-properties");
-            cases.push(Self {
-                name: format!(
-                    "static-blocks/{}",
-                    relative_dir.to_string_lossy().replace('\\', "/")
-                ),
-                input: fs::read_to_string(&path)?,
-                output: fs::read_to_string(&output_path)?,
-                path,
-                requires_class_properties,
-            });
+            let input_dir = entry.path();
+            // The fixture macro ignores hidden fixture directories, but the
+            // compiler walks every source inside a selected input directory.
+            for entry in WalkDir::new(&input_dir).skip_hidden(false) {
+                let entry = entry.map_err(io::Error::other)?;
+                let path = entry.path();
+                if !entry.file_type().is_file()
+                    || !matches!(
+                        path.extension().and_then(|v| v.to_str()),
+                        Some("js" | "jsx" | "ts" | "tsx")
+                    )
+                {
+                    continue;
+                }
+                let output = input_dir
+                    .parent()
+                    .unwrap()
+                    .join("output")
+                    .join(path.strip_prefix(&input_dir).unwrap());
+                paths.push((path, output));
+            }
         }
-
-        cases.sort_unstable_by(|left, right| left.path.cmp(&right.path));
+        let mut cases = paths
+            .into_par_iter()
+            .map(|(path, output)| {
+                let options = Swcrc::from_test_path(&path, &root)?;
+                // This suite compares emitted code. Diagnostics, source maps and
+                // additional compiler products need APIs that are not yet exposed.
+                let mut unsupported_snapshot = false;
+                for suffix in [".stderr", ".map", ".d.ts", ".extra.json"] {
+                    let snapshot = PathBuf::from(format!("{}{suffix}", output.display()));
+                    if snapshot.is_file() && !fs::read(snapshot)?.is_empty() {
+                        unsupported_snapshot = true;
+                    }
+                }
+                let raw = PathBuf::from(format!("{}.raw", output.display()));
+                let output = if raw.is_file() { raw } else { output };
+                let output = match fs::read_to_string(&output) {
+                    Ok(output) => output,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => String::new(),
+                    Err(error) => return Err(error),
+                };
+                Ok(Self {
+                    name: path
+                        .strip_prefix(&root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/"),
+                    input: fs::read_to_string(&path)?,
+                    path,
+                    output,
+                    options,
+                    unsupported_snapshot,
+                })
+            })
+            .collect::<io::Result<Vec<_>>>()?;
+        cases.sort_unstable_by(|a, b| a.path.cmp(&b.path));
         Ok(cases)
     }
 }
@@ -57,7 +98,7 @@ impl Case for SwcTransformCase {
 
     fn read() -> Vec<Self> {
         Self::try_read()
-            .expect("failed to read SWC transform fixtures; run ./scripts/clone_fixtures.sh")
+            .expect("failed to read SWC compiler fixtures; run ./scripts/clone_fixtures.sh")
     }
 
     fn path(&self) -> &Path {
@@ -73,11 +114,15 @@ impl Case for SwcTransformCase {
     }
 
     fn source_type(&self) -> SourceType {
-        SourceType::Module
+        self.options
+            .as_ref()
+            .map_or(SourceType::Module, Swcrc::source_type)
     }
 
     fn lang(&self) -> Lang {
-        Lang::Js
+        self.options
+            .as_ref()
+            .map_or(Lang::Js, |o| o.lang(&self.path))
     }
 
     fn expects_error(&self) -> bool {
@@ -87,7 +132,7 @@ impl Case for SwcTransformCase {
 
 impl TransformCase for SwcTransformCase {
     fn supports_options(&self) -> bool {
-        !self.requires_class_properties
+        !self.unsupported_snapshot && self.options.as_ref().is_some_and(Swcrc::supports_options)
     }
 
     fn expected_output(&self) -> Option<&str> {
@@ -95,11 +140,13 @@ impl TransformCase for SwcTransformCase {
     }
 
     fn transformer_options(&self) -> TransformerOptions {
-        TransformerOptions {
-            es2022: ES2022Options {
-                static_blocks: true,
-            },
-            ..TransformerOptions::default()
-        }
+        self.options
+            .as_ref()
+            .unwrap()
+            .transformer_options(&self.path)
+    }
+
+    fn codegen_options(&self) -> CodegenOptions {
+        self.options.as_ref().unwrap().codegen_options()
     }
 }
