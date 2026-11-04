@@ -43,13 +43,6 @@ pub enum LexicalError {
     JsxIdentifierCannotStartWithBackslash,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
-pub enum LexerMode {
-    #[default]
-    Normal,
-    JsxTag,
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HandleTokenMode {
     Append,
@@ -113,7 +106,6 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
-    pub(crate) mode: LexerMode,
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
@@ -154,7 +146,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             allow_html_like_comments,
             hashbang: None,
             state: LexerState::default(),
-            mode: LexerMode::Normal,
         };
         lexer.skip_hashbang();
         if lexer.hashbang.is_some() {
@@ -196,6 +187,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    /// Reads a token inside a JSX tag using JSX name and attribute rules.
+    #[inline]
+    pub(crate) fn next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+        if self.try_next_jsx_tag_token(target) {
+            return Ok(());
+        }
+        self.read_next_jsx_tag_token(target)?;
+        self.handle_token(*target, HandleTokenMode::Append);
+        Ok(())
+    }
+
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
     ///
@@ -203,10 +205,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// which stays clear between tokens.
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
-        if self.mode != LexerMode::Normal {
-            return self.try_next_jsx_tag_token(target);
-        }
-
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
         let Some(mut byte) = self.source.get(start as usize).copied() else {
@@ -348,9 +346,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
     /// `/`, `{`, and attribute strings. On failure, the cursor is unchanged.
-    #[inline(never)]
     fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
-        debug_assert_eq!(self.mode, LexerMode::JsxTag);
         let src = self.source;
         let mut start = self.cursor;
         let Some(mut byte) = src.get(start as usize).copied() else {
@@ -488,7 +484,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.state.previous_token_tag = Some(target.tag());
         }
         self.clear_token_flags();
-        self.skip_ws_and_comments()?;
+        self.skip_ws_and_comments(false)?;
 
         if (self.cursor as usize) >= self.source.len() {
             *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
@@ -496,11 +492,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         let current_char = self.source[self.cursor as usize];
-        if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
+        if is_ident_start_ascii(current_char) {
             if self.scan_ascii_identifier(self.cursor, self.state.token_flags, target) {
                 self.clear_token_flags();
             } else {
-                *target = self.scan_identifier_or_keyword()?;
+                *target = self.scan_identifier_or_keyword(false)?;
             }
             return Ok(());
         }
@@ -516,9 +512,46 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.scan_simple_punctuation()
             }
             b'}' => self.handle_right_brace(),
-            _ => self.scan_identifier_or_keyword()?,
+            _ => self.scan_identifier_or_keyword(false)?,
         };
         *target = token;
+        Ok(())
+    }
+
+    fn read_next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+        if target.tag() != TokenTag::Eof {
+            self.state.previous_token_tag = Some(target.tag());
+        }
+        self.clear_token_flags();
+        self.skip_ws_and_comments(true)?;
+
+        if (self.cursor as usize) >= self.source.len() {
+            *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
+            return Ok(());
+        }
+
+        *target = match self.source[self.cursor as usize] {
+            // A `>` inside a JSX tag never combines with the following token.
+            b'>' => {
+                let start = self.cursor;
+                self.punc_token(1, TokenTag::GreaterThan, start)
+            }
+            b'"' | b'\'' => self.scan_jsx_string()?,
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'\\' | 0x80..=0xff => {
+                self.scan_identifier_or_keyword(true)?
+            }
+            b'+' | b'*' | b'-' | b'!' | b'<' | b'=' | b'|' | b'&' | b'^' | b'%' | b'/' | b'?' => {
+                self.scan_punctuation()
+            }
+            b'.' => self.scan_dot()?,
+            b'0'..=b'9' => self.scan_number()?,
+            b'`' => self.scan_template_literal()?,
+            b'~' | b'(' | b')' | b'{' | b'[' | b']' | b';' | b',' | b':' | b'@' => {
+                self.scan_simple_punctuation()
+            }
+            b'}' => self.handle_right_brace(),
+            _ => self.scan_identifier_or_keyword(true)?,
+        };
         Ok(())
     }
 
@@ -617,38 +650,41 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert!(quote == b'"' || quote == b'\'');
         let mut pos = self.cursor + 1;
 
-        if self.mode == LexerMode::Normal {
-            while (pos as usize) < self.source.len() {
-                let rest = &self.source[pos as usize..];
-                let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
-                    pos = self.source.len() as u32;
-                    break;
-                };
-                pos += offset as u32;
-                let byte = self.source[pos as usize];
-                if byte == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                self.cursor = pos;
-                if byte == b'\\' {
-                    self.consume_escape(EscapeContext::String)?;
-                    pos = self.cursor;
-                } else {
-                    return Err(LexicalError::UnterminatedString);
-                }
-            }
-        } else {
-            if let Some(offset) = memchr(quote, &self.source[pos as usize..]) {
-                pos += offset as u32 + 1;
+        while (pos as usize) < self.source.len() {
+            let rest = &self.source[pos as usize..];
+            let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
+                pos = self.source.len() as u32;
+                break;
+            };
+            pos += offset as u32;
+            let byte = self.source[pos as usize];
+            if byte == quote {
+                pos += 1;
                 self.cursor = pos;
                 return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
             }
-            pos = self.source.len() as u32;
+            self.cursor = pos;
+            if byte == b'\\' {
+                self.consume_escape(EscapeContext::String)?;
+                pos = self.cursor;
+            } else {
+                return Err(LexicalError::UnterminatedString);
+            }
         }
 
         self.cursor = pos;
+        Err(LexicalError::UnterminatedString)
+    }
+
+    fn scan_jsx_string(&mut self) -> Result<Token, LexicalError> {
+        let start = self.cursor;
+        let quote = self.source[start as usize];
+        debug_assert!(quote == b'"' || quote == b'\'');
+        if let Some(offset) = memchr(quote, &self.source[start as usize + 1..]) {
+            self.cursor = start + offset as u32 + 2;
+            return Ok(self.create_token(TokenTag::StringLiteral, start, self.cursor));
+        }
+        self.cursor = self.source.len() as u32;
         Err(LexicalError::UnterminatedString)
     }
 
@@ -1095,11 +1131,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(has_escape)
     }
 
-    fn scan_identifier_or_keyword(&mut self) -> Result<Token, LexicalError> {
+    fn scan_identifier_or_keyword(&mut self, is_jsx_tag: bool) -> Result<Token, LexicalError> {
         debug_assert!((self.cursor as usize) < self.source.len());
 
         let start = self.cursor;
-        let is_jsx_tag = self.mode == LexerMode::JsxTag;
         let mut has_escape = false;
         let is_private = self.peek(0) == b'#';
 
@@ -1201,11 +1236,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::LessThanEqual, start),
                 _ => self.punc_token(1, TokenTag::LessThan, start),
             },
-            // Inside a JSX tag `>` only closes the tag, so `<div>=</div>` and the
-            // trailing `>>` of `<div attr=<e></e>></div>` must not merge.
-            b'>' if self.mode == LexerMode::JsxTag => {
-                self.punc_token(1, TokenTag::GreaterThan, start)
-            }
             b'>' if c1 == b'>' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::RightShiftAssign, start)
             }
@@ -1445,7 +1475,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
+    fn skip_ws_and_comments(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         let at_start_of_source = self.cursor == 0;
 
@@ -1473,10 +1503,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             if src[pos] == b'/' {
                 match src.get(pos + 1) {
                     Some(b'*') => self.scan_block_comment()?,
-                    Some(b'/') => self.scan_line_comment()?,
+                    Some(b'/') => self.scan_line_comment(jsx_tag)?,
                     _ => return Ok(()),
                 }
-            } else if !self.skip_ws_and_comments_slow(at_start_of_source)? {
+            } else if !self.skip_ws_and_comments_slow(at_start_of_source, jsx_tag)? {
                 return Ok(());
             }
         }
@@ -1487,6 +1517,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn skip_ws_and_comments_slow(
         &mut self,
         at_start_of_source: bool,
+        jsx_tag: bool,
     ) -> Result<bool, LexicalError> {
         let src = self.source;
         let pos = self.cursor as usize;
@@ -1502,7 +1533,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return Ok(false);
                 }
-                self.scan_html_comment()?;
+                self.scan_html_comment(jsx_tag)?;
             }
             b'-' => {
                 let can_be_html_close_comment =
@@ -1515,7 +1546,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return Ok(false);
                 }
-                self.scan_html_close_comment()?;
+                self.scan_html_close_comment(jsx_tag)?;
             }
             0x80..=0xFF => {
                 let separator_len = unicode_separator_len(src, pos) as usize;
@@ -1541,11 +1572,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// source, so [`TokenFlag::LineTerminatorBefore`] records every line break
     /// since the previous token that can precede another comment.
     #[inline]
-    fn can_have_trailing_line_comment(&self) -> bool {
+    fn can_have_trailing_line_comment(&self, jsx_tag: bool) -> bool {
         !self.has_token_flag(TokenFlag::LineTerminatorBefore)
             && self.state.previous_token_tag.is_some_and(|tag| {
-                (self.mode == LexerMode::JsxTag && tag == TokenTag::Slash)
-                    || tag.can_have_trailing_line_comment()
+                (jsx_tag && tag == TokenTag::Slash) || tag.can_have_trailing_line_comment()
             })
     }
 
@@ -1602,7 +1632,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.processed_comments = self.comments.len();
     }
 
-    fn scan_line_comment(&mut self) -> Result<(), LexicalError> {
+    fn scan_line_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
         debug_assert!(((self.cursor + 1) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'/');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'/');
@@ -1622,7 +1652,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             pos += 1;
         }
         self.cursor = pos as u32;
-        let trailing = self.can_have_trailing_line_comment();
+        let trailing = self.can_have_trailing_line_comment(jsx_tag);
         self.record_comment(CommentKind::Line, start, pos as u32, trailing)
     }
 
@@ -1686,13 +1716,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
+    fn scan_html_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 3) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'<');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'!');
         let start = self.cursor;
-        let trailing = self.can_have_trailing_line_comment();
+        let trailing = self.can_have_trailing_line_comment(jsx_tag);
         self.cursor += 4;
         while (self.cursor as usize) < self.source.len() {
             let c = self.source[self.cursor as usize];
@@ -1708,14 +1738,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn scan_html_close_comment(&mut self) -> Result<(), LexicalError> {
+    fn scan_html_close_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 2) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'-');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'-');
         debug_assert_eq!(self.source[self.cursor as usize + 2], b'>');
         let start = self.cursor;
-        let trailing = self.can_have_trailing_line_comment();
+        let trailing = self.can_have_trailing_line_comment(jsx_tag);
         self.cursor += 3;
         while (self.cursor as usize) < self.source.len() {
             if self.is_line_terminator(self.source[self.cursor as usize]) {
