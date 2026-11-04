@@ -13,10 +13,6 @@ const utf8Slice = typeof Buffer !== "undefined" &&
         return decoder.decode(this.subarray(start, end));
       };
     })();
-const latin1Slice = typeof Buffer !== "undefined" &&
-  typeof Buffer.prototype.latin1Slice === "function"
-  ? Buffer.prototype.latin1Slice
-  : null;
 const fromCharCode = String.fromCharCode;
 const shortStringChars = Array(65);
 for (let length = 0; length <= 64; length++) {
@@ -122,7 +118,6 @@ export function decodeJs(buffer, source, sourceBuffer) {
   const diagnosticCount = _i32[6];
   const programIndex = _i32[7];
   const flags = _i32[8];
-  const firstNonAsciiPos = _i32[9];
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
@@ -131,32 +126,10 @@ export function decodeJs(buffer, source, sourceBuffer) {
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  let sourceLatin;
-  if (source.length !== sourceLength) {
-    sourceLatin = latin1Slice === null
-      ? new TextDecoder("latin1").decode(sourceBuffer.subarray(0, sourceLength))
-      : latin1Slice.call(sourceBuffer, 0, sourceLength);
-  }
-  const str = (start, end) => {
-    if (start === end) return "";
-    if (start < sourceLength) {
-      if (end <= firstNonAsciiPos) return source.slice(start, end);
-      const length = end - start;
-      if (length <= 64) {
-        for (let i = 0; i < length; i++) {
-          if (sourceBuffer[start + i] >= 0x80) {
-            return utf8Slice.call(sourceBuffer, start, end);
-          }
-        }
-        return sourceLatin.slice(start, end);
-      }
-      return utf8Slice.call(sourceBuffer, start, end);
-    }
-    return decodePool(bytes.subarray(
-      strings + start - sourceLength,
-      strings + end - sourceLength,
-    ));
-  };
+  const str = (start, end) => decodePool(bytes.subarray(
+    strings + start - sourceLength,
+    strings + end - sourceLength,
+  ));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
@@ -192,14 +165,13 @@ export function decodeJs(buffer, source, sourceBuffer) {
       const start = _i32[offset >> 2];
       const end = _i32[(offset >> 2) + 1];
       const byteStart = _i32[(offset >> 2) + 2];
-      const byteEnd = _i32[(offset >> 2) + 3];
       const first = sourceBuffer[byteStart];
       const kind = sourceBuffer[byteStart + 1] === 0x2a ? 1 : 0;
-      const valueStart = byteStart + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
-      const valueEnd = byteEnd - (kind === 1 ? 2 : 0);
+      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = end - (kind === 1 ? 2 : 0);
       result[index] = {
         type: kind === 1 ? "Block" : "Line",
-        value: str(valueStart, valueEnd),
+        value: source.slice(valueStart, valueEnd),
         start,
         end,
       };
@@ -274,24 +246,22 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 3: {
-        const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         const f_raw = source.slice(start, end);
         result = { type: "Literal", start, end, value: f_value, raw: f_raw };
         break;
       }
       case 4: {
         const f_value = _dv.getFloat64(payload + 0, true);
-        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : source.slice(start, end);
+        const f_raw = source.slice(start, end);
         const value = f_value;
-        const raw = f_raw ?? String(value);
-        result = { type: "Literal", start, end, value, raw };
+        result = { type: "Literal", start, end, value, raw: f_raw };
         break;
       }
       case 5: {
         const f_raw = source.slice(start, end - 1);
-        const raw = `${f_raw}n`;
         const value = BigInt(f_raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
+        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
         break;
       }
       case 6: {
@@ -307,15 +277,16 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 8: {
-        const f_pattern = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_flags = str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
+        const separator = source.lastIndexOf("/", end - 1);
+        const f_pattern = source.slice(start + 1, separator);
+        const f_flags = source.slice(separator + 1, end);
         let value = null;
         try {
           value = new RegExp(f_pattern, f_flags);
         } catch {}
         result = {
           type: "Literal", start, end, value,
-          raw: `/${f_pattern}/${f_flags}`,
+          raw: source.slice(start, end),
           regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
         };
         break;
@@ -328,9 +299,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 10: {
-        const extraId = _i32[(payload + 12) >> 2];
-        const f_cooked = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = str(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
+        const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end).replace(/\r\n?/g, "\n");
         const f_tail = _dv.getUint8(payload + 8) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
         result = { type: "TemplateElement", start, end, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
@@ -338,31 +308,31 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 11: {
         result = { type: "Identifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 12: {
         result = { type: "PrivateIdentifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 13: {
         result = { type: "Identifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 14: {
         result = { type: "Identifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 15: {
         result = { type: "Identifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
@@ -578,7 +548,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 45: {
         const f_expression = node(_i32[(payload + 8) >> 2]);
-        const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(f_expression.start + 1, f_expression.end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         result = {
           type: "ExpressionStatement", start, end,
           expression: f_expression, directive: f_value,
@@ -926,7 +896,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 86: {
         result = { type: "Hashbang", start, end,
-          value: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          value: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 2, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
@@ -973,7 +943,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 167: {
         result = { type: "JSXIdentifier", start, end,
-          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }

@@ -12,19 +12,22 @@ use swc_next_ecma_ast::{
     Class, ClassElement, Decl, DeclData, Decorator, DoWhileStatement, ExportAllDeclaration,
     ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData, ForInStatement,
     ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan, IfStatement,
-    ImportDeclaration, ImportOrExportKind, LabeledStatement, LogicalExpression, MemberExpression,
-    MethodDefinition, Program, PropertyDefinition, PropertyKey, Stmt, SubRange,
-    TaggedTemplateExpression, TsAsExpression, TsClassImplements, TsEnumDeclaration,
-    TsExportAssignment, TsFunction, TsGlobalDeclaration, TsImportEqualsDeclaration,
-    TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration, TsMethodDefinition,
-    TsModuleDeclaration, TsNamespaceExportDeclaration, TsNonNullExpression, TsParameterProperty,
-    TsSatisfiesExpression, TsThisParameter, TsTypeAliasDeclaration, TsTypeAnnotation,
-    TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation, VariableDeclaration,
-    VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
+    ImportDeclaration, ImportOrExportKind, JsxAttribute, JsxChild, JsxClosingElement,
+    JsxOpeningElement, LabeledStatement, LogicalExpression, MemberExpression, MethodDefinition,
+    NodeId, Program, PropertyDefinition, PropertyKey, PropertyKeyData, ReturnStatement, Stmt,
+    SubRange, TaggedTemplateExpression, ThrowStatement, TsAsExpression, TsClassImplements,
+    TsEnumDeclaration, TsExportAssignment, TsFunction, TsGlobalDeclaration,
+    TsImportEqualsDeclaration, TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration,
+    TsMethodDefinition, TsModuleDeclaration, TsNamespaceExportDeclaration, TsNonNullExpression,
+    TsParameterProperty, TsSatisfiesExpression, TsThisParameter, TsTypeAliasDeclaration,
+    TsTypeAnnotation, TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
+    VariableDeclaration, VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
+    YieldExpression,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, SourceType, Span};
 use swc_next_ecma_parser::{
-    CommentMode, Options as ParserOptions, ParseReturn, Parser, Token, TokenParserConfig, TokenTag,
+    CommentMode, NoTokenParserConfig, Options as ParserOptions, ParseReturn, Parser, Token,
+    TokenTag,
 };
 
 use crate::token_cursor::TokenCursor;
@@ -118,19 +121,20 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     }
 
     let allocator = Allocator::default();
-    let parse = Parser::init(&allocator, source, options.into(), TokenParserConfig).parse();
+    let parse = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
     #[cfg(feature = "benchmarking")]
     let parse = benchmark_parse_boundary(parse);
     let ParseReturn {
         ast,
-        tokens,
         mut diagnostics,
+        ..
     } = parse;
 
     let program = ast.root_program();
     let mut eraser = TypeEraser {
         ast: &ast,
-        tokens: TokenCursor::new(source, tokens.as_slice()),
+        tokens: TokenCursor::new(&allocator, source, options.into()),
+        restricted_argument: None,
         edits: EditPlan::default(),
         diagnostic: None,
         item_context: ItemContext::default(),
@@ -157,15 +161,19 @@ fn benchmark_parse_boundary(parse: ParseReturn<'_>) -> ParseReturn<'_> {
 
 #[derive(Clone, Copy, Default)]
 struct ItemContext {
-    previous_retained: Option<Span>,
+    /// The previous retained statement or class element.
+    previous_retained: Option<NodeId>,
     terminates_directive_prologue: bool,
     required_statement: bool,
     erased: bool,
 }
 
-struct TypeEraser<'ast, 'source, 'tokens> {
+struct TypeEraser<'ast, 'tokens> {
     ast: &'ast Ast<'ast>,
-    tokens: TokenCursor<'source, 'tokens>,
+    tokens: TokenCursor<'tokens>,
+    /// The `return`, `throw`, or `yield` keyword start and the start of its
+    /// argument, for the most recently visited keyword with an argument.
+    restricted_argument: Option<Span>,
     edits: EditPlan,
     diagnostic: Option<Diagnostic<'static>>,
     item_context: ItemContext,
@@ -184,7 +192,7 @@ enum ExprFrame {
 }
 
 impl ExprFrame {
-    fn visit_remaining(self, eraser: &mut TypeEraser<'_, '_, '_>) {
+    fn visit_remaining(self, eraser: &mut TypeEraser<'_, '_>) {
         let ast = eraser.ast;
         match self {
             Self::Expression(expression) => expression.visit_with(eraser),
@@ -211,8 +219,17 @@ impl ExprFrame {
     }
 }
 
-impl TypeEraser<'_, '_, '_> {
-    fn visit_chain_operand(&mut self, mut node: Expr) {
+impl TypeEraser<'_, '_> {
+    #[inline]
+    fn visit_chain_operand(&mut self, node: Expr) {
+        if !node.is_identifier_reference(self.ast) {
+            self.visit_non_identifier_chain_operand(node);
+        }
+    }
+
+    // Kept out of line so that the identifier check inlines into callers.
+    #[inline(never)]
+    fn visit_non_identifier_chain_operand(&mut self, mut node: Expr) {
         loop {
             match self.ast.expr_data(node) {
                 ExprData::IdentifierReference(_) => return,
@@ -316,6 +333,59 @@ impl TypeEraser<'_, '_, '_> {
         }
     }
 
+    /// Dispatches an expression once instead of through `visit_children_with`.
+    fn visit_non_identifier_expr(&mut self, node: Expr) {
+        match self.ast.expr_data(node) {
+            // Leaves have no children.
+            ExprData::IdentifierReference(_)
+            | ExprData::ThisExpression(_)
+            | ExprData::Super(_)
+            | ExprData::MetaProperty(_)
+            | ExprData::StringLiteral(_)
+            | ExprData::NumericLiteral(_)
+            | ExprData::BigIntLiteral(_)
+            | ExprData::BooleanLiteral(_)
+            | ExprData::NullLiteral(_)
+            | ExprData::RegExpLiteral(_)
+            | ExprData::PrivateIdentifier(_) => {}
+            ExprData::TemplateLiteral(node) => self.visit_template_literal(node),
+            ExprData::BinaryExpression(node) => self.visit_binary_expression(node),
+            ExprData::LogicalExpression(node) => self.visit_logical_expression(node),
+            ExprData::UnaryExpression(node) => self.visit_unary_expression(node),
+            ExprData::UpdateExpression(node) => self.visit_update_expression(node),
+            ExprData::AssignmentExpression(node) => self.visit_assignment_expression(node),
+            ExprData::ConditionalExpression(node) => self.visit_conditional_expression(node),
+            ExprData::SequenceExpression(node) => self.visit_sequence_expression(node),
+            ExprData::MemberExpression(node) => self.visit_member_expression(node),
+            ExprData::CallExpression(node) => self.visit_call_expression(node),
+            ExprData::ChainExpression(node) => self.visit_chain_expression(node),
+            ExprData::NewExpression(node) => self.visit_new_expression(node),
+            ExprData::TaggedTemplateExpression(node) => {
+                self.visit_tagged_template_expression(node);
+            }
+            ExprData::ArrowFunctionExpression(node) => {
+                self.visit_arrow_function_expression(node);
+            }
+            ExprData::ArrayExpression(node) => self.visit_array_expression(node),
+            ExprData::ObjectExpression(node) => self.visit_object_expression(node),
+            ExprData::ParenthesizedExpression(node) => self.visit_parenthesized_expression(node),
+            ExprData::Function(node) => self.visit_function(node),
+            ExprData::Class(node) => self.visit_class(node),
+            ExprData::ImportExpression(node) => self.visit_import_expression(node),
+            ExprData::AwaitExpression(node) => self.visit_await_expression(node),
+            ExprData::YieldExpression(node) => self.visit_yield_expression(node),
+            ExprData::TsAsExpression(node) => self.visit_ts_as_expression(node),
+            ExprData::TsSatisfiesExpression(node) => self.visit_ts_satisfies_expression(node),
+            ExprData::TsTypeAssertion(node) => self.visit_ts_type_assertion(node),
+            ExprData::TsNonNullExpression(node) => self.visit_ts_non_null_expression(node),
+            ExprData::TsInstantiationExpression(node) => {
+                self.visit_ts_instantiation_expression(node);
+            }
+            ExprData::JsxElement(node) => self.visit_jsx_element(node),
+            ExprData::JsxFragment(node) => self.visit_jsx_fragment(node),
+        }
+    }
+
     fn report_erasable_syntax_only(&mut self, span: Span) {
         if self.diagnostic.is_none() {
             self.diagnostic = Some(Diagnostic::error(ERASABLE_SYNTAX_ONLY_MESSAGE, span));
@@ -383,8 +453,9 @@ impl TypeEraser<'_, '_, '_> {
         let Some(previous) = self.item_context.previous_retained else {
             return false;
         };
-        let last = self.tokens.last_in_range(previous.start, previous.end);
-        !last.is_some_and(|token| token.tag() == TokenTag::Semicolon)
+        !self
+            .tokens
+            .ends_with_punctuator(self.ast.span(previous), b';')
     }
 
     fn erase_suffix_expression(&mut self, expression: Expr, wrapper_span: Span) {
@@ -437,9 +508,10 @@ impl TypeEraser<'_, '_, '_> {
         {
             return;
         }
-        let Some(opening) =
-            self.tokens
-                .find_forward(parameters.start, parameters.end, TokenTag::LeftParen)
+        let Some(opening) = self
+            .tokens
+            .first_in_range(parameters.start, parameters.end)
+            .filter(|token| token.tag() == TokenTag::LeftParen)
         else {
             return;
         };
@@ -474,20 +546,22 @@ impl TypeEraser<'_, '_, '_> {
         {
             return;
         }
-        let Some(closing_parenthesis) =
-            self.tokens
-                .find_backward(parameters.start, parameters.end, TokenTag::RightParen)
-        else {
+        if !self.tokens.ends_with_punctuator(parameters, b')') {
             return;
-        };
+        }
         let Some(replacement_span) = self.tokens.trailing_character_span(return_span.end) else {
             return;
         };
 
         self.edits
-            .blank(Span::new(closing_parenthesis.start(), return_span.end));
+            .blank(Span::new(parameters.end - 1, return_span.end));
         self.edits
             .substitute(replacement_span, FixedSubstitution::RightParenthesis);
+    }
+
+    fn record_restricted_argument(&mut self, keyword_span: Span, argument: Expr) {
+        let argument_start = argument.span(self.ast).start;
+        self.restricted_argument = Some(Span::new(keyword_span.start, argument_start));
     }
 
     fn has_line_sensitive_arrow_prefix(&self, arrow: ArrowFunctionExpression) -> bool {
@@ -498,24 +572,14 @@ impl TypeEraser<'_, '_, '_> {
         let Some(type_parameters) = arrow.type_parameters(self.ast) else {
             return false;
         };
-        let type_parameters = type_parameters.span(self.ast);
-        let Some(opening) = self
-            .tokens
-            .first_in_range(type_parameters.start, type_parameters.end)
-        else {
-            return false;
-        };
-        if opening.has_line_terminator_before() {
-            return false;
-        }
-        self.tokens
-            .previous_before(opening.start())
-            .is_some_and(|token| {
-                matches!(
-                    token.tag(),
-                    TokenTag::Return | TokenTag::Throw | TokenTag::Yield
-                )
-            })
+        // The `<` directly follows the keyword on the same line.
+        let type_parameters_start = type_parameters.span(self.ast).start;
+        self.restricted_argument.is_some_and(|keyword_gap| {
+            keyword_gap.end == type_parameters_start
+                && !self
+                    .tokens
+                    .has_line_terminator(keyword_gap.start, keyword_gap.end)
+        })
     }
 
     fn separate_hazardous_class_element(
@@ -583,7 +647,7 @@ impl TypeEraser<'_, '_, '_> {
             };
             statement.visit_with(self);
             if !self.item_context.erased {
-                previous_retained = Some(statement.span(self.ast));
+                previous_retained = Some(statement.node_id());
             }
         }
         self.item_context = saved_context;
@@ -600,13 +664,18 @@ impl TypeEraser<'_, '_, '_> {
             };
             element.visit_with(self);
             if !self.item_context.erased {
-                previous_retained = Some(element.span(self.ast));
+                previous_retained = Some(element.node_id());
             }
         }
         self.item_context = saved_context;
     }
 
     fn visit_required_statement(&mut self, statement: Stmt) {
+        // A block is never erased and visits its statements in their own context.
+        if let Some(block) = statement.as_block_statement(self.ast) {
+            self.visit_statement_list(block.body(self.ast), false);
+            return;
+        }
         let saved_context = self.item_context;
         self.item_context = ItemContext {
             required_statement: true,
@@ -647,13 +716,23 @@ impl TypeEraser<'_, '_, '_> {
     }
 }
 
-impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
+impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     fn ast(&self) -> &Ast<'ast> {
         self.ast
     }
 
+    #[inline]
     fn visit_expr(&mut self, node: Expr) {
         if !node.is_identifier_reference(self.ast) {
+            self.visit_non_identifier_expr(node);
+        }
+    }
+
+    fn visit_decl(&mut self, node: Decl) {
+        // Variable declarations are the most common declarations.
+        if let Some(declaration) = node.as_variable_declaration(self.ast) {
+            self.visit_variable_declaration(declaration);
+        } else {
             node.visit_children_with(self);
         }
     }
@@ -670,7 +749,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
 
     fn visit_member_expression(&mut self, node: MemberExpression) {
         self.visit_chain_operand(node.object(self.ast));
-        node.property(self.ast).visit_with(self);
+        // Static property names cannot contain types.
+        if node.computed(self.ast) {
+            node.property(self.ast).visit_with(self);
+        }
     }
 
     fn visit_call_expression(&mut self, node: CallExpression) {
@@ -687,6 +769,37 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         self.visit_chain_operand(node.tag(self.ast));
         node.type_arguments(self.ast).visit_with(self);
         node.quasi(self.ast).visit_with(self);
+    }
+
+    fn visit_property_key(&mut self, node: PropertyKey) {
+        // Identifier names have no children.
+        if let PropertyKeyData::Expr(expression) = self.ast.property_key_data(node) {
+            self.visit_expr(expression);
+        }
+    }
+
+    fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
+        // Element names consist of JSX identifiers only.
+        node.type_arguments(self.ast).visit_with(self);
+        node.attributes(self.ast).visit_with(self);
+    }
+
+    // Element names consist of JSX identifiers only.
+    fn visit_jsx_closing_element(&mut self, _node: JsxClosingElement) {}
+
+    fn visit_jsx_attribute(&mut self, node: JsxAttribute) {
+        // Attribute names consist of JSX identifiers only.
+        node.value(self.ast).visit_with(self);
+    }
+
+    fn visit_jsx_childs(&mut self, node: SubRange<JsxChild>) {
+        for child in node.iter() {
+            let child = self.ast.get_node_in_sub_range(child);
+            // Text has no children.
+            if !child.is_jsx_text(self.ast) {
+                child.visit_with(self);
+            }
+        }
     }
 
     fn visit_program(&mut self, node: Program) {
@@ -751,6 +864,27 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         self.visit_required_statement(node.body(self.ast));
     }
 
+    fn visit_return_statement(&mut self, node: ReturnStatement) {
+        if let Some(argument) = node.argument(self.ast) {
+            self.record_restricted_argument(node.span(self.ast), argument);
+        }
+        node.visit_children_with(self);
+    }
+
+    fn visit_throw_statement(&mut self, node: ThrowStatement) {
+        self.record_restricted_argument(node.span(self.ast), node.argument(self.ast));
+        node.visit_children_with(self);
+    }
+
+    fn visit_yield_expression(&mut self, node: YieldExpression) {
+        if !node.delegate(self.ast)
+            && let Some(argument) = node.argument(self.ast)
+        {
+            self.record_restricted_argument(node.span(self.ast), argument);
+        }
+        node.visit_children_with(self);
+    }
+
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
         self.move_opening_parenthesis_across_multiline_type_parameters(node);
         self.move_closing_parenthesis_across_multiline_return_type(node);
@@ -759,9 +893,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
 
     fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
         let span = node.span(self.ast);
-        let next = self
-            .tokens
-            .first_in_range(span.end, self.ast.source().len() as u32);
+        let next = self.tokens.at_or_after(span.end);
         let end = next
             .filter(|token| token.tag() == TokenTag::Comma)
             .map_or(span.end, |token| token.end());
@@ -787,8 +919,8 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             || node.body(self.ast).span(self.ast).start,
             |id| id.span(self.ast).start,
         );
+        let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         if node.r#abstract(self.ast) {
-            let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
             self.erase_token(modifiers_start, identifier_start, TokenTag::Abstract);
         }
 
@@ -798,9 +930,23 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             let last = self.ast.get_node_in_sub_range(last);
             let first_span = first.span(self.ast);
             let last_span = last.span(self.ast);
+            // Only keywords separate the last preceding header part from `implements`.
+            let header_end = [
+                node.id(self.ast).map(|id| id.span(self.ast).end),
+                node.type_parameters(self.ast)
+                    .map(|parameters| parameters.span(self.ast).end),
+                node.super_class(self.ast)
+                    .map(|super_class| super_class.span(self.ast).end),
+                node.super_type_arguments(self.ast)
+                    .map(|arguments| arguments.span(self.ast).end),
+            ]
+            .into_iter()
+            .flatten()
+            .max()
+            .unwrap_or(modifiers_start);
             if let Some(keyword) =
                 self.tokens
-                    .find_backward(span.start, first_span.start, TokenTag::Implements)
+                    .find_forward(header_end, first_span.start, TokenTag::Implements)
             {
                 self.edits.blank(Span::new(keyword.start(), last_span.end));
             }
@@ -817,7 +963,12 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         }
 
         let key_span = node.key(self.ast).span(self.ast);
-        let key_token = self.tokens.first_in_range(key_span.start, key_span.end);
+        // A computed key starts an expression, where a context-free read is unreliable.
+        let key_token = if node.computed(self.ast) {
+            None
+        } else {
+            self.tokens.first_in_range(key_span.start, key_span.end)
+        };
         let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         let mut first_erased_modifier = None;
         if node.readonly(self.ast) {
@@ -879,7 +1030,12 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     fn visit_method_definition(&mut self, node: MethodDefinition) {
         let span = node.span(self.ast);
         let key_span = node.key(self.ast).span(self.ast);
-        let key_token = self.tokens.first_in_range(key_span.start, key_span.end);
+        // A computed key starts an expression, where a context-free read is unreliable.
+        let key_token = if node.computed(self.ast) {
+            None
+        } else {
+            self.tokens.first_in_range(key_span.start, key_span.end)
+        };
         let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         let mut first_erased_modifier = None;
         if node.r#abstract(self.ast) {
@@ -1130,29 +1286,40 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     }
 
     fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
+        let pattern = node.id(self.ast);
+        let type_annotation = node.type_annotation(self.ast);
+        let init = node.init(self.ast);
         if node.definite(self.ast) {
-            let pattern = node.id(self.ast);
-            let span = pattern.span(self.ast);
-            let marker_end = node
-                .type_annotation(self.ast)
-                .map_or(node.span(self.ast).end, |annotation| {
-                    annotation.span(self.ast).start
-                });
-            if let Some(marker) =
-                self.tokens
-                    .find_backward(span.start, marker_end, TokenTag::LogicalNot)
-            {
-                self.edits.blank(marker.span());
-            }
+            let pattern_end = pattern.span(self.ast).end;
+            let marker_end = if let Some(annotation) = type_annotation {
+                annotation.span(self.ast).start
+            } else if let Some(initializer) = init {
+                initializer.span(self.ast).start
+            } else {
+                node.span(self.ast).end
+            };
+            self.erase_token(pattern_end, marker_end, TokenTag::LogicalNot);
         }
-        node.visit_children_with(self);
+        // Visits the children in field order; a binding identifier has none.
+        if !pattern.is_binding_identifier(self.ast) {
+            pattern.visit_with(self);
+        }
+        type_annotation.visit_with(self);
+        init.visit_with(self);
     }
 
     fn visit_formal_parameter(&mut self, node: FormalParameter) {
         if node.optional(self.ast) {
             self.erase_optional_parameter(node);
         }
-        node.visit_children_with(self);
+        // Visits the children in field order; a binding identifier has none.
+        node.decorators(self.ast).visit_with(self);
+        let pattern = node.pattern(self.ast);
+        if !pattern.is_binding_identifier(self.ast) {
+            pattern.visit_with(self);
+        }
+        node.type_annotation(self.ast).visit_with(self);
+        node.initializer(self.ast).visit_with(self);
     }
 }
 

@@ -33,7 +33,13 @@ jobs:
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
     env:
-      BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
+      # A pull request compares its merge commit with the first parent of that
+      # merge commit. For a stacked pull request, GitHub merges the full stack
+      # into the latest default branch, so the base branch commit can be on an
+      # older default branch. The first parent contains the same default
+      # branch commits, so the comparison shows only the changes of this pull
+      # request.
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('{0}^1', github.sha) || inputs.base }}
       HEAD_REF: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
       JS_BENCH_FILTER: ${{ inputs.filter || '' }}
       JS_BENCH_SUITE: ${{ github.event_name == 'pull_request' && 'representative' || 'full' }}
@@ -200,7 +206,7 @@ jobs:
         if: always()
         env:
           ARTIFACT_URL: ${{ steps.upload-results.outputs.artifact-url }}
-          BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('{0}^1', github.sha) || inputs.base }}
           HEAD_REF: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
         run: |
           summary="$RUNNER_TEMP/reports/summary.md"

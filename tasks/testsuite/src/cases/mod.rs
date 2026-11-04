@@ -2,12 +2,14 @@ use std::path::{Path, PathBuf};
 
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::Options as CodegenOptions;
+use swc_next_ecma_minifier::MinifierOptions;
 use swc_next_ecma_transformer::TransformerOptions;
 
 use crate::util::crate_root;
 
 pub mod babel;
 pub mod babel_parser;
+pub mod minifier;
 pub mod swc_resolver;
 pub mod swc_transform;
 pub mod test262;
@@ -62,6 +64,14 @@ pub trait TransformCase: Case {
     fn codegen_options(&self) -> CodegenOptions {
         CodegenOptions::default()
     }
+}
+
+/// Fixture adapters for the minifier runner.
+pub trait MinifierCase: Case {
+    fn minifier_options(&self) -> MinifierOptions;
+
+    /// Output of the reference minifier. An absent oracle skips the case.
+    fn expected_output(&self) -> Option<&str>;
 }
 
 pub fn fixtures() -> PathBuf {

@@ -50,10 +50,10 @@ impl<T: Copy, const N: usize> Simd<T, N> {
 
     #[inline(always)]
     pub fn from_slice(slice: &[T]) -> Self {
-        let array = slice
-            .first_chunk::<N>()
-            .expect("source slice is shorter than the SIMD vector");
-        Self(*array)
+        match slice.first_chunk::<N>() {
+            Some(array) => Self(*array),
+            None => panic!("source slice is shorter than the SIMD vector"),
+        }
     }
 
     #[inline(always)]
@@ -617,10 +617,11 @@ mod scalar {
 
     #[inline(always)]
     fn lanes(words: [u64; 2]) -> [u8; 16] {
-        let mut lanes = [0; 16];
-        lanes[..8].copy_from_slice(&words[0].to_le_bytes());
-        lanes[8..].copy_from_slice(&words[1].to_le_bytes());
-        lanes
+        let [a0, a1, a2, a3, a4, a5, a6, a7] = words[0].to_le_bytes();
+        let [b0, b1, b2, b3, b4, b5, b6, b7] = words[1].to_le_bytes();
+        [
+            a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7,
+        ]
     }
 
     #[inline(always)]

@@ -106,6 +106,25 @@ test("parseSync decodes ASCII strings after non-ASCII source text", () => {
   }
 });
 
+test("parseSync decodes identifier names from source and pool", () => {
+  for (const lang of ["js", "ts"]) {
+    const identifier = parseSync("/* 😀 */ const 文 = 1; 文; obj.属性;", { lang }).program.body;
+    assert.equal(identifier[0].declarations[0].id.name, "文");
+    assert.equal(identifier[1].expression.name, "文");
+    assert.equal(identifier[2].expression.property.name, "属性");
+
+    const escaped = parseSync("const \\u0061 = 1;", { lang }).program.body[0];
+    assert.equal(escaped.declarations[0].id.name, "a");
+
+    const privateField = parseSync("/* 😀 */ class A { #秘密; }", { lang }).program.body[0];
+    assert.equal(privateField.body.body[0].key.name, "秘密");
+
+    const label = parseSync("/* 😀 */ outer: while (false) { break outer; }", { lang }).program.body[0];
+    assert.equal(label.label.name, "outer");
+    assert.equal(label.body.body.body[0].label.name, "outer");
+  }
+});
+
 test("parseSync decodes UTF-8 source and pool strings", () => {
   const longValue = "é".repeat(40);
   const source = `const short = "é"; const long = "${longValue}"; const escaped = "\\uFEFF";`;
@@ -116,7 +135,44 @@ test("parseSync decodes UTF-8 source and pool strings", () => {
   assert.equal(declarations[2].declarations[0].init.value, "\uFEFF");
 });
 
-test("decoder reads template raw strings from source and pool", () => {
+test("parseSync decodes source-backed strings", () => {
+  for (const lang of ["js", "ts"]) {
+    const literal = parseSync('/* 😀 */ "한글";', { lang }).program.body[0];
+    assert.equal(literal.expression.value, "한글");
+    assert.equal(literal.directive, "한글");
+
+    const template = parseSync("/* 😀 */ tag`한글`;", { lang }).program.body[0];
+    assert.deepEqual(template.expression.quasi.quasis[0].value, { raw: "한글", cooked: "한글" });
+
+    const escaped = parseSync('"\\u0061";', { lang }).program.body[0];
+    assert.equal(escaped.expression.value, "a");
+    assert.equal(escaped.directive, "\\u0061");
+
+    const hashbang = parseSync("#!/usr/bin/😀\n1;", { lang }).program.hashbang;
+    assert.equal(hashbang.value, "/usr/bin/😀");
+
+    const comments = parseSync("/* 😀 */\n// \ud800", { lang }).comments;
+    assert.equal(comments[0].value, " 😀 ");
+    assert.equal(comments[1].value, " \ud800");
+
+    const lone = parseSync('"\ud800";', { lang }).program.body[0];
+    assert.equal(lone.expression.value, "\ud800");
+    assert.equal(lone.directive, "\ud800");
+
+    const loneTemplate = parseSync("tag`\ud800`;", { lang }).program.body[0];
+    assert.deepEqual(loneTemplate.expression.quasi.quasis[0].value, { raw: "\ud800", cooked: "\ud800" });
+
+    const escapedSurrogate = parseSync('"\\uD800";', { lang }).program.body[0];
+    assert.equal(escapedSurrogate.expression.value, "\ud800");
+  }
+
+  const jsx = parseSync("/* 😀 */ <组件 属性='值' />;", { lang: "jsx" }).program.body[0].expression;
+  assert.equal(jsx.openingElement.name.name, "组件");
+  assert.equal(jsx.openingElement.attributes[0].name.name, "属性");
+  assert.equal(jsx.openingElement.attributes[0].value.value, "值");
+});
+
+test("decoder preserves template raw semantics", () => {
   function templateValue(source, lang) {
     const result = parseSync(source, { lang });
     assert.deepEqual(result.diagnostics, []);
@@ -130,19 +186,38 @@ test("decoder reads template raw strings from source and pool", () => {
     });
 
     assert.deepEqual(templateValue("/* 😀 */ tag`é\r\n`;", lang), {
-      raw: "é\n",
+      raw: lang === "js" ? "é\n" : "é\r\n",
       cooked: "é\n",
     });
 
     assert.deepEqual(templateValue("tag`\\\r\n`;", lang), {
-      raw: "\\\n",
+      raw: lang === "js" ? "\\\n" : "\\\r\n",
       cooked: "",
     });
 
     assert.deepEqual(templateValue("tag`\\xZ\r`;", lang), {
-      raw: "\\xZ\n",
+      raw: lang === "js" ? "\\xZ\n" : "\\xZ\r",
       cooked: null,
     });
+  }
+});
+
+test("decoder preserves literal raw source", () => {
+  for (const lang of ["js", "ts"]) {
+    const numeric = parseSync("0x1_f;", { lang }).program.body[0].expression;
+    assert.equal(numeric.raw, "0x1_f");
+
+    const bigint = parseSync("12_345n;", { lang }).program.body[0].expression;
+    assert.equal(bigint.raw, "12_345n");
+
+    const regexp = parseSync("/\ud800/gi;", { lang }).program.body[0].expression;
+    assert.equal(regexp.raw, "/\ud800/gi");
+    assert.equal(regexp.regex.pattern, "\ud800");
+    assert.equal(regexp.regex.flags, "gi");
+
+    const escaped = parseSync("/a\\/b[/]c/ig;", { lang }).program.body[0].expression;
+    assert.equal(escaped.regex.pattern, "a\\/b[/]c");
+    assert.equal(escaped.regex.flags, "gi");
   }
 });
 
@@ -393,11 +468,11 @@ test("parseSync preserves source encoding at the API boundary", () => {
   assert.deepEqual(standalone.program, result.program);
 
   const high = parseSync('"\ud800";');
-  assert.equal(high.program.body[0].expression.value, "�");
+  assert.equal(high.program.body[0].expression.value, "\ud800");
   assert.equal(high.program.end, 4);
 
   const low = parseSync('"\udc00";');
-  assert.equal(low.program.body[0].expression.value, "�");
+  assert.equal(low.program.body[0].expression.value, "\udc00");
   assert.equal(low.program.end, 4);
 
   assert.throws(() => parseSync(undefined), TypeError);

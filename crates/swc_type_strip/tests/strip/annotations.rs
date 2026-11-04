@@ -4,6 +4,13 @@ use super::*;
 fn binding_annotations() {
     assert_strip("let value: number = 1;", "let value         = 1;");
 
+    assert_strip("let x:(\u{000B}A)=1;", "let x  \u{000B}  =1;");
+
+    assert_strip(
+        "let x:(\u{000B}ABCDEFGHIJKLMNO)=1;",
+        "let x  \u{000B}                =1;",
+    );
+
     assert_strip(
         "const { value }: Shape = input;",
         "const { value }        = input;",

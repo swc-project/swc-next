@@ -271,6 +271,10 @@ function encodeTs(program, meta = {}) {
     next.set(pool.subarray(0, poolLength)); pool = next;
   }
 
+  function templateRaw(raw) {
+    return raw.includes("\r") ? raw.replace(/\r\n?/g, "\n") : raw;
+  }
+
   function numericKind(raw) {
     if (typeof raw !== "string" || raw.length < 2 || raw.charCodeAt(0) !== 48) return "decimal";
     const prefix = raw[1].toLowerCase();
@@ -497,7 +501,7 @@ function encodeTs(program, meta = {}) {
 
   function encTemplateElement(n) {
     const v_0 = n.value?.cooked ?? "";
-    const v_1 = n.value?.raw ?? "";
+    const v_1 = templateRaw(n.value?.raw ?? "");
     const v_2 = n.tail ? 1 : 0;
     const v_3 = n.value?.cooked == null ? 1 : 0;
     const extraId = allocExtra(1);

@@ -6,14 +6,15 @@ use testsuite::{
         Case,
         babel::BabelTransformCase,
         babel_parser::BabelParserCase,
+        minifier::{SwcMinifierCase, TerserMinifierCase},
         swc_resolver::SwcResolverCase,
         swc_transform::SwcTransformCase,
         test262::Test262Case,
         typescript::{parser::TypeScriptParserCase, transform::TypeScriptTransformCase},
     },
     runner::{
-        Runner, codegen::CodegenRunner, parser::ParserRunner, semantic::SemanticRunner,
-        transform::TransformerRunner,
+        Runner, codegen::CodegenRunner, minifier::MinifierRunner, parser::ParserRunner,
+        semantic::SemanticRunner, transform::TransformerRunner,
     },
     suite::TestResult,
     util::crate_root,
@@ -34,6 +35,8 @@ pub fn main() -> ExitCode {
         update_snapshot::<TransformerRunner, TypeScriptTransformCase>(
             &TypeScriptTransformCase::read(),
         ),
+        update_snapshot::<MinifierRunner, TerserMinifierCase>(&TerserMinifierCase::read()),
+        update_snapshot::<MinifierRunner, SwcMinifierCase>(&SwcMinifierCase::read()),
     ]
     .into_iter()
     .any(|panicked| panicked);

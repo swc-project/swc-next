@@ -9,6 +9,7 @@ mod lexer;
 mod number;
 mod parser;
 mod token;
+mod token_reader;
 mod unicode_id;
 mod util;
 
@@ -16,3 +17,4 @@ pub use config::{NoTokenParserConfig, ParserConfig, TokenParserConfig};
 pub use parser::{CommentMode, FragmentContext, Options, ParseReturn, Parser};
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity};
 pub use token::{Token, TokenFlag, TokenTag};
+pub use token_reader::TokenReader;

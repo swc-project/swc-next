@@ -1,13 +1,18 @@
 # Test suite
 
-Conformance testing for SWC Next against Test262, TypeScript, Babel, and SWC
-fixtures.
+Conformance testing for SWC Next against Test262, TypeScript, Babel, SWC, and
+terser fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
 - Codegen suites check AST round trips and printing stability.
 - Semantic suites compare identifier end offsets and semantic binding identities
   with reference output.
 - Transform suites compare normalized output or check output syntax and stability.
+- Minifier suites compare normalized output with the reference output of SWC's
+  minifier fixtures and its terser port, and check compression stability.
+  Fixture options are mapped to the supported compress options. Negative cases
+  expect the input unchanged. Fixtures without a reference output or with
+  mangling are skipped, and code is not executed.
 
 Semantic fixtures use SWC's legacy resolver as a reference, including its parser
 and identifier-marking model.
@@ -36,7 +41,8 @@ cargo run -p testsuite --bin debug -- --runner parser --case test262 --filter '<
 ```
 
 Parser and codegen runners accept `test262`, `typescript`, or `babel`.
-Transform accepts `babel`, `typescript`, or `swc`; semantic accepts `swc_resolver`.
+Transform accepts `babel`, `typescript`, or `swc`; semantic accepts `swc_resolver`;
+minifier accepts `terser` or `swc`.
 See `--help` for additional options.
 
 ## JavaScript conformance

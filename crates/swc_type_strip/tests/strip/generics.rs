@@ -88,6 +88,21 @@ fn arrow_boundaries() {
     );
 
     assert_strip(
+        "function f() { return /* c */ <Type>\n(value: Type) => value; }",
+        "function f() { return /* c */ (     \n value      ) => value; }",
+    );
+
+    assert_strip(
+        "function f() { return /*\n*/ <Type>\n(value: Type) => value; }",
+        "function f() { return /*\n*/       \n(value      ) => value; }",
+    );
+
+    assert_strip(
+        "function f() { return g(<Type>\n(value: Type) => value); }",
+        "function f() { return g(      \n(value      ) => value); }",
+    );
+
+    assert_strip(
         "const f = <Type>\n(value: Type) => value;",
         "const f =       \n(value      ) => value;",
     );

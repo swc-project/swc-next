@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: Conformance results for parsing, code generation, transformations, ESTree, and codecs.
+description: Conformance results for parsing, code generation, transformations, minification, ESTree, and codecs.
 ---
 
 import { ConformanceTable } from "../../theme/Conformance";
@@ -28,6 +28,14 @@ import { ConformanceTable } from "../../theme/Conformance";
 - **Skipped**: unsupported options, or inputs/outputs that cannot be parsed, checked, or normalized. Included in the positive total, but not passes.
 
 <ConformanceTable kind="transform" />
+
+### Minification
+
+- **Positive passed**: normalized output matches the reference output of the target minifier, reparses, and minifies a second time to identical code.
+- **Negative passed**: the reference output equals the input, and the minifier keeps the code unchanged.
+- **Skipped**: fixtures without a reference output, fixtures with `mangle.json`, or inputs and reference outputs that cannot be parsed. Included in the positive total, but not passes.
+
+<ConformanceTable kind="minifier" />
 
 ### ESTree
 
