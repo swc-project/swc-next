@@ -489,37 +489,81 @@ impl Compressor {
         self.statement_list.compress(ast, &self.options, list)
     }
 
-    /// Replaces the block bodies of a statement with their only statement.
-    fn unwrap_bodies(&self, ast: &mut Ast<'_>, node: Stmt) {
+    /// Compresses a block that `exit_block_statement` left to the node that
+    /// holds it.
+    ///
+    /// An enclosing list merges the statements of a block without
+    /// block-scoped declarations. If the block built its own sequences and
+    /// declarator lists first, the enclosing list would copy them again, and
+    /// nested blocks would copy them once for each level.
+    fn compress_held_block(&mut self, ast: &mut Ast<'_>, block: BlockStatement) {
+        if self.options.blocks
+            && !statements::declares_lexical(ast, block)
+            && let Some(body) = self.compress_list(ast, block.body(ast))
+        {
+            block.set_body(ast, body);
+        }
+    }
+
+    /// Compresses a block body, and replaces it with its only statement.
+    fn compress_body(&mut self, ast: &mut Ast<'_>, body: Stmt) -> Stmt {
+        if let StmtData::BlockStatement(block) = ast.stmt_data(body) {
+            self.compress_held_block(ast, block);
+        }
+        statements::unwrap_block(ast, body)
+    }
+
+    /// Compresses the block bodies of a statement, and replaces them with
+    /// their only statement.
+    fn compress_bodies(&mut self, ast: &mut Ast<'_>, node: Stmt) {
         match ast.stmt_data(node) {
-            StmtData::IfStatement(statement) => statements::unwrap_if(ast, statement),
+            StmtData::IfStatement(statement) => {
+                for body in [Some(statement.consequent(ast)), statement.alternate(ast)]
+                    .into_iter()
+                    .flatten()
+                {
+                    if let StmtData::BlockStatement(block) = ast.stmt_data(body) {
+                        self.compress_held_block(ast, block);
+                    }
+                }
+                statements::unwrap_if(ast, statement);
+            }
             StmtData::WhileStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::DoWhileStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::ForStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::ForInStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::ForOfStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::LabeledStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
             StmtData::WithStatement(statement) => {
-                let body = statements::unwrap_block(ast, statement.body(ast));
+                let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
+            }
+            StmtData::TryStatement(statement) => {
+                self.compress_held_block(ast, statement.block(ast));
+                if let Some(handler) = statement.handler(ast) {
+                    self.compress_held_block(ast, handler.body(ast));
+                }
+                if let Some(finalizer) = statement.finalizer(ast) {
+                    self.compress_held_block(ast, finalizer);
+                }
             }
             _ => {}
         }
@@ -778,7 +822,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             return TraverseAction::ReplaceSkip(replacement);
         }
         if self.options.blocks {
-            self.unwrap_bodies(ctx.ast, node);
+            self.compress_bodies(ctx.ast, node);
         }
         TraverseAction::Continue
     }
@@ -788,8 +832,12 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         node: BlockStatement,
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<BlockStatement> {
+        // A block without block-scoped declarations is compressed by the
+        // node that holds it; see `compress_held_block`.
         let ast = &mut *ctx.ast;
-        if let Some(body) = self.compress_list(ast, node.body(ast)) {
+        if (!self.options.blocks || statements::declares_lexical(ast, node))
+            && let Some(body) = self.compress_list(ast, node.body(ast))
+        {
             node.set_body(ast, body);
         }
         TraverseAction::Continue

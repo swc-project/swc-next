@@ -68,8 +68,9 @@ impl StatementList {
             StmtData::EmptyStatement(_) if options.blocks => {
                 self.changed = true;
             }
-            // Blocks made by dead-code removal have not been compressed, so
-            // they may contain blocks too.
+            // A merged block has not been compressed: the list that holds it
+            // compresses its statements here, once. Blocks made by dead-code
+            // removal can contain more blocks.
             StmtData::BlockStatement(block) if options.blocks && !declares_lexical(ast, block) => {
                 self.changed = true;
                 for id in block.body(ast).iter() {
@@ -320,7 +321,7 @@ fn sequence(ast: &mut Ast<'_>, expressions: &[Expr]) -> Expr {
 }
 
 /// Whether a block's statements declare block-scoped names.
-fn declares_lexical(ast: &Ast<'_>, block: BlockStatement) -> bool {
+pub(super) fn declares_lexical(ast: &Ast<'_>, block: BlockStatement) -> bool {
     block
         .body(ast)
         .iter()
