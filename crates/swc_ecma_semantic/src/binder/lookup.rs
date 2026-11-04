@@ -2,7 +2,7 @@
 
 use std::hash::BuildHasher;
 
-use swc_next_ecma_ast::{ScopeId, SymbolId};
+use swc_next_ecma_ast::{AstWtf8, ScopeId, SymbolId};
 
 use super::{
     BindingVisibility, NameResolution, ReferenceSpace, SymbolFlags, TsImportAliasSpaces,
@@ -15,6 +15,7 @@ use crate::{ScopeMaps, Scopes, Symbols, scope::ScopeKind};
 pub(super) struct NameLookupQuery<'a> {
     pub(super) scope: ScopeId,
     pub(super) name: &'a [u8],
+    pub(super) key: AstWtf8,
     pub(super) space: ReferenceSpace,
 }
 
@@ -192,7 +193,9 @@ fn lookup_name_with_ts_views_policy<
     } else {
         None
     };
-    let NameLookupQuery { scope, name, space } = query;
+    let NameLookupQuery {
+        scope, key, space, ..
+    } = query;
     let Some(member_scope) = scope_views.lookup[scope].members else {
         return NameLookupResult::lexical(if PRECISE_IMPORT_ALIASES {
             lookup_lexical_name_with_import_aliases::<INCLUDE_GLOBAL>(
@@ -205,7 +208,9 @@ fn lookup_name_with_ts_views_policy<
             lookup_lexical_name::<INCLUDE_GLOBAL, TS_LOOKUP, true>(lexical, query)
         });
     };
-    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(name);
+    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(key);
+    let name = query.name;
+    let member_hash = scope_maps[ScopeId::ROOT].hasher().hash_one(name);
     let mut state = NameLookupResult::default();
     let mut ancestor = Some(scope);
     let mut child_kind = ScopeKind::Block;
@@ -284,7 +289,7 @@ fn lookup_name_with_ts_views_policy<
         let range = scope_views.ranges[current];
         let start = range.start as usize;
         for view in &ts.views[start..start + range.len as usize] {
-            let Some(member) = view.lookup(ts.environments, hash, name) else {
+            let Some(member) = view.lookup(ts.environments, member_hash, name) else {
                 continue;
             };
             if member.visit_candidates::<PRECISE_IMPORT_ALIASES>(
@@ -328,8 +333,10 @@ pub(super) fn lookup_lexical_name<
         ..
     } = lexical;
     let arguments_barrier = query.arguments_barrier();
-    let NameLookupQuery { scope, name, space } = query;
-    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(name);
+    let NameLookupQuery {
+        scope, key, space, ..
+    } = query;
+    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(key);
     let mut ancestor = Some(scope);
     let mut child_kind = ScopeKind::Block;
     while let Some(current) = ancestor {
@@ -368,8 +375,10 @@ pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool
         ..
     } = lexical;
     let arguments_barrier = query.arguments_barrier();
-    let NameLookupQuery { scope, name, space } = query;
-    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(name);
+    let NameLookupQuery {
+        scope, key, space, ..
+    } = query;
+    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(key);
     let mut state = NameLookupResult::default();
     let mut ancestor = Some(scope);
     let mut child_kind = ScopeKind::Block;
@@ -430,20 +439,18 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
     if TS_LOOKUP
         && is_signature_query(child, query.space)
         && let Some(body) = scopes[current].function_body
-        && let Some(symbol) = lookup_scope_name(scope_maps, body, query.name, hash)
+        && let Some(symbol) = lookup_scope_name(scope_maps, body, query.key, hash)
         && accept_visible(symbol)
     {
         return Some(symbol);
     }
-    let symbol = lookup_scope_name(scope_maps, current, query.name, hash)?;
+    let symbol = lookup_scope_name(scope_maps, current, query.key, hash)?;
     if accept_visible(symbol) {
         return Some(symbol);
     }
     // Flattened internal names remain an outer fallback when a same-named
     // type parameter or a declaration hidden from a signature is rejected.
-    let &internal_name = lexical
-        .internal_names
-        .get(&(current, symbols[symbol].name))?;
+    let &internal_name = lexical.internal_names.get(&(current, query.key))?;
     if internal_name == symbol {
         return None;
     }
@@ -454,7 +461,7 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
 pub(super) fn lookup_scope_name(
     scope_maps: &ScopeMaps<'_>,
     scope: ScopeId,
-    name: &[u8],
+    name: AstWtf8,
     hash: u64,
 ) -> Option<SymbolId> {
     let bindings = &scope_maps[scope];

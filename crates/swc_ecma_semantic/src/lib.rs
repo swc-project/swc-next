@@ -24,7 +24,10 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{
+    Ast, AstInternedUtf8, AstStringLookup, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId,
+    VisitWith,
+};
 
 use crate::{
     binder::{Range, SymbolLinks, TsMemberIndex},
@@ -58,12 +61,64 @@ type Scopes = IndexSlice<ScopeId, [scope::Scope]>;
 // Internal names survive replacement of their scope's ordinary binding.
 type InternalNames<'a> = ArenaHashMap<'a, (ScopeId, AstWtf8), SymbolId>;
 
-type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
+/// Canonical name stored for a semantic symbol.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum SymbolName {
+    Utf8(AstInternedUtf8),
+    Wtf8(AstWtf8),
+}
+
+impl From<AstInternedUtf8> for SymbolName {
+    #[inline]
+    fn from(name: AstInternedUtf8) -> Self {
+        Self::Utf8(name)
+    }
+}
+
+impl From<SymbolName> for AstWtf8 {
+    #[inline]
+    fn from(name: SymbolName) -> Self {
+        match name {
+            SymbolName::Utf8(name) => name.into(),
+            SymbolName::Wtf8(name) => name,
+        }
+    }
+}
+
+impl SymbolName {
+    /// Canonicalizes a WTF-8 name into the UTF-8 representation used by
+    /// ordinary bindings whenever its bytes are valid UTF-8.
+    #[inline]
+    pub fn intern_wtf8(ast: &Ast<'_>, name: AstWtf8) -> Self {
+        if let Some(name) = ast.as_utf8(name) {
+            return Self::Utf8(ast.intern_utf8(name));
+        }
+        Self::Wtf8(ast.intern_wtf8(name))
+    }
+
+    #[inline]
+    pub fn as_utf8(self) -> Option<AstInternedUtf8> {
+        match self {
+            Self::Utf8(name) => Some(name),
+            Self::Wtf8(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_wtf8(self) -> Option<AstWtf8> {
+        match self {
+            Self::Utf8(_) => None,
+            Self::Wtf8(name) => Some(name),
+        }
+    }
+}
+
+type ScopeMap<'a> = ArenaHashMap<'a, AstWtf8, SymbolId>;
 type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
 // Most scopes have no var declarations hoisting through them.
 // Keep the var declaration, since its symbol may also contain functions.
 type HoistingMap<'a> =
-    Option<swc_next_allocator::boxed::Box<'a, ArenaHashMap<'a, &'a [u8], DeclarationId>>>;
+    Option<swc_next_allocator::boxed::Box<'a, ArenaHashMap<'a, AstWtf8, DeclarationId>>>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
 /// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
@@ -84,6 +139,7 @@ pub struct JsxUsage {
 /// indexes outside the arena-backed model.
 #[derive(Debug)]
 pub struct Semantic<'a> {
+    names: AstStringLookup<'a>,
     /// Every scope, indexed by [`ScopeId`].
     scopes: ScopeTree<'a>,
     jsx_usages: ArenaVec<'a, JsxUsage>,
@@ -425,13 +481,14 @@ impl<'a> Semantic<'a> {
     /// //               the function scope
     /// ```
     pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        let key = self.names.get(name)?;
         self.scope_maps[scope_id]
-            .get(name)
+            .get(&key)
             .copied()
             .or_else(|| {
                 self.hoisting_variables[scope_id]
                     .as_deref()
-                    .and_then(|bindings| bindings.get(name).copied())
+                    .and_then(|bindings| bindings.get(&key).copied())
                     .map(|declaration| self.declarations[declaration].symbol)
             })
             .or_else(|| {
@@ -616,7 +673,7 @@ impl Iterator for ScopeIterator<'_> {
 }
 
 pub struct BindingIterator<'a> {
-    inner: Values<'a, &'a [u8], SymbolId>,
+    inner: Values<'a, AstWtf8, SymbolId>,
     source: Option<binder::TsSourceBindingIterator<'a>>,
 }
 

@@ -238,10 +238,10 @@ pub(super) fn check_ts_alias_issues(
     for issue in export_alias_issues {
         match issue {
             TsNamespaceExportAliasIssue::Missing { name, node } => {
-                check_ts_namespace_export_alias_missing(builder, name, node);
+                check_ts_namespace_export_alias_missing(builder, name.into(), node);
             }
             TsNamespaceExportAliasIssue::NonLocal { name, node } => {
-                check_ts_namespace_export_alias_non_local(builder, name, node);
+                check_ts_namespace_export_alias_non_local(builder, name.into(), node);
             }
             TsNamespaceExportAliasIssue::Duplicate { node, previous } => {
                 check_ts_namespace_export_alias_duplicate(builder, node, previous);

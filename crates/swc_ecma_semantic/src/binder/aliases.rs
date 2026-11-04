@@ -229,7 +229,7 @@ impl<'a> SymbolTracker<'a> {
                         });
                     if let Some(previous) = conflict {
                         issues.push(TsImportAliasIssue::Conflict(TsImportAliasConflictIssue {
-                            name: alias_name,
+                            name: alias_name.into(),
                             node: alias.declaration.id(tree).node_id(),
                             previous: previous.node,
                             previous_flags: previous.flags,
@@ -368,6 +368,10 @@ impl<'tracker, 'a> TsExportAliasResolver<'tracker, 'a> {
         // Export specifiers select a name across all declaration spaces.
         debug_assert_eq!(reference.flags.space, ReferenceSpace::Any);
         let name = self.tree.get_utf8(reference.name).as_bytes();
+        let key = reference.name.into();
+        let lexical_hash = self.tracker.scope_maps[ScopeId::ROOT]
+            .hasher()
+            .hash_one(key);
         let hash = self.tracker.scope_maps[ScopeId::ROOT]
             .hasher()
             .hash_one(name);
@@ -378,7 +382,7 @@ impl<'tracker, 'a> TsExportAliasResolver<'tracker, 'a> {
             }
             if let Some((_, &symbol)) = self.tracker.scope_maps[current]
                 .raw_entry()
-                .from_hash(hash, |candidate| *candidate == name)
+                .from_hash(lexical_hash, |candidate| *candidate == key)
             {
                 return ControlFlow::Continue(TsNamespaceExportAliasLookup::Resolved(
                     TsResolvedExportAliasTarget::symbol(symbol),
@@ -431,6 +435,7 @@ impl<'tracker, 'a> TsExportAliasResolver<'tracker, 'a> {
             NameLookupQuery {
                 scope: ScopeId::ROOT,
                 name,
+                key,
                 space: ReferenceSpace::Any,
             },
         )
@@ -1035,15 +1040,23 @@ impl<'tracker, 'a> TsImportAliasResolver<'tracker, 'a> {
         scope: ScopeId,
         name: &[u8],
     ) -> ControlFlow<SymbolId, Option<TsResolvedImportTarget<'a>>> {
+        let key = self.tracker.names.get(name);
+        let lexical_hash = key.map(|key| {
+            self.tracker.scope_maps[ScopeId::ROOT]
+                .hasher()
+                .hash_one(key)
+        });
         let hash = self.tracker.scope_maps[ScopeId::ROOT]
             .hasher()
             .hash_one(name);
         let mut ancestor = Some(scope);
         while let Some(current) = ancestor {
-            let lexical = self.tracker.scope_maps[current]
-                .raw_entry()
-                .from_hash(hash, |candidate| *candidate == name)
-                .map(|(_, &symbol)| symbol);
+            let lexical = key.zip(lexical_hash).and_then(|(key, hash)| {
+                self.tracker.scope_maps[current]
+                    .raw_entry()
+                    .from_hash(hash, |candidate| *candidate == key)
+                    .map(|(_, &symbol)| symbol)
+            });
             if let Some(symbol) = lexical
                 && self.has_namespace_meaning(symbol)?
             {

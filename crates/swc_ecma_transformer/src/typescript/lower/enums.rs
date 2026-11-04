@@ -119,7 +119,7 @@ impl TypeScriptLowerer<'_, '_> {
             };
             statements.push(self.enum_member_statement(
                 parameter,
-                member_name,
+                member_name.into(),
                 initializer,
                 value.is_string(),
             ));

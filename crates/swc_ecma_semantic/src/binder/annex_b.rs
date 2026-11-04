@@ -134,14 +134,15 @@ impl<'a> SymbolTracker<'a> {
         target: ScopeId,
         name: BindingIdentifier,
     ) {
-        let text = tree.get_utf8(name.name(tree)).as_bytes();
+        let canonical = tree.intern_utf8(name.name(tree));
+        let text = tree.get_utf8(canonical).as_bytes();
         let scope = scopes.get(target);
         // Parameter expressions introduce a separate body var environment.
         // Annex B still excludes every name from the parameter environment.
         if scope.kind == ScopeKind::FunctionBody
             && let Some(parameter) = scope
                 .parent
-                .and_then(|parent| self.own_binding(parent, text))
+                .and_then(|parent| self.own_binding(parent, canonical.into()))
             && self.symbols[parameter]
                 .flags
                 .contains(SymbolFlags::PARAMETER)
@@ -154,7 +155,7 @@ impl<'a> SymbolTracker<'a> {
             .ts_local_exports
             .get(&(target, text))
             .and_then(|local| local.exported_value())
-            .or_else(|| self.own_binding(target, text))
+            .or_else(|| self.own_binding(target, canonical.into()))
             .filter(|&symbol| {
                 !self.symbols[symbol]
                     .flags
@@ -167,7 +168,7 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let declaration = PendingDeclaration {
-            name: name.name(tree).into(),
+            name: canonical.into(),
             node: name.node_id(),
             binding: PendingBinding {
                 flags: SymbolFlags::FUNCTION_SCOPED_VAR,
@@ -183,7 +184,7 @@ impl<'a> SymbolTracker<'a> {
             .expect("function name is bound");
         self.symbol_links.link(lexical, symbol);
         if existing.is_none() {
-            self.insert_scope_binding(tree, target, declaration.name, symbol);
+            self.insert_scope_binding(target, declaration.name, symbol);
         }
     }
 

@@ -183,15 +183,22 @@ impl TsMemberFactsLookup<'_, '_> {
     }
 
     fn container_binding(&self, name: &[u8], scope: ScopeId) -> Option<SymbolId> {
+        let key = self.tracker.names.get(name);
+        let lexical_hash = key.map(|key| {
+            self.tracker.scope_maps[ScopeId::ROOT]
+                .hasher()
+                .hash_one(key)
+        });
         let hash = self.tracker.scope_maps[ScopeId::ROOT]
             .hasher()
             .hash_one(name);
         // TS has one locals table for a function, including its body when
         // ECMAScript needs separate parameter and body environments.
         let body = self.scopes[scope].function_body;
-        let local = body
-            .and_then(|body| lookup_scope_name(&self.tracker.scope_maps, body, name, hash))
-            .or_else(|| lookup_scope_name(&self.tracker.scope_maps, scope, name, hash));
+        let local = key.zip(lexical_hash).and_then(|(key, hash)| {
+            body.and_then(|body| lookup_scope_name(&self.tracker.scope_maps, body, key, hash))
+                .or_else(|| lookup_scope_name(&self.tracker.scope_maps, scope, key, hash))
+        });
         if let Some(symbol) = local {
             let symbol = self
                 .tracker

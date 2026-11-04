@@ -15,7 +15,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SemanticReturn, SymbolFlags,
-    SyntaxChecks, analyze, check_syntax,
+    SymbolName, SyntaxChecks, analyze, check_syntax,
 };
 
 #[track_caller]

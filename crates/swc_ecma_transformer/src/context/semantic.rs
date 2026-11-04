@@ -166,7 +166,7 @@ impl<'a> TransformCtx<'_, 'a> {
     /// // After: the caller attaches a prepared var declaration.
     /// var _temp;
     /// run();
-    /// // Read _temp's name handle and arena-lived text, then grow indexes through all AST allocations.
+    /// // Intern _temp's name, then grow indexes through all AST allocations.
     /// // Register the binding in its destination scope with var flags; retain its returned SymbolId.
     /// ```
     pub fn register_binding(
@@ -175,12 +175,11 @@ impl<'a> TransformCtx<'_, 'a> {
         binding: BindingIdentifier,
         flags: SymbolFlags,
     ) -> SymbolId {
-        let name = binding.name(self.ast);
-        let text = self.ast.get_utf8(name);
+        let name = self.ast.intern_utf8(binding.name(self.ast));
         self.state.semantic.grow_to(self.ast.node_count());
         self.state
             .semantic
-            .register_binding(scope, binding.node_id(), name, text, flags)
+            .register_binding(scope, binding.node_id(), name, flags)
     }
 
     /// Read an identifier's AST name and register a caller-resolved reference after registering pending allocations.
@@ -202,7 +201,7 @@ impl<'a> TransformCtx<'_, 'a> {
         flags: ReferenceFlags,
     ) -> ReferenceId {
         let reference = Reference {
-            name: reference.name(self.ast),
+            name: self.ast.intern_utf8(reference.name(self.ast)),
             node: reference.node_id(),
             scope,
             symbol: target,

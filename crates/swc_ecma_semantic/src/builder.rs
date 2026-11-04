@@ -66,6 +66,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
         let scope = ScopeTree::init(ast);
         let current_scope = ScopeId::from_usize(scope.list.len() - 1);
+        // Bindings and references typically occupy less than half the AST.
+        // Reserve once so the first pass avoids repeatedly rehashing the range
+        // cache; subsequent passes reuse its existing capacity.
+        ast.reserve_string_interning(ast.node_count() / 2);
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
