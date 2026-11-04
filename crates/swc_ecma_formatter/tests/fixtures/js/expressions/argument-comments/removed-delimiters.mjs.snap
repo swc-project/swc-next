@@ -1,0 +1,91 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+invoke((
+  value
+  /* inner */
+)
+/* outer */
+);
+
+[
+  (value
+    /* inner */
+
+  )
+  /* outer */
+];
+
+invoke((
+  value
+  /* inner */
+)
+
+  /* outer */
+);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+invoke(
+  value,
+  /* inner */
+  /* outer */
+);
+
+[
+  value,
+  /* inner */
+  /* outer */
+];
+
+invoke(
+  value,
+  /* inner */
+
+  /* outer */
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+invoke(
+  value,
+  /* inner */
+  /* outer */
+);
+
+[
+  value,
+  /* inner */
+  /* outer */
+];
+
+invoke(
+  value,
+  /* inner */
+
+  /* outer */
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+invoke(
+  value
+  /* inner */
+  /* outer */
+)
+
+;[
+  value
+  /* inner */
+  /* outer */
+]
+
+invoke(
+  value
+  /* inner */
+
+  /* outer */
+)

@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+foo({ filter: /x/ }, () => {
+  return 1;
+});
+---------- Options ----------
+{}
+---------- Output ----------
+foo({ filter: /x/ }, () => {
+  return 1;
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+foo(
+  { filter: /x/ },
+  () => {
+    return 1;
+  },
+);

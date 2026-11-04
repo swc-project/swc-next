@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-check
+result = { key /* first */ // second
+:
+// @ts-expect-error
+unknownValue };
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-check
+result = {
+  /* first */ // second
+  key:
+    // @ts-expect-error
+    unknownValue, };

@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare function isString(x: unknown): x is string;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+declare function isString(
+  x: unknown,
+): x is string;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare function isString(
+  x: unknown,
+): x is string
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+declare function isString(x: unknown): x is string;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare function isString(x: unknown): x is string

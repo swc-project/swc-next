@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const { plain: local, "quoted-key": other, shorthand, [computed]: value, 1: numeric } = source;
+---------- Options ----------
+{}
+---------- Output ----------
+const {
+  plain: local,
+  "quoted-key": other,
+  shorthand,
+  [computed]: value,
+  1: numeric,
+} = source;
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+const {
+  plain: local,
+  "quoted-key": other,
+  shorthand,
+  [computed]: value,
+  1: numeric,
+} = source;
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+const {
+  "plain": local,
+  "quoted-key": other,
+  shorthand,
+  [computed]: value,
+  "1": numeric,
+} = source;
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+const {
+  'plain': local,
+  'quoted-key': other,
+  shorthand,
+  [computed]: value,
+  '1': numeric,
+} = source

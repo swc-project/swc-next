@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+// @ts-expect-error
+throw missingLongName + otherLongName;
+}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f() {
+  // @ts-expect-error
+  throw missingLongName + otherLongName;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function f() {
+  // @ts-expect-error
+  throw missingLongName + otherLongName
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f() {
+  // @ts-expect-error
+  throw missingLongName + otherLongName;
+}

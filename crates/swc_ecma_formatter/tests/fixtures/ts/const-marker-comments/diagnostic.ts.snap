@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = 1 as // @ts-expect-error reason
+const;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = 1 as // @ts-expect-error reason
+const;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const value = 1 as // @ts-expect-error reason
+const;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = 1 as // @ts-expect-error reason
+const

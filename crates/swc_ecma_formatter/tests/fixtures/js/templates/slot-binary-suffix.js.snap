@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+_ = `${left + // left
+right}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+_ = `${
+  left + // left
+  right
+}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+_ = `${
+  left + // left
+  right
+}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+_ = `${
+  left + // left
+  right
+}`;

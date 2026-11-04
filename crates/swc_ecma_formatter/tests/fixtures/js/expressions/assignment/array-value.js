@@ -1,0 +1,1 @@
+longAssignmentTarget = [longFirstValue, longSecondValue];

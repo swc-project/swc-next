@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (v) {
+  case 0:
+    next();
+  // prettier-ignore
+}
+---------- Options ----------
+{}
+---------- Output ----------
+switch (v) {
+  case 0:
+    next();
+  // prettier-ignore
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+switch (v) {
+  case 0:
+    next();
+  // prettier-ignore
+}

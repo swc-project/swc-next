@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = /* block */ // after
+other;
+---------- Options ----------
+{}
+---------- Output ----------
+target = /* block */ // after
+  other;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = /* block */ // after
+  other
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = /* block */ // after
+  other;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+target = /* block */ // after
+  other;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+target = /* block */ // after
+    other;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = /* block */ // after
+	other;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+target = /* block */ // after
+ other;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+target = /* block */ // after
+  other;

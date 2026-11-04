@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async /* line
+ */ function f() { return first(); }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async;
+/* line
+ */ function f() {
+  return first();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async
+/* line
+ */ function f() {
+  return first()
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async;
+/* line
+ */ function f() {
+  return first();
+}

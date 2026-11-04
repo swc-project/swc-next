@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? (first, /* @__PURE__ */
+(second + third)) : other;---------- Options ----------
+{}
+---------- Output ----------
+test ? (first /* @__PURE__ */, second + third) : other;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+test
+  ? (first /* @__PURE__ */,
+    second + third)
+  : other;

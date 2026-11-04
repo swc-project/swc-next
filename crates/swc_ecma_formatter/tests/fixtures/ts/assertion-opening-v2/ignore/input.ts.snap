@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = < /* prettier-ignore */ ( A | B ) >y;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+x =
+  </* prettier-ignore */ A | B
+  >y;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+x = </* prettier-ignore */ A | B>y;

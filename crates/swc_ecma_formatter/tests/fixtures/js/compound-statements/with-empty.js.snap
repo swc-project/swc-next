@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+with (object) ;
+---------- Options ----------
+{}
+---------- Output ----------
+with (object);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+with (object);
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+with (object);
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+with (
+  object
+);

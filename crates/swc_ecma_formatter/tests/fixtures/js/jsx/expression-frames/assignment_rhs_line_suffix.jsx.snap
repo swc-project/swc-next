@@ -1,0 +1,62 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const comment // marker
+= <Foo>{/* existing */}</Foo>;
+
+const element // marker
+= <Foo bar={baz} {...props}>word<span /></Foo>;
+
+const fragment // marker
+= <>word<Foo /></>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const comment = // marker
+  <Foo>{/* existing */}</Foo>;
+
+const element = // marker
+  (
+    <Foo bar={baz} {...props}>
+      word
+      <span />
+    </Foo>
+  );
+
+const fragment = // marker
+  (
+    <>
+      word
+      <Foo />
+    </>
+  );
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const comment = // marker
+  (
+    <Foo>
+      {/* existing */}
+    </Foo>
+  );
+
+const element = // marker
+  (
+    <Foo
+      bar={baz}
+      {...props}
+    >
+      word
+      <span />
+    </Foo>
+  );
+
+const fragment = // marker
+  (
+    <>
+      word
+      <Foo />
+    </>
+  );

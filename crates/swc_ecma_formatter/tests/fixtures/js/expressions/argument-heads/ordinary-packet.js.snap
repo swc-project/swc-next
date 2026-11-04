@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+take(/* first */
+  /* second */ value, other);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+take(/* first */ /* second */ value, other);
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+take(
+  /* first */
+  /* second */ value,
+  other,
+);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+take(/* first */ /* second */ value, other)

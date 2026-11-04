@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Subject<T> extends Base<T> implements
+// head
+First<  T  >, /* prettier-ignore */ Second<  T  >, Third<  T  > { value : T; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Subject<T>
+  extends Base<T>
+  // head
+  implements First<T>, /* prettier-ignore */ Second<  T  >, Third<T>
+{
+  value: T;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Subject<T>
+  extends Base<T>
+  // head
+  implements
+    First<T>,
+    /* prettier-ignore */ Second<  T  >,
+    Third<T>
+{
+  value: T
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class Subject<T>
+	extends Base<T>
+	// head
+	implements First<T>, /* prettier-ignore */ Second<  T  >, Third<T>
+{
+	value: T;
+}

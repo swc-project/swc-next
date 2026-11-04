@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!(item /* marker */);
+---------- Options ----------
+{}
+---------- Output ----------
+!(item /* marker */);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+!(item /* marker */)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+!(
+  item /* marker */
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+!(
+  item /* marker */
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+!(
+	item /* marker */
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+!(item /* marker */);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+!(item /* marker */);

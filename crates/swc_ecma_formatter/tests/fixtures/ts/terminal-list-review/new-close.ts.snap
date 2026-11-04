@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare function F(...a: number[]): { bar: 1 };
+new F(1, 2 // @ts-ignore
+, /* d */ ).foo;
+---------- Options ----------
+{}
+---------- Output ----------
+declare function F(...a: number[]): { bar: 1 };
+new F(
+  1,
+  2 // @ts-ignore
+  /* d */).foo;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare function F(
+  ...a: number[]
+): { bar: 1 };
+new F(
+  1,
+  2 // @ts-ignore
+  /* d */).foo;
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+declare function F(...a: number[]): { bar: 1 };
+new F(
+  1,
+  2 // @ts-ignore
+  /* d */).foo;

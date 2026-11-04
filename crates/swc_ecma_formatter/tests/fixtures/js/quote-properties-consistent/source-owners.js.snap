@@ -1,0 +1,55 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const record = {
+  "quoted-key": 1,
+  // prettier-ignore
+  untouched : {  x:1 },
+  before /* key */ : 2,
+  method /* value */ () {}
+};
+---------- Options ----------
+{}
+---------- Output ----------
+const record = {
+  "quoted-key": 1,
+  // prettier-ignore
+  untouched : {  x:1 },
+  before /* key */: 2,
+  method /* value */() {},
+};
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+const record = {
+  "quoted-key": 1,
+  // prettier-ignore
+  untouched : {  x:1 },
+  before /* key */: 2,
+  method /* value */() {},
+};
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+const record = {
+  "quoted-key": 1,
+  // prettier-ignore
+  untouched : {  x:1 },
+  "before" /* key */: 2,
+  "method" /* value */() {},
+};
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+const record = {
+  'quoted-key': 1,
+  // prettier-ignore
+  untouched : {  x:1 },
+  'before' /* key */: 2,
+  'method' /* value */() {},
+}

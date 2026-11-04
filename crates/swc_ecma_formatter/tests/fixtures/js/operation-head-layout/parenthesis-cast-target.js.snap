@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {Object} */ (await loadSomething(param)).value = replacement;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @type {Object} */ (
+  await loadSomething(param)
+).value = replacement;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/** @type {Object} */ (await loadSomething(param)).value = replacement;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+;/** @type {Object} */ (
+  await loadSomething(param)
+).value = replacement

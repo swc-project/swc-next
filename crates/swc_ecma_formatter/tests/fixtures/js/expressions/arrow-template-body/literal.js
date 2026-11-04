@@ -1,0 +1,4 @@
+const create = () => `
+  first
+  ${value}
+`;

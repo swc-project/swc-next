@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { value: /* first */ // second
+string; }
+---------- Options ----------
+{}
+---------- Output ----------
+interface I {
+  value: string; /* first */ // second
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface I {
+  value: string; /* first */ // second
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+interface I {
+  value: string /* first */ // second
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+interface I {
+	value: string; /* first */ // second
+}

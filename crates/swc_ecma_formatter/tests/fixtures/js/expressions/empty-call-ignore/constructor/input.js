@@ -1,0 +1,1 @@
+new Other (/* prettier-ignore */  );

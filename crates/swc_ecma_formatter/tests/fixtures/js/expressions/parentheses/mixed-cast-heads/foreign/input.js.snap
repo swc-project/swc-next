@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ /** @type {number} */ (/** @type {Missing} */ (first)));
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(/*#__PURE__*/ /** @type {number} */ (
+    /** @type {Missing} */ (
+      first
+    )
+  )
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(/*#__PURE__*/ /** @type {number} */ (/** @type {Missing} */ (first)));

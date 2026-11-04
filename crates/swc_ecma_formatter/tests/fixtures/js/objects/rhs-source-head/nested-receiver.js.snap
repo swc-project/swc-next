@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = {longPropertyName: /* multiline
+comment */ ((/* ordinary */ object)).method(second())};
+---------- Options ----------
+{}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = {
+	longPropertyName:
+		/* multiline
+comment */ /* ordinary */ object.method(
+			second(),
+		),
+};

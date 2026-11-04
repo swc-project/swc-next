@@ -1,0 +1,1 @@
+function f(): /* prettier-ignore */ | \u0041 { return x; }

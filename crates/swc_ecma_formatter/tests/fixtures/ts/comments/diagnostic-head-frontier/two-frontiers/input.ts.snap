@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const fn: number;
+// @ts-expect-error
+const value: string = (
+// @ts-expect-error
+[fn, unknown]
+);
+---------- Options ----------
+{}
+---------- Output ----------
+declare const fn: number;
+// @ts-expect-error
+const value: string = (
+  // @ts-expect-error
+  [fn, unknown]
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+declare const fn: number
+// @ts-expect-error
+const value: string = (
+  // @ts-expect-error
+  [fn, unknown]
+)

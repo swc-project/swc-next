@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+// prettier-ignore
+[key +  other]: [  1,2 ],
+ordinary: [1,2]
+});
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  // prettier-ignore
+  [key +  other]: [  1,2 ],
+  ordinary: [1, 2],
+});
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+({
+  // prettier-ignore
+  [key +  other]: [  1,2 ],
+  ordinary: [1, 2],
+});
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  // prettier-ignore
+  [key +  other]: [  1,2 ],
+  ordinary: [1, 2]
+})
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+({
+  // prettier-ignore
+  [key +  other]: [  1,2 ],
+  ordinary: [1, 2],
+});

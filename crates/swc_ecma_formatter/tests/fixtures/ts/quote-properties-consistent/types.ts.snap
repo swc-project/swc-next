@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+type RecordType = { plain: number; "2": string; 1: number; nested: { plain: number; "simple": string }; };
+---------- Options ----------
+{}
+---------- Output ----------
+type RecordType = {
+  plain: number;
+  "2": string;
+  1: number;
+  nested: { plain: number; simple: string };
+};
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+type RecordType = {
+  plain: number;
+  "2": string;
+  1: number;
+  nested: { plain: number; "simple": string };
+};
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+type RecordType = {
+  "plain": number;
+  "2": string;
+  1: number;
+  "nested": { plain: number; simple: string };
+};
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+type RecordType = {
+  'plain': number
+  '2': string
+  1: number
+  'nested': { plain: number; simple: string }
+}

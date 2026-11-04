@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new F(first
+/* b */, /* c */ // d
+);
+---------- Options ----------
+{}
+---------- Output ----------
+new F(
+  first,
+  /* b */ /* c */ // d
+);
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+new F(
+  first
+  /* b */ /* c */ // d
+);

@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = { key: /* #__PURE__ */ (factory()).method() };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const value = {
+  key: /* #__PURE__ */ factory().method(),
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value = { key: /* #__PURE__ */ factory().method() };

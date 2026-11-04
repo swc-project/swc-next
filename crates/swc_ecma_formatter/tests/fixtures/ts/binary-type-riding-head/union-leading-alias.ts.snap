@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Choice = | /* first */ number | string;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type Choice =
+  /* first */ number | string;
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+type Choice =
+	/* first */ number | string;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+type Choice =
+  | /* first */ number
+  | string
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Choice = /* first */ number | string;

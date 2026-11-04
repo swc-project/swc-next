@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T =
+  /* head */ | First
+  | /* a comment that requires the complete union to expand */ Second;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T =
+  | /* head */ First
+  | /* a comment that requires the complete union to expand */ Second;

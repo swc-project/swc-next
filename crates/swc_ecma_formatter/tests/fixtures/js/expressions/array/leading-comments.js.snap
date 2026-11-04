@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* value */ first, /* another */ last];
+---------- Options ----------
+{}
+---------- Output ----------
+[/* value */ first, /* another */ last];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[/* value */ first, /* another */ last]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* value */ first,
+	/* another */ last,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  /* value */ first,
+  /* another */ last,
+];

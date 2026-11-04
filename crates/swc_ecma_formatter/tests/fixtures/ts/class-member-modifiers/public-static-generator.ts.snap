@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { public static *values() { yield 7; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  public static *values() {
+    yield 7;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  public static *values() {
+    yield 7;
+  }
+}

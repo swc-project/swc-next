@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = <div>{/* first */ /* second */}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const element = (
+  <div>
+    {/* first */
+    /* second */}
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const element = (
+  <div>
+    {/* first */
+    /* second */}
+  </div>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const element = (
+  <div>
+    {/* first */
+    /* second */}
+  </div>
+)

@@ -1,0 +1,1 @@
+longAssignmentTarget = first ? second : third;

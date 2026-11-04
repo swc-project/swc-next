@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value = /* explanation */
+  /** @type {number} */ ("text");
+---------- Options ----------
+{}
+---------- Output ----------
+let value =
+  /* explanation */
+  /** @type {number} */ ("text");
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+let value =
+  /* explanation */
+  /** @type {number} */ ("text");
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let value =
+  /* explanation */
+  /** @type {number} */ ("text")

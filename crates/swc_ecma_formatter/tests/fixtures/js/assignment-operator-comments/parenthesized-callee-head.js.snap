@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a=(//
+b)(r());
+//@ts-expect-error
+---------- Options ----------
+{}
+---------- Output ----------
+a = b(r()); //
+//@ts-expect-error
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+a = b(r()); //
+//@ts-expect-error
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+a = b(r()) //
+//@ts-expect-error

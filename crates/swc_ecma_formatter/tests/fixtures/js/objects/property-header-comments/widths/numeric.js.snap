@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = { 123456789 /* first */ // second
+: veryLongValue };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = {
+  /* first */ // second
+  123456789:
+    veryLongValue,
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result = {
+  /* first */ // second
+  123456789: veryLongValue,
+};

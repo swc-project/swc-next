@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (; check() /* first */; /* second */) consume();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for (; check() /* first */ /* second */;) consume();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+for (
+  ;
+  check() /* first */ /* second */;
+)
+  consume();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  ;
+  check() /* first */ /* second */;
+)
+  consume()

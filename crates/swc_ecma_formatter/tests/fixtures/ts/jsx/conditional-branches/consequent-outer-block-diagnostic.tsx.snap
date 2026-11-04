@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let v = a ? (<B />) /* @ts-ignore */
+: h(qqq);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+let v = a ? (
+  <B />
+) /* @ts-ignore */
+: (h(qqq));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let v = a ? (
+  <B />
+) /* @ts-ignore */
+: (h(qqq));

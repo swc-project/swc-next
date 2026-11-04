@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let make = /* first */
+
+  // create
+
+  () => {};
+---------- Options ----------
+{}
+---------- Output ----------
+let make =
+  /* first */
+
+  // create
+
+  () => {};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+let make =
+  /* first */
+
+  // create
+
+  () => {};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let make =
+  /* first */
+
+  // create
+
+  () => {}

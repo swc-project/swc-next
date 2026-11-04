@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+---------- Options ----------
+{"printWidth":24,"semi":true}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())()
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())()

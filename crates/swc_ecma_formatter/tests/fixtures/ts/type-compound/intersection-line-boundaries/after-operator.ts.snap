@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = X
+ & // c
+ Y;
+---------- Options ----------
+{}
+---------- Output ----------
+type A = X &
+  // c
+  Y;

@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ /*empty*/ });
+({ //empty
+});
+({ a /*key*/ : /*value*/ b, c //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({ a: 1,
+
+b: 2,
+// dangling
+});
+---------- Options ----------
+{}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({
+  /*lead*/ a: 1,
+  /*next*/ b: 2 /*end*/,
+});
+({
+  [/*key*/ a /*end*/]: b,
+  .../*spread*/ c,
+});
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({/*empty*/})
+;({
+  //empty
+})
+;({
+  a /*key*/: /*value*/ b,
+  c //tail
+})
+;({
+  /*lead*/ a: 1,
+  /*next*/ b: 2 /*end*/
+})
+;({
+  [/*key*/ a /*end*/]: b,
+  .../*spread*/ c
+})
+;({
+  a: 1,
+
+  b: 2
+  // dangling
+})
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});

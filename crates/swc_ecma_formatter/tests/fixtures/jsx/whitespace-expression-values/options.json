@@ -1,0 +1,6 @@
+[
+  {},
+  { "singleQuote": true },
+  { "printWidth": 12 },
+  { "printWidth": 12, "singleQuote": true }
+]

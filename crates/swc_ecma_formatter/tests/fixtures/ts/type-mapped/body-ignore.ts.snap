@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A<T> = { [ /* prettier-ignore */ K  in keyof T]: T[K] };
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A<T> = { [ /* prettier-ignore */ K  in keyof T]: T[K] };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A<T> =
+  { [ /* prettier-ignore */ K  in keyof T]: T[K] };
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type A<
+  T,
+> =
+  { [ /* prettier-ignore */ K  in keyof T]: T[K] }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type A<T> =
+	{ [ /* prettier-ignore */ K  in keyof T]: T[K] };

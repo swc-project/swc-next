@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+((object.field)
+// target tail
+) = value;
+---------- Options ----------
+{}
+---------- Output ----------
+object.field =
+  // target tail
+  value;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object.field =
+  // target tail
+  value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+object.field =
+  // target tail
+  value

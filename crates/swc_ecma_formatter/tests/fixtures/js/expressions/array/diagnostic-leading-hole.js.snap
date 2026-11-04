@@ -1,0 +1,97 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+// @ts-ignore
+,
+first];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  // @ts-ignore
+  ,
+  first,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	// @ts-ignore
+	,
+	first,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  // @ts-ignore
+  ,
+  first,
+];

@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import {first, /* block */ // line
+last} from 'm';
+---------- Options ----------
+{}
+---------- Output ----------
+import {
+  first /* block */, // line
+  last,
+} from "m";
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+import {
+  first /* block */, // line
+  last
+} from "m";

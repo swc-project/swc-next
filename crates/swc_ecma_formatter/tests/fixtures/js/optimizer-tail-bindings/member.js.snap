@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(object /* #__PURE__ */).method();
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+object /* #__PURE__ */.method()
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+object /* #__PURE__ */.method();

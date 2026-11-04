@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first(), /** @type {View} */ (<Panel first={firstArgument} second={secondArgument}/>), last());
+async function view(){return await /** @type {View} */ (<Panel first={firstArgument} second={secondArgument}/>);}
+<Panel {.../** @type {Props} */ (first || second)} {.../*#__PURE__*/ createProps()} />;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(first(),
+  /** @type {View} */ (<Panel first={firstArgument} second={secondArgument} />),
+  last());
+async function view() {
+  return await /** @type {View} */ (
+    <Panel first={firstArgument} second={secondArgument} />
+  );
+}
+<Panel
+  {.../** @type {Props} */ (first || second)}
+  {.../*#__PURE__*/ createProps()}
+/>;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+(first(),
+  /** @type {View} */ (
+    <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    />
+  ),
+  last());
+async function view() {
+  return await /** @type {View} */ (
+    <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    />
+  );
+}
+<Panel
+  {
+    .../** @type {Props} */ (
+      first || second
+    )
+  }
+  {
+    .../*#__PURE__*/ createProps()
+  }
+/>;

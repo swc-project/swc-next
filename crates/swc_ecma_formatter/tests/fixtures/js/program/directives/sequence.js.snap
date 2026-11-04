@@ -1,0 +1,84 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"first";
+
+"second"; // trailing
+
+item;
+---------- Options ----------
+{}
+---------- Output ----------
+"first";
+
+"second"; // trailing
+
+item;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+'first';
+
+'second'; // trailing
+
+item;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+"first"
+
+"second" // trailing
+
+item
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+'first'
+
+'second' // trailing
+
+item
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+"first";
+
+"second"; // trailing
+
+item;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+"first";
+
+"second"; // trailing
+
+item;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+"first";
+
+"second"; // trailing
+
+item;
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+"first";"second"; // trailingitem;
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+"first";
+
+"second"; // trailing
+
+item;

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(value: { /* empty */ }): Promise<Array<VeryLongReturnedCollectionType>> {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f(value: {
+  /* empty */
+}): Promise<
+  Array<VeryLongReturnedCollectionType>
+> {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(value: {
+  /* empty */
+}): Promise<Array<VeryLongReturnedCollectionType>> {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+function f(value: {
+	/* empty */
+}): Promise<
+	Array<VeryLongReturnedCollectionType>
+> {}

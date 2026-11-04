@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first, /* outer */ // @ts-ignore
+(/* inner */ missing);
+---------- Options ----------
+{}
+---------- Output ----------
+(first /* outer */, // @ts-ignore
+  /* inner */ missing);

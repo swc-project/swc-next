@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<\u004b /* prettier-ignore */ extends
+/* frame
+ * ordinary */ A | B> = K;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type T<
+  \u004b /* prettier-ignore */ extends
+
+      /* frame
+       * ordinary */ | A
+      | B,
+> = K;
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+type T<
+  \u004b /* prettier-ignore */ extends
+
+      /* frame
+       * ordinary */ | A
+      | B,
+> = K

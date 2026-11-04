@@ -1,0 +1,2 @@
+left || /** @satisfies {number} */
+(right);

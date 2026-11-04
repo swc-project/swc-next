@@ -1,0 +1,12 @@
+[
+  {},
+  { "printWidth": 14 },
+  { "printWidth": 13 },
+  { "printWidth": 10 },
+  { "printWidth": 0 },
+  { "semi": false },
+  { "printWidth": 10, "trailingComma": "none" },
+  { "printWidth": 10, "trailingComma": "es5" },
+  { "printWidth": 10, "useTabs": true, "tabWidth": 4 },
+  { "printWidth": 10, "endOfLine": "crlf" }
+]

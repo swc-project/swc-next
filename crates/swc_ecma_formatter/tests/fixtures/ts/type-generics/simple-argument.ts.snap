@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Result = LongerReference<OneMoreType>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Result = LongerReference<OneMoreType>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Result =
+  LongerReference<OneMoreType>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Result =
+  LongerReference<OneMoreType>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Result =
+	LongerReference<OneMoreType>;

@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first, /* @__PURE__ */ (second));
+---------- Options ----------
+{}
+---------- Output ----------
+(first, /* @__PURE__ */ second);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(first, /* @__PURE__ */ second)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(first,
+  /* @__PURE__ */ second);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+(first,
+  /* @__PURE__ */ second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+(first,
+    /* @__PURE__ */ second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(first,
+	/* @__PURE__ */ second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+(first,
+ /* @__PURE__ */ second);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(first, /* @__PURE__ */ second);

@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left.value = right.value = (/* ordinary */ <Item value={61} /> /* source tail */);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+left.value = right.value = (
+  /* ordinary */ <Item value={61} /> /* source tail */
+);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+left.value = right.value = /* ordinary */ <Item value={61} /> /* source tail */
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+left.value = right.value = (
+  /* ordinary */ <Item
+    value={61}
+  /> /* source tail */
+);
+
+---------- Options ----------
+{"printWidth":36,"semi":false}
+---------- Output ----------
+left.value = right.value = (
+  /* ordinary */ <Item
+    value={61}
+  /> /* source tail */
+)

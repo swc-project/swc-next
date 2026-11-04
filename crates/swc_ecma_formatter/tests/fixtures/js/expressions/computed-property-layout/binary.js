@@ -1,0 +1,1 @@
+({ [firstLongName + secondLongName]: value });

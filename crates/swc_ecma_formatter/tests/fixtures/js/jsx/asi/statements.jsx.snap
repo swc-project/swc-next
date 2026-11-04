@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+run();
+(<A/>);
+/*#__PURE__*/ (<Box/>);
+// keep
+(<></>);
+run();
+/*#__PURE__*/ (<Box/>).factory();
+(<Tag/>)`head ${<Inner/>}`;
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+run()
+;<A />
+;
+/*#__PURE__*/ <Box />
+// keep
+;<></>
+run()
+;
+/*#__PURE__*/ (<Box />).factory()
+;(<Tag />)`head ${(<Inner />)}`
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+run()
+;<A />
+;
+/*#__PURE__*/ <Box />
+// keep
+;<></>
+run()
+;
+/*#__PURE__*/ (
+  <Box />
+).factory()
+;(
+  <Tag />
+)`head ${(<Inner />)}`

@@ -1,0 +1,1 @@
+type T = /* prettier-ignore */ /* ordinary */ /* prettier-ignore */ | \u0041;

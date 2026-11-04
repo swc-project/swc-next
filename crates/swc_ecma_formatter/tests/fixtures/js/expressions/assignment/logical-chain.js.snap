@@ -1,0 +1,65 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = first && second && [third, fourth];
+---------- Options ----------
+{}
+---------- Output ----------
+target = first && second && [third, fourth];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = first && second && [third, fourth]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = first &&
+  second && [
+    third,
+    fourth,
+  ];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+target =
+  first &&
+    second && [
+      third,
+      fourth,
+    ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+target = first &&
+    second && [
+        third,
+        fourth,
+    ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = first &&
+	second && [
+		third,
+		fourth,
+	];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+target = first &&
+ second && [
+  third,
+  fourth,
+ ];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+target = first && second && [third, fourth];

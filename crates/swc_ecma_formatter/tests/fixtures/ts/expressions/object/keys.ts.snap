@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ "1": a, "1.5": b, "01": c, "__proto__": value });
+---------- Options ----------
+{}
+---------- Output ----------
+({ "1": a, "1.5": b, "01": c, __proto__: value });

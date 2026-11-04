@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+x = (
+/** @type {number} */
+a, y);
+---------- Options ----------
+{}
+---------- Output ----------
+x =
+  /** @type {number} */
+  (a, y);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+x =
+  /** @type {number} */
+  (a, y)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+x =
+  /** @type {number} */
+  (a, y);

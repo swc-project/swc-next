@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(\u0076=/* prettier-ignore */1+2){}
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+function f(
+  v=/* prettier-ignore */1+2,
+) {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function f(
+  v=/* prettier-ignore */1+2,
+) {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(v=/* prettier-ignore */1+2) {}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+function f(v=/* prettier-ignore */1+2) {}

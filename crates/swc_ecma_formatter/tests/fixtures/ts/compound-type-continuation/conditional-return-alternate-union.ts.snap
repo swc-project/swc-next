@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(): X extends Y ? Z : A | (B
+// c
+) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(): (
+  X extends Y ? Z : A | B
+  // c
+) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(): (
+  X extends Y
+    ? Z
+    : A | B
+  // c
+) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f(): (
+  X extends Y ? Z : A | B
+  // c
+) {}

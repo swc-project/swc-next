@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @param {number} value */ function (value) { return value; }).name;
+---------- Options ----------
+{}
+---------- Output ----------
+(
+  /** @param {number} value */ function (value) {
+    return value;
+  }
+).name;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  /** @param {number} value */ function (
+    value,
+  ) {
+    return value;
+  }
+).name;

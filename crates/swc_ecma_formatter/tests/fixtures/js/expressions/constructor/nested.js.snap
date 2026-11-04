@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (new Ctor)(first());
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new new Ctor()(
+  first(),
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new new Ctor()(first());
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+new new Ctor()(
+  first(),
+)

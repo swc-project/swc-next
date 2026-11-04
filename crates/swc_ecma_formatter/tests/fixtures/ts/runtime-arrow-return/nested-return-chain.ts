@@ -1,0 +1,1 @@
+const make = (): ((value: number) => number) => (value) => value + 1;

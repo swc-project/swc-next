@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a ? (b, c
+// tail
+) : /* prettier-ignore */ d  +e;
+---------- Options ----------
+{}
+---------- Output ----------
+a
+  ? (b, c)
+  : // tail
+    /* prettier-ignore */ d  +e;
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+a
+  ? (b, c)
+  : // tail
+    /* prettier-ignore */ d  +e

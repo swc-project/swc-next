@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const [x,y]:Pair=[1,2];
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+const [x, y]: Pair =
+  [1, 2];
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+const [x, y]: Pair = [1, 2];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const [x, y]: Pair =
+  [1, 2]
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+const [
+  x,
+  y,
+]: Pair =
+  [
+    1,
+    2,
+  ]

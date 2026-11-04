@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (first, /*#__PURE__*/ factory(), second /* tail */);
+---------- Options ----------
+{}
+---------- Output ----------
+const value = (first, /*#__PURE__*/ factory(), second /* tail */);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = (first, /*#__PURE__*/ factory(), second /* tail */)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const value =
+  (first,
+  /*#__PURE__*/ factory(),
+  second /* tail */);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+const value =
+  (first,
+  /*#__PURE__*/ factory(),
+  second /* tail */);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+const value =
+    (first,
+    /*#__PURE__*/ factory(),
+    second /* tail */);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const value =
+	(first,
+	/*#__PURE__*/ factory(),
+	second /* tail */);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+const value =
+ (first,
+ /*#__PURE__*/ factory(),
+ second /* tail */);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+const value = (first, /*#__PURE__*/ factory(), second /* tail */);

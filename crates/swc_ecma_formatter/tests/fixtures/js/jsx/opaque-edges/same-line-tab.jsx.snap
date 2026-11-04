@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div><b>a</b>{" "}bbb	ccc
+next</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+<div>
+  <b>a</b> bbb	ccc
+next</div>;

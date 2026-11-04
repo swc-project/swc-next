@@ -1,0 +1,66 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+((/* first */ <Panel first={firstArgument} second={secondArgument}/> // after first
+), next());
+(first(), (/* middle */ <Panel first={firstArgument} second={secondArgument}/> /* after middle */), last());
+(first(), (/* last */ <Panel first={firstArgument} second={secondArgument}/> // after last
+));
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+((
+  /* first */ <Panel first={firstArgument} second={secondArgument} /> // after first
+),
+  next());
+(first(),
+  (
+    /* middle */ <Panel
+      first={firstArgument}
+      second={secondArgument}
+    /> /* after middle */
+  ),
+  last());
+(first(),
+  (
+    /* last */ <Panel first={firstArgument} second={secondArgument} /> // after last
+  ));
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+((
+  /* first */ <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  /> // after first
+),
+  next());
+(first(),
+  (
+    /* middle */ <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    /> /* after middle */
+  ),
+  last());
+(first(),
+  (
+    /* last */ <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    /> // after last
+  ));

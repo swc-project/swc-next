@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (flag) ( /* head */ /** @type {number} */ (object.property) )++;
+---------- Options ----------
+{}
+---------- Output ----------
+if (flag) /* head */ /** @type {number} */ (object.property)++;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (flag) /* head */ /** @type {number} */ (object.property)++
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (flag)
+  /* head */ /** @type {number} */ (
+    object.property
+  )++
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+if (flag)
+	/* head */ /** @type {number} */ (
+		object.property
+	)++

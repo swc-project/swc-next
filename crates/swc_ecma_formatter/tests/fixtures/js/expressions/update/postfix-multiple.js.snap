@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+item/* first */ /* second */++;
+---------- Options ----------
+{}
+---------- Output ----------
+item /* first */ /* second */++;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+item /* first */ /* second */++
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+item /* first */ /* second */++;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+item /* first */ /* second */++;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+item /* first */ /* second */++;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+item /* first */ /* second */++;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+item /* first */ /* second */++;

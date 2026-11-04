@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {/* first */
+/* second */
+field;}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  /* first */
+  /* second */
+  field;
+}

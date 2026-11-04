@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (test) (first, second // inside
+) /* outside */; else next();
+---------- Options ----------
+{}
+---------- Output ----------
+if (test)
+  (first, second); // inside
+/* outside */
+else next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (test)
+  (first, second) // inside
+/* outside */
+else next()
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (test)
+  (first, second) // inside
+/* outside */
+else next()
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+if (test)
+	(first, second); // inside
+/* outside */
+else next();

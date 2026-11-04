@@ -1,0 +1,63 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+['plain', "plain", 'don\'t', '"double"'];
+---------- Options ----------
+{}
+---------- Output ----------
+["plain", "plain", "don't", '"double"'];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+['plain', 'plain', "don't", '"double"'];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;["plain", "plain", "don't", '"double"']
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+;['plain', 'plain', "don't", '"double"']
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  "plain",
+  "plain",
+  "don't",
+  '"double"',
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  "plain",
+  "plain",
+  "don't",
+  '"double"',
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+["plain", "plain", "don't", '"double"'];
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+["plain", "plain", "don't", '"double"'];
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	"plain",
+	"plain",
+	"don't",
+	'"double"',
+];

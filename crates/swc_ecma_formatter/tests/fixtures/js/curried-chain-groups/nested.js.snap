@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b(c, d, e)(f, g)(h).i();
+---------- Options ----------
+{}
+---------- Output ----------
+abc.b(c, d, e)(f, g)(h).i();
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+abc
+  .b(
+    c,
+    d,
+    e,
+  )(
+    f,
+    g,
+  )(h)
+  .i();

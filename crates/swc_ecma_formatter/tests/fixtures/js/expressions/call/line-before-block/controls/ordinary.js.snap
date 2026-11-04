@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first // note
+, /* c
+ d */ second);
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  first, // note
+  /* c
+ d */ second,
+);

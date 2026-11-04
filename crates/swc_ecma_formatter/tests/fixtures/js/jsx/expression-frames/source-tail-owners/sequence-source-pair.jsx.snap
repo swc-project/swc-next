@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const node = (0, owner.node = (/* ordinary */ <Item value={61} /> /* JSX tail */) /* sequence tail */);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item value={61} /> /* JSX tail */
+  )) /* sequence tail */);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item value={61} /> /* JSX tail */
+  )) /* sequence tail */)
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* JSX tail */
+  )) /* sequence tail */);
+
+---------- Options ----------
+{"printWidth":36,"semi":false}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* JSX tail */
+  )) /* sequence tail */)

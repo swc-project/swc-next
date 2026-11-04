@@ -1,0 +1,5 @@
+for(;;) continue
+// tail
+;
+
+next();

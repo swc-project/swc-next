@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { aaaa, bbbb, cccc }: { aaaa: string; bbbb: number; cccc: boolean; dddd: string } = props;
+---------- Options ----------
+{}
+---------- Output ----------
+const {
+  aaaa,
+  bbbb,
+  cccc,
+}: { aaaa: string; bbbb: number; cccc: boolean; dddd: string } = props;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const {
+  aaaa,
+  bbbb,
+  cccc,
+}: {
+  aaaa: string;
+  bbbb: number;
+  cccc: boolean;
+  dddd: string;
+} = props;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const {
+  aaaa,
+  bbbb,
+  cccc,
+}: { aaaa: string; bbbb: number; cccc: boolean; dddd: string } = props
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const {
+	aaaa,
+	bbbb,
+	cccc,
+}: { aaaa: string; bbbb: number; cccc: boolean; dddd: string } = props;

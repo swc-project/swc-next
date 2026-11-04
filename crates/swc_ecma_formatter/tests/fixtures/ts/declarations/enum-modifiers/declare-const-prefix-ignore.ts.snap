@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* prettier-ignore */ const enum E { A = 1+  2 }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+declare const enum /* prettier-ignore */ E {
+  A = 1 + 2,
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare const enum /* prettier-ignore */ E {
+  A = 1 + 2,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+declare const enum /* prettier-ignore */ E {
+  A = 1 + 2,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare const enum /* prettier-ignore */ E {
+  A = 1 + 2,
+}

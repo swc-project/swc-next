@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("cast", outer => inner => /** @type {number} */ (first(outer + inner))) /* caller tail */; third();
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+consume(
+  "cast",
+  (outer) => (inner) =>
+    /** @type {number} */ (
+      first(outer + inner)
+    ),
+); /* caller tail */
+third();

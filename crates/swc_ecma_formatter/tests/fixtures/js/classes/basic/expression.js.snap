@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const C=class Named {m(){return Named;}};
+---------- Options ----------
+{}
+---------- Output ----------
+const C = class Named {
+  m() {
+    return Named;
+  }
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const C = class Named {
+  m() {
+    return Named;
+  }
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const C = class Named {
+  m() {
+    return Named
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const C = class Named {
+  m() {
+    return Named
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+const C = class Named {
+	m() {
+		return Named;
+	}
+};
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+const C = class Named {
+  m() {
+    return Named
+  }
+}

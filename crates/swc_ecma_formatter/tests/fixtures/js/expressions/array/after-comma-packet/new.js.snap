@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void [first, /* lead */ /*#__PURE__*/ // @ts-ignore
+new Thing()];
+---------- Options ----------
+{}
+---------- Output ----------
+void [
+  first,
+  /* lead */ /*#__PURE__*/ // @ts-ignore
+  new Thing(),
+];

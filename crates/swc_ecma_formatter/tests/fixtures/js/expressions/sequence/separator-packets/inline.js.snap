@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first, /* @__PURE__ */ (second + third);---------- Options ----------
+{}
+---------- Output ----------
+(first, /* @__PURE__ */ second + third);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(first, /* @__PURE__ */ second + third)

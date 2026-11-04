@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result: (LongerReference<OneMoreType> /* annotation tail */) = value => value;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const result: (LongerReference<OneMoreType> /* annotation tail */) = (value) =>
+  value;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const result: (LongerReference<OneMoreType> /* annotation tail */) =
+  (value) => value;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+const result: (LongerReference<OneMoreType> /* annotation tail */) =
+  (
+    value,
+  ) =>
+    value
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+const result: (LongerReference<OneMoreType> /* annotation tail */) =
+	(value) => value;

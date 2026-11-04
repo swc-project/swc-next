@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(first,
+// @ts-ignore
+second /* block */ // line
+);
+---------- Options ----------
+{}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second /* block */, // line
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second /* block */, // line
+)

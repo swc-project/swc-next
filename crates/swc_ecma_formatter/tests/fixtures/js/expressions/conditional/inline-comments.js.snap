@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first /* test */ ? /* consequent */ second /* true */ : /* alternate */ third;
+---------- Options ----------
+{}
+---------- Output ----------
+first /* test */ ? /* consequent */ second /* true */ : /* alternate */ third;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first /* test */ ? /* consequent */ second /* true */ : /* alternate */ third
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first /* test */
+  ? /* consequent */ second /* true */
+  : /* alternate */ third;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+first /* test */
+  ? /* consequent */ second /* true */
+  : /* alternate */ third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+first /* test */
+    ? /* consequent */ second /* true */
+    : /* alternate */ third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first /* test */
+	? /* consequent */ second /* true */
+	: /* alternate */ third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+first /* test */
+ ? /* consequent */ second /* true */
+ : /* alternate */ third;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first /* test */ ? /* consequent */ second /* true */ : /* alternate */ third;

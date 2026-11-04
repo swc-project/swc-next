@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number[]} */ ([/* inside */]);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {number[]} */ ([/* inside */]);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/** @type {number[]} */ ([/* inside */])
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @type {number[]} */ (
+  [/* inside */]
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {number[]} */ (
+  [/* inside */]
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/** @type {number[]} */ (
+  [
+    /* inside */
+  ]
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/** @type {number[]} */ (
+	[/* inside */]
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/** @type {number[]} */ ([/* inside */]);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+/** @type {number[]} */ ([/* inside */]);

@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+b(x, (/* keep */ {veryLongVariableNameNumberTwo, k:1, kk:2}));
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+b(
+  x,
+  /* keep */ {
+    veryLongVariableNameNumberTwo,
+    k: 1,
+    kk: 2,
+  },
+);

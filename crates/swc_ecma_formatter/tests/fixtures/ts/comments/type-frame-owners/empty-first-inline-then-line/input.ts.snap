@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = \u0058 extends /* prettier-ignore */ (
+(/* a */ (// prettier-ignore
+/* frame */ (\u0041  |  \u0042)))) ? Yes : No;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = \u0058 extends /* prettier-ignore */ (
+(/* a */ (// prettier-ignore
+/* frame */ (\u0041  |  \u0042))))
+  ? Yes
+  : No;

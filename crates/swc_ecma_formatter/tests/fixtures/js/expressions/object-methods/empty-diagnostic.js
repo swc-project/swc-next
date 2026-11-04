@@ -1,0 +1,3 @@
+// @ts-expect-error
+({
+});

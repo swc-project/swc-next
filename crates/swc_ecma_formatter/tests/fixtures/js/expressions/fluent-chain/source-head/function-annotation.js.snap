@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (/** @type {() => string} */ () => 1).c.d();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = (
+  /** @type {() => string} */ () =>
+    1
+).c.d();
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+result = (
+  /** @type {() => string} */ () => 1
+).c.d();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+result = (/** @type {() => string} */ () => 1).c.d()
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+result = (
+  /** @type {() => string} */ () =>
+    1
+).c.d()

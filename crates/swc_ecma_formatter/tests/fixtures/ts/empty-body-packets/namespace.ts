@@ -1,0 +1,4 @@
+namespace N{ // first
+
+/* second */
+}

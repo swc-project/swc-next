@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee /* prettier-ignore */ (/** @type {number} */ (value  +  other));
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+callee(
+  /* prettier-ignore */ /** @type {number} */ (value  +  other),
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+callee(/* prettier-ignore */ /** @type {number} */ (value  +  other));
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+callee(
+  /* prettier-ignore */ /** @type {number} */ (value  +  other),
+)
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+callee(
+  /* prettier-ignore */ /** @type {number} */ (value  +  other)
+);

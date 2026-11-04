@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x=<div>gamma {" "}<i/></div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = (
+  <div>
+    gamma{"  "}
+    <i />
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+const x = (
+  <div>
+    gamma{"  "}
+    <i />
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":12,"singleQuote":true}
+---------- Output ----------
+const x = (
+  <div>
+    gamma{'  '}
+    <i />
+  </div>
+);

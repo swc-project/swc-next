@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const dependency = require("a-long-module-identifier-with-an-existing-module-call-frame");
+---------- Options ----------
+{}
+---------- Output ----------
+const dependency = require("a-long-module-identifier-with-an-existing-module-call-frame");
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+const dependency = require("a-long-module-identifier-with-an-existing-module-call-frame");
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+const dependency = require("a-long-module-identifier-with-an-existing-module-call-frame")

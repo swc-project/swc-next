@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first ? (secondLong + thirdLong /* tail */) : fourth;
+---------- Options ----------
+{}
+---------- Output ----------
+first ? secondLong + thirdLong /* tail */ : fourth;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first ? secondLong + thirdLong /* tail */ : fourth
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first
+  ? secondLong +
+    thirdLong /* tail */
+  : fourth;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+first
+  ? secondLong +
+    thirdLong /* tail */
+  : fourth;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+first
+    ? secondLong +
+      thirdLong /* tail */
+    : fourth;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first
+	? secondLong +
+		thirdLong /* tail */
+	: fourth;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+first
+ ? secondLong +
+   thirdLong /* tail */
+ : fourth;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first ? secondLong + thirdLong /* tail */ : fourth;

@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = ? (/* prettier-ignore */ 12.00 | A);
+---------- Options ----------
+{}
+---------- Output ----------
+type Value = ?(/* prettier-ignore */ 12.00 | A);
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type Value =
+  ?(/* prettier-ignore */ 12.00 | A)

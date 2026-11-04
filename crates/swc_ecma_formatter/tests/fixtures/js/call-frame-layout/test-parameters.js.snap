@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it("an intentionally long test description for parameter ownership", function(done,
+
+result) { return done(result); });
+---------- Options ----------
+{}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", function (done, result) {
+  return done(result);
+});
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", function (done, result) {
+  return done(result);
+});
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", function (done, result) {
+  return done(
+    result,
+  )
+})

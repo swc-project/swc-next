@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const o = { [/*x*/a]: veryVeryVeryVeryLongReceiver.longProperty.longProperty.longProperty };
+---------- Options ----------
+{"printWidth":35}
+---------- Output ----------
+const o = {
+  [/*x*/ a]:
+    veryVeryVeryVeryLongReceiver
+      .longProperty.longProperty
+      .longProperty,
+};
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":4}
+---------- Output ----------
+const o = {
+    [/*x*/ a]:
+        veryVeryVeryVeryLongReceiver
+            .longProperty
+            .longProperty
+            .longProperty,
+};
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":8,"useTabs":true}
+---------- Output ----------
+const o = {
+	[/*x*/ a]: veryVeryVeryVeryLongReceiver
+		.longProperty
+		.longProperty
+		.longProperty,
+};

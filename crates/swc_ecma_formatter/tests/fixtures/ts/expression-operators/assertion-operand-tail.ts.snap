@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (<LongType>(receiver.method(firstArgument, secondArgument) /* inside */)) /* outside */.next;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value = (<LongType>(
+  receiver.method(firstArgument, secondArgument)
+)) /* inside */ /* outside */.next;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const value = (<
+  LongType
+>receiver.method(
+  firstArgument,
+  secondArgument,
+)) /* inside */ /* outside */
+  .next;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+const value =
+  (<
+    LongType
+  >receiver.method(
+    firstArgument,
+    secondArgument,
+  )) /* inside */ /* outside */
+    .next
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+const value = (<
+	LongType
+>receiver.method(
+	firstArgument,
+	secondArgument,
+)) /* inside */ /* outside */
+	.next;

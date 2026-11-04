@@ -1,0 +1,3 @@
+result = (
+/* own */
+!left)(arg);

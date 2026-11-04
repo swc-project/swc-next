@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {} catch (e: A | (B
+// c
+)) {}
+---------- Options ----------
+{}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}

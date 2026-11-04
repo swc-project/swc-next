@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+﻿// prettier-ignore
+---------- Options ----------
+{}
+---------- Output ----------
+﻿// prettier-ignore
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+﻿// prettier-ignore
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+﻿// prettier-ignore

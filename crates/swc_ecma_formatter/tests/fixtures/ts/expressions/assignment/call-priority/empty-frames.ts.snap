@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = source.invoke<string>(
+  /* The type argument and empty value frame have different owners. */
+);
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value
+);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result =
+  invoke<string>(
+    /* This argument value prevents compact empty-frame classification. */
+    value,
+  );
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value,
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value,
+);

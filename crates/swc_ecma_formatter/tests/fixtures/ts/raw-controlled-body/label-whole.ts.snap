@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if(c) label:
+/* prettier-ignore */
+x = y as ?; else z();
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (c)
+  label:
+/* prettier-ignore */
+x = y as ?;
+else z()
+b

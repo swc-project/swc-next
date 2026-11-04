@@ -1,0 +1,1 @@
+/** @typedefExtra {number} N */ (first);

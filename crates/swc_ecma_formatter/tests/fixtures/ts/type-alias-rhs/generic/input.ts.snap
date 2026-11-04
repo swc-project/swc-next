@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<Param> = Result<Param>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T<Param> =
+  Result<Param>;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T<Param> = Result<Param>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type T<
+  Param,
+> =
+  Result<Param>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type T<Param> =
+	Result<Param>;

@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first && second ? consequent : alternate;
+---------- Options ----------
+{}
+---------- Output ----------
+first && second ? consequent : alternate;
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+first && second
+  ? consequent
+  : alternate;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first && second ? consequent : alternate
+

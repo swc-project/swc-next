@@ -1,0 +1,1 @@
+/** @typedef {number} N */ (first);

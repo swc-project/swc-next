@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const configuration = { branch: { value: 3 } };
+class RecordValue {
+  intentionallyLongFieldName   = /* prettier-ignore */ configuration . branch . value;
+  other = { untouched :  2 };
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const configuration = { branch: { value: 3 } };
+class RecordValue {
+  intentionallyLongFieldName =
+    /* prettier-ignore */ configuration . branch . value;
+  other = { untouched: 2 };
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+const configuration = {
+  branch: { value: 3 },
+}
+class RecordValue {
+  intentionallyLongFieldName =
+    /* prettier-ignore */ configuration . branch . value
+  other = {
+    untouched: 2,
+  }
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+const configuration = {
+	branch: { value: 3 },
+};
+class RecordValue {
+	intentionallyLongFieldName =
+		/* prettier-ignore */ configuration . branch . value;
+	other = {
+		untouched: 2,
+	};
+}

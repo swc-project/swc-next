@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const Implementation: Constructor<Input, Output> = class extends runtime.namespace.BaseConstructor<Input> {};
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+  class extends runtime.namespace
+    .BaseConstructor<Input> {};
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> = class extends runtime.namespace
+  .BaseConstructor<Input> {};
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+  class extends runtime.namespace
+    .BaseConstructor<Input> {}
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+	class extends runtime.namespace
+		.BaseConstructor<Input> {};

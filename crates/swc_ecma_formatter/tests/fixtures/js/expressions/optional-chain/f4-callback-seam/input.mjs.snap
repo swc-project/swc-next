@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object?.method("scope", value => { return value; })?.next;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+object?.method("scope", (value) => {
+  return value;
+})?.next;

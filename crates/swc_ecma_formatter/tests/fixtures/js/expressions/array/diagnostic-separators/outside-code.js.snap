@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+before + [first
+// @ts-ignore
+,
+second] + after;
+---------- Options ----------
+{"printWidth":10,"semi":false}
+---------- Output ----------
+before +
+  [
+    first,
+    // @ts-ignore
+    second,
+  ] +
+  after
+
+---------- Options ----------
+{"printWidth":10,"semi":true}
+---------- Output ----------
+before +
+  [
+    first,
+    // @ts-ignore
+    second,
+  ] +
+  after;

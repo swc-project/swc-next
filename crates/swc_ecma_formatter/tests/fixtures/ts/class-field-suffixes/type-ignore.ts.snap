@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class TypeIgnore { value?: /* prettier-ignore */ number | string = 1; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class TypeIgnore {
+  value?: /* prettier-ignore */ number | string = 1;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class TypeIgnore {
+  value?: /* prettier-ignore */ number | string = 1
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class TypeIgnore {
+	value?: /* prettier-ignore */ number | string = 1;
+}

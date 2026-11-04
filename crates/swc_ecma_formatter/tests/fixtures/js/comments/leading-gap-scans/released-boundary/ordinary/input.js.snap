@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(item
+// ordinary
+);
+
+next();
+---------- Options ----------
+{}
+---------- Output ----------
+item;
+// ordinary
+
+next();
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+item;
+// ordinary
+
+next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+item
+// ordinary
+
+next()

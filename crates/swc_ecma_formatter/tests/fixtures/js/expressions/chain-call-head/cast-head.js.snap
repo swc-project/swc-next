@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return (
+/** @type {unknown} */
+receiver.method()
+).next(); }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (
+    /** @type {unknown} */
+    receiver.method().next()
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    /** @type {unknown} */
+    receiver.method().next()
+  )
+}

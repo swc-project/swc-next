@@ -1,0 +1,153 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (const make = () => {
+  for (; "x" in owner; step = "x" in owner) { break; }
+  for (let seen = ("x" in owner);;) { break; }
+  for (const key in "x" in owner ? owner : {}) { consume(key); }
+  for (const value of "x" in owner ? values : []) { consume(value); }
+  return "x" in owner;
+}; false;) {}
+"x" in owner;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (
+  const make =
+    () => {
+      for (
+        ;
+        "x" in
+          owner;
+        step =
+          "x" in
+          owner
+      ) {
+        break;
+      }
+      for (
+        let seen =
+          ("x" in
+            owner);
+        ;
+      ) {
+        break;
+      }
+      for (const key in "x" in
+      owner
+        ? owner
+        : {}) {
+        consume(
+          key,
+        );
+      }
+      for (const value of "x" in
+        owner
+        ? values
+        : []) {
+        consume(
+          value,
+        );
+      }
+      return (
+        ("x" in
+        owner)
+      );
+    };
+  false;
+) {}
+"x" in owner;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (
+  const make = () => {
+    for (; "x" in owner; step = "x" in owner) {
+      break;
+    }
+    for (let seen = ("x" in owner); ;) {
+      break;
+    }
+    for (const key in "x" in owner ? owner : {}) {
+      consume(key);
+    }
+    for (const value of "x" in owner ? values : []) {
+      consume(value);
+    }
+    return ("x" in owner);
+  };
+  false;
+) {}
+"x" in owner;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  const make =
+    () => {
+      for (
+        ;
+        "x" in
+          owner;
+        step =
+          "x" in
+          owner
+      ) {
+        break
+      }
+      for (
+        let seen =
+          ("x" in
+            owner);
+        ;
+      ) {
+        break
+      }
+      for (const key in "x" in
+      owner
+        ? owner
+        : {}) {
+        consume(key)
+      }
+      for (const value of "x" in
+        owner
+        ? values
+        : []) {
+        consume(
+          value,
+        )
+      }
+      return (
+        ("x" in
+        owner)
+      )
+    };
+  false;
+) {}
+"x" in owner
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (
+  const make = () => {
+    for (; "x" in owner; step = "x" in owner) {
+      break
+    }
+    for (let seen = ("x" in owner); ;) {
+      break
+    }
+    for (const key in "x" in owner ? owner : {}) {
+      consume(key)
+    }
+    for (const value of "x" in owner ? values : []) {
+      consume(value)
+    }
+    return ("x" in owner)
+  };
+  false;
+) {}
+"x" in owner

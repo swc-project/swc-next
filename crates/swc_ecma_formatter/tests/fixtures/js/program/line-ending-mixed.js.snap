@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const first=1;
+// second
+const second=2;const third=3;
+---------- Options ----------
+{}
+---------- Output ----------
+const first = 1;
+// second
+const second = 2;
+const third = 3;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+const first = 1;
+// second
+const second = 2;
+const third = 3;
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+const first = 1;// secondconst second = 2;const third = 3;

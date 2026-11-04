@@ -1,0 +1,106 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+['a\
+    b', 'c\d', 'e\
+f'];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  "a\
+    b",
+  "c\
+d",
+  "e\
+f",
+];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+[
+  'a\
+    b',
+  'c\
+d',
+  'e\
+f',
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  "a\
+    b",
+  "c\
+d",
+  "e\
+f",
+]
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+;[
+  'a\
+    b',
+  'c\
+d',
+  'e\
+f',
+]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  "a\
+    b",
+  "c\
+d",
+  "e\
+f",
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  "a\
+    b",
+  "c\
+d",
+  "e\
+f",
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[
+  "a\
+    b",
+  "c\
+d",
+  "e\
+f",
+];
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+[  "a\    b",  "c\d",  "e\f",];
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	"a\
+    b",
+	"c\
+d",
+	"e\
+f",
+];

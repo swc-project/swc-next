@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [K in "a"] // @ts-expect-error
+: Missing };
+---------- Options ----------
+{}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing; };
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing; };
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":18,"semi":false}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing }

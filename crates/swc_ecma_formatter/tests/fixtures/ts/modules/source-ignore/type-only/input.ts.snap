@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import type {First,
+/* prettier-ignore */ // tail
+} from 'module';
+---------- Options ----------
+{}
+---------- Output ----------
+import type {
+  First, // tail
+} from /* prettier-ignore */ 'module';

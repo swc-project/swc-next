@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = X extends infer \u004b extends /* prettier-ignore */ | \u0041 ? Y : Z;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = X extends infer \u004b /* prettier-ignore */ extends A ? Y : Z;

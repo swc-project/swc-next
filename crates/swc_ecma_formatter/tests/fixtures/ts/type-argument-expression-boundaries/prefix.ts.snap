@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = (!(callee<Type>)) + suffix;
+---------- Options ----------
+{}
+---------- Output ----------
+const result = (!callee<Type>) + suffix;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const result = (!callee<Type>) + suffix
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const result =
+  (!callee<Type>) +
+  suffix;
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+const result = (!callee<Type>) + suffix;

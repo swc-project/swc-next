@@ -1,0 +1,516 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (test()) {if (ready) break; continue;}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false);
+
+while (false) { globalThis.loopTrace.push("never"); }
+
+for (; false;) { globalThis.loopTrace.push("never"); }
+
+do { globalThis.loopTrace.push("once"); } while (false);
+
+while (false) { "use strict"; }
+
+while (false) { /* dangling */ }
+
+for (; false;) { // dangling line
+}
+
+do { /* dangling */ } while (false);
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (false) { /* prettier-ignore */ }
+
+if (false) {} else {}
+
+for (const value of []) {}
+
+for (const key in {}) {}
+
+with ({}) {}
+
+label: {}
+
+while (false) nested: {}
+
+{}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+while (test()) {
+  if (ready) break;
+  continue;
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false);
+
+while (false) {
+  globalThis.loopTrace.push("never");
+}
+
+for (; false;) {
+  globalThis.loopTrace.push("never");
+}
+
+do {
+  globalThis.loopTrace.push("once");
+} while (false);
+
+while (false) {
+  ("use strict");
+}
+
+while (false) {
+  /* dangling */
+}
+
+for (; false;) {
+  // dangling line
+}
+
+do {
+  /* dangling */
+} while (false);
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (false) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+  nested: {
+  }
+
+{
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+while (test()) {
+  if (ready) break;
+  continue;
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false);
+
+while (false) {
+  globalThis.loopTrace.push(
+    "never",
+  );
+}
+
+for (; false;) {
+  globalThis.loopTrace.push(
+    "never",
+  );
+}
+
+do {
+  globalThis.loopTrace.push(
+    "once",
+  );
+} while (false);
+
+while (false) {
+  ("use strict");
+}
+
+while (false) {
+  /* dangling */
+}
+
+for (; false;) {
+  // dangling line
+}
+
+do {
+  /* dangling */
+} while (false);
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (
+  false
+) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+  nested: {
+  }
+
+{
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+while (test()) {
+  if (ready) break
+  continue
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false)
+
+while (false) {
+  globalThis.loopTrace.push("never")
+}
+
+for (; false;) {
+  globalThis.loopTrace.push("never")
+}
+
+do {
+  globalThis.loopTrace.push("once")
+} while (false)
+
+while (false) {
+  ;("use strict")
+}
+
+while (false) {
+  /* dangling */
+}
+
+for (; false;) {
+  // dangling line
+}
+
+do {
+  /* dangling */
+} while (false)
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (false) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+  nested: {
+  }
+
+{
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+while (test()) {
+  if (ready) break
+  continue
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false)
+
+while (false) {
+  globalThis.loopTrace.push(
+    "never",
+  )
+}
+
+for (; false;) {
+  globalThis.loopTrace.push(
+    "never",
+  )
+}
+
+do {
+  globalThis.loopTrace.push(
+    "once",
+  )
+} while (false)
+
+while (false) {
+  ;("use strict")
+}
+
+while (false) {
+  /* dangling */
+}
+
+for (; false;) {
+  // dangling line
+}
+
+do {
+  /* dangling */
+} while (false)
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (
+  false
+) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+  nested: {
+  }
+
+{
+}
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+while (test()) {
+	if (ready) break;
+	continue;
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false);
+
+while (false) {
+	globalThis.loopTrace.push(
+		"never",
+	);
+}
+
+for (; false;) {
+	globalThis.loopTrace.push(
+		"never",
+	);
+}
+
+do {
+	globalThis.loopTrace.push(
+		"once",
+	);
+} while (false);
+
+while (false) {
+	("use strict");
+}
+
+while (false) {
+	/* dangling */
+}
+
+for (; false;) {
+	// dangling line
+}
+
+do {
+	/* dangling */
+} while (false);
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (
+	false
+) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+	nested: {
+	}
+
+{
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+while (test()) {
+  if (ready) break;
+  continue;
+}
+
+while (false) {}
+
+for (; false;) {}
+
+do {} while (false);
+
+while (false) {
+  globalThis.loopTrace.push("never");
+}
+
+for (; false;) {
+  globalThis.loopTrace.push("never");
+}
+
+do {
+  globalThis.loopTrace.push("once");
+} while (false);
+
+while (false) {
+  ("use strict");
+}
+
+while (false) {
+  /* dangling */
+}
+
+for (; false;) {
+  // dangling line
+}
+
+do {
+  /* dangling */
+} while (false);
+
+while (false)
+// prettier-ignore
+{   }
+
+// prettier-ignore
+while( false ){   }
+
+while (false) { /* prettier-ignore */ }
+
+if (false) {
+} else {
+}
+
+for (const value of []) {
+}
+
+for (const key in {}) {
+}
+
+with ({}) {
+}
+
+label: {
+}
+
+while (false)
+  nested: {
+  }
+
+{
+}

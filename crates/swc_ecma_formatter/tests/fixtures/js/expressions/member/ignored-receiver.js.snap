@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(object
+// prettier-ignore
+).property;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(object
+// prettier-ignore
+).property;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(object
+// prettier-ignore
+).property;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(object
+// prettier-ignore
+).property;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(object
+// prettier-ignore
+).property

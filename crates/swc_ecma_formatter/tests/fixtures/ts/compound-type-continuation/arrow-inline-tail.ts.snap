@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = (): A | (B // c
+) => ({});
+---------- Options ----------
+{}
+---------- Output ----------
+const f = (): A | B => ({}); // c
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const f = ():
+  A | B => ({}); // c
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const f = (): A | B => ({}) // c

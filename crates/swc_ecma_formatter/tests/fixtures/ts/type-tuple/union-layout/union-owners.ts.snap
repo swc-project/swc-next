@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = [number | string, "alpha" | "beta" | "gamma" | "delta", item: 0 | 1];
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+type Value = [
+  number | string,
+  (
+    | "alpha"
+    | "beta"
+    | "gamma"
+    | "delta"
+  ),
+  item: 0 | 1,
+];
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Value = [
+  number | string,
+  "alpha" | "beta" | "gamma" | "delta",
+  item: 0 | 1,
+];
+
+---------- Options ----------
+{"printWidth":24,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+type Value = [
+  number | string,
+  (
+    | "alpha"
+    | "beta"
+    | "gamma"
+    | "delta"
+  ),
+  item: 0 | 1
+]

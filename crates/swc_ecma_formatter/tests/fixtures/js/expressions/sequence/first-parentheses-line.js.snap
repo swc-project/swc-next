@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+((// head
+first), second);
+---------- Options ----------
+{}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// head
+;(first, second)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+// head
+(first,
+  second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// head
+(first, second);

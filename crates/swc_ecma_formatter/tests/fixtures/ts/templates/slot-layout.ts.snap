@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value: TemplateParameterContainer<`event-${keyof Source}-suffix`> = source;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value: TemplateParameterContainer<`event-${keyof Source}-suffix`> =
+  source;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const value: TemplateParameterContainer<`event-${keyof Source}-suffix`> =
+  source
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+const value: TemplateParameterContainer<`event-${keyof Source}-suffix`> =
+  source;

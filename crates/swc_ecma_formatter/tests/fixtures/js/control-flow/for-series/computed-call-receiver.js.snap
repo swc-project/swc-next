@@ -1,0 +1,88 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+var let = [{ value: 29, read() { return this.value; } }];
+let once = 0;
+for ((let)[0].read(), once = 0; once < 1; once++) {
+  consume(let[0].read());
+}
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+var let = [
+  {
+    value: 29,
+    read() {
+      return this
+        .value;
+    },
+  },
+];
+let once = 0;
+for (
+  (let)[0].read(),
+    once = 0;
+  once < 1;
+  once++
+) {
+  consume(
+    let[0].read(),
+  );
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+var let = [
+  {
+    value: 29,
+    read() {
+      return this.value;
+    },
+  },
+];
+let once = 0;
+for ((let)[0].read(), once = 0; once < 1; once++) {
+  consume(let[0].read());
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+var let = [
+  {
+    value: 29,
+    read() {
+      return this
+        .value
+    },
+  },
+]
+let once = 0
+for (
+  (let)[0].read(),
+    once = 0;
+  once < 1;
+  once++
+) {
+  consume(
+    let[0].read(),
+  )
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+var let = [
+  {
+    value: 29,
+    read() {
+      return this.value
+    },
+  },
+]
+let once = 0
+for ((let)[0].read(), once = 0; once < 1; once++) {
+  consume(let[0].read())
+}

@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+var q = < <T>(x: T) => T>y;
+---------- Options ----------
+{}
+---------- Output ----------
+var q = < <T>(x: T) => T>y;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+var q = < <T>(x: T) => T>y
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+var q = <
+  <T>(x: T) => T
+>y;

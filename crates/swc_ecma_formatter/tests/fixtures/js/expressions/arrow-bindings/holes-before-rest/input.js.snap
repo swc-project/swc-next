@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([, /* rest edge */ ...[value]]) => value;
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+([
+  ,
+  /* rest edge */ ...[
+    value,
+  ]
+]) => value;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":24,"semi":false}
+---------- Output ----------
+;([
+  ,
+  /* rest edge */ ...[
+    value,
+  ]
+]) => value
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+([, /* rest edge */ ...[value]]) => value;

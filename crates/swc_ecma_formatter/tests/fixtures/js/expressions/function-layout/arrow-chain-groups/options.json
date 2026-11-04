@@ -1,0 +1,6 @@
+[
+  { "printWidth": 24, "arrowParens": "always" },
+  { "printWidth": 24, "arrowParens": "avoid" },
+  { "printWidth": 80, "arrowParens": "always" },
+  { "printWidth": 80, "arrowParens": "avoid" }
+]

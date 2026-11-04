@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {type // name
+Model as Record, Other} from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+export {
+  // name
+  type Model as Record,
+  Other,
+} from "m";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export {
+  // name
+  type Model as Record,
+  Other,
+} from "m";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export {
+  // name
+  type Model as Record,
+  Other,
+} from "m"

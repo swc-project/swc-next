@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(veryLongIdentifierThatDoesNotFitOnOneLine) /* prettier-ignore */ ? second : third;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+(
+  veryLongIdentifierThatDoesNotFitOnOneLine) /* prettier-ignore */
+  ? second
+  : third;

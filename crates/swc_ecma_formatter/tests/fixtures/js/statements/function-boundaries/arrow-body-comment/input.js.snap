@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value =>
+/* body */
+{};
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  value,
+) => /* body */ {};
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(
+  value,
+) => /* body */ {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(value) => /* body */ {};

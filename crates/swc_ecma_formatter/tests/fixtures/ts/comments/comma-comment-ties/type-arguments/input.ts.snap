@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = Pair<First, /* a */ /* b */ // line
+Last>;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = Pair<
+  First /* a */ /* b */, // line
+  Last
+>;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = Pair<
+  First /* a */ /* b */, // line
+  Last
+>

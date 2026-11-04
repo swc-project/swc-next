@@ -1,0 +1,73 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+class Record { plain = 1; "quoted-key" = 2; constructor() {} method() {} get value() { return 3; } set value(next) {} #private = 4; #method() {} [computed]() {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class Record {
+  plain = 1;
+  "quoted-key" = 2;
+  constructor() {}
+  method() {}
+  get value() {
+    return 3;
+  }
+  set value(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+class Record {
+  plain = 1;
+  "quoted-key" = 2;
+  constructor() {}
+  method() {}
+  get value() {
+    return 3;
+  }
+  set value(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+class Record {
+  "plain" = 1;
+  "quoted-key" = 2;
+  "constructor"() {}
+  "method"() {}
+  get "value"() {
+    return 3;
+  }
+  set "value"(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+class Record {
+  'plain' = 1
+  'quoted-key' = 2
+  'constructor'() {}
+  'method'() {}
+  get 'value'() {
+    return 3
+  }
+  set 'value'(next) {}
+  #private = 4
+  #method() {}
+  [computed]() {}
+}

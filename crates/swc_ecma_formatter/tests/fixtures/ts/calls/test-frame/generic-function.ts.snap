@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test("does something really long and complicated so I have to write a very long name for the test", function<T>(done) {
+  console.log("hello!");
+});
+---------- Options ----------
+{}
+---------- Output ----------
+test("does something really long and complicated so I have to write a very long name for the test", function <T>(done) {
+  console.log("hello!");
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+test("does something really long and complicated so I have to write a very long name for the test", function <T>(done) {
+  console.log("hello!");
+});

@@ -1,0 +1,5 @@
+[first
+// before comma
+,
+
+second];

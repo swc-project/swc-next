@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Panel>{items?.map(value => <Cell value={value} />)!}</Panel>;
+---------- Options ----------
+{}
+---------- Output ----------
+const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const view = (
+  <Panel>
+    {items?.map((value) => (
+      <Cell value={value} />
+    ))!}
+  </Panel>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>

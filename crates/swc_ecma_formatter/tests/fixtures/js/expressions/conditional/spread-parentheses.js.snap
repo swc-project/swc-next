@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[...(firstLong ? secondLong : thirdLong)];
+---------- Options ----------
+{}
+---------- Output ----------
+[...(firstLong ? secondLong : thirdLong)];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[...(firstLong ? secondLong : thirdLong)]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  ...(firstLong
+    ? secondLong
+    : thirdLong),
+];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+[
+  ...(firstLong
+    ? secondLong
+    : thirdLong),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+[
+    ...(firstLong
+        ? secondLong
+        : thirdLong),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	...(firstLong
+		? secondLong
+		: thirdLong),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+[
+ ...(firstLong
+  ? secondLong
+  : thirdLong),
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[...(firstLong ? secondLong : thirdLong)];

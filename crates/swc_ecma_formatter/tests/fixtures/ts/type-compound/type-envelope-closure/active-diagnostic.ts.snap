@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Known = {};
+type T = (Known & (Known
+// @ts-ignore
+))[]; const bad: number = "x";
+---------- Options ----------
+{}
+---------- Output ----------
+type Known = {};
+type T = (Known &
+  (Known
+// @ts-ignore
+))[]; const bad: number = "x";

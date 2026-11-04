@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface First { value: string; }
+class Subject implements
+// @ts-ignore
+First, MissingFirst,
+MissingSecond {}
+const outsideSentinel: number = "outside";
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+interface First {
+  value: string;
+}
+class Subject implements
+// @ts-ignore
+First, MissingFirst,
+  MissingSecond {}
+const outsideSentinel: number = "outside";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+interface First {
+  value: string
+}
+class Subject implements
+// @ts-ignore
+First, MissingFirst,
+  MissingSecond {}
+const outsideSentinel: number =
+  "outside"
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+interface First {
+	value: string;
+}
+class Subject implements
+// @ts-ignore
+First, MissingFirst,
+	MissingSecond {}
+const outsideSentinel: number = "outside";

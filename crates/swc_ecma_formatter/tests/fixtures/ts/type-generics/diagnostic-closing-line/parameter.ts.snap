@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F<T,
+/* @ts-expect-error */ /* packet */
+> = MissingType;
+type Outside= OutsideMissing;
+---------- Options ----------
+{}
+---------- Output ----------
+type F<
+  T,
+  /* @ts-expect-error */ /* packet */
+> = MissingType;
+type Outside = OutsideMissing;
+
+---------- Options ----------
+{"printWidth":36,"semi":false}
+---------- Output ----------
+type F<
+  T,
+  /* @ts-expect-error */ /* packet */
+> = MissingType
+type Outside = OutsideMissing

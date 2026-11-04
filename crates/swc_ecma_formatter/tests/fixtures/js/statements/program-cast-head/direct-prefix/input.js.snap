@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-check
+// note
+/** @type {number} */
+("x") ? a : b;
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-check
+// note
+/** @type {number} */
+("x") ? a : b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-check
+// note
+;/** @type {number} */
+("x") ? a : b

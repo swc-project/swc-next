@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Box
+// attribute
+title="message" />;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  <Box
+    // attribute
+    title="message"
+  />
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view = (
+  <Box
+    // attribute
+    title="message"
+  />
+);

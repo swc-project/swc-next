@@ -1,0 +1,4 @@
+value => (
+// body
+{ value }
+);

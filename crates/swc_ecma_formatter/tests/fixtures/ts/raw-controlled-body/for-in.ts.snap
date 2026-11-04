@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (const k in obj) x = /* prettier-ignore */ y as ?;
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+for (const k in obj) x = /* prettier-ignore */ y as ?;
+b

@@ -1,0 +1,11 @@
+const remainder = (!(callee<Type>)) % suffix;
+const less = (!(callee<Type>)) < suffix;
+const greaterEqual = (!(callee<Type>)) >= suffix;
+const shift = (!(callee<Type>)) >> suffix;
+const unsignedShift = (!(callee<Type>)) >>> suffix;
+const leftShift = (!(callee<Type>)) << suffix;
+const nonNull = ((callee<Type>)!) + suffix;
+const asserted = ((callee<Type>) as Function) + suffix;
+const called = ((callee<Type>)()) + suffix;
+const ignoredTail = (factor * (/* prettier-ignore */callee  < Type >)) + suffix;
+const enclosedTail = (!(/* prettier-ignore */callee  < Type >)) + suffix;

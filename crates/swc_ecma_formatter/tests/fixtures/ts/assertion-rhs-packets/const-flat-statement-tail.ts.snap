@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+1 as const /* explanation */;
+---------- Options ----------
+{}
+---------- Output ----------
+1 as const; /* explanation */
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+1 as const; /* explanation */
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+1 as const /* explanation */

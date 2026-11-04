@@ -1,0 +1,1 @@
+Boolean(firstLongName || secondLongName || thirdLongName);

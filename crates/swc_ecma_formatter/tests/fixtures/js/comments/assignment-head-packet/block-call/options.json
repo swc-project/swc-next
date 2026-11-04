@@ -1,0 +1,12 @@
+[
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 10
+  },
+  {
+    "printWidth": 10,
+    "semi": false
+  }
+]

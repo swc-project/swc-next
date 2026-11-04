@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const [aaaa, bbbb, cccc]: [aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb] = props;
+---------- Options ----------
+{}
+---------- Output ----------
+const [aaaa, bbbb, cccc]: [
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+  bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+] = props;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const [aaaa, bbbb, cccc]: [
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+  bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+] = props;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const [aaaa, bbbb, cccc]: [
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+  bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+] = props
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const [aaaa, bbbb, cccc]: [
+	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+	bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+] = props;

@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(readonly /* readonly */ override /* override */ public /* public */ value: string, second: number) {} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    public /* public */ override /* override */ readonly /* readonly */ value: string,
+    second: number,
+  ) {}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    public /* public */ override /* override */ readonly /* readonly */ value: string,
+    second: number,
+  ) {}
+}

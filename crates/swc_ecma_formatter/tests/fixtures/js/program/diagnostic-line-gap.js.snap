@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+///﻿@ts-ignore
+// ordinary
+
+first + second + third;
+---------- Options ----------
+{}
+---------- Output ----------
+///﻿@ts-ignore
+// ordinary
+
+first + second + third;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+///﻿@ts-ignore
+// ordinary
+
+first + second + third;
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+///﻿@ts-ignore// ordinaryfirst + second + third;

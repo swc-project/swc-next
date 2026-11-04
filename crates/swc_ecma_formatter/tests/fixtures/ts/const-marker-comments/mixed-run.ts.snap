@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = 1 as /* head */ // tail
+const;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = 1 /* head */ as const; // tail
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const value =
+  1 /* head */ as const; // tail
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = 1 /* head */ as const // tail

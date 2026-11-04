@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch(1){case 1: // suffix
+{foo();}}
+---------- Options ----------
+{}
+---------- Output ----------
+switch (1) {
+  case 1: { // suffix
+    foo();
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+switch (1) {
+  case 1: { // suffix
+    foo()
+  }
+}
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+switch (1) {
+	case 1: { // suffix
+		foo();
+	}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+switch (
+  1
+) {
+  case 1: { // suffix
+    foo()
+  }
+}

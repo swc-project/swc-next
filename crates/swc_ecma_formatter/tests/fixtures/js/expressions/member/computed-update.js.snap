@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object[first + second]++;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object[
+  first + second
+]++;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+object[first + second]++;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+object[first + second]++;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+object[
+  first + second
+]++

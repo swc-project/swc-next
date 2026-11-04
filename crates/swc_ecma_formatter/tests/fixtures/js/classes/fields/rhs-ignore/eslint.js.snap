@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class RecordValue { value /* eslint-disable-next-line */   = /* prettier-ignore */ configuration . branch . value; other = { untouched :  2 }; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class RecordValue {
+  value /* eslint-disable-next-line */ =
+    /* prettier-ignore */ configuration . branch . value;
+  other = { untouched: 2 };
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class RecordValue {
+  value /* eslint-disable-next-line */ =
+    /* prettier-ignore */ configuration . branch . value
+  other = {
+    untouched: 2,
+  }
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class RecordValue {
+	value /* eslint-disable-next-line */ =
+		/* prettier-ignore */ configuration . branch . value;
+	other = {
+		untouched: 2,
+	};
+}

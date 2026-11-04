@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type OwnLine = /*c*/ |
+  /* head */
+  "value";
+---------- Options ----------
+{}
+---------- Output ----------
+type OwnLine = /*c*/ /* head */ "value";
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type OwnLine = /*c*/ /* head */ "value"
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type OwnLine =
+  /*c*/ /* head */
+  "value";

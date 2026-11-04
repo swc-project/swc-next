@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x=<div>{a}  {b}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = (
+  <div>
+    {a}{"  "}
+    {b}
+  </div>
+);

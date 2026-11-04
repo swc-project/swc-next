@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+a: 1 });
+({ a: veryLongVariableName+otherLongVariableName });
+veryLongAssignmentName = { a: 1, b: 2 };
+({ a: (b, c), [(a, b)]: c, ...a+b });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  a: 1,
+});
+({ a: veryLongVariableName + otherLongVariableName });
+veryLongAssignmentName = { a: 1, b: 2 };
+({ a: (b, c), [(a, b)]: c, ...(a + b) });
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+({
+  a: 1,
+});
+({
+  a:
+    veryLongVariableName +
+    otherLongVariableName,
+});
+veryLongAssignmentName = {
+  a: 1,
+  b: 2,
+};
+({
+  a: (b, c),
+  [(a, b)]: c,
+  ...(a + b),
+});
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  a: 1
+})
+;({
+  a:
+    veryLongVariableName +
+    otherLongVariableName
+})
+veryLongAssignmentName = {
+  a: 1,
+  b: 2
+}
+;({
+  a: (b, c),
+  [(a, b)]: c,
+  ...(a + b)
+})
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+({
+  a: 1,
+});
+({ a: veryLongVariableName + otherLongVariableName });
+veryLongAssignmentName = { a: 1, b: 2 };
+({ a: (b, c), [(a, b)]: c, ...(a + b) });

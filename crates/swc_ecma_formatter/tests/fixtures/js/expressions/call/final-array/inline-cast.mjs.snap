@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,[/**@type(number)*/ (1),2]);---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(first, [
+  /**@type(number)*/ (
+    1
+  ),
+  2,
+]);

@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+x as ?;
+// @ts-ignore
+missing;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// prettier-ignore
+x as ?;
+// @ts-ignore
+missing

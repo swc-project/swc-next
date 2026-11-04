@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = <div><span></span // tail
+><p /></div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const element = (
+  <div>
+    <span></span // tail
+    >
+    <p />
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const element = (
+  <div>
+    <span></span // tail
+    >
+    <p />
+  </div>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const element = (
+  <div>
+    <span></span // tail
+    >
+    <p />
+  </div>
+)

@@ -1,0 +1,3 @@
+if (condition);
+
+[receiver].call();

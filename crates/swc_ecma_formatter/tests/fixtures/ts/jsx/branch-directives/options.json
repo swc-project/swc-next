@@ -1,0 +1,13 @@
+[
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 35
+  },
+  {
+    "printWidth": 35,
+    "tabWidth": 4,
+    "useTabs": true
+  }
+]

@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = First | /* one packet */ // left tail
+Second;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T =
+  | First /* one packet */ // left tail
+  | Second;

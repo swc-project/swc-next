@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"use strict"; ;
+/** @type {number} */
+// prettier-ignore
+"custom";
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+"use strict"
+;;
+/** @type {number} */
+// prettier-ignore
+"custom"
+
+---------- Options ----------
+{}
+---------- Output ----------
+"use strict";
+;
+/** @type {number} */
+// prettier-ignore
+"custom";

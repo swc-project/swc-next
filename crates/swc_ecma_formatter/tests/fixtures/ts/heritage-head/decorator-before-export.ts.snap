@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@decorate(  1  )
+export class Name extends
+// prettier-ignore
+Base { value =  1 ; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+@decorate(  1  )
+export class Name extends
+// prettier-ignore
+Base { value =  1 ; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+@decorate(  1  )
+export class Name extends
+// prettier-ignore
+Base { value =  1 ; }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+@decorate(  1  )
+export class Name extends
+// prettier-ignore
+Base { value =  1 ; }

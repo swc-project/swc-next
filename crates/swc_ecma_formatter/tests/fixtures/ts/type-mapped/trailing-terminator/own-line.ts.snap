@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type X<T> = {
+  [K in keyof T]: T[K]
+  // trailing own-line comment
+};
+---------- Options ----------
+{}
+---------- Output ----------
+type X<T> = {
+  [K in keyof T]: T[K];
+  // trailing own-line comment
+};

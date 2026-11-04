@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Following { typed
+/* prettier-ignore */
+?: Box < number >; initialized
+/* prettier-ignore */
+? = { a:1,b:2 }; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Following {
+  typed
+  /* prettier-ignore */?: Box < number >;
+  initialized
+  /* prettier-ignore */? = { a:1,b:2 };
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class Following {
+  typed
+  /* prettier-ignore */?: Box < number >
+  initialized
+  /* prettier-ignore */? =
+    { a:1,b:2 }
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class Following {
+	typed
+	/* prettier-ignore */?: Box < number >;
+	initialized
+	/* prettier-ignore */? =
+		{ a:1,b:2 };
+}

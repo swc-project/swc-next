@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export function useThing({ enabled, onChange }: { enabled?: boolean; onChange?: (value: string) => void; label: string } = {}) {}
+---------- Options ----------
+{}
+---------- Output ----------
+export function useThing({
+  enabled,
+  onChange,
+}: {
+  enabled?: boolean;
+  onChange?: (value: string) => void;
+  label: string;
+} = {}) {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+export function useThing({
+  enabled,
+  onChange,
+}: {
+  enabled?: boolean;
+  onChange?: (value: string) => void;
+  label: string;
+} = {}) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+export function useThing({
+  enabled,
+  onChange,
+}: {
+  enabled?: boolean
+  onChange?: (value: string) => void
+  label: string
+} = {}) {}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+export function useThing({
+	enabled,
+	onChange,
+}: {
+	enabled?: boolean;
+	onChange?: (value: string) => void;
+	label: string;
+} = {}) {}

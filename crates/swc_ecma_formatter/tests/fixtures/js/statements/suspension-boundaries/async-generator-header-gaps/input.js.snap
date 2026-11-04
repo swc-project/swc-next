@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async /* @ts-expect-error */ function /* before-star */ * /* after-star */ f() { yield missing(); }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing(); }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing() }
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing(); }

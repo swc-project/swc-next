@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+"use\x20strict";
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict"
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict"
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+// prettier-ignore"use\x20strict";
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// prettier-ignore
+"use\x20strict";

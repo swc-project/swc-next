@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A {
+  static // c
+  async f() {}
+  static // d
+  accessor x = 1;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+class A {
+  static // c
+  async f() {}
+  static // d
+  accessor x = 1;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class A {
+  static // c
+  async f() {}
+  static // d
+  accessor x = 1
+}

@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { await /*#__PURE__*/ using /** @type {Resource} */ resource = create(); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  await using /*#__PURE__*/ /** @type {Resource} */ resource = create();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  await using /*#__PURE__*/ /** @type {Resource} */ resource =
+      create();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  await using /*#__PURE__*/ /** @type {Resource} */ resource =
+      create()
+}

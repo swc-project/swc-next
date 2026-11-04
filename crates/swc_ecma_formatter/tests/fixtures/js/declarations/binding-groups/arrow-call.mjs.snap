@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+foo(({ a: { b: { c, d } } }) => a);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+foo(
+  ({
+    a: {
+      b: { c, d },
+    },
+  }) => a,
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+foo(
+  ({
+    a: {
+      b: { c, d },
+    },
+  }) => a,
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+foo(
+  ({
+    a: {
+      b: {c, d}
+    }
+  }) => a
+)

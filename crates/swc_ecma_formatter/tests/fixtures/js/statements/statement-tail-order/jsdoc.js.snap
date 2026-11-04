@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {string} */
+let value = 1;
+(a // tail
+) /* next */
+b;
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {string} */
+let value = 1;
+a; // tail
+/* next */
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @type {string} */
+let value = 1
+a // tail
+/* next */
+b

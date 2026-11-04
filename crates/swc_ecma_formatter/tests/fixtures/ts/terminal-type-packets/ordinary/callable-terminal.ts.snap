@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = (a: A, b: B // @ts-ignore
+, /* d */ ) => C;
+---------- Options ----------
+{}
+---------- Output ----------
+type F = (
+  a: A,
+  b: B // @ts-ignore
+  /* d */) => C;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type F = (
+  a: A,
+  b: B // @ts-ignore
+  /* d */) => C;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type F = (
+  a: A,
+  b: B // @ts-ignore
+  /* d */) => C

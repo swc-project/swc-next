@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first === second != third == fourth !== fifth;
+---------- Options ----------
+{}
+---------- Output ----------
+(((first === second) != third) == fourth) !== fifth;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(((first === second) != third) == fourth) !== fifth
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(((first ===
+  second) !=
+  third) ==
+  fourth) !==
+  fifth;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+(((first ===
+  second) !=
+  third) ==
+  fourth) !==
+  fifth;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(((first ===
+	second) !=
+	third) ==
+	fourth) !==
+	fifth;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(((first === second) != third) == fourth) !== fifth;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+(((first === second) != third) == fourth) !== fifth;

@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const choose = () => { console.log("unexpected"); return "unused"; }; const task = import((/* #__PURE__ */ choose(), "m"));
+---------- Options ----------
+{}
+---------- Output ----------
+const choose = () => {
+  console.log("unexpected");
+  return "unused";
+};
+const task = import((/* #__PURE__ */ choose(), "m"));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const choose =
+  () => {
+    console.log(
+      "unexpected",
+    );
+    return "unused";
+  };
+const task = import(
+  (/* #__PURE__ */ choose(),
+    "m"
+  )
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+const choose =
+  () => {
+    console.log(
+      'unexpected',
+    )
+    return 'unused'
+  }
+const task = import(
+  (/* #__PURE__ */ choose(),
+    'm'
+  )
+)

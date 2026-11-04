@@ -1,0 +1,17 @@
+[
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 20
+  },
+  {
+    "jsxSingleQuote": true
+  },
+  {
+    "endOfLine": "crlf"
+  },
+  {
+    "endOfLine": "cr"
+  }
+]

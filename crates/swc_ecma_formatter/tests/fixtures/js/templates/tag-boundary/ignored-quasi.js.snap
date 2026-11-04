@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume(tag /* prettier-ignore */ `first ${left+  right} last`);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+consume(tag /* prettier-ignore */ `first ${left+  right} last`);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+consume(
+  tag /* prettier-ignore */ `first ${left+  right} last`,
+)
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+---------- Output ----------
+consume(
+	tag /* prettier-ignore */ `first ${left+  right} last`,
+);

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* receiver */ (this);
+---------- Options ----------
+{}
+---------- Output ----------
+/* receiver */ this;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/* receiver */ this
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/* receiver */ this;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+/* receiver */ this
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/* receiver */ this;

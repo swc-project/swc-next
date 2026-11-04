@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let first = 1, /* a */ /* b */ // line
+last = 2;
+---------- Options ----------
+{}
+---------- Output ----------
+let first = 1 /* a */ /* b */, // line
+  last = 2;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let first = 1 /* a */ /* b */, // line
+  last = 2

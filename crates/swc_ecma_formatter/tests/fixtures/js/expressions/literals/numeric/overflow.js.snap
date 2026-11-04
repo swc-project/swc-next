@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+1e309;
+---------- Options ----------
+{}
+---------- Output ----------
+1e309;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+1e309;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+1e309;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+1e309

@@ -1,0 +1,2 @@
+object[// prettier-ignore
+key];

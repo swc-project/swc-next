@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(a=1+2, /* prettier-ignore */ b=3+4) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(a = 1 + 2, /* prettier-ignore */ b=3+4) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  a = 1 + 2,
+  /* prettier-ignore */ b=3+4,
+) {}
+
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+function f(
+  a = 1 +
+    2,
+  /* prettier-ignore */ b=3+4,
+) {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function f(
+  a = 1 + 2,
+  /* prettier-ignore */ b=3+4
+) {}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function f(
+	a = 1 + 2,
+	/* prettier-ignore */ b=3+4,
+) {}

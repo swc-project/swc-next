@@ -1,0 +1,65 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Result<T extends /* constraint */ {
+value: Value; extra: Extra
+} /* before default */ = /* default */ {
+value: Value; extra: Extra
+}> = T;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Result<
+  T extends /* constraint */ {
+    value: Value;
+    extra: Extra;
+  } /* before default */ = /* default */ {
+    value: Value;
+    extra: Extra;
+  },
+> = T;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type Result<
+  T extends /* constraint */ {
+    value: Value;
+    extra: Extra;
+  } /* before default */ =
+    /* default */ {
+      value: Value;
+      extra: Extra;
+    },
+> = T;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Result<
+  T extends
+    /* constraint */ {
+      value: Value;
+      extra: Extra;
+    } /* before default */ =
+    /* default */ {
+      value: Value;
+      extra: Extra;
+    },
+> = T;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Result<
+	T extends
+		/* constraint */ {
+			value: Value;
+			extra: Extra;
+		} /* before default */ =
+		/* default */ {
+			value: Value;
+			extra: Extra;
+		}
+> = T;

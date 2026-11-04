@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  return (
+    // line
+    first
+  )--;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (
+    // line
+    first--
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    // line
+    first--
+  )
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+function f() {
+  return (
+    // line
+    first--
+  );
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function f() {
+	return (
+		// line
+		first--
+	);
+}

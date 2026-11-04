@@ -1,0 +1,87 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+/* @ts-expect-error */
+,
+];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  /* @ts-expect-error */
+  ,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* @ts-expect-error */
+	,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  /* @ts-expect-error */
+  ,
+];

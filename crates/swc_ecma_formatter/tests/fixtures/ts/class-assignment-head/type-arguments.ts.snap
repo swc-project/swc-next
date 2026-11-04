@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+registry.Implementation = class extends runtime.namespace.BaseConstructor<Input> implements Receiver<Input>, Sender<Output> {};
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+registry.Implementation = class
+  extends runtime.namespace.BaseConstructor<Input>
+  implements Receiver<Input>, Sender<Output> {};
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+registry.Implementation = class
+  extends runtime.namespace.BaseConstructor<Input>
+  implements Receiver<Input>, Sender<Output> {};
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+registry.Implementation = class
+  extends runtime.namespace.BaseConstructor<Input>
+  implements Receiver<Input>, Sender<Output> {}
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+registry.Implementation = class
+	extends (
+		runtime.namespace.BaseConstructor
+	)<Input>
+	implements Receiver<Input>, Sender<Output> {};

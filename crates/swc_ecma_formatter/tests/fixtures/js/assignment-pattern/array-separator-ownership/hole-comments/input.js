@@ -1,0 +1,1 @@
+[first, /* slot */, last] = value;

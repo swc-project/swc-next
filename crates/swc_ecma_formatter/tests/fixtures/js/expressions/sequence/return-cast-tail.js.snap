@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function get() { return (/** @type {number} */ (first), second /* tail */); }
+---------- Options ----------
+{}
+---------- Output ----------
+function get() {
+  return (/** @type {number} */ (first), second /* tail */);
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function get() {
+  return (/** @type {number} */ (first), second /* tail */)
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function get() {
+  return (
+    /** @type {number} */ (
+      first
+    ),
+    second /* tail */
+  );
+}
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+function get() {
+  return (
+    /** @type {number} */ (
+      first
+    ),
+    second /* tail */
+  );
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+function get() {
+    return (
+        /** @type {number} */ (
+            first
+        ),
+        second /* tail */
+    );
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function get() {
+	return (
+		/** @type {number} */ (
+			first
+		),
+		second /* tail */
+	);
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+function get() {
+ return (
+  /** @type {number} */ (
+   first
+  ),
+  second /* tail */
+ );
+}
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+function get() {
+  return (/** @type {number} */ (first), second /* tail */);
+}

@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Collection<in /* @ts-expect-error */ const T extends string =
+number> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Collection<
+  in /* @ts-expect-error */ const T extends string =
+    number,> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Collection<
+  in /* @ts-expect-error */ const T extends string =
+    number,> {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class Collection<
+  in /* @ts-expect-error */ const T extends string =
+    number> {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class Collection<
+  in /* @ts-expect-error */ const T extends string =
+    number,> {}

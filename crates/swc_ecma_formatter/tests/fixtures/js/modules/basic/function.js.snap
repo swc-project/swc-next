@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export function create(value=1+2){return value;}
+---------- Options ----------
+{}
+---------- Output ----------
+export function create(value = 1 + 2) {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export function create(
+  value = 1 + 2,
+) {
+  return value;
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export function create(
+  value = 1 + 2,
+) {
+  return value
+}

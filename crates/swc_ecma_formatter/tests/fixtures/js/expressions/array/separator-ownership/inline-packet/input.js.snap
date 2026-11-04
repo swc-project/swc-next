@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first /* before */ , /* after */ // line
+, last];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first /* before */,
+  /* after */ // line
+  ,
+  last,
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+[
+  first /* before */,
+  /* after */ // line
+  ,
+  last
+];

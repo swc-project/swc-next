@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class DefiniteComments { value /* key marker */ ! /* marker colon */ : /* type head */ number; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class DefiniteComments {
+  value /* key marker */! /* marker colon */: /* type head */ number;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class DefiniteComments {
+  value /* key marker */! /* marker colon */: /* type head */ number
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class DefiniteComments {
+	value /* key marker */! /* marker colon */: /* type head */ number;
+}

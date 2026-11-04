@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A // name
+<T /* parameter */> extends B {}
+---------- Options ----------
+{}
+---------- Output ----------
+class A // name
+<T /* parameter */> extends B {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class A // name
+<
+  T /* parameter */,
+> extends B {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"useTabs":true}
+---------- Output ----------
+class A // name
+<
+	T /* parameter */,
+> extends B {}

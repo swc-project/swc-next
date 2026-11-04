@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Box<const T extends string | number = number> { method(value: T): T { return value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Box<const T extends string | number = number> {
+  method(value: T): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Box<
+  const T extends
+    | string
+    | number =
+    number,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class Box<
+  const T extends
+    | string
+    | number =
+    number
+> {
+  method(
+    value: T
+  ): T {
+    return value
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class Box<
+  const T extends
+    | string
+    | number =
+    number,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}

@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first, second), /* after */ (third, fourth);
+---------- Options ----------
+{}
+---------- Output ----------
+((first, second), /* after */ (third, fourth));
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;((first, second), /* after */ (third, fourth))
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+((first, second),
+  /* after */ (third,
+  fourth));

@@ -1,0 +1,94 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[// head
+1,2,3,4];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  // head
+  1, 2, 3, 4,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  // head
+  1, 2, 3, 4,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  // head
+  1, 2, 3, 4,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  // head
+  1, 2, 3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  // head
+  1,
+  2,
+  3,
+  4,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  // head
+  1, 2, 3, 4,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  // head
+  1, 2, 3,
+  4
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  // head
+  1, 2, 3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	// head
+	1,
+	2, 3,
+	4,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  // head
+  1, 2, 3,
+  4,
+];

@@ -1,0 +1,2 @@
+foo  .  bar?. /* prettier-ignore */
+();

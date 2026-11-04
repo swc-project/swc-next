@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+const value0=<MissingPanel>{coveredFirst}{// @ts-expect-error
+coveredSecond}</MissingPanel>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-expect-error
+const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
+        coveredSecond}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+// @ts-expect-error
+const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
+        coveredSecond}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+// @ts-expect-error
+const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
+      coveredSecond}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
+				coveredSecond}</MissingPanel>)
+
+---------- Options ----------
+{"printWidth":100,"trailingComma":"none"}
+---------- Output ----------
+// @ts-expect-error
+const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
+      coveredSecond}</MissingPanel>);

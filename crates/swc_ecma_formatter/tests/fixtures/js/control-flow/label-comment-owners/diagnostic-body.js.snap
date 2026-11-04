@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer: // @ts-ignore
+unknown(  value );
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer: // @ts-ignore
+unknown(value);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer: // @ts-ignore
+unknown(value);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer: // @ts-ignore
+unknown(value)

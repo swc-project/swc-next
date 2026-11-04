@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = A & ((
+// prettier-ignore
+{ raw  :  1 } | B) & C);
+---------- Options ----------
+{}
+---------- Output ----------
+type T = A &
+  ((
+    // prettier-ignore
+    { raw  :  1 } | B
+  ) &
+    C);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T = A &
+  ((
+    // prettier-ignore
+    { raw  :  1 } | B
+  ) &
+    C);
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+type T = A &
+  ((
+    // prettier-ignore
+    { raw  :  1 } | B
+  ) &
+    C)

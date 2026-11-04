@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* prefix */ function* /* prettier-ignore */ alpha(): void;
+---------- Options ----------
+{}
+---------- Output ----------
+declare /* prefix */ function* /* prettier-ignore */ alpha(): void;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare /* prefix */ function* /* prettier-ignore */ alpha(): void;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare /* prefix */ function* /* prettier-ignore */ alpha(): void

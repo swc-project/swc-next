@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ k: // h
+/* b */ value });
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  // h
+  k: /* b */ value,
+});

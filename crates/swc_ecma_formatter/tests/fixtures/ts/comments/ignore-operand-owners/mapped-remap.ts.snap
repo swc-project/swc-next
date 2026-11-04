@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [\u004b in "a"|"b" as // prettier-ignore
+`x${K}`]: number };---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type M = {
+  [
+    K in "a"|"b" as // prettier-ignore
+`x${K}`
+  ]: number;
+};
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+type M = {
+  [
+    K in "a"|"b" as // prettier-ignore
+`x${K}`
+  ]: number
+}

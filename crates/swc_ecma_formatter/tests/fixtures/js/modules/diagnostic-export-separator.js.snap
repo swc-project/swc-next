@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export { /* @ts-ignore */ a
+, /* x */ // y
+
+ t };
+---------- Options ----------
+{}
+---------- Output ----------
+export {
+  /* @ts-ignore */ a
+  , /* x */ // y
+
+  t,
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export {
+  /* @ts-ignore */ a
+  , /* x */ // y
+
+  t,
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export {
+  /* @ts-ignore */ a
+  , /* x */ // y
+
+  t,
+}

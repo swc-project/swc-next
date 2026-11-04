@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const Subject = class extends Base<number> implements
+/* head */
+First<number> {};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const Subject = class
+  extends Base<number>
+  /* head */
+  implements First<number> {};
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const Subject = class
+  extends Base<number>
+  /* head */
+  implements
+    First<number> {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+const Subject = class
+	extends Base<number>
+	/* head */
+	implements First<number> {};

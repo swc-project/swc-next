@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = `a${
+First | Second | Third
+}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = `a${First | Second | Third}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+type T = `a${
+  | First
+  | Second
+  | Third}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+type T = `a${First | Second | Third}`;

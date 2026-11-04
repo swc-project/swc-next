@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? first ?? second ? next : fallback : last;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? ((first ?? second) ? next : fallback) : last;
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+condition
+  ? (first ?? second)
+    ? next
+    : fallback
+  : last;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? ((first ?? second) ? next : fallback) : last
+

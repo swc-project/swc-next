@@ -1,0 +1,1 @@
+const select = async <T extends { value: number }>(value: T): Promise<T> => value;

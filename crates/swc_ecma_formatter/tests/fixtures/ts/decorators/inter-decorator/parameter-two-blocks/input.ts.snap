@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {m(@a /* a */ /* b */ @b x: number) {}}---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  m(
+    @a
+    /* a */ /* b */ @b
+    x: number,
+  ) {}
+}

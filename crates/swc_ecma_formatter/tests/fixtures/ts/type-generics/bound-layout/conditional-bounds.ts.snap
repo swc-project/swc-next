@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare function select<T extends (Source extends Target ? Left : Right) = Source extends Target ? Left : Right>(): T;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare function select<
+  T extends (Source extends Target ? Left : Right) = Source extends Target
+    ? Left
+    : Right,
+>(): T;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare function select<
+  T extends (Source extends Target
+    ? Left
+    : Right) = Source extends Target
+    ? Left
+    : Right,
+>(): T;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare function select<
+  T extends
+    (Source extends Target
+      ? Left
+      : Right) =
+    Source extends Target
+      ? Left
+      : Right,
+>(): T;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+declare function select<
+	T extends
+		(Source extends Target
+			? Left
+			: Right) =
+		Source extends Target
+			? Left
+			: Right
+>(): T;

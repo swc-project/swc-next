@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = left as (/* outer */ & /* inner */
+A & B);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value = left as /* outer */ /* inner */ A & B;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const value =
+  left as /* outer */ /* inner */
+  A & B;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":24,"semi":false,"useTabs":true}
+---------- Output ----------
+const value =
+	left as /* outer */ /* inner */
+	A & B

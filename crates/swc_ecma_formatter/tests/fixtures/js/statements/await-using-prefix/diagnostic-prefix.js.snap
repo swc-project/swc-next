@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() {
+// @ts-ignore
+await /* first */ using /* second */ resource = acquire();
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire()
+}

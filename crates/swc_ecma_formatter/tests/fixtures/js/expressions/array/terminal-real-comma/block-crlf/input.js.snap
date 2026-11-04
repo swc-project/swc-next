@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first
+/* @ts-expect-error */
+,
+];---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+[
+  first
+  /* @ts-expect-error */
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[
+  first,
+  /* @ts-expect-error */
+];

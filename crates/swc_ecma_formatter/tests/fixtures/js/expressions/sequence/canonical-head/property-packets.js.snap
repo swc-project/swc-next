@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/* ordinary */
+: /* after */ (0, unknown) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  key:
+    /* ordinary */
+    /* after */ (0, unknown),
+});
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;({
+  key:
+    /* ordinary */
+    /* after */ (0, unknown),
+})
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key:
+    /* ordinary */
+    /* after */ (0,
+    unknown),
+});

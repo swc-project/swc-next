@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? /*#__PURE__*/ effect()
+/* comment */ : <Item />;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? /*#__PURE__*/ effect() : /* comment */ <Item />;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+condition ? /*#__PURE__*/ effect() : (
+  /* comment */ <Item />
+);

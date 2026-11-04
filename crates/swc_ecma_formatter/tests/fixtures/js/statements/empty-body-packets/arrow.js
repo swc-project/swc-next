@@ -1,0 +1,4 @@
+const f = () => { // first
+
+/* second */
+};

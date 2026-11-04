@@ -1,0 +1,4 @@
+target = // @ts-ignore
+(
+first
+);

@@ -1,0 +1,66 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {#m(a=1+2
+/* prettier-ignore */
+){return 3+4;}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  #m(
+    a = 1 + 2
+/* prettier-ignore */
+  ) {return 3+4;}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  #m(
+    a = 1 + 2
+/* prettier-ignore */
+  ) {return 3+4;}
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  #m(
+    a = 1 + 2
+/* prettier-ignore */
+  ) {return 3+4;}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  #m(
+    a = 1 + 2
+/* prettier-ignore */
+  ) {return 3+4;}
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	#m(
+		a = 1 + 2
+/* prettier-ignore */
+	) {return 3+4;}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  #m(
+    a = 1 + 2
+/* prettier-ignore */
+  ) {return 3+4;}
+}

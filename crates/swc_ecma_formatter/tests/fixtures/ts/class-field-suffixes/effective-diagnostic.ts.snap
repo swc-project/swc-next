@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Directive {
+// @ts-expect-error
+value: number = "wrong";
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Directive {
+  // @ts-expect-error
+  value: number = "wrong";
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class Directive {
+  // @ts-expect-error
+  value: number = "wrong"
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class Directive {
+	// @ts-expect-error
+	value: number = "wrong";
+}

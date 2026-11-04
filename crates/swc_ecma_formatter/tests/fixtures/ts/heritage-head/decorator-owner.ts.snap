@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default @dec(  1 , 2  ) class Name<T> extends Base<T>
+// prettier-ignore
+implements Other<T> { value =  1 ; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+export default @dec(  1 , 2  ) class Name<T> extends Base<T>
+// prettier-ignore
+implements Other<T> { value =  1 ; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export default @dec(  1 , 2  ) class Name<T> extends Base<T>
+// prettier-ignore
+implements Other<T> { value =  1 ; }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+export default @dec(  1 , 2  ) class Name<T> extends Base<T>
+// prettier-ignore
+implements Other<T> { value =  1 ; }

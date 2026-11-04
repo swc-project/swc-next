@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const read = () => ((// member
+1, 2), 3);
+read();
+---------- Options ----------
+{}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+);
+read();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+)
+read()
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+);
+read();

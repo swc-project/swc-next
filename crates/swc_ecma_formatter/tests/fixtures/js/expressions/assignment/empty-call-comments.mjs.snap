@@ -1,0 +1,158 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = source.create(
+  /* empty frame (with punctuation) remains part of this call */
+).value;
+
+result = source.invoke?.(
+  // The empty optional frame retains its own comment packet.
+);
+
+result = invoke(
+  /* A value-bearing frame retains its ordinary argument layout. */
+  value
+);
+---------- Options ----------
+{}
+---------- Output ----------
+result =
+  source.create(/* empty frame (with punctuation) remains part of this call */)
+    .value;
+
+result =
+  source.invoke?.(
+    // The empty optional frame retains its own comment packet.
+  );
+
+result = invoke(
+  /* A value-bearing frame retains its ordinary argument layout. */
+  value,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+result =
+  source.create(/* empty frame (with punctuation) remains part of this call */)
+    .value
+
+result =
+  source.invoke?.(
+    // The empty optional frame retains its own comment packet.
+  )
+
+result = invoke(
+  /* A value-bearing frame retains its ordinary argument layout. */
+  value,
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  source.create(
+    /* empty frame (with punctuation) remains part of this call */
+  ).value;
+
+result =
+  source.invoke?.(
+    // The empty optional frame retains its own comment packet.
+  );
+
+result = invoke(
+  /* A value-bearing frame retains its ordinary argument layout. */
+  value,
+);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+result =
+  source.create(
+    /* empty frame (with punctuation) remains part of this call */
+  )
+    .value;
+
+result =
+  source.invoke?.(
+    // The empty optional frame retains its own comment packet.
+  );
+
+result =
+  invoke(
+    /* A value-bearing frame retains its ordinary argument layout. */
+    value,
+  );
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+result =
+    source.create(
+        /* empty frame (with punctuation) remains part of this call */
+    ).value;
+
+result =
+    source.invoke?.(
+        // The empty optional frame retains its own comment packet.
+    );
+
+result = invoke(
+    /* A value-bearing frame retains its ordinary argument layout. */
+    value,
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+result =
+	source.create(
+		/* empty frame (with punctuation) remains part of this call */
+	).value;
+
+result =
+	source.invoke?.(
+		// The empty optional frame retains its own comment packet.
+	);
+
+result = invoke(
+	/* A value-bearing frame retains its ordinary argument layout. */
+	value,
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+result =
+ source.create(
+  /* empty frame (with punctuation) remains part of this call */
+ ).value;
+
+result =
+ source.invoke?.(
+  // The empty optional frame retains its own comment packet.
+ );
+
+result = invoke(
+ /* A value-bearing frame retains its ordinary argument layout. */
+ value,
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+result =
+  source.create(/* empty frame (with punctuation) remains part of this call */)
+    .value;
+
+result =
+  source.invoke?.(
+    // The empty optional frame retains its own comment packet.
+  );
+
+result = invoke(
+  /* A value-bearing frame retains its ordinary argument layout. */
+  value,
+);

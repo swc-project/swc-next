@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call((/* head */
+first,
+/* next */
+last));
+---------- Options ----------
+{}
+---------- Output ----------
+call(
+  /* head */
+  (first,
+  /* next */
+  last),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+call(
+  /* head */
+  (first,
+  /* next */
+  last),
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+call(
+  /* head */
+  (first,
+  /* next */
+  last),
+);

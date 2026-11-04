@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+result = (
+/** @type {number} */
+left, right).property;
+---------- Options ----------
+{}
+---------- Output ----------
+result = /** @type {number} */ (left, right).property;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+result = /** @type {number} */ (left, right).property
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  /** @type {number} */
+  (left, right)
+    .property;

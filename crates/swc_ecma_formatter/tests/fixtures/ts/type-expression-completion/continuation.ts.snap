@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value as Type
++ next;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(value as Type) + next

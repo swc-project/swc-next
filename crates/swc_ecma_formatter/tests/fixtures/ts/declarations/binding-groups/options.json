@@ -1,0 +1,14 @@
+[
+  {
+    "printWidth": 40
+  },
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 40,
+    "semi": false,
+    "bracketSpacing": false,
+    "trailingComma": "none"
+  }
+]

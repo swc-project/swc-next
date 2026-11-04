@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export function evaluate(first: string): void {
+  for ((first in
+    // @ts-expect-error
+    missingRhs /* tail */); missingCondition; missingUpdate) {}
+  const outsideSentinel: number = "outside";
+}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export function evaluate(
+  first: string,
+): void {
+  for (
+    (first in
+      // @ts-expect-error
+      missingRhs) /* tail */; missingCondition; missingUpdate) {}
+  const outsideSentinel: number =
+    "outside";
+}

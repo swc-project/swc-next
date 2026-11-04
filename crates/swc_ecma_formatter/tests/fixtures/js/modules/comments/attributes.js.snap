@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import value from "module" with {"mode": /* prettier-ignore */
+'strict'};
+---------- Options ----------
+{}
+---------- Output ----------
+import value from "module" with { mode: /* prettier-ignore */ 'strict' };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import value from "module" with {
+  mode: /* prettier-ignore */ 'strict',
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+import value from 'module' with {
+  mode: /* prettier-ignore */ 'strict',
+}

@@ -1,0 +1,95 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+subscribe(() => { /* body */ work(); }, [firstDependency, secondDependency]);
+subscribe(ref, () => { work(); }, [firstDependency, secondDependency]);
+subscribe((() => { work(); }), ([firstDependency, secondDependency]));
+subscribe((value) => { work(value); }, [firstDependency, secondDependency]);
+subscribe(() => value, [firstDependency, secondDependency]);
+subscribe(object.ref, () => { work(); }, [firstDependency, secondDependency]);
+subscribe(() => { work(); }, /* boundary */ [firstDependency, secondDependency]);
+subscribe((() => { work(); }) /* callback tail */, [firstDependency, secondDependency]);
+---------- Options ----------
+{}
+---------- Output ----------
+subscribe(() => {
+  /* body */ work();
+}, [firstDependency, secondDependency]);
+subscribe(ref, () => {
+  work();
+}, [firstDependency, secondDependency]);
+subscribe(() => {
+  work();
+}, [firstDependency, secondDependency]);
+subscribe(
+  (value) => {
+    work(value);
+  },
+  [firstDependency, secondDependency],
+);
+subscribe(() => value, [firstDependency, secondDependency]);
+subscribe(
+  object.ref,
+  () => {
+    work();
+  },
+  [firstDependency, secondDependency],
+);
+subscribe(
+  () => {
+    work();
+  },
+  /* boundary */ [firstDependency, secondDependency],
+);
+subscribe(
+  () => {
+    work();
+  } /* callback tail */,
+  [firstDependency, secondDependency],
+);
+
+---------- Options ----------
+{"printWidth":40,"trailingComma":"none"}
+---------- Output ----------
+subscribe(() => {
+  /* body */ work();
+}, [firstDependency, secondDependency]);
+subscribe(ref, () => {
+  work();
+}, [firstDependency, secondDependency]);
+subscribe(() => {
+  work();
+}, [firstDependency, secondDependency]);
+subscribe(
+  (value) => {
+    work(value);
+  },
+  [firstDependency, secondDependency]
+);
+subscribe(
+  () => value,
+  [firstDependency, secondDependency]
+);
+subscribe(
+  object.ref,
+  () => {
+    work();
+  },
+  [firstDependency, secondDependency]
+);
+subscribe(
+  () => {
+    work();
+  },
+  /* boundary */ [
+    firstDependency,
+    secondDependency
+  ]
+);
+subscribe(
+  () => {
+    work();
+  } /* callback tail */,
+  [firstDependency, secondDependency]
+);

@@ -1,0 +1,496 @@
+//! Immutable source-line coverage for diagnostic directives.
+
+use swc_next_ecma_ast::{Comment, CommentKind, Span};
+
+use super::Formatter;
+use super::source::is_source_whitespace;
+use crate::{FormatError, document::Writer};
+
+pub(super) struct DiagnosticLines {
+    lines: Vec<DiagnosticLine>,
+    directive_ends: Vec<u32>,
+    document_closing: Option<u32>,
+}
+
+struct DiagnosticLine {
+    span: Span,
+    sensitive_start: u32,
+    directive_end: u32,
+    terminal_suffix_start: u32,
+    opening_tokens: Option<Span>,
+}
+
+/// Final source punctuation either stays put or moves with its prepared statement envelope.
+#[derive(Clone, Copy)]
+pub(super) enum TerminalCloseOwner {
+    Source,
+    Statement { original: u32, actual: u32 },
+}
+
+/// Original list punctuation and its immutable covered-source frontier.
+#[derive(Clone, Copy)]
+pub(super) struct TerminalCloseBoundary {
+    close: u32,
+    last_end: Option<u32>,
+    release: bool,
+}
+
+/// One immutable physical directive and its covered source-code interval.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) struct DiagnosticCoverage {
+    directive_end: u32,
+    span: Span,
+}
+
+impl DiagnosticCoverage {
+    pub(super) fn contains(self, span: Span) -> bool {
+        self.span.start <= span.start && span.end <= self.span.end
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum LineConstraint {
+    Unconstrained,
+    SameLine,
+    NewLine(u8),
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum FlatSeparator {
+    Empty,
+    Space,
+}
+
+impl LineConstraint {
+    pub(super) fn write<'a>(
+        self,
+        writer: &mut Writer<'a>,
+        flat: FlatSeparator,
+        default: impl FnOnce(&mut Writer<'a>),
+    ) {
+        match self {
+            Self::Unconstrained => default(writer),
+            Self::SameLine => {
+                if matches!(flat, FlatSeparator::Space) {
+                    writer.space();
+                }
+            }
+            Self::NewLine(count) => {
+                writer.hard_line();
+                if count == 2 {
+                    writer.hard_line();
+                }
+            }
+        }
+    }
+}
+
+impl DiagnosticLines {
+    pub(super) fn new(source: &str, comments: &[Comment]) -> Self {
+        // Keep the immutable raw identity. Only an explicitly removed complete
+        // statement envelope may transfer it to its selected actual closer.
+        let document_closing = source
+            .trim_end_matches(|character| is_source_whitespace(character) || character == ';')
+            .char_indices()
+            .next_back()
+            .filter(|&(_, character)| matches!(character, ')' | ']' | '}'))
+            .map(|(position, _)| position as u32);
+        let directive_ends = comments
+            .iter()
+            .filter(|&&comment| is_diagnostic_directive(source, comment))
+            .map(|comment| comment.span.end)
+            .collect::<Vec<_>>();
+        let mut lines = Vec::new();
+        if directive_ends.is_empty() {
+            return Self {
+                lines,
+                directive_ends,
+                document_closing,
+            };
+        }
+        let mut directives = directive_ends.iter().copied().peekable();
+        let mut boundaries = source
+            .match_indices(['\n', '\r', '\u{2028}', '\u{2029}'])
+            .peekable();
+        let mut start = 0;
+        let mut covered = None;
+        let mut comment_index = 0;
+        loop {
+            let (end, next_start) = match boundaries.next() {
+                Some((end, terminator)) => {
+                    let mut next = end + terminator.len();
+                    if terminator == "\r" && boundaries.peek() == Some(&(next, "\n")) {
+                        boundaries.next();
+                        next += 1;
+                    }
+                    (end, next)
+                }
+                None => (source.len(), source.len()),
+            };
+            let mut directive_end = None;
+            while let Some(comment_end) =
+                directives.next_if(|&comment_end| comment_end as usize <= end)
+            {
+                directive_end.get_or_insert(comment_end);
+            }
+            let sensitive = match (covered, directive_end) {
+                (Some(owner), _) => Some((start as u32, owner)),
+                (None, Some(owner)) => Some((owner, owner)),
+                (None, None) => None,
+            };
+            if let Some((sensitive_start, directive_end)) = sensitive {
+                let (terminal_suffix_start, opening_tokens) = covered_line_tokens(
+                    source,
+                    comments,
+                    &mut comment_index,
+                    start,
+                    end,
+                    sensitive_start,
+                );
+                lines.push(DiagnosticLine {
+                    span: Span::new(start as u32, end as u32),
+                    sensitive_start,
+                    directive_end,
+                    terminal_suffix_start,
+                    opening_tokens,
+                });
+            }
+            let text = source[start..end].trim_matches(is_directive_whitespace);
+            covered = directive_end
+                .or_else(|| covered.filter(|_| text.is_empty() || text.starts_with("//")));
+            if end == source.len() || covered.is_none() && directives.peek().is_none() {
+                break;
+            }
+            start = next_start;
+        }
+        Self {
+            lines,
+            directive_ends,
+            document_closing,
+        }
+    }
+
+    pub(super) fn external_opening_tokens(&self, opening: u32) -> Option<(usize, Span)> {
+        let index = self.lines.partition_point(|line| line.span.end < opening);
+        let line = self.lines.get(index)?;
+        let tokens = line.opening_tokens?;
+        (line.span.start <= opening && tokens.start == opening).then_some((index, tokens))
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.lines.len()
+    }
+
+    pub(super) fn is_empty(&self) -> bool {
+        self.lines.is_empty()
+    }
+
+    fn covered_terminal_suffix_contains(&self, close: u32) -> bool {
+        let index = self.lines.partition_point(|line| line.span.end < close);
+        self.lines.get(index).is_some_and(|line| {
+            line.span.start <= close
+                && line.sensitive_start <= close
+                && line.terminal_suffix_start <= close
+        })
+    }
+
+    fn sensitive_at(&self, position: u32) -> bool {
+        let index = self.lines.partition_point(|line| line.span.end < position);
+        self.lines
+            .get(index)
+            .is_some_and(|line| line.span.start <= position && line.sensitive_start <= position)
+    }
+}
+
+// Each covered line and parser comment is visited monotonically. Unknown
+// source characters (including quotes, regex slashes and template backticks)
+// end the terminal suffix. The same scan records whether covered tokens
+// consist entirely of opening parentheses, excluding actual comment trivia.
+fn covered_line_tokens(
+    source: &str,
+    comments: &[Comment],
+    comment_index: &mut usize,
+    start: usize,
+    end: usize,
+    sensitive_start: u32,
+) -> (u32, Option<Span>) {
+    while comments
+        .get(*comment_index)
+        .is_some_and(|comment| comment.span.end as usize <= start)
+    {
+        *comment_index += 1;
+    }
+    let mut position = start;
+    let mut suffix = start;
+    let mut opening_tokens: Option<Span> = None;
+    let mut only_opening = true;
+    while position < end {
+        let comment = comments.get(*comment_index);
+        if let Some(comment) = comment
+            && comment.span.start as usize <= position
+        {
+            position = (comment.span.end as usize).min(end);
+            if comment.span.end as usize <= end {
+                *comment_index += 1;
+            }
+            continue;
+        }
+        let gap_end = comment.map_or(end, |comment| (comment.span.start as usize).min(end));
+        for (offset, character) in source[position..gap_end].char_indices() {
+            let token_start = (position + offset) as u32;
+            if token_start >= sensitive_start && !is_source_whitespace(character) {
+                let token_end = token_start + character.len_utf8() as u32;
+                only_opening &= character == '(';
+                match &mut opening_tokens {
+                    Some(tokens) => tokens.end = token_end,
+                    None => opening_tokens = Some(Span::new(token_start, token_end)),
+                }
+            }
+            if !is_source_whitespace(character) && !matches!(character, ')' | ']' | '}' | ',' | ';')
+            {
+                suffix = position + offset + character.len_utf8();
+            }
+        }
+        position = gap_end;
+    }
+    (suffix as u32, opening_tokens.filter(|_| only_opening))
+}
+
+fn is_diagnostic_directive(source: &str, comment: Comment) -> bool {
+    let source = &source[comment.span.start as usize..comment.span.end as usize];
+    let marker = match comment.kind {
+        CommentKind::Line => source
+            .strip_prefix("///")
+            .or_else(|| source.strip_prefix("//"))
+            .unwrap_or(source),
+        CommentKind::Block => {
+            if !source.contains('@') {
+                return false;
+            }
+            source
+                .rsplit_once(['\n', '\r', '\u{2028}', '\u{2029}'])
+                .map_or(source, |(_, last)| last)
+                .trim_start_matches(is_directive_whitespace)
+                .trim_start_matches(['/', '*'])
+        }
+    };
+    let marker = marker.trim_start_matches(is_directive_whitespace);
+    marker.starts_with("@ts-ignore") || marker.starts_with("@ts-expect-error")
+}
+
+fn is_directive_whitespace(character: char) -> bool {
+    character == '\u{feff}' || character.is_whitespace() && character != '\u{85}'
+}
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn diagnostic_external_opening_tokens(&self, opening: u32) -> Option<Span> {
+        self.diagnostic_lines
+            .external_opening_tokens(opening)
+            .map(|(_, tokens)| tokens)
+    }
+
+    pub(super) fn statement_terminal_close_owner(
+        &self,
+        original: Span,
+        actual: Span,
+    ) -> Option<TerminalCloseOwner> {
+        let source_close = original.end.checked_sub(1);
+        let actual_close = actual.end.checked_sub(1);
+        match (source_close, actual_close) {
+            (Some(original), Some(actual))
+                if self.diagnostic_lines.document_closing == Some(original)
+                    && self
+                        .ast
+                        .source()
+                        .as_bytes()
+                        .get(actual as usize)
+                        .is_some_and(|byte| matches!(byte, b')' | b']' | b'}')) =>
+            {
+                Some(TerminalCloseOwner::Statement { original, actual })
+            }
+            _ => None,
+        }
+    }
+
+    /// A prepared removed envelope owns this synchronous content walk, including
+    /// nested operand printers. Exact source identities prevent unrelated lists
+    /// from claiming its final token. Restore the outer owner on every Result.
+    pub(super) fn with_terminal_close_owner<T>(
+        &mut self,
+        owner: Option<TerminalCloseOwner>,
+        write: impl FnOnce(&mut Self) -> Result<T, FormatError>,
+    ) -> Result<T, FormatError> {
+        let previous = self.terminal_close_owner;
+        if let Some(owner) = owner {
+            self.terminal_close_owner = owner;
+        }
+        let result = write(self);
+        self.terminal_close_owner = previous;
+        result
+    }
+
+    pub(super) fn terminal_close_boundary(
+        &self,
+        content: Span,
+        prepare_last: impl FnOnce() -> Option<(Span, u32)>,
+    ) -> TerminalCloseBoundary {
+        // Only a covered source closer can release its terminal item. Keep
+        // ordinary lists out of the item and comment ownership preparation.
+        let last = self
+            .diagnostic_lines
+            .covered_terminal_suffix_contains(content.end)
+            .then(prepare_last)
+            .flatten();
+        let release = last.is_some_and(|(last, head_start)| {
+            self.comments.in_range(last).is_empty()
+                && self
+                    .comments
+                    .in_range(Span::new(last.end, content.end))
+                    .is_empty()
+                && !self
+                    .comments
+                    .in_range(Span::new(head_start, last.start))
+                    .iter()
+                    .any(|&comment| self.comment_semantics(comment).suppression)
+        });
+        TerminalCloseBoundary {
+            close: content.end,
+            last_end: last.map(|(last, _)| last.end),
+            release,
+        }
+    }
+
+    pub(super) fn terminal_close_constraint(
+        &self,
+        boundary: TerminalCloseBoundary,
+        end: u32,
+    ) -> LineConstraint {
+        let constraint = self.line_constraint(end, boundary.close);
+        if !boundary.release || constraint != LineConstraint::SameLine {
+            return constraint;
+        }
+        let document_close = match self.terminal_close_owner {
+            TerminalCloseOwner::Source => self.diagnostic_lines.document_closing,
+            TerminalCloseOwner::Statement { original, actual }
+                if self.diagnostic_lines.document_closing == Some(original) =>
+            {
+                Some(actual)
+            }
+            TerminalCloseOwner::Statement { .. } => None,
+        };
+        if document_close == Some(boundary.close)
+            && boundary.last_end.is_some_and(|last| end >= last)
+        {
+            LineConstraint::Unconstrained
+        } else {
+            constraint
+        }
+    }
+
+    /// Removing an optional real comma does not turn its two gaps into a blank.
+    /// The original closing owner still decides whether that gap is constrained.
+    pub(super) fn terminal_comma_close_constraint(
+        &self,
+        boundary: TerminalCloseBoundary,
+        end: u32,
+        comma: u32,
+    ) -> LineConstraint {
+        let constraint = self.terminal_close_constraint(boundary, end);
+        if end <= comma && matches!(constraint, LineConstraint::NewLine(_)) {
+            let before = self.line_breaks(end, comma);
+            let after = self.line_breaks(comma + 1, boundary.close);
+            // The post-comma exterior belongs to the close, not the source packet.
+            LineConstraint::NewLine(before.max(after.min(1)))
+        } else {
+            constraint
+        }
+    }
+
+    pub(super) fn diagnostic_line_is_sensitive(&self, position: u32) -> bool {
+        self.diagnostic_lines.sensitive_at(position)
+    }
+
+    pub(super) fn line_constraint(&self, start: u32, end: u32) -> LineConstraint {
+        if !self.diagnostic_line_is_sensitive(start) {
+            LineConstraint::Unconstrained
+        } else {
+            self.source_line_constraint(start, end)
+        }
+    }
+
+    pub(super) fn source_line_constraint(&self, start: u32, end: u32) -> LineConstraint {
+        match self.line_breaks(start, end) {
+            0 => LineConstraint::SameLine,
+            count => LineConstraint::NewLine(count),
+        }
+    }
+
+    pub(super) fn line_constraint_after_comments(
+        &self,
+        comments: &[Comment],
+        start: u32,
+        end: u32,
+    ) -> LineConstraint {
+        let previous = comments.last().map_or(start, |comment| comment.span.end);
+        if comments
+            .last()
+            .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            self.source_line_constraint(previous, end)
+        } else {
+            self.line_constraint(previous, end)
+        }
+    }
+
+    pub(super) fn diagnostic_range_is_sensitive(&self, span: Span) -> bool {
+        let lines = &self.diagnostic_lines.lines;
+        let first = lines.partition_point(|line| line.span.end < span.start);
+        lines
+            .get(first)
+            .is_some_and(|line| line.sensitive_start <= span.end)
+    }
+
+    pub(super) fn opening_line_constraint(&self, span: Span) -> LineConstraint {
+        if !self.diagnostic_line_is_sensitive(span.start) {
+            return LineConstraint::Unconstrained;
+        }
+        let content = self.source(span).trim_start_matches(is_source_whitespace);
+        self.line_constraint(span.start, span.end - content.len() as u32)
+    }
+
+    /// An interior packet can carry next-line coverage to the same retained head.
+    /// Inline block directives do not reset coverage until the following line.
+    pub(super) fn diagnostic_head_reset_coverage(
+        &self,
+        comments: &[Comment],
+        opening: u32,
+        head: u32,
+    ) -> Option<DiagnosticCoverage> {
+        let first = comments.first()?;
+        let last = comments.last().unwrap_or(first);
+        if first.span.start <= opening || last.span.end > head {
+            return None;
+        }
+        let ends = &self.diagnostic_lines.directive_ends;
+        let count = ends.partition_point(|&end| end <= last.span.end);
+        let &end = count.checked_sub(1).and_then(|index| ends.get(index))?;
+        if end < first.span.end || self.line_breaks(end, head) == 0 {
+            return None;
+        }
+        let lines = &self.diagnostic_lines.lines;
+        let index = lines.partition_point(|line| line.span.end < head);
+        let line = lines.get(index)?;
+        (line.directive_end == end && line.sensitive_start <= head && line.span.start <= head)
+            .then_some(DiagnosticCoverage {
+                directive_end: end,
+                span: Span::new(line.sensitive_start, line.span.end),
+            })
+    }
+
+    pub(super) fn comment_is_diagnostic_directive(&self, comment: Comment) -> bool {
+        self.diagnostic_lines
+            .directive_ends
+            .binary_search(&comment.span.end)
+            .is_ok()
+    }
+}

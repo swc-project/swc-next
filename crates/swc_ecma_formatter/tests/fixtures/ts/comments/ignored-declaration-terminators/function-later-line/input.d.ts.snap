@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+declare function f( x :  A ) :  B
+;
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+declare function f( x :  A ) :  B
+;

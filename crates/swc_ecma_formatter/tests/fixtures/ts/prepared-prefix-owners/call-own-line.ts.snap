@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume<string>
+// argument
+({ value: 1 });
+---------- Options ----------
+{}
+---------- Output ----------
+consume<string>(
+  // argument
+  { value: 1 },
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+consume<string>(
+  // argument
+  { value: 1 },
+);
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+consume<string>(
+  // argument
+  { value: 1 },
+)

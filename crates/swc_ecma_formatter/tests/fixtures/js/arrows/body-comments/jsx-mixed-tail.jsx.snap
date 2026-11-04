@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = value => (<Panel /> /* first */ // second
+/* third */);
+---------- Options ----------
+{}
+---------- Output ----------
+const view = (value) => (
+  <Panel /> /* first */ // second
+  /* third */
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view = (
+  value,
+) => (
+  <Panel /> /* first */ // second
+  /* third */
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const view = (value) => (
+  <Panel /> /* first */ // second
+  /* third */
+)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"semi":false}
+---------- Output ----------
+const view = value => (
+  <Panel /> /* first */ // second
+  /* third */
+)

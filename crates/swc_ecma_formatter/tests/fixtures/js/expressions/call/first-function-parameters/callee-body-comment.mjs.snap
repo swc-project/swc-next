@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(function (firstValue, secondValue, thirdValue) // body boundary
+{ return firstValue + secondValue + thirdValue; })(1, 2, 3);
+---------- Options ----------
+{"printWidth":32}
+---------- Output ----------
+(function (
+  firstValue,
+  secondValue,
+  thirdValue,
+) {
+  // body boundary
+  return (
+    firstValue +
+    secondValue +
+    thirdValue
+  );
+})(1, 2, 3);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(function (
+  firstValue,
+  secondValue,
+  thirdValue,
+) {
+  // body boundary
+  return (
+    firstValue +
+    secondValue +
+    thirdValue
+  );
+})(1, 2, 3);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(function (firstValue, secondValue, thirdValue) {
+  // body boundary
+  return firstValue + secondValue + thirdValue;
+})(1, 2, 3);

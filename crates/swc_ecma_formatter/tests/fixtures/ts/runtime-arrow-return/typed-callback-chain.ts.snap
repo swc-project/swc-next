@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+run((value: number): ((next: number) => number) => (next: number): number => value + next);---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+run(
+  (value: number): ((next: number) => number) =>
+    (next: number): number =>
+      value + next,
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+run(
+  (
+    value: number,
+  ): ((
+    next: number,
+  ) => number) =>
+    (
+      next: number,
+    ): number =>
+      value + next,
+);
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+run(
+  (
+    value: number
+  ): ((
+    next: number
+  ) => number) =>
+    (
+      next: number
+    ): number =>
+      value + next
+)
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+run(
+  (
+    value: number,
+  ): ((
+    next: number,
+  ) => number) =>
+    (
+      next: number,
+    ): number =>
+      value + next,
+);

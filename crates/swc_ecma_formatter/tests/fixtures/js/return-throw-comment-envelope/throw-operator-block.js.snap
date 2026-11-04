@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  throw object.
+    /* marker */ property;
+}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  throw object./* marker */ property;
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f() {
+  throw object./* marker */ property;
+}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f() {
+  throw object./* marker */ property
+}

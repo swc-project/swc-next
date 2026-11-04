@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (/* prettier-ignore */ new Ctor)(first());
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new (/* prettier-ignore */ new Ctor
+)(first());
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new (/* prettier-ignore */ new Ctor)(first());
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+new (/* prettier-ignore */ new Ctor
+)(first())

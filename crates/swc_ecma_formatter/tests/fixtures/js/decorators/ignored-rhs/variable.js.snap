@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const probe=(
+/* prettier-ignore */
+@factory.make() class  Named {static m ( ) { return this .stamp; }}
+);
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+const probe =
+  /* prettier-ignore */
+  @factory.make() class  Named {static m ( ) { return this .stamp; }};
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const probe =
+  /* prettier-ignore */
+  @factory.make() class  Named {static m ( ) { return this .stamp; }}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+const probe =
+  /* prettier-ignore */
+  @factory.make() class  Named {static m ( ) { return this .stamp; }};
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const probe =
+  /* prettier-ignore */
+  @factory.make() class  Named {static m ( ) { return this .stamp; }}

@@ -1,0 +1,1 @@
+([, /* rest edge */ ...[value]]) => value;

@@ -1,0 +1,1 @@
+const id = <T,>(value: T): T => value;

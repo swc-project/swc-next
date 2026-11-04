@@ -1,0 +1,1 @@
+result = (fn<number>)<string>;

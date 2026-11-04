@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type \u0054 = /* prettier-ignore */ /* ordinary */ (\u0041 | \u0042);---------- Options ----------
+{}
+---------- Output ----------
+type T = /* prettier-ignore */ /* ordinary */ (\u0041 | \u0042);

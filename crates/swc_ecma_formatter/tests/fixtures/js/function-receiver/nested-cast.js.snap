@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+  (
+    /** @type {Function} */
+    (/* head */ function (value) { return value; } /* tail */)
+  )(argument),
+];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+[
+  /** @type {Function} */
+  (
+    /* head */ function (value) {
+      return value;
+    } /* tail */
+  )(argument),
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+[
+  /** @type {Function} */
+  (
+    /* head */ function (value) {
+      return value;
+    } /* tail */
+  )(argument),
+];
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+;[
+  /** @type {Function} */
+  (
+    /* head */ function (value) {
+      return value
+    } /* tail */
+  )(argument),
+]

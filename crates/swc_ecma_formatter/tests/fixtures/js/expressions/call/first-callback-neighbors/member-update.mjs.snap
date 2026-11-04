@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(function () { return run(); }, state.delay++);
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+schedule(function () {
+  return run();
+}, state.delay++);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+schedule(function () {
+  return run();
+}, state.delay++);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+schedule(function () {
+  return run();
+}, state.delay++);
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+schedule(function () {
+  return run()
+}, state.delay++)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"useTabs":true}
+---------- Output ----------
+schedule(function () {
+	return run();
+}, state.delay++);

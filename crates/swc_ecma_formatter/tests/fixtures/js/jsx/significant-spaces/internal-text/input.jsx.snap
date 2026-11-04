@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x=<div>alpha  beta</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = <div>alpha{"  "}beta</div>;
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+const x = (
+  <div>
+    alpha{"  "}
+    beta
+  </div>
+);

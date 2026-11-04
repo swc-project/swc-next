@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume((/* outer */ (
+/* head */
+aFunction.b()
+) /* tail */).c.d());
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+consume(
+  /* outer */ /* head */
+  aFunction
+    .b()
+    /* tail */
+    .c.d(),
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+consume(
+  /* outer */ /* head */
+  aFunction
+    .b()
+    /* tail */
+    .c.d(),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+consume(
+  /* outer */ /* head */
+  aFunction
+    .b()
+    /* tail */
+    .c.d(),
+)
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+consume(
+  /* outer */ /* head */
+  aFunction
+    .b()
+    /* tail */
+    .c.d(),
+)

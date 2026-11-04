@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = [(("x")?)?];
+---------- Options ----------
+{}
+---------- Output ----------
+type Value = [("x"?)?];
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type Value = [
+  ("x"?)?,
+]

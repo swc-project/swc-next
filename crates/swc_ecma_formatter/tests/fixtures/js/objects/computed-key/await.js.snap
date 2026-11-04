@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { return { [await a]: veryVeryVeryVeryLongReceiver.longProperty.longProperty.longProperty }; }
+---------- Options ----------
+{"printWidth":35}
+---------- Output ----------
+async function f() {
+  return {
+    [await a]:
+      veryVeryVeryVeryLongReceiver
+        .longProperty.longProperty
+        .longProperty,
+  };
+}
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":4}
+---------- Output ----------
+async function f() {
+    return {
+        [await a]:
+            veryVeryVeryVeryLongReceiver
+                .longProperty
+                .longProperty
+                .longProperty,
+    };
+}
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":8,"useTabs":true}
+---------- Output ----------
+async function f() {
+	return {
+		[await a]: veryVeryVeryVeryLongReceiver
+			.longProperty
+			.longProperty
+			.longProperty,
+	};
+}

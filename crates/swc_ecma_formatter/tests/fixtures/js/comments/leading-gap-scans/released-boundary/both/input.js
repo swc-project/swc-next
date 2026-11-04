@@ -1,0 +1,6 @@
+(item
+
+// @ts-ignore
+);
+
+next();

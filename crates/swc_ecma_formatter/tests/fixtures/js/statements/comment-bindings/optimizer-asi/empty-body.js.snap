@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (ready) if (enabled);
+// boundary
+/* @__PURE__ */ next();
+---------- Options ----------
+{}
+---------- Output ----------
+while (ready) if (enabled);
+// boundary
+/* @__PURE__ */ next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+while (ready) if (enabled);
+// boundary
+/* @__PURE__ */ next()

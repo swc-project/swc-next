@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[conditionLong ? consequentLong : alternateLong];
+---------- Options ----------
+{}
+---------- Output ----------
+[conditionLong ? consequentLong : alternateLong];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[conditionLong ? consequentLong : alternateLong]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  conditionLong
+    ? consequentLong
+    : alternateLong,
+];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+[
+  conditionLong
+    ? consequentLong
+    : alternateLong,
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+[
+    conditionLong
+        ? consequentLong
+        : alternateLong,
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	conditionLong
+		? consequentLong
+		: alternateLong,
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+[
+ conditionLong
+  ? consequentLong
+  : alternateLong,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[conditionLong ? consequentLong : alternateLong];

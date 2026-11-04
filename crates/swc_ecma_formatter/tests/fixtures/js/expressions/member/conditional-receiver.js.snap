@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(test ? first : second).property;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(test
+  ? first
+  : second
+).property;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(test ? first : second).property;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(test ? first : second).property;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(test
+  ? first
+  : second
+).property

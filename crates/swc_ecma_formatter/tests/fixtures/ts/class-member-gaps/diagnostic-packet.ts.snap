@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue = OutsideValue;
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue = OutsideValue;
+}
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue =
+    OutsideValue;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo
+  outsideValue = OutsideValue
+}
