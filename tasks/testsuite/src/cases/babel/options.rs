@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, de::DeserializeOwned};
 use swc_next_ecma_codegen::{NumberFormat, Options as CodegenOptions};
 use swc_next_ecma_transformer::{
-    TransformerOptions, assumptions::Assumptions, es2022::ES2022Options, proposal::ProposalOptions,
+    TransformerOptions, assumptions::Assumptions, es2017::ES2017Options, es2022::ES2022Options,
+    proposal::ProposalOptions,
 };
 
 mod plugins;
@@ -101,6 +102,9 @@ impl From<BabelOptions> for TransformerOptions {
         Self {
             assumptions: options.assumptions,
             typescript: plugins.typescript,
+            es2017: ES2017Options {
+                async_to_generator: plugins.async_to_generator,
+            },
             es2022: ES2022Options {
                 static_blocks: plugins.static_blocks,
             },

@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
     TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, SemanticFeatureFlags, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -20,6 +20,7 @@ mod jsx_pragma;
 mod used_names;
 
 pub mod assumptions;
+pub mod es2017;
 pub mod es2022;
 pub mod normalize;
 pub mod proposal;
@@ -28,9 +29,21 @@ pub mod typescript;
 #[derive(Default)]
 pub struct TransformerOptions {
     pub assumptions: Assumptions,
+    pub es2017: es2017::ES2017Options,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
     pub typescript: Option<typescript::TypeScriptOptions>,
+}
+
+impl TransformerOptions {
+    /// Semantic facts required by the enabled transforms.
+    pub fn semantic_features(&self) -> SemanticFeatureFlags {
+        let mut features = SemanticFeatureFlags::empty();
+        if self.es2017.async_to_generator {
+            features |= SemanticFeatureFlags::ASYNC_TO_GENERATOR;
+        }
+        features
+    }
 }
 
 /// Semantic indexes for the transformed AST.
@@ -39,12 +52,15 @@ pub struct TransformerReturn<'a> {
 }
 
 pub struct Transformer {
+    x0_es2017: es2017::ES2017,
     x0_es2022: es2022::ES2022,
 }
 
 impl Transformer {
     /// Run the Semantic-based TypeScript phase, then synchronized scope transforms.
     /// Normalize runtime syntax before analysis when TypeScript is enabled, otherwise normalize all syntax.
+    /// For non-TypeScript input, collect [`TransformerOptions::semantic_features`]
+    /// in the supplied Semantic model before calling this method.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
         mut semantic: Semantic<'ast>,
@@ -52,7 +68,14 @@ impl Transformer {
     ) -> TransformerReturn<'ast> {
         if let Some(typescript) = options.typescript.take() {
             typescript::transform(ast.root_program(), ast, &semantic, typescript);
-            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+            semantic = analyze(
+                ast,
+                AnalyzeOptions {
+                    features: options.semantic_features(),
+                    ..AnalyzeOptions::default()
+                },
+            )
+            .semantic;
         }
 
         Self::transform_with_scopes(ast, ScopeModel::new(semantic), options)
@@ -66,19 +89,32 @@ impl Transformer {
         options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         debug_assert!(options.typescript.is_none());
+        assert!(
+            !options.es2017.async_to_generator
+                || semantic.transform_semantic().is_some_and(|info| {
+                    info.features()
+                        .contains(SemanticFeatureFlags::ASYNC_TO_GENERATOR)
+                }),
+            "async-to-generator requires SemanticFeatureFlags::ASYNC_TO_GENERATOR during analysis"
+        );
         let program = ast.root_program();
 
         let mut transformer = Self {
+            x0_es2017: es2017::ES2017::new(
+                options.es2017,
+                options.assumptions.ignore_function_length,
+            ),
             x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
         };
 
-        let state = TransformerState::new(semantic);
-        let mut ctx = TraverseMutCtx::new(ast, state);
-        let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
-        TransformCtx::new(&mut ctx).finish();
-        TransformerReturn {
-            semantic: ctx.state.semantic,
-        }
+        let semantic = {
+            let state = TransformerState::new(semantic);
+            let mut ctx = TraverseMutCtx::new(ast, state);
+            let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
+            TransformCtx::new(&mut ctx).finish();
+            ctx.state.semantic
+        };
+        TransformerReturn { semantic }
     }
 }
 
@@ -112,6 +148,8 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
     ) -> TraverseAction<Function> {
         let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
         ctx.state.scope_stack.push(scope);
+        self.x0_es2017
+            .enter_function(node, &mut TransformCtx::new(ctx));
         TraverseAction::Continue
     }
 
@@ -122,9 +160,10 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
     ) -> TraverseAction<Function> {
         let mut transform = TransformCtx::new(ctx);
         let body = node.body(transform.ast).node_id();
+        let action = self.x0_es2017.exit_function(node, &mut transform);
         transform.inject_statements_to(body);
         ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
+        action
     }
 
     fn enter_arrow_function_expression(
@@ -134,6 +173,8 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
     ) -> TraverseAction<ArrowFunctionExpression> {
         let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
         ctx.state.scope_stack.push(scope);
+        self.x0_es2017
+            .enter_arrow_function_expression(node, &mut TransformCtx::new(ctx));
         TraverseAction::Continue
     }
 
@@ -143,6 +184,12 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<ArrowFunctionExpression> {
         let mut transform = TransformCtx::new(ctx);
+        // A temporary requested while visiting a concise arrow is queued on the
+        // arrow itself. Flush it before a transform can replace that expression
+        // body with a different FunctionBody node.
+        transform.inject_statements_to(node.node_id());
+        self.x0_es2017
+            .exit_arrow_function_expression(node, &mut transform);
         let container = node
             .body(transform.ast)
             .as_function_body(transform.ast)
@@ -702,6 +749,10 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         node: Expr,
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<Expr> {
+        let action = self.x0_es2017.exit_expr(node, &mut TransformCtx::new(ctx));
+        if !matches!(action, TraverseAction::Continue) {
+            return action;
+        }
         if let Some(class) = node.as_class(ctx.ast)
             && class.class_type(ctx.ast) == ClassType::ClassExpression
         {

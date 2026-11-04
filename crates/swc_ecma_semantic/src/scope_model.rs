@@ -9,7 +9,10 @@ use swc_next_allocator::{
     boxed::Box as ArenaBox,
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
+use swc_next_ecma_ast::{
+    Ast, AstUtf8, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId, Traverse, TraverseCtx,
+    TraverseWith,
+};
 
 use crate::{
     AsyncFunctionInfo, BindingIterator, Declaration, DeclarationId, DeclarationIdIterator,
@@ -322,6 +325,92 @@ impl<'a> ScopeModel<'a> {
             self.uses[symbol].push(id);
         }
         id
+    }
+
+    /// Move a retained subtree's bindings and evaluations between scopes and
+    /// reparent direct child scopes while preserving identities.
+    pub fn move_subtree_to_scope(
+        &mut self,
+        ast: &Ast<'a>,
+        root: impl TraverseWith<'a>,
+        from: ScopeId,
+        to: ScopeId,
+    ) {
+        debug_assert!(self.scope(from).active && self.scope(to).active);
+        if from == to {
+            return;
+        }
+        let mut mover = ScopeMover {
+            semantic: self,
+            from,
+            to,
+        };
+        root.traverse_with(&mut mover, &mut TraverseCtx::new(ast, ()));
+    }
+
+    /// Move one retained binding declaration between active scopes.
+    ///
+    /// The symbol and declaration identities are preserved. A symbol with
+    /// declarations in both scopes remains visible from both scope maps.
+    fn move_binding_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId, name: &'a [u8]) {
+        debug_assert!(self.scope(from).active && self.scope(to).active);
+        let Some(symbol) = self.symbol_of(node) else {
+            return;
+        };
+        let Some(declaration) = self
+            .declaration_ids(symbol)
+            .find(|&declaration| self.declaration(declaration).node == node)
+        else {
+            return;
+        };
+        if self.declaration(declaration).scope != from {
+            return;
+        }
+        self.declarations[declaration].scope = to;
+
+        let remains_in_source = self
+            .declaration_ids(symbol)
+            .any(|declaration| self.declaration(declaration).scope == from);
+        if !remains_in_source && self.scope_maps[from].get(name) == Some(&symbol) {
+            self.scope_maps[from].remove(name);
+        }
+        match self.scope_maps[to].get(name).copied() {
+            Some(existing) => debug_assert_eq!(existing, symbol),
+            None => {
+                self.scope_maps[to].insert(name, symbol);
+            }
+        }
+    }
+}
+
+struct ScopeMover<'model, 'a> {
+    semantic: &'model mut ScopeModel<'a>,
+    from: ScopeId,
+    to: ScopeId,
+}
+
+impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
+    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseCtx<'_, 'a>) {
+        if let Some(scope) = self.semantic.scope_of(node) {
+            // Program scopes keep their fixed outer wrapper.
+            if scope != self.to
+                && self.semantic.scope(scope).parent == Some(self.from)
+                && self.semantic.scope(self.from).node != node
+            {
+                self.semantic.reparent_scope(scope, self.to);
+            }
+        }
+        if let Some(reference) = self.semantic.reference_of(node)
+            && self.semantic.reference(reference).scope == self.from
+        {
+            self.semantic
+                .move_reference_to_scope(reference, self.from, self.to);
+        }
+        if let NodeKindData::BindingIdentifier(binding) = ctx.ast.kind_data(node) {
+            let name = ctx.ast.get_utf8(binding.name(ctx.ast)).as_bytes();
+            self.semantic
+                .move_binding_to_scope(node, self.from, self.to, name);
+        }
     }
 }
 

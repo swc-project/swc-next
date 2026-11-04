@@ -2,7 +2,7 @@
 //!
 //! Run with:
 //! `cargo run -p swc_next_ecma_transformer --example transformer -- [filename]`
-//! Class static block transforms are enabled; codegen uses default options.
+//! Async-to-generator and class static block transforms are enabled; codegen uses default options.
 //! TypeScript is lowered automatically; JSX is preserved.
 
 use std::{fs, path::Path};
@@ -14,8 +14,8 @@ use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions, typescript::TypeScriptOptions,
+    Transformer, TransformerOptions, es2017::ES2017Options, es2022::ES2022Options,
+    normalize::Normalizer, proposal::ProposalOptions, typescript::TypeScriptOptions,
 };
 
 #[derive(Parser)]
@@ -47,6 +47,9 @@ fn main() -> Result<(), String> {
 
     let mut ast = parsed.ast;
     let options = TransformerOptions {
+        es2017: ES2017Options {
+            async_to_generator: true,
+        },
         es2022: ES2022Options {
             static_blocks: true,
         },
@@ -69,7 +72,7 @@ fn main() -> Result<(), String> {
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            ..AnalyzeOptions::default()
+            features: options.semantic_features(),
         },
     );
     report_diagnostics(path, &analyzed.diagnostics)?;

@@ -1,10 +1,10 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
     IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
-    SymbolId, Traverse, TraverseCtx, TraverseWith,
+    SymbolId, TraverseWith,
 };
 use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
+    Reference, ReferenceFlags, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -278,7 +278,8 @@ impl<'a> TransformCtx<'_, 'a> {
         self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
-    /// Move a retained subtree's evaluations between scopes and reparent child scopes while preserving identities.
+    /// Move a retained subtree's bindings and evaluations between scopes and
+    /// reparent child scopes while preserving identities.
     ///
     /// Scope flags stay unchanged; the caller must maintain strictness inheritance in affected scopes.
     ///
@@ -287,9 +288,9 @@ impl<'a> TransformCtx<'_, 'a> {
     /// class C { static { use(value, () => value); } }
     /// // After: the caller reuses the whole call in the class scope.
     /// class C { static #_ = use(value, () => value); }
-    /// // Move references directly in the block scope to the class scope, preserving their identities.
+    /// // Move bindings and references directly in the block scope to the class scope,
+    /// // preserving their identities.
     /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
-    /// // Move owned bindings separately, then attach through a setter or container.
     /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
     /// ```
     pub fn move_subtree_to_scope(
@@ -298,16 +299,9 @@ impl<'a> TransformCtx<'_, 'a> {
         from: ScopeId,
         to: ScopeId,
     ) {
-        debug_assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
-        if from == to {
-            return;
-        }
-        let mut mover = ScopeMover {
-            semantic: &mut self.state.semantic,
-            from,
-            to,
-        };
-        root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
+        self.state
+            .semantic
+            .move_subtree_to_scope(self.ast, root, from, to);
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
@@ -339,30 +333,5 @@ impl<'a> TransformCtx<'_, 'a> {
     /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         self.state.semantic.remove_scope(scope);
-    }
-}
-
-struct ScopeMover<'c, 'a> {
-    semantic: &'c mut ScopeModel<'a>,
-    from: ScopeId,
-    to: ScopeId,
-}
-
-impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
-    fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
-        if let Some(scope) = self.semantic.scope_of(node) {
-            // Program scopes keep their fixed outer wrapper.
-            if self.semantic.scope(scope).parent == Some(self.from)
-                && self.semantic.scope(self.from).node != node
-            {
-                self.semantic.reparent_scope(scope, self.to);
-            }
-        }
-        if let Some(reference) = self.semantic.reference_of(node)
-            && self.semantic.reference(reference).scope == self.from
-        {
-            self.semantic
-                .move_reference_to_scope(reference, self.from, self.to);
-        }
     }
 }
