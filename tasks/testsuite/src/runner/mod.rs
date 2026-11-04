@@ -5,6 +5,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use crate::{cases::Case, suite::TestResult};
 
 pub mod codegen;
+pub mod minifier;
 pub mod parser;
 pub mod semantic;
 pub mod transform;
