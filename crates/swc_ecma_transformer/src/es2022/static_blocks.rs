@@ -11,7 +11,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     context::{BoundIdentifier, ContainerOwnerChild, TransformCtx},
-    used_names::UsedNameState,
+    uid::UidGenerator,
 };
 use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
 
@@ -119,7 +119,7 @@ fn transform_supporting_non_extensible_class(
     class: Class,
     name: Option<InferredName>,
     layout: &ClassLayout,
-    names: &mut UsedNameState<'_>,
+    names: &mut UidGenerator<'_>,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<Expr> {
     let body = class.body(ctx.ast());
@@ -239,9 +239,10 @@ fn materialize_block(
     }
     let span = block.span(ctx.ast());
     let arrow = block_to_arrow(block, false, parent, ctx);
-    let mut expression = Expr::CallExpression(
-        ctx.add_node(|ast| ast.call_expression(span, arrow, None, SubRange::empty(), false)),
-    );
+    let mut expression =
+        Expr::CallExpression(ctx.add_node(|ast| {
+            ast.call_expression(span, arrow, None, SubRange::empty(), false, false)
+        }));
     if block_has_comments(block, ctx.ast()) {
         let span = if first { DUMMY_SP } else { span };
         expression = Expr::ParenthesizedExpression(
@@ -653,7 +654,7 @@ fn static_property(element: ClassElement, ast: &Ast<'_>) -> Option<PropertyDefin
 /// ```
 fn transform_class_as_private_fields(
     body: ClassBody,
-    names: &mut UsedNameState<'_>,
+    names: &mut UidGenerator<'_>,
     ctx: &mut TransformCtx<'_, '_>,
 ) {
     let mut index = 0;
@@ -678,7 +679,7 @@ fn transform_class_as_private_fields(
                 let span = block.span(ctx.ast());
                 let arrow = block_to_arrow(block, false, ctx.current_scope(), ctx);
                 Expr::CallExpression(ctx.add_node(|ast| {
-                    ast.call_expression(span, arrow, None, SubRange::empty(), false)
+                    ast.call_expression(span, arrow, None, SubRange::empty(), false, false)
                 }))
             };
             let field = private_field(key, value, block.span(ctx.ast()), ctx);
@@ -712,6 +713,7 @@ fn call_generated_after_class(name: BoundIdentifier, ctx: &mut TransformCtx<'_, 
             Expr::IdentifierReference(callee),
             None,
             SubRange::empty(),
+            false,
             false,
         )
     }))
@@ -813,8 +815,8 @@ impl ClassLayout {
     }
 }
 
-fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameState<'a> {
-    let mut names = UsedNameState::new(ctx.ast().allocator());
+fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UidGenerator<'a> {
+    let mut names = UidGenerator::new(ctx.ast().allocator());
     for member in ctx.container_class_body(body) {
         let key = match ctx.ast().class_element_data(member) {
             swc_next_ecma_ast::ClassElementData::PropertyDefinition(property) => {
@@ -836,7 +838,7 @@ fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameSta
     names
 }
 
-fn private_name(names: &mut UsedNameState<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
+fn private_name(names: &mut UidGenerator<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
     let name = ctx.ast.add_utf8(names.next_name("_", 2));
     PropertyKey::Expr(Expr::PrivateIdentifier(
         ctx.add_node(|ast| ast.private_identifier(DUMMY_SP, name)),

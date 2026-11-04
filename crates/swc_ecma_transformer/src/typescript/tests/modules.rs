@@ -56,6 +56,7 @@ fn uncertain_alias_dependencies() {
         &ast,
         &semantic,
         &TypeScriptOptions::default(),
+        Default::default(),
     );
     let outer = semantic
         .binding(swc_next_ecma_ast::ScopeId::MODULE, b"Alias")
@@ -87,7 +88,7 @@ fn assert_default_export(source: &str, value: bool) {
                 verbatim_module_syntax,
                 ..TypeScriptOptions::default()
             };
-            transform(program, &mut ast, &semantic, options);
+            transform(program, &mut ast, &semantic, &options);
             let retained = program.body(&ast).iter().any(|id| {
                 let statement = ast.get_node_in_sub_range(id);
                 matches!(

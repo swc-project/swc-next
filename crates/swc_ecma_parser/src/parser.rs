@@ -12130,6 +12130,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             type_arguments,
             arguments,
             optional,
+            false,
         ))
     }
 
@@ -12143,6 +12144,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             callee,
             None,
             cover.elements,
+            false,
             false,
         ))
     }

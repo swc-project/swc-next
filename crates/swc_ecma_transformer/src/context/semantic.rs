@@ -8,7 +8,7 @@ use swc_next_ecma_semantic::{
     scope::{ScopeFlags, ScopeKind},
 };
 
-use crate::{context::TransformCtx, used_names::UsedNameState};
+use crate::{context::TransformCtx, uid::UidGenerator};
 
 /// A generated binding keeps its declaration and symbol together
 #[derive(Clone, Copy)]
@@ -135,7 +135,7 @@ impl TransformCtx<'_, '_> {
     /// ```
     pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstUtf8 {
         let names = self.state.used_names.get_or_insert_with(|| {
-            let mut names = UsedNameState::new(self.ast.allocator());
+            let mut names = UidGenerator::new(self.ast.allocator());
             for entry in self.state.semantic.iter_symbols() {
                 names.observe(self.ast.get_wtf8(entry.symbol.name).as_bytes());
             }

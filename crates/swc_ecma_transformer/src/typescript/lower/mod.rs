@@ -1,5 +1,5 @@
 use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
-use crate::{context::CommentState, used_names::UsedNameState};
+use crate::{context::CommentState, uid::UidGenerator};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{Ast, Program, SourceType, SymbolId, VisitMut};
 use swc_next_ecma_semantic::Semantic;
@@ -31,7 +31,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     namespaces: NamespaceState,
     // Lazy index; None as a map value means unresolved or conflicting owners.
     source_name_owners: Option<FxHashMap<&'ast [u8], Option<SymbolId>>>,
-    used_names: Option<UsedNameState<'ast>>,
+    uid_generator: Option<UidGenerator<'ast>>,
 }
 
 impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
@@ -53,7 +53,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             enum_member_symbols: FxHashMap::default(),
             namespaces: NamespaceState::default(),
             source_name_owners: None,
-            used_names: None,
+            uid_generator: None,
         }
     }
 

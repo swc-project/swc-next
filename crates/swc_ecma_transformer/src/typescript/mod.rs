@@ -14,7 +14,7 @@ pub fn transform<'a>(
     program: Program,
     ast: &mut Ast<'a>,
     semantic: &Semantic<'a>,
-    options: TypeScriptOptions,
+    options: &TypeScriptOptions,
 ) {
     if ast.lang() == Lang::Dts {
         program.set_directives(ast, SubRange::empty());
@@ -24,8 +24,16 @@ pub fn transform<'a>(
         return;
     }
 
-    let analysis = analysis::TypeScriptAnalysis::analyze(program, ast, semantic, &options);
-    lower::TypeScriptLowerer::new(&options, analysis, ast, semantic).lower_program(program);
+    let dependencies = analysis::jsx_dependencies(program, ast, semantic, &options.jsx);
+    let analysis =
+        analysis::TypeScriptAnalysis::analyze(program, ast, semantic, options, dependencies);
+    lower::TypeScriptLowerer::new(options, analysis, ast, semantic).lower_program(program);
+    let lang = match ast.lang() {
+        Lang::Ts => Lang::Js,
+        Lang::Tsx => Lang::Jsx,
+        lang => lang,
+    };
+    ast.set_source_metadata(ast.source_type(), lang);
 }
 
 #[cfg(test)]

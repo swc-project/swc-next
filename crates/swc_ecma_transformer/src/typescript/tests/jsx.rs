@@ -70,10 +70,8 @@ fn custom_factories() {
     assert!(code.contains("{ h }"));
     assert!(!code.contains("Frag"));
 
-    let code = transform(
-        "import { h, Frag } from 'react'; export const x = <></>;",
-        options(),
-    );
+    let source = "import { h, Frag } from 'react'; export const x = <div><></></div>;";
+    let code = transform(source, options());
     assert!(code.contains("h, Frag"));
 
     let code = transform(

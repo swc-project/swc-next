@@ -10,7 +10,7 @@ use swc_next_ecma_semantic::Semantic;
 use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
 use crate::typescript::analysis::TsEnumConstantValue;
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_enum(
         &mut self,
         declaration: TsEnumDeclaration,

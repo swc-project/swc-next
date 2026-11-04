@@ -98,7 +98,12 @@ pub enum JsescNumberFormat {
 impl From<BabelOptions> for TransformerOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
+        let mut jsx = plugins.react_jsx_dev.or(plugins.react_jsx);
+        if plugins.react_display_name {
+            jsx.get_or_insert_with(Default::default).display_name = true;
+        }
         Self {
+            filename: None,
             assumptions: options.assumptions,
             typescript: plugins.typescript,
             es2022: ES2022Options {
@@ -107,6 +112,7 @@ impl From<BabelOptions> for TransformerOptions {
             proposal: ProposalOptions {
                 prevent_extensions: plugins.static_blocks,
             },
+            jsx,
         }
     }
 }
@@ -247,8 +253,8 @@ impl BabelOptions {
     pub fn is_jsx(&self) -> bool {
         self.plugins.syntax_jsx
             || self.presets.jsx
-            || self.plugins.react_jsx
-            || self.plugins.react_jsx_dev
+            || self.plugins.react_jsx.is_some()
+            || self.plugins.react_jsx_dev.is_some()
     }
 
     /// Returns `true` when TypeScript parsing is enabled.

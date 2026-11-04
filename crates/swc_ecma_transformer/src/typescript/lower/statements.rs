@@ -27,7 +27,7 @@ impl StatementExpansion {
     }
 }
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn has_module_indicator(&self, statements: SubRange<Stmt>) -> bool {
         statements.iter().any(|statement_id| {
             let statement = self.ast_ref().get_node_in_sub_range(statement_id);

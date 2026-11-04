@@ -17,8 +17,12 @@ use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions, typescript::TypeScriptOptions,
+    Transformer, TransformerOptions,
+    es2022::ES2022Options,
+    jsx::{JsxOptions, ReactRefreshOptions},
+    normalize::Normalizer,
+    proposal::ProposalOptions,
+    typescript::TypeScriptOptions,
 };
 use swc_next_type_strip::{Options as StripOptions, strip_types};
 
@@ -193,7 +197,15 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
     let mut ast = setup_program(source, lang);
     Normalizer::normalize_runtime(ast.root_program(), &mut ast);
     let options = TransformerOptions {
+        filename: Some("benchmark.tsx".to_owned()),
         typescript: Some(TypeScriptOptions::default()),
+        jsx: Some(JsxOptions {
+            development: true,
+            source_self: true,
+            display_name: true,
+            refresh: Some(ReactRefreshOptions::default()),
+            ..JsxOptions::default()
+        }),
         es2022: ES2022Options {
             static_blocks: true,
         },

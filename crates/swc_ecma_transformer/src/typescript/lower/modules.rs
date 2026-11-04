@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
 
 use super::TypeScriptLowerer;
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_import_declaration(&mut self, declaration: ImportDeclaration) -> bool {
         if declaration.import_kind(self.ast_ref()) == ImportOrExportKind::Type {
             return false;

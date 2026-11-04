@@ -1,18 +1,17 @@
 use super::super::JsxImportOptions;
-use crate::jsx_pragma::{PragmaKind, pragmas};
+use crate::jsx::pragma::{PragmaKind, pragmas};
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{Ast, Program, SymbolId};
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
-pub(super) fn dependencies(
+pub(in crate::typescript) fn dependencies(
     program: Program,
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
     options: &JsxImportOptions,
 ) -> FxHashSet<SymbolId> {
-    let mut dependencies = FxHashSet::default();
     if semantic.jsx_usages().is_empty() {
-        return dependencies;
+        return FxHashSet::default();
     }
     let mut automatic = options.automatic;
     let mut pragma = options.pragma.as_deref().unwrap_or("React.createElement");
@@ -29,6 +28,16 @@ pub(super) fn dependencies(
             PragmaKind::ImportSource => {}
         }
     }
+    resolved_dependencies(semantic, automatic, pragma, fragment)
+}
+
+pub(in crate::typescript) fn resolved_dependencies(
+    semantic: &Semantic<'_>,
+    automatic: bool,
+    pragma: &str,
+    fragment: &str,
+) -> FxHashSet<SymbolId> {
+    let mut dependencies = FxHashSet::default();
     if automatic {
         return dependencies;
     }
@@ -39,12 +48,12 @@ pub(super) fn dependencies(
     }
     let factory = root(pragma);
     let fragment = root(fragment);
-    for usage in semantic.jsx_usages() {
-        if let Some(symbol) = semantic.lookup(usage.scope, factory, ReferenceSpace::Value) {
+    for (scope, usages) in semantic.jsx_usage_groups() {
+        if let Some(symbol) = semantic.lookup(scope, factory, ReferenceSpace::Value) {
             dependencies.insert(symbol);
         }
-        if usage.is_fragment
-            && let Some(symbol) = semantic.lookup(usage.scope, fragment, ReferenceSpace::Value)
+        if usages.iter().any(|usage| usage.is_fragment)
+            && let Some(symbol) = semantic.lookup(scope, fragment, ReferenceSpace::Value)
         {
             dependencies.insert(symbol);
         }

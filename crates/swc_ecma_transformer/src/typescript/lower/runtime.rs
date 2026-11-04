@@ -23,7 +23,7 @@ enum RuntimeReference {
     Property { object: AstUtf8, property: AstUtf8 },
 }
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn object_iife_statement(
         &mut self,
         parameter: AstUtf8,
@@ -65,9 +65,14 @@ impl TypeScriptLowerer<'_, '_> {
         );
         let argument = self.runtime_target_argument(target);
         let arguments = self.ast().add_sub_range([Argument::Expr(argument)]);
-        let call =
-            self.ast()
-                .expr_call_expression(span, Expr::Function(function), None, arguments, false);
+        let call = self.ast().expr_call_expression(
+            span,
+            Expr::Function(function),
+            None,
+            arguments,
+            false,
+            false,
+        );
         self.ast().stmt_expression_statement(span, call)
     }
 

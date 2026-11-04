@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_semantic::SymbolFlags;
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn runtime_binding_statement(
         &mut self,
         binding: swc_next_ecma_ast::BindingIdentifier,

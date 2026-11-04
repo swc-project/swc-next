@@ -11,7 +11,7 @@ pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
-use crate::{helpers::Helpers, used_names::UsedNameState};
+use crate::{helpers::Helpers, uid::UidGenerator};
 use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 
 /// Configuration, caches and pending work for a single transform.
@@ -24,7 +24,7 @@ pub(crate) struct TransformerState<'a> {
     pub(crate) statement_injector: StatementInjector,
     pub(crate) container: Container,
     pub(crate) comments: CommentState,
-    pub(crate) used_names: Option<UsedNameState<'a>>,
+    pub(crate) used_names: Option<UidGenerator<'a>>,
 }
 
 impl<'a> TransformerState<'a> {

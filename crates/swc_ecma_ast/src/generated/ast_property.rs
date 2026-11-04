@@ -5038,6 +5038,10 @@ impl CallExpression {
         unsafe { ast.nodes.data_unchecked(self.0).call_expression.optional }
     }
     #[inline]
+    pub fn pure<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        unsafe { ast.nodes.data_unchecked(self.0).call_expression.pure }
+    }
+    #[inline]
     pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Argument> {
         let start = unsafe {
             ast.nodes
@@ -5078,6 +5082,12 @@ impl CallExpression {
                 .data_mut_unchecked(self.0)
                 .call_expression
                 .optional = optional;
+        }
+    }
+    #[inline]
+    pub fn set_pure<'a>(self, ast: &mut crate::Ast<'a>, pure: bool) {
+        unsafe {
+            ast.nodes.data_mut_unchecked(self.0).call_expression.pure = pure;
         }
     }
     #[inline]

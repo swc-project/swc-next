@@ -50,6 +50,16 @@ cargo bench -p benchmark --bench gungraun
 The Profile Performance workflow also compares Gungraun instruction counts for
 every pull request and manual run, in the same job and from the same build as the
 wall-time benchmarks. Use `suite` to run only one measurement manually.
+
+The `transform` group measures the TypeScript, JSX, React Refresh, and ES2022
+static block pipeline. Parsing, normalization, and initial semantic analysis run
+in setup. Run it on Linux with Valgrind, or smoke-test it without Valgrind:
+
+```sh
+cargo bench --locked -p benchmark --bench gungraun -- --allow-aslr=yes '*::transform::*'
+cargo test --locked -p benchmark --bench gungraun -- --test '*::transform::*'
+```
+
 For the JavaScript N-API boundary, use [JavaScript API Gungraun](js/README.md).
 
 ## Pipeline simulator

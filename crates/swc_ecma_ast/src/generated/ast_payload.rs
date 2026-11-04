@@ -640,7 +640,8 @@ pub(crate) struct CallExpressionPayload {
     pub(crate) callee: Expr,
     pub(crate) type_arguments: u32,
     pub(crate) optional: bool,
-    pub(crate) _pad0: [u8; 3usize],
+    pub(crate) pure: bool,
+    pub(crate) _pad0: [u8; 2usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
 #[repr(C)]
@@ -1687,6 +1688,8 @@ const _: () = {
     assert!(std::mem::offset_of!(CallExpressionPayload, type_arguments) == 4usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
     assert!(std::mem::offset_of!(CallExpressionPayload, optional) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(CallExpressionPayload, pure) == 9usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(CallExpressionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ChainExpressionPayload>() == 16);

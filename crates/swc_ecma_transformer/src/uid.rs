@@ -6,21 +6,21 @@ use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Aren
 /// to try for that name, so repeated allocation does not rescan earlier
 /// candidates. An empty state has a zero-capacity map and does not allocate
 /// until the first name is observed.
-pub(crate) struct UsedNameState<'a> {
+pub(crate) struct UidGenerator<'a> {
     allocator: &'a Allocator,
     names: ArenaHashMap<'a, ArenaVec<'a, u8>, u64>,
 }
 
-impl std::fmt::Debug for UsedNameState<'_> {
+impl std::fmt::Debug for UidGenerator<'_> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
-            .debug_struct("UsedNameState")
+            .debug_struct("UidGenerator")
             .field("names", &self.names)
             .finish()
     }
 }
 
-impl<'a> UsedNameState<'a> {
+impl<'a> UidGenerator<'a> {
     /// Creates an empty name state backed by `allocator`.
     pub(crate) fn new(allocator: &'a Allocator) -> Self {
         Self {

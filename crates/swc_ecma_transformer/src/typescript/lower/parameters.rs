@@ -13,7 +13,7 @@ struct ParameterProperty {
     span: swc_next_ecma_ast::Span,
 }
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_parameter_properties(&mut self, class: Class) {
         let body = class.body(self.ast_ref());
         let constructor = body.body(self.ast_ref()).iter().find_map(|element_id| {
@@ -240,9 +240,14 @@ impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
             }
         };
         let callee = self.ast().expr_identifier_reference(DUMMY_SP, name);
-        let call =
-            self.ast()
-                .expr_call_expression(DUMMY_SP, callee, None, SubRange::empty(), false);
+        let call = self.ast().expr_call_expression(
+            DUMMY_SP,
+            callee,
+            None,
+            SubRange::empty(),
+            false,
+            false,
+        );
         self.finish_super_sequence(vec![expression, call])
     }
 
