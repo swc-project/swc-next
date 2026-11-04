@@ -26,8 +26,8 @@ impl Default for MinifierOptions {
 pub struct CompressOptions {
     /// Remove empty statements, merge blocks that declare no block-scoped
     /// names into the enclosing statement list, and replace a block body,
-    /// such as the body of an `if` or a loop, with its only statement.
-    /// Enabled by default.
+    /// such as the body of an `if` or a loop, with its only statement. The
+    /// block body of a `do` loop is kept. Enabled by default.
     pub blocks: bool,
     /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
     /// Enabled by default.

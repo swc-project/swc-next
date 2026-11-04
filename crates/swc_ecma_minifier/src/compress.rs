@@ -532,9 +532,12 @@ impl Compressor {
                 let body = self.compress_body(ast, statement.body(ast));
                 statement.set_body(ast, body);
             }
+            // `do{a()}while(x)` is not longer than `do a();while(x)`, and
+            // some engines misparse a `do` body without braces.
             StmtData::DoWhileStatement(statement) => {
-                let body = self.compress_body(ast, statement.body(ast));
-                statement.set_body(ast, body);
+                if let StmtData::BlockStatement(block) = ast.stmt_data(statement.body(ast)) {
+                    self.compress_held_block(ast, block);
+                }
             }
             StmtData::ForStatement(statement) => {
                 let body = self.compress_body(ast, statement.body(ast));
