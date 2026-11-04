@@ -50,6 +50,7 @@ fn bench_minifier(c: &mut Criterion) {
             &ast,
             AnalyzeOptions {
                 check_syntax: SyntaxChecks::all(),
+                ..AnalyzeOptions::default()
             },
         );
         assert!(analysis.diagnostics.is_empty());

@@ -5,6 +5,7 @@ mod members;
 mod properties;
 mod references;
 mod support;
+mod transform_semantic;
 mod visibility;
 
 use support::*;
@@ -61,6 +62,7 @@ fn analyze_syntax_source<'a>(
         &parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
         },
     );
     assert_eq!(

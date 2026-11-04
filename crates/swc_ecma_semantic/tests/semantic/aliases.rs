@@ -26,6 +26,7 @@ fn assert_alias_reference_access(source: &str, name: &[u8], space: ReferenceSpac
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -167,6 +168,7 @@ fn assert_namespace_shadowing(source: &str, name: &[u8]) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -265,6 +267,7 @@ fn member_alias_visibility() {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -272,7 +275,10 @@ fn member_alias_visibility() {
 fn assert_import_target(source: &str, name: Option<&[u8]>) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let options = AnalyzeOptions { check_syntax };
+        let options = AnalyzeOptions {
+            check_syntax,
+            ..AnalyzeOptions::default()
+        };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let alias = semantic.binding(ScopeId::MODULE, b"A").unwrap();
@@ -324,7 +330,10 @@ enum InitializerReference {
 fn assert_import_initializer(source: &str, expected: InitializerReference) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let options = AnalyzeOptions { check_syntax };
+        let options = AnalyzeOptions {
+            check_syntax,
+            ..AnalyzeOptions::default()
+        };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let declaration = ast
@@ -438,6 +447,7 @@ fn assert_import_root_access(source: &str, name: &[u8], read: bool) {
     let allocator = Allocator::new();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
     let (ast, semantic) = analyze_with_options(&allocator, source, ts_module_options(), checked);
     let reference = semantic
@@ -526,7 +536,10 @@ fn assert_qualified_alias_bindings(source: &str, alias_is_value: bool) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"A").unwrap();
         let alias = semantic
@@ -663,6 +676,7 @@ fn assert_namespace_owner_binding(source: &str, declaration: &str, import_root: 
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
