@@ -50,6 +50,9 @@ pub struct BabelPlugins {
     pub react_jsx: bool,
     pub react_jsx_dev: bool,
 
+    // ES2019
+    pub optional_catch_binding: bool,
+
     // ES2022
     pub static_blocks: bool,
 }
@@ -80,6 +83,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                     plugins.react_jsx_dev = true;
                     plugins.unsupported.push(entry.name().to_owned());
                 }
+                "transform-optional-catch-binding" => plugins.optional_catch_binding = true,
                 "transform-class-static-block" => plugins.static_blocks = true,
                 _ => plugins.unsupported.push(entry.name().to_owned()),
             }
