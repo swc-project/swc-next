@@ -1,0 +1,12 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_core"
+repository.workspace  = true
+version               = "0.5.0"
+
+[dependencies]
+serde = { workspace = true }
