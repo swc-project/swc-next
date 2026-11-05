@@ -1304,13 +1304,6 @@ impl<C: ParserConfig> Iterator for Peek<'_, '_, C> {
     }
 }
 
-impl<C: ParserConfig> Peek<'_, '_, C> {
-    fn next_jsx_tag(&mut self) -> Option<Token> {
-        self.lexer.next_jsx_tag_token(&mut self.token).ok()?;
-        Some(self.token)
-    }
-}
-
 impl<C: ParserConfig> Drop for Peek<'_, '_, C> {
     fn drop(&mut self) {
         if self.active {
@@ -12694,6 +12687,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    fn advance_jsx_attribute_value(&mut self) -> Option<()> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::Assign);
+        self.lexer.state.prev_token_end = self.current_token.end();
+        match self.lexer.next_jsx_attribute_value(&mut self.current_token) {
+            Ok(()) => Some(()),
+            Err(error) => self.next_token_error(error),
+        }
+    }
+
     fn eat_jsx_tag(&mut self, tag: TokenTag) -> Option<bool> {
         let matched = self.current_token.tag() == tag;
         if matched {
@@ -12722,13 +12724,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         false
     }
 
-    fn peek_ahead_jsx_tag(&mut self) -> Option<Token> {
-        let mut peek = self.begin_peek();
-        let token = peek.next_jsx_tag();
-        peek.end();
-        token
-    }
-
     fn re_scan_current_jsx_tag(&mut self) -> Option<()> {
         let line_terminator_before =
             self.current_token.flags() & flag_mask(TokenFlag::LineTerminatorBefore);
@@ -12753,27 +12748,37 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.start();
         self.advance_jsx_tag()?;
         if self.current_token.tag() == TokenTag::GreaterThan {
-            return self.parse_jsx_fragment(start, context);
+            let jsx_fragment = self.parse_jsx_fragment(start, context)?;
+            return Some(Expr::JsxFragment(jsx_fragment));
         }
+        let jsx_element_body = self.parse_jsx_element_body(start, context)?;
+        Some(Expr::JsxElement(jsx_element_body))
+    }
 
+    /// Parses an element after its opening `<` has been consumed.
+    fn parse_jsx_element_body(
+        &mut self,
+        start: u32,
+        context: JsxElementContext,
+    ) -> Option<JsxElement> {
         let opening = self.parse_jsx_opening_element(start, context)?;
         if opening.self_closing(&self.ast) {
-            let children = SubRange::empty();
-            return Some(Expr::JsxElement(self.ast.jsx_element(
+            return Some(self.ast.jsx_element(
                 Span::new(start, opening.span(&self.ast).end),
                 opening,
-                children,
+                SubRange::empty(),
                 None,
-            )));
+            ));
         }
-        let children = self.parse_jsx_children()?;
-        let closing = self.parse_jsx_closing_element(opening.name(&self.ast), context)?;
-        Some(Expr::JsxElement(self.ast.jsx_element(
+        let (children, closing_start) = self.parse_jsx_children()?;
+        let closing =
+            self.parse_jsx_closing_element(opening.name(&self.ast), closing_start, context)?;
+        Some(self.ast.jsx_element(
             Span::new(start, closing.span(&self.ast).end),
             opening,
             children,
             Some(closing),
-        )))
+        ))
     }
 
     /// Parses an opening element whose `<` at `start` is already consumed.
@@ -12828,9 +12833,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_jsx_closing_element(
         &mut self,
         opening_name: JsxElementName,
+        closing_start: u32,
         context: JsxElementContext,
     ) -> Option<JsxClosingElement> {
-        if self.current_token.tag() != TokenTag::LessThan {
+        if self.current_token.tag() != TokenTag::Slash {
             self.report_expected(
                 self.current_token.span(),
                 "Expected '</' to close the JSX element",
@@ -12843,8 +12849,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             return None;
         }
-        let closing_start = self.current_token.start();
-        self.advance_jsx_tag()?;
         if !self.expect_jsx_tag(
             TokenTag::Slash,
             "Expected '/' in JSX closing element",
@@ -12949,13 +12953,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     /// Parses a fragment whose `<` at `start` is already consumed; the current
     /// token is the `>` that follows it.
-    fn parse_jsx_fragment(&mut self, start: u32, context: JsxElementContext) -> Option<Expr> {
+    fn parse_jsx_fragment(
+        &mut self,
+        start: u32,
+        context: JsxElementContext,
+    ) -> Option<JsxFragment> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::GreaterThan);
         let opening_end = self.current_token.end();
         let opening = self.ast.jsx_opening_fragment(Span::new(start, opening_end));
-        let children = self.parse_jsx_children()?;
-        let closing_start = self.current_token.start();
-        self.advance_jsx_tag()?;
+        let (children, closing_start) = self.parse_jsx_children()?;
         if !self.expect_jsx_tag(
             TokenTag::Slash,
             "Expected '/' in JSX closing fragment",
@@ -12991,14 +12997,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .jsx_closing_fragment(Span::new(closing_start, closing_end));
         Some(
             self.ast
-                .expr_jsx_fragment(Span::new(start, closing_end), opening, children, closing),
+                .jsx_fragment(Span::new(start, closing_end), opening, children, closing),
         )
     }
 
-    fn parse_jsx_children(&mut self) -> Option<SubRange<JsxChild>> {
+    /// Returns children and the start of the closing `<`, leaving `/` current.
+    fn parse_jsx_children(&mut self) -> Option<(SubRange<JsxChild>, u32)> {
         let checkpoint = self.scratch_b.begin();
         let result = (|| {
-            loop {
+            let closing_start = loop {
                 let token = self.lexer.scan_jsx_text();
                 self.current_token = token;
                 match token.tag() {
@@ -13008,46 +13015,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_b.append(jsx_text);
                     }
                     TokenTag::LessThan => {
-                        if self.jsx_child_starts_closing_tag()? {
-                            break;
-                        }
-                        let child = self.parse_jsx_element(JsxElementContext::Child)?;
-                        match self.ast.expr_data(child) {
-                            ExprData::JsxElement(element) => {
-                                self.scratch_b.append(JsxChild::JsxElement(element));
-                            }
-                            ExprData::JsxFragment(fragment) => {
+                        let start = token.start();
+                        self.advance_jsx_tag()?;
+                        match self.current_token.tag() {
+                            TokenTag::Slash => break start,
+                            TokenTag::GreaterThan => {
+                                let fragment =
+                                    self.parse_jsx_fragment(start, JsxElementContext::Child)?;
                                 self.scratch_b.append(JsxChild::JsxFragment(fragment));
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                let element =
+                                    self.parse_jsx_element_body(start, JsxElementContext::Child)?;
+                                self.scratch_b.append(JsxChild::JsxElement(element));
+                            }
                         }
                     }
                     TokenTag::LeftBrace => {
                         let child = self.parse_jsx_child_from_left_brace()?;
                         self.scratch_b.append(child);
                     }
-                    _ => break,
+                    _ => break token.start(),
                 }
-            }
-            Some(self.add_extra_from_scratch_b(checkpoint))
+            };
+            Some((self.add_extra_from_scratch_b(checkpoint), closing_start))
         })();
         self.scratch_b.reset(checkpoint);
         result
-    }
-
-    /// Returns whether the `<` read as a JSX child is followed by `/`. The next
-    /// bytes decide it when no trivia or non-ASCII text can come first.
-    fn jsx_child_starts_closing_tag(&mut self) -> Option<bool> {
-        let source = self.source.as_bytes();
-        let next = self.current_token.end() as usize;
-        match source.get(next) {
-            Some(b'/') if !matches!(source.get(next + 1), Some(b'/' | b'*' | b'=')) => {
-                return Some(true);
-            }
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'>') => return Some(false),
-            _ => {}
-        }
-        Some(self.peek_ahead_jsx_tag()?.tag() == TokenTag::Slash)
     }
 
     // JSXChild :
@@ -13217,7 +13211,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let name = self.parse_jsx_attribute_name()?;
         let start = name.span(&self.ast).start;
-        let value = if self.eat_jsx_tag(TokenTag::Assign)? {
+        let value = if self.current_token.tag() == TokenTag::Assign {
+            self.advance_jsx_attribute_value()?;
             Some(self.parse_jsx_attribute_value()?)
         } else {
             None
