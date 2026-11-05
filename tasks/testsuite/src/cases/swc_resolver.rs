@@ -30,15 +30,7 @@ impl SwcResolverCase {
     fn read_cases() -> Vec<Self> {
         let workspace_root = workspace_root().unwrap();
         let oracle_root = fixtures().join("swc-conformance/tests/resolver");
-
-        let mut oracle_paths = WalkDir::new(&oracle_root)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().is_file())
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().is_some_and(|ext| ext == "snap"))
-            .collect::<Vec<_>>();
-        oracle_paths.sort_unstable();
+        let oracle_paths = read_oracle_paths(&oracle_root);
 
         oracle_paths
             .into_par_iter()
@@ -87,6 +79,25 @@ impl SwcResolverCase {
             source_type,
         }
     }
+}
+
+fn read_oracle_paths(root: &Path) -> Vec<PathBuf> {
+    assert!(
+        root.is_dir(),
+        "missing resolver fixtures: {}",
+        root.display()
+    );
+    let entries = WalkDir::new(root).into_iter().map(Result::unwrap);
+    let mut paths = Vec::new();
+    for entry in entries {
+        let path = entry.path();
+        let snapshot = path.extension().is_some_and(|ext| ext == "snap");
+        if entry.file_type().is_file() && snapshot {
+            paths.push(path);
+        }
+    }
+    paths.sort_unstable();
+    paths
 }
 
 impl Case for SwcResolverCase {

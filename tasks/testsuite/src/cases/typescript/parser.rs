@@ -15,7 +15,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::cases::{Case, fixtures};
 
-use super::{constants::NOT_SUPPORTED_ERROR_CODES, lang_from_path, read_test_content};
+use super::{TestUnit, constants::NOT_SUPPORTED_ERROR_CODES, lang_from_path, read_test_content};
 
 /// A diagnostic rendered inside one `==== virtual-file ====` baseline section.
 static TS_ERROR_CODE_REGEX: LazyLock<Regex> =
@@ -23,8 +23,13 @@ static TS_ERROR_CODE_REGEX: LazyLock<Regex> =
 
 type UnitErrorCodes = HashMap<String, Vec<HashSet<String>>>;
 
+struct ErrorCodeVariant {
+    name: String,
+    error_codes: UnitErrorCodes,
+}
+
 /// Diagnostics from each configured baseline for an actual test file.
-type TestErrorCodes = HashMap<PathBuf, Vec<UnitErrorCodes>>;
+type TestErrorCodes = HashMap<PathBuf, Vec<ErrorCodeVariant>>;
 
 pub struct TypeScriptParserCase {
     path: PathBuf,
@@ -49,6 +54,7 @@ impl Case for TypeScriptParserCase {
                 .iter()
                 .any(|ignored| relative_path == Path::new(ignored))
         });
+        validate_non_program_test_paths(&case_paths, &test_dir);
 
         case_paths
             .into_par_iter()
@@ -95,6 +101,7 @@ impl TypeScriptParserCase {
             unit.name = normalize_unit_name(&unit.name);
         }
         let actual_path = path.strip_prefix(test_dir).unwrap().to_path_buf();
+        validate_test_units(&actual_path, &parsed.test_units, error_codes);
         let check_js = boolean_option(&parsed.global_options, "checkjs");
         let allow_js = boolean_option(&parsed.global_options, "allowjs")
             .or(check_js)
@@ -164,6 +171,69 @@ fn is_non_program_unit(actual_path: &Path, name: &str, occurrence: usize) -> boo
     NON_PROGRAM_UNITS.iter().any(|unit| {
         actual_path == Path::new(unit.test) && name == unit.name && occurrence == unit.occurrence
     })
+}
+
+fn validate_non_program_test_paths(paths: &[PathBuf], test_dir: &Path) {
+    let mut actual_paths = HashSet::new();
+    for path in paths {
+        let relative_path = path.strip_prefix(test_dir).unwrap();
+        actual_paths.insert(relative_path);
+    }
+    let mut identities = HashSet::new();
+    for unit in NON_PROGRAM_UNITS {
+        let identity = (unit.test, unit.name, unit.occurrence);
+        assert!(
+            identities.insert(identity),
+            "duplicate excluded unit: {identity:?}"
+        );
+        let test = Path::new(unit.test);
+        assert!(
+            actual_paths.contains(test),
+            "missing excluded test: {}",
+            unit.test
+        );
+    }
+}
+
+fn validate_test_units(path: &Path, units: &[TestUnit], error_codes: &TestErrorCodes) {
+    // Non-source assets may be omitted from TypeScript's error baselines.
+    let mut unit_counts = HashMap::<&str, usize>::new();
+    for unit in units {
+        if lang_from_path(&unit.name).is_some() {
+            *unit_counts.entry(&unit.name).or_default() += 1;
+        }
+    }
+    let variants = error_codes.get(path).map_or(&[][..], Vec::as_slice);
+    for variant in variants {
+        let mut baseline_counts = HashMap::new();
+        for (name, occurrences) in &variant.error_codes {
+            if lang_from_path(name).is_some() {
+                baseline_counts.insert(name.as_str(), occurrences.len());
+            }
+        }
+        let baseline = &variant.name;
+        let test = path.display();
+        assert_eq!(baseline_counts, unit_counts, "baseline {baseline}: {test}");
+    }
+    for unit in NON_PROGRAM_UNITS {
+        if path != Path::new(unit.test) {
+            continue;
+        }
+        let identity = (unit.test, unit.name, unit.occurrence);
+        let count = unit_counts.get(unit.name).copied().unwrap_or_default();
+        assert!(
+            unit.occurrence < count,
+            "missing excluded unit: {identity:?}"
+        );
+        for variant in variants {
+            let codes = &variant.error_codes[unit.name][unit.occurrence];
+            let baseline = &variant.name;
+            assert!(
+                codes.is_empty(),
+                "excluded unit has diagnostics: {identity:?}, {baseline}"
+            );
+        }
+    }
 }
 
 fn boolean_option(options: &HashMap<String, String>, name: &str) -> Option<bool> {
@@ -237,14 +307,13 @@ fn parse_check_js_directive(comment: &str) -> Option<bool> {
 
 fn read_error_codes(test_dir: &Path, paths: &[PathBuf]) -> TestErrorCodes {
     let baselines = fixtures().join("typescript/tsc/testdata/baselines/reference");
-    let case_paths = paths
-        .iter()
-        .map(|path| {
-            let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
-            let relative_path = path.strip_prefix(test_dir).unwrap().to_path_buf();
-            (name, relative_path)
-        })
-        .collect::<HashMap<_, _>>();
+    let mut case_paths = HashMap::new();
+    for path in paths {
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        let relative_path = path.strip_prefix(test_dir).unwrap().to_path_buf();
+        let previous = case_paths.insert(name.to_owned(), relative_path);
+        assert!(previous.is_none(), "ambiguous TypeScript baseline: {name}");
+    }
     let mut baseline_paths = ["compiler", "conformance"]
         .into_iter()
         .flat_map(|suite| {
@@ -265,11 +334,21 @@ fn read_error_codes(test_dir: &Path, paths: &[PathBuf]) -> TestErrorCodes {
                 .split_once('(')
                 .map_or(baseline_name, |(name, _)| name);
 
-            // Declaration-emit baselines have no physical compiler case.
-            let actual_path = case_paths.get(test_name)?;
+            let Some(actual_path) = case_paths.get(test_name) else {
+                // Declaration-emit baselines have no physical compiler case.
+                assert!(
+                    test_name.ends_with(".d"),
+                    "unmatched TypeScript baseline: {baseline_name}"
+                );
+                return None;
+            };
             let baseline = read_to_string(&path).unwrap();
             let error_codes = read_unit_error_codes(&baseline);
-            Some((actual_path.clone(), error_codes))
+            let variant = ErrorCodeVariant {
+                name: baseline_name.to_owned(),
+                error_codes,
+            };
+            Some((actual_path.clone(), variant))
         })
         .collect::<Vec<_>>();
 
@@ -334,6 +413,7 @@ fn should_fail(
     error_codes.get(actual_path).is_some_and(|variants| {
         variants.iter().any(|variant| {
             let codes = variant
+                .error_codes
                 .get(unit_name)
                 .and_then(|units| units.get(unit_occurrence));
             codes.is_some_and(|codes| {
