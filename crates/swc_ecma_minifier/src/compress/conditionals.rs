@@ -85,6 +85,13 @@ impl Compressor {
             }
             _ => {}
         }
+        // The consequent can end in an `if` whose empty `else` was removed,
+        // which would take this `else`.
+        if alternate.is_some() && statements::ends_in_open_if(ast, consequent) {
+            let span = consequent.span(ast);
+            let body = ast.add_sub_range([consequent]);
+            consequent = ast.stmt_block_statement(span, body);
+        }
         if test != statement.test(ast) {
             statement.set_test(ast, test);
         }
