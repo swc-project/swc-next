@@ -59,12 +59,18 @@ impl Renames {
             .split_ascii_whitespace()
             .map(str::as_bytes)
             .collect();
-        // Mangled symbols by owning scope, most used first.
+        let scope_count = semantic
+            .iter_scopes()
+            .last()
+            .map_or(0, |entry| entry.id.index() + 1);
+        let mut offsets = vec![0usize; scope_count + 1];
         let mut symbols = Vec::new();
         for entry in semantic.iter_symbols() {
             match occurrences(ast, semantic, entry.id, program) {
                 Some(count) => {
-                    symbols.push((semantic.scope_of_symbol(entry.id), Reverse(count), entry.id));
+                    let scope = semantic.scope_of_symbol(entry.id);
+                    offsets[scope.index() + 1] += 1;
+                    symbols.push((scope, Reverse(count), entry.id));
                 }
                 None => {
                     reserved.insert(ast.get_wtf8(entry.symbol.name).as_bytes());
@@ -76,22 +82,31 @@ impl Renames {
                 reserved.insert(ast.get_utf8(entry.reference.name).as_bytes());
             }
         }
-        symbols.sort_unstable();
-
-        let scope_count = semantic
-            .iter_scopes()
-            .last()
-            .map_or(0, |entry| entry.id.index() + 1);
+        // Group symbols by scope before sorting each scope by use count and id.
+        // The write cursors become the end offsets of the scope ranges.
+        let mut offset = 0;
+        for start in &mut offsets[1..] {
+            let count = *start;
+            *start = offset;
+            offset += count;
+        }
+        let mut by_scope = vec![(Reverse(0), SymbolId::from_usize(0)); symbols.len()];
+        for (scope, count, id) in symbols {
+            let end = &mut offsets[scope.index() + 1];
+            by_scope[*end] = (count, id);
+            *end += 1;
+        }
         let mut ends = vec![0u32; scope_count];
         let mut frequencies: Vec<u32> = Vec::new();
         let mut nodes = vec![KEPT; ast.node_count()];
-        let mut symbols = symbols.as_slice();
         // Scopes are created before their descendants, in id order.
         for entry in semantic.iter_scopes() {
             let start = entry.scope.parent.map_or(0, |parent| ends[parent.index()]);
-            let owned = symbols.partition_point(|&(scope, ..)| scope == entry.id);
+            let scope = entry.id.index();
+            let symbols = &mut by_scope[offsets[scope]..offsets[scope + 1]];
+            symbols.sort_unstable();
             let mut slot = start;
-            for &(_, Reverse(count), id) in &symbols[..owned] {
+            for &(Reverse(count), id) in symbols.iter() {
                 if frequencies.len() <= slot as usize {
                     frequencies.push(0);
                 }
@@ -105,7 +120,6 @@ impl Renames {
                 slot += 1;
             }
             ends[entry.id.index()] = slot;
-            symbols = &symbols[owned..];
         }
 
         let mut order: Vec<u32> = (0..frequencies.len() as u32).collect();
