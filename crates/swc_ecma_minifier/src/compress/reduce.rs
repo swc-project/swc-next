@@ -75,6 +75,8 @@ pub(super) struct Reduction {
     /// Removable symbols that are not containers yet, because their
     /// initializers are not constant yet.
     pending: Vec<SymbolId>,
+    /// Containers that lost their last use in code removed by inlining.
+    ready: Vec<SymbolId>,
     /// Bindings that may be inlined, in source order.
     inline_candidates: Vec<InlineCandidate>,
 }
@@ -272,7 +274,7 @@ impl Reduction {
                 break;
             }
             removed_references = reduction.removed_count;
-            if !reduction.inline(ast, context) || !options.unused {
+            if !reduction.inline(ast, context) {
                 break;
             }
         }
@@ -342,7 +344,27 @@ impl Reduction {
             false
         });
         self.pending = pending;
-        if !worklist.is_empty() && self.references.is_empty() {
+        worklist.append(&mut self.ready);
+        while let Some(symbol) = worklist.pop() {
+            if !self.removed_symbols.insert(symbol) {
+                continue;
+            }
+            let span = self.containers[&symbol];
+            self.remove_references(ast, semantic, span, &mut worklist);
+        }
+    }
+
+    /// Marks the references in `span` as removed code, and queues the
+    /// containers that lose their last use outside removed code and
+    /// themselves.
+    fn remove_references(
+        &mut self,
+        ast: &Ast<'_>,
+        semantic: &Semantic<'_>,
+        span: Span,
+        worklist: &mut Vec<SymbolId>,
+    ) {
+        if self.references.is_empty() {
             self.references = semantic
                 .iter_references()
                 .map(|entry| (ast.span(entry.reference.node).start, entry.id))
@@ -359,53 +381,47 @@ impl Reduction {
                 .unwrap_or(0);
             self.removed_references = vec![false; count];
         }
-        while let Some(symbol) = worklist.pop() {
-            if !self.removed_symbols.insert(symbol) {
+        let first = self
+            .references
+            .partition_point(|(start, _)| *start < span.start);
+        for &(start, id) in &self.references[first..] {
+            if start >= span.end {
+                break;
+            }
+            if self.removed_references[id.index()] {
                 continue;
             }
-            let span = self.containers[&symbol];
-            let first = self
-                .references
-                .partition_point(|(start, _)| *start < span.start);
-            for &(start, id) in &self.references[first..] {
-                if start >= span.end {
-                    break;
-                }
-                if self.removed_references[id.index()] {
-                    continue;
-                }
-                self.removed_references[id.index()] = true;
-                self.removed_count += 1;
-                let reference = semantic.reference(id);
-                let Some(target) = reference.symbol else {
-                    continue;
-                };
-                if self.removed_symbols.contains(&target) {
-                    continue;
-                }
-                let Some(&container) = self.containers.get(&target) else {
-                    continue;
-                };
-                if contains(container, ast.span(reference.node)) {
-                    continue;
-                }
-                // The count is taken when a use is first removed, after
-                // this one.
-                let outside = self.outside.entry(target).or_insert_with(|| {
-                    semantic
-                        .uses(target)
-                        .iter()
-                        .filter(|id| {
-                            !self.removed_references[id.index()]
-                                && !contains(container, ast.span(semantic.reference(**id).node))
-                        })
-                        .count()
-                        + 1
-                });
-                *outside -= 1;
-                if *outside == 0 {
-                    worklist.push(target);
-                }
+            self.removed_references[id.index()] = true;
+            self.removed_count += 1;
+            let reference = semantic.reference(id);
+            let Some(target) = reference.symbol else {
+                continue;
+            };
+            if self.removed_symbols.contains(&target) {
+                continue;
+            }
+            let Some(&container) = self.containers.get(&target) else {
+                continue;
+            };
+            if contains(container, ast.span(reference.node)) {
+                continue;
+            }
+            // The count is taken when a use is first removed, after this
+            // one.
+            let outside = self.outside.entry(target).or_insert_with(|| {
+                semantic
+                    .uses(target)
+                    .iter()
+                    .filter(|id| {
+                        !self.removed_references[id.index()]
+                            && !contains(container, ast.span(semantic.reference(**id).node))
+                    })
+                    .count()
+                    + 1
+            });
+            *outside -= 1;
+            if *outside == 0 {
+                worklist.push(target);
             }
         }
     }
@@ -543,6 +559,10 @@ impl Reduction {
             for id in uses {
                 self.inlined.insert(semantic.reference(id).node, constant);
             }
+            // The reads and writes in the removed declarator are removed.
+            let mut ready = std::mem::take(&mut self.ready);
+            self.remove_references(ast, semantic, span, &mut ready);
+            self.ready = ready;
         }
         self.inline_candidates = candidates;
         changed
