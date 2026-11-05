@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
     VariableDeclaration, VariableDeclarator, VariableKind,
 };
 
-use super::dead_code::is_lexical;
+use super::{dead_code::is_lexical, side_effects::iife_forms};
 use crate::CompressOptions;
 
 /// Reusable buffers for rewriting one statement list at a time.
@@ -55,7 +55,7 @@ impl StatementList {
             let statement = ast.get_node_in_sub_range(id);
             self.push(ast, options, statement);
         }
-        self.flush_expressions(ast);
+        self.flush_expressions(ast, options);
         self.flush_declarations(ast);
         let changed = std::mem::take(&mut self.changed);
         let list = changed.then(|| ast.add_sub_range(self.statements.iter().copied()));
@@ -87,7 +87,7 @@ impl StatementList {
                 push_expressions(ast, expression.expression(ast), &mut self.expressions);
             }
             StmtData::Declaration(declaration) if options.join_vars => {
-                self.flush_expressions(ast);
+                self.flush_expressions(ast, options);
                 let DeclData::VariableDeclaration(declaration) = ast.decl_data(declaration) else {
                     self.flush_declarations(ast);
                     self.statements.push(statement);
@@ -115,7 +115,7 @@ impl StatementList {
                 );
             }
             _ => {
-                self.absorb_expressions(ast, statement);
+                self.absorb_expressions(ast, options, statement);
                 self.absorb_declarations(ast, statement);
                 self.statements.push(statement);
             }
@@ -123,7 +123,7 @@ impl StatementList {
     }
 
     /// Closes the open expression run as one expression statement.
-    fn flush_expressions(&mut self, ast: &mut Ast<'_>) {
+    fn flush_expressions(&mut self, ast: &mut Ast<'_>, options: &CompressOptions) {
         let Some(first) = self.expression_run.take() else {
             return;
         };
@@ -134,6 +134,7 @@ impl StatementList {
             return;
         }
         self.changed = true;
+        iife_forms(ast, options, &mut self.expressions, true);
         let expression = self.take_sequence(ast);
         let span = expression.span(ast);
         self.statements
@@ -149,7 +150,12 @@ impl StatementList {
 
     /// Moves the open expression run into the leading expression of
     /// `statement`, which runs right after it.
-    fn absorb_expressions(&mut self, ast: &mut Ast<'_>, statement: Stmt) {
+    fn absorb_expressions(
+        &mut self,
+        ast: &mut Ast<'_>,
+        options: &CompressOptions,
+        statement: Stmt,
+    ) {
         if self.expression_run.is_none() {
             return;
         }
@@ -170,12 +176,12 @@ impl StatementList {
                 Some(ForStatementInitData::Expr(init)) => Some(init),
                 // Only the declaration's initializers are expressions.
                 Some(ForStatementInitData::VariableDeclaration(_)) => {
-                    self.flush_expressions(ast);
+                    self.flush_expressions(ast, options);
                     return;
                 }
             },
             _ => {
-                self.flush_expressions(ast);
+                self.flush_expressions(ast, options);
                 return;
             }
         };
@@ -185,6 +191,7 @@ impl StatementList {
         if let Some(target) = target {
             push_expressions(ast, target, &mut self.expressions);
         }
+        iife_forms(ast, options, &mut self.expressions, false);
         let expression = self.take_sequence(ast);
         match ast.stmt_data(statement) {
             StmtData::IfStatement(statement) => statement.set_test(ast, expression),
@@ -295,7 +302,7 @@ fn set_declarators(
 
 /// Appends `expression` to `expressions`, splicing in the items of a
 /// sequence.
-fn push_expressions(ast: &Ast<'_>, expression: Expr, expressions: &mut Vec<Expr>) {
+pub(super) fn push_expressions(ast: &Ast<'_>, expression: Expr, expressions: &mut Vec<Expr>) {
     match ast.expr_data(expression) {
         ExprData::SequenceExpression(sequence) => expressions.extend(
             sequence
@@ -308,7 +315,7 @@ fn push_expressions(ast: &Ast<'_>, expression: Expr, expressions: &mut Vec<Expr>
 }
 
 /// Joins `expressions` with the comma operator.
-fn sequence(ast: &mut Ast<'_>, expressions: &[Expr]) -> Expr {
+pub(super) fn sequence(ast: &mut Ast<'_>, expressions: &[Expr]) -> Expr {
     match expressions {
         [expression] => *expression,
         [first, .., last] => {
