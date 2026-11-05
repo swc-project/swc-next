@@ -183,6 +183,13 @@ fn test_imports() {
         // testCaseEmptyFile.
         let output = generate("export { default as fn } from './test'", js, &config);
         output.expect_string("./test");
+
+        let output = generate("import d\nfrom'x'with{\ntype:'json'\n}", js, &config);
+        output.expect_name("d");
+        output.expect_string("x");
+        output.expect_mapping("import", "with");
+        output.expect_name("type");
+        output.expect_string("json");
     }
 }
 
@@ -196,6 +203,11 @@ fn test_unicode() {
 
         let output = generate("console.log({𐀀: \"b\"})", js, &config);
         output.expect_string("b");
+
+        let output = generate("[\n'🍕',\n'last'\n]", js, &config);
+        output.expect_string("🍕");
+        output.expect_string("last");
+        output.expect_mapping("]", "]");
     }
 }
 
