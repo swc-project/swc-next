@@ -9,10 +9,7 @@ use swc_next_allocator::{
     boxed::Box as ArenaBox,
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{
-    Ast, AstUtf8, Function, FunctionType, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId,
-    Traverse, TraverseCtx, TraverseWith,
-};
+use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     AsyncFunctionInfo, BindingIterator, Declaration, DeclarationId, DeclarationIdIterator,
@@ -328,52 +325,17 @@ impl<'a> ScopeModel<'a> {
         id
     }
 
-    /// Transfer a function expression's internal name to its enclosing wrapper.
-    /// The caller moves the corresponding AST binding after updating the indexes.
-    pub fn transfer_function_expression_name(
-        &mut self,
-        ast: &Ast<'a>,
-        from: Function,
-        to: Function,
-    ) {
-        debug_assert_eq!(from.function_type(ast), FunctionType::FunctionExpression);
-        debug_assert_eq!(to.function_type(ast), FunctionType::FunctionExpression);
-        let Some(id) = from.id(ast) else { return };
-        let source = self
-            .scope_of(from.node_id())
-            .expect("function expression scope");
-        let wrapper = self.scope_of(to.node_id()).expect("function wrapper scope");
-        debug_assert_eq!(self.scope(source).parent, Some(wrapper));
-        let name = ast.get_utf8(id.name(ast)).as_bytes();
-        self.move_binding_to_scope(id.node_id(), source, wrapper, name);
-    }
-
-    /// Move a retained subtree's bindings and evaluations between scopes and
-    /// reparent direct child scopes while preserving identities.
-    pub fn move_subtree_to_scope(
-        &mut self,
-        ast: &Ast<'a>,
-        root: impl TraverseWith<'a>,
-        from: ScopeId,
-        to: ScopeId,
-    ) {
-        debug_assert!(self.scope(from).active && self.scope(to).active);
-        if from == to {
-            return;
-        }
-        let mut mover = ScopeMover {
-            semantic: self,
-            from,
-            to,
-        };
-        root.traverse_with(&mut mover, &mut TraverseCtx::new(ast, ()));
-    }
-
     /// Move one retained binding declaration between active scopes.
     ///
     /// The symbol and declaration identities are preserved. A symbol with
     /// declarations in both scopes remains visible from both scope maps.
-    fn move_binding_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId, name: &'a [u8]) {
+    pub fn move_binding_to_scope(
+        &mut self,
+        node: NodeId,
+        from: ScopeId,
+        to: ScopeId,
+        name: &'a [u8],
+    ) {
         debug_assert!(self.scope(from).active && self.scope(to).active);
         let Some(symbol) = self.symbol_of(node) else {
             return;
@@ -400,37 +362,6 @@ impl<'a> ScopeModel<'a> {
             None => {
                 self.scope_maps[to].insert(name, symbol);
             }
-        }
-    }
-}
-
-struct ScopeMover<'model, 'a> {
-    semantic: &'model mut ScopeModel<'a>,
-    from: ScopeId,
-    to: ScopeId,
-}
-
-impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
-    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseCtx<'_, 'a>) {
-        if let Some(scope) = self.semantic.scope_of(node) {
-            // Program scopes keep their fixed outer wrapper.
-            if scope != self.to
-                && self.semantic.scope(scope).parent == Some(self.from)
-                && self.semantic.scope(self.from).node != node
-            {
-                self.semantic.reparent_scope(scope, self.to);
-            }
-        }
-        if let Some(reference) = self.semantic.reference_of(node)
-            && self.semantic.reference(reference).scope == self.from
-        {
-            self.semantic
-                .move_reference_to_scope(reference, self.from, self.to);
-        }
-        if let NodeKindData::BindingIdentifier(binding) = ctx.ast.kind_data(node) {
-            let name = ctx.ast.get_utf8(binding.name(ctx.ast)).as_bytes();
-            self.semantic
-                .move_binding_to_scope(node, self.from, self.to, name);
         }
     }
 }

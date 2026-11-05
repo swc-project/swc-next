@@ -1,10 +1,10 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
-    Function, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
-    SimpleAssignmentTarget, Span, SymbolId, TraverseWith,
+    Function, FunctionType, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
+    SimpleAssignmentTarget, Span, SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
 use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, SymbolFlags,
+    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -283,10 +283,22 @@ impl<'a> TransformCtx<'_, 'a> {
         let Some(name) = from.id(self.ast) else {
             return;
         };
+        debug_assert_eq!(
+            from.function_type(self.ast),
+            FunctionType::FunctionExpression
+        );
+        debug_assert_eq!(to.function_type(self.ast), FunctionType::FunctionExpression);
         debug_assert!(to.id(self.ast).is_none());
-        self.state
-            .semantic
-            .transfer_function_expression_name(self.ast, from, to);
+        let semantic = &mut self.state.semantic;
+        let source = semantic
+            .scope_of(from.node_id())
+            .expect("function expression scope");
+        let wrapper = semantic
+            .scope_of(to.node_id())
+            .expect("function wrapper scope");
+        debug_assert_eq!(semantic.scope(source).parent, Some(wrapper));
+        let text = self.ast.get_utf8(name.name(self.ast)).as_bytes();
+        semantic.move_binding_to_scope(name.node_id(), source, wrapper, text);
         from.set_id(self.ast, None);
         to.set_id(self.ast, Some(name));
     }
@@ -312,9 +324,16 @@ impl<'a> TransformCtx<'_, 'a> {
         from: ScopeId,
         to: ScopeId,
     ) {
-        self.state
-            .semantic
-            .move_subtree_to_scope(self.ast, root, from, to);
+        debug_assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
+        if from == to {
+            return;
+        }
+        let mut mover = ScopeMover {
+            semantic: &mut self.state.semantic,
+            from,
+            to,
+        };
+        root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
     }
 
     pub(crate) fn move_reference_to_scope(&mut self, reference: ReferenceId, scope: ScopeId) {
@@ -357,5 +376,36 @@ impl<'a> TransformCtx<'_, 'a> {
     /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         self.state.semantic.remove_scope(scope);
+    }
+}
+
+struct ScopeMover<'c, 'a> {
+    semantic: &'c mut ScopeModel<'a>,
+    from: ScopeId,
+    to: ScopeId,
+}
+
+impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
+    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseCtx<'_, 'a>) {
+        if let Some(scope) = self.semantic.scope_of(node) {
+            // Program scopes keep their fixed outer wrapper.
+            if scope != self.to
+                && self.semantic.scope(scope).parent == Some(self.from)
+                && self.semantic.scope(self.from).node != node
+            {
+                self.semantic.reparent_scope(scope, self.to);
+            }
+        }
+        if let Some(reference) = self.semantic.reference_of(node)
+            && self.semantic.reference(reference).scope == self.from
+        {
+            self.semantic
+                .move_reference_to_scope(reference, self.from, self.to);
+        }
+        if let NodeKindData::BindingIdentifier(binding) = ctx.ast.kind_data(node) {
+            let name = ctx.ast.get_utf8(binding.name(ctx.ast)).as_bytes();
+            self.semantic
+                .move_binding_to_scope(node, self.from, self.to, name);
+        }
     }
 }
