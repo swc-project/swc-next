@@ -173,3 +173,40 @@ fn binding_pattern_lookahead() {
         parse(source, options);
     }
 }
+
+#[test]
+fn assignment_targets() {
+    const CHAIN_LENGTH: usize = 50_000;
+
+    fn parse(source: String, options: Options) {
+        std::thread::Builder::new()
+            .stack_size(1 << 20)
+            .spawn(move || {
+                let allocator = Allocator::new();
+                let parsed =
+                    Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
+                assert!(parsed.diagnostics.is_empty());
+                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 1);
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    let typescript = Options {
+        lang: Lang::Ts,
+        ..Options::default()
+    };
+    let tsx = Options {
+        lang: Lang::Tsx,
+        ..typescript
+    };
+    for options in [typescript, tsx] {
+        let source = format!("a{} = 1;", "!".repeat(CHAIN_LENGTH));
+        parse(source, options);
+
+        let assertions = " as any satisfies any".repeat(CHAIN_LENGTH / 2);
+        let source = format!("(a{assertions}) += 1;");
+        parse(source, options);
+    }
+}

@@ -13870,56 +13870,41 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             return None;
         }
-        match self.ast.expr_data(expression) {
+        match self.ast.expr_data(self.unwrap_parens(expression)) {
             ExprData::IdentifierReference(node) => {
                 Some(SimpleAssignmentTarget::IdentifierReference(node))
             }
-            ExprData::MemberExpression(node) if !member_expression_is_optional(node, &self.ast) => {
+            ExprData::MemberExpression(node) => {
                 Some(SimpleAssignmentTarget::MemberExpression(node))
             }
-            ExprData::TsAsExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
-                Some(SimpleAssignmentTarget::TsAsExpression(node))
-            }
+            ExprData::TsAsExpression(node) => Some(SimpleAssignmentTarget::TsAsExpression(node)),
             ExprData::TsSatisfiesExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsSatisfiesExpression(node))
             }
-            ExprData::TsTypeAssertion(node) => {
-                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
-                Some(SimpleAssignmentTarget::TsTypeAssertion(node))
-            }
+            ExprData::TsTypeAssertion(node) => Some(SimpleAssignmentTarget::TsTypeAssertion(node)),
             ExprData::TsNonNullExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsNonNullExpression(node))
-            }
-            ExprData::ParenthesizedExpression(parenthesized) => {
-                self.expression_to_simple_assignment_target(parenthesized.expression(&self.ast))
             }
             _ => unreachable!("simple assignment targets were validated above"),
         }
     }
 
-    fn is_simple_assignment_target(&self, expression: Expr) -> bool {
-        match self.ast.expr_data(expression) {
-            ExprData::IdentifierReference(_) => true,
-            ExprData::MemberExpression(member) => !member_expression_is_optional(member, &self.ast),
-            ExprData::ParenthesizedExpression(parenthesized) => {
-                self.is_simple_assignment_target(parenthesized.expression(&self.ast))
-            }
-            ExprData::TsNonNullExpression(node) => {
-                self.is_simple_assignment_target(node.expression(&self.ast))
-            }
-            ExprData::TsAsExpression(node) => {
-                self.is_simple_assignment_target(node.expression(&self.ast))
-            }
-            ExprData::TsSatisfiesExpression(node) => {
-                self.is_simple_assignment_target(node.expression(&self.ast))
-            }
-            ExprData::TsTypeAssertion(node) => {
-                self.is_simple_assignment_target(node.expression(&self.ast))
-            }
-            _ => false,
+    fn is_simple_assignment_target(&self, mut expression: Expr) -> bool {
+        loop {
+            expression = match self.ast.expr_data(expression) {
+                ExprData::IdentifierReference(_) => return true,
+                ExprData::MemberExpression(member) => {
+                    return !member_expression_is_optional(member, &self.ast);
+                }
+                ExprData::ParenthesizedExpression(parenthesized) => {
+                    parenthesized.expression(&self.ast)
+                }
+                ExprData::TsNonNullExpression(node) => node.expression(&self.ast),
+                ExprData::TsAsExpression(node) => node.expression(&self.ast),
+                ExprData::TsSatisfiesExpression(node) => node.expression(&self.ast),
+                ExprData::TsTypeAssertion(node) => node.expression(&self.ast),
+                _ => return false,
+            };
         }
     }
 
