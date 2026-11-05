@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BindingIdentifier, Function, IdentifierReference, Lang, NodeId,
-    NodeKindData, SourceType, Visit, VisitWith,
+    ArrowFunctionExpression, Ast, BindingIdentifier, Function, FunctionType, IdentifierReference,
+    Lang, NodeId, NodeKindData, SourceType, Visit, VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SyntaxChecks, analyze};
@@ -237,12 +237,12 @@ fn async_function_parameters_and_lexical_values() {
     let code = transformed_code(
         "function outer() { return async (value) => [this, arguments, await value]; }",
     );
+    assert!(code.contains("function* (value)"), "{code}");
+    assert!(code.contains("})(_0)"), "{code}");
     assert!(
-        code.contains("(value) => _swc_helpers._async_to_generator(function* ()"),
+        code.contains("return [_this(), _arguments(), yield value]"),
         "{code}"
     );
-    assert!(code.contains(").apply(this, arguments)"));
-    assert!(code.contains("yield value"));
 
     let code = transformed_code("async function strictThis() { 'use strict'; return this; }");
     assert_eq!(code.matches("use strict").count(), 2, "{code}");
@@ -273,10 +273,20 @@ fn async_function_parameters_and_lexical_values() {
 
 #[test]
 fn generated_semantic_indexes() {
+    assert_generated_semantic_indexes(
+        "async function declared(value) { return await value; } const expression = async function named(value) { return named(await value); }; class Base {} class Derived extends Base { async load(value, key) { super[key] += await value; return [arguments, this, super.result]; } }",
+    );
+    assert_generated_semantic_indexes("const arrow = async (value = 1) => await value;");
+    assert_generated_semantic_indexes(
+        "const arrow = async (value = 1) => { return await value; };",
+    );
+}
+
+fn assert_generated_semantic_indexes(source: &str) {
     let allocator = Allocator::new();
     let parsed = Parser::init(
         &allocator,
-        "async function declared(value) { return await value; } const expression = async function named(value) { return named(await value); }; class Base {} class Derived extends Base { async load(value, key) { super[key] += await value; return [arguments, this, super.result]; } }",
+        source,
         ParserOptions {
             source_type: SourceType::Module,
             ..ParserOptions::default()
@@ -307,11 +317,24 @@ fn generated_semantic_indexes() {
         .async_functions_post_order()
         .iter()
         .map(|info| {
+            let kind = ast.kind_data(info.node);
+            let expression_name = match kind {
+                NodeKindData::Function(function)
+                    if function.function_type(&ast) == FunctionType::FunctionExpression =>
+                {
+                    function
+                        .id(&ast)
+                        .map(|name| (name, semantic.symbol_of(name.node_id()).unwrap()))
+                }
+                _ => None,
+            };
             (
                 info.node,
                 semantic
                     .scope_of(info.node)
                     .expect("original async function scope"),
+                matches!(kind, NodeKindData::ArrowFunctionExpression(_)),
+                expression_name,
             )
         })
         .collect();
@@ -360,12 +383,43 @@ fn generated_semantic_indexes() {
         references: Vec::new(),
     };
     ast.root_program().visit_with(&mut generated);
-    for (node, scope) in original_functions {
+    for (node, scope, was_arrow, expression_name) in original_functions {
         let NodeKindData::Function(function) = ast.kind_data(node) else {
             panic!("original async function must remain a function");
         };
         assert!(function.generator(&ast));
         assert_eq!(transformed.semantic.scope_of(node), Some(scope));
+        if let Some((name, symbol)) = expression_name {
+            let wrapper_scope = transformed.semantic.scope(scope).parent.unwrap();
+            let wrapper = transformed.semantic.scope(wrapper_scope).node;
+            let NodeKindData::Function(wrapper) = ast.kind_data(wrapper) else {
+                panic!("the enclosing scope must belong to the function wrapper");
+            };
+            assert_eq!(wrapper.id(&ast).unwrap().node_id(), name.node_id());
+            assert_eq!(transformed.semantic.symbol_of(name.node_id()), Some(symbol));
+            assert_eq!(transformed.semantic.scope_of_symbol(symbol), wrapper_scope);
+            assert!(function.id(&ast).is_none());
+        }
+        if was_arrow {
+            let wrapper_scope = transformed.semantic.scope(scope).parent.unwrap();
+            let wrapper = transformed.semantic.scope(wrapper_scope).node;
+            let NodeKindData::ArrowFunctionExpression(wrapper) = ast.kind_data(wrapper) else {
+                panic!("the enclosing scope must belong to the arrow wrapper");
+            };
+            assert!(!wrapper.r#async(&ast));
+            assert!(transformed.semantic.scope(scope).flags.arguments_barrier);
+        }
+        if function.params(&ast).items(&ast).iter().any(|item| {
+            ast.get_node_in_sub_range(item)
+                .as_formal_parameter(&ast)
+                .is_some_and(|param| param.initializer(&ast).is_some())
+        }) {
+            assert_eq!(
+                transformed.semantic.scope(scope).function_body,
+                transformed.semantic.scope_of(function.body(&ast).node_id())
+            );
+            assert!(transformed.semantic.scope(scope).function_body.is_some());
+        }
     }
     assert!(
         transformed
@@ -420,6 +474,58 @@ fn generated_semantic_indexes() {
 }
 
 #[test]
+fn async_arrow_parameters_and_captures() {
+    let code = transformed_code(
+        "const arrow = async (first, next = fail(), ...rest) => await consume(first, next, rest);",
+    );
+    assert!(
+        code.contains("function* (first, next = fail(), ...rest)"),
+        "{code}"
+    );
+    assert!(code.contains("})(_0, ..._args)"), "{code}");
+
+    let code =
+        transformed_code("function outer() { return async () => [this, arguments, new.target]; }");
+    assert!(code.contains("() => arguments"), "{code}");
+    assert!(code.contains("() => new.target"), "{code}");
+    assert!(
+        code.contains("return [_this(), _arguments(), _newtarget()]"),
+        "{code}"
+    );
+
+    let code =
+        transformed_code("function outer() { return async () => async () => ({ arguments }); }");
+    assert_eq!(code.matches("() => arguments").count(), 1, "{code}");
+    assert!(code.contains("{ arguments: _arguments() }"), "{code}");
+
+    let code = transformed_code("const arrow = async () => typeof arguments;");
+    assert!(code.contains("() => typeof arguments"), "{code}");
+
+    let code = transformed_code_with_source_type(
+        "function outer() { return async () => arguments++; }",
+        SourceType::Script,
+    );
+    assert!(code.contains("get value()"), "{code}");
+    assert!(code.contains("set value("), "{code}");
+    assert!(code.contains("_argumentsRef.value++"), "{code}");
+
+    let code = transformed_code_with_source_type(
+        "function outer() { return async (source) => ({ arguments } = source); }",
+        SourceType::Script,
+    );
+    assert!(
+        code.contains("{ arguments: _argumentsRef.value }"),
+        "{code}"
+    );
+
+    let code = transformed_code_with_source_type(
+        "const arrow = async () => { var arguments; return arguments; };",
+        SourceType::Script,
+    );
+    assert!(code.contains("arguments = void 0;"), "{code}");
+}
+
+#[test]
 fn async_methods_with_super() {
     let code = transformed_code(
         "class Base { method(value) { return value; } } class Derived extends Base { async method(key, value) { const result = await super.method(value); const current = await super[key]; super.value = current; return result; } }",
@@ -435,7 +541,7 @@ fn async_methods_with_super() {
     );
     assert!(code.contains("_superprop_get_method"), "{code}");
     assert!(
-        code.contains("yield _superprop_get_method().call(this)"),
+        code.contains("yield _superprop_get_method().call(_this())"),
         "{code}"
     );
 
@@ -457,6 +563,11 @@ fn async_methods_with_super() {
     let code = transformed_code(
         "class Base { count = 0; } class Derived extends Base { field = async (value = 1) => super.count + await value; }",
     );
-    assert!(code.contains("(value = 1) =>"), "{code}");
+    assert!(code.contains("function* (value = 1)"), "{code}");
     assert!(code.contains("_superprop_get_count"), "{code}");
+
+    let code = transformed_code(
+        "const arrow = async () => class extends Base { field = super.method(); };",
+    );
+    assert!(code.contains("field = super.method()"), "{code}");
 }

@@ -10,14 +10,15 @@ use swc_next_allocator::{
     vec::{ArenaIndexVec, ArenaVec},
 };
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId, Traverse, TraverseCtx,
-    TraverseWith,
+    Ast, AstUtf8, Function, FunctionType, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId,
+    Traverse, TraverseCtx, TraverseWith,
 };
 
 use crate::{
     AsyncFunctionInfo, BindingIterator, Declaration, DeclarationId, DeclarationIdIterator,
-    DeclarationIterator, NodeSemanticId, Redeclarations, Reference, ReferenceIterator,
-    ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator, TransformSemantic,
+    DeclarationIterator, NodeSemanticId, Redeclarations, Reference, ReferenceFlags,
+    ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator,
+    TransformSemantic,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -327,6 +328,26 @@ impl<'a> ScopeModel<'a> {
         id
     }
 
+    /// Transfer a function expression's internal name to its enclosing wrapper.
+    /// The caller moves the corresponding AST binding after updating the indexes.
+    pub fn transfer_function_expression_name(
+        &mut self,
+        ast: &Ast<'a>,
+        from: Function,
+        to: Function,
+    ) {
+        debug_assert_eq!(from.function_type(ast), FunctionType::FunctionExpression);
+        debug_assert_eq!(to.function_type(ast), FunctionType::FunctionExpression);
+        let Some(id) = from.id(ast) else { return };
+        let source = self
+            .scope_of(from.node_id())
+            .expect("function expression scope");
+        let wrapper = self.scope_of(to.node_id()).expect("function wrapper scope");
+        debug_assert_eq!(self.scope(source).parent, Some(wrapper));
+        let name = ast.get_utf8(id.name(ast)).as_bytes();
+        self.move_binding_to_scope(id.node_id(), source, wrapper, name);
+    }
+
     /// Move a retained subtree's bindings and evaluations between scopes and
     /// reparent direct child scopes while preserving identities.
     pub fn move_subtree_to_scope(
@@ -540,6 +561,11 @@ impl ScopeModel<'_> {
         debug_assert!(self.scope(from).active && self.scope(to).active);
         debug_assert_eq!(self.reference(reference).scope, from);
         self.references[reference].scope = to;
+    }
+
+    /// Update how an existing reference accesses the same binding.
+    pub fn set_reference_flags(&mut self, reference: ReferenceId, flags: ReferenceFlags) {
+        self.references[reference].flags = flags;
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.

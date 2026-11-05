@@ -1,6 +1,8 @@
 mod async_to_generator;
 
-use swc_next_ecma_ast::{ArrowFunctionExpression, Expr, Function, TraverseAction};
+use swc_next_ecma_ast::{
+    ArrowFunctionExpression, Expr, Function, SimpleAssignmentTarget, TraverseAction,
+};
 
 use crate::context::TransformCtx;
 
@@ -54,10 +56,12 @@ impl ES2017 {
         &mut self,
         arrow: ArrowFunctionExpression,
         ctx: &mut TransformCtx<'_, '_>,
-    ) {
-        if let Some(transform) = &mut self.async_to_generator {
-            transform.exit_arrow_function_expression(arrow, ctx);
-        }
+    ) -> TraverseAction<ArrowFunctionExpression> {
+        self.async_to_generator
+            .as_mut()
+            .map_or(TraverseAction::Continue, |transform| {
+                transform.exit_arrow_function_expression(arrow, ctx)
+            })
     }
 
     pub(crate) fn exit_expr<'a>(
@@ -69,6 +73,18 @@ impl ES2017 {
             .as_mut()
             .map_or(TraverseAction::Continue, |transform| {
                 transform.exit_expr(expression, ctx)
+            })
+    }
+
+    pub(crate) fn exit_simple_assignment_target(
+        &mut self,
+        node: SimpleAssignmentTarget,
+        ctx: &mut TransformCtx<'_, '_>,
+    ) -> TraverseAction<SimpleAssignmentTarget> {
+        self.async_to_generator
+            .as_mut()
+            .map_or(TraverseAction::Continue, |transform| {
+                transform.exit_simple_assignment_target(node, ctx)
             })
     }
 }

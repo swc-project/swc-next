@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
-    IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
-    SymbolId, TraverseWith,
+    Function, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
+    SimpleAssignmentTarget, Span, SymbolId, TraverseWith,
 };
 use swc_next_ecma_semantic::{
     Reference, ReferenceFlags, SymbolFlags,
@@ -278,6 +278,19 @@ impl<'a> TransformCtx<'_, 'a> {
         self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
+    /// Give an enclosing wrapper the original function expression's internal name.
+    pub(crate) fn transfer_function_expression_name(&mut self, from: Function, to: Function) {
+        let Some(name) = from.id(self.ast) else {
+            return;
+        };
+        debug_assert!(to.id(self.ast).is_none());
+        self.state
+            .semantic
+            .transfer_function_expression_name(self.ast, from, to);
+        from.set_id(self.ast, None);
+        to.set_id(self.ast, Some(name));
+    }
+
     /// Move a retained subtree's bindings and evaluations between scopes and
     /// reparent child scopes while preserving identities.
     ///
@@ -302,6 +315,17 @@ impl<'a> TransformCtx<'_, 'a> {
         self.state
             .semantic
             .move_subtree_to_scope(self.ast, root, from, to);
+    }
+
+    pub(crate) fn move_reference_to_scope(&mut self, reference: ReferenceId, scope: ScopeId) {
+        let from = self.semantic().reference(reference).scope;
+        self.state
+            .semantic
+            .move_reference_to_scope(reference, from, scope);
+    }
+
+    pub(crate) fn set_reference_flags(&mut self, reference: ReferenceId, flags: ReferenceFlags) {
+        self.state.semantic.set_reference_flags(reference, flags);
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.

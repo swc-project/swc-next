@@ -1,11 +1,12 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CatchClause, Class, ClassBody, ClassType, Decl,
-    ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
-    TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
-    TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
-    TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
-    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
+    ArrowFunctionExpression, Ast, BindingProperty, BlockStatement, CatchClause, Class, ClassBody,
+    ClassType, Decl, ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement,
+    ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
+    SimpleAssignmentTarget, StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx,
+    TraverseMutWith, TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsEnumBody,
+    TsFunction, TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock,
+    TsThisParameter, TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter,
+    TsTypeParameterDeclaration,
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, SemanticFeatureFlags, analyze};
 
@@ -188,15 +189,16 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         // arrow itself. Flush it before a transform can replace that expression
         // body with a different FunctionBody node.
         transform.inject_statements_to(node.node_id());
-        self.x0_es2017
+        let action = self
+            .x0_es2017
             .exit_arrow_function_expression(node, &mut transform);
-        let container = node
-            .body(transform.ast)
-            .as_function_body(transform.ast)
-            .map_or(node.node_id(), |body| body.node_id());
-        transform.inject_statements_to(container);
+        if matches!(action, TraverseAction::Continue)
+            && let Some(body) = node.body(transform.ast).as_function_body(transform.ast)
+        {
+            transform.inject_statements_to(body.node_id());
+        }
         ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
+        action
     }
 
     fn enter_function_body(
@@ -759,6 +761,35 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
             return self
                 .x0_es2022
                 .exit_class(class, &mut TransformCtx::new(ctx));
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_simple_assignment_target(
+        &mut self,
+        node: SimpleAssignmentTarget,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
+    ) -> TraverseAction<SimpleAssignmentTarget> {
+        self.x0_es2017
+            .exit_simple_assignment_target(node, &mut TransformCtx::new(ctx))
+    }
+
+    fn exit_binding_property(
+        &mut self,
+        node: BindingProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
+    ) -> TraverseAction<BindingProperty> {
+        if node.shorthand(ctx.ast) {
+            let value = node.value(ctx.ast);
+            let target = value
+                .as_assignment_pattern(ctx.ast)
+                .map_or(value, |default| default.left(ctx.ast));
+            if target
+                .as_simple_assignment_target(ctx.ast)
+                .is_some_and(|target| target.is_member_expression(ctx.ast))
+            {
+                node.set_shorthand(ctx.ast, false);
+            }
         }
         TraverseAction::Continue
     }
