@@ -63,11 +63,27 @@ fn assertions() {
         "const value = 2 * 3           * 2;",
     );
 
-    // [TODO]: Report Invalid syntax for unary assertion left of exponentiation
-    assert_strip_text(
-        "const value = -input as number ** 2;",
-        "const value = -input           ** 2;",
-        Lang::Ts,
+    let ts = options(Lang::Ts);
+    let result = strip_types("const value = -input as number ** 2;", ts);
+    assert_eq!(result.code, "const value = -input           ** 2;");
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+    assert_eq!(result.diagnostics[0].span, Span::new(14, 20));
+
+    let result = strip_types("await input as any satisfies number ** 2;", ts);
+    assert_eq!(result.code, "await input                         ** 2;");
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+    assert_eq!(result.diagnostics[0].span, Span::new(0, 11));
+
+    assert_strip(
+        "const value = (-input) as number ** 2;",
+        "const value = (-input)           ** 2;",
+    );
+
+    assert_strip(
+        "const value = (await input) as number ** 2;",
+        "const value = (await input)           ** 2;",
     );
 
     assert_strip("value as T\n/re/g.test(s);", "value     \n/re/g.test(s);");
