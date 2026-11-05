@@ -106,6 +106,10 @@ struct Declarations {
     top_level: FxHashSet<NodeId>,
     /// The span of each function declaration, by its name.
     functions: FxHashMap<NodeId, Option<Span>>,
+    /// Names of function declarations in blocks. Outside strict code, such
+    /// a function also binds its name in the enclosing function unless a
+    /// `let` or `const` of the name in an enclosing block prevents it.
+    block_functions: FxHashSet<Vec<u8>>,
 }
 
 /// Records `value` for `key`, or `None` when another value was recorded.
@@ -191,6 +195,12 @@ impl Declarations {
         }
     }
 
+    /// Whether a `let` or `const` named `name` can keep a function in a
+    /// nested block from binding its name in the enclosing function.
+    fn blocks_function(&self, ast: &Ast<'_>, name: AstWtf8) -> bool {
+        self.block_functions.contains(ast.get_wtf8(name).as_bytes())
+    }
+
     /// The declarator of a binding and the declaration statement that holds
     /// it. Declarators in loop heads are excluded.
     fn statement(&self, binding: NodeId) -> Option<(VariableDeclarator, VariableDeclaration)> {
@@ -218,7 +228,27 @@ impl Reduction {
         if !options.unused && !options.reduce_vars {
             return reduction;
         }
-        let declarations = Declarations::scan(ast);
+        let mut declarations = Declarations::scan(ast);
+        for entry in context.semantic.iter_symbols() {
+            let flags = entry.symbol.flags;
+            let in_block = || {
+                context.semantic.declarations(entry.id).any(|declaration| {
+                    !matches!(
+                        context.semantic.scope(declaration.scope).kind,
+                        ScopeKind::Function
+                            | ScopeKind::FunctionBody
+                            | ScopeKind::Global
+                            | ScopeKind::Module
+                    )
+                })
+            };
+            if flags.contains(SymbolFlags::FUNCTION)
+                && (flags.contains(SymbolFlags::ANNEX_B_IF_FUNCTION) || in_block())
+            {
+                let name = ast.get_wtf8(entry.symbol.name).as_bytes().to_vec();
+                declarations.block_functions.insert(name);
+            }
+        }
         if options.unused {
             for entry in context.semantic.iter_symbols() {
                 if is_removable_kind(ast, context, &declarations, entry.id) {
@@ -446,6 +476,7 @@ impl Reduction {
                 VariableKind::Let | VariableKind::Const => {
                     let scope = semantic.scope(declaration.scope);
                     ast.node_kind(scope.node) != NodeKind::SwitchStatement
+                        && !declarations.blocks_function(ast, entry.symbol.name)
                 }
                 _ => false,
             };
@@ -645,11 +676,12 @@ fn is_removable_kind(
         .copied()
         .flatten()
         .and_then(|declarator| *declarations.holders.get(&declarator.node_id())?)
-        .is_some_and(|holder| {
-            matches!(
-                holder.kind(ast),
-                VariableKind::Var | VariableKind::Let | VariableKind::Const
-            )
+        .is_some_and(|holder| match holder.kind(ast) {
+            VariableKind::Var => true,
+            VariableKind::Let | VariableKind::Const => {
+                !declarations.blocks_function(ast, semantic.symbol(symbol).name)
+            }
+            _ => false,
         })
 }
 
