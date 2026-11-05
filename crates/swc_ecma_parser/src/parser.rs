@@ -19,8 +19,7 @@ use crate::{
     TokenFlag,
     config::{NoTokenParserConfig, ParserConfig},
     lexer::{
-        HandleTokenMode, Lexer, LexerMode, LexerState, LexicalError, lexical_error_help,
-        lexical_error_message,
+        HandleTokenMode, Lexer, LexerState, LexicalError, lexical_error_help, lexical_error_message,
     },
     number::{parse_binary_literal, parse_decimal_literal, parse_hex_literal, parse_octal_literal},
     token::{Token, TokenTag, flag_mask},
@@ -1034,7 +1033,6 @@ struct SpeculationKey {
     boundary_context: BoundaryContext,
     statement_context: u8,
     module_detection: u8,
-    lexer_mode: u8,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -1094,11 +1092,6 @@ enum JsxElementContext {
     TopLevel,
     Child,
     Attribute,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum JsxExprContext {
-    Tag,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1228,7 +1221,6 @@ struct Checkpoint {
     // Lexer state.
     lexer_cursor: u32,
     lexer_state: LexerState,
-    lexer_mode: LexerMode,
     lexer_comments_len: usize,
     lexer_processed_comments: usize,
     lexer_tokens_len: usize,
@@ -1326,7 +1318,6 @@ struct ComputedKeyBoundary {
     next: Token,
     lexer_cursor: u32,
     lexer_state: LexerState,
-    lexer_mode: LexerMode,
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -1969,10 +1960,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn set_lexer_mode(&mut self, mode: LexerMode) {
-        self.lexer.mode = mode;
-    }
-
     fn span_text(&self, span: Span) -> &'a str {
         &self.source[span.start as usize..span.end as usize]
     }
@@ -2072,7 +2059,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Checkpoint {
             lexer_cursor: self.lexer.cursor,
             lexer_state: self.lexer.state,
-            lexer_mode: self.lexer.mode,
             lexer_comments_len: self.lexer.comments.len(),
             lexer_processed_comments: self.lexer.processed_comments,
             lexer_tokens_len: self.lexer.tokens.len(),
@@ -2105,7 +2091,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
-        self.lexer.mode = checkpoint.lexer_mode;
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
         self.lexer
             .rewind_module_mode_errors(checkpoint.lexer_cursor);
@@ -9772,6 +9757,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
+    fn parse_jsx_string_literal(&mut self) -> Option<StringLiteral> {
+        let token = self.current_token;
+        debug_assert_eq!(token.tag(), TokenTag::StringLiteral);
+        self.advance_jsx_tag()?;
+        let value = self.string_value(token);
+        let raw = self.ast.source_slice(token.start(), token.end());
+        Some(self.ast.string_literal(token.span(), value, raw))
+    }
+
     fn parse_regexp_literal(&mut self) -> Option<Expr> {
         debug_assert!(matches!(
             self.current_token.tag(),
@@ -11972,7 +11966,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if let Some(cached) = self.computed_key_lookahead.expressions.get(&key).copied() {
             self.lexer.cursor = cached.lexer_cursor;
             self.lexer.state = cached.lexer_state;
-            self.lexer.mode = cached.lexer_mode;
             self.current_token = cached.next;
             // Computed keys are opaque in this disposable AST.
             // Committed parsing always builds the original expression.
@@ -11997,7 +11990,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     next: self.current_token,
                     lexer_cursor: self.lexer.cursor,
                     lexer_state: self.lexer.state,
-                    lexer_mode: self.lexer.mode,
                 },
             );
         }
@@ -12686,41 +12678,107 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    fn enter_jsx_tag(&mut self) {
-        self.set_lexer_mode(LexerMode::JsxTag);
+    fn advance_jsx_tag(&mut self) -> Option<()> {
+        self.check_escaped_keyword();
+        self.lexer.state.prev_token_end = self.current_token.end();
+        match self.lexer.next_jsx_tag_token(&mut self.current_token) {
+            Ok(()) => Some(()),
+            Err(error) => self.next_token_error(error),
+        }
     }
 
-    fn exit_jsx_tag(&mut self) {
-        self.set_lexer_mode(LexerMode::Normal);
+    fn advance_jsx_attribute_value(&mut self) -> Option<()> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::Assign);
+        self.lexer.state.prev_token_end = self.current_token.end();
+        match self.lexer.next_jsx_attribute_value(&mut self.current_token) {
+            Ok(()) => Some(()),
+            Err(error) => self.next_token_error(error),
+        }
+    }
+
+    fn eat_jsx_tag(&mut self, tag: TokenTag) -> Option<bool> {
+        let matched = self.current_token.tag() == tag;
+        if matched {
+            self.advance_jsx_tag()?;
+        }
+        Some(matched)
+    }
+
+    fn expect_jsx_tag(
+        &mut self,
+        tag: TokenTag,
+        message: &'static str,
+        help: Option<&'static str>,
+    ) -> bool {
+        if self.current_token.tag() == tag {
+            return self.advance_jsx_tag().is_some();
+        }
+        self.report_expected(
+            self.current_token.span(),
+            message,
+            ReportOptions {
+                help: help.map(Cow::Borrowed),
+                ..ReportOptions::default()
+            },
+        );
+        false
+    }
+
+    fn re_scan_current_jsx_tag(&mut self) -> Option<()> {
+        let line_terminator_before =
+            self.current_token.flags() & flag_mask(TokenFlag::LineTerminatorBefore);
+        self.lexer.rewind_to(self.current_token.start());
+        if self.lexer.config.tokens() {
+            self.lexer.tokens.pop();
+        }
+        match self.lexer.next_jsx_tag_token(&mut self.current_token) {
+            Ok(()) => {}
+            Err(error) => return self.next_token_error(error),
+        }
+        if self.lexer.config.tokens() {
+            self.current_token
+                .set_flags(self.current_token.flags() | line_terminator_before);
+            self.lexer.rewrite_last_collected_token(self.current_token);
+        }
+        Some(())
     }
 
     fn parse_jsx_element(&mut self, context: JsxElementContext) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
         let start = self.current_token.start();
-        self.enter_jsx_tag();
-        self.advance()?;
+        self.advance_jsx_tag()?;
         if self.current_token.tag() == TokenTag::GreaterThan {
-            return self.parse_jsx_fragment(start, context);
+            let jsx_fragment = self.parse_jsx_fragment(start, context)?;
+            return Some(Expr::JsxFragment(jsx_fragment));
         }
+        let jsx_element_body = self.parse_jsx_element_body(start, context)?;
+        Some(Expr::JsxElement(jsx_element_body))
+    }
 
+    /// Parses an element after its opening `<` has been consumed.
+    fn parse_jsx_element_body(
+        &mut self,
+        start: u32,
+        context: JsxElementContext,
+    ) -> Option<JsxElement> {
         let opening = self.parse_jsx_opening_element(start, context)?;
         if opening.self_closing(&self.ast) {
-            let children = SubRange::empty();
-            return Some(Expr::JsxElement(self.ast.jsx_element(
+            return Some(self.ast.jsx_element(
                 Span::new(start, opening.span(&self.ast).end),
                 opening,
-                children,
+                SubRange::empty(),
                 None,
-            )));
+            ));
         }
-        let children = self.parse_jsx_children()?;
-        let closing = self.parse_jsx_closing_element(opening.name(&self.ast), context)?;
-        Some(Expr::JsxElement(self.ast.jsx_element(
+        let (children, closing_start) = self.parse_jsx_children()?;
+        let closing =
+            self.parse_jsx_closing_element(opening.name(&self.ast), closing_start, context)?;
+        Some(self.ast.jsx_element(
             Span::new(start, closing.span(&self.ast).end),
             opening,
             children,
             Some(closing),
-        )))
+        ))
     }
 
     /// Parses an opening element whose `<` at `start` is already consumed.
@@ -12733,17 +12791,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let type_arguments = if self.lang.is_typescript() && is_angle_open(self.current_token.tag())
         {
-            self.exit_jsx_tag();
             let arguments = self.parse_type_arguments()?;
-            self.enter_jsx_tag();
-            self.re_scan_current()?;
+            self.re_scan_current_jsx_tag()?;
             Some(arguments)
         } else {
             None
         };
 
         let attributes = self.parse_jsx_attributes()?;
-        let self_closing = self.eat(TokenTag::Slash)?;
+        let self_closing = self.eat_jsx_tag(TokenTag::Slash)?;
         if self.current_token.tag() != TokenTag::GreaterThan {
             self.report_expected(
                 self.current_token.span(),
@@ -12758,10 +12814,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let end = self.current_token.end();
         if self_closing {
             if context == JsxElementContext::Attribute {
-                self.enter_jsx_tag();
-                self.advance()?;
+                self.advance_jsx_tag()?;
             } else {
-                self.exit_jsx_tag();
                 if context == JsxElementContext::TopLevel {
                     self.advance()?;
                 }
@@ -12779,9 +12833,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_jsx_closing_element(
         &mut self,
         opening_name: JsxElementName,
+        closing_start: u32,
         context: JsxElementContext,
     ) -> Option<JsxClosingElement> {
-        if self.current_token.tag() != TokenTag::LessThan {
+        if self.current_token.tag() != TokenTag::Slash {
             self.report_expected(
                 self.current_token.span(),
                 "Expected '</' to close the JSX element",
@@ -12794,10 +12849,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             return None;
         }
-        let closing_start = self.current_token.start();
-        self.enter_jsx_tag();
-        self.advance()?;
-        if !self.expect(
+        if !self.expect_jsx_tag(
             TokenTag::Slash,
             "Expected '/' in JSX closing element",
             Some("Add '/' after '<' to close the element"),
@@ -12818,14 +12870,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let end = self.current_token.end();
         match context {
-            JsxElementContext::Child => self.exit_jsx_tag(),
+            JsxElementContext::Child => {}
             JsxElementContext::TopLevel => {
-                self.exit_jsx_tag();
                 self.advance()?;
             }
             JsxElementContext::Attribute => {
-                self.enter_jsx_tag();
-                self.advance()?;
+                self.advance_jsx_tag()?;
             }
         }
         let closing_span = closing_name.span(&self.ast);
@@ -12903,15 +12953,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     /// Parses a fragment whose `<` at `start` is already consumed; the current
     /// token is the `>` that follows it.
-    fn parse_jsx_fragment(&mut self, start: u32, context: JsxElementContext) -> Option<Expr> {
+    fn parse_jsx_fragment(
+        &mut self,
+        start: u32,
+        context: JsxElementContext,
+    ) -> Option<JsxFragment> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::GreaterThan);
         let opening_end = self.current_token.end();
         let opening = self.ast.jsx_opening_fragment(Span::new(start, opening_end));
-        let children = self.parse_jsx_children()?;
-        let closing_start = self.current_token.start();
-        self.enter_jsx_tag();
-        self.advance()?;
-        if !self.expect(
+        let (children, closing_start) = self.parse_jsx_children()?;
+        if !self.expect_jsx_tag(
             TokenTag::Slash,
             "Expected '/' in JSX closing fragment",
             Some("Add '/' to close the fragment"),
@@ -12933,14 +12984,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let closing_end = self.current_token.end();
         match context {
-            JsxElementContext::Child => self.exit_jsx_tag(),
+            JsxElementContext::Child => {}
             JsxElementContext::TopLevel => {
-                self.exit_jsx_tag();
                 self.advance()?;
             }
             JsxElementContext::Attribute => {
-                self.enter_jsx_tag();
-                self.advance()?;
+                self.advance_jsx_tag()?;
             }
         }
         let closing = self
@@ -12948,15 +12997,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .jsx_closing_fragment(Span::new(closing_start, closing_end));
         Some(
             self.ast
-                .expr_jsx_fragment(Span::new(start, closing_end), opening, children, closing),
+                .jsx_fragment(Span::new(start, closing_end), opening, children, closing),
         )
     }
 
-    fn parse_jsx_children(&mut self) -> Option<SubRange<JsxChild>> {
+    /// Returns children and the start of the closing `<`, leaving `/` current.
+    fn parse_jsx_children(&mut self) -> Option<(SubRange<JsxChild>, u32)> {
         let checkpoint = self.scratch_b.begin();
-        self.exit_jsx_tag();
         let result = (|| {
-            loop {
+            let closing_start = loop {
                 let token = self.lexer.scan_jsx_text();
                 self.current_token = token;
                 match token.tag() {
@@ -12966,46 +13015,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_b.append(jsx_text);
                     }
                     TokenTag::LessThan => {
-                        if self.jsx_child_starts_closing_tag()? {
-                            break;
-                        }
-                        let child = self.parse_jsx_element(JsxElementContext::Child)?;
-                        match self.ast.expr_data(child) {
-                            ExprData::JsxElement(element) => {
-                                self.scratch_b.append(JsxChild::JsxElement(element));
-                            }
-                            ExprData::JsxFragment(fragment) => {
+                        let start = token.start();
+                        self.advance_jsx_tag()?;
+                        match self.current_token.tag() {
+                            TokenTag::Slash => break start,
+                            TokenTag::GreaterThan => {
+                                let fragment =
+                                    self.parse_jsx_fragment(start, JsxElementContext::Child)?;
                                 self.scratch_b.append(JsxChild::JsxFragment(fragment));
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                let element =
+                                    self.parse_jsx_element_body(start, JsxElementContext::Child)?;
+                                self.scratch_b.append(JsxChild::JsxElement(element));
+                            }
                         }
                     }
                     TokenTag::LeftBrace => {
                         let child = self.parse_jsx_child_from_left_brace()?;
                         self.scratch_b.append(child);
                     }
-                    _ => break,
+                    _ => break token.start(),
                 }
-            }
-            Some(self.add_extra_from_scratch_b(checkpoint))
+            };
+            Some((self.add_extra_from_scratch_b(checkpoint), closing_start))
         })();
         self.scratch_b.reset(checkpoint);
         result
-    }
-
-    /// Returns whether the `<` read as a JSX child is followed by `/`. The next
-    /// bytes decide it when no trivia or non-ASCII text can come first.
-    fn jsx_child_starts_closing_tag(&mut self) -> Option<bool> {
-        let source = self.source.as_bytes();
-        let next = self.current_token.end() as usize;
-        match source.get(next) {
-            Some(b'/') if !matches!(source.get(next + 1), Some(b'/' | b'*' | b'=')) => {
-                return Some(true);
-            }
-            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'>') => return Some(false),
-            _ => {}
-        }
-        Some(self.peek_ahead()?.tag() == TokenTag::Slash)
     }
 
     // JSXChild :
@@ -13089,14 +13125,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let name = self.identifier_name(token);
-        self.advance()?;
+        self.advance_jsx_tag()?;
         let identifier = self.ast.jsx_identifier(token.span(), name);
         let start = token.start();
         let mut element_name = JsxElementName::JsxIdentifier(identifier);
         let mut member_object = JsxMemberExpressionObject::JsxIdentifier(identifier);
         let mut is_member = false;
 
-        while self.eat(TokenTag::Dot)? {
+        while self.eat_jsx_tag(TokenTag::Dot)? {
             if self.current_token.tag() != TokenTag::JsxIdentifier {
                 self.report_expected(
                     self.current_token.span(),
@@ -13113,7 +13149,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             is_member = true;
             let property_token = self.current_token;
             let property_name = self.identifier_name(property_token);
-            self.advance()?;
+            self.advance_jsx_tag()?;
             let property = self
                 .ast
                 .jsx_identifier(property_token.span(), property_name);
@@ -13126,7 +13162,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             element_name = JsxElementName::JsxMemberExpression(member);
         }
 
-        if !is_member && self.eat(TokenTag::Colon)? {
+        if !is_member && self.eat_jsx_tag(TokenTag::Colon)? {
             if self.current_token.tag() != TokenTag::JsxIdentifier {
                 self.report_expected(
                     self.current_token.span(),
@@ -13142,7 +13178,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             let local_token = self.current_token;
             let local_name = self.identifier_name(local_token);
-            self.advance()?;
+            self.advance_jsx_tag()?;
             let local = self.ast.jsx_identifier(local_token.span(), local_name);
             element_name = JsxElementName::JsxNamespacedName(self.ast.jsx_namespaced_name(
                 Span::new(start, local_token.end()),
@@ -13175,7 +13211,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let name = self.parse_jsx_attribute_name()?;
         let start = name.span(&self.ast).start;
-        let value = if self.eat(TokenTag::Assign)? {
+        let value = if self.current_token.tag() == TokenTag::Assign {
+            self.advance_jsx_attribute_value()?;
             Some(self.parse_jsx_attribute_value()?)
         } else {
             None
@@ -13191,9 +13228,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_jsx_attribute_name(&mut self) -> Option<JsxAttributeName> {
         let token = self.current_token;
         let name = self.identifier_name(token);
-        self.advance()?;
+        self.advance_jsx_tag()?;
         let namespace = self.ast.jsx_identifier(token.span(), name);
-        if !self.eat(TokenTag::Colon)? {
+        if !self.eat_jsx_tag(TokenTag::Colon)? {
             return Some(JsxAttributeName::JsxIdentifier(namespace));
         }
         if self.current_token.tag() != TokenTag::JsxIdentifier {
@@ -13211,7 +13248,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let local_token = self.current_token;
         let local_name = self.identifier_name(local_token);
-        self.advance()?;
+        self.advance_jsx_tag()?;
         let local = self.ast.jsx_identifier(local_token.span(), local_name);
         Some(JsxAttributeName::JsxNamespacedName(
             self.ast.jsx_namespaced_name(
@@ -13225,10 +13262,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_jsx_attribute_value(&mut self) -> Option<JsxAttributeValue> {
         match self.current_token.tag() {
             TokenTag::StringLiteral => Some(JsxAttributeValue::StringLiteral(
-                self.parse_string_literal()?,
+                self.parse_jsx_string_literal()?,
             )),
             TokenTag::LeftBrace => {
-                let container = self.parse_jsx_expression_container(JsxExprContext::Tag)?;
+                let container = self.parse_jsx_expression_container()?;
                 if container
                     .expression(&self.ast)
                     .is_jsx_empty_expression(&self.ast)
@@ -13279,22 +13316,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // JSXChildExpression :
     //   AssignmentExpression
     //   `...` AssignmentExpression
-    fn parse_jsx_expression_container(
-        &mut self,
-        context: JsxExprContext,
-    ) -> Option<JsxExpressionContainer> {
+    fn parse_jsx_expression_container(&mut self) -> Option<JsxExpressionContainer> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         let start = self.current_token.start();
-        if context == JsxExprContext::Tag {
-            self.exit_jsx_tag();
-        }
         self.advance()?;
         if self.current_token.tag() == TokenTag::RightBrace {
             let end = self.current_token.end();
-            if context == JsxExprContext::Tag {
-                self.enter_jsx_tag();
-            }
-            self.advance()?;
+            self.advance_jsx_tag()?;
             let empty = self.ast.jsx_empty_expression(Span::new(start + 1, end - 1));
             return Some(self.ast.jsx_expression_container(
                 Span::new(start, end),
@@ -13308,10 +13336,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = grammar_context;
         let expression = expression?;
         let end = self.current_token.end();
-        if context == JsxExprContext::Tag {
-            self.enter_jsx_tag();
-        }
-        if !self.expect(
+        if !self.expect_jsx_tag(
             TokenTag::RightBrace,
             "Expected '}' to close JSX expression",
             Some("Add '}' to close the expression"),
@@ -13329,7 +13354,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_jsx_spread_attribute(&mut self) -> Option<JsxAttributeItem> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         let start = self.current_token.start();
-        self.exit_jsx_tag();
         self.advance()?;
         if !self.expect(
             TokenTag::Spread,
@@ -13345,8 +13369,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = grammar_context;
         let argument = argument?;
         let end = self.current_token.end();
-        self.enter_jsx_tag();
-        if !self.expect(
+        if !self.expect_jsx_tag(
             TokenTag::RightBrace,
             "Expected '}' to close JSX spread",
             Some("Add '}' to close the spread expression"),
@@ -13429,10 +13452,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 &self.speculation_key(),
                 TypeArgumentFailures::EXPRESSION | TypeArgumentFailures::PEEL,
             )
-            || self.lexer.mode == LexerMode::Normal
-                && self
-                    .type_argument_lookahead
-                    .cannot_close(self.current_token.start())
+            || self
+                .type_argument_lookahead
+                .cannot_close(self.current_token.start())
         {
             return Some(None);
         }
@@ -13491,14 +13513,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: self.boundary_context,
             statement_context: self.statement_context as u8,
             module_detection: self.module_detection.speculation_key(),
-            lexer_mode: self.lexer.mode as u8,
         }
     }
 
     fn type_arguments_can_close(&mut self) -> bool {
-        if self.lexer.mode != LexerMode::Normal {
-            return true;
-        }
         let mut lookahead = mem::take(&mut self.type_argument_lookahead);
         let token = self.current_token;
         let jsx = self.lang.is_jsx();
@@ -14239,23 +14257,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.lexer.handle_token(token, HandleTokenMode::Replace);
         self.current_token = token;
         self.advance()
-    }
-
-    /// Retokenizes the current token in the current lexer mode.
-    fn re_scan_current(&mut self) -> Option<()> {
-        let line_terminator_before =
-            self.current_token.flags() & flag_mask(TokenFlag::LineTerminatorBefore);
-        self.lexer.rewind_to(self.current_token.start());
-        if self.lexer.config.tokens() {
-            self.lexer.tokens.pop();
-        }
-        self.next_token()?;
-        if self.lexer.config.tokens() {
-            self.current_token
-                .set_flags(self.current_token.flags() | line_terminator_before);
-            self.lexer.rewrite_last_collected_token(self.current_token);
-        }
-        Some(())
     }
 
     #[inline(always)]
@@ -19035,6 +19036,10 @@ mod tests {
         for lang in [Lang::Tsx, Lang::Jsx] {
             let comments = parse_comments("const t = <Switch>\n// 1\n/* 2 */\n</Switch>", lang);
             assert!(comments.is_empty());
+
+            let comments = parse_comments("const x = <Component / // c\n>;", lang);
+            assert_eq!(comments.len(), 1);
+            check!(comments[0], 23, 27, Leading, 28);
         }
 
         let comments = parse_comments(
@@ -19167,9 +19172,10 @@ mod tests {
         assert_eq!(comments.len(), 1);
         check!(comments[0], 7, 11, Leading, 12);
 
+        // SWC attaches this to `</`, which it lexes as a single token.
         let comments = parse_comments("<a>b</ //\n a>", Lang::Jsx);
         assert_eq!(comments.len(), 1);
-        check!(comments[0], 7, 9, Trailing, 6);
+        check!(comments[0], 7, 9, Leading, 11);
 
         let comments = parse_comments("<a>b</a /**/ >", Lang::Jsx);
         assert_eq!(comments.len(), 1);

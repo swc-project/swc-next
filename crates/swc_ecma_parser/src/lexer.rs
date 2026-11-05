@@ -43,13 +43,6 @@ pub enum LexicalError {
     JsxIdentifierCannotStartWithBackslash,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
-pub enum LexerMode {
-    #[default]
-    Normal,
-    JsxTag,
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HandleTokenMode {
     Append,
@@ -113,7 +106,6 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
-    pub(crate) mode: LexerMode,
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
@@ -154,7 +146,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             allow_html_like_comments,
             hashbang: None,
             state: LexerState::default(),
-            mode: LexerMode::Normal,
         };
         lexer.skip_hashbang();
         if lexer.hashbang.is_some() {
@@ -196,6 +187,43 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    /// Reads a token inside a JSX tag using JSX name and attribute rules.
+    #[inline]
+    pub(crate) fn next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+        if self.try_next_jsx_tag_token(target) {
+            return Ok(());
+        }
+        self.read_next_jsx_tag_token(target)?;
+        self.handle_token(*target, HandleTokenMode::Append);
+        Ok(())
+    }
+
+    /// Reads the value after a JSX attribute's `=`.
+    #[inline]
+    pub(crate) fn next_jsx_attribute_value(
+        &mut self,
+        target: &mut Token,
+    ) -> Result<(), LexicalError> {
+        if let Some((start, byte, line_break)) = self.jsx_token_start() {
+            let end = match byte {
+                b'{' => Some((TokenTag::LeftBrace, start + 1)),
+                b'<' if !matches!(self.source.get(start + 1), Some(b'=' | b'<' | b'!')) => {
+                    Some((TokenTag::LessThan, start + 1))
+                }
+                b'"' | b'\'' => memchr(byte, &self.source[start + 1..])
+                    .map(|offset| (TokenTag::StringLiteral, start + offset + 2)),
+                _ => None,
+            };
+            if let Some((tag, end)) = end {
+                self.finish_fast_jsx_token(target, tag, start, end, line_break);
+                return Ok(());
+            }
+        }
+        self.read_next_jsx_tag_token(target)?;
+        self.handle_token(*target, HandleTokenMode::Append);
+        Ok(())
+    }
+
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
     ///
@@ -203,10 +231,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// which stays clear between tokens.
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
-        if self.mode != LexerMode::Normal {
-            return self.try_next_jsx_tag_token(target);
-        }
-
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
         let Some(mut byte) = self.source.get(start as usize).copied() else {
@@ -348,48 +372,22 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
     /// `/`, `{`, and attribute strings. On failure, the cursor is unchanged.
-    #[inline(never)]
     fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
-        debug_assert_eq!(self.mode, LexerMode::JsxTag);
-        let src = self.source;
-        let mut start = self.cursor;
-        let Some(mut byte) = src.get(start as usize).copied() else {
+        let Some((start, byte, line_break)) = self.jsx_token_start() else {
             return false;
         };
-        while matches!(byte, b' ' | b'\t') {
-            start += 1;
-            let Some(&next) = src.get(start as usize) else {
-                return false;
-            };
-            byte = next;
-        }
-        let line_break = byte == b'\n';
-        if line_break {
-            let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
-                return false;
-            };
-            start = next_start;
-            byte = next;
-        }
-
-        let start = start as usize;
+        let src = self.source;
         let (tag, end) = match byte {
             b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' => {
-                // JSX names may contain hyphens between identifier parts.
-                let Some(mut end) = scan_ascii_identifier_continue(src, start as u32 + 1) else {
+                let Some(end) = scan_ascii_identifier_continue::<true>(src, start as u32 + 1)
+                else {
                     return false;
                 };
-                while src.get(end as usize) == Some(&b'-') {
-                    let Some(next) = scan_ascii_identifier_continue(src, end + 1) else {
-                        return false;
-                    };
-                    end = next;
-                }
                 (TokenTag::JsxIdentifier, end as usize)
             }
             b'>' => (TokenTag::GreaterThan, start + 1),
             b'{' => (TokenTag::LeftBrace, start + 1),
-            b'=' if matches!(src.get(start + 1), Some(b'{' | b'"' | b'\'')) => {
+            b'=' if !matches!(src.get(start + 1), Some(b'=' | b'>')) => {
                 (TokenTag::Assign, start + 1)
             }
             // Comments and `/=` need the full scanner.
@@ -405,6 +403,34 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             _ => return false,
         };
 
+        self.finish_fast_jsx_token(target, tag, start, end, line_break);
+        true
+    }
+
+    #[inline]
+    fn jsx_token_start(&self) -> Option<(usize, u8, bool)> {
+        let mut start = self.cursor;
+        let mut byte = *self.source.get(start as usize)?;
+        while matches!(byte, b' ' | b'\t') {
+            start += 1;
+            byte = *self.source.get(start as usize)?;
+        }
+        let line_break = byte == b'\n';
+        if line_break {
+            (start, byte) = self.skip_line_feed_indentation(start)?;
+        }
+        Some((start as usize, byte, line_break))
+    }
+
+    #[inline]
+    fn finish_fast_jsx_token(
+        &mut self,
+        target: &mut Token,
+        tag: TokenTag,
+        start: usize,
+        end: usize,
+        line_break: bool,
+    ) {
         self.clear_token_flags();
         if line_break {
             self.set_token_flag(TokenFlag::LineTerminatorBefore);
@@ -412,7 +438,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.cursor = end as u32;
         *target = self.create_token(tag, start as u32, end as u32);
         self.handle_fast_token(*target);
-        true
     }
 
     /// Skips a line feed, blank lines, and space or tab indentation. Returns the
@@ -442,7 +467,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
-        let Some(pos) = scan_ascii_identifier_continue(self.source, start + 1) else {
+        let Some(pos) = scan_ascii_identifier_continue::<false>(self.source, start + 1) else {
             return false;
         };
         // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
@@ -496,11 +521,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         let current_char = self.source[self.cursor as usize];
-        if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
+        if is_ident_start_ascii(current_char) {
             if self.scan_ascii_identifier(self.cursor, self.state.token_flags, target) {
                 self.clear_token_flags();
             } else {
-                *target = self.scan_identifier_or_keyword()?;
+                *target = self.scan_identifier_or_keyword(false)?;
             }
             return Ok(());
         }
@@ -516,9 +541,46 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.scan_simple_punctuation()
             }
             b'}' => self.handle_right_brace(),
-            _ => self.scan_identifier_or_keyword()?,
+            _ => self.scan_identifier_or_keyword(false)?,
         };
         *target = token;
+        Ok(())
+    }
+
+    fn read_next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+        if target.tag() != TokenTag::Eof {
+            self.state.previous_token_tag = Some(target.tag());
+        }
+        self.clear_token_flags();
+        self.skip_ws_and_comments()?;
+
+        if (self.cursor as usize) >= self.source.len() {
+            *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
+            return Ok(());
+        }
+
+        *target = match self.source[self.cursor as usize] {
+            // A `>` inside a JSX tag never combines with the following token.
+            b'>' => {
+                let start = self.cursor;
+                self.punc_token(1, TokenTag::GreaterThan, start)
+            }
+            b'"' | b'\'' => self.scan_jsx_string()?,
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'\\' | 0x80..=0xff => {
+                self.scan_identifier_or_keyword(true)?
+            }
+            b'+' | b'*' | b'-' | b'!' | b'<' | b'=' | b'|' | b'&' | b'^' | b'%' | b'/' | b'?' => {
+                self.scan_punctuation()
+            }
+            b'.' => self.scan_dot()?,
+            b'0'..=b'9' => self.scan_number()?,
+            b'`' => self.scan_template_literal()?,
+            b'~' | b'(' | b')' | b'{' | b'[' | b']' | b';' | b',' | b':' | b'@' => {
+                self.scan_simple_punctuation()
+            }
+            b'}' => self.handle_right_brace(),
+            _ => self.scan_identifier_or_keyword(true)?,
+        };
         Ok(())
     }
 
@@ -617,38 +679,41 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert!(quote == b'"' || quote == b'\'');
         let mut pos = self.cursor + 1;
 
-        if self.mode == LexerMode::Normal {
-            while (pos as usize) < self.source.len() {
-                let rest = &self.source[pos as usize..];
-                let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
-                    pos = self.source.len() as u32;
-                    break;
-                };
-                pos += offset as u32;
-                let byte = self.source[pos as usize];
-                if byte == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                self.cursor = pos;
-                if byte == b'\\' {
-                    self.consume_escape(EscapeContext::String)?;
-                    pos = self.cursor;
-                } else {
-                    return Err(LexicalError::UnterminatedString);
-                }
-            }
-        } else {
-            if let Some(offset) = memchr(quote, &self.source[pos as usize..]) {
-                pos += offset as u32 + 1;
+        while (pos as usize) < self.source.len() {
+            let rest = &self.source[pos as usize..];
+            let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
+                pos = self.source.len() as u32;
+                break;
+            };
+            pos += offset as u32;
+            let byte = self.source[pos as usize];
+            if byte == quote {
+                pos += 1;
                 self.cursor = pos;
                 return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
             }
-            pos = self.source.len() as u32;
+            self.cursor = pos;
+            if byte == b'\\' {
+                self.consume_escape(EscapeContext::String)?;
+                pos = self.cursor;
+            } else {
+                return Err(LexicalError::UnterminatedString);
+            }
         }
 
         self.cursor = pos;
+        Err(LexicalError::UnterminatedString)
+    }
+
+    fn scan_jsx_string(&mut self) -> Result<Token, LexicalError> {
+        let start = self.cursor;
+        let quote = self.source[start as usize];
+        debug_assert!(quote == b'"' || quote == b'\'');
+        if let Some(offset) = memchr(quote, &self.source[start as usize + 1..]) {
+            self.cursor = start + offset as u32 + 2;
+            return Ok(self.create_token(TokenTag::StringLiteral, start, self.cursor));
+        }
+        self.cursor = self.source.len() as u32;
         Err(LexicalError::UnterminatedString)
     }
 
@@ -1095,11 +1160,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(has_escape)
     }
 
-    fn scan_identifier_or_keyword(&mut self) -> Result<Token, LexicalError> {
+    fn scan_identifier_or_keyword(&mut self, is_jsx_tag: bool) -> Result<Token, LexicalError> {
         debug_assert!((self.cursor as usize) < self.source.len());
 
         let start = self.cursor;
-        let is_jsx_tag = self.mode == LexerMode::JsxTag;
         let mut has_escape = false;
         let is_private = self.peek(0) == b'#';
 
@@ -1201,11 +1265,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::LessThanEqual, start),
                 _ => self.punc_token(1, TokenTag::LessThan, start),
             },
-            // Inside a JSX tag `>` only closes the tag, so `<div>=</div>` and the
-            // trailing `>>` of `<div attr=<e></e>></div>` must not merge.
-            b'>' if self.mode == LexerMode::JsxTag => {
-                self.punc_token(1, TokenTag::GreaterThan, start)
-            }
             b'>' if c1 == b'>' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::RightShiftAssign, start)
             }
@@ -1543,10 +1602,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     fn can_have_trailing_line_comment(&self) -> bool {
         !self.has_token_flag(TokenFlag::LineTerminatorBefore)
-            && self.state.previous_token_tag.is_some_and(|tag| {
-                (self.mode == LexerMode::JsxTag && tag == TokenTag::Slash)
-                    || tag.can_have_trailing_line_comment()
-            })
+            && self
+                .state
+                .previous_token_tag
+                .is_some_and(|tag| tag.can_have_trailing_line_comment())
     }
 
     #[inline]
@@ -1863,6 +1922,12 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
     table
 };
 
+const ASCII_JSX_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
+    let mut table = ASCII_IDENTIFIER_CLASS;
+    table[b'-' as usize] = IdentifierClass::Continue;
+    table
+};
+
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
 fn fast_token_flags(line_break: bool) -> u8 {
@@ -1879,11 +1944,16 @@ fn fast_token_flags(line_break: bool) -> u8 {
 /// Returns the end of the ASCII identifier part at `start`, or `None` if an
 /// escape or a non-ASCII byte follows it and the full scanner is needed.
 #[inline(always)]
-fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
+fn scan_ascii_identifier_continue<const JSX: bool>(source: &[u8], start: u32) -> Option<u32> {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
     // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
     let mut position = start as usize;
+    let classes = if JSX {
+        &ASCII_JSX_IDENTIFIER_CLASS
+    } else {
+        &ASCII_IDENTIFIER_CLASS
+    };
 
     // Comparing the batch end instead of the remaining length keeps no extra counter live, so
     // the scan fits in caller-saved registers. `position + IDENTIFIER_BATCH_SIZE` cannot overflow
@@ -1894,14 +1964,14 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
         // guarantees that `batch_end` is within `source`.
         let batch = unsafe { source.get_unchecked(position..batch_end) };
         for (offset, byte) in batch.iter().enumerate() {
-            if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
+            if classes[*byte as usize] != IdentifierClass::Continue {
                 return ascii_identifier_end(*byte, position + offset);
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
     while let Some(byte) = source.get(position) {
-        if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
+        if classes[*byte as usize] != IdentifierClass::Continue {
             return ascii_identifier_end(*byte, position);
         }
         position += 1;
