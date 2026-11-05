@@ -90,6 +90,7 @@ clap          = { version = "4.6.7", features = ["derive"] }
 criterion     = { package = "codspeed-criterion-compat", version = "6.0.0" }
 gungraun      = "0.20.0"
 jwalk         = "0.9.0"
+jsonc-parser  = { version = "0.26.2", features = ["serde"] }
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.156.0", features = ["ast_visit", "semantic"] }

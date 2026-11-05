@@ -23,8 +23,6 @@ pub struct BabelOptions {
     /// Working directory used to resolve relative paths in configuration.
     pub cwd: Option<PathBuf>,
 
-    // Config Loading options
-
     // Plugin and Preset options
     /// Explicit plugin entries.
     #[serde(default)]
@@ -151,20 +149,14 @@ impl PluginPresetEntry {
 
 impl BabelOptions {
     pub fn codegen_options(&self) -> CodegenOptions {
-        let number_format = match self
-            .jsesc_option
-            .as_ref()
-            .and_then(|options| options.numbers)
-        {
+        let jsesc = self.jsesc_option.as_ref();
+        let number_format = match jsesc.and_then(|options| options.numbers) {
             None => NumberFormat::Preserve,
             Some(JsescNumberFormat::Binary) => NumberFormat::Binary,
             Some(JsescNumberFormat::Octal) => NumberFormat::Octal,
             Some(JsescNumberFormat::Decimal) => NumberFormat::Decimal,
             Some(JsescNumberFormat::Hexadecimal) => NumberFormat::Hexadecimal {
-                lowercase: self
-                    .jsesc_option
-                    .as_ref()
-                    .is_some_and(|options| options.lowercase_hex),
+                lowercase: jsesc.is_some_and(|options| options.lowercase_hex),
             },
         };
 
@@ -179,8 +171,6 @@ impl BabelOptions {
     ///
     /// Babel's fixture hierarchy: task → suite → category.
     /// Suite options.json REPLACES category plugins (not merge).
-    ///
-    /// # Panics
     pub fn from_test_path(path: &Path) -> Self {
         let mut babel_options: Option<Self> = None;
         let mut plugins_json = None;
@@ -212,19 +202,14 @@ impl BabelOptions {
                 presets_json = new_presets;
             }
 
-            let new_options: Self = serde_json::from_value::<BabelOptions>(new_value)
-                .unwrap_or_else(|err| panic!("{err:?}\n{}\n{content}", file.display()));
+            let new_options: Self = serde_json::from_value(new_value).unwrap();
 
             if let Some(existing_options) = babel_options.as_mut() {
-                if existing_options.source_type.is_none()
-                    && let Some(source_type) = new_options.source_type
-                {
-                    existing_options.source_type = Some(source_type);
+                if existing_options.source_type.is_none() {
+                    existing_options.source_type = new_options.source_type;
                 }
-                if existing_options.throws.is_none()
-                    && let Some(throws) = new_options.throws
-                {
-                    existing_options.throws = Some(throws);
+                if existing_options.throws.is_none() {
+                    existing_options.throws = new_options.throws;
                 }
                 if existing_options.minified.is_none() {
                     existing_options.minified = new_options.minified;
@@ -239,12 +224,10 @@ impl BabelOptions {
 
         let mut options = babel_options.unwrap_or_default();
         if let Some(plugins_json) = plugins_json {
-            options.plugins = serde_json::from_value::<BabelPlugins>(plugins_json)
-                .unwrap_or_else(|err| panic!("{err:?}\n{}", path.display()));
+            options.plugins = serde_json::from_value(plugins_json).unwrap();
         }
         if let Some(presets_json) = presets_json {
-            options.presets = serde_json::from_value::<BabelPresets>(presets_json)
-                .unwrap_or_else(|err| panic!("{err:?}\n{}", path.display()));
+            options.presets = serde_json::from_value(presets_json).unwrap();
         }
         options
     }
@@ -265,33 +248,5 @@ impl BabelOptions {
     /// Returns `true` when parsing a TypeScript declaration file.
     pub fn is_typescript_definition(&self) -> bool {
         self.plugins.syntax_typescript.is_some_and(|o| o.dts)
-    }
-
-    /// Returns `true` when ambiguous JSX-like syntax should be rejected.
-    pub fn has_disallow_ambiguous_jsx_like(&self) -> bool {
-        self.plugins
-            .syntax_typescript
-            .is_some_and(|o| o.disallow_ambiguous_jsx_like)
-    }
-
-    /// Returns `true` when source type is explicitly module.
-    pub fn is_module(&self) -> bool {
-        self.source_type
-            .as_ref()
-            .is_some_and(|s| s.as_str() == "module")
-    }
-
-    /// Returns `true` when source type is Babel's `unambiguous` mode.
-    pub fn is_unambiguous(&self) -> bool {
-        self.source_type
-            .as_ref()
-            .is_some_and(|s| s.as_str() == "unambiguous")
-    }
-
-    /// Returns `true` when source type is explicitly CommonJS.
-    pub fn is_commonjs(&self) -> bool {
-        self.source_type
-            .as_ref()
-            .is_some_and(|s| s.as_str() == "commonjs")
     }
 }

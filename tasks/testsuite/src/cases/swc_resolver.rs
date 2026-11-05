@@ -1,6 +1,6 @@
 use std::{
     fs::read_to_string,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
 use jwalk::WalkDir;
@@ -28,24 +28,9 @@ impl SwcResolverCase {
     }
 
     fn read_cases() -> Vec<Self> {
-        let workspace_root = workspace_root().expect("workspace root should be discoverable");
-        let oracle_root = fixtures()
-            .join("swc-conformance")
-            .join("tests")
-            .join("resolver");
-        assert!(
-            oracle_root.is_dir(),
-            "swc-conformance fixtures are missing; run scripts/clone_fixtures.sh first"
-        );
-
-        let mut oracle_paths = WalkDir::new(&oracle_root)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().is_file())
-            .map(|entry| entry.path())
-            .filter(|path| path.to_string_lossy().ends_with(".snap"))
-            .collect::<Vec<_>>();
-        oracle_paths.sort_unstable();
+        let workspace_root = workspace_root().unwrap();
+        let oracle_root = fixtures().join("swc-conformance/tests/resolver");
+        let oracle_paths = read_oracle_paths(&oracle_root);
 
         oracle_paths
             .into_par_iter()
@@ -56,17 +41,9 @@ impl SwcResolverCase {
     fn read_case(workspace_root: &Path, oracle_root: &Path, oracle_path: PathBuf) -> Self {
         let oracle_relative = oracle_path.strip_prefix(oracle_root).unwrap();
         let mut components = oracle_relative.components();
-        let Component::Normal(suite) = components.next().unwrap() else {
-            panic!("resolver oracle suite should be a normal path component");
-        };
-        let fixture_root = match suite.to_str() {
-            Some("test262") => workspace_root.join("tasks/testsuite/fixtures/test262"),
-            Some("swc") => workspace_root.join("tasks/testsuite/fixtures/swc"),
-            _ => panic!("unknown resolver oracle suite: {}", suite.display()),
-        };
-        let relative_snapshot = components.as_path();
-        let relative_source = relative_snapshot.to_string_lossy();
-        let relative_source = relative_source.strip_suffix(".snap").unwrap();
+        let suite = components.next().unwrap().as_os_str();
+        let fixture_root = workspace_root.join("tasks/testsuite/fixtures").join(suite);
+        let relative_source = components.as_path().with_extension("");
         let path = fixture_root.join(relative_source);
         let relative_path = path.strip_prefix(workspace_root).unwrap().to_path_buf();
         let name = oracle_relative.display().to_string().replace('\\', "/");
@@ -102,6 +79,25 @@ impl SwcResolverCase {
             source_type,
         }
     }
+}
+
+fn read_oracle_paths(root: &Path) -> Vec<PathBuf> {
+    assert!(
+        root.is_dir(),
+        "missing resolver fixtures: {}",
+        root.display()
+    );
+    let entries = WalkDir::new(root).into_iter().map(Result::unwrap);
+    let mut paths = Vec::new();
+    for entry in entries {
+        let path = entry.path();
+        let snapshot = path.extension().is_some_and(|ext| ext == "snap");
+        if entry.file_type().is_file() && snapshot {
+            paths.push(path);
+        }
+    }
+    paths.sort_unstable();
+    paths
 }
 
 impl Case for SwcResolverCase {

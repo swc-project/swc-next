@@ -36,14 +36,6 @@ impl TypeScriptTransformMode {
             (true, true) => "verbatimModuleSyntax: true, preserveConstEnums: true",
         }
     }
-
-    pub fn verbatim_module_syntax(self) -> bool {
-        self.verbatim_module_syntax
-    }
-
-    pub fn preserve_const_enums(self) -> bool {
-        self.preserve_const_enums
-    }
 }
 
 /// One TypeScript virtual file and one transform option combination.
@@ -64,21 +56,14 @@ impl TypeScriptTransformCase {
         let mut cases = Vec::new();
         for path in typescript_case_paths(&test_dir)? {
             let parsed = read_test_content(&path)?;
-            let modes = transform_modes(
-                parsed.global_option("verbatimmodulesyntax"),
-                parsed.global_option("preserveconstenums"),
-            )
-            .map_err(|error| {
-                format!(
-                    "invalid TypeScript transform option in `{}`: {error}",
-                    path.display()
-                )
-            })?;
-            let modes = mode_override.map_or(modes, |mode| vec![mode]);
-            let relative_path = path
-                .strip_prefix(&test_dir)
-                .expect("TypeScript case is inside the cases directory")
-                .to_path_buf();
+            let modes = match mode_override {
+                Some(mode) => vec![mode],
+                None => transform_modes(
+                    parsed.global_option("verbatimmodulesyntax"),
+                    parsed.global_option("preserveconstenums"),
+                )?,
+            };
+            let relative_path = path.strip_prefix(&test_dir).unwrap().to_path_buf();
             let has_multiple_units = parsed.test_units.len() > 1;
             for unit in parsed.test_units {
                 let Some(lang) = lang_from_path(&unit.name).filter(|lang| lang.is_typescript())
@@ -107,7 +92,7 @@ impl TypeScriptTransformCase {
 impl Case for TypeScriptTransformCase {
     const NAME: &'static str = "typescript";
     fn read() -> Vec<Self> {
-        Self::read_all(None).expect("failed to read TypeScript transform cases")
+        Self::read_all(None).unwrap()
     }
     fn path(&self) -> &Path {
         &self.path
@@ -144,8 +129,8 @@ impl TransformCase for TypeScriptTransformCase {
     fn transformer_options(&self) -> TransformerOptions {
         TransformerOptions {
             typescript: Some(TypeScriptOptions {
-                verbatim_module_syntax: self.mode.verbatim_module_syntax(),
-                preserve_const_enums: self.mode.preserve_const_enums(),
+                verbatim_module_syntax: self.mode.verbatim_module_syntax,
+                preserve_const_enums: self.mode.preserve_const_enums,
                 ..Default::default()
             }),
             ..Default::default()
@@ -163,9 +148,7 @@ fn transform_modes(
     for &verbatim_module_syntax in &verbatim_module_syntax {
         for &preserve_const_enums in &preserve_const_enums {
             let mode = TypeScriptTransformMode::new(verbatim_module_syntax, preserve_const_enums);
-            if !modes.contains(&mode) {
-                modes.push(mode);
-            }
+            modes.push(mode);
         }
     }
     Ok(modes)

@@ -54,10 +54,6 @@ struct BabelTransformCasePaths {
 }
 
 impl BabelTransformCase {
-    pub fn read() -> Vec<Self> {
-        Self::try_read().unwrap()
-    }
-
     fn try_read() -> io::Result<Vec<Self>> {
         let packages_dir = fixtures().join("babel/packages");
         let mut case_paths = Vec::new();
@@ -103,11 +99,8 @@ impl BabelTransformCase {
             .map(|paths| {
                 let case_dir = paths.input.parent().unwrap();
                 let options = BabelOptions::from_test_path(case_dir);
-                let name = case_dir
-                    .strip_prefix(&packages_dir)
-                    .unwrap_or(case_dir)
-                    .to_string_lossy()
-                    .replace('\\', "/");
+                let relative_path = case_dir.strip_prefix(&packages_dir).unwrap();
+                let name = relative_path.to_string_lossy().replace('\\', "/");
                 let input = read_to_string(&paths.input)?;
                 let output = read_to_string(&paths.output)?;
                 Ok(Self {
@@ -122,21 +115,13 @@ impl BabelTransformCase {
         cases.sort_unstable_by(|left, right| left.path.cmp(&right.path));
         Ok(cases)
     }
-
-    pub fn source_type(&self) -> SourceType {
-        source_type(&self.path, &self.options)
-    }
-
-    pub fn lang(&self) -> Lang {
-        lang(&self.path, &self.options)
-    }
 }
 
 impl Case for BabelTransformCase {
     const NAME: &'static str = "babel";
 
     fn read() -> Vec<Self> {
-        BabelTransformCase::read()
+        Self::try_read().unwrap()
     }
 
     fn path(&self) -> &Path {
@@ -152,11 +137,11 @@ impl Case for BabelTransformCase {
     }
 
     fn source_type(&self) -> SourceType {
-        BabelTransformCase::source_type(self)
+        source_type(&self.path, &self.options)
     }
 
     fn lang(&self) -> Lang {
-        BabelTransformCase::lang(self)
+        lang(&self.path, &self.options)
     }
 
     fn expects_error(&self) -> bool {
@@ -179,10 +164,7 @@ impl TransformCase for BabelTransformCase {
     fn transformer_options(&self) -> TransformerOptions {
         let mut options: TransformerOptions = self.options.clone().into();
         let babel_root = fixtures().join("babel");
-        let relative_path = self
-            .path
-            .strip_prefix(babel_root)
-            .expect("Babel fixture path");
+        let relative_path = self.path.strip_prefix(babel_root).unwrap();
         options.filename = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
         options
     }
