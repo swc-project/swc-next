@@ -83,7 +83,7 @@ function median(numbers) {
 }
 
 async function worker(config) {
-  const { parseSync, CommentMode, langFromPath, sourceTypeFromPath } =
+  const { parseSync, langFromPath, sourceTypeFromPath } =
     await import(pathToFileURL(config.entry).href);
   if (typeof parseSync !== "function") {
     throw new Error(`parseSync is missing from ${config.entry}`);
@@ -94,7 +94,7 @@ async function worker(config) {
     const file = path.join(config.fixtures, name);
     const source = readFileSync(file, "utf8");
     const options = {
-      comments: CommentMode.None,
+      comments: "none",
       lang: langFromPath(file),
       preserveParens: true,
       sourceType: sourceTypeFromPath(file),

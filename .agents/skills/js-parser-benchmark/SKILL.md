@@ -1,6 +1,6 @@
 ---
 name: js-parser-benchmark
-description: Compare the JavaScript API parser performance of two swc-experimental builds with repeatable fixtures and reduced timing noise. Use when measuring a parser change against main or another branch, investigating a JS parser regression, or checking whether a small wall-time difference is reproducible.
+description: Compare the JavaScript API parser performance of two swc-experimental builds with repeatable fixtures and reduced timing noise. Use only when the user explicitly specifies the JS or JavaScript parser for a benchmark or performance investigation. A request that says only parser means the native parser; do not use this skill for it or for general benchmark requests.
 ---
 
 # JS parser benchmark
