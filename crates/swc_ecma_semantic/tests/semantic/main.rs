@@ -139,3 +139,41 @@ fn assert_ts_module_state(semantic: &Semantic<'_>, symbol: SymbolId, expected: T
     };
     assert_eq!(actual, expected);
 }
+
+#[test]
+fn regular_expression_diagnostics() {
+    use swc_next_ecma_ast::{Severity, Span};
+
+    let allocator = Allocator::new();
+    let parser_options = Options::default();
+    let unchecked_options = AnalyzeOptions::default();
+
+    let source = " /a/gg;";
+    let (ast, result) = analyze_syntax_source(&allocator, source, parser_options);
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+    assert_eq!(
+        result.diagnostics[0].span,
+        Span::new(1, source.len() as u32 - 1)
+    );
+    assert!(result.diagnostics[0].help.is_none());
+    assert!(analyze(&ast, unchecked_options).diagnostics.is_empty());
+    assert!(check_syntax(&ast, SyntaxChecks::all() - SyntaxChecks::REGEXP_LITERALS).is_empty());
+
+    let source = " /🥹[z-a]/u;";
+    let (_, result) = analyze_syntax_source(&allocator, source, parser_options);
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(
+        result.diagnostics[0].span,
+        Span::new(1, source.len() as u32 - 1)
+    );
+
+    let source = " /(?<x>a)(?<x>b)/;";
+    let (_, result) = analyze_syntax_source(&allocator, source, parser_options);
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(
+        result.diagnostics[0].span,
+        Span::new(1, source.len() as u32 - 1)
+    );
+    assert!(result.diagnostics[0].labels.is_empty());
+}

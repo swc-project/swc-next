@@ -76,18 +76,10 @@ pub(super) fn check_reg_exp_literal(builder: &mut SemanticBuilder<'_, '_>, liter
     }
     let pattern = builder.ast.get_utf8(literal.pattern(builder.ast));
     let flags = builder.ast.get_utf8(literal.flags(builder.ast));
-    let allocator = Allocator::new();
-    if swc_next_regular_expression::LiteralParser::new(
-        &allocator,
-        pattern,
-        Some(flags),
-        swc_next_regular_expression::Options::default(),
-    )
-    .parse()
-    .is_err()
-    {
+    let span = builder.ast.span(literal.node_id());
+    if !regex::validate_literal(pattern, flags) {
         builder.report(
-            builder.ast.span(literal.node_id()),
+            span,
             "Invalid regular expression literal",
             ReportOptions::default(),
         );
