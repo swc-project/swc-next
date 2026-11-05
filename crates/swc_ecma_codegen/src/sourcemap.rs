@@ -328,6 +328,14 @@ impl<'a> ChunkBuilder<'a> {
                     break;
                 }
             }
+            let start = index;
+            while let Some(&byte) = output.get(index) {
+                if !byte.is_ascii() || byte == b'\r' || byte == b'\n' {
+                    break;
+                }
+                index += 1;
+            }
+            self.generated_column += (index - start) as i32;
             if index == output.len() {
                 break;
             }
