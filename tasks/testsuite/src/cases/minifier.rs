@@ -119,6 +119,7 @@ fn minifier_options(config: &Map<String, Value>) -> MinifierOptions {
             if_return: option("if_return"),
             join_vars: option("join_vars"),
             negate_iife: option("negate_iife") && !expression,
+            reduce_vars: option("reduce_vars"),
             sequences: option("sequences"),
             side_effects: option("side_effects"),
             typeofs: option("typeofs"),

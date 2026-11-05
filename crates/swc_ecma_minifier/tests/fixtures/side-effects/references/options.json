@@ -1,0 +1,7 @@
+{
+  "minify": {
+    "compress": {
+      "reduce_vars": false
+    }
+  }
+}
