@@ -1,5 +1,5 @@
 // https://github.com/oxc-project/oxc/tree/main/crates/oxc_transformer/src/options/babel
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
 use swc_next_ecma_codegen::{NumberFormat, Options as CodegenOptions};
@@ -19,6 +19,10 @@ pub use presets::BabelPresets;
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BabelOptions {
+    // Primary options
+    /// Working directory used to resolve relative paths in configuration.
+    pub cwd: Option<PathBuf>,
+
     // Plugin and Preset options
     /// Explicit plugin entries.
     #[serde(default)]
@@ -41,6 +45,14 @@ pub struct BabelOptions {
     /// Compiler assumptions passed through Babel configuration.
     #[serde(default)]
     pub assumptions: Assumptions,
+
+    // Test options
+    /// Expected error message used by Babel fixture tests.
+    pub throws: Option<String>,
+
+    /// Babel 8 compatibility toggle used by fixture tests.
+    #[serde(rename = "BABEL_8_BREAKING")]
+    pub babel_8_breaking: Option<bool>,
 
     // Parser options for babel-parser
     /// Allow `return` statements outside function bodies.
@@ -195,6 +207,9 @@ impl BabelOptions {
             if let Some(existing_options) = babel_options.as_mut() {
                 if existing_options.source_type.is_none() {
                     existing_options.source_type = new_options.source_type;
+                }
+                if existing_options.throws.is_none() {
+                    existing_options.throws = new_options.throws;
                 }
                 if existing_options.minified.is_none() {
                     existing_options.minified = new_options.minified;
