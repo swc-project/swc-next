@@ -13361,18 +13361,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_await_expression(&mut self, start: u32) -> Option<Expr> {
         let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
-        if self.current_token.tag() == TokenTag::Exponent {
-            self.report(
-                Span::new(start, argument.span(&self.ast).end),
-                "The left-hand side of '**' cannot be an unparenthesized await expression",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Add parentheses to make precedence explicit, for example `(await x) ** y`.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-        }
         Some(
             self.ast
                 .expr_await_expression(Span::new(start, argument.span(&self.ast).end), argument),
@@ -13629,18 +13617,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let token = self.current_token;
         self.advance()?;
         let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
-        if self.current_token.tag() == TokenTag::Exponent {
-            self.report(
-                Span::new(token.start(), argument.span(&self.ast).end),
-                "The left-hand side of '**' cannot be an unparenthesized unary expression",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Add parentheses to make precedence explicit, for example `(-x) ** y` or `-(x ** y)`.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-        }
         let operator = match token.tag() {
             TokenTag::Minus => UnaryOperator::Negate,
             TokenTag::Plus => UnaryOperator::Positive,
@@ -13703,6 +13679,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
+        if tag == TokenTag::Exponent {
+            self.check_exponentiation_left_operand(left);
+        }
         let start = left.span(&self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
@@ -13721,6 +13700,35 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             right,
             operator,
         ))
+    }
+
+    fn check_exponentiation_left_operand(&mut self, expression: Expr) {
+        // Validate after postfix assertions have been parsed, without changing
+        // the operand used to build the recovery AST. Parentheses stop unwrapping.
+        let expression = unwrap_as_and_satisfies(expression, &self.ast);
+        let (message, help) = match self.ast.expr_data(expression) {
+            ExprData::UnaryExpression(_) => (
+                "The left-hand side of '**' cannot be an unparenthesized unary expression",
+                "Add parentheses to make precedence explicit, for example `(-x) ** y` or `-(x ** y)`.",
+            ),
+            ExprData::AwaitExpression(_) => (
+                "The left-hand side of '**' cannot be an unparenthesized await expression",
+                "Add parentheses to make precedence explicit, for example `(await x) ** y`.",
+            ),
+            ExprData::TsTypeAssertion(_) => (
+                "The left-hand side of '**' cannot be an unparenthesized type assertion",
+                "Add parentheses to make precedence explicit, for example `(<T>x) ** y`.",
+            ),
+            _ => return,
+        };
+        self.report(
+            expression.span(&self.ast),
+            message,
+            ReportOptions {
+                help: Some(Cow::Borrowed(help)),
+                ..ReportOptions::default()
+            },
+        );
     }
 
     fn parse_logical_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
@@ -14416,8 +14424,19 @@ fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
 }
 
 #[inline]
+fn unwrap_as_and_satisfies(mut expression: Expr, ast: &Ast<'_>) -> Expr {
+    loop {
+        expression = match ast.expr_data(expression) {
+            ExprData::TsAsExpression(assertion) => assertion.expression(ast),
+            ExprData::TsSatisfiesExpression(assertion) => assertion.expression(ast),
+            _ => return expression,
+        };
+    }
+}
+
+#[inline]
 fn assertion_erasure_changes_binary_grouping(
-    mut expression: Expr,
+    expression: Expr,
     next_operator: TokenTag,
     ast: &Ast<'_>,
 ) -> bool {
@@ -14426,14 +14445,7 @@ fn assertion_erasure_changes_binary_grouping(
         return false;
     }
 
-    loop {
-        expression = match ast.expr_data(expression) {
-            ExprData::TsAsExpression(assertion) => assertion.expression(ast),
-            ExprData::TsSatisfiesExpression(assertion) => assertion.expression(ast),
-            _ => break,
-        };
-    }
-
+    let expression = unwrap_as_and_satisfies(expression, ast);
     let current_precedence = match ast.expr_data(expression) {
         ExprData::BinaryExpression(binary) => binary.operator(ast).precedence(),
         ExprData::LogicalExpression(logical) => logical.operator(ast).precedence(),
@@ -18010,6 +18022,183 @@ mod tests {
 
         let diagnostics = parse_typescript_diagnostics("1 as number * 2");
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+    }
+
+    #[test]
+    fn exponentiation_assertions() {
+        for lang in [Lang::Ts, Lang::Tsx] {
+            for preserve_parens in [false, true] {
+                let options = Options {
+                    lang,
+                    preserve_parens,
+                    ..Options::default()
+                };
+
+                let errors = error_spans("-x as number ** 2;", options);
+                assert_eq!(errors, ["-x"]);
+
+                let errors = error_spans("+x satisfies number ** 2;", options);
+                assert_eq!(errors, ["+x"]);
+
+                let errors = error_spans("~x as number ** 2;", options);
+                assert_eq!(errors, ["~x"]);
+
+                let errors = error_spans("!x satisfies any ** 2;", options);
+                assert_eq!(errors, ["!x"]);
+
+                let errors = error_spans("typeof x as any ** 2;", options);
+                assert_eq!(errors, ["typeof x"]);
+
+                let errors = error_spans("void x satisfies any ** 2;", options);
+                assert_eq!(errors, ["void x"]);
+
+                let errors = error_spans("delete obj.p as any ** 2;", options);
+                assert_eq!(errors, ["delete obj.p"]);
+
+                let errors = error_spans("-x as any as number ** 2;", options);
+                assert_eq!(errors, ["-x"]);
+
+                let errors = error_spans("-x satisfies any satisfies number ** 2;", options);
+                assert_eq!(errors, ["-x"]);
+
+                let errors = error_spans("-x as any satisfies number ** 2;", options);
+                assert_eq!(errors, ["-x"]);
+
+                let errors = error_spans("-x satisfies any as number ** 2;", options);
+                assert_eq!(errors, ["-x"]);
+
+                let errors = error_spans("-(x) as number ** 2;", options);
+                assert_eq!(errors, ["-(x)"]);
+
+                let errors = error_spans("-x! satisfies number ** 2;", options);
+                assert_eq!(errors, ["-x!"]);
+
+                let errors = error_spans("await x as number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("await x satisfies number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("await x as any as number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("await x satisfies any satisfies number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("await x as any satisfies number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("await x satisfies any as number ** 2;", options);
+                assert_eq!(errors, ["await x"]);
+
+                let errors = error_spans("(-x) as number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("(-x satisfies number) ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("(-x) as any satisfies number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("(await x) satisfies number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("(await x as number) ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("x as number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("x! satisfies number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("++x as number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("--x satisfies number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("x++ satisfies number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("x-- as number ** 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("-x as number * 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("await x satisfies number * 2;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("2 ** -x as number;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("2 ** await x as number;", options);
+                assert!(errors.is_empty());
+
+                if lang == Lang::Ts {
+                    let errors = error_spans("<number>x as number ** 2;", options);
+                    assert_eq!(errors, ["<number>x"]);
+
+                    let errors = error_spans("<number>-x satisfies number ** 2;", options);
+                    assert_eq!(errors, ["<number>-x"]);
+
+                    let errors = error_spans("(<number>x) as number ** 2;", options);
+                    assert!(errors.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn exponentiation_recovery() {
+        fn parse(source: &str) -> ([&str; 3], Vec<&str>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let text = |span: Span| &source[span.start as usize..span.end as usize];
+            let mut expressions = ast.root_program().body(ast).iter().map(|id| {
+                ast.get_node_in_sub_range(id)
+                    .as_expression_statement(ast)
+                    .unwrap()
+                    .expression(ast)
+            });
+            let binary = expressions
+                .next()
+                .unwrap()
+                .as_binary_expression(ast)
+                .unwrap();
+            let operands = [
+                text(binary.left(ast).span(ast)),
+                binary.operator(ast).as_str(),
+                text(binary.right(ast).span(ast)),
+            ];
+            let rest = expressions
+                .map(|expression| text(expression.span(ast)))
+                .collect();
+            (operands, rest)
+        }
+
+        let result = parse("-x as any satisfies number ** 2 ** 3;\nafter;");
+        assert_eq!(
+            result,
+            (
+                ["-x as any satisfies number", "**", "2 ** 3"],
+                vec!["after"]
+            )
+        );
+
+        let result = parse("await x satisfies any as number ** 2;\nafter;");
+        assert_eq!(
+            result,
+            (
+                ["await x satisfies any as number", "**", "2"],
+                vec!["after"]
+            )
+        );
+
+        let result = parse("<number>x as number ** 2;\nafter;");
+        assert_eq!(result, (["<number>x as number", "**", "2"], vec!["after"]));
     }
 
     #[test]
