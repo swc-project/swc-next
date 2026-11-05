@@ -6,8 +6,7 @@
 
 use swc_next_ecma_ast::{
     Ast, BinaryExpression, BinaryOperator, ConditionalExpression, Expr, ExprData, GetSpan,
-    IdentifierReference, LogicalExpression, LogicalOperator, Span, Stmt, StmtData, SubRange,
-    UnaryOperator,
+    LogicalOperator, Span, Stmt, StmtData, SubRange, UnaryOperator,
 };
 
 use super::{
@@ -231,67 +230,6 @@ impl Compressor {
         let left = primitive_type(ast, binary.left(ast));
         if left.is_some() && left == primitive_type(ast, binary.right(ast)) {
             binary.set_operator(ast, operator);
-        }
-    }
-
-    /// Joins `a === null || a === void 0` to `a == null`, and
-    /// `a !== null && a !== void 0` to `a != null`, for a read that cannot
-    /// throw or run code.
-    pub(super) fn compress_nullish_check(
-        &self,
-        ast: &mut Ast<'_>,
-        node: Expr,
-        logical: LogicalExpression,
-    ) -> Option<Expr> {
-        let (strict, loose) = match logical.operator(ast) {
-            LogicalOperator::Or => (BinaryOperator::StrictEqual, BinaryOperator::Equal),
-            LogicalOperator::And => (BinaryOperator::StrictNotEqual, BinaryOperator::NotEqual),
-            LogicalOperator::NullishCoalescing => return None,
-        };
-        let (left_name, left_value) = self.nullish_comparison(ast, logical.left(ast), strict)?;
-        let (right_name, right_value) = self.nullish_comparison(ast, logical.right(ast), strict)?;
-        if left_value == right_value
-            || ast.get_utf8(left_name.name(ast)) != ast.get_utf8(right_name.name(ast))
-        {
-            return None;
-        }
-        let span = node.span(ast);
-        let null = Expr::NullLiteral(ast.null_literal(span));
-        let reference = Expr::IdentifierReference(left_name);
-        Some(Expr::BinaryExpression(
-            ast.binary_expression(span, reference, null, loose),
-        ))
-    }
-
-    /// Matches `a === null` or `a === void 0`, in either order, for a read
-    /// that cannot throw. Returns the reference and whether it is compared
-    /// with `null`.
-    fn nullish_comparison(
-        &self,
-        ast: &Ast<'_>,
-        expr: Expr,
-        operator: BinaryOperator,
-    ) -> Option<(IdentifierReference, bool)> {
-        let ExprData::BinaryExpression(binary) = ast.expr_data(skip_parentheses(ast, expr)) else {
-            return None;
-        };
-        if binary.operator(ast) != operator {
-            return None;
-        }
-        let (left, right) = (binary.left(ast), binary.right(ast));
-        let (reference, value) = match (ast.expr_data(left), ast.expr_data(right)) {
-            (ExprData::IdentifierReference(reference), _) => (reference, right),
-            (_, ExprData::IdentifierReference(reference)) => (reference, left),
-            _ => return None,
-        };
-        if !self.candidates.safe_reads.contains(&reference.node_id()) {
-            return None;
-        }
-        match (ast.expr_data(value), Value::of(ast, value)) {
-            (ExprData::IdentifierReference(_), _) => None,
-            (_, Some(Value::Null)) => Some((reference, true)),
-            (_, Some(Value::Undefined)) => Some((reference, false)),
-            _ => None,
         }
     }
 }

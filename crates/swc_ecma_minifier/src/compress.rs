@@ -36,8 +36,6 @@ struct Candidates {
     /// Reads that cannot throw and whose removal cannot make a declaration
     /// removable.
     pure_reads: FxHashSet<NodeId>,
-    /// Reads of declared names, which run no code.
-    safe_reads: FxHashSet<NodeId>,
     renames: Renames,
 }
 
@@ -123,16 +121,11 @@ impl Candidates {
             let reference = entry.reference;
             if let NameResolution::Resolved(symbol) = reference.resolution()
                 && reference.flags.is_read_only()
-            {
-                if options.comparisons {
-                    candidates.safe_reads.insert(reference.node);
-                }
-                if pure_symbols
+                && pure_symbols
                     .get(&symbol)
                     .is_some_and(|start| ast.span(reference.node).start >= *start)
-                {
-                    candidates.pure_reads.insert(reference.node);
-                }
+            {
+                candidates.pure_reads.insert(reference.node);
             }
             match reference.resolution() {
                 NameResolution::Unresolved
@@ -1209,18 +1202,8 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                         .flatten()
                 })
             }
-            ExprData::LogicalExpression(logical) => {
-                let removed = if self.options.dead_code {
-                    self.logical(ast, node, logical)
-                } else {
-                    None
-                };
-                removed.or_else(|| {
-                    self.options
-                        .comparisons
-                        .then(|| self.compress_nullish_check(ast, node, logical))
-                        .flatten()
-                })
+            ExprData::LogicalExpression(logical) if self.options.dead_code => {
+                self.logical(ast, node, logical)
             }
             ExprData::UnaryExpression(unary)
                 if self.options.comparisons

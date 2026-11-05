@@ -33,9 +33,8 @@ pub struct CompressOptions {
     /// Enabled by default.
     pub booleans: bool,
     /// Shorten comparisons: `===` to `==` when both operands have the same
-    /// type, as in `typeof a === "b"`, `!(a == b)` to `a != b`, and
-    /// `a === null || a === void 0` to `a == null` for a declared `a`.
-    /// Enabled by default.
+    /// type, as in `typeof a === "b"`, and `!(a == b)` to `a != b`. Enabled
+    /// by default.
     pub comparisons: bool,
     /// Rewrite `if` statements whose branches are expressions or returns
     /// as expressions, such as `if (a) b()` to `a && b()`, `if (a) b(); else
