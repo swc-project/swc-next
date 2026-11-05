@@ -255,10 +255,21 @@ impl<'a> ChunkBuilder<'a> {
         self.prev_generated_len = output.len();
         self.prev_original_name = original_name;
 
-        let original_line = self
-            .line_offset_tables
-            .partition_point(|line| line.byte_offset_to_start_of_line <= original_loc as i32)
-            .saturating_sub(1);
+        let previous_line = self.prev_state.original_line as usize;
+        let original_line = if self.has_prev_state
+            && self.line_offset_tables[previous_line].byte_offset_to_start_of_line
+                <= original_loc as i32
+            && self
+                .line_offset_tables
+                .get(previous_line + 1)
+                .is_none_or(|line| (original_loc as i32) < line.byte_offset_to_start_of_line)
+        {
+            previous_line
+        } else {
+            self.line_offset_tables
+                .partition_point(|line| line.byte_offset_to_start_of_line <= original_loc as i32)
+                .saturating_sub(1)
+        };
         let line = &self.line_offset_tables[original_line];
         let mut original_column = original_loc as i32 - line.byte_offset_to_start_of_line;
         if let Some(columns) = &line.columns_for_non_ascii
