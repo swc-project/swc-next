@@ -1,6 +1,6 @@
 minifier * terser
 ========================
-Positive Passed: 106/1577 (6.72%)
+Positive Passed: 104/1577 (6.59%)
 Negative Passed: 602/610 (98.69%)
 Panicked: 0/2187 (0.00%)
 Skipped: 353/2187 (16.14%)
@@ -614,6 +614,7 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1609/c
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1609/chained_evaluation_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1639/issue_1639_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1639/issue_1639_2/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1639/issue_1639_3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1656/f7/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1673/side_effects_catch/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/issue_1673/side_effects_else/input.js - output differs from reference output
@@ -1035,6 +1036,7 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/is
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_3/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/lift_sequences_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/limit_1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/sequences/limit_2/input.js - output differs from reference output

@@ -111,6 +111,7 @@ impl Candidates {
             if options.side_effects
                 && is_initialized(flags)
                 && !removable_var
+                && !is_global_var(scope.kind, declaration.flags)
                 && let Some(start) = initialized_from(ast, flags, scope.node)
             {
                 pure_symbols.insert(entry.id, start);
@@ -235,6 +236,13 @@ fn is_initialized(flags: SymbolFlags) -> bool {
             | SymbolFlags::IMPORT
             | SymbolFlags::IMPORT_EQUALS,
     )
+}
+
+/// Whether a declaration is a `var` in the global scope of a script. Such a
+/// binding is a property of the global object, which can be an accessor
+/// defined before the script runs.
+fn is_global_var(scope: ScopeKind, flags: SymbolFlags) -> bool {
+    scope == ScopeKind::Global && flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
 }
 
 /// The offset from which reads of a binding declared in `scope` are
