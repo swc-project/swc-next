@@ -419,10 +419,14 @@ impl Reduction {
     ) {
         let semantic = context.semantic;
         for entry in semantic.iter_symbols() {
-            // `arguments` can also name the arguments object.
+            // `arguments` can also name the arguments object, and a value
+            // in place of `__proto__` in `{ __proto__ }` sets the prototype.
             if !context.in_function.contains(&entry.id)
                 || semantic.uses(entry.id).is_empty()
-                || ast.get_wtf8(entry.symbol.name).as_bytes() == b"arguments"
+                || matches!(
+                    ast.get_wtf8(entry.symbol.name).as_bytes(),
+                    b"arguments" | b"__proto__"
+                )
             {
                 continue;
             }
