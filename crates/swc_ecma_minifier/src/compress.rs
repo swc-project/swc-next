@@ -35,8 +35,6 @@ struct Candidates {
     /// Reads that cannot throw and whose removal cannot make a declaration
     /// removable.
     pure_reads: FxHashSet<NodeId>,
-    /// References to undeclared names.
-    unresolved: FxHashSet<NodeId>,
     renames: Renames,
 }
 
@@ -119,19 +117,13 @@ impl Candidates {
         }
         for entry in semantic.iter_references() {
             let reference = entry.reference;
-            match reference.resolution() {
-                NameResolution::Unresolved if options.side_effects => {
-                    candidates.unresolved.insert(reference.node);
-                }
-                NameResolution::Resolved(symbol)
-                    if reference.flags.is_read_only()
-                        && pure_symbols
-                            .get(&symbol)
-                            .is_some_and(|start| ast.span(reference.node).start >= *start) =>
-                {
-                    candidates.pure_reads.insert(reference.node);
-                }
-                _ => {}
+            if let NameResolution::Resolved(symbol) = reference.resolution()
+                && reference.flags.is_read_only()
+                && pure_symbols
+                    .get(&symbol)
+                    .is_some_and(|start| ast.span(reference.node).start >= *start)
+            {
+                candidates.pure_reads.insert(reference.node);
             }
             match reference.resolution() {
                 NameResolution::Unresolved
@@ -1196,7 +1188,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Expr, ExprData, GetSpan, StmtData};
+    use swc_next_ecma_ast::{Ast, Expr, ExprData, GetSpan, StmtData, UnaryOperator};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use crate::{CompressOptions, Minifier, MinifierOptions};
@@ -1248,6 +1240,9 @@ mod tests {
         let result = Parser::init(&allocator, "typeof (x);", options, NoTokenParserConfig).parse();
         let mut ast = result.ast;
         Minifier::minify(&mut ast, MinifierOptions::default());
-        assert!(ast.root_program().body(&ast).is_empty());
+        let ExprData::UnaryExpression(unary) = ast.expr_data(expression(&ast)) else {
+            panic!();
+        };
+        assert_eq!(unary.operator(&ast), UnaryOperator::Typeof);
     }
 }

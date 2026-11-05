@@ -175,7 +175,9 @@ impl Compressor {
                     UnaryOperator::Void | UnaryOperator::LogicalNot => {
                         self.collect_effects(ast, argument, effects);
                     }
-                    // `typeof` does not throw for an undeclared name.
+                    // A read that is not pure keeps its `typeof`: an
+                    // undeclared name can be a global accessor, and the read
+                    // alone would throw.
                     UnaryOperator::Typeof
                         if matches!(
                             ast.expr_data(value::skip_parentheses(ast, argument)),
@@ -183,9 +185,7 @@ impl Compressor {
                         ) =>
                     {
                         let id = value::skip_parentheses(ast, argument).node_id();
-                        if !self.candidates.unresolved.contains(&id)
-                            && !self.candidates.pure_reads.contains(&id)
-                        {
+                        if !self.candidates.pure_reads.contains(&id) {
                             effects.push(expr);
                         }
                     }
