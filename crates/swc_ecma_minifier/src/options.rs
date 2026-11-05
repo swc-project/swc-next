@@ -32,6 +32,18 @@ pub struct CompressOptions {
     /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
     /// Enabled by default.
     pub booleans: bool,
+    /// Shorten comparisons: `===` to `==` when both operands have the same
+    /// type, as in `typeof a === "b"`, `!(a == b)` to `a != b`, and
+    /// `a === null || a === void 0` to `a == null` for a declared `a`.
+    /// Enabled by default.
+    pub comparisons: bool,
+    /// Rewrite `if` statements whose branches are expressions or returns
+    /// as expressions, such as `if (a) b()` to `a && b()`, `if (a) b(); else
+    /// c()` to `a ? b() : c()`, and `if (a) return b; else return c` to
+    /// `return a ? b : c`. Join the tests of nested `if` statements, remove
+    /// empty branches, and shorten conditional expressions, such as
+    /// `!a ? b : c` to `a ? c : b`. Enabled by default.
+    pub conditionals: bool,
     /// Remove code that a constant condition never runs, such as the
     /// branches of `if (0) a(); else b()` and `!0 ? a : b`, `!1 && a`, and
     /// `while (0) a()`. `var` names declared in removed code are kept.
@@ -43,6 +55,11 @@ pub struct CompressOptions {
     pub evaluate: bool,
     /// Shorten unshadowed global constants. Enabled by default.
     pub global_defs: bool,
+    /// Shorten returns: `if (a) return b; return c` to `return a ? b : c`,
+    /// remove a `return;` that ends a function, and move the statements
+    /// after `if (a) return;` at the end of a function into `if (!a)`.
+    /// Enabled by default.
+    pub if_return: bool,
     /// Join adjacent `var`, `let`, or `const` declarations of the same kind,
     /// such as `var a; var b` to `var a, b`, and move `var` declarations into
     /// the initializer of a following `for` loop. Enabled by default.
@@ -72,9 +89,12 @@ impl Default for CompressOptions {
         Self {
             blocks: true,
             booleans: true,
+            comparisons: true,
+            conditionals: true,
             dead_code: true,
             evaluate: true,
             global_defs: true,
+            if_return: true,
             join_vars: true,
             negate_iife: true,
             sequences: true,
@@ -91,9 +111,12 @@ impl CompressOptions {
         Self {
             blocks: false,
             booleans: false,
+            comparisons: false,
+            conditionals: false,
             dead_code: false,
             evaluate: false,
             global_defs: false,
+            if_return: false,
             join_vars: false,
             negate_iife: false,
             sequences: false,

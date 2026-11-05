@@ -1,7 +1,8 @@
 {
   "minify": {
     "compress": {
-      "dead_code": false
+      "dead_code": false,
+      "conditionals": false
     }
   }
 }

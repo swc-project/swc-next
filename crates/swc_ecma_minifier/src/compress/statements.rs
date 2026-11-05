@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
     VariableDeclaration, VariableDeclarator, VariableKind,
 };
 
-use super::{dead_code::is_lexical, side_effects::iife_forms};
+use super::{conditionals::join_returns, dead_code::is_lexical, side_effects::iife_forms};
 use crate::CompressOptions;
 
 /// Reusable buffers for rewriting one statement list at a time.
@@ -47,7 +47,7 @@ impl StatementList {
         options: &CompressOptions,
         list: SubRange<Stmt>,
     ) -> Option<SubRange<Stmt>> {
-        if !options.blocks && !options.sequences && !options.join_vars {
+        if !options.blocks && !options.sequences && !options.join_vars && !options.if_return {
             return None;
         }
         debug_assert!(self.statements.is_empty() && !self.changed);
@@ -117,6 +117,16 @@ impl StatementList {
             _ => {
                 self.absorb_expressions(ast, options, statement);
                 self.absorb_declarations(ast, statement);
+                let mut statement = statement;
+                // Each join makes a return that can join the `if` before it.
+                while options.if_return
+                    && let Some(&previous) = self.statements.last()
+                    && let Some(joined) = join_returns(ast, previous, statement)
+                {
+                    self.changed = true;
+                    self.statements.pop();
+                    statement = joined;
+                }
                 self.statements.push(statement);
             }
         }
@@ -382,7 +392,7 @@ pub(super) fn unwrap_if(ast: &mut Ast<'_>, statement: IfStatement) {
 
 /// Whether `statement` ends in an `if` without `else`, which would take an
 /// `else` that follows `statement`.
-fn ends_in_open_if(ast: &Ast<'_>, statement: Stmt) -> bool {
+pub(super) fn ends_in_open_if(ast: &Ast<'_>, statement: Stmt) -> bool {
     match ast.stmt_data(statement) {
         StmtData::IfStatement(statement) => statement
             .alternate(ast)
