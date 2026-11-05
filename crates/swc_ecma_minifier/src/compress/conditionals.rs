@@ -156,16 +156,9 @@ impl Compressor {
         let mut index = statements.len();
         while index > 0 {
             index -= 1;
-            let statement = statements[index];
-            let StmtData::IfStatement(branch) = ast.stmt_data(statement) else {
+            let Some(test) = return_guard(ast, statements[index]) else {
                 continue;
             };
-            if branch.alternate(ast).is_some()
-                || !matches!(ast.stmt_data(branch.consequent(ast)),
-                    StmtData::ReturnStatement(statement) if statement.argument(ast).is_none())
-            {
-                continue;
-            }
             let tail = &statements[index + 1..];
             if tail
                 .iter()
@@ -173,20 +166,35 @@ impl Compressor {
             {
                 continue;
             }
-            let span = statement.span(ast);
             let body = if tail.is_empty() {
-                ast.stmt_empty_statement(span)
+                None
             } else {
-                let body = ast.add_sub_range(tail.iter().copied());
-                let block = ast.block_statement(span, body);
-                self.compress_held_block(ast, block);
-                statements::unwrap_block(ast, Stmt::BlockStatement(block))
+                Some(ast.add_sub_range(tail.iter().copied()))
             };
-            let test = branch.test(ast);
-            let test = if tail.is_empty() {
-                test
-            } else {
-                negate(ast, test, true)
+            // Consecutive guards join their tests, so the tail is rebuilt
+            // once for all of them.
+            let end = statements[index].span(ast).end;
+            let mut tests = vec![test];
+            while index > 0
+                && let Some(test) = return_guard(ast, statements[index - 1])
+            {
+                tests.push(test);
+                index -= 1;
+            }
+            let span = Span::new(statements[index].span(ast).start, end);
+            let test = tests
+                .into_iter()
+                .rev()
+                .reduce(|left, right| chain(ast, span, left, right, LogicalOperator::Or))
+                .unwrap_or(test);
+            let (test, body) = match body {
+                None => (test, ast.stmt_empty_statement(span)),
+                Some(body) => {
+                    let block = ast.block_statement(span, body);
+                    self.compress_held_block(ast, block);
+                    let body = statements::unwrap_block(ast, Stmt::BlockStatement(block));
+                    (negate(ast, test, true), body)
+                }
             };
             let replacement = ast.stmt_if_statement(span, test, body, None);
             let replacement = self.compress_if(ast, replacement).unwrap_or(replacement);
@@ -255,6 +263,16 @@ pub(super) fn join_returns(ast: &mut Ast<'_>, previous: Stmt, statement: Stmt) -
     let test = branch.test(ast);
     let expression = conditional(ast, span, test, consequent, alternate);
     Some(ast.stmt_return_statement(span, Some(expression)))
+}
+
+/// The test of `if (test) return;`.
+fn return_guard(ast: &Ast<'_>, statement: Stmt) -> Option<Expr> {
+    let StmtData::IfStatement(branch) = ast.stmt_data(statement) else {
+        return None;
+    };
+    let returns = matches!(ast.stmt_data(branch.consequent(ast)),
+        StmtData::ReturnStatement(statement) if statement.argument(ast).is_none());
+    (branch.alternate(ast).is_none() && returns).then(|| branch.test(ast))
 }
 
 /// Builds `test && expr`, or `test || expr` when `when` is false, removing a

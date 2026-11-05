@@ -1,6 +1,6 @@
 minifier * terser
 ========================
-Positive Passed: 118/1577 (7.48%)
+Positive Passed: 119/1577 (7.55%)
 Negative Passed: 602/610 (98.69%)
 Panicked: 0/2187 (0.00%)
 Skipped: 353/2187 (16.14%)
@@ -188,7 +188,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/equality_conditionals_true/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/hoist_decl/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/ifs_3_should_warn/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/ifs_5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/ifs_6/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/ifs_same_consequent/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/conditionals/issue_1154/input.js - output differs from reference output
