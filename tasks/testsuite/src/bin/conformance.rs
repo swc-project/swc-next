@@ -38,8 +38,7 @@ pub fn main() -> ExitCode {
         update_snapshot::<MinifierRunner, TerserMinifierCase>(&TerserMinifierCase::read()),
         update_snapshot::<MinifierRunner, SwcMinifierCase>(&SwcMinifierCase::read()),
     ]
-    .into_iter()
-    .any(|panicked| panicked);
+    .contains(&true);
 
     if panicked {
         eprintln!("Conformance run contained one or more panics");
@@ -55,8 +54,7 @@ fn update_snapshots<C: Case>() -> bool {
         update_snapshot::<ParserRunner, C>(&cases),
         update_snapshot::<CodegenRunner, C>(&cases),
     ]
-    .into_iter()
-    .any(|panicked| panicked)
+    .contains(&true)
 }
 
 fn update_snapshot<R: Runner<C>, C: Case>(cases: &[C]) -> bool {
@@ -69,10 +67,8 @@ fn update_snapshot<R: Runner<C>, C: Case>(cases: &[C]) -> bool {
         .iter()
         .any(|result| matches!(result, TestResult::Panic { .. }));
     let snapshot = to_snapshot(R::NAME, C::NAME, &results);
-    let snapshot_path =
-        crate_root()
-            .join("snapshots")
-            .join(format!("{}_{}.snap", R::NAME, C::NAME));
+    let filename = format!("{}_{}.snap", R::NAME, C::NAME);
+    let snapshot_path = crate_root().join("snapshots").join(filename);
     fs::write(&snapshot_path, snapshot).unwrap();
     println!("Updated {}", snapshot_path.display());
     panicked

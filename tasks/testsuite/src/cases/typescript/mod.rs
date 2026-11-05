@@ -43,12 +43,7 @@ impl ParsedTestContent {
 }
 
 fn read_test_content(path: &Path) -> Result<ParsedTestContent, String> {
-    let code = read_typescript_file(path).map_err(|error| {
-        format!(
-            "failed to read TypeScript input `{}`: {error}",
-            path.display()
-        )
-    })?;
+    let code = read_typescript_file(path).map_err(|error| error.to_string())?;
     let mut parsed = parse_test_files_and_symlinks(&code, &path.to_string_lossy());
     merge_tsconfig_options(path, &mut parsed);
     Ok(parsed)
@@ -59,12 +54,7 @@ fn typescript_case_paths(test_dir: &Path) -> Result<Vec<PathBuf>, String> {
     for suite in ["compiler", "conformance"] {
         let suite_root = test_dir.join(suite);
         for entry in WalkDir::new(&suite_root) {
-            let entry = entry.map_err(|error| {
-                format!(
-                    "failed to enumerate TypeScript inputs in `{}`: {error}",
-                    suite_root.display()
-                )
-            })?;
+            let entry = entry.map_err(|error| error.to_string())?;
             if !entry.file_type().is_file() {
                 continue;
             }

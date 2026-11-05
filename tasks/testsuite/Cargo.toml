@@ -5,13 +5,14 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-clap       = { workspace = true }
-jwalk      = { workspace = true }
-rayon      = { workspace = true }
-regex      = { workspace = true }
-saphyr     = { workspace = true }
-serde      = { workspace = true }
-serde_json = { workspace = true }
+clap         = { workspace = true }
+jsonc-parser = { workspace = true }
+jwalk        = { workspace = true }
+rayon        = { workspace = true }
+regex        = { workspace = true }
+saphyr       = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
 
 swc_next_allocator        = { workspace = true }
 swc_next_ecma_ast         = { workspace = true }

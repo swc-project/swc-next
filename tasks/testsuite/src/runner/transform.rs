@@ -15,11 +15,8 @@ impl<C: TransformCase> Runner<C> for TransformerRunner {
     const NAME: &'static str = "transform";
 
     fn run(case: &C) -> TestResult {
-        let path = case
-            .path()
-            .strip_prefix(workspace_root().expect("workspace root should be discoverable"))
-            .expect("transform fixture should be inside the workspace")
-            .to_path_buf();
+        let root = workspace_root().unwrap();
+        let path = case.path().strip_prefix(root).unwrap().to_path_buf();
         if !case.supports_options() {
             return TestResult::Skipped { path };
         }
@@ -54,28 +51,18 @@ impl<C: TransformCase> Runner<C> for TransformerRunner {
 
 fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
     let allocator = Allocator::new();
-    let Some(ast) = transform_program(
-        case,
-        &allocator,
-        case.code(),
-        case.source_type(),
-        case.lang(),
-    )?
-    else {
+    let source_type = case.source_type();
+    let lang = case.lang();
+    let Some(ast) = transform_program(case, &allocator, case.code(), source_type, lang)? else {
         return Ok(false);
     };
 
-    let expected = case.expected_output();
     let output = print(&ast, case.codegen_options()).code;
-    if let Some(expected) = expected {
+    if let Some(expected) = case.expected_output() {
         let expected_allocator = Allocator::new();
-        let Some(expected_ast) = parse_program(
-            &expected_allocator,
-            expected,
-            case.source_type(),
-            case.lang(),
-            true,
-        ) else {
+        let Some(expected_ast) =
+            parse_program(&expected_allocator, expected, source_type, lang, true)
+        else {
             return Ok(false);
         };
         let expected = print(&expected_ast, case.codegen_options()).code;
@@ -89,13 +76,13 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
             return Err("transformed output differs from expected output".into());
         }
     } else {
-        if case.lang() == Lang::Dts {
+        if lang == Lang::Dts {
             if !output.is_empty() {
                 return Err("declaration input emitted JavaScript".into());
             }
             return Ok(true);
         }
-        let output_lang = if case.lang() == Lang::Tsx {
+        let output_lang = if lang == Lang::Tsx {
             Lang::Jsx
         } else {
             Lang::Js
@@ -103,13 +90,8 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         let output_allocator = Allocator::new();
         // TODO: Configure decorators and module transforms when those passes are supported.
         // Keep the input's parsing mode even when unambiguous parsing resolved its AST.
-        let Some(output_ast) = transform_program(
-            case,
-            &output_allocator,
-            &output,
-            case.source_type(),
-            output_lang,
-        )?
+        let Some(output_ast) =
+            transform_program(case, &output_allocator, &output, source_type, output_lang)?
         else {
             return Ok(false);
         };
@@ -143,8 +125,8 @@ fn transform_program<'a, C: TransformCase>(
             check_syntax: SyntaxChecks::all(),
         },
     );
-    if semantic_ret
-        .diagnostics
+    let diagnostics = &semantic_ret.diagnostics;
+    if diagnostics
         .iter()
         .any(|diagnostic| diagnostic.severity == Severity::Error)
     {
@@ -183,8 +165,8 @@ fn parse_program<'a>(
         NoTokenParserConfig,
     )
     .parse();
-    if result
-        .diagnostics
+    let diagnostics = &result.diagnostics;
+    if diagnostics
         .iter()
         .any(|diagnostic| diagnostic.severity == Severity::Error)
     {
