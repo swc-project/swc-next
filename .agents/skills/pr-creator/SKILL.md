@@ -24,6 +24,7 @@ description: Use when asked to create a pull request for this repository. Follow
    - `refactor(types): ...`
    - `chore(deps): ...`
    - `release: v1.2.0`
+   If the PR introduces a breaking change, add `!` before the colon, for example `feat(core)!: ...` or `feat!: ...`.
 
 5. Write the PR body in concise, clear English.
    - In `Motivation`, explain the user-facing problem, maintenance goal, or compatibility constraint that makes the change necessary.
@@ -41,8 +42,9 @@ description: Use when asked to create a pull request for this repository. Follow
 7. Perform a mandatory **dry run** before pushing or creating the PR:
    - Refresh the base branch's remote-tracking ref and compute the merge-base commit with `git merge-base <base-ref> HEAD`.
    - Print the exact title, target repository, base branch, merge-base SHA, head branch and SHA, draft status (`draft` by default), and full Markdown description in the conversation.
+   - If the PR is considered a breaking change, explicitly identify it as such and ask the human to confirm that assessment as part of the preview approval.
    - Wait for explicit human approval of this preview (the initial request to create a PR does not count). Do not push or create any PR during the dry run.
-   - Repeat the dry run and obtain approval again if any of these fields change.
+   - Repeat the dry run and obtain approval again if any of these fields or the breaking-change assessment change.
 
 8. After approval, re-check the branch name (never push the default branch), push the head branch, write the approved Markdown body to a temporary file, and run `gh pr create` (`--draft` by default unless ready-for-review was explicitly requested and approved) with explicit `--repo`, `--base`, `--head`, `--title`, and `--body-file` flags.
 
