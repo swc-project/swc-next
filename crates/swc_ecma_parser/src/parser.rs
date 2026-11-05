@@ -18862,6 +18862,10 @@ mod tests {
         for lang in [Lang::Tsx, Lang::Jsx] {
             let comments = parse_comments("const t = <Switch>\n// 1\n/* 2 */\n</Switch>", lang);
             assert!(comments.is_empty());
+
+            let comments = parse_comments("const x = <Component / // c\n>;", lang);
+            assert_eq!(comments.len(), 1);
+            check!(comments[0], 23, 27, Leading, 28);
         }
 
         let comments = parse_comments(
@@ -18994,9 +18998,10 @@ mod tests {
         assert_eq!(comments.len(), 1);
         check!(comments[0], 7, 11, Leading, 12);
 
+        // SWC attaches this to `</`, which it lexes as a single token.
         let comments = parse_comments("<a>b</ //\n a>", Lang::Jsx);
         assert_eq!(comments.len(), 1);
-        check!(comments[0], 7, 9, Trailing, 6);
+        check!(comments[0], 7, 9, Leading, 11);
 
         let comments = parse_comments("<a>b</a /**/ >", Lang::Jsx);
         assert_eq!(comments.len(), 1);

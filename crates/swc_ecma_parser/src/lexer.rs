@@ -513,7 +513,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.state.previous_token_tag = Some(target.tag());
         }
         self.clear_token_flags();
-        self.skip_ws_and_comments(false)?;
+        self.skip_ws_and_comments()?;
 
         if (self.cursor as usize) >= self.source.len() {
             *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
@@ -552,7 +552,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.state.previous_token_tag = Some(target.tag());
         }
         self.clear_token_flags();
-        self.skip_ws_and_comments(true)?;
+        self.skip_ws_and_comments()?;
 
         if (self.cursor as usize) >= self.source.len() {
             *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
@@ -1504,7 +1504,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    fn skip_ws_and_comments(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
+    fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         let at_start_of_source = self.cursor == 0;
 
@@ -1532,10 +1532,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             if src[pos] == b'/' {
                 match src.get(pos + 1) {
                     Some(b'*') => self.scan_block_comment()?,
-                    Some(b'/') => self.scan_line_comment(jsx_tag)?,
+                    Some(b'/') => self.scan_line_comment()?,
                     _ => return Ok(()),
                 }
-            } else if !self.skip_ws_and_comments_slow(at_start_of_source, jsx_tag)? {
+            } else if !self.skip_ws_and_comments_slow(at_start_of_source)? {
                 return Ok(());
             }
         }
@@ -1546,7 +1546,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn skip_ws_and_comments_slow(
         &mut self,
         at_start_of_source: bool,
-        jsx_tag: bool,
     ) -> Result<bool, LexicalError> {
         let src = self.source;
         let pos = self.cursor as usize;
@@ -1562,7 +1561,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return Ok(false);
                 }
-                self.scan_html_comment(jsx_tag)?;
+                self.scan_html_comment()?;
             }
             b'-' => {
                 let can_be_html_close_comment =
@@ -1575,7 +1574,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return Ok(false);
                 }
-                self.scan_html_close_comment(jsx_tag)?;
+                self.scan_html_close_comment()?;
             }
             0x80..=0xFF => {
                 let separator_len = unicode_separator_len(src, pos) as usize;
@@ -1601,11 +1600,12 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// source, so [`TokenFlag::LineTerminatorBefore`] records every line break
     /// since the previous token that can precede another comment.
     #[inline]
-    fn can_have_trailing_line_comment(&self, jsx_tag: bool) -> bool {
+    fn can_have_trailing_line_comment(&self) -> bool {
         !self.has_token_flag(TokenFlag::LineTerminatorBefore)
-            && self.state.previous_token_tag.is_some_and(|tag| {
-                (jsx_tag && tag == TokenTag::Slash) || tag.can_have_trailing_line_comment()
-            })
+            && self
+                .state
+                .previous_token_tag
+                .is_some_and(|tag| tag.can_have_trailing_line_comment())
     }
 
     #[inline]
@@ -1661,7 +1661,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.processed_comments = self.comments.len();
     }
 
-    fn scan_line_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
+    fn scan_line_comment(&mut self) -> Result<(), LexicalError> {
         debug_assert!(((self.cursor + 1) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'/');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'/');
@@ -1681,7 +1681,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             pos += 1;
         }
         self.cursor = pos as u32;
-        let trailing = self.can_have_trailing_line_comment(jsx_tag);
+        let trailing = self.can_have_trailing_line_comment();
         self.record_comment(CommentKind::Line, start, pos as u32, trailing)
     }
 
@@ -1745,13 +1745,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn scan_html_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
+    fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 3) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'<');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'!');
         let start = self.cursor;
-        let trailing = self.can_have_trailing_line_comment(jsx_tag);
+        let trailing = self.can_have_trailing_line_comment();
         self.cursor += 4;
         while (self.cursor as usize) < self.source.len() {
             let c = self.source[self.cursor as usize];
@@ -1767,14 +1767,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn scan_html_close_comment(&mut self, jsx_tag: bool) -> Result<(), LexicalError> {
+    fn scan_html_close_comment(&mut self) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 2) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'-');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'-');
         debug_assert_eq!(self.source[self.cursor as usize + 2], b'>');
         let start = self.cursor;
-        let trailing = self.can_have_trailing_line_comment(jsx_tag);
+        let trailing = self.can_have_trailing_line_comment();
         self.cursor += 3;
         while (self.cursor as usize) < self.source.len() {
             if self.is_line_terminator(self.source[self.cursor as usize]) {
