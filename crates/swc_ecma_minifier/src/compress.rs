@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     BindingPattern, BindingPatternData, BindingProperty, BlockStatement, CallExpression,
     ConditionalExpression, DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function,
     FunctionBody, FunctionType, GetSpan, IdentifierReference, IfStatement, LogicalExpression,
-    LogicalOperator, NodeId, ObjectProperty, Program, PropertyKey, PropertyKeyData,
+    LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program, PropertyKey, PropertyKeyData,
     SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData, SubRange, SwitchCase,
     TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
     UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
@@ -66,7 +66,8 @@ impl Candidates {
             candidates.renames = Renames::build(ast, &semantic);
         }
         let mut local_vars = FxHashMap::default();
-        let mut pure_symbols = FxHashSet::default();
+        // Pure symbols, each with the offset from which its reads are pure.
+        let mut pure_symbols = FxHashMap::default();
         for entry in semantic.iter_symbols() {
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
@@ -107,8 +108,12 @@ impl Candidates {
                 && in_function
                 && flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
                 && !flags.contains(SymbolFlags::PARAMETER);
-            if options.side_effects && is_initialized(flags) && !removable_var {
-                pure_symbols.insert(entry.id);
+            if options.side_effects
+                && is_initialized(flags)
+                && !removable_var
+                && let Some(start) = initialized_from(ast, flags, scope.node)
+            {
+                pure_symbols.insert(entry.id, start);
             }
         }
         for entry in semantic.iter_references() {
@@ -118,7 +123,10 @@ impl Candidates {
                     candidates.unresolved.insert(reference.node);
                 }
                 NameResolution::Resolved(symbol)
-                    if reference.flags.is_read_only() && pure_symbols.contains(&symbol) =>
+                    if reference.flags.is_read_only()
+                        && pure_symbols
+                            .get(&symbol)
+                            .is_some_and(|start| ast.span(reference.node).start >= *start) =>
                 {
                     candidates.pure_reads.insert(reference.node);
                 }
@@ -227,6 +235,22 @@ fn is_initialized(flags: SymbolFlags) -> bool {
             | SymbolFlags::IMPORT
             | SymbolFlags::IMPORT_EQUALS,
     )
+}
+
+/// The offset from which reads of a binding declared in `scope` are
+/// initialized. A parameter or a catch binding is uninitialized while its
+/// list or pattern is evaluated, as in `function f(a = b, b) {}`.
+fn initialized_from(ast: &Ast<'_>, flags: SymbolFlags, scope: NodeId) -> Option<u32> {
+    if !flags.intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR) {
+        return Some(0);
+    }
+    let pattern = match ast.kind_data(scope) {
+        NodeKindData::Function(function) => function.params(ast).node_id(),
+        NodeKindData::ArrowFunctionExpression(arrow) => arrow.params(ast).node_id(),
+        NodeKindData::CatchClause(catch) => catch.param(ast)?.node_id(),
+        _ => return None,
+    };
+    Some(ast.span(pattern).end)
 }
 
 /// Whether a declared binding starts with a known primitive value.
