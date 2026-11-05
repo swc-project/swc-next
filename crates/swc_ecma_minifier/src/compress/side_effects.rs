@@ -177,9 +177,12 @@ impl Compressor {
                     }
                     // `typeof` does not throw for an undeclared name.
                     UnaryOperator::Typeof
-                        if matches!(ast.expr_data(argument), ExprData::IdentifierReference(_)) =>
+                        if matches!(
+                            ast.expr_data(value::skip_parentheses(ast, argument)),
+                            ExprData::IdentifierReference(_)
+                        ) =>
                     {
-                        let id = argument.node_id();
+                        let id = value::skip_parentheses(ast, argument).node_id();
                         if !self.candidates.unresolved.contains(&id)
                             && !self.candidates.pure_reads.contains(&id)
                         {

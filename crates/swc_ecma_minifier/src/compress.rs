@@ -1229,4 +1229,17 @@ mod tests {
         assert_eq!(replacement.span(&ast), span);
         assert_eq!(replacement.argument(&ast).span(&ast), span);
     }
+
+    #[test]
+    fn parenthesized_operands() {
+        let allocator = Allocator::new();
+        let options = Options {
+            preserve_parens: true,
+            ..Options::default()
+        };
+        let result = Parser::init(&allocator, "typeof (x);", options, NoTokenParserConfig).parse();
+        let mut ast = result.ast;
+        Minifier::minify(&mut ast, MinifierOptions::default());
+        assert!(ast.root_program().body(&ast).is_empty());
+    }
 }
