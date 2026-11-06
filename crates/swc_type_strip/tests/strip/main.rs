@@ -2,18 +2,13 @@ use std::borrow::Cow;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
-use swc_next_type_strip::{Lang, Options, Severity, SourceType, Span, StripResult, strip_types};
+use swc_next_type_strip::{Lang, Options, Severity, SourceType, StripResult, strip_types};
 
 fn options(lang: Lang) -> Options {
     Options {
         source_type: SourceType::Unambiguous,
         lang,
     }
-}
-
-#[track_caller]
-fn assert_utf16_len_preserved(input: &str, output: &str) {
-    assert_eq!(output.encode_utf16().count(), input.encode_utf16().count());
 }
 
 #[track_caller]
@@ -35,50 +30,54 @@ fn assert_valid_javascript(source: &str, lang: Lang) {
 }
 
 #[track_caller]
-fn assert_strip_text<'a>(input: &'a str, expected: &str, lang: Lang) -> StripResult<'a> {
+fn assert_stripped_output<'a>(input: &'a str, expected: &str, lang: Lang) -> StripResult<'a> {
     let result = strip_types(input, options(lang));
-    assert_utf16_len_preserved(input, &result.code);
-    assert_eq!(result.code, expected);
-    assert!(result.diagnostics.is_empty());
-    result
-}
-
-#[track_caller]
-fn assert_strip(input: &str, expected: &str) {
-    let result = assert_strip_text(input, expected, Lang::Ts);
-    assert_valid_javascript(&result.code, Lang::Ts);
-}
-
-#[track_caller]
-fn assert_strip_tsx(input: &str, expected: &str) {
-    let result = assert_strip_text(input, expected, Lang::Tsx);
-    assert_valid_javascript(&result.code, Lang::Tsx);
-}
-
-#[track_caller]
-fn assert_strip_error<'a>(input: &'a str, expected: &str) -> StripResult<'a> {
-    let result = strip_types(input, options(Lang::Ts));
-    assert_utf16_len_preserved(input, &result.code);
-    assert_eq!(result.code, expected);
-    assert_eq!(result.diagnostics.len(), 1);
-    assert_eq!(result.diagnostics[0].severity, Severity::Error);
-    assert_valid_javascript(&result.code, Lang::Ts);
-    result
-}
-
-#[track_caller]
-fn assert_strip_error_at<'a>(
-    input: &'a str,
-    expected: &str,
-    diagnostic_text: &str,
-) -> StripResult<'a> {
-    let result = assert_strip_error(input, expected);
-    let Span { start, end } = result.diagnostics[0].span;
     assert_eq!(
-        input.get(start as usize..end as usize),
-        Some(diagnostic_text)
+        result.code.encode_utf16().count(),
+        input.encode_utf16().count()
     );
+    assert_eq!(result.code, expected);
     result
+}
+
+#[track_caller]
+fn assert_strip_success(input: &str, expected: &str, lang: Lang) {
+    let result = assert_stripped_output(input, expected, lang);
+    assert!(result.diagnostics.is_empty());
+    assert_valid_javascript(&result.code, lang);
+}
+
+#[track_caller]
+fn assert_strip_error(input: &str, expected: &str, source_fragment: Option<&str>) {
+    let result = assert_stripped_output(input, expected, Lang::Ts);
+    assert_eq!(result.diagnostics.len(), 1);
+    let diagnostic = &result.diagnostics[0];
+    assert_eq!(diagnostic.severity, Severity::Error);
+    if let Some(source_fragment) = source_fragment {
+        let span = diagnostic.span;
+        assert_eq!(
+            input.get(span.start as usize..span.end as usize),
+            Some(source_fragment),
+        );
+    }
+}
+
+macro_rules! assert_strip {
+    (lang: tsx, $input:expr, $expected:expr $(,)?) => {{
+        $crate::assert_strip_success($input, $expected, $crate::Lang::Tsx);
+    }};
+    ($input:expr, $expected:expr $(,)?) => {{
+        $crate::assert_strip_success($input, $expected, $crate::Lang::Ts);
+    }};
+}
+
+macro_rules! assert_strip_with_error {
+    ($input:expr, $expected:expr $(,)?) => {{
+        $crate::assert_strip_error($input, $expected, None);
+    }};
+    ($input:expr, $expected:expr, at: $source_fragment:expr $(,)?) => {{
+        $crate::assert_strip_error($input, $expected, Some($source_fragment));
+    }};
 }
 
 mod annotations;
@@ -140,12 +139,12 @@ fn language() {
 
 #[test]
 fn parentheses() {
-    assert_strip("(value) as Type;", "(value)        ;");
+    assert_strip!("(value) as Type;", "(value)        ;");
 }
 
 #[test]
 fn comments() {
-    assert_strip(
+    assert_strip!(
         "/* lead */ let value: number = 1; // tail",
         "/* lead */ let value         = 1; // tail",
     );
