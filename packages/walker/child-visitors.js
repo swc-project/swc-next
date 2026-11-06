@@ -796,8 +796,10 @@ export const childVisitors = {
   TSModuleDeclaration(node, walker) {
     const child0 = node.id;
     if (child0 != null && walker.visitScalar(child0, node, "id")) return true;
-    const child1 = node.body;
-    if (child1 != null && walker.visitScalar(child1, node, "body")) return true;
+    const child1 = node.attributes;
+    if (child1 != null && walker.visitScalar(child1, node, "attributes")) return true;
+    const child2 = node.body;
+    if (child2 != null && walker.visitScalar(child2, node, "body")) return true;
     return false;
   },
   TSNamedTupleMember(node, walker) {
@@ -2183,8 +2185,10 @@ function walkTSModuleBlock(node, walker, parent, key, list, index) {
 function walkTSModuleDeclaration(node, walker, parent, key, list, index) {
   const child0 = node.id;
   if (child0 != null && walker.visitScalar(child0, node, "id")) return index;
-  const child1 = node.body;
-  if (child1 != null && walker.visitScalar(child1, node, "body")) return index;
+  const child1 = node.attributes;
+  if (child1 != null && walker.visitScalar(child1, node, "attributes")) return index;
+  const child2 = node.body;
+  if (child2 != null && walker.visitScalar(child2, node, "body")) return index;
   if (node.type !== "TSModuleDeclaration") return walker.leaveChanged(node, parent, key, list, index);
   return index;
 }

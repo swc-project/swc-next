@@ -7,6 +7,33 @@ use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
 #[track_caller]
+fn expect_printed_ts_recovery_pair(
+    source: &str,
+    expected_errors: usize,
+    pretty: &str,
+    minified: &str,
+) {
+    let allocator = Allocator::new();
+    let options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert_eq!(parsed.diagnostics.len(), expected_errors);
+    let output = print(&parsed.ast, PrintOptions::default());
+    assert_eq!(output.code, pretty);
+    let output = print(
+        &parsed.ast,
+        PrintOptions {
+            minify: true,
+            ..PrintOptions::default()
+        },
+    );
+    assert_eq!(output.code, minified);
+}
+
+#[track_caller]
 fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &str) {
     let allocator = Allocator::new();
     for preserve_parens in [false, true] {
@@ -612,6 +639,19 @@ fn test_optional_and_rest_tuple_elements() {
 
 #[test]
 fn test_ambient_module_declarations() {
+    expect_printed_ts_pair(
+        "declare module '*.txt' with { type: 'text' } { const content: string; export default content; }",
+        "declare module \"*.txt\" with {\n  type: \"text\";\n} {\n  const content: string;\n  export default content;\n}\n",
+        "declare module \"*.txt\" with {type:\"text\"}{const content:string;export default content}",
+    );
+
+    expect_printed_ts_recovery_pair(
+        "declare module '*.data' with { readonly type: 'json' | 'json5' };",
+        1,
+        "declare module \"*.data\" with {\n  readonly type: \"json\" | \"json5\";\n};\n",
+        "declare module \"*.data\" with {readonly type:\"json\" | \"json5\"};",
+    );
+
     expect_printed_ts(
         "declare module \"a\"; declare module \"b\";",
         "declare module \"a\";\ndeclare module \"b\";\n",

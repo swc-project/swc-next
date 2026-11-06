@@ -5030,6 +5030,10 @@ impl<'a> Printer<'a> {
             TsModuleDeclarationKind::Module => "module ",
         });
         self.print_ts_module_name(d.id(self.ast));
+        if let Some(attributes) = d.attributes(self.ast) {
+            self.print(" with ");
+            self.print_ts_type_members(attributes.members(self.ast));
+        }
         if let Some(b) = d.body(self.ast) {
             self.print_space();
             self.print_ts_module_body(b);

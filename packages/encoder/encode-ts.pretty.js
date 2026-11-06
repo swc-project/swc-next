@@ -2045,14 +2045,16 @@ function encodeTs(program, meta = {}) {
   function encTsModuleDeclaration(n) {
     isTs = true;
     const v_0 = encTsModuleName(n.id);
-    const v_1 = n.body == null ? NULL : encTsModuleBody(n.body);
-    const v_2 = enumValue(18, n.kind);
-    const v_3 = n.declare ? 1 : 0;
+    const v_1 = n.attributes == null ? NULL : encTsTypeLiteral(n.attributes);
+    const v_2 = n.body == null ? NULL : encTsModuleBody(n.body);
+    const v_3 = enumValue(18, n.kind);
+    const v_4 = n.declare ? 1 : 0;
     const index = allocNode(146, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setPayloadU8(index, 8, v_2);
-    setPayloadU8(index, 9, v_3);
+    setPayloadU32(index, 8, v_2);
+    setPayloadU8(index, 12, v_3);
+    setPayloadU8(index, 13, v_4);
     return index;
   }
 

@@ -297,12 +297,13 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: TsModuleName,
+        attributes: Option<TsTypeLiteral>,
         body: Option<TsModuleBody>,
         kind: TsModuleDeclarationKind,
         declare: bool,
     ) -> Stmt {
         Stmt::Declaration(Decl::TsModuleDeclaration(
-            self.ts_module_declaration(span, id, body, kind, declare)
+            self.ts_module_declaration(span, id, attributes, body, kind, declare)
                 .into(),
         ))
     }
@@ -549,12 +550,13 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: TsModuleName,
+        attributes: Option<TsTypeLiteral>,
         body: Option<TsModuleBody>,
         kind: TsModuleDeclarationKind,
         declare: bool,
     ) -> Decl {
         Decl::TsModuleDeclaration(
-            self.ts_module_declaration(span, id, body, kind, declare)
+            self.ts_module_declaration(span, id, attributes, body, kind, declare)
                 .into(),
         )
     }
@@ -6758,12 +6760,13 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: TsModuleName,
+        attributes: Option<TsTypeLiteral>,
         body: Option<TsModuleBody>,
         kind: TsModuleDeclarationKind,
         declare: bool,
     ) -> TsModuleBody {
         TsModuleBody::TsModuleDeclaration(
-            self.ts_module_declaration(span, id, body, kind, declare)
+            self.ts_module_declaration(span, id, attributes, body, kind, declare)
                 .into(),
         )
     }
@@ -7806,6 +7809,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: TsModuleName,
+        attributes: Option<TsTypeLiteral>,
         body: Option<TsModuleBody>,
         kind: TsModuleDeclarationKind,
         declare: bool,
@@ -7816,10 +7820,11 @@ impl<'a> Ast<'a> {
             NodePayload {
                 ts_module_declaration: TsModuleDeclarationPayload {
                     id,
+                    attributes: attributes.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     body: body.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     kind,
                     declare,
-                    _pad0: [0; 6usize],
+                    _pad0: [0; 2usize],
                 },
             },
         ))

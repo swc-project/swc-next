@@ -117,7 +117,7 @@ export const visitorKeys = Object.freeze({
   TSMappedType: Object.freeze(["key", "constraint", "nameType", "typeAnnotation"]),
   TSMethodSignature: Object.freeze(["key", "typeParameters", "params", "returnType"]),
   TSModuleBlock: Object.freeze(["body"]),
-  TSModuleDeclaration: Object.freeze(["id", "body"]),
+  TSModuleDeclaration: Object.freeze(["id", "attributes", "body"]),
   TSNamedTupleMember: Object.freeze(["label", "elementType"]),
   TSNamespaceExportDeclaration: Object.freeze(["id"]),
   TSNeverKeyword: Object.freeze([]),

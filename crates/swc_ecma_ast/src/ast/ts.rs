@@ -1529,6 +1529,9 @@ pub struct TsEnumMember {
 pub struct TsModuleDeclaration {
     /// `binding_identifier`, `string_literal`, or `ts_qualified_name`.
     id: TsModuleName,
+    /// The type literal following `with` on a string-named module declaration.
+    #[estree(optional)]
+    attributes: Option<TsTypeLiteral>,
     /// `ts_module_block`. `None` for body-less forward declarations like
     /// `declare module "foo";`.
     #[estree(optional)]

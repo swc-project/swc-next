@@ -9380,6 +9380,16 @@ impl TsModuleDeclaration {
         unsafe { ast.nodes.data_unchecked(self.0).ts_module_declaration.id }
     }
     #[inline]
+    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeLiteral> {
+        let raw = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .ts_module_declaration
+                .attributes
+        };
+        (raw != u32::MAX).then(|| TsTypeLiteral(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Option<TsModuleBody> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).ts_module_declaration.body };
         (raw != u32::MAX).then(|| TsModuleBody(NodeId::from_raw_unchecked(raw)))
@@ -9404,6 +9414,16 @@ impl TsModuleDeclaration {
                 .data_mut_unchecked(self.0)
                 .ts_module_declaration
                 .id = id;
+        }
+    }
+    #[inline]
+    pub fn set_attributes<'a>(self, ast: &mut crate::Ast<'a>, attributes: Option<TsTypeLiteral>) {
+        let field_val: u32 = attributes.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        unsafe {
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .ts_module_declaration
+                .attributes = field_val;
         }
     }
     #[inline]

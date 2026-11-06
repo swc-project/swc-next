@@ -1721,12 +1721,14 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 146: {
         const f_id = node(_i32[(payload + 0) >> 2]);
-        const f_body = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_kind = enumValue(18, _dv.getUint8(payload + 8));
-        const f_declare = _dv.getUint8(payload + 9) !== 0;
+        const f_attributes = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_body = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_kind = enumValue(18, _dv.getUint8(payload + 12));
+        const f_declare = _dv.getUint8(payload + 13) !== 0;
         result = f_body === null
           ? { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false }
           : { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false, body: f_body };
+        if (f_attributes !== null) result.attributes = f_attributes;
         break;
       }
       case 147: {

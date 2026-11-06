@@ -349,6 +349,19 @@ fn ambient_external_modules_are_lexical_only() {
     let allocator = Allocator::new();
     let ts_module = ts_module_options();
 
+    let source = "type Attribute = 'text'; declare module '*.txt' with { type: Attribute } { type Attribute = 'inner' }";
+    let parsed = Parser::init(&allocator, source, ts_module, NoTokenParserConfig).parse();
+    assert_eq!(parsed.diagnostics.len(), 1);
+    let ast = parsed.ast;
+    let result = analyze(&ast, AnalyzeOptions::default());
+    assert!(result.diagnostics.is_empty());
+    let semantic = result.semantic;
+    let symbol = reference_symbol(&ast, &semantic, b"Attribute").unwrap();
+    assert_eq!(
+        semantic.binding(ScopeId::MODULE, b"Attribute"),
+        Some(symbol)
+    );
+
     let source = "declare module 'foo' { const x: number; const y: typeof x }";
     let (ast, semantic) = analyze_source(&allocator, source, ts_module);
     assert!(reference_symbol(&ast, &semantic, b"x").is_some());
