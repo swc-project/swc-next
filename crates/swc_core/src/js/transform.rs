@@ -8,7 +8,7 @@ pub use swc_next_ecma_transformer::jsx::JsxRuntime;
 #[derive(Clone, Debug, Default)]
 pub struct JsTransformOptions {
     /// Disable TypeScript lowering or enable it with defaults or explicit settings.
-    pub typescript: Option<BoolOr<TypeScriptOptions>>,
+    pub typescript: Option<BoolOr<JsTypeScriptOptions>>,
     /// Disable JSX lowering or enable it with defaults or explicit settings.
     pub jsx: Option<BoolOr<JsxOptions>>,
     /// Explicitly enable or disable implemented lowering transforms.
@@ -27,7 +27,7 @@ pub enum JsFeature {
 /// JSX import dependencies used internally by the transformer are derived from
 /// the JSX settings rather than exposed in this section.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct TypeScriptOptions {
+pub struct JsTypeScriptOptions {
     /// Preserve value imports and exports, and disable const-enum inlining and
     /// removal.
     pub verbatim_module_syntax: Option<bool>,
@@ -54,12 +54,12 @@ pub struct JsxOptions {
     pub pure: Option<bool>,
     /// Add display names to `createReactClass` calls.
     pub display_name: Option<bool>,
-    pub refresh: Option<BoolOr<ReactRefreshOptions>>,
+    pub refresh: Option<BoolOr<JsReactRefreshOptions>>,
 }
 
 /// React Refresh instrumentation settings.
 #[derive(Clone, Debug, Default)]
-pub struct ReactRefreshOptions {
+pub struct JsReactRefreshOptions {
     /// Registration expression. Defaults to `$RefreshReg$` when enabled.
     pub refresh_reg: Option<String>,
     /// Signature expression. Defaults to `$RefreshSig$` when enabled.

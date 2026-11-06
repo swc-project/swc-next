@@ -1,26 +1,41 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Lang as AstLang, SourceType as AstSourceType,
+    Lang, SourceType,
     ffi::ast::{buffer_size, serialize_into},
 };
-use swc_next_ecma_parser::{
-    CommentMode as AstCommentMode, NoTokenParserConfig, Options as AstParserOptions, Parser,
-};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+
+#[cfg(feature = "bridge")]
+use swc_next_bridge::{BridgeDecodeOptional, bridge};
 
 #[cfg(all(feature = "bridge", not(target_family = "wasm")))]
 use swc_next_bridge::napi;
 
-#[cfg_attr(feature = "bridge", swc_next_bridge::bridge(string_enum = "lowercase"))]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(string_enum = "lowercase", js_name = "SourceType")
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SourceType {
+pub enum JsSourceType {
     Module,
     Script,
     CommonJs,
     Unambiguous,
 }
 
-impl From<SourceType> for AstSourceType {
+impl From<JsSourceType> for SourceType {
+    fn from(value: JsSourceType) -> Self {
+        match value {
+            JsSourceType::Module => Self::Module,
+            JsSourceType::Script => Self::Script,
+            JsSourceType::CommonJs => Self::CommonJs,
+            JsSourceType::Unambiguous => Self::Unambiguous,
+        }
+    }
+}
+
+impl From<SourceType> for JsSourceType {
     fn from(value: SourceType) -> Self {
         match value {
             SourceType::Module => Self::Module,
@@ -31,20 +46,12 @@ impl From<SourceType> for AstSourceType {
     }
 }
 
-impl From<AstSourceType> for SourceType {
-    fn from(value: AstSourceType) -> Self {
-        match value {
-            AstSourceType::Module => Self::Module,
-            AstSourceType::Script => Self::Script,
-            AstSourceType::CommonJs => Self::CommonJs,
-            AstSourceType::Unambiguous => Self::Unambiguous,
-        }
-    }
-}
-
-#[cfg_attr(feature = "bridge", swc_next_bridge::bridge(string_enum = "lowercase"))]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(string_enum = "lowercase", js_name = "Lang")
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Lang {
+pub enum JsLang {
     Js,
     Ts,
     Jsx,
@@ -52,7 +59,19 @@ pub enum Lang {
     Dts,
 }
 
-impl From<Lang> for AstLang {
+impl From<JsLang> for Lang {
+    fn from(value: JsLang) -> Self {
+        match value {
+            JsLang::Js => Self::Js,
+            JsLang::Ts => Self::Ts,
+            JsLang::Jsx => Self::Jsx,
+            JsLang::Tsx => Self::Tsx,
+            JsLang::Dts => Self::Dts,
+        }
+    }
+}
+
+impl From<Lang> for JsLang {
     fn from(value: Lang) -> Self {
         match value {
             Lang::Js => Self::Js,
@@ -64,30 +83,21 @@ impl From<Lang> for AstLang {
     }
 }
 
-impl From<AstLang> for Lang {
-    fn from(value: AstLang) -> Self {
-        match value {
-            AstLang::Js => Self::Js,
-            AstLang::Ts => Self::Ts,
-            AstLang::Jsx => Self::Jsx,
-            AstLang::Tsx => Self::Tsx,
-            AstLang::Dts => Self::Dts,
-        }
-    }
-}
-
-#[cfg_attr(feature = "bridge", swc_next_bridge::bridge(string_enum = "lowercase"))]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(string_enum = "lowercase", js_name = "CommentMode")
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CommentMode {
+pub enum JsCommentMode {
     None,
     Flat,
 }
 
-impl From<CommentMode> for AstCommentMode {
-    fn from(value: CommentMode) -> Self {
+impl From<JsCommentMode> for CommentMode {
+    fn from(value: JsCommentMode) -> Self {
         match value {
-            CommentMode::None => Self::None,
-            CommentMode::Flat => Self::Flat,
+            JsCommentMode::None => Self::None,
+            JsCommentMode::Flat => Self::Flat,
         }
     }
 }
@@ -95,20 +105,17 @@ impl From<CommentMode> for AstCommentMode {
 /// Complete parser settings shared by standalone parsing and JavaScript pipelines.
 ///
 /// The JavaScript facade selects the relevant settings for each pipeline.
-#[cfg_attr(
-    feature = "bridge",
-    swc_next_bridge::bridge(object, js_name = "ParserOptions")
-)]
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "ParserOptions"))]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsParserOptions {
     /// Determines how the source is parsed and evaluated.
     ///
     /// @default "module"
-    pub source_type: Option<SourceType>,
+    pub source_type: Option<JsSourceType>,
     /// Determines which syntax features are enabled.
     ///
     /// @default "js"
-    pub lang: Option<Lang>,
+    pub lang: Option<JsLang>,
     /// Preserve parenthesized expressions and TypeScript types as explicit
     /// parenthesized nodes.
     ///
@@ -120,7 +127,7 @@ pub struct JsParserOptions {
     /// source-ordered comment list.
     ///
     /// @default "flat"
-    pub comments: Option<CommentMode>,
+    pub comments: Option<JsCommentMode>,
     /// Run semantic early-error checks on the parsed AST, including after syntax
     /// error recovery, and append their diagnostics. This performs an additional
     /// AST pass.
@@ -129,7 +136,7 @@ pub struct JsParserOptions {
     pub semantic_errors: Option<bool>,
 }
 
-impl From<JsParserOptions> for AstParserOptions {
+impl From<JsParserOptions> for Options {
     fn from(options: JsParserOptions) -> Self {
         let defaults = Self::default();
         Self {
@@ -180,7 +187,6 @@ pub unsafe fn parse_to_buffer(
 #[cfg(feature = "bridge")]
 const _: () = {
     use self::JsParserOptions as ParserOptions;
-    use swc_next_bridge::{BridgeDecodeOptional, bridge};
 
     const OPTIONS_PRESENT: u32 = 1 << 0;
 
@@ -220,19 +226,19 @@ const _: () = {
 
             let source_type = match field(value, SOURCE_TYPE_MASK, SOURCE_TYPE_SHIFT) {
                 0 => None,
-                1 => Some(SourceType::Module),
-                2 => Some(SourceType::Script),
-                3 => Some(SourceType::CommonJs),
-                4 => Some(SourceType::Unambiguous),
+                1 => Some(JsSourceType::Module),
+                2 => Some(JsSourceType::Script),
+                3 => Some(JsSourceType::CommonJs),
+                4 => Some(JsSourceType::Unambiguous),
                 _ => return None,
             };
             let lang = match field(value, LANG_MASK, LANG_SHIFT) {
                 0 => None,
-                1 => Some(Lang::Js),
-                2 => Some(Lang::Ts),
-                3 => Some(Lang::Jsx),
-                4 => Some(Lang::Tsx),
-                5 => Some(Lang::Dts),
+                1 => Some(JsLang::Js),
+                2 => Some(JsLang::Ts),
+                3 => Some(JsLang::Jsx),
+                4 => Some(JsLang::Tsx),
+                5 => Some(JsLang::Dts),
                 _ => return None,
             };
             let preserve_parens = match field(value, PRESERVE_PARENS_MASK, PRESERVE_PARENS_SHIFT) {
@@ -243,8 +249,8 @@ const _: () = {
             };
             let comments = match field(value, COMMENTS_MASK, COMMENTS_SHIFT) {
                 0 => None,
-                1 => Some(CommentMode::None),
-                2 => Some(CommentMode::Flat),
+                1 => Some(JsCommentMode::None),
+                2 => Some(JsCommentMode::Flat),
                 _ => return None,
             };
 

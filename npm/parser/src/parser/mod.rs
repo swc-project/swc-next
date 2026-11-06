@@ -1,8 +1,8 @@
 use swc_next_bridge::bridge;
 use swc_next_core::js::parser::{
-    JsParserOptions as ParserOptions, Lang, SourceType, parse_to_buffer,
+    JsLang, JsParserOptions as ParserOptions, JsSourceType, parse_to_buffer,
 };
-use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
+use swc_next_ecma_ast::{Lang, SourceType};
 
 #[bridge]
 /// # Safety
@@ -17,12 +17,12 @@ pub unsafe fn parse_sync(
     unsafe { parse_to_buffer(source, source_utf16_len, options) }
 }
 
-#[bridge]
-pub fn source_type_from_path(path: String) -> SourceType {
-    AstSourceType::from_path(&path).into()
+#[bridge(ts_return_type = "SourceType")]
+pub fn source_type_from_path(path: String) -> JsSourceType {
+    SourceType::from_path(&path).into()
 }
 
-#[bridge]
-pub fn lang_from_path(path: String) -> Lang {
-    AstLang::from_path(&path).into()
+#[bridge(ts_return_type = "Lang")]
+pub fn lang_from_path(path: String) -> JsLang {
+    Lang::from_path(&path).into()
 }
