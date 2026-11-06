@@ -5881,6 +5881,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         "Duplicate 'declare' modifier",
                         ReportOptions::default(),
                     );
+                } else if modifiers.r#abstract {
+                    self.report(
+                        token.span(),
+                        "'declare' modifier must precede 'abstract' modifier",
+                        ReportOptions::default(),
+                    );
                 }
                 modifiers.declare = true;
             } else if token.tag() == TokenTag::Abstract {
@@ -16379,9 +16385,14 @@ mod tests {
         assert!(!parsed.diagnostics.is_empty());
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
 
-        fn recovered_class(source: &str) -> (bool, bool, bool, usize, usize) {
+        fn recover(source: &str, lang: Lang) -> (bool, bool, bool, usize, usize) {
             let allocator = Allocator::new();
-            let parsed = parse_tokens(&allocator, source);
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, TokenParserConfig).parse();
             let ast = &parsed.ast;
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let (exported, declaration) = match statement.as_export_named_declaration(ast) {
@@ -16409,35 +16420,49 @@ mod tests {
             )
         }
 
-        let recovered = recovered_class("declare declare class Foo { m(): void; }");
-        assert_eq!(recovered, (false, true, false, 1, 1));
+        for lang in [Lang::Ts, Lang::Dts] {
+            let result = recover("abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 1));
 
-        let recovered = recovered_class("abstract abstract class Foo { abstract m(): void; }");
-        assert_eq!(recovered, (false, false, true, 1, 1));
+            let result = recover("export abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 1));
 
-        let recovered = recovered_class("declare abstract declare class Foo { m(): void; }");
-        assert_eq!(recovered, (false, true, true, 1, 1));
+            let result = recover("declare abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 0));
 
-        let recovered = recovered_class("abstract export class Foo { abstract m(): void; }");
-        assert_eq!(recovered, (true, false, true, 1, 1));
+            let result = recover("export declare abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 0));
 
-        let recovered = recovered_class("declare export class Foo { m(): void; }");
-        assert_eq!(recovered, (true, true, false, 1, 1));
+            let result = recover("declare declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, false, 1, 1));
 
-        let recovered = recovered_class("export declare export class Foo { m(): void; }");
-        assert_eq!(recovered, (true, true, false, 1, 1));
+            let result = recover("abstract abstract class Foo { abstract m(): void; }", lang);
+            assert_eq!(result, (false, false, true, 1, 1));
 
-        let recovered = recovered_class("abstract export declare class Foo { m(): void; }");
-        assert_eq!(recovered, (true, true, true, 1, 1));
+            let result = recover("declare abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 1));
 
-        let recovered = recovered_class("declare export abstract class Foo { m(): void; }");
-        assert_eq!(recovered, (true, true, true, 1, 1));
+            let result = recover("abstract export class Foo { abstract m(): void; }", lang);
+            assert_eq!(result, (true, false, true, 1, 1));
 
-        let recovered = recovered_class("abstract export\nclass Foo { m(): void; }");
-        assert_eq!(recovered, (true, false, true, 1, 1));
+            let result = recover("declare export class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1));
 
-        let recovered = recovered_class("declare export\nclass Foo { m(): void; }");
-        assert_eq!(recovered, (true, true, false, 1, 1));
+            let result = recover("export declare export class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1));
+
+            let result = recover("abstract export declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 2));
+
+            let result = recover("declare export abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 1));
+
+            let result = recover("abstract export\nclass Foo { m(): void; }", lang);
+            assert_eq!(result, (true, false, true, 1, 1));
+
+            let result = recover("declare export\nclass Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1));
+        }
     }
 
     #[test]
@@ -16880,13 +16905,7 @@ mod tests {
         );
         assert_eq!(flags, (false, true, 1));
 
-        let flags = class_flags("abstract declare class Foo {}");
-        assert_eq!(flags, (true, true, 0));
-
         let flags = class_flags("declare abstract class Foo {}");
-        assert_eq!(flags, (true, true, 0));
-
-        let flags = class_flags("export abstract declare class Foo {}");
         assert_eq!(flags, (true, true, 0));
 
         let flags = class_flags("export declare abstract class Foo {}");
