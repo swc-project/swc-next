@@ -18,6 +18,8 @@ mod context;
 mod helpers;
 mod uid;
 
+pub use helpers::HelperMode;
+
 pub mod assumptions;
 pub mod es2022;
 pub mod jsx;
@@ -27,6 +29,8 @@ pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    /// Emit external imports (the default) or inline only the helpers in use.
+    pub helpers: HelperMode,
     pub filename: Option<String>,
     pub assumptions: Assumptions,
     pub proposal: proposal::ProposalOptions,
@@ -81,7 +85,7 @@ impl Transformer {
         }
 
         // ECMAScript Transformer
-        let state = TransformerState::new(ScopeModel::new(semantic));
+        let state = TransformerState::new(ScopeModel::new(semantic), options.helpers);
         let mut transformer = ECMAScriptTransformer {
             es2022: es2022::ES2022::new(options.es2022, options.proposal),
             jsx_display_name: jsx::DisplayName::new(&options, options.filename.clone()),

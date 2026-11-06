@@ -14,13 +14,16 @@ use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
+    HelperMode, Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,
 };
 
 #[derive(Parser)]
 #[command(about = "Transform a JavaScript or TypeScript file and print the result")]
 struct Args {
+    /// Embed the required runtime helpers instead of importing their npm package.
+    #[arg(long)]
+    inline_helpers: bool,
     #[arg(default_value = "input.js")]
     filename: String,
 }
@@ -47,6 +50,11 @@ fn main() -> Result<(), String> {
 
     let mut ast = parsed.ast;
     let options = TransformerOptions {
+        helpers: if args.inline_helpers {
+            HelperMode::Inline
+        } else {
+            HelperMode::External
+        },
         es2022: ES2022Options {
             static_blocks: true,
         },

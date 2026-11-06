@@ -317,6 +317,9 @@ importers:
       '@rstest/core':
         specifier: 'catalog:'
         version: 0.11.11
+      '@swc-next/helpers':
+        specifier: workspace:*
+        version: link:../../packages/helpers
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.46(@swc/helpers@0.5.23)
@@ -381,6 +384,12 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
+
+  packages/helpers:
+    devDependencies:
+      '@swc/core':
+        specifier: 'catalog:'
+        version: 1.15.46(@swc/helpers@0.5.23)
 
   packages/types: {}
 

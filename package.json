@@ -6,7 +6,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build",
+    "build": "pnpm build:helpers && pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build",
+    "build:helpers": "pnpm --filter @swc-next/helpers build",
     "build:wasm": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build:wasm",
     "build:browser": "pnpm --filter @swc-next/core-browser build:browser",
     "test": "pnpm --filter @swc-next/core test",

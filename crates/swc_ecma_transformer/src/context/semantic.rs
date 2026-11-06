@@ -1,10 +1,10 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
-    IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
-    SymbolId, Traverse, TraverseCtx, TraverseWith,
+    IdentifierName, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
+    SimpleAssignmentTarget, Span, SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
 use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
+    Reference, ReferenceFlags, ReferenceSpace, ScopeModel, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -134,7 +134,22 @@ impl TransformCtx<'_, '_> {
     /// // Reserve _temp3 immediately so another allocation cannot reuse it; no binding is registered yet.
     /// ```
     pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstUtf8 {
-        let names = self.state.used_names.get_or_insert_with(|| {
+        self.init_used_names();
+        let names = self.state.used_names.as_mut().unwrap();
+        self.ast.add_utf8(names.next_name(base, start_suffix))
+    }
+
+    pub(crate) fn reserve_name(&mut self, name: &str) {
+        self.init_used_names();
+        self.state
+            .used_names
+            .as_mut()
+            .unwrap()
+            .observe(name.as_bytes());
+    }
+
+    fn init_used_names(&mut self) {
+        self.state.used_names.get_or_insert_with(|| {
             let mut names = UidGenerator::new(self.ast.allocator());
             for entry in self.state.semantic.iter_symbols() {
                 names.observe(self.ast.get_wtf8(entry.symbol.name).as_bytes());
@@ -153,11 +168,57 @@ impl TransformCtx<'_, '_> {
             }
             names
         });
-        self.ast.add_utf8(names.next_name(base, start_suffix))
     }
 }
 
 impl<'a> TransformCtx<'_, 'a> {
+    /// Rename declarations and references together with their semantic records.
+    /// Callers choose a collision-free name, handle linked symbols, and preserve
+    /// exported names and shorthand property keys in the surrounding syntax.
+    pub(crate) fn rename_symbol(&mut self, symbol: SymbolId, name: AstUtf8) {
+        for declaration in self.semantic().declarations(symbol).collect::<Vec<_>>() {
+            match self.ast.kind_data(declaration.node) {
+                NodeKindData::BindingIdentifier(identifier) => identifier.set_name(self.ast, name),
+                _ => panic!("renaming requires a binding identifier"),
+            }
+        }
+        for reference in self.semantic().uses(symbol).to_vec() {
+            let reference = self.semantic().reference(reference);
+            if reference.symbol == Some(symbol) {
+                match self.ast.kind_data(reference.node) {
+                    NodeKindData::IdentifierReference(identifier) => {
+                        identifier.set_name(self.ast, name)
+                    }
+                    NodeKindData::IdentifierName(identifier) => identifier.set_name(self.ast, name),
+                    _ => panic!("renaming requires an identifier reference"),
+                }
+            }
+        }
+        self.state
+            .semantic
+            .rename_symbol(symbol, name, self.ast.get_utf8(name));
+    }
+
+    /// Register the local name of an export specifier. Export syntax stores
+    /// IdentifierName nodes even though the local is a reference to a binding.
+    pub(crate) fn register_export_reference(
+        &mut self,
+        scope: ScopeId,
+        local: IdentifierName,
+        symbol: SymbolId,
+    ) {
+        self.state.semantic.grow_to(self.ast.node_count());
+        let mut flags = ReferenceFlags::default();
+        flags.space = ReferenceSpace::Any;
+        self.state.semantic.register_reference(Reference {
+            name: local.name(self.ast),
+            node: local.node_id(),
+            scope,
+            symbol: Some(symbol),
+            flags,
+        });
+    }
+
     /// Read a binding's AST name and register pending allocations before registering its declaration and symbol.
     ///
     /// ```javascript
