@@ -1,12 +1,12 @@
 //! Core APIs for swc-next.
 //!
-//! Enable `parser` or `codegen` for the corresponding JavaScript APIs.
+//! Enable `js` for JavaScript configuration types, and select stages with
+//! `js_parser`, `js_codegen`, `js_transform`, and `js_minify`.
 //! The optional `bridge` feature enables FFI conversions and type generation for
 //! the enabled APIs.
 
+#[cfg(feature = "js")]
 pub mod js;
-// pub mod css; // Unimplemented.
-// pub mod html; // Unimplemented.
 
 /// A boolean shorthand or an explicit options object.
 ///
