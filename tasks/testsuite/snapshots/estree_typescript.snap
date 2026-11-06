@@ -1,5 +1,5 @@
 AST Parsed     : 11748/11748 (100.00%)
-Positive Passed: 11632/11748 (99.01%)
+Positive Passed: 11633/11748 (99.02%)
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignToInvalidLHS.ts
