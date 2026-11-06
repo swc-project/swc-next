@@ -28,6 +28,25 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("encoder preserves modified module attribute types", () => {
+  for (const lang of ["ts", "dts"]) {
+    const { program } = parseSync("declare module '*.txt' with { type: 'text' } {}", { lang });
+    const module = program.body[0];
+    assert.equal(module.attributes.type, "TSTypeLiteral");
+    const value = module.attributes.members[0].typeAnnotation.typeAnnotation.literal;
+    assert.equal(value.value, "text");
+    value.value = "文本";
+
+    const printed = printSync(program, {}, { lang }).code;
+    const roundtrip = parseSync(printed, { lang }).program.body[0];
+    assert.equal(roundtrip.attributes.members[0].typeAnnotation.typeAnnotation.literal.value, "文本");
+    assert.equal(roundtrip.id.value, "*.txt");
+    assert.equal(roundtrip.body.type, "TSModuleBlock");
+    assert.equal(roundtrip.declare, true);
+    assert.equal(roundtrip.kind, "module");
+  }
+});
+
 test("encoder normalizes template raw line endings", () => {
   for (const lang of ["js", "ts"]) {
     const { program } = parseSync("tag`placeholder`;", { lang });

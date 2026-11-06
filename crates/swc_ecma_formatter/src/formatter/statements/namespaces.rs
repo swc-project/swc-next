@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::{
     GetSpan, Span, TsGlobalDeclaration, TsModuleBodyData, TsModuleDeclaration,
-    TsModuleDeclarationKind, TsModuleName, TsModuleNameData,
+    TsModuleDeclarationKind, TsModuleName, TsModuleNameData, TsType, TsTypeLiteral,
 };
 
 use super::{
@@ -11,14 +11,22 @@ use super::{
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::ContentMode;
-use crate::formatter::types::{TypeBoundary, TypeGap};
+use crate::formatter::types::{TypeBoundary, TypeContext, TypeGap, TypeLayout};
 use crate::{FormatError, document::Writer};
 
 struct NamespaceHead<'ast> {
     name: TsModuleName,
     name_mode: ContentMode,
     prefix: Option<TypeGap<'ast>>,
+    attributes: Option<NamespaceAttributes<'ast>>,
     body: NamespaceBody<'ast>,
+}
+
+struct NamespaceAttributes<'ast> {
+    node: TsTypeLiteral,
+    before: TypeGap<'ast>,
+    after: TypeGap<'ast>,
+    mode: ContentMode,
 }
 
 enum NamespaceEnd {
@@ -98,10 +106,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.prepare_type_gap(gap, source)
         });
+        let attributes = node
+            .attributes(ast)
+            .map(|attributes| {
+                let gap = Span::new(name_span.end, attributes.span(ast).start);
+                let comments = self.comments.in_range(gap);
+                let keyword = self
+                    .find_token(gap, comments, "with")
+                    .ok_or_else(|| self.unsupported("module attributes boundary", node))?;
+                let before = Span::new(gap.start, keyword);
+                let after = Span::new(keyword + 4, gap.end);
+                let source = self.has_suppression
+                    && self.content_mode(self.comments.in_range(after)) == ContentMode::Verbatim;
+                Ok::<_, FormatError>(NamespaceAttributes {
+                    node: attributes,
+                    before: self.prepare_type_gap(before, false),
+                    after: self.prepare_type_gap(after, source),
+                    mode: if source {
+                        ContentMode::Verbatim
+                    } else {
+                        ContentMode::Formatted
+                    },
+                })
+            })
+            .transpose()?;
+        let head_end = node
+            .attributes(ast)
+            .map_or(name_span.end, |attributes| attributes.span(ast).end);
         let body = match node.body(ast).map(|body| ast.ts_module_body_data(body)) {
             None => NamespaceBody::Absent,
             Some(TsModuleBodyData::TsModuleBlock(body)) => {
-                let gap = Span::new(name_span.end, body.span(ast).start);
+                let gap = Span::new(head_end, body.span(ast).start);
                 let source = self.has_suppression
                     && self.content_mode(self.comments.in_range(gap)) == ContentMode::Verbatim;
                 NamespaceBody::Block {
@@ -131,6 +166,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             name,
             name_mode,
             prefix,
+            attributes,
             body,
         })
     }
@@ -158,8 +194,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        let mut head_end = head.name.span(self.ast).end;
+        if let Some(attributes) = head.attributes {
+            self.format_type_gap(attributes.before, FlatSeparator::Space, writer)?;
+            writer.text("with");
+            self.format_type_gap(attributes.after, FlatSeparator::Space, writer)?;
+            let ty = self.prepare_type(TsType::TsTypeLiteral(attributes.node), attributes.mode);
+            self.format_prepared_type_with_layout(
+                ty,
+                TypeContext::TypeExpressionRhs,
+                TypeLayout::Root,
+                writer,
+            )?;
+            head_end = attributes.node.span(self.ast).end;
+        }
         match head.body {
-            NamespaceBody::Absent => Ok(NamespaceEnd::Forward(head.name.span(self.ast).end)),
+            NamespaceBody::Absent => Ok(NamespaceEnd::Forward(head_end)),
             NamespaceBody::Block { node, mode, prefix } => {
                 self.format_type_gap(prefix, FlatSeparator::Space, writer)?;
                 self.format_module_body(node, mode, writer)?;

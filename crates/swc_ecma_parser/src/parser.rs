@@ -6221,6 +6221,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             self.parse_module_name()?
         };
+        let attributes = if id.is_string_literal(&self.ast) && self.eat(TokenTag::With)? {
+            let start = self.current_token.start();
+            if !self.expect(
+                TokenTag::LeftBrace,
+                "Expected '{' after 'with' in module attributes",
+                None,
+            ) {
+                return None;
+            }
+            Some(self.parse_type_literal(start)?)
+        } else {
+            None
+        };
         let outer_ambient = self.ts_context.ambient();
         self.ts_context
             .set(TsContext::AMBIENT, outer_ambient || declare);
@@ -6232,9 +6245,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             self.eat_semicolon(self.lexer.state.prev_token_end)?
         };
-        let declaration =
-            self.ast
-                .ts_module_declaration(Span::new(start, end), id, body, kind, declare);
+        let declaration = self.ast.ts_module_declaration(
+            Span::new(start, end),
+            id,
+            attributes,
+            body,
+            kind,
+            declare,
+        );
         Some(Stmt::Declaration(Decl::TsModuleDeclaration(declaration)))
     }
 
@@ -6826,6 +6844,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.parse_mapped_type(token.start())
                 } else {
                     self.parse_type_literal(token.start())
+                        .map(TsType::TsTypeLiteral)
                 }
             }
             TokenTag::TemplateHead => self.parse_template_literal_type(),
@@ -7782,11 +7801,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(modifier)
     }
 
-    fn parse_type_literal(&mut self, start: u32) -> Option<TsType> {
+    fn parse_type_literal(&mut self, start: u32) -> Option<TsTypeLiteral> {
         let (members, end) = self.parse_object_type_members(TypeParameterContext::Signature)?;
-        Some(TsType::TsTypeLiteral(
-            self.ast.ts_type_literal(Span::new(start, end), members),
-        ))
+        Some(self.ast.ts_type_literal(Span::new(start, end), members))
     }
 
     /// Parses a type body whose opening brace has already been consumed.
@@ -16433,6 +16450,99 @@ mod tests {
         check!("enum E { `a`, B }", errors: ["`a`"], members: ["`a`", "B"]);
 
         check!("enum E { [`a`] }", errors: [], members: ["`a`"]);
+    }
+
+    #[test]
+    fn module_attributes() {
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            options: Options,
+        ) -> (Ast<'a>, TsModuleDeclaration) {
+            let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = parsed.ast;
+            let body = ast.root_program().body(&ast);
+            assert_eq!(body.len(), 1);
+            let module = body
+                .get_node(&ast, 0)
+                .unwrap()
+                .as_declaration(&ast)
+                .unwrap()
+                .as_ts_module_declaration(&ast)
+                .unwrap();
+            assert_eq!(module.span(&ast), Span::new(0, source.len() as u32));
+            (ast, module)
+        }
+
+        fn first_property(ast: &Ast<'_>, module: TsModuleDeclaration) -> TsPropertySignature {
+            module
+                .attributes(ast)
+                .unwrap()
+                .members(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_ts_property_signature(ast)
+                .unwrap()
+        }
+
+        let allocator = Allocator::new();
+        for lang in [Lang::Ts, Lang::Dts] {
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+
+            let source = "declare module '*.txt' with { type: 'text' } { const content: string; }";
+            let (ast, module) = parse(&allocator, source, options);
+            let property = first_property(&ast, module);
+            let ty = property
+                .type_annotation(&ast)
+                .unwrap()
+                .type_annotation(&ast);
+            assert!(ty.is_ts_literal_type(&ast));
+            let body = module.body(&ast).unwrap().as_ts_module_block(&ast).unwrap();
+            assert_eq!(body.body(&ast).len(), 1);
+
+            let source = "declare module '*.data'\nwith { readonly type: 'json' | 'json5'; 'resolution-mode': 'import' };";
+            let (ast, module) = parse(&allocator, source, options);
+            let attributes = module.attributes(&ast).unwrap();
+            assert_eq!(attributes.members(&ast).len(), 2);
+            let property = first_property(&ast, module);
+            assert!(property.readonly(&ast));
+            let ty = property
+                .type_annotation(&ast)
+                .unwrap()
+                .type_annotation(&ast)
+                .as_ts_union_type(&ast)
+                .unwrap();
+            assert_eq!(ty.types(&ast).len(), 2);
+            assert!(module.body(&ast).is_none());
+
+            let (ast, module) = parse(&allocator, "declare module '*.txt' with {}", options);
+            assert!(module.attributes(&ast).unwrap().members(&ast).is_empty());
+            assert!(module.body(&ast).is_none());
+
+            let (ast, module) = parse(&allocator, "namespace N {}", options);
+            assert!(module.attributes(&ast).is_none());
+
+            assert!(has_errors("declare namespace N with {} {}", options));
+
+            assert!(has_errors("declare module N with {} {}", options));
+
+            assert!(has_errors("declare global with {} {}", options));
+
+            assert!(has_errors(
+                "declare module '*.txt' assert { type: 'text' } {}",
+                options
+            ));
+
+            assert!(has_errors(
+                "declare module '*.txt' with type: 'text'",
+                options
+            ));
+        }
     }
 
     #[test]

@@ -1286,6 +1286,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let was_in_ts_module_name = std::mem::replace(&mut self.in_ts_module_name, true);
         name.visit_with(self);
         self.in_ts_module_name = was_in_ts_module_name;
+        node.attributes(self.ast).visit_with(self);
         let declarations = self.symbols.enter_ts_module_body(self.ast, node);
         if self.check_syntax.redeclarations() {
             for prepared in declarations {

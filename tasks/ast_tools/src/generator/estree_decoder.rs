@@ -797,6 +797,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             r#"        result = f_body === null
           ? { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false }
           : { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false, body: f_body };
+        if (f_attributes !== null) result.attributes = f_attributes;
 "#,
         ),
         "TsGlobalDeclaration" => output.push_str(

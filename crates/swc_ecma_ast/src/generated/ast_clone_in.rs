@@ -2638,10 +2638,11 @@ impl<'a> CloneIn<'a> for TsModuleDeclaration {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let id = self.id(ast).clone_in(ast);
+        let attributes = self.attributes(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
         let kind = self.kind(ast).clone_in(ast);
         let declare = self.declare(ast).clone_in(ast);
-        ast.ts_module_declaration(span, id, body, kind, declare)
+        ast.ts_module_declaration(span, id, attributes, body, kind, declare)
     }
 }
 impl<'a> CloneIn<'a> for TsModuleBlock {

@@ -1415,6 +1415,10 @@ pub trait Visit<'a> {
         <SubRange<TsEnumMember> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
+    fn visit_opt_ts_type_literal(&mut self, node: Option<TsTypeLiteral>) {
+        <Option<TsTypeLiteral> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
     fn visit_opt_ts_module_body(&mut self, node: Option<TsModuleBody>) {
         <Option<TsModuleBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
@@ -4736,9 +4740,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleDeclaration {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let field_value_1 = self.attributes(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
         <TsModuleName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<TsModuleBody> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeLiteral> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsModuleBody> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBlock {
@@ -5889,6 +5895,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsEnumMember> {
         for child_idx in self.iter() {
             let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeLiteral> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_type_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
         }
     }
 }
@@ -7385,6 +7404,13 @@ pub trait VisitMut<'a> {
         node: SubRange<TsEnumMember>,
     ) -> Option<SubRange<TsEnumMember>> {
         <SubRange<TsEnumMember> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_literal(
+        &mut self,
+        node: Option<TsTypeLiteral>,
+    ) -> Option<Option<TsTypeLiteral>> {
+        <Option<TsTypeLiteral> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_ts_module_body(
@@ -12101,6 +12127,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleDeclaration {
         {
             self.set_id(visitor.ast(), field_value);
         }
+        let field_value = self.attributes(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeLiteral> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_attributes(visitor.ast(), field_value);
+        }
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
             <Option<TsModuleBody> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
@@ -13497,6 +13529,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsEnumMember
             }
         }
         None
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeLiteral> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsModuleBody> {
@@ -20056,6 +20098,23 @@ impl<'a, State> TraverseWith<'a, State> for SubRange<TsEnumMember> {
         }
     }
 }
+impl<'a, State> TraverseWith<'a, State> for Option<TsTypeLiteral> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            {
+                let node_id = (child).node_id();
+                traverser.enter_node(node_id, ctx);
+                walk_ts_type_literal(child, traverser, ctx);
+                traverser.exit_node(node_id, ctx);
+            }
+        }
+    }
+}
 impl<'a, State> TraverseWith<'a, State> for Option<TsModuleBody> {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -24954,6 +25013,15 @@ fn walk_ts_module_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
         walk_ts_module_name(child, traverser, ctx);
         traverser.exit_ts_module_name(child, ctx);
         traverser.exit_node(node_id, ctx);
+    }
+    let child = node.attributes(ctx.ast);
+    if let Some(child) = child {
+        {
+            let node_id = (child).node_id();
+            traverser.enter_node(node_id, ctx);
+            walk_ts_type_literal(child, traverser, ctx);
+            traverser.exit_node(node_id, ctx);
+        }
     }
     let child = node.body(ctx.ast);
     if let Some(child) = child {
@@ -34304,6 +34372,19 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsEnumMember> {
         TraverseAction::Continue
     }
 }
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeLiteral> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
+        }
+    }
+}
 impl<'a, State> TraverseMutWith<'a, State> for Option<TsModuleBody> {
     #[inline]
     fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
@@ -41346,6 +41427,15 @@ fn walk_mut_ts_module_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
+            break 'children WalkMut::Stopped;
+        }
+        if traverse_mut_slot(
+            node.attributes(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_attributes(ctx.ast, replacement),
+        ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }

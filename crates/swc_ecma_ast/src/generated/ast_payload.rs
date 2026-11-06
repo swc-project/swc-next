@@ -1106,10 +1106,11 @@ pub(crate) struct TsEnumMemberPayload {
 #[derive(Clone, Copy)]
 pub(crate) struct TsModuleDeclarationPayload {
     pub(crate) id: TsModuleName,
+    pub(crate) attributes: u32,
     pub(crate) body: u32,
     pub(crate) kind: TsModuleDeclarationKind,
     pub(crate) declare: bool,
-    pub(crate) _pad0: [u8; 6usize],
+    pub(crate) _pad0: [u8; 2usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -2077,11 +2078,13 @@ const _: () = {
     assert!(std::mem::size_of::<TsModuleName>() == 4usize);
     assert!(std::mem::offset_of!(TsModuleDeclarationPayload, id) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, body) == 4usize);
+    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, attributes) == 4usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, body) == 8usize);
     assert!(std::mem::size_of::<TsModuleDeclarationKind>() == 1usize);
-    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, kind) == 8usize);
+    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, kind) == 12usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, declare) == 9usize);
+    assert!(std::mem::offset_of!(TsModuleDeclarationPayload, declare) == 13usize);
     assert!(std::mem::size_of::<TsModuleBlockPayload>() == 16);
     assert!(std::mem::size_of::<SubRange<Directive>>() == 8usize);
     assert!(std::mem::offset_of!(TsModuleBlockPayload, directives) == 0usize);
@@ -2746,6 +2749,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::TsModuleDeclaration => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
         NodeKind::TsModuleBlock => {
             bytes[0usize..4usize].reverse();

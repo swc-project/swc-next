@@ -2294,6 +2294,10 @@ impl Compare for TsModuleDeclaration {
         let right = other.id(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "TsModuleDeclaration.id"))?;
+        let left = self.attributes(asts.left);
+        let right = other.attributes(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "TsModuleDeclaration.attributes"))?;
         let left = self.body(asts.left);
         let right = other.body(asts.right);
         left.compare(right, asts)

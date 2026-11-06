@@ -1242,6 +1242,7 @@ export interface TSEnumMember extends BaseNode {
 export interface TSModuleDeclaration extends BaseNode {
   type: "TSModuleDeclaration";
   id: TSModuleName;
+  attributes?: TSTypeLiteral | null;
   body?: TSModuleBody | null;
   kind: TSModuleDeclarationKind;
   declare: boolean;

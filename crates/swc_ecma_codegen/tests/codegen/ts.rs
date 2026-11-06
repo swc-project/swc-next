@@ -612,6 +612,18 @@ fn test_optional_and_rest_tuple_elements() {
 
 #[test]
 fn test_ambient_module_declarations() {
+    expect_printed_ts_pair(
+        "declare module '*.txt' with { type: 'text' } { const content: string; export default content; }",
+        "declare module \"*.txt\" with {\n  type: \"text\";\n} {\n  const content: string;\n  export default content;\n}\n",
+        "declare module \"*.txt\" with {type:\"text\"}{const content:string;export default content}",
+    );
+
+    expect_printed_ts_pair(
+        "declare module '*.data' with { readonly type: 'json' | 'json5' };",
+        "declare module \"*.data\" with {\n  readonly type: \"json\" | \"json5\";\n};\n",
+        "declare module \"*.data\" with {readonly type:\"json\" | \"json5\"};",
+    );
+
     expect_printed_ts(
         "declare module \"a\"; declare module \"b\";",
         "declare module \"a\";\ndeclare module \"b\";\n",
