@@ -16,6 +16,7 @@ use swc_next_ecma_semantic::{
 
 use crate::{CompressOptions, mangle::Renames};
 
+mod conditionals;
 mod dead_code;
 mod effects;
 mod side_effects;
@@ -42,6 +43,7 @@ impl Candidates {
     fn build(ast: &Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
         if !options.global_defs
+            && !options.comparisons
             && !options.side_effects
             && !options.typeofs
             && !options.unused
@@ -206,7 +208,6 @@ struct TypeofRewrite {
     argument: Expr,
     binding: NodeId,
     string_on_left: bool,
-    operator: BinaryOperator,
     span: Span,
 }
 
@@ -251,6 +252,17 @@ fn initialized_from(ast: &Ast<'_>, flags: SymbolFlags, scope: NodeId) -> Option<
         _ => return None,
     };
     Some(ast.span(pattern).end)
+}
+
+/// The strict form of an equality operator.
+fn strict_equality(operator: BinaryOperator) -> Option<BinaryOperator> {
+    match operator {
+        BinaryOperator::Equal | BinaryOperator::StrictEqual => Some(BinaryOperator::StrictEqual),
+        BinaryOperator::NotEqual | BinaryOperator::StrictNotEqual => {
+            Some(BinaryOperator::StrictNotEqual)
+        }
+        _ => None,
+    }
 }
 
 /// Whether a declared binding starts with a known primitive value.
@@ -323,13 +335,9 @@ impl Compressor {
     }
 
     fn record_typeof(&mut self, ast: &Ast<'_>, binary: BinaryExpression) {
-        let operator = match binary.operator(ast) {
-            BinaryOperator::Equal | BinaryOperator::StrictEqual => BinaryOperator::StrictEqual,
-            BinaryOperator::NotEqual | BinaryOperator::StrictNotEqual => {
-                BinaryOperator::StrictNotEqual
-            }
-            _ => return,
-        };
+        if strict_equality(binary.operator(ast)).is_none() {
+            return;
+        }
         let left = binary.left(ast);
         let right = binary.right(ast);
         let (argument, string, string_on_left) = if is_undefined_string(ast, right)
@@ -348,7 +356,6 @@ impl Compressor {
             argument,
             binding: self.candidates.typeofs[&argument.node_id()],
             string_on_left,
-            operator,
             span: string.span(ast),
         });
     }
@@ -825,6 +832,10 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             if !self.primitive_bindings.contains(&rewrite.binding) {
                 continue;
             }
+            // A later rewrite may have negated the comparison.
+            let Some(operator) = strict_equality(rewrite.binary.operator(ctx.ast)) else {
+                continue;
+            };
             let undefined = undefined(ctx.ast, rewrite.span);
             let (left, right) = if rewrite.string_on_left {
                 (undefined, rewrite.argument)
@@ -833,7 +844,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             };
             rewrite.binary.set_left(ctx.ast, left);
             rewrite.binary.set_right(ctx.ast, right);
-            rewrite.binary.set_operator(ctx.ast, rewrite.operator);
+            rewrite.binary.set_operator(ctx.ast, operator);
         }
         let ast = &mut *ctx.ast;
         if let Some(body) = self.compress_list(ast, node.body(ast)) {
@@ -912,6 +923,17 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         if self.options.blocks {
             self.compress_bodies(ctx.ast, node);
         }
+        if self.options.conditionals
+            && let Some(replacement) = self.compress_if(ctx.ast, node)
+        {
+            let replacement = if self.options.side_effects || self.options.negate_iife {
+                self.drop_statement_values(ctx.ast, replacement)
+                    .unwrap_or(replacement)
+            } else {
+                replacement
+            };
+            return TraverseAction::ReplaceSkip(replacement);
+        }
         TraverseAction::Continue
     }
 
@@ -937,6 +959,11 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<FunctionBody> {
         let ast = &mut *ctx.ast;
+        if self.options.if_return
+            && let Some(body) = self.compress_function_tail(ast, node.body(ast))
+        {
+            node.set_body(ast, body);
+        }
         if let Some(body) = self.compress_list(ast, node.body(ast)) {
             node.set_body(ast, body);
         }
@@ -1135,6 +1162,9 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<BinaryExpression> {
         self.record_typeof(ctx.ast, node);
+        if self.options.comparisons {
+            self.loosen_equality(ctx.ast, node);
+        }
         TraverseAction::Continue
     }
 
@@ -1159,11 +1189,32 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                         .flatten()
                 })
             }
-            ExprData::ConditionalExpression(conditional) if self.options.dead_code => {
-                self.conditional(ast, node, conditional)
+            ExprData::ConditionalExpression(conditional) => {
+                let removed = if self.options.dead_code {
+                    self.conditional(ast, node, conditional)
+                } else {
+                    None
+                };
+                removed.or_else(|| {
+                    self.options
+                        .conditionals
+                        .then(|| self.compress_conditional(ast, node, conditional))
+                        .flatten()
+                })
             }
             ExprData::LogicalExpression(logical) if self.options.dead_code => {
                 self.logical(ast, node, logical)
+            }
+            ExprData::UnaryExpression(unary)
+                if self.options.comparisons
+                    && unary.operator(ast) == UnaryOperator::LogicalNot
+                    && let ExprData::BinaryExpression(binary) =
+                        ast.expr_data(skip_parentheses(ast, unary.argument(ast)))
+                    && let Some(operator) =
+                        conditionals::negated_equality(binary.operator(ast)) =>
+            {
+                binary.set_operator(ast, operator);
+                Some(unary.argument(ast))
             }
             ExprData::UnaryExpression(_) | ExprData::BinaryExpression(_)
                 if self.options.evaluate =>

@@ -102,20 +102,23 @@ fn minifier_options(config: &Map<String, Value>) -> MinifierOptions {
         Some(_) => true,
         None => defaults,
     };
+    // Terser keeps the completion value of a program minified as an
+    // expression, which these rewrites change.
+    let expression = config.get("expression").and_then(Value::as_bool) == Some(true);
     MinifierOptions {
         compress: Some(CompressOptions {
             // Terser removes empty statements and unneeded blocks without an
             // option.
             blocks: true,
             booleans: option("booleans"),
+            comparisons: option("comparisons"),
+            conditionals: option("conditionals") && !expression,
             dead_code: option("dead_code"),
             evaluate: option("evaluate"),
             global_defs: config.get("ie8").and_then(Value::as_bool) != Some(true),
+            if_return: option("if_return"),
             join_vars: option("join_vars"),
-            // Terser keeps the completion value of a program minified as an
-            // expression.
-            negate_iife: option("negate_iife")
-                && config.get("expression").and_then(Value::as_bool) != Some(true),
+            negate_iife: option("negate_iife") && !expression,
             sequences: option("sequences"),
             side_effects: option("side_effects"),
             typeofs: option("typeofs"),

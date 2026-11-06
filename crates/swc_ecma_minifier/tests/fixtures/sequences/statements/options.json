@@ -1,0 +1,8 @@
+{
+  "minify": {
+    "compress": {
+      "conditionals": false,
+      "if_return": false
+    }
+  }
+}

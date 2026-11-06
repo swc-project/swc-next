@@ -4,9 +4,10 @@ JavaScript AST optimization for SWC Next. Compression folds constant
 expressions, removes branches that constant conditions never run, shortens
 booleans and unshadowed global constants, simplifies safe local `typeof`
 comparisons, and removes unused local variables and computations whose values
-are unused and have no side effects. It also joins adjacent statements:
-expression statements with the comma operator and declarations of the same
-kind, and it removes empty statements and unneeded blocks. Mangling
+are unused and have no side effects. It rewrites `if` statements and returns
+as shorter expressions and shortens comparisons. It also joins adjacent
+statements: expression statements with the comma operator and declarations of
+the same kind, and it removes empty statements and unneeded blocks. Mangling
 shortens the names of local bindings; top-level names are kept.
 
 Use `Minifier::minify(&mut ast, options)` on a valid JavaScript Program AST.
