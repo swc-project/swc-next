@@ -7400,7 +7400,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let type_arguments = if is_angle_open(self.current_token.tag()) {
+        let type_arguments = if is_angle_open(self.current_token.tag())
+            && !self.current_token.has_line_terminator_before()
+        {
             Some(self.parse_type_arguments()?)
         } else {
             None
@@ -19934,12 +19936,16 @@ mod tests {
     }
 
     #[test]
-    fn import_type_qualifiers() {
+    fn import_types() {
         let options = Options {
             lang: Lang::Ts,
             ..Options::default()
         };
         let errors = |source| has_errors(source, options);
+
+        assert!(!errors("type A = import('m').Foo\n<T>x;"));
+
+        assert!(errors("type A = import('m').Foo\n<<U>() => U>;"));
 
         let has_errors = errors("let x: import(\"x\").");
         assert!(has_errors);
