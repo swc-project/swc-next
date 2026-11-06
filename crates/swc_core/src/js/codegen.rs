@@ -1,17 +1,17 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::ffi::ast::deserialize_from;
-use swc_next_ecma_codegen::{Options as AstCodegenOptions, print};
+use swc_next_ecma_ast::ffi::ast;
+use swc_next_ecma_codegen::{Options, print};
+
+#[cfg(feature = "bridge")]
+use swc_next_bridge::{BridgeDecodeOptional, BridgeEncode, bridge};
 
 #[cfg(all(feature = "bridge", not(target_family = "wasm")))]
 use swc_next_bridge::napi;
 
-pub use swc_next_ecma_ast::ffi::ast::DeserializeError;
+pub use ast::DeserializeError;
 
 /// Currently implemented JavaScript code generation settings.
-#[cfg_attr(
-    feature = "bridge",
-    swc_next_bridge::bridge(object, js_name = "CodegenOptions")
-)]
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "CodegenOptions"))]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsCodegenOptions {
     pub ascii_only: Option<bool>,
@@ -21,7 +21,7 @@ pub struct JsCodegenOptions {
     pub minify: Option<bool>,
 }
 
-impl From<JsCodegenOptions> for AstCodegenOptions {
+impl From<JsCodegenOptions> for Options {
     fn from(options: JsCodegenOptions) -> Self {
         let defaults = Self::default();
         Self {
@@ -34,7 +34,7 @@ impl From<JsCodegenOptions> for AstCodegenOptions {
     }
 }
 
-#[cfg_attr(feature = "bridge", swc_next_bridge::bridge(object))]
+#[cfg_attr(feature = "bridge", bridge(object))]
 pub struct CodegenOutput {
     pub code: String,
 }
@@ -45,7 +45,7 @@ pub struct CodegenOutput {
 ///
 /// `buffer` must be produced by `@swc-next/encoder` matching the version of this
 /// crate and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
-/// It must satisfy the alignment requirements of [`deserialize_from`] and remain
+/// It must satisfy the alignment requirements of [`ast::deserialize_from`] and remain
 /// immutable throughout this call.
 pub unsafe fn print_from_buffer(
     buffer: &[u8],
@@ -53,7 +53,7 @@ pub unsafe fn print_from_buffer(
 ) -> Result<CodegenOutput, DeserializeError> {
     let allocator = Allocator::default();
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
-    let tree = unsafe { deserialize_from(buffer, &allocator) }?;
+    let tree = unsafe { ast::deserialize_from(buffer, &allocator) }?;
     let result = print(&tree, options.unwrap_or_default().into());
     Ok(CodegenOutput { code: result.code })
 }
@@ -84,9 +84,7 @@ pub unsafe fn print_from_parts(
         let allocator = Allocator::default();
         // SAFETY: The caller guarantees the section layout, alignment, and immutability.
         let tree = unsafe {
-            swc_next_ecma_ast::ffi::ast::deserialize_parts(
-                header, spans, kinds, payloads, extra, strings, &allocator,
-            )
+            ast::deserialize_parts(header, spans, kinds, payloads, extra, strings, &allocator)
         }?;
         let result = print(&tree, options.unwrap_or_default().into());
         Ok(CodegenOutput { code: result.code })
@@ -120,7 +118,6 @@ pub unsafe fn print_from_parts(
 #[cfg(feature = "bridge")]
 const _: () = {
     use self::JsCodegenOptions as CodegenOptions;
-    use swc_next_bridge::{BridgeDecodeOptional, BridgeEncode, bridge};
 
     #[bridge]
     impl BridgeEncode for CodegenOutput {
