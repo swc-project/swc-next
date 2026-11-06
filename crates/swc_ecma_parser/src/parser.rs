@@ -6230,7 +6230,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
                 return None;
             }
-            Some(self.parse_type_literal(start)?)
+            let attributes = self.parse_type_literal(start)?;
+            self.check_module_attributes(attributes);
+            Some(attributes)
         } else {
             None
         };
@@ -6254,6 +6256,52 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             declare,
         );
         Some(Stmt::Declaration(Decl::TsModuleDeclaration(declaration)))
+    }
+
+    fn check_module_attributes(&mut self, attributes: TsTypeLiteral) {
+        let error_span = attributes.members(&self.ast).iter().find_map(|id| {
+            let member = self.ast.get_node_in_sub_range(id);
+
+            // Members must be required, non-readonly properties with type annotations.
+            let Some(property) = member.as_ts_property_signature(&self.ast) else {
+                return Some(member.span(&self.ast));
+            };
+            if property.readonly(&self.ast) || property.optional(&self.ast) {
+                return Some(property.span(&self.ast));
+            }
+            let Some(annotation) = property.type_annotation(&self.ast) else {
+                return Some(property.span(&self.ast));
+            };
+
+            // Keys must be non-computed identifiers or strings, except "resolution-mode".
+            let key = property.key(&self.ast);
+            if property.computed(&self.ast)
+                || !matches!(
+                    self.ast.node_kind(key.node_id()),
+                    NodeKind::IdentifierName | NodeKind::StringLiteral
+                )
+                || self.prop_name_eq(key, "resolution-mode").is_some()
+            {
+                return Some(key.span(&self.ast));
+            }
+
+            // The annotation must be a direct string literal type.
+            let ty = annotation.type_annotation(&self.ast);
+            if !ty
+                .as_ts_literal_type(&self.ast)
+                .is_some_and(|literal| literal.literal(&self.ast).is_string_literal(&self.ast))
+            {
+                return Some(ty.span(&self.ast));
+            }
+            None
+        });
+        if let Some(span) = error_span {
+            self.report(
+                span,
+                "Invalid import attribute in module declaration",
+                ReportOptions::default(),
+            );
+        }
     }
 
     fn parse_global_declaration(&mut self, start: u32, declare: bool) -> Option<Stmt> {
@@ -16458,9 +16506,10 @@ mod tests {
             allocator: &'a Allocator,
             source: &'a str,
             options: Options,
+            errors: usize,
         ) -> (Ast<'a>, TsModuleDeclaration) {
             let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
-            assert!(parsed.diagnostics.is_empty());
+            assert_eq!(parsed.diagnostics.len(), errors);
             let ast = parsed.ast;
             let body = ast.root_program().body(&ast);
             assert_eq!(body.len(), 1);
@@ -16495,7 +16544,7 @@ mod tests {
             };
 
             let source = "declare module '*.txt' with { type: 'text' } { const content: string; }";
-            let (ast, module) = parse(&allocator, source, options);
+            let (ast, module) = parse(&allocator, source, options, 0);
             let property = first_property(&ast, module);
             let ty = property
                 .type_annotation(&ast)
@@ -16506,7 +16555,7 @@ mod tests {
             assert_eq!(body.body(&ast).len(), 1);
 
             let source = "declare module '*.data'\nwith { readonly type: 'json' | 'json5'; 'resolution-mode': 'import' };";
-            let (ast, module) = parse(&allocator, source, options);
+            let (ast, module) = parse(&allocator, source, options, 1);
             let attributes = module.attributes(&ast).unwrap();
             assert_eq!(attributes.members(&ast).len(), 2);
             let property = first_property(&ast, module);
@@ -16520,11 +16569,63 @@ mod tests {
             assert_eq!(ty.types(&ast).len(), 2);
             assert!(module.body(&ast).is_none());
 
-            let (ast, module) = parse(&allocator, "declare module '*.txt' with {}", options);
+            let source = "declare module '*.x' with { type(): 'x' } {}";
+            let (ast, module) = parse(&allocator, source, options, 1);
+            assert!(
+                module
+                    .attributes(&ast)
+                    .unwrap()
+                    .members(&ast)
+                    .get_node(&ast, 0)
+                    .unwrap()
+                    .is_ts_method_signature(&ast)
+            );
+
+            let source = "declare module '*.x' with { type } {}";
+            let (ast, module) = parse(&allocator, source, options, 1);
+            assert!(first_property(&ast, module).type_annotation(&ast).is_none());
+
+            let source = "declare module '*.x' with { type?: 'x' } {}";
+            let (ast, module) = parse(&allocator, source, options, 1);
+            assert!(first_property(&ast, module).optional(&ast));
+
+            let source = "declare module '*.x' with { ['type']: 'x' } {}";
+            let (ast, module) = parse(&allocator, source, options, 1);
+            assert!(first_property(&ast, module).computed(&ast));
+
+            let source = "declare module '*.x' with { 0: 'x' } {}";
+            let (ast, module) = parse(&allocator, source, options, 1);
+            assert!(
+                first_property(&ast, module)
+                    .key(&ast)
+                    .as_expr(&ast)
+                    .unwrap()
+                    .is_numeric_literal(&ast)
+            );
+
+            let source = "declare module '*.x' with { readonly: 'x'; 'type': 'text' } {}";
+            let (ast, module) = parse(&allocator, source, options, 0);
+            assert!(!first_property(&ast, module).readonly(&ast));
+
+            let without_parens = Options {
+                preserve_parens: false,
+                ..options
+            };
+            let source = "declare module '*.x' with { type: ('x') } {}";
+            let (ast, module) = parse(&allocator, source, without_parens, 1);
+            assert!(
+                first_property(&ast, module)
+                    .type_annotation(&ast)
+                    .unwrap()
+                    .type_annotation(&ast)
+                    .is_ts_literal_type(&ast)
+            );
+
+            let (ast, module) = parse(&allocator, "declare module '*.txt' with {}", options, 0);
             assert!(module.attributes(&ast).unwrap().members(&ast).is_empty());
             assert!(module.body(&ast).is_none());
 
-            let (ast, module) = parse(&allocator, "namespace N {}", options);
+            let (ast, module) = parse(&allocator, "namespace N {}", options, 0);
             assert!(module.attributes(&ast).is_none());
 
             assert!(has_errors("declare namespace N with {} {}", options));

@@ -2,38 +2,35 @@
 source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
-declare module '*.data' /* before */ with /* after */ { readonly type:'json'|'json5'; 'resolution-mode':'import' };
+declare module '*.data' /* before */ with /* after */ { type:'json'; 'loader-mode':'import' };
 ---------- Options ----------
 {"printWidth":20,"semi":true}
 ---------- Output ----------
 declare module "*.data" /* before */ with /* after */ {
-  readonly type:
-    | "json"
-    | "json5";
-  "resolution-mode": "import";
+  type: "json";
+  "loader-mode": "import";
 };
 
 ---------- Options ----------
 {"printWidth":80,"semi":true}
 ---------- Output ----------
 declare module "*.data" /* before */ with /* after */ {
-  readonly type: "json" | "json5";
-  "resolution-mode": "import";
+  type: "json";
+  "loader-mode": "import";
 };
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 declare module "*.data" /* before */ with /* after */ {
-  readonly type:
-    "json" | "json5"
-  "resolution-mode": "import"
+  type: "json"
+  "loader-mode": "import"
 }
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
 declare module "*.data" /* before */ with /* after */ {
-  readonly type: "json" | "json5"
-  "resolution-mode": "import"
+  type: "json"
+  "loader-mode": "import"
 }

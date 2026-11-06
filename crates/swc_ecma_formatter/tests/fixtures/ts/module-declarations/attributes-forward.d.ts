@@ -1,1 +1,1 @@
-declare module '*.data' /* before */ with /* after */ { readonly type:'json'|'json5'; 'resolution-mode':'import' };
+declare module '*.data' /* before */ with /* after */ { type:'json'; 'loader-mode':'import' };

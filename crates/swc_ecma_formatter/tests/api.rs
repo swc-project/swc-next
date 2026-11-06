@@ -1,6 +1,9 @@
-use swc_next_ecma_ast::SourceType;
-use swc_next_ecma_formatter::{FormatError, FormatOptions, IndentWidth, Semicolons, format};
-use swc_next_ecma_parser::Options as ParserOptions;
+use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_formatter::{
+    FormatError, FormatOptions, IndentWidth, Semicolons, format, format_ast,
+};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 
 #[test]
 fn indentation_width_bounds() {
@@ -81,4 +84,55 @@ fn comment_layout_stability() {
         "call() /** @type {number} */;\n(value);",
         FormatOptions::prettier(),
     );
+}
+
+#[test]
+fn ambient_module_attribute_recovery() {
+    let allocator = Allocator::new();
+    let parser_options = ParserOptions {
+        lang: Lang::Dts,
+        source_type: SourceType::Unambiguous,
+        ..ParserOptions::default()
+    };
+    let source = "declare module '*.data' /* before */ with /* after */ { readonly type:'json'|'json5'; 'resolution-mode':'import' };\n";
+    let parsed = Parser::init(&allocator, source, parser_options, NoTokenParserConfig).parse();
+    assert_eq!(parsed.diagnostics.len(), 1);
+    let result = format(source, parser_options, FormatOptions::prettier());
+    assert!(matches!(result, Err(FormatError::Parse(errors)) if errors.len() == 1));
+
+    for (line_width, semicolons, expected) in [
+        (
+            20,
+            Semicolons::Always,
+            "declare module \"*.data\" /* before */ with /* after */ {\n  readonly type:\n    | \"json\"\n    | \"json5\";\n  \"resolution-mode\": \"import\";\n};\n",
+        ),
+        (
+            80,
+            Semicolons::Always,
+            "declare module \"*.data\" /* before */ with /* after */ {\n  readonly type: \"json\" | \"json5\";\n  \"resolution-mode\": \"import\";\n};\n",
+        ),
+        (
+            20,
+            Semicolons::AsNeeded,
+            "declare module \"*.data\" /* before */ with /* after */ {\n  readonly type:\n    \"json\" | \"json5\"\n  \"resolution-mode\": \"import\"\n}\n",
+        ),
+        (
+            80,
+            Semicolons::AsNeeded,
+            "declare module \"*.data\" /* before */ with /* after */ {\n  readonly type: \"json\" | \"json5\"\n  \"resolution-mode\": \"import\"\n}\n",
+        ),
+    ] {
+        let options = FormatOptions {
+            line_width,
+            semicolons,
+            ..FormatOptions::prettier()
+        };
+        let output = format_ast(&parsed.ast, options).unwrap();
+        assert_eq!(output, expected);
+        let reparsed =
+            Parser::init(&allocator, &output, parser_options, NoTokenParserConfig).parse();
+        assert_eq!(reparsed.diagnostics.len(), 1);
+        assert_eq!(reparsed.ast.comments().len(), parsed.ast.comments().len());
+        assert_eq!(format_ast(&reparsed.ast, options).unwrap(), output);
+    }
 }
