@@ -1,7 +1,7 @@
 parser * typescript
 ========================
-Positive Passed: 13601/13728 (99.07%)
-Negative Passed: 1719/3207 (53.60%)
+Positive Passed: 13615/13728 (99.18%)
+Negative Passed: 1712/3207 (53.38%)
 Panicked: 0/16935 (0.00%)
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -160,7 +160,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitDef
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitDestructuringWithOptionalBindingParameters.ts - declarationEmitDestructuringWithOptionalBindingParameters.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitIndexTypeNotFound.ts - declarationEmitIndexTypeNotFound.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitObjectAssignedDefaultExport.ts - index.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitPatternAmbientModuleImportAttributes.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitReexportedSymlinkReference3.ts - monorepo/pkg3/src/keys.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitRelativeModuleError.ts - declarationEmitRelativeModuleError.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitTwoMergedExportAliases.ts - c.ts: expected a parse or early error, but pipeline succeeded
@@ -367,20 +366,15 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAssertionsDe
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAssertionsDeprecatedIgnored.ts - /b.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAssertionsDeprecatedIgnored.ts - /c.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeArbitraryExtension.ts - /index.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeArbitraryExtension.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 23..27
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - /a.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - /b.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - /variantsA.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 27..31
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - /variantsB.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 27..31
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDynamicImports.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 99..103
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeModuleAugmentations.ts - /index.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeModuleAugmentations.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 99..103
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeMostSpecificType.ts - /bun-sqlite.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 36..40
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeType2.ts - /bun-sqlite.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 36..40
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypeReadonly.ts - /valid.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 23..27
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributePlainStringAmbientModule.ts - /types.d.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeType1.ts - /augmentation.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeType1.ts - /checkErrors.d.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeType1.ts - /valid.d.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypeOnlyImports.ts - /types.d.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypeReadonly.ts - /readonlyError.d.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypeScope.ts - /types.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypesJsImports.ts - /index.js: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypesJsImports.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributesDeclarationEmit.ts - /types.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclWithExportModifierAndExportAssignment.ts - importDeclWithExportModifierAndExportAssignment.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclarationInModuleDeclaration1.ts - importDeclarationInModuleDeclaration1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeferCallCommonJS.ts - main.ts: expected a parse or early error, but pipeline succeeded
@@ -591,7 +585,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/parameterPropertyI
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/parseInvalidNonNullableTypes.ts - parseInvalidNonNullableTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/parseInvalidNullableTypes.ts - parseInvalidNullableTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/pathsValidation5.ts - src/main.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/patternAmbientModuleAugmentationMergedSymbol.ts - /c.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/patternAmbientModuleAugmentationMergedSymbol.ts - /index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/primitiveMembers.ts - primitiveMembers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/primitiveTypeAsClassName.ts - primitiveTypeAsClassName.ts: expected a parse or early error, but pipeline succeeded
