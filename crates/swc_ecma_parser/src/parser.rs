@@ -7541,7 +7541,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(false);
         }
         let next = self.peek_ahead()?;
-        Some(next.tag() == TokenTag::Dot && !next.has_line_terminator_before())
+        Some(next.tag() == TokenTag::Dot)
     }
 
     fn parse_literal_type(&mut self) -> Option<TsType> {
@@ -15859,6 +15859,9 @@ mod tests {
         assert!(parsed.diagnostics.is_empty());
 
         let parsed = parse_tokens(&allocator, "type A = null;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = string\n.Name;");
         assert!(parsed.diagnostics.is_empty());
 
         let parsed = parse_tokens(&allocator, "type A = A.B;");
