@@ -2852,12 +2852,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "swc_next_allocator",
  "swc_next_bridge_macros",
- "swc_next_core",
- "swc_next_ecma_ast",
- "swc_next_ecma_codegen",
- "swc_next_ecma_parser",
 ]
 
 [[package]]
@@ -2877,6 +2872,7 @@ version = "0.6.1"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
+ "swc_next_core",
 ]
 
 [[package]]
@@ -2885,7 +2881,9 @@ version = "0.5.0"
 dependencies = [
  "serde",
  "swc_next_allocator",
+ "swc_next_bridge",
  "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
@@ -2899,6 +2897,7 @@ dependencies = [
  "napi-build",
  "swc_next_allocator",
  "swc_next_bridge",
+ "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
@@ -3043,6 +3042,7 @@ dependencies = [
  "mimalloc",
  "napi-build",
  "swc_next_bridge",
+ "swc_next_core",
  "swc_next_ecma_ast",
 ]
 

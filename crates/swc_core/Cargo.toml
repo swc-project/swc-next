@@ -8,11 +8,18 @@ name                  = "swc_next_core"
 repository.workspace  = true
 version               = "0.5.0"
 
+[features]
+bridge  = ["dep:swc_next_bridge"]
+codegen = ["dep:swc_next_ecma_codegen"]
+parser  = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
+
 [dependencies]
 serde = { workspace = true }
 
 swc_next_allocator        = { workspace = true }
+swc_next_bridge           = { workspace = true, optional = true }
 swc_next_ecma_ast         = { workspace = true }
-swc_next_ecma_parser      = { workspace = true }
-swc_next_ecma_semantic    = { workspace = true }
+swc_next_ecma_codegen     = { workspace = true, optional = true }
+swc_next_ecma_parser      = { workspace = true, optional = true }
+swc_next_ecma_semantic    = { workspace = true, optional = true }
 swc_next_ecma_transformer = { workspace = true }

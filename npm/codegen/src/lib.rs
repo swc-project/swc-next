@@ -1,11 +1,14 @@
-use swc_next_bridge::{CodegenOptions, CodegenOutput, DeserializeError, bridge};
+use swc_next_bridge::bridge;
+use swc_next_core::js::codegen::{
+    CodegenOutput, DeserializeError, JsCodegenOptions as CodegenOptions, print_from_parts,
+};
 
 #[bridge]
 /// # Safety
 ///
 /// Sections must be produced by the matching JavaScript encoder and satisfy
 /// the validity, alignment, and immutability contracts of
-/// `swc_next_bridge::print_from_parts`.
+/// `swc_next_core::js::codegen::print_from_parts`.
 pub unsafe fn print_sync(
     header: &[u8],
     spans: &[u8],
@@ -16,7 +19,5 @@ pub unsafe fn print_sync(
     options: Option<CodegenOptions>,
 ) -> Result<CodegenOutput, DeserializeError> {
     // SAFETY: The caller guarantees valid, immutable encoder sections.
-    unsafe {
-        swc_next_bridge::print_from_parts(header, spans, kinds, payloads, extra, strings, options)
-    }
+    unsafe { print_from_parts(header, spans, kinds, payloads, extra, strings, options) }
 }

@@ -1,4 +1,8 @@
 //! Core APIs for swc-next.
+//!
+//! Enable `parser` or `codegen` for the corresponding JavaScript APIs.
+//! The optional `bridge` feature enables FFI conversions and type generation for
+//! the enabled APIs.
 
 pub mod js;
 // pub mod css; // Unimplemented.

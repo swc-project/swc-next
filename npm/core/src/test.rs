@@ -1,5 +1,7 @@
 use swc_next_allocator::Allocator;
-use swc_next_bridge::{CodegenOptions, ParserOptions, bridge};
+use swc_next_bridge::bridge;
+use swc_next_core::js::codegen::JsCodegenOptions as CodegenOptions;
+use swc_next_core::js::parser::JsParserOptions as ParserOptions;
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
 
