@@ -17,6 +17,10 @@ pub mod transform;
 /// Each stage field requires its corresponding `js_*` crate feature.
 #[derive(Clone, Debug, Default)]
 pub struct JsOptions {
+    // Override the shared target for all JavaScript stages.
+    // pub target: Option<Target>,
+    // Override the shared comment policy.
+    // pub comments: Option<CommentsOption>,
     #[cfg(feature = "js_parser")]
     pub parser: Option<parser::JsParserOptions>,
     #[cfg(feature = "js_transform")]
@@ -27,3 +31,66 @@ pub struct JsOptions {
     #[cfg(feature = "js_codegen")]
     pub codegen: Option<codegen::JsCodegenOptions>,
 }
+
+// Draft-only shared types reachable from JsOptions. These declarations remain
+// commented out until their policies are implemented.
+// pub enum Target {
+//     EsVersion(EsVersion),
+//     Browserslist(Vec<String>),
+//     Engines(BTreeMap<Engine, String>),
+// }
+//
+// pub enum EsVersion {
+//     Es5,
+//     Es2015,
+//     Es2016,
+//     Es2017,
+//     Es2018,
+//     Es2019,
+//     Es2020,
+//     Es2021,
+//     Es2022,
+//     Es2023,
+//     Es2024,
+//     Es2025,
+//     EsNext,
+// }
+//
+// pub enum Engine {
+//     Chrome,
+//     Edge,
+//     Firefox,
+//     Safari,
+//     Ios,
+//     Opera,
+//     Samsung,
+//     Node,
+//     Deno,
+//     Bun,
+// }
+//
+// pub enum CommentsOption {
+//     All,
+//     Some,
+//     None,
+//     Options(CommentsOptions),
+// }
+//
+// pub struct CommentsOptions {
+//     pub other: Option<OtherComments>,
+//     pub legal: Option<LegalComments>,
+//     pub annotations: Option<bool>, // JavaScript annotations; defaults to true.
+//     pub keep: Option<Vec<String>>, // Regular-expression patterns.
+// }
+//
+// pub enum OtherComments {
+//     All,
+//     None,
+// }
+//
+// pub enum LegalComments {
+//     Inline,
+//     Eof,
+//     External,
+//     None,
+// }

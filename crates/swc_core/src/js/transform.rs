@@ -13,6 +13,11 @@ pub struct JsTransformOptions {
     pub jsx: Option<BoolOr<JsxOptions>>,
     /// Explicitly enable or disable implemented lowering transforms.
     pub features: Option<BTreeMap<JsFeature, bool>>,
+    // pub decorators: Option<JsDecorators>,
+    // pub assumptions: Option<JsAssumptions>,
+    // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
+    // pub define: Option<BTreeMap<String, String>>, // Global expression replacements.
+    // pub helpers: Option<JsHelpers>, // Defaults to inline helpers.
 }
 
 /// Implemented, individually controllable JavaScript transforms.
@@ -20,6 +25,7 @@ pub struct JsTransformOptions {
 pub enum JsFeature {
     /// Lower class static blocks (`class-static-block`).
     ClassStaticBlock,
+    // Custom(String), // The draft also accepts other lowering feature names.
 }
 
 /// Public TypeScript lowering settings.
@@ -66,3 +72,58 @@ pub struct JsReactRefreshOptions {
     pub refresh_sig: Option<String>,
     pub emit_full_signatures: Option<bool>,
 }
+
+// pub enum JsDecorators {
+//     Disabled, // false
+//     Options(JsDecoratorOptions),
+// }
+//
+// pub struct JsDecoratorOptions {
+//     pub version: JsDecoratorVersion,
+//     pub metadata: Option<bool>, // Legacy decorators only; defaults to false.
+// }
+//
+// pub enum JsDecoratorVersion {
+//     V2023_11, // "2023-11"
+//     Legacy, // "legacy"
+// }
+//
+// All assumptions default to false.
+// pub struct JsAssumptions {
+//     pub array_like_is_iterable: Option<bool>,
+//     pub constant_reexports: Option<bool>,
+//     pub constant_super: Option<bool>,
+//     pub enumerable_module_meta: Option<bool>,
+//     pub ignore_function_length: Option<bool>,
+//     pub ignore_function_name: Option<bool>,
+//     pub ignore_to_primitive_hint: Option<bool>,
+//     pub iterable_is_array: Option<bool>,
+//     pub mutable_template_object: Option<bool>,
+//     pub no_class_calls: Option<bool>,
+//     pub no_document_all: Option<bool>,
+//     pub no_incomplete_ns_import_detection: Option<bool>,
+//     pub no_new_arrows: Option<bool>,
+//     pub object_rest_no_symbols: Option<bool>,
+//     pub private_fields_as_properties: Option<bool>,
+//     pub pure_getters: Option<bool>,
+//     pub set_class_methods: Option<bool>,
+//     pub set_computed_properties: Option<bool>,
+//     pub set_public_class_fields: Option<bool>,
+//     pub set_spread_properties: Option<bool>,
+//     pub skip_for_of_iterator_closing: Option<bool>,
+//     pub super_is_callable_constructor: Option<bool>,
+// }
+//
+// pub struct JsModuleOptions {
+//     pub r#type: JsModuleType,
+// }
+//
+// pub enum JsModuleType {
+//     Preserve,
+//     CommonJs,
+// }
+//
+// pub enum JsHelpers {
+//     Inline,
+//     External, // Import from @swc/helpers.
+// }

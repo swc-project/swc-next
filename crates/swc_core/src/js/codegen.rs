@@ -19,6 +19,7 @@ pub struct JsCodegenOptions {
     pub inline_script: Option<bool>,
     /// Print compact code independently of AST compression and mangling.
     pub minify: Option<bool>,
+    // pub preamble: Option<String>,
 }
 
 impl From<JsCodegenOptions> for Options {
