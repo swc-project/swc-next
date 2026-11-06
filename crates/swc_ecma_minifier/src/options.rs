@@ -47,11 +47,19 @@ pub struct CompressOptions {
     /// such as `var a; var b` to `var a, b`, and move `var` declarations into
     /// the initializer of a following `for` loop. Enabled by default.
     pub join_vars: bool,
+    /// Negate a function expression that an expression statement calls, so
+    /// `(function(){})()` prints as `!function(){}()`. Enabled by default.
+    pub negate_iife: bool,
     /// Join adjacent expression statements with the comma operator, such as
     /// `a(); b()` to `a(), b()`, and move them into the leading expression of
     /// a following `if`, `return`, `throw`, `switch`, or `for` statement.
     /// Enabled by default.
     pub sequences: bool,
+    /// Remove computations whose values are unused and that have no side
+    /// effects, such as the expression statement `1;`, the `a` in `(a, b())`
+    /// for a declared `a`, and `x` in `void x`. Unknown properties, calls,
+    /// and reads that can throw are kept. Enabled by default.
+    pub side_effects: bool,
     /// Shorten undefined typeof comparisons for local var bindings. Enabled by default.
     pub typeofs: bool,
     /// Remove unused local variables whose initializers have no side effects.
@@ -68,7 +76,9 @@ impl Default for CompressOptions {
             evaluate: true,
             global_defs: true,
             join_vars: true,
+            negate_iife: true,
             sequences: true,
+            side_effects: true,
             typeofs: true,
             unused: true,
         }
@@ -85,7 +95,9 @@ impl CompressOptions {
             evaluate: false,
             global_defs: false,
             join_vars: false,
+            negate_iife: false,
             sequences: false,
+            side_effects: false,
             typeofs: false,
             unused: false,
         }

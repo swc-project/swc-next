@@ -2,7 +2,8 @@
   "minify": {
     "compress": {
       "sequences": false,
-      "join_vars": false
+      "join_vars": false,
+      "side_effects": false
     }
   }
 }

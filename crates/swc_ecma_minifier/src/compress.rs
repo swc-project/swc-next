@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     BindingPattern, BindingPatternData, BindingProperty, BlockStatement, CallExpression,
     ConditionalExpression, DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function,
     FunctionBody, FunctionType, GetSpan, IdentifierReference, IfStatement, LogicalExpression,
-    LogicalOperator, NodeId, ObjectProperty, Program, PropertyKey, PropertyKeyData,
+    LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program, PropertyKey, PropertyKeyData,
     SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData, SubRange, SwitchCase,
     TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
     UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
@@ -18,6 +18,7 @@ use crate::{CompressOptions, mangle::Renames};
 
 mod dead_code;
 mod effects;
+mod side_effects;
 mod statements;
 mod value;
 
@@ -31,13 +32,21 @@ struct Candidates {
     globals: FxHashMap<NodeId, Value<'static>>,
     typeofs: FxHashMap<NodeId, NodeId>,
     unused: FxHashSet<NodeId>,
+    /// Reads that cannot throw and whose removal cannot make a declaration
+    /// removable.
+    pure_reads: FxHashSet<NodeId>,
     renames: Renames,
 }
 
 impl Candidates {
     fn build(ast: &Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
-        if !options.global_defs && !options.typeofs && !options.unused && !mangle {
+        if !options.global_defs
+            && !options.side_effects
+            && !options.typeofs
+            && !options.unused
+            && !mangle
+        {
             return candidates;
         }
         let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
@@ -55,6 +64,8 @@ impl Candidates {
             candidates.renames = Renames::build(ast, &semantic);
         }
         let mut local_vars = FxHashMap::default();
+        // Pure symbols, each with the offset from which its reads are pure.
+        let mut pure_symbols = FxHashMap::default();
         for entry in semantic.iter_symbols() {
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
@@ -88,9 +99,32 @@ impl Candidates {
             if options.unused && in_function && semantic.uses(entry.id).is_empty() {
                 candidates.unused.insert(declaration.node);
             }
+            // A removed read could leave a local `var` without uses, which
+            // only a later pass would remove.
+            let flags = entry.symbol.flags;
+            let removable_var = options.unused
+                && in_function
+                && flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+                && !flags.contains(SymbolFlags::PARAMETER);
+            if options.side_effects
+                && is_initialized(flags)
+                && !removable_var
+                && !is_global_var(scope.kind, declaration.flags)
+                && let Some(start) = initialized_from(ast, flags, scope.node)
+            {
+                pure_symbols.insert(entry.id, start);
+            }
         }
         for entry in semantic.iter_references() {
             let reference = entry.reference;
+            if let NameResolution::Resolved(symbol) = reference.resolution()
+                && reference.flags.is_read_only()
+                && pure_symbols
+                    .get(&symbol)
+                    .is_some_and(|start| ast.span(reference.node).start >= *start)
+            {
+                candidates.pure_reads.insert(reference.node);
+            }
             match reference.resolution() {
                 NameResolution::Unresolved
                     if options.global_defs && reference.flags.is_read_only() =>
@@ -160,8 +194,9 @@ struct Compressor {
     function_starts: Vec<usize>,
     /// Open statements whose branches may be removed.
     branches: Vec<Branch>,
-    /// Conditional and logical expressions used as a callee, a tag, or a
-    /// `delete` or `typeof` operand, where a reference keeps its receiver.
+    /// Conditional, logical, and sequence expressions used as a callee, a
+    /// tag, or a `delete` or `typeof` operand, where a reference keeps its
+    /// receiver.
     reference_positions: FxHashSet<NodeId>,
     statement_list: StatementList,
 }
@@ -173,6 +208,49 @@ struct TypeofRewrite {
     string_on_left: bool,
     operator: BinaryOperator,
     span: Span,
+}
+
+/// Whether every declaration of a symbol initializes it before code can read
+/// it, so a read cannot throw. Lexical declarations have a temporal dead zone,
+/// and imports can be read before their module runs.
+fn is_initialized(flags: SymbolFlags) -> bool {
+    flags.intersects(
+        SymbolFlags::FUNCTION_SCOPED_VAR
+            | SymbolFlags::FUNCTION
+            | SymbolFlags::PARAMETER
+            | SymbolFlags::CATCH_VAR
+            | SymbolFlags::FUNCTION_EXPRESSION,
+    ) && !flags.intersects(
+        SymbolFlags::BLOCK_SCOPED_VAR
+            | SymbolFlags::CONST_VAR
+            | SymbolFlags::CLASS
+            | SymbolFlags::CLASS_EXPRESSION
+            | SymbolFlags::IMPORT
+            | SymbolFlags::IMPORT_EQUALS,
+    )
+}
+
+/// Whether a declaration is a `var` in the global scope of a script. Such a
+/// binding is a property of the global object, which can be an accessor
+/// defined before the script runs.
+fn is_global_var(scope: ScopeKind, flags: SymbolFlags) -> bool {
+    scope == ScopeKind::Global && flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+}
+
+/// The offset from which reads of a binding declared in `scope` are
+/// initialized. A parameter or a catch binding is uninitialized while its
+/// list or pattern is evaluated, as in `function f(a = b, b) {}`.
+fn initialized_from(ast: &Ast<'_>, flags: SymbolFlags, scope: NodeId) -> Option<u32> {
+    if !flags.intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR) {
+        return Some(0);
+    }
+    let pattern = match ast.kind_data(scope) {
+        NodeKindData::Function(function) => function.params(ast).node_id(),
+        NodeKindData::ArrowFunctionExpression(arrow) => arrow.params(ast).node_id(),
+        NodeKindData::CatchClause(catch) => catch.param(ast)?.node_id(),
+        _ => return None,
+    };
+    Some(ast.span(pattern).end)
 }
 
 /// Whether a declared binding starts with a known primitive value.
@@ -284,16 +362,18 @@ impl Compressor {
         self.value_expr(ast, span, value)
     }
 
-    /// Marks a conditional or logical callee, tag, or operand, whose kept
-    /// branch must not become a bare reference.
+    /// Marks a conditional, logical, or sequence callee, tag, or operand,
+    /// whose kept branch or last item must not become a bare reference.
     fn mark_reference_position(&mut self, ast: &Ast<'_>, expr: Expr) {
         let expr = skip_parentheses(ast, expr);
-        if self.options.dead_code
-            && matches!(
-                ast.expr_data(expr),
-                ExprData::ConditionalExpression(_) | ExprData::LogicalExpression(_)
-            )
-        {
+        let marked = match ast.expr_data(expr) {
+            ExprData::ConditionalExpression(_) | ExprData::LogicalExpression(_) => {
+                self.options.dead_code
+            }
+            ExprData::SequenceExpression(_) => self.options.side_effects,
+            _ => false,
+        };
+        if marked {
             self.reference_positions.insert(expr.node_id());
         }
     }
@@ -824,6 +904,11 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         {
             return TraverseAction::ReplaceSkip(replacement);
         }
+        if (self.options.side_effects || self.options.negate_iife)
+            && let Some(replacement) = self.drop_statement_values(ctx.ast, node)
+        {
+            return TraverseAction::ReplaceSkip(replacement);
+        }
         if self.options.blocks {
             self.compress_bodies(ctx.ast, node);
         }
@@ -1061,6 +1146,19 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         let ast = &mut *ctx.ast;
         let replacement = match ast.expr_data(node) {
             ExprData::IdentifierReference(_) => self.global(ast, node),
+            ExprData::SequenceExpression(_) if self.options.side_effects => {
+                self.trim_sequence(ast, node)
+            }
+            ExprData::UnaryExpression(unary)
+                if self.options.side_effects && unary.operator(ast) == UnaryOperator::Void =>
+            {
+                self.drop_void_operand(ast, node, unary).or_else(|| {
+                    self.options
+                        .evaluate
+                        .then(|| self.fold(ast, node))
+                        .flatten()
+                })
+            }
             ExprData::ConditionalExpression(conditional) if self.options.dead_code => {
                 self.conditional(ast, node, conditional)
             }
@@ -1090,10 +1188,10 @@ impl<'ast> TraverseMut<'ast> for Compressor {
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Expr, ExprData, GetSpan, StmtData};
+    use swc_next_ecma_ast::{Ast, Expr, ExprData, GetSpan, StmtData, UnaryOperator};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-    use crate::{Minifier, MinifierOptions};
+    use crate::{CompressOptions, Minifier, MinifierOptions};
 
     pub(super) fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
         let result =
@@ -1116,11 +1214,35 @@ mod tests {
         let allocator = Allocator::new();
         let mut ast = parse(&allocator, "  true;");
         let span = expression(&ast).span(&ast);
-        Minifier::minify(&mut ast, MinifierOptions::default());
+        let compress = CompressOptions {
+            side_effects: false,
+            ..CompressOptions::default()
+        };
+        let options = MinifierOptions {
+            compress: Some(compress),
+            ..MinifierOptions::default()
+        };
+        Minifier::minify(&mut ast, options);
         let ExprData::UnaryExpression(replacement) = ast.expr_data(expression(&ast)) else {
             panic!();
         };
         assert_eq!(replacement.span(&ast), span);
         assert_eq!(replacement.argument(&ast).span(&ast), span);
+    }
+
+    #[test]
+    fn parenthesized_operands() {
+        let allocator = Allocator::new();
+        let options = Options {
+            preserve_parens: true,
+            ..Options::default()
+        };
+        let result = Parser::init(&allocator, "typeof (x);", options, NoTokenParserConfig).parse();
+        let mut ast = result.ast;
+        Minifier::minify(&mut ast, MinifierOptions::default());
+        let ExprData::UnaryExpression(unary) = ast.expr_data(expression(&ast)) else {
+            panic!();
+        };
+        assert_eq!(unary.operator(&ast), UnaryOperator::Typeof);
     }
 }

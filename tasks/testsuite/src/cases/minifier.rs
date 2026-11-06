@@ -112,7 +112,12 @@ fn minifier_options(config: &Map<String, Value>) -> MinifierOptions {
             evaluate: option("evaluate"),
             global_defs: config.get("ie8").and_then(Value::as_bool) != Some(true),
             join_vars: option("join_vars"),
+            // Terser keeps the completion value of a program minified as an
+            // expression.
+            negate_iife: option("negate_iife")
+                && config.get("expression").and_then(Value::as_bool) != Some(true),
             sequences: option("sequences"),
+            side_effects: option("side_effects"),
             typeofs: option("typeofs"),
             unused: option("unused"),
         }),
