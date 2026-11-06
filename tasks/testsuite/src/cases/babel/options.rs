@@ -115,6 +115,7 @@ impl From<BabelOptions> for TransformerOptions {
                 prevent_extensions: plugins.static_blocks,
             },
             jsx,
+            helpers: Default::default(),
         }
     }
 }

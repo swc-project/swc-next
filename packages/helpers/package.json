@@ -1,0 +1,39 @@
+{
+  "name": "@swc-next/helpers",
+  "version": "0.6.1",
+  "description": "Runtime helpers for SWC Next transforms",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/helpers"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js",
+      "default": "./esm/index.js"
+    }
+  },
+  "files": [
+    "esm",
+    "cjs",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "prepack": "pnpm build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@swc/core": "catalog:"
+  }
+}

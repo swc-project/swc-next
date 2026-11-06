@@ -36,6 +36,31 @@ pub struct ScopeModel<'a> {
 }
 
 impl<'a> ScopeModel<'a> {
+    /// Rename a symbol in binding maps and reference records, preserving its
+    /// identities, flags, declarations and uses. The caller updates AST names
+    /// and any linked symbols, and must choose a name that cannot be captured.
+    pub fn rename_symbol(&mut self, symbol: SymbolId, name: AstUtf8, text: &'a str) {
+        for map in self.scope_maps.iter_mut() {
+            let key = map
+                .iter()
+                .find_map(|(key, &value)| (value == symbol).then_some(*key));
+            if let Some(key) = key {
+                debug_assert!(
+                    map.get(text.as_bytes())
+                        .is_none_or(|&existing| existing == symbol)
+                );
+                map.remove(key);
+                map.insert(text.as_bytes(), symbol);
+            }
+        }
+        self.symbols[symbol].name = name.into();
+        for &reference in &self.uses[symbol] {
+            if self.references[reference].symbol == Some(symbol) {
+                self.references[reference].name = name;
+            }
+        }
+    }
+
     /// Consumes Semantic, moving its basic indexes and expanding its compact
     /// use index into one arena vector per symbol.
     pub fn new(semantic: Semantic<'a>) -> Self {

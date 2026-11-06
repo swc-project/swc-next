@@ -136,6 +136,8 @@ jobs:
         run: cargo run --locked -p testsuite --bin formatter_conformance --profile conformance
       - name: Build Node.js bindings
         run: pnpm build --release
+      - name: Check generated helpers
+        run: git diff --exit-code -- packages/helpers/esm/index.js packages/helpers/cjs
       - name: Run ESTree conformance
         run: pnpm test:conformance
       - name: Run codec conformance
