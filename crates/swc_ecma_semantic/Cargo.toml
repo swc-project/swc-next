@@ -9,15 +9,16 @@ repository.workspace  = true
 version               = "0.5.0"
 
 [dependencies]
-bitflags   = { workspace = true }
-hashbrown  = { workspace = true }
-memchr     = { workspace = true }
-rustc-hash = { workspace = true }
-zmij_ecma  = { workspace = true }
+bitflags         = { workspace = true }
+chumsky          = { workspace = true }
+hashbrown        = { workspace = true }
+memchr           = { workspace = true }
+rustc-hash       = { workspace = true }
+unicode-id-start = { workspace = true }
+zmij_ecma        = { workspace = true }
 
-swc_next_allocator          = { workspace = true }
-swc_next_ecma_ast           = { workspace = true }
-swc_next_regular_expression = { workspace = true }
+swc_next_allocator = { workspace = true }
+swc_next_ecma_ast  = { workspace = true }
 
 [dev-dependencies]
 clap                 = { workspace = true }

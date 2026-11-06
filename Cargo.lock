@@ -351,6 +351,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
+name = "chumsky"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0d2bfadce76f963d776feff99db6dc33783829539258314776383b33e2a00f8"
+dependencies = [
+ "hashbrown 0.15.5",
+ "unicode-ident",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "ciborium"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,6 +1032,8 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash 0.1.5",
 ]
 
@@ -2958,6 +2971,7 @@ name = "swc_next_ecma_semantic"
 version = "0.5.0"
 dependencies = [
  "bitflags",
+ "chumsky",
  "clap",
  "hashbrown 0.17.1",
  "memchr",
@@ -2965,7 +2979,7 @@ dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
- "swc_next_regular_expression",
+ "unicode-id-start",
  "zmij_ecma",
 ]
 
@@ -3017,17 +3031,6 @@ dependencies = [
  "napi-build",
  "swc_next_bridge",
  "swc_next_ecma_ast",
-]
-
-[[package]]
-name = "swc_next_regular_expression"
-version = "0.5.0"
-dependencies = [
- "bitflags",
- "phf 0.14.0",
- "rustc-hash",
- "swc_next_allocator",
- "unicode-id-start",
 ]
 
 [[package]]

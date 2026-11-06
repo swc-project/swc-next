@@ -3,12 +3,12 @@
 
 mod declarations;
 mod js;
+mod regex;
 mod ts;
 
 use std::{borrow::Cow, collections::hash_map::Entry};
 
 use rustc_hash::FxHashMap;
-use swc_next_allocator::Allocator;
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
