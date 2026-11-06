@@ -1,4 +1,7 @@
-use swc_next_bridge::{Lang, ParserOptions, SourceType, bridge, parse_to_buffer};
+use swc_next_bridge::bridge;
+use swc_next_core::js::parser::{
+    JsParserOptions as ParserOptions, Lang, SourceType, parse_to_buffer,
+};
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 
 #[bridge]
