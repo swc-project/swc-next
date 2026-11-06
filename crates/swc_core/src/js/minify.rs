@@ -8,6 +8,8 @@ pub struct JsMinifyOptions {
     /// Enable local binding mangling. Additional mangling options are not yet
     /// implemented.
     pub mangle: Option<bool>,
+    // Extend the boolean shorthand when mangler options are supported.
+    // pub mangle: Option<BoolOr<JsMangleOptions>>,
 }
 
 /// Implemented compression passes. Each pass defaults to enabled when
@@ -33,3 +35,9 @@ pub struct JsCompressOptions {
     /// Remove unused variables whose initializers have no side effects.
     pub unused: Option<bool>,
 }
+
+// pub struct JsMangleOptions {
+//     pub top_level: Option<bool>,
+//     pub keep_class_names: Option<bool>,
+//     pub keep_fn_names: Option<bool>,
+// }
