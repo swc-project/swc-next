@@ -3307,22 +3307,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         decorators: SubRange<Decorator>,
     ) -> Option<Class> {
         let start = start_from_param.unwrap_or(self.current_token.start());
-        // Undecorated `declare class` is parsed by `parse_ts_declaration`; only
-        // decorators can lead here before `declare`, for example `@dec declare class C {}`.
-        if self.current_token.tag() == TokenTag::Declare
-            && !opts.is_declare
-            && !decorators.is_empty()
+        // Decorated declarations reach this path before their TypeScript modifiers.
+        // Share modifier diagnostics and recovery with ordinary declarations.
+        if !decorators.is_empty()
             && !opts.is_expression
             && !opts.is_default_export
-            && self.lang.is_typescript()
-            && self.is_declare_class_next()?
+            && matches!(
+                self.current_token.tag(),
+                TokenTag::Declare | TokenTag::Abstract
+            )
+            && self.is_start_of_ts_declaration()?
         {
-            self.advance()?;
+            let mut modifiers = TsDeclarationModifiers {
+                declare: opts.is_declare,
+                r#abstract: opts.is_abstract,
+                ..TsDeclarationModifiers::default()
+            };
+            self.parse_ts_declaration_modifiers(&mut modifiers)?;
             let ambient = self.ts_context.ambient();
-            self.ts_context.set(TsContext::AMBIENT, true);
+            self.ts_context
+                .set(TsContext::AMBIENT, ambient || modifiers.declare);
             let class = self.parse_class_decorated(
                 ParseClassOpts {
-                    is_declare: true,
+                    is_declare: modifiers.declare,
+                    is_abstract: modifiers.r#abstract,
                     ..opts
                 },
                 Some(start),
@@ -5258,25 +5266,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(next.tag() == TokenTag::Class && !next.has_line_terminator_before())
     }
 
-    /// Returns whether the current `declare` starts `declare class` or
-    /// `declare abstract class` on the same line.
-    fn is_declare_class_next(&mut self) -> Option<bool> {
-        let mut peek = self.begin_peek();
-        let next = peek.next()?;
-        let result = if next.has_line_terminator_before() {
-            false
-        } else if next.tag() == TokenTag::Class {
-            true
-        } else if next.tag() == TokenTag::Abstract {
-            let class = peek.next()?;
-            class.tag() == TokenTag::Class && !class.has_line_terminator_before()
-        } else {
-            false
-        };
-        peek.end();
-        Some(result)
-    }
-
     fn is_legacy_accessibility_import(&mut self) -> Option<bool> {
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Import && !next.has_line_terminator_before())
@@ -5861,18 +5850,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(result)
     }
 
-    fn parse_ts_declaration(&mut self, export_start: Option<u32>) -> Option<Stmt> {
-        let start = self.current_token.start();
-        // Export wrapping has one owner: this function. Ordinary statements
-        // pass `None`; the export caller passes its `export` position, and
-        // recovered exports set the same state from inside the scan below.
-        let wrap_start = export_start.unwrap_or(start);
-        let mut exported = export_start.is_some();
-        let mut modifiers = TsDeclarationModifiers::default();
-        // Scan `declare`, `abstract`, and misplaced `export` in one loop.
-        // Repeats and misplaced exports are reported but still consumed,
-        // so the declaration AST is preserved.
-        loop {
+    fn parse_ts_declaration_modifiers(
+        &mut self,
+        modifiers: &mut TsDeclarationModifiers,
+    ) -> Option<()> {
+        while matches!(
+            self.current_token.tag(),
+            TokenTag::Declare | TokenTag::Abstract
+        ) {
             let token = self.current_token;
             if token.tag() == TokenTag::Declare {
                 if modifiers.declare {
@@ -5889,7 +5874,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     );
                 }
                 modifiers.declare = true;
-            } else if token.tag() == TokenTag::Abstract {
+            } else {
                 if modifiers.r#abstract {
                     self.report(
                         token.span(),
@@ -5898,7 +5883,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     );
                 }
                 modifiers.r#abstract = true;
-            } else if token.tag() == TokenTag::Export {
+            }
+            self.advance()?;
+        }
+        Some(())
+    }
+
+    fn parse_ts_declaration(&mut self, export_start: Option<u32>) -> Option<Stmt> {
+        let start = self.current_token.start();
+        // Export wrapping has one owner: this function. Ordinary statements
+        // pass `None`; the export caller passes its `export` position, and
+        // recovered exports set the same state from inside the scan below.
+        let wrap_start = export_start.unwrap_or(start);
+        let mut exported = export_start.is_some();
+        let mut modifiers = TsDeclarationModifiers::default();
+        // Scan `declare`, `abstract`, and misplaced `export` in one loop.
+        // Repeats and misplaced exports are reported but still consumed,
+        // so the declaration AST is preserved.
+        loop {
+            self.parse_ts_declaration_modifiers(&mut modifiers)?;
+            let token = self.current_token;
+            if token.tag() == TokenTag::Export {
                 if exported {
                     self.report(
                         token.span(),
@@ -16385,7 +16390,7 @@ mod tests {
         assert!(!parsed.diagnostics.is_empty());
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
 
-        fn recover(source: &str, lang: Lang) -> (bool, bool, bool, usize, usize) {
+        fn recover(source: &str, lang: Lang) -> (bool, bool, bool, usize, usize, usize) {
             let allocator = Allocator::new();
             let options = Options {
                 lang,
@@ -16402,6 +16407,14 @@ mod tests {
             let class = declaration.as_class(ast).unwrap();
             assert_eq!(ast.get_utf8(class.id(ast).unwrap().name(ast)), "Foo");
             assert_eq!(ast.root_program().body(ast).len(), 1);
+            let decorators = class.decorators(ast);
+            if let Some(decorator) = decorators.get_node(ast, 0) {
+                let name = decorator
+                    .expression(ast)
+                    .as_identifier_reference(ast)
+                    .unwrap();
+                assert_eq!(ast.get_utf8(name.name(ast)), "dec");
+            }
             let members = class.body(ast).body(ast);
             let method = members
                 .get_node(ast, 0)
@@ -16417,51 +16430,76 @@ mod tests {
                 class.r#abstract(ast),
                 members.len(),
                 parsed.diagnostics.len(),
+                decorators.len(),
             )
         }
 
         for lang in [Lang::Ts, Lang::Dts] {
+            let result = recover("@dec abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 1));
+
+            let result = recover("export @dec abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec export abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec declare abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 0, 1));
+
+            let result = recover("export @dec declare abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 0, 1));
+
+            let result = recover("@dec declare declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, false, 1, 1, 1));
+
+            let result = recover("@dec abstract abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (false, false, true, 1, 1, 1));
+
+            let result = recover("@dec declare abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 1));
+
             let result = recover("abstract declare class Foo { m(): void; }", lang);
-            assert_eq!(result, (false, true, true, 1, 1));
+            assert_eq!(result, (false, true, true, 1, 1, 0));
 
             let result = recover("export abstract declare class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, true, 1, 1));
+            assert_eq!(result, (true, true, true, 1, 1, 0));
 
             let result = recover("declare abstract class Foo { m(): void; }", lang);
-            assert_eq!(result, (false, true, true, 1, 0));
+            assert_eq!(result, (false, true, true, 1, 0, 0));
 
             let result = recover("export declare abstract class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, true, 1, 0));
+            assert_eq!(result, (true, true, true, 1, 0, 0));
 
             let result = recover("declare declare class Foo { m(): void; }", lang);
-            assert_eq!(result, (false, true, false, 1, 1));
+            assert_eq!(result, (false, true, false, 1, 1, 0));
 
             let result = recover("abstract abstract class Foo { abstract m(): void; }", lang);
-            assert_eq!(result, (false, false, true, 1, 1));
+            assert_eq!(result, (false, false, true, 1, 1, 0));
 
             let result = recover("declare abstract declare class Foo { m(): void; }", lang);
-            assert_eq!(result, (false, true, true, 1, 1));
+            assert_eq!(result, (false, true, true, 1, 1, 0));
 
             let result = recover("abstract export class Foo { abstract m(): void; }", lang);
-            assert_eq!(result, (true, false, true, 1, 1));
+            assert_eq!(result, (true, false, true, 1, 1, 0));
 
             let result = recover("declare export class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, false, 1, 1));
+            assert_eq!(result, (true, true, false, 1, 1, 0));
 
             let result = recover("export declare export class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, false, 1, 1));
+            assert_eq!(result, (true, true, false, 1, 1, 0));
 
             let result = recover("abstract export declare class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, true, 1, 2));
+            assert_eq!(result, (true, true, true, 1, 2, 0));
 
             let result = recover("declare export abstract class Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, true, 1, 1));
+            assert_eq!(result, (true, true, true, 1, 1, 0));
 
             let result = recover("abstract export\nclass Foo { m(): void; }", lang);
-            assert_eq!(result, (true, false, true, 1, 1));
+            assert_eq!(result, (true, false, true, 1, 1, 0));
 
             let result = recover("declare export\nclass Foo { m(): void; }", lang);
-            assert_eq!(result, (true, true, false, 1, 1));
+            assert_eq!(result, (true, true, false, 1, 1, 0));
         }
     }
 
