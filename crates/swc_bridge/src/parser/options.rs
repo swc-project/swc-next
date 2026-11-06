@@ -1,3 +1,4 @@
+use swc_next_core::js::parser::JsParserOptions;
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 use swc_next_ecma_parser::{CommentMode as AstCommentMode, Options as AstParserOptions};
 
@@ -115,31 +116,20 @@ pub struct ParserOptions {
     pub semantic_errors: Option<bool>,
 }
 
-pub(super) struct NormalizedParserOptions {
-    pub parser: AstParserOptions,
-    pub semantic_errors: bool,
-}
-
-impl ParserOptions {
-    pub(super) fn normalize(self) -> NormalizedParserOptions {
-        let defaults = AstParserOptions::default();
-        NormalizedParserOptions {
-            parser: AstParserOptions {
-                source_type: self
-                    .source_type
-                    .map(Into::into)
-                    .unwrap_or(defaults.source_type),
-                lang: self.lang.map(Into::into).unwrap_or(defaults.lang),
-                preserve_parens: self.preserve_parens.unwrap_or(defaults.preserve_parens),
-                comments: self.comments.map(Into::into).unwrap_or(defaults.comments),
-            },
-            semantic_errors: self.semantic_errors.unwrap_or(false),
+impl From<ParserOptions> for JsParserOptions {
+    fn from(options: ParserOptions) -> Self {
+        Self {
+            source_type: options.source_type.map(Into::into),
+            lang: options.lang.map(Into::into),
+            preserve_parens: options.preserve_parens,
+            comments: options.comments.map(Into::into),
+            semantic_errors: options.semantic_errors,
         }
     }
 }
 
 impl From<ParserOptions> for AstParserOptions {
     fn from(options: ParserOptions) -> Self {
-        options.normalize().parser
+        JsParserOptions::from(options).into()
     }
 }
