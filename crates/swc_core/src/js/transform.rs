@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::BoolOr;
 
-use super::JsxRuntime;
+pub use swc_next_ecma_transformer::jsx::JsxRuntime;
 
 /// Currently implemented JavaScript and TypeScript transforms.
 #[derive(Clone, Debug, Default)]
