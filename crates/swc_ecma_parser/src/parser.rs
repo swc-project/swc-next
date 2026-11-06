@@ -9346,6 +9346,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             {
                 Precedence::Lowest
             }
+            TokenTag::In | TokenTag::Instanceof
+                if token.is_escaped() && token.has_line_terminator_before() =>
+            {
+                Precedence::Lowest
+            }
             TokenTag::LogicalNot if !is_typescript || token.has_line_terminator_before() => {
                 Precedence::Lowest
             }
@@ -17695,7 +17700,7 @@ mod tests {
     }
 
     #[test]
-    fn class_modifiers() {
+    fn class_fields() {
         fn parse_fields(source: &str, lang: Lang) -> Vec<(String, bool)> {
             let allocator = Allocator::new();
             let options = Options {
@@ -17718,6 +17723,14 @@ mod tests {
                     (name, field.r#static(ast))
                 })
                 .collect()
+        }
+
+        for lang in [Lang::Js, Lang::Ts] {
+            let fields = parse_fields("class A { a = 1\n\\u0069n = 2 }", lang);
+            assert_eq!(fields, [("a".into(), false), ("in".into(), false)]);
+
+            let fields = parse_fields("class A { a = 1\n\\u0069nstanceof = 2 }", lang);
+            assert_eq!(fields, [("a".into(), false), ("instanceof".into(), false)]);
         }
 
         let fields = parse_fields("class A { st\\u0061tic\nfoo }", Lang::Js);
