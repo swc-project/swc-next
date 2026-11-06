@@ -1,17 +1,28 @@
 ---
 name: code-review
-description: Review changes in this repository for correctness, preserved test coverage, and compliance with AGENTS.md. Use only for pull request.
+description: Review pull requests in this repository for correctness, simplicity, behavior changes, performance, and preserved coverage. Use only for PR reviews.
 ---
 
 # Code Review
 
-- Read the applicable `AGENTS.md` and review the requested diff with its surrounding
-  code. Check changed tests and documentation against the repository conventions;
-  report actionable violations with the relevant rule and source location.
-- For test refactors, compare inputs, expected results, configuration combinations,
-  and assertions with the original. Passing tests or unchanged test counts alone
-  do not establish equivalent coverage; preserve checks when reorganizing tests.
-- Allow loops for configuration matrices and traversal of actual results. Keep
-  independent input cases explicit as required by `AGENTS.md`.
-- Do not weaken assertions or expose private APIs merely to change test layout.
-  Check that assertions through public APIs preserve the original guarantees.
+Default to Chinese unless requested otherwise.
+
+## Review
+
+- Read the applicable `AGENTS.md`.
+- Omit routine bot comments and unrelated diffs. Fetch linked issues or discussions when they resolve a concrete uncertainty. Don't read CI results.
+- Prefer removal or reuse over added flags, layers, and special cases. Suggest concrete simpler alternatives without weakening behavior or safety.
+
+## Explain
+
+- Explain the problem and core implementation idea, not a file inventory.
+- Show behavior changes with complete and small inputs, relevant options, and explicit before/after outputs or structures. Include recovery differences when relevant; distinguish execution, fixture expectations, and inference.
+- For optimizations, show short before/after code excerpts explaining avoided work and preserved behavior.
+
+## Report
+
+Give actionable findings by severity, with code location, trigger, consequence, and correction. State when none are found; still explain the change.
+
+Separate optional performance and code quality improvements from required fixes, with concrete benefits and tradeoffs. Omit speculative suggestions.
+
+End with one sentence stating merge readiness and any blocker or material validation gap. Optional improvements alone do not block merging.
