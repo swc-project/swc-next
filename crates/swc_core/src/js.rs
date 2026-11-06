@@ -5,7 +5,7 @@
 
 #[cfg(feature = "js_codegen")]
 pub mod codegen;
-#[cfg(feature = "js_minify")]
+#[cfg(feature = "js_transform")]
 pub mod minify;
 #[cfg(feature = "js_parser")]
 pub mod parser;
@@ -15,6 +15,7 @@ pub mod transform;
 /// JavaScript and TypeScript stage settings.
 ///
 /// Each stage field requires its corresponding `js_*` crate feature.
+/// Minification settings are included with `js_transform`.
 #[derive(Clone, Debug, Default)]
 pub struct JsOptions {
     // Override the shared target for all JavaScript stages.
@@ -26,7 +27,7 @@ pub struct JsOptions {
     #[cfg(feature = "js_transform")]
     pub transform: Option<transform::JsTransformOptions>,
     /// A boolean shorthand or explicit compression and mangling settings.
-    #[cfg(feature = "js_minify")]
+    #[cfg(feature = "js_transform")]
     pub minify: Option<crate::BoolOr<minify::JsMinifyOptions>>,
     #[cfg(feature = "js_codegen")]
     pub codegen: Option<codegen::JsCodegenOptions>,
