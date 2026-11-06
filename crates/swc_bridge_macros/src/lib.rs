@@ -176,7 +176,7 @@ fn describe_wire_mapping(
     let Some((trait_path, _)) = &implementation.trait_ else {
         return Err(syn::Error::new_spanned(
             implementation,
-            "#[bridge] on an impl requires BridgeDecode or BridgeEncode",
+            "#[bridge] on an impl requires BridgeDecode, BridgeDecodeOptional or BridgeEncode",
         ));
     };
     let Some(trait_name) = trait_path.segments.last().map(|segment| &segment.ident) else {
@@ -185,14 +185,15 @@ fn describe_wire_mapping(
             "missing bridge wire trait name",
         ));
     };
-    let direction = if trait_name == "BridgeDecode" {
+    let optional = trait_name == "BridgeDecodeOptional";
+    let direction = if trait_name == "BridgeDecode" || optional {
         WireDirection::Decode
     } else if trait_name == "BridgeEncode" {
         WireDirection::Encode
     } else {
         return Err(syn::Error::new_spanned(
             trait_path,
-            "#[bridge] on an impl requires BridgeDecode or BridgeEncode",
+            "#[bridge] on an impl requires BridgeDecode, BridgeDecodeOptional or BridgeEncode",
         ));
     };
 
@@ -215,9 +216,14 @@ fn describe_wire_mapping(
         ));
     }
 
+    let semantic_type = type_key(&implementation.self_ty);
     Ok(BridgeDescriptor::WireMapping(WireMapping {
         direction,
-        semantic_type: type_key(&implementation.self_ty),
+        semantic_type: if optional {
+            format!("Option<{semantic_type}>")
+        } else {
+            semantic_type
+        },
         wire_type: type_key(wire_type),
     }))
 }

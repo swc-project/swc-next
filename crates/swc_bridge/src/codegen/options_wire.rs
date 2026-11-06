@@ -1,5 +1,5 @@
 use super::CodegenOptions;
-use crate::{BridgeDecode, bridge};
+use crate::{BridgeDecodeOptional, bridge};
 
 const OPTIONS_PRESENT: u32 = 1 << 0;
 
@@ -15,10 +15,10 @@ const INLINE_SCRIPT_MASK: u32 = 0b11 << INLINE_SCRIPT_SHIFT;
 const KNOWN_MASK: u32 = OPTIONS_PRESENT | ASCII_ONLY_MASK | MINIFY_MASK | INLINE_SCRIPT_MASK;
 
 #[bridge]
-impl BridgeDecode for Option<CodegenOptions> {
+impl BridgeDecodeOptional for CodegenOptions {
     type Wire = u32;
 
-    fn decode(value: Self::Wire) -> Option<Self> {
+    fn decode_optional(value: Self::Wire) -> Option<Option<Self>> {
         if value == 0 {
             return Some(None);
         }
