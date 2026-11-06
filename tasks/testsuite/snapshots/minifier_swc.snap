@@ -476,7 +476,7 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/46887-2/input.j
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/46887/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/54192/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/54192/2/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/66237/input.js - minification is not stable
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/66237/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/66378/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/asmjs/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/next/brotli-decompress/static/chunks/545-ff8f898b276d138f/input.js - output differs from reference output

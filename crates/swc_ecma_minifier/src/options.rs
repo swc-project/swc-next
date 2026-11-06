@@ -66,6 +66,11 @@ pub struct CompressOptions {
     /// Negate a function expression that an expression statement calls, so
     /// `(function(){})()` prints as `!function(){}()`. Enabled by default.
     pub negate_iife: bool,
+    /// Replace the reads of a local binding that is initialized with a
+    /// constant and never assigned with the constant, when the reads run
+    /// after the initialization and the output gets shorter, and remove
+    /// the declaration. Enabled by default.
+    pub reduce_vars: bool,
     /// Join adjacent expression statements with the comma operator, such as
     /// `a(); b()` to `a(), b()`, and move them into the leading expression of
     /// a following `if`, `return`, `throw`, `switch`, or `for` statement.
@@ -78,8 +83,9 @@ pub struct CompressOptions {
     pub side_effects: bool,
     /// Shorten undefined typeof comparisons for local var bindings. Enabled by default.
     pub typeofs: bool,
-    /// Remove unused local variables whose initializers have no side effects.
-    /// Enabled by default.
+    /// Remove unused local variables whose initializers have no side effects
+    /// and unused local function declarations. Declarations whose only uses
+    /// are in removed code are removed too. Enabled by default.
     pub unused: bool,
 }
 
@@ -96,6 +102,7 @@ impl Default for CompressOptions {
             if_return: true,
             join_vars: true,
             negate_iife: true,
+            reduce_vars: true,
             sequences: true,
             side_effects: true,
             typeofs: true,
@@ -118,6 +125,7 @@ impl CompressOptions {
             if_return: false,
             join_vars: false,
             negate_iife: false,
+            reduce_vars: false,
             sequences: false,
             side_effects: false,
             typeofs: false,

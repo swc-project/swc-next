@@ -19,12 +19,14 @@ use crate::{CompressOptions, mangle::Renames};
 mod conditionals;
 mod dead_code;
 mod effects;
+mod reduce;
 mod side_effects;
 mod statements;
 mod value;
 
 use dead_code::{Branch, Hoisted};
 use effects::may_have_side_effects;
+use reduce::{Constant, Reduction};
 use statements::StatementList;
 use value::{Value, skip_parentheses};
 
@@ -33,6 +35,13 @@ struct Candidates {
     globals: FxHashMap<NodeId, Value<'static>>,
     typeofs: FxHashMap<NodeId, NodeId>,
     unused: FxHashSet<NodeId>,
+    /// Names of function declarations that are removed.
+    removed_functions: FxHashSet<NodeId>,
+    /// The constant that replaces each read of an inlined binding.
+    inlined: FxHashMap<NodeId, Constant>,
+    /// Removed bindings whose initializers are constants that are not
+    /// folded yet.
+    constant_bindings: FxHashSet<NodeId>,
     /// Reads that cannot throw and whose removal cannot make a declaration
     /// removable.
     pure_reads: FxHashSet<NodeId>,
@@ -40,10 +49,11 @@ struct Candidates {
 }
 
 impl Candidates {
-    fn build(ast: &Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
+    fn build(ast: &mut Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
         if !options.global_defs
             && !options.comparisons
+            && !options.reduce_vars
             && !options.side_effects
             && !options.typeofs
             && !options.unused
@@ -66,8 +76,7 @@ impl Candidates {
             candidates.renames = Renames::build(ast, &semantic);
         }
         let mut local_vars = FxHashMap::default();
-        // Pure symbols, each with the offset from which its reads are pure.
-        let mut pure_symbols = FxHashMap::default();
+        let mut in_function = FxHashSet::default();
         for entry in semantic.iter_symbols() {
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
@@ -89,44 +98,25 @@ impl Candidates {
                 local_vars.insert(entry.id, declaration.node);
             }
             let mut ancestor = Some(declaration.scope);
-            let mut in_function = false;
             while let Some(id) = ancestor {
                 let scope = semantic.scope(id);
                 if matches!(scope.kind, ScopeKind::Function | ScopeKind::FunctionBody) {
-                    in_function = scope.node != ast.root_program().node_id();
+                    if scope.node != ast.root_program().node_id() {
+                        in_function.insert(entry.id);
+                    }
                     break;
                 }
                 ancestor = scope.parent;
             }
-            if options.unused && in_function && semantic.uses(entry.id).is_empty() {
-                candidates.unused.insert(declaration.node);
-            }
-            // A removed read could leave a local `var` without uses, which
-            // only a later pass would remove.
-            let flags = entry.symbol.flags;
-            let removable_var = options.unused
-                && in_function
-                && flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
-                && !flags.contains(SymbolFlags::PARAMETER);
-            if options.side_effects
-                && is_initialized(flags)
-                && !removable_var
-                && !is_global_var(scope.kind, declaration.flags)
-                && let Some(start) = initialized_from(ast, flags, scope.node)
+            if options.unused
+                && in_function.contains(&entry.id)
+                && semantic.uses(entry.id).is_empty()
             {
-                pure_symbols.insert(entry.id, start);
+                candidates.unused.insert(declaration.node);
             }
         }
         for entry in semantic.iter_references() {
             let reference = entry.reference;
-            if let NameResolution::Resolved(symbol) = reference.resolution()
-                && reference.flags.is_read_only()
-                && pure_symbols
-                    .get(&symbol)
-                    .is_some_and(|start| ast.span(reference.node).start >= *start)
-            {
-                candidates.pure_reads.insert(reference.node);
-            }
             match reference.resolution() {
                 NameResolution::Unresolved
                     if options.global_defs && reference.flags.is_read_only() =>
@@ -147,6 +137,67 @@ impl Candidates {
                 _ => {}
             }
         }
+
+        let renames = &candidates.renames;
+        let name_length = |ast: &Ast<'_>, node: NodeId| match renames.slot(node) {
+            Some(slot) => renames.names[slot].len(),
+            None => match ast.kind_data(node) {
+                NodeKindData::BindingIdentifier(binding) => ast.get_utf8(binding.name(ast)).len(),
+                _ => usize::MAX / 4,
+            },
+        };
+        let context = reduce::Context {
+            semantic: &semantic,
+            options,
+            in_function: &in_function,
+            globals: &candidates.globals,
+            name_length: &name_length,
+        };
+        let reduction = Reduction::build(ast, &context);
+        candidates.removed_functions = reduction.functions;
+        candidates.unused.extend(reduction.removed);
+        candidates.inlined = reduction.inlined;
+        candidates.constant_bindings = reduction.constant_bindings;
+
+        if options.side_effects {
+            // A removed read could leave a declaration without uses, which
+            // only a later pass would remove.
+            // Pure symbols, each with the offset from which its reads are pure.
+            let pure_symbols: FxHashMap<_, _> = semantic
+                .iter_symbols()
+                .filter(|entry| {
+                    is_initialized(entry.symbol.flags)
+                        && !reduction.removable.contains(&entry.id)
+                        && !semantic.declarations(entry.id).any(|declaration| {
+                            is_global_var(semantic.scope(declaration.scope).kind, declaration.flags)
+                        })
+                })
+                .filter_map(|entry| {
+                    let scope = semantic
+                        .declarations(entry.id)
+                        .find(|declaration| {
+                            declaration
+                                .flags
+                                .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
+                        })
+                        .map_or(ast.root_program().node_id(), |declaration| {
+                            semantic.scope(declaration.scope).node
+                        });
+                    Some((entry.id, initialized_from(ast, entry.symbol.flags, scope)?))
+                })
+                .collect();
+            for entry in semantic.iter_references() {
+                let reference = entry.reference;
+                if let NameResolution::Resolved(symbol) = reference.resolution()
+                    && reference.flags.is_read_only()
+                    && pure_symbols
+                        .get(&symbol)
+                        .is_some_and(|start| ast.span(reference.node).start >= *start)
+                {
+                    candidates.pure_reads.insert(reference.node);
+                }
+            }
+        }
         candidates
     }
 }
@@ -163,6 +214,7 @@ pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions, mangle: bool
         candidates,
         names,
         delete_depth: 0,
+        deleted_reads: FxHashSet::default(),
         primitive_bindings: FxHashSet::default(),
         pending_typeofs: Vec::new(),
         hoisted: Vec::new(),
@@ -187,6 +239,8 @@ struct Compressor {
     names: Vec<AstUtf8>,
     /// Number of enclosing `delete` operators.
     delete_depth: u32,
+    /// Reads of inlined bindings that are `delete` operands.
+    deleted_reads: FxHashSet<NodeId>,
     primitive_bindings: FxHashSet<NodeId>,
     pending_typeofs: Vec<TypeofRewrite>,
     /// Hoisted declarations in open functions. Each function's entries are
@@ -316,12 +370,17 @@ impl Compressor {
     }
 
     fn removable(&self, ast: &Ast<'_>, declarator: VariableDeclarator) -> bool {
-        matches!(ast.binding_pattern_data(declarator.id(ast)),
-            BindingPatternData::BindingIdentifier(binding)
-            if self.candidates.unused.contains(&binding.node_id()))
-            && declarator
-                .init(ast)
-                .is_none_or(|expr| !may_have_side_effects(ast, expr))
+        let BindingPatternData::BindingIdentifier(binding) =
+            ast.binding_pattern_data(declarator.id(ast))
+        else {
+            return false;
+        };
+        let binding = binding.node_id();
+        self.candidates.constant_bindings.contains(&binding)
+            || self.candidates.unused.contains(&binding)
+                && declarator
+                    .init(ast)
+                    .is_none_or(|expr| !may_have_side_effects(ast, expr))
     }
 
     fn typeof_argument(&self, ast: &Ast<'_>, expr: Expr) -> Option<Expr> {
@@ -360,7 +419,16 @@ impl Compressor {
         });
     }
 
-    fn global(&self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
+    fn global(&mut self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
+        if let Some(constant) = self.candidates.inlined.get(&node.node_id()).copied() {
+            // `delete a` becomes `false`; see `exit_expr`.
+            if self.deleted_reads.contains(&node.node_id()) {
+                return None;
+            }
+            let span = node.span(ast);
+            let value = constant.value(ast);
+            return self.value_expr(ast, span, value);
+        }
         if self.delete_depth != 0 {
             return None;
         }
@@ -711,24 +779,10 @@ impl Compressor {
     }
 
     /// Approximate printed length of the expression `value_expr` builds.
+    /// BigInt values are never built. Comparisons that consume one, such as
+    /// `1n === 1`, still fold.
     fn cost(&self, value: Value<'_>) -> usize {
-        match value {
-            Value::Undefined => "void 0".len(),
-            Value::Null => "null".len(),
-            Value::Boolean(_) if self.options.booleans => "!0".len(),
-            Value::Boolean(value) => if value { "true" } else { "false" }.len(),
-            Value::Number(value) if value.is_nan() => "0/0".len(),
-            Value::Number(value) if value.is_infinite() => usize::from(value < 0.0) + "1/0".len(),
-            Value::Number(value) => {
-                usize::from(value.is_sign_negative())
-                    + zmij_ecma::Buffer::new().format_finite(value.abs()).len()
-            }
-            // Quotes; escapes are not counted.
-            Value::String(value) => value.len() + 2,
-            // BigInt values are never built. Comparisons that consume one,
-            // such as `1n === 1`, still fold.
-            Value::BigInt => usize::MAX / 4,
-        }
+        reduce::cost(value, self.options.booleans).unwrap_or(usize::MAX / 4)
     }
 
     /// Builds the shortest expression for a constant value. Returns `None`
@@ -865,8 +919,19 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         let StmtData::Declaration(declaration) = ast.stmt_data(node) else {
             return TraverseAction::Continue;
         };
-        let DeclData::VariableDeclaration(declaration) = ast.decl_data(declaration) else {
-            return TraverseAction::Continue;
+        let declaration = match ast.decl_data(declaration) {
+            DeclData::VariableDeclaration(declaration) => declaration,
+            DeclData::Function(function)
+                if function.id(ast).is_some_and(|binding| {
+                    self.candidates
+                        .removed_functions
+                        .contains(&binding.node_id())
+                }) =>
+            {
+                let span = node.span(ast);
+                return TraverseAction::ReplaceSkip(ast.stmt_empty_statement(span));
+            }
+            _ => return TraverseAction::Continue,
         };
         if !matches!(
             declaration.kind(ast),
@@ -1138,6 +1203,10 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             UnaryOperator::Delete => {
                 self.delete_depth += 1;
                 self.mark_reference_position(ctx.ast, node.argument(ctx.ast));
+                let argument = skip_parentheses(ctx.ast, node.argument(ctx.ast));
+                if self.candidates.inlined.contains_key(&argument.node_id()) {
+                    self.deleted_reads.insert(argument.node_id());
+                }
             }
             UnaryOperator::Typeof => self.mark_reference_position(ctx.ast, node.argument(ctx.ast)),
             _ => {}
@@ -1176,6 +1245,16 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         let ast = &mut *ctx.ast;
         let replacement = match ast.expr_data(node) {
             ExprData::IdentifierReference(_) => self.global(ast, node),
+            // Deleting a declared binding does nothing and returns false.
+            ExprData::UnaryExpression(unary)
+                if unary.operator(ast) == UnaryOperator::Delete
+                    && self
+                        .deleted_reads
+                        .remove(&skip_parentheses(ast, unary.argument(ast)).node_id()) =>
+            {
+                let span = node.span(ast);
+                self.value_expr(ast, span, Value::Boolean(false))
+            }
             ExprData::SequenceExpression(_) if self.options.side_effects => {
                 self.trim_sequence(ast, node)
             }
