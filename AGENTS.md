@@ -47,6 +47,12 @@ and representative option sets. Review generated snapshots; see
 - Omit development history, step-by-step contributor workflows, implementation
   walkthroughs, and exhaustive command lists.
 
+## Issues
+
+- File issues found in bulk by static analysis of source code, or by similar methods, in
+  [swc-project/swc-next-issues](https://github.com/swc-project/swc-next-issues). Do not file them
+  in this repository.
+
 ## Code Review
 
 For code reviews, use the [code-review skill](.agents/skills/code-review/SKILL.md).
