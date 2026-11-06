@@ -9,7 +9,7 @@ mod wire;
 pub use swc_next_bridge_macros::bridge;
 #[doc(hidden)]
 pub use wire::private;
-pub use wire::{BridgeDecode, BridgeEncode, BridgeWire};
+pub use wire::{BridgeDecode, BridgeDecodeOptional, BridgeEncode, BridgeWire};
 
 #[cfg(feature = "parser")]
 mod parser;
