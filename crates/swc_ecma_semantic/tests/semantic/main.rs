@@ -35,18 +35,18 @@ fn analyze_with_options<'a>(
     analyze_options: AnalyzeOptions,
 ) -> (Ast<'a>, Semantic<'a>) {
     let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
-    let ast = parse.ast;
     assert!(parse.diagnostics.is_empty());
 
-    let result = analyze(&ast, analyze_options);
+    let result = analyze(&parse.ast, analyze_options);
     if !analyze_options.check_syntax.is_empty() {
         assert_eq!(
-            check_syntax(&ast, analyze_options.check_syntax),
+            check_syntax(&parse.ast, analyze_options.check_syntax),
             result.diagnostics
         );
     }
     assert!(result.diagnostics.is_empty());
-    (ast, result.semantic)
+    // SAFETY: The test helpers only use handles with their originating AST.
+    (unsafe { parse.ast.into_ast() }, result.semantic)
 }
 
 #[track_caller]
@@ -67,7 +67,7 @@ fn analyze_syntax_source<'a>(
         check_syntax(&parse.ast, SyntaxChecks::all()),
         result.diagnostics
     );
-    (parse.ast, result)
+    (unsafe { parse.ast.into_ast() }, result)
 }
 
 #[track_caller]
@@ -157,8 +157,9 @@ fn regular_expression_diagnostics() {
         Span::new(1, source.len() as u32 - 1)
     );
     assert!(result.diagnostics[0].help.is_none());
-    assert!(analyze(&ast, unchecked_options).diagnostics.is_empty());
-    assert!(check_syntax(&ast, SyntaxChecks::all() - SyntaxChecks::REGEXP_LITERALS).is_empty());
+    let ctx = ast.into();
+    assert!(analyze(&ctx, unchecked_options).diagnostics.is_empty());
+    assert!(check_syntax(&ctx, SyntaxChecks::all() - SyntaxChecks::REGEXP_LITERALS).is_empty());
 
     let source = " /🥹[z-a]/u;";
     let (_, result) = analyze_syntax_source(&allocator, source, parser_options);

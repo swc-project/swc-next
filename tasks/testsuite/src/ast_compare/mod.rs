@@ -9,7 +9,9 @@ use swc_next_ecma_ast::*;
 
 mod generated;
 
-pub(crate) fn compare(left: &Ast<'_>, right: &Ast<'_>) -> Result<(), String> {
+pub(crate) fn compare(left: &AstCtx<'_>, right: &AstCtx<'_>) -> Result<(), String> {
+    // SAFETY: Each side's handles are only read from that side's own AST.
+    let (left, right) = unsafe { (left.ast(), right.ast()) };
     let asts = AstPair { left, right };
     if left.source_type() != right.source_type() {
         return Err(format!(

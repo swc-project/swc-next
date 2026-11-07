@@ -18,12 +18,14 @@ fn declaration_files() {
     .parse();
     assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
 
-    let mut ast = parsed.ast;
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let program = ast.root_program();
-    Normalizer::normalize(program, &mut ast);
-    transform(program, &mut ast, &semantic, &TypeScriptOptions::default());
+    let mut ctx = parsed.ast;
+    let semantic = analyze(&ctx, AnalyzeOptions::default()).semantic;
+    let program = ctx.root_program();
+    Normalizer::normalize(&mut ctx);
+    // SAFETY: The pass only uses handles from this AST and its fresh model.
+    let ast = unsafe { ctx.ast_mut() };
+    transform(program, ast, &semantic, &TypeScriptOptions::default());
 
-    assert!(program.body(&ast).is_empty());
+    assert!(program.body(ast).is_empty());
     assert!(ast.comments().is_empty());
 }

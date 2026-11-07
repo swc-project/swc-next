@@ -24,7 +24,7 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{Ast, AstCtx, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
     binder::{Range, SymbolLinks, TsMemberIndex},
@@ -719,7 +719,9 @@ pub struct AnalyzeOptions {
 /// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
 /// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
-pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+pub fn analyze<'a>(ast: &AstCtx<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+    // SAFETY: Analysis only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
     let root = ast.root_program();
     let mut builder = SemanticBuilder::new(ast, options.check_syntax);
     root.visit_with(&mut builder);
@@ -733,10 +735,12 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 /// to include every check, including TypeScript aliases.
 /// Reference resolution and the model's use indexes are not needed for these
 /// checks and are skipped. Messages borrow the tree's arena.
-pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
+pub fn check_syntax<'a>(ast: &AstCtx<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
     if checks.is_empty() {
         return Vec::new();
     }
+    // SAFETY: Syntax checking only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
     let mut builder = SemanticBuilder::new(ast, checks);
     ast.root_program().visit_with(&mut builder);
     builder.into_diagnostics()

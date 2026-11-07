@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, Severity, SourceType};
+use swc_next_ecma_ast::{AstCtx, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
@@ -109,15 +109,15 @@ fn transform_program<'a, C: TransformCase>(
     source: &'a str,
     source_type: SourceType,
     lang: Lang,
-) -> Result<Option<Ast<'a>>, String> {
+) -> Result<Option<AstCtx<'a>>, String> {
     let Some(mut ast) = parse_program(allocator, source, source_type, lang, true) else {
         return Ok(None);
     };
     let options = case.transformer_options();
     if options.typescript.is_some() {
-        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+        Normalizer::normalize_runtime(&mut ast);
     } else {
-        Normalizer::normalize(ast.root_program(), &mut ast);
+        Normalizer::normalize(&mut ast);
     }
     let semantic_ret = analyze(
         &ast,
@@ -132,7 +132,8 @@ fn transform_program<'a, C: TransformCase>(
     {
         return Ok(None);
     }
-    let transformed = Transformer::transform(&mut ast, semantic_ret.semantic, options);
+    // SAFETY: Analysis used this AST and no mutation has occurred since.
+    let transformed = unsafe { Transformer::transform(&mut ast, semantic_ret.semantic, options) };
     if let Some(diagnostic) = transformed
         .diagnostics
         .iter()
@@ -152,7 +153,7 @@ fn parse_program<'a>(
     source_type: SourceType,
     lang: Lang,
     preserve_parens: bool,
-) -> Option<Ast<'a>> {
+) -> Option<AstCtx<'a>> {
     let result = Parser::init(
         allocator,
         source,

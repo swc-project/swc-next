@@ -184,8 +184,10 @@ impl TsTypeContext {
     }
 }
 
-pub fn print<'a>(tree: &'a Ast<'a>, options: Options) -> PrintResult<'a> {
-    Printer::init(tree, options).generate()
+/// Prints an AST without exposing its unbranded handles.
+pub fn print<'a>(tree: &'a AstCtx<'a>, options: Options) -> PrintResult<'a> {
+    // SAFETY: The printer only reads handles obtained from this AST.
+    Printer::init(unsafe { tree.ast() }, options).generate()
 }
 
 impl BinaryExprVisitor {

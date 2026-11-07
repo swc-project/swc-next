@@ -303,7 +303,8 @@ mod tests {
     #[test]
     fn pragma_roots() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let path = QualifiedName::parse(Some("import.meta.h"), "React", "createElement");
         let expression = path.create_expression(&mut ast);
         let member = expression.as_member_expression(&ast).unwrap();

@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
+    Ast, AstCtx, AstUtf8, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
     ContinueStatement, DebuggerStatement, ExportAllDeclaration, ExportDefaultDeclaration,
     ExportNamedDeclaration, ExpressionStatement, GetSpan, IdentifierReference, ImportDeclaration,
     LabelIdentifier, ReturnStatement, Span, ThrowStatement, UpdateExpression, VariableDeclaration,
@@ -12,15 +12,17 @@ use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();
-    let (ast, tokens) = run_parse(src, &allocator);
-    let semantic = run_semantic(&ast);
-    let semicolons = run_collect_semicolons(&ast, &tokens);
-    let idents = run_scan_dependencies(&ast);
-    drop((ast, semantic, tokens, semicolons, idents));
+    let (ctx, tokens) = run_parse(src, &allocator);
+    let semantic = run_semantic(&ctx);
+    // SAFETY: The custom passes only inspect handles from this AST.
+    let ast = unsafe { ctx.ast() };
+    let semicolons = run_collect_semicolons(ast, &tokens);
+    let idents = run_scan_dependencies(ast);
+    drop((ctx, semantic, tokens, semicolons, idents));
 }
 
 #[inline(never)]
-fn run_parse<'a>(src: &'a str, allocator: &'a Allocator) -> (Ast<'a>, ArenaVec<'a, Token>) {
+fn run_parse<'a>(src: &'a str, allocator: &'a Allocator) -> (AstCtx<'a>, ArenaVec<'a, Token>) {
     let result = Parser::init(
         allocator,
         src,
@@ -36,7 +38,7 @@ fn run_parse<'a>(src: &'a str, allocator: &'a Allocator) -> (Ast<'a>, ArenaVec<'
 }
 
 #[inline(never)]
-fn run_semantic<'a>(ast: &Ast<'a>) -> Semantic<'a> {
+fn run_semantic<'a>(ast: &AstCtx<'a>) -> Semantic<'a> {
     analyze(
         ast,
         AnalyzeOptions {

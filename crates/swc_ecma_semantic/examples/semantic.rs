@@ -195,7 +195,7 @@ fn main() -> Result<(), String> {
 
     print!(
         "{}",
-        ScopesTextWriter::new(&parse.ast, &semantic.semantic).build()
+        ScopesTextWriter::new(unsafe { parse.ast.ast() }, &semantic.semantic).build()
     );
     Ok(())
 }

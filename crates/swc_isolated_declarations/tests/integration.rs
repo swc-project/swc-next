@@ -63,7 +63,8 @@ fn run_fixture(input: &Path, lang: Lang) {
 
     let mut ast = parse.ast;
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let diagnostics = transform(&mut ast, &semantic)
+    // SAFETY: The model was built from this AST and no mutation has occurred since.
+    let diagnostics = unsafe { transform(&mut ast, &semantic) }
         .into_iter()
         .map(|diagnostic| diagnostic.message);
     let actual = print(&ast, PrintOptions::default()).code;

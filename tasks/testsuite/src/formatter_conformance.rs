@@ -1364,12 +1364,14 @@ fn parse_spec(source: &str) -> Result<Vec<SpecCall>, String> {
     }
 
     let mut parser = SpecParser {
-        ast: &parsed.ast,
+        ast: unsafe { parsed.ast.ast() },
         parsers: Vec::new(),
         calls: Vec::new(),
         errors: Vec::new(),
     };
-    parsed.ast.root_program().visit_with(&mut parser);
+    unsafe { parsed.ast.ast() }
+        .root_program()
+        .visit_with(&mut parser);
     if !parser.errors.is_empty() {
         return Err(parser.errors.join("; "));
     }

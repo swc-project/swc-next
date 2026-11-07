@@ -1,14 +1,14 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, AstUtf8, BinaryExpression, BinaryOperator, BindingIdentifier,
-    BindingPattern, BindingPatternData, BindingProperty, BlockStatement, CallExpression,
-    ConditionalExpression, DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function,
-    FunctionBody, FunctionType, GetSpan, IdentifierReference, IfStatement, LogicalExpression,
-    LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program, PropertyKey, PropertyKeyData,
-    SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData, SubRange, SwitchCase,
-    TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
-    UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
-    WhileStatement,
+    ArrowFunctionExpression, Ast, AstCtx, AstUtf8, BinaryExpression, BinaryOperator,
+    BindingIdentifier, BindingPattern, BindingPatternData, BindingProperty, BlockStatement,
+    CallExpression, ConditionalExpression, DeclData, Expr, ExprData, ForStatement,
+    ForStatementInitData, Function, FunctionBody, FunctionType, GetSpan, IdentifierReference,
+    IfStatement, LogicalExpression, LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program,
+    PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData,
+    SubRange, SwitchCase, TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx,
+    TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator,
+    VariableKind, WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
@@ -49,7 +49,7 @@ struct Candidates {
 }
 
 impl Candidates {
-    fn build(ast: &mut Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
+    fn build(ast: &mut AstCtx<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
         if !options.global_defs
             && !options.comparisons
@@ -62,6 +62,8 @@ impl Candidates {
             return candidates;
         }
         let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        // SAFETY: Candidates only use handles from this AST and its fresh model.
+        let ast = unsafe { ast.ast_mut() };
         // Dynamic lookup can observe declarations absent from the static use index.
         if semantic
             .iter_scopes()
@@ -202,8 +204,10 @@ impl Candidates {
     }
 }
 
-pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions, mangle: bool) {
+pub(super) fn compress(ast: &mut AstCtx<'_>, options: CompressOptions, mangle: bool) {
     let mut candidates = Candidates::build(ast, &options, mangle);
+    // SAFETY: Compression keeps all handles within their originating AST.
+    let ast = unsafe { ast.ast_mut() };
     let names = std::mem::take(&mut candidates.renames.names)
         .iter()
         .map(|name| ast.add_utf8(name))
@@ -1327,7 +1331,7 @@ mod tests {
         let result =
             Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
-        result.ast
+        unsafe { result.ast.into_ast() }
     }
 
     pub(super) fn expression(ast: &Ast<'_>) -> Expr {
@@ -1342,7 +1346,7 @@ mod tests {
     #[test]
     fn source_spans() {
         let allocator = Allocator::new();
-        let mut ast = parse(&allocator, "  true;");
+        let ast = parse(&allocator, "  true;");
         let span = expression(&ast).span(&ast);
         let compress = CompressOptions {
             side_effects: false,
@@ -1352,7 +1356,10 @@ mod tests {
             compress: Some(compress),
             ..MinifierOptions::default()
         };
+        let mut ast = ast.into();
         Minifier::minify(&mut ast, options);
+        // SAFETY: Only handles from the transformed AST are used below.
+        let ast = unsafe { ast.into_ast() };
         let ExprData::UnaryExpression(replacement) = ast.expr_data(expression(&ast)) else {
             panic!();
         };
@@ -1370,6 +1377,8 @@ mod tests {
         let result = Parser::init(&allocator, "typeof (x);", options, NoTokenParserConfig).parse();
         let mut ast = result.ast;
         Minifier::minify(&mut ast, MinifierOptions::default());
+        // SAFETY: Only handles from the transformed AST are used below.
+        let ast = unsafe { ast.into_ast() };
         let ExprData::UnaryExpression(unary) = ast.expr_data(expression(&ast)) else {
             panic!();
         };

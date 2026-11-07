@@ -129,10 +129,12 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         mut diagnostics,
         ..
     } = parse;
+    // SAFETY: The eraser only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
 
     let program = ast.root_program();
     let mut eraser = TypeEraser {
-        ast: &ast,
+        ast,
         tokens: TokenCursor::new(&allocator, source, options.into()),
         restricted_argument: None,
         edits: EditPlan::default(),

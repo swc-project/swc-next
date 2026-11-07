@@ -1,5 +1,6 @@
 mod assert_layout;
 mod ast;
+mod ast_ctx;
 mod comment;
 mod derive;
 mod diagnostic;
@@ -28,6 +29,7 @@ use swc_next_allocator::{
 };
 
 pub use ast::*;
+pub use ast_ctx::AstCtx;
 pub use comment::*;
 pub use derive::*;
 pub use diagnostic::*;
@@ -44,6 +46,14 @@ use swc_next_allocator::vec::multi_index_vec;
 use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
+///
+/// # Safety
+///
+/// Handles are not tied to their owning AST. Access this type through
+/// [`AstCtx`], whose unsafe accessors require callers to uphold the handle
+/// invariants: node, field, and string handles must belong to this AST, remain
+/// in bounds, and identify data of the expected type and encoding. Handles
+/// invalidated by mutation must not be used again.
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
@@ -354,7 +364,12 @@ impl<'a> Ast<'a> {
 #[doc(hidden)]
 impl<'a> Ast<'a> {
     /// Create a flattening AST backed by `source` and `allocator`.
-    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The caller must uphold the handle invariants documented on [`Ast`]
+    /// throughout all subsequent uses of the returned AST and its handles.
+    pub unsafe fn new(source: &'a str, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             root: None,

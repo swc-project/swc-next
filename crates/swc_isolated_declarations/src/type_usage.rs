@@ -866,7 +866,8 @@ mod tests {
             },
         );
         assert!(result.diagnostics.is_empty());
-        let diagnostics = transform(&mut ast, &result.semantic);
+        // SAFETY: The model was built from this AST and no mutation has occurred since.
+        let diagnostics = unsafe { transform(&mut ast, &result.semantic) };
         let code = print(
             &ast,
             PrintOptions {
@@ -893,7 +894,7 @@ mod tests {
         let local = semantic.lookup(scope, b"X", ReferenceSpace::Type).unwrap();
         let exported = semantic.lookup(scope, b"X", ReferenceSpace::Value).unwrap();
         assert_ne!(local, exported);
-        let (used, diagnostics, _) = TypeUsageAnalyzer::analyze(&ast, &semantic);
+        let (used, diagnostics, _) = TypeUsageAnalyzer::analyze(unsafe { ast.ast() }, &semantic);
         assert!(diagnostics.is_empty());
         assert!(used.contains_type(local));
         assert!(!used.contains_value(local));

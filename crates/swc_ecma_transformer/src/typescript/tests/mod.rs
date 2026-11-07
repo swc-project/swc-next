@@ -46,11 +46,13 @@ fn transformed_code_with_source_type(
     };
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let mut ast = parsed.ast;
-    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    transform(ast.root_program(), &mut ast, &semantic, &transform_options);
-    swc_next_ecma_codegen::print(&ast, Default::default()).code
+    let mut ctx = parsed.ast;
+    Normalizer::normalize_runtime(&mut ctx);
+    let semantic = analyze(&ctx, AnalyzeOptions::default()).semantic;
+    // SAFETY: The TypeScript pass only uses handles from this AST and its fresh model.
+    let ast = unsafe { ctx.ast_mut() };
+    transform(ast.root_program(), ast, &semantic, &transform_options);
+    swc_next_ecma_codegen::print(&ctx, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.
@@ -74,5 +76,5 @@ pub(super) fn with_output_semantic(
         },
     );
     assert!(analyzed.diagnostics.is_empty());
-    check(&parsed.ast, &analyzed.semantic);
+    check(unsafe { parsed.ast.ast() }, &analyzed.semantic);
 }
