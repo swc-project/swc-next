@@ -358,7 +358,7 @@ fn render_direct_result(source: &mut String, kind: WireKind<'_>, call: &str) {
                 source,
                 "  return decodeEnum(result, {}Values, {});",
                 lower_camel(&enumeration.js_name),
-                js_string(&lower_words(&enumeration.rust_name))
+                js_string(&lower_words(&enumeration.js_name))
             )
             .unwrap();
         }
@@ -379,7 +379,7 @@ fn render_payload_result(source: &mut String, kind: WireKind<'_>) {
                 source,
                 "  return decodeEnum(decodeU32(payload), {}Values, {});",
                 lower_camel(&enumeration.js_name),
-                js_string(&lower_words(&enumeration.rust_name))
+                js_string(&lower_words(&enumeration.js_name))
             )
             .unwrap();
         }

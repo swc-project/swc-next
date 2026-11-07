@@ -9,6 +9,11 @@ export type Lang =  'js'|
 'tsx'|
 'dts';
 
+/**
+ * Complete parser settings shared by standalone parsing and JavaScript pipelines.
+ *
+ * The JavaScript facade selects the relevant settings for each pipeline.
+ */
 export interface ParserOptions {
   /**
    * Determines how the source is parsed and evaluated.
