@@ -409,8 +409,19 @@ impl<'a> Ast<'a> {
     }
 
     /// Rewinds node and out-of-line field storage to an earlier checkpoint.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the root, retained nodes, and retained
+    /// out-of-line fields do not refer to removed nodes or fields. Every
+    /// out-of-line field range used after this call must remain fully within
+    /// the retained storage.
+    ///
+    /// Handles, indices, and ranges that refer to removed storage must never be
+    /// used to access the AST again, even if subsequent allocations reuse their
+    /// indices.
     #[inline]
-    pub fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
+    pub unsafe fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
         assert!(nodes_len <= self.nodes.len());
         assert!(extra_data_len <= self.extra_data.len());
         self.nodes.truncate(nodes_len);

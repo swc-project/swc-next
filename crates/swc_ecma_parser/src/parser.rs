@@ -2097,8 +2097,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.lexer.processed_comments = checkpoint.lexer_processed_comments;
         self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
-        self.ast
-            .truncate(checkpoint.nodes_len, checkpoint.extra_len);
+        // SAFETY: Speculative parsing only appends AST storage without linking it
+        // into the retained AST. Rewinding discards the speculative handles and
+        // ranges, and the retained storage still refers only to checkpoint data.
+        unsafe {
+            self.ast
+                .truncate(checkpoint.nodes_len, checkpoint.extra_len);
+        }
         self.diagnostics.truncate(checkpoint.diagnostics_len);
         self.context = checkpoint.context;
         self.statement_context = checkpoint.statement_context;
