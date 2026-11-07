@@ -76,6 +76,7 @@
     "@types/node": "catalog:",
     "cross-env": "catalog:",
     "oxc-parser": "catalog:",
+    "prettier": "3.9.9",
     "tinybench": "catalog:",
     "tinypool": "catalog:",
     "typescript": "catalog:",

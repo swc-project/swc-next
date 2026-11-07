@@ -1,6 +1,6 @@
 // Runtime support for generated SWC Next WebAssembly bindings.
 const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
+const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
 let wasm;
 let initialization;
 
