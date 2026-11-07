@@ -1219,18 +1219,14 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
                 _ => {}
             }
         }
-        if node.export_kind(self.ast) == ImportOrExportKind::Type {
-            self.erase_statement(container);
-            return;
-        }
-
-        if let Some(declaration) = declaration
-            && is_whole_type_declaration(declaration, self.ast)
+        if node.export_kind(self.ast) == ImportOrExportKind::Type
+            || declaration
+                .is_some_and(|declaration| is_whole_type_declaration(declaration, self.ast))
         {
             // Decorators before `export` (`@dec export declare class C {}`) precede
             // the statement span and must be erased with it.
             let start = declaration
-                .as_class(self.ast)
+                .and_then(|declaration| declaration.as_class(self.ast))
                 .and_then(|class| class.decorators(self.ast).first())
                 .map_or(container.start, |decorator| {
                     let start = self
