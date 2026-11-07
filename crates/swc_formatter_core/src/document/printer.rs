@@ -1,11 +1,34 @@
 //! Interpretation of flat formatting instructions and bounded fit probes.
 
+use std::{fmt, ops::Range};
+
 use super::{
-    ConditionTarget, FlatSummary, FormatElement,
+    AlignText, ConditionTarget, Doc, FlatSummary, FormatElement, GroupRequest, indent,
     text::{Text, Width},
 };
-use crate::{IndentStyle, PrintOptions};
-use swc_next_allocator::{Allocator, vec::ArenaVec};
+use crate::{IndentStyle, LineEnding, PrintOptions};
+use swc_next_allocator::vec::ArenaVec;
+
+#[derive(Debug, PartialEq, Eq)]
+/// Printed text and the range delimited by its emitted cursor markers.
+pub struct PrintResult {
+    /// Text with the requested output line endings.
+    pub text: String,
+    /// UTF-8 byte offsets into the final text.
+    pub cursor_range: Option<Range<usize>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// More than two cursor markers were emitted.
+pub struct CursorError;
+
+impl fmt::Display for CursorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("document printed more than two cursor markers")
+    }
+}
+
+impl std::error::Error for CursorError {}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -148,8 +171,9 @@ struct FillState {
     separator_mode: Mode,
 }
 
-struct FillEntry<'a> {
+struct FillEntry<'a, 'pending> {
     current: Frame<'a>,
+    pending: &'pending [Frame<'a>],
     mode: Mode,
     has_line_suffix: bool,
 }
@@ -194,17 +218,18 @@ impl FillStack {
     // Fill's checkpoints and batch initialization must not increase register
     // pressure in the main interpreter, where ordinary text dominates.
     #[inline(never)]
-    fn entry<'a>(
+    fn entry<'a, const GRAPH: bool, const EXTENDED: bool>(
         &mut self,
-        probe: &mut Probe<'a>,
-        entry: FillEntry<'a>,
+        probe: &mut Probe<'a, GRAPH, EXTENDED>,
+        entry: FillEntry<'a, '_>,
         parents: &[GroupState],
-        output: &Output,
+        output: &OutputView,
         options: PrintOptions,
         committed_groups: &[Option<Mode>],
     ) -> Mode {
         let FillEntry {
             current,
+            pending,
             mode: incoming_mode,
             has_line_suffix,
         } = entry;
@@ -233,7 +258,7 @@ impl FillStack {
         let pair_fits = probe.fits(
             ProbeRequest {
                 current,
-                pending: &[],
+                pending,
                 continuation: None,
                 kind: FillProbe {
                     result: &mut measurement,
@@ -308,13 +333,13 @@ impl<'a> Frame<'a> {
     }
 }
 
-struct Cursor<'a> {
+struct Cursor<'a, S> {
     current: Frame<'a>,
     suspended: Vec<Frame<'a>>,
-    suffix_scopes: Vec<SuffixScope>,
+    suffix_scopes: Vec<SuffixScope<S>>,
 }
 
-impl<'a> Cursor<'a> {
+impl<'a, S: Copy> Cursor<'a, S> {
     fn enter(&mut self, elements: &'a [FormatElement<'a>], flat: bool, restore_mode: Option<Mode>) {
         self.suspended.push(self.current);
         self.current = Frame {
@@ -324,11 +349,7 @@ impl<'a> Cursor<'a> {
         };
     }
 
-    fn next(
-        &mut self,
-        mode: &mut Mode,
-        indent: &mut Indentation,
-    ) -> Option<(&'a FormatElement<'a>, bool)> {
+    fn next(&mut self, mode: &mut Mode, indent: &mut S) -> Option<(&'a FormatElement<'a>, bool)> {
         loop {
             if let Some((element, remaining)) = self.current.remaining.split_first() {
                 self.current.remaining = remaining;
@@ -388,15 +409,15 @@ impl<'a> ProbeCursor<'a, '_> {
 }
 
 /// Suffix-only state follows its execution boundary, not every traversed frame.
-struct SuffixScope {
+struct SuffixScope<S> {
     frame_depth: usize,
-    restore_indent: Indentation,
+    restore_indent: S,
 }
 
-struct LineSuffix<'a> {
+struct LineSuffix<'a, S> {
     elements: &'a [FormatElement<'a>],
     mode: Mode,
-    indent: Indentation,
+    indent: S,
 }
 
 impl ConditionTarget {
@@ -445,11 +466,18 @@ impl<'parents, 'scratch, P: Copy + Into<T>, T: Copy> BorrowedStack<'parents, 'sc
     }
 }
 
-struct Output {
-    text: String,
+struct OutputView {
     column: usize,
-    pending_indent: Indentation,
     fit_state: FitState,
+}
+
+struct Output<'a, M: IndentModel<'a>, const EXTENDED: bool> {
+    text: String,
+    cursors: [Option<usize>; 2],
+    view: OutputView,
+    pending_indent: M::State,
+    model: M,
+    marker: std::marker::PhantomData<&'a ()>,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -494,22 +522,194 @@ impl Indentation {
     }
 }
 
+trait IndentModel<'a>: Default {
+    type State: Copy + Default;
+    const RICH: bool;
+    fn indent(&mut self, state: Self::State, options: PrintOptions) -> Self::State;
+    fn align(&mut self, state: Self::State, width: usize) -> Self::State;
+    fn unalign(&mut self, state: Self::State, width: usize) -> Self::State;
+    fn absolute(&mut self, state: Self::State, width: usize, options: PrintOptions) -> Self::State;
+    fn align_text(
+        &mut self,
+        state: Self::State,
+        text: &'a AlignText<'a>,
+        options: PrintOptions,
+    ) -> Self::State;
+    fn dedent(&mut self, state: Self::State) -> Self::State;
+    fn mark_root(&mut self, state: Self::State) -> Self::State;
+    fn root(&self, state: Self::State) -> Self::State;
+    fn width(&self, state: Self::State, options: PrintOptions) -> usize;
+    fn is_empty(&self, state: Self::State) -> bool;
+    fn non_whitespace(&self, state: Self::State) -> bool;
+    fn emit(&mut self, state: Self::State, output: &mut String, options: PrintOptions);
+}
+
+#[derive(Default)]
+struct SimpleIndent;
+impl<'a> IndentModel<'a> for SimpleIndent {
+    type State = Indentation;
+    const RICH: bool = false;
+    fn indent(&mut self, s: Indentation, o: PrintOptions) -> Indentation {
+        s.indented(o)
+    }
+    fn align(&mut self, mut s: Indentation, width: usize) -> Indentation {
+        s.alignment += width;
+        s.alignments += 1;
+        s
+    }
+    fn unalign(&mut self, mut s: Indentation, width: usize) -> Indentation {
+        s.alignment = s
+            .alignment
+            .checked_sub(width)
+            .expect("alignment scopes must close after opening");
+        s.alignments = s
+            .alignments
+            .checked_sub(1)
+            .expect("alignment scopes must close after opening");
+        s
+    }
+    fn absolute(&mut self, _: Indentation, width: usize, o: PrintOptions) -> Indentation {
+        Indentation::absolute(width, o)
+    }
+    fn align_text(&mut self, _: Indentation, _: &'a AlignText<'a>, _: PrintOptions) -> Indentation {
+        unreachable!("rich indent flag is required")
+    }
+    fn dedent(&mut self, _: Indentation) -> Indentation {
+        unreachable!("rich indent flag is required")
+    }
+    fn mark_root(&mut self, _: Indentation) -> Indentation {
+        unreachable!("rich indent flag is required")
+    }
+    fn root(&self, _: Indentation) -> Indentation {
+        Indentation::default()
+    }
+    fn width(&self, s: Indentation, o: PrintOptions) -> usize {
+        s.width(o)
+    }
+    fn is_empty(&self, s: Indentation) -> bool {
+        s.levels == 0 && s.alignment == 0
+    }
+    fn non_whitespace(&self, _: Indentation) -> bool {
+        false
+    }
+    fn emit(&mut self, s: Indentation, text: &mut String, o: PrintOptions) {
+        match o.indent_style {
+            IndentStyle::Space => text.extend(std::iter::repeat_n(
+                ' ',
+                s.levels * usize::from(o.indent_width.value()) + s.alignment,
+            )),
+            IndentStyle::Tab => {
+                text.extend(std::iter::repeat_n('\t', s.levels));
+                text.extend(std::iter::repeat_n(' ', s.alignment));
+            }
+        }
+    }
+}
+
+impl<'a> IndentModel<'a> for indent::Rich<'a> {
+    type State = indent::State;
+    const RICH: bool = true;
+    fn indent(&mut self, s: Self::State, o: PrintOptions) -> Self::State {
+        self.indent(s, o)
+    }
+    fn align(&mut self, s: Self::State, width: usize) -> Self::State {
+        self.align(s, width)
+    }
+    fn unalign(&mut self, _: Self::State, _: usize) -> Self::State {
+        unreachable!("rich align scopes restore state")
+    }
+    fn absolute(&mut self, s: Self::State, width: usize, o: PrintOptions) -> Self::State {
+        let mut s = self.root(s);
+        let unit = usize::from(o.indent_width.value());
+        let (levels, remainder) = match width.checked_div(unit) {
+            Some(n) => (n, width % unit),
+            None => (0, width),
+        };
+        s = self.align(s, remainder);
+        for _ in 0..levels {
+            s = self.indent(s, o);
+        }
+        s
+    }
+    fn align_text(&mut self, s: Self::State, t: &'a AlignText<'a>, o: PrintOptions) -> Self::State {
+        self.text(s, t, o)
+    }
+    fn dedent(&mut self, s: Self::State) -> Self::State {
+        indent::Rich::dedent(self, s)
+    }
+    fn mark_root(&mut self, s: Self::State) -> Self::State {
+        self.mark_root(s)
+    }
+    fn root(&self, s: Self::State) -> Self::State {
+        self.root(s)
+    }
+    fn width(&self, s: Self::State, _: PrintOptions) -> usize {
+        self.width(s)
+    }
+    fn is_empty(&self, s: Self::State) -> bool {
+        indent::Rich::is_empty(self, s)
+    }
+    fn non_whitespace(&self, s: Self::State) -> bool {
+        self.non_whitespace(s)
+    }
+    fn emit(&mut self, s: Self::State, text: &mut String, _: PrintOptions) {
+        self.emit(s, text)
+    }
+}
+
+pub(super) fn print<'a>(
+    doc: Doc<'a>,
+    options: PrintOptions,
+    track_cursor: bool,
+) -> Result<PrintResult, CursorError> {
+    if doc.extended_print || track_cursor {
+        print_for::<true>(doc, options, track_cursor)
+    } else {
+        print_for::<false>(doc, options, false)
+    }
+}
+
+fn print_for<'a, const EXTENDED: bool>(
+    doc: Doc<'a>,
+    options: PrintOptions,
+    track_cursor: bool,
+) -> Result<PrintResult, CursorError> {
+    match (doc.group_states, doc.rich_indent) {
+        (false, false) => print_impl::<false, EXTENDED, SimpleIndent>(doc, options, track_cursor),
+        (true, false) => print_impl::<true, EXTENDED, SimpleIndent>(doc, options, track_cursor),
+        (false, true) => {
+            print_impl::<false, EXTENDED, indent::Rich<'a>>(doc, options, track_cursor)
+        }
+        (true, true) => print_impl::<true, EXTENDED, indent::Rich<'a>>(doc, options, track_cursor),
+    }
+}
+
 // Keep the interpreter's register allocation independent of syntax construction.
 #[inline(never)]
-pub(super) fn print<'a>(
-    elements: &'a [FormatElement<'a>],
-    allocator: &'a Allocator,
-    group_count: u32,
+fn print_impl<'a, const GRAPH: bool, const EXTENDED: bool, M: IndentModel<'a>>(
+    doc: Doc<'a>,
     options: PrintOptions,
-) -> String {
-    let mut output = Output {
+    track_cursor: bool,
+) -> Result<PrintResult, CursorError> {
+    let Doc {
+        elements,
+        allocator,
+        group_count,
+        ..
+    } = doc;
+    let mut output = Output::<M, EXTENDED> {
         text: String::new(),
-        column: 0,
-        pending_indent: Indentation::default(),
-        fit_state: FitState::Measured,
+        cursors: [None; 2],
+        view: OutputView {
+            column: 0,
+            fit_state: FitState::Measured,
+        },
+        pending_indent: M::State::default(),
+        model: M::default(),
+        marker: std::marker::PhantomData,
     };
     let mut suffixes = Vec::new();
-    let mut indent = Indentation::default();
+    let mut indent = M::State::default();
     let mut indents = ArenaVec::with_capacity_in(8, allocator);
     let mut modes = ArenaVec::with_capacity_in(8, allocator);
     let group_count = group_count as usize;
@@ -517,11 +717,12 @@ pub(super) fn print<'a>(
     group_modes.resize(group_count, None);
     let group_modes = group_modes.into_bump_slice_mut();
     let mut mode = Mode::Break;
-    let mut probe = Probe {
+    let mut probe = Probe::<GRAPH, EXTENDED> {
         modes: Vec::new(),
         frames: Vec::new(),
         fills: Vec::new(),
         entries: Vec::new(),
+        group_effects: GRAPH.then(|| super::breaks::analyze(elements)),
     };
     let mut cursor = Cursor {
         current: Frame::new(elements),
@@ -554,7 +755,8 @@ pub(super) fn print<'a>(
                 cursor.enter(elements.get(), true, None)
             }
             FormatElement::Alternatives(alternatives) => {
-                let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
+                let inherit_flat =
+                    mode == Mode::Flat && output.view.fit_state != FitState::Remeasure;
                 let selected = if inherit_flat {
                     Some(&alternatives.preferred[0])
                 } else {
@@ -573,7 +775,7 @@ pub(super) fn print<'a>(
                                 entries: &entries,
                             },
                             &modes,
-                            &output,
+                            &output.view,
                             options,
                             mode,
                             group_modes,
@@ -586,6 +788,63 @@ pub(super) fn print<'a>(
                     });
                 output.record_group_mode(selected_mode, inherit_flat);
                 cursor.enter(fragment.elements(), false, Some(mode));
+                mode = selected_mode;
+            }
+            FormatElement::GroupWithStates(group) => {
+                if !GRAPH {
+                    unreachable!("group states require graph propagation");
+                }
+                let inherit_flat =
+                    mode == Mode::Flat && output.view.fit_state != FitState::Remeasure;
+                let expanded = matches!(group.request, GroupRequest::Expanded);
+                let fits = |probe: &mut Probe<'a, GRAPH, EXTENDED>,
+                            fragment: super::Fragment<'a>| {
+                    probe.fits(
+                        ProbeRequest {
+                            current: Frame {
+                                restore_mode: Some(mode),
+                                ..Frame::new(fragment.elements())
+                            },
+                            pending: &cursor.suspended,
+                            continuation: Some(cursor.current),
+                            kind: ContinuationProbe::Candidate,
+                            has_line_suffix: !suffixes.is_empty(),
+                            fills: fills.contexts(),
+                            entries: &entries,
+                        },
+                        &modes,
+                        &output.view,
+                        options,
+                        mode,
+                        group_modes,
+                    )
+                };
+                let (fallback, earlier) = group
+                    .states
+                    .split_last()
+                    .expect("group states are nonempty");
+                let (selected, selected_mode) = if inherit_flat {
+                    (
+                        group.contents,
+                        if expanded { Mode::Break } else { Mode::Flat },
+                    )
+                } else if !expanded && fits(&mut probe, group.contents) {
+                    (group.contents, Mode::Flat)
+                } else if !expanded {
+                    earlier
+                        .iter()
+                        .skip(1)
+                        .copied()
+                        .find(|state| fits(&mut probe, *state))
+                        .map_or((*fallback, Mode::Break), |state| (state, Mode::Flat))
+                } else {
+                    (*fallback, Mode::Break)
+                };
+                output.record_group_mode(selected_mode, inherit_flat);
+                if let Some(id) = group.id {
+                    group_modes[id.index()] = Some(selected_mode);
+                }
+                cursor.enter(selected.elements(), false, Some(mode));
                 mode = selected_mode;
             }
             FormatElement::SoftLineIfBreak(id) => {
@@ -603,16 +862,46 @@ pub(super) fn print<'a>(
                     output.line(indent, options, mode);
                 }
             }
-            FormatElement::BreakParent => {}
-            FormatElement::Text { source, width } => {
-                output.write(Text::from_parts(source, width), options, mode)
+            FormatElement::BreakParent | FormatElement::StartLabel(_) | FormatElement::EndLabel => {
             }
-            FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
-                if matches!(element, FormatElement::Line) {
-                    output.write(Text::new(" "), options, mode);
+            FormatElement::Cursor => {
+                if EXTENDED && track_cursor {
+                    output.write_indent(options);
+                    let marker = output
+                        .cursors
+                        .iter_mut()
+                        .find(|marker| marker.is_none())
+                        .ok_or(CursorError)?;
+                    *marker = Some(output.text.len());
                 }
             }
-            FormatElement::SoftLine | FormatElement::Line | FormatElement::HardLine => {
+            FormatElement::Trim => {
+                if EXTENDED {
+                    output.write_indent(options);
+                    let trimmed = output.trim();
+                    output.view.column = output.view.column.saturating_sub(trimmed);
+                }
+            }
+            FormatElement::Text { source, width } => {
+                output.write(Text::from_parts(source, width), options)
+            }
+            FormatElement::SoftLine
+            | FormatElement::Line
+            | FormatElement::SoftLiteralLine
+            | FormatElement::NormalLiteralLine
+                if mode == Mode::Flat =>
+            {
+                if matches!(
+                    element,
+                    FormatElement::Line | FormatElement::NormalLiteralLine
+                ) {
+                    output.write(Text::new(" "), options);
+                }
+            }
+            FormatElement::SoftLine
+            | FormatElement::Line
+            | FormatElement::HardLine
+            | FormatElement::HardLineWithoutBreakParent => {
                 if !suffixes.is_empty() {
                     flush_suffixes(
                         &mut suffixes,
@@ -625,7 +914,11 @@ pub(super) fn print<'a>(
                 }
                 output.line(indent, options, mode);
             }
-            FormatElement::LiteralLine | FormatElement::LiteralLineWithIndent => {
+            FormatElement::LiteralLine
+            | FormatElement::SoftLiteralLine
+            | FormatElement::NormalLiteralLine
+            | FormatElement::LiteralLineWithoutBreakParent
+            | FormatElement::LiteralLineWithIndent => {
                 if !suffixes.is_empty() {
                     flush_suffixes(
                         &mut suffixes,
@@ -639,14 +932,14 @@ pub(super) fn print<'a>(
                 let next_indent = if matches!(element, FormatElement::LiteralLineWithIndent) {
                     indent
                 } else {
-                    Indentation::default()
+                    output.model.root(indent)
                 };
                 output.literal_line(next_indent, options, mode);
             }
             FormatElement::IfBreak { source, width } | FormatElement::IfFlat { source, width } => {
                 let broken = mode == Mode::Break;
                 if broken == matches!(element, FormatElement::IfBreak { .. }) {
-                    output.write(Text::from_parts(source, width), options, mode);
+                    output.write(Text::from_parts(source, width), options);
                 }
             }
             FormatElement::Conditional(conditional)
@@ -680,9 +973,27 @@ pub(super) fn print<'a>(
                     cursor.enter(HARD_LINE, false, None);
                 }
             }
-            FormatElement::StartGroup { effect, id } => {
-                let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
-                let flat = !effect.preferred_breaks()
+            FormatElement::StartGroup {
+                request,
+                effect,
+                id,
+                ..
+            } => {
+                let expand = if GRAPH {
+                    matches!(request, GroupRequest::Expanded)
+                        || probe
+                            .group_effects
+                            .as_ref()
+                            .expect("graph facts are available")
+                            .get(&(source_element as *const _ as usize))
+                            .copied()
+                            .unwrap_or(false)
+                } else {
+                    effect.preferred_breaks()
+                };
+                let inherit_flat =
+                    mode == Mode::Flat && output.view.fit_state != FitState::Remeasure;
+                let flat = !expand
                     && (inherit_flat
                         || probe.fits(
                             ProbeRequest {
@@ -695,7 +1006,7 @@ pub(super) fn print<'a>(
                                 entries: &entries,
                             },
                             &modes,
-                            &output,
+                            &output.view,
                             options,
                             mode,
                             group_modes,
@@ -712,27 +1023,41 @@ pub(super) fn print<'a>(
                 summary,
                 end_offset,
             } => {
-                let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
+                let inherit_flat =
+                    mode == Mode::Flat && output.view.fit_state != FitState::Remeasure;
+                let request = ProbeRequest {
+                    current: cursor.current,
+                    pending: &cursor.suspended,
+                    continuation: None,
+                    kind: ContinuationProbe::Group,
+                    has_line_suffix: !suffixes.is_empty(),
+                    fills: fills.contexts(),
+                    entries: &entries,
+                };
                 let flat = inherit_flat
-                    || probe.fits(
-                        ProbeRequest {
-                            current: cursor.current,
-                            pending: &cursor.suspended,
-                            continuation: None,
-                            kind: PreparedGroup {
-                                summary,
-                                end_offset: end_offset as usize,
+                    || if EXTENDED {
+                        probe.fits(request, &modes, &output.view, options, mode, group_modes)
+                    } else {
+                        probe.fits(
+                            ProbeRequest {
+                                current: request.current,
+                                pending: request.pending,
+                                continuation: request.continuation,
+                                kind: PreparedGroup {
+                                    summary,
+                                    end_offset: end_offset as usize,
+                                },
+                                has_line_suffix: request.has_line_suffix,
+                                fills: request.fills,
+                                entries: request.entries,
                             },
-                            has_line_suffix: !suffixes.is_empty(),
-                            fills: fills.contexts(),
-                            entries: &entries,
-                        },
-                        &modes,
-                        &output,
-                        options,
-                        mode,
-                        group_modes,
-                    );
+                            &modes,
+                            &output.view,
+                            options,
+                            mode,
+                            group_modes,
+                        )
+                    };
                 let group_mode = if flat { Mode::Flat } else { Mode::Break };
                 output.record_group_mode(group_mode, inherit_flat);
                 modes.push(GroupState { restore_mode: mode });
@@ -746,23 +1071,27 @@ pub(super) fn print<'a>(
             }
             FormatElement::StartIndent => {
                 indents.push(indent);
-                indent = indent.indented(options);
+                indent = output.model.indent(indent, options);
             }
             FormatElement::StartAbsoluteIndent { width } => {
                 indents.push(indent);
-                indent = Indentation::absolute(width as usize, options);
+                indent = output.model.absolute(indent, width as usize, options);
             }
-            FormatElement::StartIndentIfBreak { id, end_offset } => {
-                let binding = group_modes[id.index()];
+            FormatElement::StartIndentIfBreak {
+                target,
+                negate,
+                end_offset,
+            } => {
+                let binding = target.mode(mode, group_modes);
                 if flat || binding.is_none() {
                     let (contents, remaining) =
                         cursor.current.remaining.split_at(end_offset as usize);
                     cursor.current.remaining = remaining;
                     if binding.is_some() {
                         let (body, end) = contents.split_at(contents.len() - 1);
-                        if binding == Some(Mode::Break) {
+                        if binding == Some(if negate { Mode::Flat } else { Mode::Break }) {
                             indents.push(indent);
-                            indent = indent.indented(options);
+                            indent = output.model.indent(indent, options);
                             // Restore indentation after the projected body completes.
                             cursor.enter(end, false, None);
                         }
@@ -770,8 +1099,8 @@ pub(super) fn print<'a>(
                     }
                 } else {
                     indents.push(indent);
-                    if binding == Some(Mode::Break) {
-                        indent = indent.indented(options);
+                    if binding == Some(if negate { Mode::Flat } else { Mode::Break }) {
+                        indent = output.model.indent(indent, options);
                     }
                 }
             }
@@ -781,18 +1110,40 @@ pub(super) fn print<'a>(
                     .expect("indent scopes must close after opening");
             }
             FormatElement::StartAlign { width } => {
-                indent.alignment += width as usize;
-                indent.alignments += 1;
+                if M::RICH {
+                    indents.push(indent);
+                }
+                indent = output.model.align(indent, width as usize);
             }
             FormatElement::EndAlign { width } => {
-                indent.alignment = indent
-                    .alignment
-                    .checked_sub(width as usize)
-                    .expect("alignment scopes must close after opening");
-                indent.alignments = indent
-                    .alignments
-                    .checked_sub(1)
-                    .expect("alignment scopes must close after opening");
+                if M::RICH {
+                    indent = indents
+                        .pop()
+                        .expect("alignment scopes must close after opening");
+                } else {
+                    indent = output.model.unalign(indent, width as usize);
+                }
+            }
+            FormatElement::StartAlignText(text) => {
+                indents.push(indent);
+                indent = output.model.align_text(indent, text, options);
+            }
+            FormatElement::StartDedent => {
+                indents.push(indent);
+                indent = output.model.dedent(indent);
+            }
+            FormatElement::StartMarkRoot => {
+                indents.push(indent);
+                indent = output.model.mark_root(indent);
+            }
+            FormatElement::StartDedentToRoot => {
+                indents.push(indent);
+                indent = output.model.root(indent);
+            }
+            FormatElement::EndRichIndent(_) => {
+                indent = indents
+                    .pop()
+                    .expect("indent scopes must close after opening");
             }
             FormatElement::StartFill => fills.start(mode),
             FormatElement::EndFill => fills.end(),
@@ -801,11 +1152,12 @@ pub(super) fn print<'a>(
                     &mut probe,
                     FillEntry {
                         current: cursor.current,
+                        pending: &cursor.suspended,
                         mode,
                         has_line_suffix: !suffixes.is_empty(),
                     },
                     &modes,
-                    &output,
+                    &output.view,
                     options,
                     group_modes,
                 );
@@ -819,12 +1171,11 @@ pub(super) fn print<'a>(
             }
         }
     }
-    debug_assert_eq!(indent.levels, 0, "document must close every indent scope");
-    debug_assert!(indents.is_empty(), "document must close every indent scope");
-    debug_assert_eq!(
-        indent.alignment, 0,
-        "document must close every alignment scope"
+    debug_assert!(
+        output.model.is_empty(indent),
+        "document must close every indent scope"
     );
+    debug_assert!(indents.is_empty(), "document must close every indent scope");
     debug_assert!(modes.is_empty(), "document must close every group scope");
     debug_assert!(fills.is_empty(), "document must close every fill scope");
     debug_assert!(entries.is_empty(), "document must close every fill entry");
@@ -833,87 +1184,112 @@ pub(super) fn print<'a>(
         "document must close every suffix scope"
     );
     output.write_indent(options);
-    output.text
+    let [start, end] = output.cursors;
+    Ok(PrintResult {
+        text: output.text,
+        cursor_range: start.zip(end).map(|(start, end)| start..end),
+    })
 }
 
-impl Output {
+impl<'a, M: IndentModel<'a>, const EXTENDED: bool> Output<'a, M, EXTENDED> {
     // An inherited mode consumes the request without refreshing its measurement.
     fn record_group_mode(&mut self, mode: Mode, inherited: bool) {
         if mode == Mode::Break {
-            self.fit_state = FitState::Unmeasured;
+            self.view.fit_state = FitState::Unmeasured;
         } else if !inherited {
-            self.fit_state = FitState::Measured;
+            self.view.fit_state = FitState::Measured;
         }
     }
 
     fn invalidate_line(&mut self, mode: Mode) {
         if mode == Mode::Flat {
-            self.fit_state = FitState::Remeasure;
-        } else if self.fit_state == FitState::Measured {
-            self.fit_state = FitState::Unmeasured;
+            self.view.fit_state = FitState::Remeasure;
+        } else if self.view.fit_state == FitState::Measured {
+            self.view.fit_state = FitState::Unmeasured;
         }
     }
 
     #[inline]
     fn write_indent(&mut self, options: PrintOptions) {
-        if self.pending_indent.levels != 0 || self.pending_indent.alignment != 0 {
+        if !self.model.is_empty(self.pending_indent) {
             self.write_pending_indent(options);
         }
     }
 
-    // Keep indentation materialization outside the ordinary text path.
     #[inline(never)]
     fn write_pending_indent(&mut self, options: PrintOptions) {
         let indent = std::mem::take(&mut self.pending_indent);
-        match options.indent_style {
-            IndentStyle::Space => self.text.extend(std::iter::repeat_n(
-                ' ',
-                indent.levels * usize::from(options.indent_width.value()) + indent.alignment,
-            )),
-            IndentStyle::Tab => {
-                self.text.extend(std::iter::repeat_n('\t', indent.levels));
-                self.text.extend(std::iter::repeat_n(' ', indent.alignment));
-            }
+        self.model.emit(indent, &mut self.text, options);
+    }
+
+    #[inline]
+    fn write(&mut self, text: Text<'_>, options: PrintOptions) {
+        self.write_parts(text.source(), text.width(), options);
+    }
+
+    // Keep common text emission inline in both interpreter specializations.
+    #[inline(always)]
+    fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions) {
+        if EXTENDED && source.is_empty() {
+            return;
+        }
+        self.write_indent(options);
+        if options.line_ending != LineEnding::Lf && source.contains('\n') {
+            self.write_text_lines(source, options.line_ending);
+        } else {
+            self.text.push_str(source);
+        }
+        self.view.column = Text::from_source_parts(source, width).advance_column(self.view.column);
+    }
+
+    fn write_text_lines(&mut self, source: &str, ending: LineEnding) {
+        let mut lines = source.split('\n');
+        self.text.push_str(lines.next().unwrap_or_default());
+        for line in lines {
+            self.text.push_str(ending.as_str());
+            self.text.push_str(line);
         }
     }
 
     #[inline]
-    fn write(&mut self, text: Text<'_>, options: PrintOptions, mode: Mode) {
-        self.write_parts(text.source(), text.width(), options, mode);
-    }
-
-    fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions, mode: Mode) {
-        self.write_indent(options);
-        self.text.push_str(source);
-        let (column, multiline) = Text::from_source_parts(source, width).last_line(self.column);
-        self.column = column;
-        if multiline {
-            self.invalidate_line(mode);
+    fn trim(&mut self) -> usize {
+        let len = self.text.trim_end_matches([' ', '\t']).len();
+        let trimmed = self.text.len() - len;
+        self.text.truncate(len);
+        if EXTENDED && trimmed != 0 {
+            for position in self.cursors.iter_mut().flatten() {
+                *position = (*position).min(len);
+            }
         }
+        trimmed
     }
 
-    fn line(&mut self, indent: Indentation, options: PrintOptions, mode: Mode) {
-        self.pending_indent = Indentation::default();
-        self.text
-            .truncate(self.text.trim_end_matches([' ', '\t']).len());
+    // The specialized interpreters emit ordinary lines on their hot paths.
+    #[inline(always)]
+    fn line(&mut self, indent: M::State, options: PrintOptions, mode: Mode) {
+        if self.model.non_whitespace(self.pending_indent) {
+            self.write_indent(options);
+        }
+        self.pending_indent = M::State::default();
+        self.trim();
         self.literal_line(indent, options, mode);
     }
 
-    fn literal_line(&mut self, indent: Indentation, options: PrintOptions, mode: Mode) {
+    fn literal_line(&mut self, indent: M::State, options: PrintOptions, mode: Mode) {
         self.write_indent(options);
         self.invalidate_line(mode);
         self.text.push_str(options.line_ending.as_str());
-        self.column = indent.width(options);
+        self.view.column = self.model.width(indent, options);
         self.pending_indent = indent;
     }
 }
 
-fn flush_suffixes<'a>(
-    suffixes: &mut Vec<LineSuffix<'a>>,
-    cursor: &mut Cursor<'a>,
+fn flush_suffixes<'a, S: Copy>(
+    suffixes: &mut Vec<LineSuffix<'a, S>>,
+    cursor: &mut Cursor<'a, S>,
     line: Option<&'a FormatElement<'a>>,
     mode: &mut Mode,
-    indent: &mut Indentation,
+    indent: &mut S,
 ) {
     debug_assert!(!suffixes.is_empty(), "flush requires pending suffixes");
     if let Some(line) = line {
@@ -963,19 +1339,20 @@ impl ProbeKind for PreparedGroup {
     }
 }
 
-struct Probe<'a> {
+struct Probe<'a, const GRAPH: bool, const EXTENDED: bool> {
     modes: Vec<GroupState>,
     frames: Vec<Frame<'a>>,
     fills: Vec<FillContext>,
     entries: Vec<Mode>,
+    group_effects: Option<rustc_hash::FxHashMap<usize, bool>>,
 }
 
-impl<'a> Probe<'a> {
+impl<'a, const GRAPH: bool, const EXTENDED: bool> Probe<'a, GRAPH, EXTENDED> {
     fn fits<K: ProbeKind>(
         &mut self,
         request: ProbeRequest<'a, '_, K>,
         parents: &[GroupState],
-        output: &Output,
+        output: &OutputView,
         options: PrintOptions,
         incoming_mode: Mode,
         committed_groups: &[Option<Mode>],
@@ -994,6 +1371,7 @@ impl<'a> Probe<'a> {
             frames,
             fills,
             entries,
+            group_effects,
         } = self;
         let mut fills = BorrowedStack::new(parent_fills, fills);
         let mut entries = BorrowedStack::new(parent_entries, entries);
@@ -1004,6 +1382,7 @@ impl<'a> Probe<'a> {
         // must not consume the borrowed contexts of Fills already being printed.
         let mut uncommitted_fills = 0usize;
         let mut pending_line_space = false;
+        let mut trailing_space = 0;
         let mut column = output.column;
         modes.clear();
         frames.clear();
@@ -1030,7 +1409,8 @@ impl<'a> Probe<'a> {
             return false;
         }
         // Active text and committed flat line spaces advance the probe column.
-        while let Some((element, flat)) = cursor.next(&mut mode) {
+        while let Some((source_element, flat)) = cursor.next(&mut mode) {
+            let element = source_element;
             let flattened;
             let element = if flat {
                 let Some(element) = element.flattened() else {
@@ -1053,18 +1433,28 @@ impl<'a> Probe<'a> {
                     if !active {
                         continue;
                     }
+                    let source = source.as_str();
+                    if EXTENDED && source.is_empty() {
+                        continue;
+                    }
                     if pending_line_space {
                         // Prettier fits defers `line` spaces until nonempty text,
                         // independently of the number of spaces actually printed.
                         column += 1;
+                        if EXTENDED {
+                            trailing_space += 1;
+                        }
                     }
                     pending_line_space = false;
-                    let (next_column, multiline) =
-                        Text::from_parts(source, width).first_line(column);
-                    column = next_column;
-                    if multiline {
-                        return column <= usize::from(options.line_width);
+                    if EXTENDED {
+                        let trimmed = source.trim_end_matches([' ', '\t']).len();
+                        trailing_space = if trimmed == 0 {
+                            trailing_space + source.len()
+                        } else {
+                            source.len() - trimmed
+                        };
                     }
+                    column = Text::from_source_parts(source, width).advance_column(column);
                     if column > usize::from(options.line_width) {
                         return false;
                     }
@@ -1084,8 +1474,16 @@ impl<'a> Probe<'a> {
                         return false;
                     }
                 }
-                FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
-                    if matches!(element, FormatElement::Line) {
+                FormatElement::SoftLine
+                | FormatElement::Line
+                | FormatElement::SoftLiteralLine
+                | FormatElement::NormalLiteralLine
+                    if mode == Mode::Flat =>
+                {
+                    if matches!(
+                        element,
+                        FormatElement::Line | FormatElement::NormalLiteralLine
+                    ) {
                         if kind.line(pending_line_space) {
                             return true;
                         }
@@ -1095,13 +1493,32 @@ impl<'a> Probe<'a> {
                 FormatElement::SoftLine
                 | FormatElement::Line
                 | FormatElement::HardLine
+                | FormatElement::HardLineWithoutBreakParent
+                | FormatElement::SoftLiteralLine
+                | FormatElement::NormalLiteralLine
                 | FormatElement::LiteralLine
+                | FormatElement::LiteralLineWithoutBreakParent
                 | FormatElement::LiteralLineWithIndent => return true,
-                FormatElement::StartGroup { effect, id } => {
+                FormatElement::StartGroup {
+                    request,
+                    effect,
+                    id,
+                    ..
+                } => {
                     if id.is_some() && kind.layout_dependency() {
                         return true;
                     }
-                    let expand = effect.preferred_breaks();
+                    let expand = if GRAPH {
+                        matches!(request, GroupRequest::Expanded)
+                            || group_effects
+                                .as_ref()
+                                .expect("graph facts are available")
+                                .get(&(source_element as *const _ as usize))
+                                .copied()
+                                .unwrap_or(false)
+                    } else {
+                        effect.preferred_breaks()
+                    };
                     if expand && K::BOUNDED {
                         return false;
                     }
@@ -1118,7 +1535,7 @@ impl<'a> Probe<'a> {
                     if kind.layout_dependency() {
                         return true;
                     }
-                    if mode == Mode::Flat {
+                    if !EXTENDED && mode == Mode::Flat {
                         column = summary.advance(column, &mut pending_line_space);
                         if column > usize::from(options.line_width) {
                             return false;
@@ -1166,6 +1583,26 @@ impl<'a> Probe<'a> {
                 FormatElement::FlatFragment { elements, .. } => {
                     cursor.enter(elements.get(), true, None)
                 }
+                FormatElement::GroupWithStates(group) => {
+                    if !GRAPH {
+                        unreachable!("group states require graph propagation");
+                    }
+                    if group.id.is_some() && kind.layout_dependency() {
+                        return true;
+                    }
+                    let expanded = matches!(group.request, GroupRequest::Expanded);
+                    if expanded && K::BOUNDED {
+                        return false;
+                    }
+                    let group_mode = if expanded { Mode::Break } else { mode };
+                    let fragment = if group_mode == Mode::Break {
+                        *group.states.last().unwrap()
+                    } else {
+                        group.contents
+                    };
+                    cursor.enter(fragment.elements(), false, Some(mode));
+                    mode = group_mode;
+                }
                 FormatElement::Alternatives(alternatives) => {
                     if kind.layout_dependency() {
                         return true;
@@ -1189,7 +1626,19 @@ impl<'a> Probe<'a> {
                         return true;
                     }
                 }
-                FormatElement::BreakParent => {}
+                FormatElement::BreakParent
+                | FormatElement::Cursor
+                | FormatElement::StartLabel(_)
+                | FormatElement::EndLabel => {}
+                FormatElement::Trim => {
+                    if EXTENDED {
+                        if kind.layout_dependency() {
+                            return true;
+                        }
+                        column = column.saturating_sub(trailing_space);
+                        trailing_space = 0;
+                    }
+                }
                 FormatElement::StartFill if !K::BOUNDED => {
                     uncommitted_fills += 1;
                 }
@@ -1244,7 +1693,12 @@ impl<'a> Probe<'a> {
                 | FormatElement::StartAbsoluteIndent { .. }
                 | FormatElement::EndIndent
                 | FormatElement::StartAlign { .. }
-                | FormatElement::EndAlign { .. } => {}
+                | FormatElement::EndAlign { .. }
+                | FormatElement::StartAlignText(_)
+                | FormatElement::StartDedent
+                | FormatElement::StartMarkRoot
+                | FormatElement::StartDedentToRoot
+                | FormatElement::EndRichIndent(_) => {}
             }
         }
         column <= usize::from(options.line_width)
