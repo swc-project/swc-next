@@ -5,7 +5,7 @@ description: Review pull requests in this repository for correctness, simplicity
 
 # Code Review
 
-Default to Chinese unless requested otherwise.
+Default to English unless requested otherwise.
 
 ## Review
 
