@@ -18,8 +18,7 @@ use pragma::{PragmaKind, pragmas};
 pub(crate) use display_name::DisplayName;
 
 impl MultiPassTransformer<'_, '_> {
-    // The caller either reanalyzes immediately or returns the context and discards
-    // this pipeline, so the pre-lowering model cannot be reused after mutation.
+    // The caller must reanalyze before the next pass or discard the pipeline.
     pub(super) fn jsx(
         &mut self,
         options: &JsxOptions,

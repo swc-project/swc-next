@@ -9,8 +9,7 @@ mod options;
 pub use options::{JsxImportOptions, TypeScriptOptions};
 
 impl MultiPassTransformer<'_, '_> {
-    // Terminal public transforms discard the model; complete pipeline stages
-    // reanalyze before any subsequent stage can read it.
+    // The caller must reanalyze before the next pass or discard the pipeline.
     pub(super) fn typescript(&mut self, options: &TypeScriptOptions) {
         let program = self.ctx.root_program();
         // SAFETY: The pipeline supplies this AST's current model. Lowering

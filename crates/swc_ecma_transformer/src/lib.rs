@@ -91,8 +91,10 @@ impl Transformer {
 /// reanalyze before handing off to [`ECMAScriptTransformer`]. These transformers
 /// should eventually move into `ECMAScriptTransformer` and share its single pass.
 ///
-/// Only an analysis binding can create this pipeline. After lowering, callers
-/// must reanalyze before reusing the semantic model, or discard the pipeline.
+/// Starts with an exclusive analysis binding. JSX and TypeScript lowering may
+/// leave the model stale; callers must reanalyze before the next pass or discard
+/// the pipeline. React Refresh reanalyzes before returning to JSX lowering.
+/// This ordering is an internal safety invariant.
 struct MultiPassTransformer<'ctx, 'a> {
     ctx: &'ctx mut AstCtx<'a>,
     semantic: Semantic<'a>,
@@ -129,8 +131,9 @@ impl ECMAScriptTransformer {
             es2022: es2022::ES2022::new(options.es2022, options.proposal),
             jsx_display_name: jsx::DisplayName::new(options, options.filename.clone()),
         };
-        // SAFETY: The consumed binding supplies this AST's current model. Traversal
-        // and helper injection use only handles from this AST and preserve its invariants.
+        // SAFETY: The pipeline reanalyzes after each JSX and TypeScript pass,
+        // so its model is current. Traversal and helper injection use only
+        // handles from this AST and preserve its invariants.
         let mut ctx = TraverseMutCtx::new(unsafe { ast.ast_mut() }, state);
         let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
         TransformCtx::new(&mut ctx).finish();

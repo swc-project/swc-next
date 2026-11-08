@@ -802,6 +802,7 @@ pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> Semanti
     }
 }
 
+// Keep AST traversal non-generic over the context's ownership or borrow form.
 fn analyze_impl<'a>(
     tree: &Ast<'a>,
     options: AnalyzeOptions,
