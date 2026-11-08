@@ -21,9 +21,10 @@ fn declaration_files() {
     let mut ctx = parsed.ast;
     Normalizer::normalize(&mut ctx);
     let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
-    let transformed = transform(analyzed, &TypeScriptOptions::default());
+    let mut transformer = MultiPassTransformer::new(analyzed);
+    transformer.typescript(&TypeScriptOptions::default());
     // SAFETY: The inspected root belongs to the transformed AST.
-    let ast = unsafe { transformed.ast() };
+    let ast = unsafe { transformer.ctx.ast() };
 
     assert!(ast.root_program().body(ast).is_empty());
     assert!(ast.comments().is_empty());

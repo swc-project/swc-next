@@ -90,9 +90,10 @@ fn assert_default_export(source: &str, value: bool) {
                 verbatim_module_syntax,
                 ..TypeScriptOptions::default()
             };
-            let transformed = transform(analyzed, &options);
+            let mut transformer = MultiPassTransformer::new(analyzed);
+            transformer.typescript(&options);
             // SAFETY: The inspected statements belong to the transformed AST.
-            let ast = unsafe { transformed.ast() };
+            let ast = unsafe { transformer.ctx.ast() };
             let retained = ast.root_program().body(ast).iter().any(|id| {
                 let statement = ast.get_node_in_sub_range(id);
                 matches!(

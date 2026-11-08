@@ -3,8 +3,8 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 
-use super::{TypeScriptOptions, transform};
-use crate::normalize::Normalizer;
+use super::TypeScriptOptions;
+use crate::{MultiPassTransformer, normalize::Normalizer};
 
 mod enums;
 mod jsx;
@@ -49,8 +49,9 @@ fn transformed_code_with_source_type(
     let mut ctx = parsed.ast;
     Normalizer::normalize_runtime(&mut ctx);
     let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
-    let transformed = transform(analyzed, &transform_options);
-    swc_next_ecma_codegen::print(transformed, Default::default()).code
+    let mut transformer = MultiPassTransformer::new(analyzed);
+    transformer.typescript(&transform_options);
+    swc_next_ecma_codegen::print(transformer.ctx, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.

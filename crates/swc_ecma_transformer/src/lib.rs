@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
     TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SemanticAst, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, SemanticAst, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -45,28 +45,24 @@ pub struct TransformerReturn<'a> {
 
 pub struct Transformer;
 
-struct ECMAScriptTransformer {
-    es2022: es2022::ES2022,
-    jsx_display_name: jsx::DisplayName,
-}
-
 impl Transformer {
     /// Transforms a program using its bound semantic model.
     ///
     /// Consumes the analysis binding, releasing the AST for subsequent use.
     pub fn transform<'ast>(
-        mut analyzed: SemanticAst<'ast, &mut AstCtx<'ast>>,
+        analyzed: SemanticAst<'ast, &mut AstCtx<'ast>>,
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
+        let mut transformer = MultiPassTransformer::new(analyzed);
         let filename = options.filename.as_deref();
         let mut diagnostics = Vec::new();
 
         // JSX Transformer
         let jsx = &mut options.jsx;
         if let Some(jsx) = jsx {
-            jsx::inject_pragmas(analyzed.ctx(), jsx);
-            let (transformed, jsx_diagnostics) = jsx::transform(analyzed, jsx, filename);
-            analyzed = analyze(transformed, AnalyzeOptions::default()).semantic;
+            transformer.jsx_pragmas(jsx);
+            let jsx_diagnostics = transformer.jsx(jsx, filename);
+            transformer.analyze();
             diagnostics.extend(jsx_diagnostics);
         }
 
@@ -77,11 +73,11 @@ impl Transformer {
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
-            let transformed = typescript::transform(analyzed, typescript);
-            analyzed = analyze(transformed, AnalyzeOptions::default()).semantic;
+            transformer.typescript(typescript);
+            transformer.analyze();
         }
 
-        let semantic = ECMAScriptTransformer::transform(analyzed, &options);
+        let semantic = ECMAScriptTransformer::transform(transformer, &options);
         TransformerReturn {
             semantic,
             diagnostics,
@@ -89,12 +85,44 @@ impl Transformer {
     }
 }
 
+/// Hosts the JSX and TypeScript transformers as separate passes.
+///
+/// When both are enabled, the pipeline runs JSX -> reanalyze -> TypeScript ->
+/// reanalyze before handing off to [`ECMAScriptTransformer`]. These transformers
+/// should eventually move into `ECMAScriptTransformer` and share its single pass.
+///
+/// Only an analysis binding can create this pipeline. After lowering, callers
+/// must reanalyze before reusing the semantic model, or discard the pipeline.
+struct MultiPassTransformer<'ctx, 'a> {
+    ctx: &'ctx mut AstCtx<'a>,
+    semantic: Semantic<'a>,
+}
+
+impl<'ctx, 'a> MultiPassTransformer<'ctx, 'a> {
+    fn new(analyzed: SemanticAst<'a, &'ctx mut AstCtx<'a>>) -> Self {
+        let (ctx, semantic) = analyzed.into_parts();
+        Self { ctx, semantic }
+    }
+
+    fn analyze(&mut self) {
+        let (_, semantic) = analyze(&*self.ctx, AnalyzeOptions::default())
+            .semantic
+            .into_parts();
+        self.semantic = semantic;
+    }
+}
+
+struct ECMAScriptTransformer {
+    es2022: es2022::ES2022,
+    jsx_display_name: jsx::DisplayName,
+}
+
 impl ECMAScriptTransformer {
     fn transform<'a>(
-        analyzed: SemanticAst<'a, &mut AstCtx<'a>>,
+        multi_pass: MultiPassTransformer<'_, 'a>,
         options: &TransformerOptions,
     ) -> ScopeModel<'a> {
-        let (ast, semantic) = analyzed.into_parts();
+        let MultiPassTransformer { ctx: ast, semantic } = multi_pass;
         let program = ast.root_program();
         let state = TransformerState::new(ScopeModel::new(semantic));
         let mut transformer = Self {
