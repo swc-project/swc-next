@@ -19,13 +19,12 @@ fn declaration_files() {
     assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
 
     let mut ctx = parsed.ast;
-    let semantic = analyze(&ctx, AnalyzeOptions::default()).semantic;
-    let program = ctx.root_program();
     Normalizer::normalize(&mut ctx);
-    // SAFETY: The pass only uses handles from this AST and its fresh model.
-    let ast = unsafe { ctx.ast_mut() };
-    transform(program, ast, &semantic, &TypeScriptOptions::default());
+    let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
+    let transformed = transform(analyzed, &TypeScriptOptions::default());
+    // SAFETY: The inspected root belongs to the transformed AST.
+    let ast = unsafe { transformed.ast() };
 
-    assert!(program.body(ast).is_empty());
+    assert!(ast.root_program().body(ast).is_empty());
     assert!(ast.comments().is_empty());
 }

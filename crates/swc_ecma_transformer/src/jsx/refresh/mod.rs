@@ -1,9 +1,8 @@
 use super::{ReactRefreshOptions, RuntimeBindings};
 use crate::uid::UidGenerator;
 use signatures::SignatureTransformer;
-use swc_next_ecma_ast::VisitMutWith;
-use swc_next_ecma_ast::{Ast, Program, Stmt};
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_ast::{AstCtx, Stmt, VisitMutWith};
+use swc_next_ecma_semantic::SemanticAst;
 
 mod build;
 mod digest;
@@ -11,13 +10,17 @@ mod hooks;
 mod registration;
 mod signatures;
 
-pub(crate) fn transform<'a>(
-    program: Program,
-    ast: &mut Ast<'a>,
-    semantic: &Semantic<'a>,
+pub(crate) fn transform<'ctx, 'a>(
+    analyzed: SemanticAst<'a, &'ctx mut AstCtx<'a>>,
     options: &ReactRefreshOptions,
     bindings: &RuntimeBindings<'_>,
-) -> Option<Stmt> {
+) -> (&'ctx mut AstCtx<'a>, Option<Stmt>) {
+    let (ctx, semantic) = analyzed.into_parts();
+    let semantic = &semantic;
+    let program = ctx.root_program();
+    // SAFETY: The consumed binding supplies this AST's current model. Registration
+    // and signature injection retain source handles and allocate new handles in this AST.
+    let ast = unsafe { ctx.ast_mut() };
     let mut uid = UidGenerator::new(ast.allocator());
     for entry in semantic.iter_symbols() {
         uid.observe(ast.get_wtf8(entry.symbol.name).as_bytes());
@@ -39,5 +42,6 @@ pub(crate) fn transform<'a>(
     // Registration keeps source functions, references, and scopes intact.
     let mut signatures = SignatureTransformer::new(ast, semantic, options, uid);
     program.visit_mut_children_with(&mut signatures);
-    signatures.program_signature_declaration()
+    let runtime_import_anchor = signatures.program_signature_declaration();
+    (ctx, runtime_import_anchor)
 }

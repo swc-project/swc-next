@@ -47,9 +47,11 @@ fn uncertain_alias_dependencies() {
         source_type: SourceType::Module,
         ..ParserOptions::default()
     };
-    let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    let mut parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let semantic = analyze(&parsed.ast, AnalyzeOptions::default()).semantic;
+    let (_, semantic) = analyze(&mut parsed.ast, AnalyzeOptions::default())
+        .semantic
+        .into_parts();
     // SAFETY: The inspected handles belong to this AST.
     let ast = unsafe { parsed.ast.ast() };
     let analysis = crate::typescript::analysis::TypeScriptAnalysis::analyze(
@@ -83,16 +85,15 @@ fn assert_default_export(source: &str, value: bool) {
             assert!(parsed.diagnostics.is_empty());
             let mut ctx = parsed.ast;
             Normalizer::normalize(&mut ctx);
-            let semantic = analyze(&ctx, AnalyzeOptions::default()).semantic;
-            // SAFETY: The pass only uses handles from this AST and its fresh model.
-            let ast = unsafe { ctx.ast_mut() };
-            let program = ast.root_program();
+            let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
             let options = TypeScriptOptions {
                 verbatim_module_syntax,
                 ..TypeScriptOptions::default()
             };
-            transform(program, ast, &semantic, &options);
-            let retained = program.body(ast).iter().any(|id| {
+            let transformed = transform(analyzed, &options);
+            // SAFETY: The inspected statements belong to the transformed AST.
+            let ast = unsafe { transformed.ast() };
+            let retained = ast.root_program().body(ast).iter().any(|id| {
                 let statement = ast.get_node_in_sub_range(id);
                 matches!(
                     ast.stmt_data(statement),

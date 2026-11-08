@@ -15,7 +15,7 @@ use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_formatter::{FormatOptions, format_ast};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     es2022::ES2022Options,
@@ -191,7 +191,10 @@ fn bench_formatter(ast: &'static AstCtx<'static>) -> String {
     black_box(format_ast(black_box(ast), FormatOptions::prettier()).unwrap())
 }
 
-type TransformInput = (AstCtx<'static>, Semantic<'static>, TransformerOptions);
+type TransformInput = (
+    SemanticAst<'static, &'static mut AstCtx<'static>>,
+    TransformerOptions,
+);
 
 fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
     let mut ast = setup_program(source, lang);
@@ -214,8 +217,10 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
         },
         ..TransformerOptions::default()
     };
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    (ast, semantic, options)
+    // Setup owns the leaked context so the binding can borrow it outside timing.
+    let ast = Box::leak(Box::new(ast));
+    let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+    (semantic, options)
 }
 
 #[library_benchmark]
@@ -233,10 +238,9 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
 #[bench::effect_schema_ast(setup_transform(EFFECT_SCHEMA_AST, Lang::Ts))]
 #[bench::hono_types(setup_transform(HONO_TYPES, Lang::Ts))]
 fn bench_transform(input: TransformInput) {
-    let (mut ast, semantic, options) = black_box(input);
-    // SAFETY: The setup built the model from this AST and has not mutated it since.
-    let result = unsafe { Transformer::transform(&mut ast, semantic, options) };
-    black_box((ast, result));
+    let (semantic, options) = black_box(input);
+    let result = Transformer::transform(semantic, options);
+    black_box(result);
 }
 
 fn type_strip_options(lang: Lang) -> StripOptions {

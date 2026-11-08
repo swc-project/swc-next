@@ -700,9 +700,76 @@ impl Iterator for DeclarationIterator<'_> {
     }
 }
 
+mod sealed {
+    use swc_next_ecma_ast::AstCtx;
+
+    pub trait Sealed {}
+
+    impl Sealed for AstCtx<'_> {}
+    impl Sealed for &AstCtx<'_> {}
+    impl Sealed for &mut AstCtx<'_> {}
+}
+
+/// An owned context or a shared or exclusive borrow accepted by [`crate::analyze`].
+///
+/// Implementations are restricted to `AstCtx`, `&AstCtx`, and `&mut AstCtx`, so analysis
+/// retains exactly the context and access permission supplied by its caller.
+pub trait AstBorrow<'a>: sealed::Sealed {
+    /// Returns the borrowed context without permitting mutation.
+    fn as_ast_ctx(&self) -> &AstCtx<'a>;
+}
+
+impl<'a> AstBorrow<'a> for AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+impl<'a> AstBorrow<'a> for &AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+impl<'a> AstBorrow<'a> for &mut AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+/// An owned or borrowed AST together with its current semantic model.
+///
+/// Only [`analyze`] can create this binding. Owned contexts and both forms of
+/// borrow permit queries while keeping the AST unchanged. Only a binding with
+/// an exclusive borrow can currently be consumed by an in-place transform.
+pub struct SemanticAst<'a, A: AstBorrow<'a>> {
+    ast: A,
+    semantic: Semantic<'a>,
+}
+
+impl<'a, A: AstBorrow<'a>> SemanticAst<'a, A> {
+    /// Returns the analyzed AST without permitting mutation.
+    pub fn ctx(&self) -> &AstCtx<'a> {
+        self.ast.as_ast_ctx()
+    }
+
+    /// Returns the current semantic model for queries.
+    pub fn semantic(&self) -> &Semantic<'a> {
+        &self.semantic
+    }
+
+    /// Consumes the binding and returns its original context or borrow and semantic model.
+    ///
+    /// Subsequent AST mutations may invalidate the detached model. A new
+    /// binding must be obtained by analyzing the context again.
+    pub fn into_parts(self) -> (A, Semantic<'a>) {
+        (self.ast, self.semantic)
+    }
+}
+
 /// Semantic analysis output and any requested scope-dependent early errors.
-pub struct SemanticReturn<'a> {
-    pub semantic: Semantic<'a>,
+pub struct SemanticReturn<'a, A: AstBorrow<'a>> {
+    pub semantic: SemanticAst<'a, A>,
     pub diagnostics: Vec<Diagnostic<'a>>,
 }
 
@@ -714,18 +781,30 @@ pub struct AnalyzeOptions {
     pub check_syntax: SyntaxChecks,
 }
 
-/// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
+/// Analyzes a tree and binds its current [`Semantic`] model to the supplied context or borrow.
+///
+/// Pass `AstCtx` to transfer ownership, `&AstCtx` for queries, or `&mut AstCtx` to
+/// reserve exclusive access for a subsequent in-place transform. Analysis itself
+/// only reads the AST.
+/// Reborrow an existing mutable reference with `&mut *ast` if it will be used
+/// again after consuming the analysis binding.
 ///
 /// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
 /// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
-pub fn analyze<'a>(ast: &AstCtx<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
-    // SAFETY: Analysis only reads handles obtained from this AST.
-    let ast = unsafe { ast.ast() };
-    let root = ast.root_program();
-    let mut builder = SemanticBuilder::new(ast, options.check_syntax);
-    root.visit_with(&mut builder);
-    builder.build()
+pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> SemanticReturn<'a, A> {
+    let (semantic, diagnostics) = {
+        // SAFETY: Analysis only reads handles obtained from this AST.
+        let tree = unsafe { ast.as_ast_ctx().ast() };
+        let root = tree.root_program();
+        let mut builder = SemanticBuilder::new(tree, options.check_syntax);
+        root.visit_with(&mut builder);
+        builder.build()
+    };
+    SemanticReturn {
+        semantic: SemanticAst { ast, semantic },
+        diagnostics,
+    }
 }
 
 /// Checks scope-dependent syntax errors without building a [`Semantic`] model.

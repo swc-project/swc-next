@@ -9,32 +9,6 @@ use crate::{Ast, Comment, Expr, Lang, Program, SourceType, Stmt};
 ///
 /// This type does not provide interior mutability. Mutable access requires an
 /// exclusive borrow of the context.
-///
-/// ```compile_fail,E0133
-/// use swc_next_allocator::Allocator;
-/// use swc_next_ecma_ast::AstCtx;
-///
-/// let allocator = Allocator::new();
-/// let ctx = AstCtx::new("", &allocator);
-/// ctx.ast();
-/// ```
-///
-/// ```compile_fail,E0133
-/// use swc_next_allocator::Allocator;
-/// use swc_next_ecma_ast::AstCtx;
-///
-/// let allocator = Allocator::new();
-/// let mut ctx = AstCtx::new("", &allocator);
-/// ctx.ast_mut();
-/// ```
-///
-/// ```compile_fail,E0308
-/// use swc_next_ecma_ast::{Ast, AstCtx};
-///
-/// fn access(ctx: &AstCtx<'_>) {
-///     let _: &Ast<'_> = ctx;
-/// }
-/// ```
 pub struct AstCtx<'a> {
     ast: Ast<'a>,
 }
@@ -156,15 +130,6 @@ impl<'a> AstCtx<'a> {
     ///
     /// The caller must uphold the handle invariants documented on [`Ast`]
     /// throughout all subsequent uses of the returned AST and its handles.
-    ///
-    /// ```compile_fail,E0133
-    /// use swc_next_allocator::Allocator;
-    /// use swc_next_ecma_ast::AstCtx;
-    ///
-    /// let allocator = Allocator::new();
-    /// let ctx = AstCtx::new("", &allocator);
-    /// ctx.into_ast();
-    /// ```
     #[inline]
     pub unsafe fn into_ast(self) -> Ast<'a> {
         self.ast

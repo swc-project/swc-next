@@ -99,7 +99,7 @@ fn lower_tsx(source: &str, options: &JsxOptions) -> String {
 
 fn helper_references(output: &str) -> (SymbolId, Vec<Option<SymbolId>>) {
     let allocator = Allocator::new();
-    let parsed = Parser::init(
+    let mut parsed = Parser::init(
         &allocator,
         output,
         ParserOptions::default(),
@@ -107,7 +107,9 @@ fn helper_references(output: &str) -> (SymbolId, Vec<Option<SymbolId>>) {
     )
     .parse();
     assert!(parsed.diagnostics.is_empty());
-    let semantic = analyze(&parsed.ast, AnalyzeOptions::default()).semantic;
+    let (_, semantic) = analyze(&mut parsed.ast, AnalyzeOptions::default())
+        .semantic
+        .into_parts();
     // SAFETY: The semantic handles below come from this AST.
     let ast = unsafe { parsed.ast.ast() };
     let helper = semantic
@@ -205,9 +207,8 @@ fn transform_options(
     } else {
         lang
     };
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    // SAFETY: The model was built from this AST and no mutation has occurred since.
-    let transformed = unsafe { Transformer::transform(&mut ast, semantic, options) };
+    let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
+    let transformed = Transformer::transform(semantic, options);
     assert_eq!(ast.lang(), expected_lang);
     // SAFETY: The visitor only reads handles from this transformed AST.
     let tree = unsafe { ast.ast() };

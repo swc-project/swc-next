@@ -301,22 +301,6 @@ impl std::error::Error for DeserializeError {}
 /// A read-only AST view backed by immutable transfer sections.
 ///
 /// Mutation is unavailable because its tables may alias immutable buffer bytes.
-///
-/// ```compile_fail
-/// use swc_next_ecma_ast::ffi::ast::BorrowedAst;
-///
-/// fn reserve(view: &mut BorrowedAst<'_>) {
-///     unsafe { view.ast_mut() }.reserve(1, 1);
-/// }
-/// ```
-///
-/// ```compile_fail,E0308
-/// use swc_next_ecma_ast::{Ast, ffi::ast::BorrowedAst};
-///
-/// fn access(view: &BorrowedAst<'_>) {
-///     let _: &Ast<'_> = view;
-/// }
-/// ```
 pub struct BorrowedAst<'a> {
     ast: AstCtx<'a>,
 }

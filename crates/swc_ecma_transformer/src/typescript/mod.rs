@@ -1,5 +1,5 @@
-use swc_next_ecma_ast::{Ast, Lang, Program, SubRange};
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_ast::{AstCtx, Lang, SubRange};
+use swc_next_ecma_semantic::SemanticAst;
 
 mod analysis;
 mod lower;
@@ -9,19 +9,25 @@ pub use options::{JsxImportOptions, TypeScriptOptions};
 
 /// Applies only the TypeScript syntax transform.
 ///
-/// The caller is responsible for running any required normalization first.
-pub fn transform<'a>(
-    program: Program,
-    ast: &mut Ast<'a>,
-    semantic: &Semantic<'a>,
+/// Run any required normalization before analysis. Consumes the input binding
+/// and returns the transformed context without analyzing it again. Re-run analysis
+/// before subsequent semantic work.
+pub fn transform<'ctx, 'a>(
+    analyzed: SemanticAst<'a, &'ctx mut AstCtx<'a>>,
     options: &TypeScriptOptions,
-) {
+) -> &'ctx mut AstCtx<'a> {
+    let (ctx, semantic) = analyzed.into_parts();
+    let semantic = &semantic;
+    let program = ctx.root_program();
+    // SAFETY: The consumed binding supplies this AST's current model. Lowering
+    // uses only handles from this AST and preserves its invariants.
+    let ast = unsafe { ctx.ast_mut() };
     if ast.lang() == Lang::Dts {
         program.set_directives(ast, SubRange::empty());
         program.set_body(ast, SubRange::empty());
         program.set_hashbang(ast, None);
         ast.clear_attached_comments();
-        return;
+        return ctx;
     }
 
     let dependencies = analysis::jsx_dependencies(program, ast, semantic, &options.jsx);
@@ -34,6 +40,7 @@ pub fn transform<'a>(
         lang => lang,
     };
     ast.set_source_metadata(ast.source_type(), lang);
+    ctx
 }
 
 #[cfg(test)]

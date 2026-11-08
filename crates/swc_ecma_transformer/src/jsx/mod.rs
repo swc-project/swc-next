@@ -1,5 +1,5 @@
-use swc_next_ecma_ast::{Ast, Diagnostic, Program, VisitMutWith};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, VisitMutWith};
+use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, analyze};
 
 use crate::uid::UidGenerator;
 
@@ -18,24 +18,27 @@ use pragma::{PragmaKind, pragmas};
 
 pub(crate) use display_name::DisplayName;
 
-/// Lower JSX using options updated with the file's pragmas.
-pub fn transform<'a>(
-    program: Program,
-    ast: &mut Ast<'a>,
-    semantic: &Semantic<'a>,
+/// Lowers JSX using options updated with the file's pragmas.
+///
+/// Consumes the input binding and returns the transformed context without a bound
+/// semantic model. Re-run analysis before subsequent semantic work.
+pub fn transform<'ctx, 'a>(
+    mut analyzed: SemanticAst<'a, &'ctx mut AstCtx<'a>>,
     options: &JsxOptions,
     source_path: Option<&str>,
-) -> Vec<Diagnostic<'static>> {
-    let bindings = RuntimeBindings::new(options, ast.source_type());
+) -> (&'ctx mut AstCtx<'a>, Vec<Diagnostic<'static>>) {
+    let bindings = RuntimeBindings::new(options, analyzed.ctx().source_type());
     let mut runtime_import_anchor = None;
-    let refreshed;
-    let semantic = if let Some(refresh) = &options.refresh {
-        runtime_import_anchor = refresh::transform(program, ast, semantic, refresh, &bindings);
-        refreshed = analyze(ast, AnalyzeOptions::default()).semantic;
-        &refreshed
-    } else {
-        semantic
-    };
+    if let Some(refresh) = &options.refresh {
+        let (ctx, anchor) = refresh::transform(analyzed, refresh, &bindings);
+        runtime_import_anchor = anchor;
+        analyzed = analyze(ctx, AnalyzeOptions::default()).semantic;
+    }
+    let (ctx, semantic) = analyzed.into_parts();
+    let program = ctx.root_program();
+    // SAFETY: The consumed binding supplies this AST's current model. Lowering
+    // obtains all handles from this AST and preserves their ownership and validity.
+    let ast = unsafe { ctx.ast_mut() };
     let implicit_roots = bindings.implicit_roots();
     let mut uid = UidGenerator::new(ast.allocator());
     for entry in semantic.iter_symbols() {
@@ -54,11 +57,15 @@ pub fn transform<'a>(
         let _ = program.visit_mut_with(&mut visitor);
     }
     lowerer.finish_program(program, ast);
-    lowerer.take_diagnostics()
+    let diagnostics = lowerer.take_diagnostics();
+    (ctx, diagnostics)
 }
 
 /// Apply JSX pragma comments to the options for this program.
-pub fn inject_pragmas(program: Program, ast: &Ast<'_>, options: &mut JsxOptions) {
+pub fn inject_pragmas(ctx: &AstCtx<'_>, options: &mut JsxOptions) {
+    let program = ctx.root_program();
+    // SAFETY: Pragma inspection only reads handles obtained from this AST.
+    let ast = unsafe { ctx.ast() };
     for (kind, value) in pragmas(program, ast) {
         match kind {
             PragmaKind::Jsx => options.pragma = Some(value.to_owned()),

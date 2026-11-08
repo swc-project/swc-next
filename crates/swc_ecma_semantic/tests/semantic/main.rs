@@ -10,13 +10,27 @@ mod visibility;
 use support::*;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, SymbolId};
+use swc_next_ecma_ast::{Ast, AstCtx, Diagnostic, Lang, ScopeId, SourceType, SymbolId};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SemanticReturn, SymbolFlags,
-    SyntaxChecks, analyze, check_syntax,
+    AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
+    check_syntax,
 };
+
+struct TestAnalysis<'a> {
+    semantic: Semantic<'a>,
+    diagnostics: Vec<Diagnostic<'a>>,
+}
+
+fn analyze<'a>(ast: &AstCtx<'a>, options: AnalyzeOptions) -> TestAnalysis<'a> {
+    let result = swc_next_ecma_semantic::analyze(ast, options);
+    let semantic = result.semantic.into_parts().1;
+    TestAnalysis {
+        semantic,
+        diagnostics: result.diagnostics,
+    }
+}
 
 #[track_caller]
 fn analyze_source<'a>(
@@ -54,7 +68,7 @@ fn analyze_syntax_source<'a>(
     allocator: &'a Allocator,
     source: &'a str,
     parser_options: Options,
-) -> (Ast<'a>, SemanticReturn<'a>) {
+) -> (Ast<'a>, TestAnalysis<'a>) {
     let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
     let result = analyze(

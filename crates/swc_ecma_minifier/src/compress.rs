@@ -61,7 +61,9 @@ impl Candidates {
         {
             return candidates;
         }
-        let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        let (ast, semantic) = analyze(ast, AnalyzeOptions::default())
+            .semantic
+            .into_parts();
         // SAFETY: Candidates only use handles from this AST and its fresh model.
         let ast = unsafe { ast.ast_mut() };
         // Dynamic lookup can observe declarations absent from the static use index.

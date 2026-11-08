@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
+    ArrowFunctionExpression, AstCtx, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
     ClassType, Decl, Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement,
     ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
     StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
     TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SemanticAst, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -51,22 +51,23 @@ struct ECMAScriptTransformer {
 }
 
 impl Transformer {
+    /// Transforms a program using its bound semantic model.
+    ///
+    /// Consumes the analysis binding, releasing the AST for subsequent use.
     pub fn transform<'ast>(
-        ast: &mut Ast<'ast>,
-        mut semantic: Semantic<'ast>,
+        mut analyzed: SemanticAst<'ast, &mut AstCtx<'ast>>,
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         let filename = options.filename.as_deref();
-        let program = ast.root_program();
         let mut diagnostics = Vec::new();
 
         // JSX Transformer
         let jsx = &mut options.jsx;
         if let Some(jsx) = jsx {
-            jsx::inject_pragmas(program, ast, jsx);
-            let jsx_diagnostics = jsx::transform(program, ast, &semantic, jsx, filename);
+            jsx::inject_pragmas(analyzed.ctx(), jsx);
+            let (transformed, jsx_diagnostics) = jsx::transform(analyzed, jsx, filename);
+            analyzed = analyze(transformed, AnalyzeOptions::default()).semantic;
             diagnostics.extend(jsx_diagnostics);
-            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
 
         // TypeScript Transformer
@@ -76,23 +77,36 @@ impl Transformer {
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
-            typescript::transform(program, ast, &semantic, typescript);
-            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+            let transformed = typescript::transform(analyzed, typescript);
+            analyzed = analyze(transformed, AnalyzeOptions::default()).semantic;
         }
 
-        // ECMAScript Transformer
-        let state = TransformerState::new(ScopeModel::new(semantic));
-        let mut transformer = ECMAScriptTransformer {
-            es2022: es2022::ES2022::new(options.es2022, options.proposal),
-            jsx_display_name: jsx::DisplayName::new(&options, options.filename.clone()),
-        };
-        let mut ctx = TraverseMutCtx::new(ast, state);
-        let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
-        TransformCtx::new(&mut ctx).finish();
+        let semantic = ECMAScriptTransformer::transform(analyzed, &options);
         TransformerReturn {
-            semantic: ctx.state.semantic,
+            semantic,
             diagnostics,
         }
+    }
+}
+
+impl ECMAScriptTransformer {
+    fn transform<'a>(
+        analyzed: SemanticAst<'a, &mut AstCtx<'a>>,
+        options: &TransformerOptions,
+    ) -> ScopeModel<'a> {
+        let (ast, semantic) = analyzed.into_parts();
+        let program = ast.root_program();
+        let state = TransformerState::new(ScopeModel::new(semantic));
+        let mut transformer = Self {
+            es2022: es2022::ES2022::new(options.es2022, options.proposal),
+            jsx_display_name: jsx::DisplayName::new(options, options.filename.clone()),
+        };
+        // SAFETY: The consumed binding supplies this AST's current model. Traversal
+        // and helper injection use only handles from this AST and preserve its invariants.
+        let mut ctx = TraverseMutCtx::new(unsafe { ast.ast_mut() }, state);
+        let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
+        TransformCtx::new(&mut ctx).finish();
+        ctx.state.semantic
     }
 }
 

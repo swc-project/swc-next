@@ -120,7 +120,7 @@ fn transform_program<'a, C: TransformCase>(
         Normalizer::normalize(&mut ast);
     }
     let semantic_ret = analyze(
-        &ast,
+        &mut ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
         },
@@ -132,8 +132,7 @@ fn transform_program<'a, C: TransformCase>(
     {
         return Ok(None);
     }
-    // SAFETY: Analysis used this AST and no mutation has occurred since.
-    let transformed = unsafe { Transformer::transform(&mut ast, semantic_ret.semantic, options) };
+    let transformed = Transformer::transform(semantic_ret.semantic, options);
     if let Some(diagnostic) = transformed
         .diagnostics
         .iter()

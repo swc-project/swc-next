@@ -860,14 +860,13 @@ mod tests {
         assert!(parsed.diagnostics.is_empty());
         let mut ast = parsed.ast;
         let result = analyze(
-            &ast,
+            &mut ast,
             AnalyzeOptions {
                 check_syntax: SyntaxChecks::all(),
             },
         );
         assert!(result.diagnostics.is_empty());
-        // SAFETY: The model was built from this AST and no mutation has occurred since.
-        let diagnostics = unsafe { transform(&mut ast, &result.semantic) };
+        let diagnostics = transform(result.semantic);
         let code = print(
             &ast,
             PrintOptions {
@@ -888,8 +887,11 @@ mod tests {
         };
         let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
-        let ast = parsed.ast;
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+        let mut ast = parsed.ast;
+        let semantic = analyze(&mut ast, AnalyzeOptions::default())
+            .semantic
+            .into_parts()
+            .1;
         let scope = ScopeId::MODULE;
         let local = semantic.lookup(scope, b"X", ReferenceSpace::Type).unwrap();
         let exported = semantic.lookup(scope, b"X", ReferenceSpace::Value).unwrap();

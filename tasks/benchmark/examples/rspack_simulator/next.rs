@@ -8,17 +8,17 @@ use swc_next_ecma_ast::{
     Visit, VisitWith, YieldExpression,
 };
 use swc_next_ecma_parser::{Options, Parser, Token, TokenParserConfig, TokenTag};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();
     let (ctx, tokens) = run_parse(src, &allocator);
     let semantic = run_semantic(&ctx);
     // SAFETY: The custom passes only inspect handles from this AST.
-    let ast = unsafe { ctx.ast() };
+    let ast = unsafe { semantic.ctx().ast() };
     let semicolons = run_collect_semicolons(ast, &tokens);
     let idents = run_scan_dependencies(ast);
-    drop((ctx, semantic, tokens, semicolons, idents));
+    drop((semantic, tokens, semicolons, idents));
 }
 
 #[inline(never)]
@@ -38,7 +38,7 @@ fn run_parse<'a>(src: &'a str, allocator: &'a Allocator) -> (AstCtx<'a>, ArenaVe
 }
 
 #[inline(never)]
-fn run_semantic<'a>(ast: &AstCtx<'a>) -> Semantic<'a> {
+fn run_semantic<'ctx, 'a>(ast: &'ctx AstCtx<'a>) -> SemanticAst<'a, &'ctx AstCtx<'a>> {
     analyze(
         ast,
         AnalyzeOptions {

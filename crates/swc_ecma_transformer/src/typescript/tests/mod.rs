@@ -48,11 +48,9 @@ fn transformed_code_with_source_type(
     assert!(parsed.diagnostics.is_empty());
     let mut ctx = parsed.ast;
     Normalizer::normalize_runtime(&mut ctx);
-    let semantic = analyze(&ctx, AnalyzeOptions::default()).semantic;
-    // SAFETY: The TypeScript pass only uses handles from this AST and its fresh model.
-    let ast = unsafe { ctx.ast_mut() };
-    transform(ast.root_program(), ast, &semantic, &transform_options);
-    swc_next_ecma_codegen::print(&ctx, Default::default()).code
+    let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
+    let transformed = transform(analyzed, &transform_options);
+    swc_next_ecma_codegen::print(transformed, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.
@@ -61,7 +59,7 @@ pub(super) fn with_output_semantic(
     check: impl FnOnce(&swc_next_ecma_ast::Ast<'_>, &swc_next_ecma_semantic::Semantic<'_>),
 ) {
     let allocator = Allocator::new();
-    let parsed = Parser::init(
+    let mut parsed = Parser::init(
         &allocator,
         source,
         ParserOptions::default(),
@@ -70,11 +68,14 @@ pub(super) fn with_output_semantic(
     .parse();
     assert!(parsed.diagnostics.is_empty());
     let analyzed = analyze(
-        &parsed.ast,
+        &mut parsed.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
         },
     );
     assert!(analyzed.diagnostics.is_empty());
-    check(unsafe { parsed.ast.ast() }, &analyzed.semantic);
+    check(
+        unsafe { analyzed.semantic.ctx().ast() },
+        analyzed.semantic.semantic(),
+    );
 }

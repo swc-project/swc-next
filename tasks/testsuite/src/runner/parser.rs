@@ -40,7 +40,7 @@ impl<C: Case> Runner<C> for ParserRunner {
                     check_syntax: SyntaxChecks::all(),
                 },
             );
-            let diagnostics = check_syntax(&ast, SyntaxChecks::all());
+            let diagnostics = check_syntax(semantic_ret.semantic.ctx(), SyntaxChecks::all());
             if diagnostics != semantic_ret.diagnostics {
                 return Err(format!(
                     "{}: syntax checking and semantic analysis diagnostics differ",

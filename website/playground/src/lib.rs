@@ -129,22 +129,18 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
         } else {
             Normalizer::normalize(&mut ast);
         }
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-        // SAFETY: The model was built from this AST and no mutation has occurred since.
-        unsafe {
-            Transformer::transform(
-                &mut ast,
-                semantic,
-                TransformerOptions {
-                    typescript: typescript.then(TypeScriptOptions::default),
-                    es2022: ES2022Options { static_blocks },
-                    proposal: ProposalOptions {
-                        prevent_extensions: true,
-                    },
-                    ..TransformerOptions::default()
+        let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
+        Transformer::transform(
+            semantic,
+            TransformerOptions {
+                typescript: typescript.then(TypeScriptOptions::default),
+                es2022: ES2022Options { static_blocks },
+                proposal: ProposalOptions {
+                    prevent_extensions: true,
                 },
-            )
-        };
+                ..TransformerOptions::default()
+            },
+        );
     }
     let output = print(
         &ast,
