@@ -7,6 +7,12 @@ use crate::{Ast, Comment, Expr, Lang, Program, SourceType, Stmt};
 /// Root handles and metadata can be read safely. Accessing node-specific data
 /// still requires an unsafe borrow of the underlying [`Ast`].
 ///
+/// Use [`ast()`](Self::ast) for custom inspection and
+/// [`ast_mut()`](Self::ast_mut) for custom edits. The safety requirements on
+/// [`Ast`] apply to every subsequent use of the returned AST and its handles,
+/// including calls to safe methods. A handle obtained before an edit may no
+/// longer be valid afterward.
+///
 /// This type does not provide interior mutability. Mutable access requires an
 /// exclusive borrow of the context.
 pub struct AstCtx<'a> {

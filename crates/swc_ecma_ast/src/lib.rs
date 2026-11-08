@@ -49,11 +49,26 @@ use crate::strings::StringPool;
 ///
 /// # Safety
 ///
-/// Handles are not tied to their owning AST. Access this type through
-/// [`AstCtx`], whose unsafe accessors require callers to uphold the handle
-/// invariants: node, field, and string handles must belong to this AST, remain
-/// in bounds, and identify data of the expected type and encoding. Handles
-/// invalidated by mutation must not be used again.
+/// Handles are not tied to their owning AST. These include [`NodeId`], typed
+/// node handles such as [`Expr`] and [`Program`], [`ExtraDataId`], [`SubRange`],
+/// and string handles ([`AstUtf8`] and [`AstWtf8`]). They identify storage within
+/// one AST; copying a handle does not copy its data or track later mutations.
+///
+/// Access this type through [`AstCtx`]. Its unsafe accessors require callers to
+/// uphold the following invariants throughout subsequent uses of the AST and
+/// its handles, even when individual operations are safe functions:
+///
+/// - Handles belong to this AST and refer to initialized, in-bounds storage.
+/// - Typed node handles match the stored node kind. Field and list handles
+///   match the stored value types, and string ranges have the expected UTF-8
+///   or WTF-8 encoding.
+/// - Mutations preserve these invariants for all AST edges and handles that
+///   remain in use, including if a panic unwinds.
+/// - Handles invalidated by replacing or truncating storage are never reused,
+///   even if their indices are allocated again.
+///
+/// Accesses may use unchecked indexing or interpret storage according to the
+/// handle's type. Violating these invariants can cause undefined behavior.
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
