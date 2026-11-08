@@ -793,18 +793,23 @@ pub struct AnalyzeOptions {
 /// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
 pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> SemanticReturn<'a, A> {
-    let (semantic, diagnostics) = {
-        // SAFETY: Analysis only reads handles obtained from this AST.
-        let tree = unsafe { ast.as_ast_ctx().ast() };
-        let root = tree.root_program();
-        let mut builder = SemanticBuilder::new(tree, options.check_syntax);
-        root.visit_with(&mut builder);
-        builder.build()
-    };
+    // SAFETY: Analysis only reads handles obtained from this AST.
+    let tree = unsafe { ast.as_ast_ctx().ast() };
+    let (semantic, diagnostics) = analyze_impl(tree, options);
     SemanticReturn {
         semantic: SemanticAst { ast, semantic },
         diagnostics,
     }
+}
+
+fn analyze_impl<'a>(
+    tree: &Ast<'a>,
+    options: AnalyzeOptions,
+) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
+    let root = tree.root_program();
+    let mut builder = SemanticBuilder::new(tree, options.check_syntax);
+    root.visit_with(&mut builder);
+    builder.build()
 }
 
 /// Checks scope-dependent syntax errors without building a [`Semantic`] model.
