@@ -14837,25 +14837,44 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>, comments: &mut [Comment]) {
         let parenthesized_span = ast.span(node);
         let replacement_span = ast.span(replacement);
 
+        // Comments are in source order. A leading comment can precede a
+        // trailing comment in the same gap, so attachment offsets are not sorted.
         let leading_from = parenthesized_span.start;
         let leading_comment_index =
-            comments.partition_point(|comment| comment.attached_to <= leading_from);
+            comments.partition_point(|comment| comment.span.end <= leading_from);
+        let mut previous_token_end = 0;
         for comment in comments[..leading_comment_index].iter_mut().rev() {
-            if comment.position != CommentPosition::Leading || comment.attached_to != leading_from {
+            if comment.span.end <= previous_token_end {
                 break;
             }
-            comment.attached_to = replacement_span.start;
+            match comment.position {
+                CommentPosition::Leading if comment.attached_to == leading_from => {
+                    comment.attached_to = replacement_span.start;
+                }
+                CommentPosition::Trailing if comment.attached_to < leading_from => {
+                    previous_token_end = previous_token_end.max(comment.attached_to);
+                }
+                _ => break,
+            }
         }
 
         let trailing_from = parenthesized_span.end;
         trailing_comment_index += comments[trailing_comment_index..]
-            .partition_point(|comment| comment.attached_to < trailing_from);
+            .partition_point(|comment| comment.span.start < trailing_from);
+        let mut next_token_start = u32::MAX;
         for comment in &mut comments[trailing_comment_index..] {
-            if comment.position != CommentPosition::Trailing || comment.attached_to != trailing_from
-            {
+            if comment.span.start >= next_token_start {
                 break;
             }
-            comment.attached_to = replacement_span.end;
+            match comment.position {
+                CommentPosition::Trailing if comment.attached_to == trailing_from => {
+                    comment.attached_to = replacement_span.end;
+                }
+                CommentPosition::Leading => {
+                    next_token_start = next_token_start.min(comment.attached_to);
+                }
+                _ => break,
+            }
         }
 
         // SAFETY: parsing has not exposed any concrete handles yet. This pass
@@ -19180,6 +19199,65 @@ mod tests {
         fn parse_common_js_comments(source: &str, lang: Lang) -> Vec<Comment> {
             parse_comments_with_source_type(source, lang, SourceType::CommonJs, true)
         }
+
+        fn parse_unwrapped_comments(source: &str, lang: Lang) -> Vec<Comment> {
+            parse_comments_with_source_type(source, lang, SourceType::Module, false)
+        }
+
+        let comments = parse_comments("import(/* a */ // b\n \"x\")", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 14, Leading, 21);
+        check!(comments[1], 15, 19, Trailing, 7);
+
+        let comments = parse_comments("f(/* a */ // b\n x)", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 2, 9, Leading, 16);
+        check!(comments[1], 10, 14, Trailing, 2);
+
+        let comments = parse_comments("const v = /*#__PURE__*/ // note\n call();", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 10, 23, Leading, 33);
+        check!(comments[1], 24, 31, Trailing, 9);
+
+        let comments = parse_comments("a /* x */ // y\n b", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 2, 9, Trailing, 1);
+        check!(comments[1], 10, 14, Trailing, 1);
+
+        let comments = parse_comments("for(/* a */ /* b */;;){}", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 4, 11, Leading, 19);
+        check!(comments[1], 12, 19, Trailing, 4);
+
+        let comments = parse_unwrapped_comments("import(/* a */ // b\n (\"x\"));", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 14, Leading, 22);
+        check!(comments[1], 15, 19, Trailing, 7);
+
+        let comments = parse_unwrapped_comments("(x)/* a */ // b\n y;", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 3, 10, Leading, 17);
+        check!(comments[1], 11, 15, Trailing, 2);
+
+        let comments = parse_comments("type F=(/*a*///b\nx:number)=>void;", Lang::Ts);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 8, 13, Leading, 17);
+        check!(comments[1], 13, 16, Trailing, 8);
+
+        let comments = parse_comments("type T=infer R extends/*a*///b\nS?1:0;", Lang::Ts);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 22, 27, Leading, 31);
+        check!(comments[1], 27, 30, Trailing, 22);
+
+        let comments = parse_comments("f() /* a */ // b", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 4, 11, Trailing, 3);
+        check!(comments[1], 12, 16, Trailing, 3);
+
+        let comments = parse_comments("/* a */ // b", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 0, 7, Leading, 0);
+        check!(comments[1], 8, 12, Leading, 0);
 
         // The expected values are generated by swc_core. Its spans and comment map keys are 1-based,
         // so those values are converted to 0-based offsets here.
