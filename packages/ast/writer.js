@@ -193,7 +193,12 @@ function directWrite(ast, id, key, value) {
   const previous = type === "node" || type === "list"
     ? captureReferences(ast, id, nativeKey) : null;
   if (type === "string") {
-    const [start, end] = encoded === null ? [NONE, 0] : arena.appendString(encoded);
+    let start = NONE, end = 0;
+    if (encoded !== null) {
+      start = arena.stringLength;
+      arena.appendString(encoded);
+      end = arena.stringLength;
+    }
     const { view, offset } = ast.writableField(id, nativeKey);
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, end, true);
@@ -331,7 +336,8 @@ class FragmentTransaction {
     const extra = arena.appendExtra(data.extraCount);
     if (extra !== this.extraBase) throw new TypeError("AST extra-data allocation changed during encoding");
     if (data.extraCount) arena.bytes.set(data.extra, arena.extraAddress(extra));
-    const [strings] = arena.appendStringBytes(data.strings);
+    const strings = arena.stringLength;
+    arena.appendStringBytes(data.strings);
     if (strings !== this.stringBase) throw new TypeError("AST string allocation changed during encoding");
     const payload = new DataView(data.payload.buffer, data.payload.byteOffset, data.payload.byteLength);
     const changed = [];

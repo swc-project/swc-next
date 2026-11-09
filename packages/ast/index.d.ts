@@ -94,7 +94,8 @@ export declare class AstView {
   utf8Offset(utf16Offset: number): number;
   /** Original source bytes for a node, sharing the AST buffer. */
   textBytes(id: number): Uint8Array;
-  /** UTF-8/WTF-8 bytes for a generated native string field, sharing the buffer. */
+  /** Bytes for a generated native string field, sharing the buffer: UTF-8/WTF-8 in base
+   * storage, UTF-16 code units in delta storage. */
   bytesForString(id: number, field: string): Uint8Array | null;
   /**
    * Traverse native structural occurrences without allocating node facades.

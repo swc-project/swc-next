@@ -738,33 +738,49 @@ export class AstView {
       end > this.stringLength
     )
       throw new RangeError("AST string out of bounds");
+    // Base storage is UTF-8; delta storage is UTF-16 code units, so use {@link
+    // DeltaAst#string} unless the caller wants the transferred units as they are.
     if (end <= this._stringLength) return this._bytes.subarray(this._strings + start, this._strings + end);
     if (start < this._stringLength) throw new RangeError("AST string crosses storage regions");
     const offset = this._arena.stringsOffset - this._stringLength;
     return this._arena.bytes.subarray(offset + start, offset + end);
   }
+  /**
+   * Read a delta pool string. That pool transfers UTF-16 code units, which a JS string
+   * already is, so reading copies the units and keeps unpaired surrogates intact.
+   */
+  deltaString(start, end) {
+    const arena = this._arena;
+    const from = (arena.stringsOffset + start - this._stringLength) >>> 1;
+    const to = (arena.stringsOffset + end - this._stringLength) >>> 1;
+    if (to - from <= 12) return String.fromCharCode(...arena.units.subarray(from, to));
+    let value = "";
+    for (let index = from; index < to; index += 4096) {
+      value += String.fromCharCode(...arena.units.subarray(index, Math.min(index + 4096, to)));
+    }
+    return value;
+  }
   string(start, end) {
     if (Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end >= start && end <= this.stringLength) {
       const length = end - start;
       if (length === 0) return "";
-      if (length <= 8 && (end <= this._stringLength || start >= this._stringLength)) {
-        const base = end <= this._stringLength;
-        const bytes = base ? this._bytes : this._arena.bytes;
-        const offset = base ? this._strings + start : this._arena.stringsOffset + start - this._stringLength;
+      if (start >= this._stringLength) return this.deltaString(start, end);
+      if (length <= 8 && end <= this._stringLength) {
+        const offset = this._strings + start;
         let mask = 0;
-        for (let i = 0; i < length; i++) mask |= bytes[offset + i];
+        for (let i = 0; i < length; i++) mask |= this._bytes[offset + i];
         if (mask < 0x80) {
-          const a = bytes[offset], b = length >= 2 ? bytes[offset + 1] : 0,
-            c = length >= 3 ? bytes[offset + 2] : 0, d = length >= 4 ? bytes[offset + 3] : 0;
+          const a = this._bytes[offset], b = length >= 2 ? this._bytes[offset + 1] : 0,
+            c = length >= 3 ? this._bytes[offset + 2] : 0, d = length >= 4 ? this._bytes[offset + 3] : 0;
           switch (length) {
             case 1: return String.fromCharCode(a);
             case 2: return String.fromCharCode(a, b);
             case 3: return String.fromCharCode(a, b, c);
             case 4: return String.fromCharCode(a, b, c, d);
-            case 5: return String.fromCharCode(a, b, c, d, bytes[offset + 4]);
-            case 6: return String.fromCharCode(a, b, c, d, bytes[offset + 4], bytes[offset + 5]);
-            case 7: return String.fromCharCode(a, b, c, d, bytes[offset + 4], bytes[offset + 5], bytes[offset + 6]);
-            case 8: return String.fromCharCode(a, b, c, d, bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
+            case 5: return String.fromCharCode(a, b, c, d, this._bytes[offset + 4]);
+            case 6: return String.fromCharCode(a, b, c, d, this._bytes[offset + 4], this._bytes[offset + 5]);
+            case 7: return String.fromCharCode(a, b, c, d, this._bytes[offset + 4], this._bytes[offset + 5], this._bytes[offset + 6]);
+            case 8: return String.fromCharCode(a, b, c, d, this._bytes[offset + 4], this._bytes[offset + 5], this._bytes[offset + 6], this._bytes[offset + 7]);
           }
         }
       }

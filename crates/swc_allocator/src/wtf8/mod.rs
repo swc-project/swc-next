@@ -970,6 +970,40 @@ impl<'a> From<Wtf8Buf> for Cow<'a, Wtf8> {
     }
 }
 
+/// Append little-endian UTF-16 code units to `out` as WTF-8.
+///
+/// Paired surrogates become one four-byte sequence, and a half that no pair completes
+/// keeps a three-byte sequence of its own, so the bytes round-trip the transferred code
+/// units. The result is UTF-8 exactly when [`utf16_le_has_unpaired_surrogate`] reports no
+/// such half.
+pub fn extend_wtf8_from_utf16_le(units: &[u8], out: &mut crate::vec::ArenaVec<'_, u8>) {
+    let units = units
+        .chunks_exact(2)
+        .map(|unit| u16::from_le_bytes([unit[0], unit[1]]));
+    for decoded in not_quite_std::decode_utf16(units) {
+        match decoded {
+            Ok(character) => {
+                let mut buffer = [0; 4];
+                out.extend_from_slice(character.encode_utf8(&mut buffer).as_bytes());
+            }
+            Err(half) => {
+                out.push((0xE0 | (half >> 12)) as u8);
+                out.push((0x80 | ((half >> 6) & 0x3F)) as u8);
+                out.push((0x80 | (half & 0x3F)) as u8);
+            }
+        }
+    }
+}
+
+/// Whether little-endian UTF-16 code units hold a surrogate that no pair completes, that
+/// is, whether their WTF-8 encoding stops being UTF-8.
+pub fn utf16_le_has_unpaired_surrogate(units: &[u8]) -> bool {
+    let units = units
+        .chunks_exact(2)
+        .map(|unit| u16::from_le_bytes([unit[0], unit[1]]));
+    not_quite_std::decode_utf16(units).any(|decoded| decoded.is_err())
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::{format, vec};
@@ -1540,5 +1574,27 @@ mod tests {
 
         let result = Wtf8::from_bytes(&original);
         assert_eq!(result.unwrap_err(), original);
+    }
+
+    #[test]
+    fn extends_wtf8_from_utf16_le() {
+        use crate::{Allocator, vec::ArenaVec};
+
+        fn units(code_units: &[u16]) -> Vec<u8> {
+            let mut bytes = Vec::new();
+            for unit in code_units {
+                bytes.extend_from_slice(&unit.to_le_bytes());
+            }
+            bytes
+        }
+
+        let allocator = Allocator::new();
+        let mut out = ArenaVec::new_in(&allocator);
+        // A pair becomes one four-byte code point, a half no pair completes stays three bytes.
+        extend_wtf8_from_utf16_le(&units(&[0x61, 0xe9, 0xd83d, 0xde00, 0xd800]), &mut out);
+        assert_eq!(out.as_slice(), b"a\xc3\xa9\xf0\x9f\x98\x80\xed\xa0\x80");
+
+        assert!(utf16_le_has_unpaired_surrogate(&units(&[0xd800, 0x61])));
+        assert!(!utf16_le_has_unpaired_surrogate(&units(&[0xd83d, 0xde00])));
     }
 }

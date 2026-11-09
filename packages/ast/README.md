@@ -108,7 +108,9 @@ fit the destination's original source.
 
 Editing nodes does not change `ast.source` or shift source positions.
 `sourceBytes` and `textBytes(id)` share original source storage;
-`bytesForString(id, field)` can refer to base or delta storage.
+`bytesForString(id, field)` can refer to base or delta storage, which hold UTF-8 and
+UTF-16 code units respectively, so read values with `ast.string` rather than decoding
+the bytes yourself.
 
 ```js
 import { NodeKind } from '@swc-next/ast';

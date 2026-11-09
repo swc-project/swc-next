@@ -13,17 +13,24 @@
 //! References retain native IDs, including shared nodes and unused arena slots.
 //! JavaScript derives occurrence/parent information only when it is needed.
 //!
-//! Deltas have a 96-byte `SWE3` version-3 header (twenty-four `u32` words):
+//! Deltas have a 96-byte `SWE3` version-4 header (twenty-four `u32` words):
 //! magic/version/schema/total, base node/extra/string/byte counts, new node count,
-//! row count, extra count, string length, root ID, flags, row offset/capacity,
+//! row count, extra count, string pool length, root ID, flags, row offset/capacity,
 //! extra offset/capacity, string offset/capacity, and four reserved zero words.
 //! Capacity-sized row, extra and string arenas follow contiguously. A 32-byte
-//! row contains an eight-byte UTF-8 span, kind byte, committed status byte (1),
+//! row contains an eight-byte string span, kind byte, committed status byte (1),
 //! two reserved zero bytes, target node ID, and sixteen-byte native payload.
 //! Targets are unique stable IDs: existing nodes are replaced in their original
 //! slots, and every newly allocated ID has a row. Extra and string references
 //! address the logical concatenation of the base and populated delta tables.
 //! Spare capacity is excluded from those logical tables.
+//!
+//! A string pool transfers UTF-16 code units, the form a JS string already is, so the
+//! writer copies a string instead of encoding it. The reader transcodes every referenced
+//! span to WTF-8 while merging it into the pool an AST reads, then rewrites the spans of
+//! the extension's own rows, because an encoded span is not as long as its code units.
+//! A span into the base pool keeps its handle: that pool is UTF-8, and base rows cannot
+//! reference an extension pool.
 //!
 //! Legacy extensions with a 64-byte `SWE2` header remain supported. That header
 //! contains version/schema/total, base node/extra/string/byte counts, extension
@@ -50,6 +57,10 @@ pub const SPAN_SIZE: usize = 8;
 pub const PAYLOAD_SIZE: usize = 16;
 pub const VERSION: u32 = 2;
 pub const MAGIC: u32 = u32::from_le_bytes(*b"SWA2");
+/// Version of a legacy extension part; its string pool transfers UTF-16 code units.
+pub const EXTENSION_VERSION: u32 = 4;
+/// Version of a delta part; its string pool also transfers UTF-16 code units.
+pub const DELTA_VERSION: u32 = 4;
 const NONE: u32 = u32::MAX;
 
 const _: () = {
@@ -285,7 +296,7 @@ mod tests {
         let total = strings + 8;
         let header = [
             u32::from_le_bytes(*b"SWE3"),
-            3,
+            DELTA_VERSION,
             schema::SCHEMA_ID,
             total as u32,
             base_nodes,
@@ -453,7 +464,7 @@ mod tests {
         let mut extension = vec![0; 112];
         let header = [
             u32::from_le_bytes(*b"SWE2"),
-            VERSION,
+            EXTENSION_VERSION,
             schema::SCHEMA_ID,
             112,
             base_nodes,
@@ -630,10 +641,12 @@ mod tests {
         put(&mut extension, 128 + 16, base_strings);
         put(&mut extension, 128 + 20, base_strings + 2);
         put(&mut extension, 44, 2);
-        extension[strings..strings + 2].copy_from_slice("é".as_bytes());
+        // The pool transfers UTF-16 code units, and a handle spans them.
+        extension[strings..strings + 2].copy_from_slice(&0xe9u16.to_le_bytes());
         let decoded = deserialize(&buffer, &extension, &allocator).unwrap();
         // SAFETY: All decoded handles below are used only with the decoded AST.
         let decoded = unsafe { decoded.ast() };
+        // The pool the AST reads holds transcoded WTF-8, and the row's handle points at it.
         assert_eq!(decoded.strings.extra_bytes(), "é".as_bytes());
         let body = decoded.root_program().body(decoded);
         let statement = body
@@ -646,7 +659,13 @@ mod tests {
         let identifier = expression.as_identifier_reference(decoded).unwrap();
         assert_eq!(decoded.get_utf8(identifier.name(decoded)), "é");
 
-        extension[strings] = 0xff;
+        // An unpaired surrogate cannot be the value of a UTF-8 field.
+        extension[strings..strings + 2].copy_from_slice(&0xd800u16.to_le_bytes());
+        assert!(deserialize(&buffer, &extension, &allocator).is_err());
+
+        // A handle must fall on a code-unit boundary.
+        extension[strings..strings + 2].copy_from_slice(&0xe9u16.to_le_bytes());
+        put(&mut extension, 128 + 20, base_strings + 1);
         assert!(deserialize(&buffer, &extension, &allocator).is_err());
     }
 
