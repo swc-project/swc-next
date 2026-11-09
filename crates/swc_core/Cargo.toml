@@ -32,6 +32,3 @@ swc_next_ecma_minifier    = { workspace = true, optional = true }
 swc_next_ecma_parser      = { workspace = true, optional = true }
 swc_next_ecma_semantic    = { workspace = true, optional = true }
 swc_next_ecma_transformer = { workspace = true, optional = true }
-
-[dev-dependencies]
-sourcemap = { workspace = true }

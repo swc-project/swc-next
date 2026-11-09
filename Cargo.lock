@@ -3661,7 +3661,6 @@ name = "swc_next_core"
 version = "0.5.0"
 dependencies = [
  "serde_json",
- "sourcemap",
  "swc_next_allocator",
  "swc_next_bridge",
  "swc_next_ecma_ast",
