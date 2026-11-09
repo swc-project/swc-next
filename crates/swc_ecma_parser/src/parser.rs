@@ -10562,10 +10562,36 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn try_parse_generic_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
-        let next = self.peek_ahead()?;
+        let mut peek = self.begin_peek();
+        let next = peek.next()?;
         if !next.tag().is_identifier_like() && next.tag() != TokenTag::Const {
             return Some(None);
         }
+        // A parameter name must be followed by a constraint, default, comma,
+        // or closing angle. Modifiers and escaped names retain the full parser.
+        // Reject JSX names/attributes before allocating a speculative AST.
+        if !next.is_escaped()
+            && !matches!(next.tag(), TokenTag::Const | TokenTag::In | TokenTag::Out)
+        {
+            let Some(after_name) = peek.next() else {
+                return Some(None);
+            };
+            if !matches!(
+                after_name.tag(),
+                TokenTag::Comma | TokenTag::Extends | TokenTag::Assign
+            ) && !is_angle_close(after_name.tag())
+            {
+                return Some(None);
+            }
+            if after_name.tag() == TokenTag::GreaterThan
+                && peek
+                    .next()
+                    .is_none_or(|after| after.tag() != TokenTag::LeftParen)
+            {
+                return Some(None);
+            }
+        }
+        peek.end();
         self.try_parse_arrow(is_async, start, |parser| {
             parser.with_scope(parser.boundary_context.arrow_head(is_async), |parser| {
                 parser.parse_generic_arrow_head(is_async)
