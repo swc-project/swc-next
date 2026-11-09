@@ -131,7 +131,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
 
         let tokens = if config.tokens() {
-            ArenaVec::with_capacity_in(source.len() + 1, allocator)
+            ArenaVec::with_capacity_in((source.len() / 3).max(64), allocator)
         } else {
             ArenaVec::new_in(allocator)
         };
