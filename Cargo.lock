@@ -1648,6 +1648,8 @@ dependencies = [
  "napi-sys",
  "nohash-hasher",
  "rustc-hash",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3892,6 +3894,20 @@ dependencies = [
  "swc_next_formatter_core",
  "swc_next_formatter_host",
  "zmij_ecma",
+]
+
+[[package]]
+name = "swc_next_ecma_formatter_bridge"
+version = "0.3.0"
+dependencies = [
+ "napi",
+ "napi-build",
+ "serde_json",
+ "swc_next_bridge",
+ "swc_next_core",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_formatter",
+ "swc_next_ecma_parser",
 ]
 
 [[package]]
