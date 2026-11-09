@@ -18,6 +18,8 @@ use swc_next_bridge::napi;
     feature = "bridge",
     bridge(string_enum = "lowercase", js_name = "SourceType")
 )]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum JsSourceType {
     Module,
@@ -52,6 +54,8 @@ impl From<SourceType> for JsSourceType {
     feature = "bridge",
     bridge(string_enum = "lowercase", js_name = "Lang")
 )]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum JsLang {
     Js,
@@ -96,6 +100,11 @@ impl From<CommentsOption> for CommentMode {
 
 /// JavaScript and TypeScript parser options.
 #[cfg_attr(feature = "bridge", bridge(object, js_name = "ParserOptions"))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsParserOptions {
     /// Determines how the source is parsed and evaluated.

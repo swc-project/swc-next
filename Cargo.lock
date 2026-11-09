@@ -3660,6 +3660,7 @@ dependencies = [
 name = "swc_next_core"
 version = "0.5.0"
 dependencies = [
+ "serde",
  "serde_json",
  "swc_next_allocator",
  "swc_next_bridge",

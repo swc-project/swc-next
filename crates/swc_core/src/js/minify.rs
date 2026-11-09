@@ -3,6 +3,11 @@ use swc_next_ecma_minifier::{CompressOptions, MinifierOptions};
 use crate::BoolOr;
 
 /// JavaScript minification options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsMinifyOptions {
     /// `false` disables compression. `true` uses default options.
@@ -33,6 +38,11 @@ impl From<JsMinifyOptions> for MinifierOptions {
 }
 
 /// Compression options. All default to true.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsCompressOptions {
     /// Remove empty statements and unnecessary blocks.

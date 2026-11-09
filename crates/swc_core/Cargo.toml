@@ -9,7 +9,9 @@ repository.workspace  = true
 version               = "0.5.0"
 
 [features]
+serde        = ["dep:serde"]
 bridge       = ["dep:swc_next_bridge"]
+
 js           = ["dep:swc_next_allocator", "dep:swc_next_ecma_ast"]
 js_codegen   = ["js", "dep:swc_next_ecma_codegen"]
 js_parser    = ["js", "dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
@@ -23,6 +25,7 @@ js_transform = [
 ]
 
 [dependencies]
+serde                     = { workspace = true, optional = true, features = ["derive"] }
 serde_json                = { workspace = true, optional = true }
 swc_next_allocator        = { workspace = true, optional = true }
 swc_next_bridge           = { workspace = true, optional = true }
@@ -32,3 +35,6 @@ swc_next_ecma_minifier    = { workspace = true, optional = true }
 swc_next_ecma_parser      = { workspace = true, optional = true }
 swc_next_ecma_semantic    = { workspace = true, optional = true }
 swc_next_ecma_transformer = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

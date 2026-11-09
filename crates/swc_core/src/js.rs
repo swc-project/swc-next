@@ -13,6 +13,8 @@ use swc_next_bridge::napi;
     all(feature = "bridge", feature = "js_parser"),
     bridge(string_enum = "lowercase", js_name = "CommentMode")
 )]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentsOption {
     /// Keep all comments.
@@ -33,6 +35,11 @@ pub mod parser;
 pub mod transform;
 
 /// JavaScript and TypeScript options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct JsOptions {
     /// Used to infer the language and source type, and for diagnostics and source maps.
@@ -40,6 +47,7 @@ pub struct JsOptions {
     /// Source map generation.
     ///
     /// @default false
+    #[cfg_attr(feature = "serde", serde(rename = "sourceMap"))]
     pub source_maps: Option<bool>,
     // Override the shared target for all JavaScript stages.
     // pub target: Option<Target>,

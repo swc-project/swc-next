@@ -9,7 +9,9 @@ use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     assumptions::Assumptions,
-    jsx::{JsxOptions as TransformJsxOptions, ReactRefreshOptions},
+    jsx::{
+        JsxOptions as TransformJsxOptions, JsxRuntime as TransformJsxRuntime, ReactRefreshOptions,
+    },
     normalize::Normalizer,
     proposal::ProposalOptions,
     typescript::{JsxImportOptions, TypeScriptOptions},
@@ -20,9 +22,12 @@ use crate::{
     js::{CommentsOption, JsOptions, JsOutput},
 };
 
-pub use swc_next_ecma_transformer::jsx::JsxRuntime;
-
 /// JavaScript and TypeScript transform options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct JsTransformOptions {
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
@@ -73,6 +78,11 @@ impl JsTransformOptions {
 }
 
 /// Proposal transform options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsProposalOptions {
     /// Preserve class static block behavior when a block makes the class
@@ -94,6 +104,8 @@ impl From<JsProposalOptions> for ProposalOptions {
 }
 
 /// Names of individually controllable lowering transforms.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum JsFeature {
     /// Lower class static blocks (`class-static-block`).
@@ -103,6 +115,11 @@ pub enum JsFeature {
 }
 
 /// TypeScript transform options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct JsTypeScriptOptions {
     /// TypeScript's `verbatimModuleSyntax`: preserve value imports and exports
@@ -145,7 +162,30 @@ impl From<JsTypeScriptOptions> for TypeScriptOptions {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum JsxRuntime {
+    Classic,
+    #[default]
+    Automatic,
+}
+
+impl From<JsxRuntime> for TransformJsxRuntime {
+    fn from(runtime: JsxRuntime) -> Self {
+        match runtime {
+            JsxRuntime::Classic => Self::Classic,
+            JsxRuntime::Automatic => Self::Automatic,
+        }
+    }
+}
+
 /// JSX options targeting Babel 8. `useSpread` and `useBuiltIns` are not supported.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct JsxOptions {
     /// @default "automatic"
@@ -186,7 +226,7 @@ impl From<JsxOptions> for TransformJsxOptions {
     fn from(options: JsxOptions) -> Self {
         let defaults = Self::default();
         Self {
-            runtime: options.runtime.unwrap_or(defaults.runtime),
+            runtime: options.runtime.map(Into::into).unwrap_or(defaults.runtime),
             development: options.development.unwrap_or(defaults.development),
             source_self: options.source_self.unwrap_or(defaults.source_self),
             import_source: options.import_source,
@@ -203,6 +243,11 @@ impl From<JsxOptions> for TransformJsxOptions {
 }
 
 /// React Refresh options.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct JsReactRefreshOptions {
     /// @default "$RefreshReg$"
@@ -250,6 +295,11 @@ fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Optio
 // }
 
 /// Babel assumptions. All default to false.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsAssumptions {
     pub array_like_is_iterable: Option<bool>,

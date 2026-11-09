@@ -12,6 +12,11 @@ pub use ast::DeserializeError;
 
 /// JavaScript code generation options.
 #[cfg_attr(feature = "bridge", bridge(object, js_name = "CodegenOptions"))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsCodegenOptions {
     pub ascii_only: Option<bool>,
