@@ -564,21 +564,8 @@ fn edit_preamble() -> String {
         .replace("i * 16 + o", "(i - nodeBase) * 16 + o")
         .replace("i * 8 + o", "(i - extraBase) * 8 + o");
     let start = output.find("  function encStr(").unwrap();
-    let end = output.find("  function writeWtf8(").unwrap();
-    let strings = output[start..end]
-        .replace(
-            "view.setUint32(offset, start, true)",
-            "view.setUint32(offset, stringBase + start, true)",
-        )
-        .replace(
-            "view.setUint32(offset + 4, end, true)",
-            "view.setUint32(offset + 4, stringBase + end, true)",
-        )
-        .replace(
-            "view.setUint32(offset + 4, poolLength, true)",
-            "view.setUint32(offset + 4, stringBase + poolLength, true)",
-        );
-    output.replace_range(start..end, &strings);
+    let end = output.find("  function ensurePool(").unwrap();
+    output.replace_range(start..end, EDIT_STRINGS);
     output = output.replace(
         "required > 0x7fffffff",
         "stringBase + required >= 0xffffffff",
@@ -586,7 +573,69 @@ fn edit_preamble() -> String {
     output
 }
 
+/// String encoders of the edit path. The delta pool holds UTF-16 code units, so a string
+/// is copied and its span is twice its length; no WTF-8 writer is needed, because Rust
+/// transcodes the pool when it merges a delta into a base.
+const EDIT_STRINGS: &str = r#"  function encStr(value, view, offset) {
+    if (typeof value === "string") {
+      const length = value.length;
+      const start = poolLength;
+      // Keep the short path small enough to inline into field encoders.
+      if (length > 0 && length <= 12 && start + length * 2 <= poolCapacity) {
+        putUnits(pool, value, start);
+        poolLength = start + length * 2;
+        view.setUint32(offset, stringBase + start, true);
+        view.setUint32(offset + 4, stringBase + poolLength, true);
+        return;
+      }
+    }
+    encStrSlow(value, view, offset);
+  }
+
+  function encStrSlow(value, view, offset) {
+    if (value == null || value === "") {
+      view.setUint32(offset, 0, true);
+      view.setUint32(offset + 4, 0, true);
+      return;
+    }
+    if (typeof value !== "string") value = String(value);
+    const start = poolLength;
+    ensurePool(value.length * 2);
+    putUnits(pool, value, start);
+    poolLength = start + value.length * 2;
+    view.setUint32(offset, stringBase + start, true);
+    view.setUint32(offset + 4, stringBase + poolLength, true);
+  }
+
+  function putUnits(bytes, value, start) {
+    if (writeUtf16 !== null) {
+      writeUtf16.call(bytes, value, start, value.length * 2, "ucs2");
+      return;
+    }
+    for (let index = 0; index < value.length; index++) {
+      const code = value.charCodeAt(index);
+      bytes[start + index * 2] = code & 0xff;
+      bytes[start + index * 2 + 1] = code >>> 8;
+    }
+  }
+
+"#;
+
 const EDIT_PREAMBLE: &str = r#"// Keep codec functions alive across encodes without retaining their input data.
+// A delta pool transfers UTF-16 code units, so a string is copied rather than encoded.
+// `Buffer` is absent from the browser bundle, which writes the units one at a time.
+const writeUtf16 = (() => {
+  if (typeof Buffer !== "undefined" && typeof Buffer.prototype.write === "function") {
+    const write = Buffer.prototype.write;
+    // Older Node versions and Buffer polyfills may reject Uint8Array receivers.
+    try {
+      const probe = new Uint8Array(2);
+      if (write.call(probe, "x", 0, 2, "ucs2") === 2 && probe[0] === 0x78) return write;
+    } catch {}
+  }
+  return null;
+})();
+
 const idleEncoders = [];
 
 function encode(program, meta = {}) {
@@ -618,8 +667,6 @@ function createEncoder() {
   let poolCapacity = 0;
   let pool = null;
   let poolLength = 0;
-  let hasWtf8 = false;
-  let firstNonAsciiPos = NULL;
   let isTs = false;
 
   function remapChild(parent, offset, encoder, optional) {
@@ -686,8 +733,6 @@ const EDIT_POSTAMBLE: &str = r#"  function encNativeRoot(node, kind) {
       poolCapacity = nodeCapacity >= 128 ? 4096 : 256;
       pool = new Uint8Array(poolCapacity);
       poolLength = 0;
-      hasWtf8 = false;
-      firstNonAsciiPos = NULL;
       isTs = false;
 
       const root = rootKind === undefined ? encProgram(program) : encNativeRoot(program, rootKind);

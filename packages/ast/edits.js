@@ -156,7 +156,7 @@ class Transaction {
     const view = new DataView(bytes.buffer);
     const header = [
       0x32455753,
-      2,
+      4,
       SCHEMA_ID,
       length,
       this.nodeBase,

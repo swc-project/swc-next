@@ -78,6 +78,20 @@ function encodeOptionBoolean(value, name) {
 }
 
 // Keep codec functions alive across encodes without retaining their input data.
+// A delta pool transfers UTF-16 code units, so a string is copied rather than encoded.
+// `Buffer` is absent from the browser bundle, which writes the units one at a time.
+const writeUtf16 = (() => {
+  if (typeof Buffer !== "undefined" && typeof Buffer.prototype.write === "function") {
+    const write = Buffer.prototype.write;
+    // Older Node versions and Buffer polyfills may reject Uint8Array receivers.
+    try {
+      const probe = new Uint8Array(2);
+      if (write.call(probe, "x", 0, 2, "ucs2") === 2 && probe[0] === 0x78) return write;
+    } catch {}
+  }
+  return null;
+})();
+
 const idleEncoders = [];
 
 function encodeEditsJs(program, meta, transaction) {
@@ -109,8 +123,6 @@ function createEncoder() {
   let poolCapacity = 0;
   let pool = null;
   let poolLength = 0;
-  let hasWtf8 = false;
-  let firstNonAsciiPos = NULL;
   const isTs = false;
 
   function remapChild(parent, offset, encoder, optional) {
@@ -229,31 +241,23 @@ function createEncoder() {
     view.setUint32(offset + 4, start + length, true);
   }
 
-  function encStr(value, view, offset, wtf8) {
+  function encStr(value, view, offset) {
     if (typeof value === "string") {
       const length = value.length;
       const start = poolLength;
-      const end = start + length;
-      // Keep the short ASCII path small enough to inline into field encoders.
-      if (length > 0 && length <= 64 && end <= pool.length && end <= 0x7fffffff) {
-        let index = 0;
-        for (; index < length; index++) {
-          const code = value.charCodeAt(index);
-          if (code >= 0x80) break;
-          pool[start + index] = code;
-        }
-        if (index === length) {
-          poolLength = end;
-          view.setUint32(offset, stringBase + start, true);
-          view.setUint32(offset + 4, stringBase + end, true);
-          return;
-        }
+      // Keep the short path small enough to inline into field encoders.
+      if (length > 0 && length <= 12 && start + length * 2 <= poolCapacity) {
+        putUnits(pool, value, start);
+        poolLength = start + length * 2;
+        view.setUint32(offset, stringBase + start, true);
+        view.setUint32(offset + 4, stringBase + poolLength, true);
+        return;
       }
     }
-    encStrSlow(value, view, offset, wtf8);
+    encStrSlow(value, view, offset);
   }
 
-  function encStrSlow(value, view, offset, wtf8 = false) {
+  function encStrSlow(value, view, offset) {
     if (value == null || value === "") {
       view.setUint32(offset, 0, true);
       view.setUint32(offset + 4, 0, true);
@@ -261,51 +265,23 @@ function createEncoder() {
     }
     if (typeof value !== "string") value = String(value);
     const start = poolLength;
-    const length = value.length;
-    ensurePool(length * 3);
-    const useWtf8 = wtf8 && !isWellFormed(value);
-    const written = useWtf8
-      ? writeWtf8(value, start)
-      : writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
-    hasWtf8 ||= useWtf8;
-    poolLength += written;
-    if (firstNonAsciiPos === NULL && written !== length) {
-      let index = 0;
-      while (value.charCodeAt(index) < 0x80) index++;
-      firstNonAsciiPos = start + index;
-    }
+    ensurePool(value.length * 2);
+    putUnits(pool, value, start);
+    poolLength = start + value.length * 2;
     view.setUint32(offset, stringBase + start, true);
     view.setUint32(offset + 4, stringBase + poolLength, true);
   }
 
-  function writeWtf8(value, start) {
-    let offset = start;
-    for (let index = 0; index < value.length; index++) {
-      let code = value.charCodeAt(index);
-      if (code < 0x80) {
-        pool[offset++] = code;
-      } else if (code < 0x800) {
-        pool[offset++] = 0xc0 | (code >> 6);
-        pool[offset++] = 0x80 | (code & 0x3f);
-      } else {
-        if (code >= 0xd800 && code <= 0xdbff) {
-          const next = value.charCodeAt(index + 1);
-          if (next >= 0xdc00 && next <= 0xdfff) {
-            code = 0x10000 + ((code - 0xd800) << 10) + next - 0xdc00;
-            index++;
-            pool[offset++] = 0xf0 | (code >> 18);
-            pool[offset++] = 0x80 | ((code >> 12) & 0x3f);
-            pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
-            pool[offset++] = 0x80 | (code & 0x3f);
-            continue;
-          }
-        }
-        pool[offset++] = 0xe0 | (code >> 12);
-        pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
-        pool[offset++] = 0x80 | (code & 0x3f);
-      }
+  function putUnits(bytes, value, start) {
+    if (writeUtf16 !== null) {
+      writeUtf16.call(bytes, value, start, value.length * 2, "ucs2");
+      return;
     }
-    return offset - start;
+    for (let index = 0; index < value.length; index++) {
+      const code = value.charCodeAt(index);
+      bytes[start + index * 2] = code & 0xff;
+      bytes[start + index * 2 + 1] = code >>> 8;
+    }
   }
 
   function ensurePool(additionalBytes) {
@@ -3069,8 +3045,6 @@ function createEncoder() {
       poolCapacity = nodeCapacity >= 128 ? 4096 : 256;
       pool = new Uint8Array(poolCapacity);
       poolLength = 0;
-      hasWtf8 = false;
-      firstNonAsciiPos = NULL;
 
       const root = rootKind === undefined ? encProgram(program) : encNativeRoot(program, rootKind);
       const sourceType = enumValue(1, meta.sourceType ?? program.sourceType);

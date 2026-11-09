@@ -41,53 +41,27 @@ function align8(value) {
   return Math.ceil(value / 8) * 8;
 }
 
-function wtf8Length(value) {
-  let length = 0;
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
-    if (code < 0x80) length++;
-    else if (code < 0x800) length += 2;
-    else if (
-      code >= 0xd800 && code <= 0xdbff &&
-      value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff
-    ) {
-      length += 4;
-      i++;
-    } else length += 3;
+// The delta pool holds UTF-16 code units, so committing a string copies them and encodes
+// nothing. Where `Buffer` exists one native call moves the whole string; the byte-at-a-time
+// loop is the browser bundle, which has no `Buffer`. Feature detection is one-shot.
+const encodeUtf16 = (() => {
+  if (typeof Buffer === "undefined" || typeof Buffer.prototype.write !== "function") return null;
+  const write = Buffer.prototype.write;
+  const probe = new Uint8Array(2);
+  try {
+    return write.call(probe, "a", 0, 2, "ucs2") === 2 ? write : null;
+  } catch {
+    return null;
   }
-  return length;
-}
-
-function writeWtf8(bytes, offset, value) {
-  for (let i = 0; i < value.length; i++) {
-    let code = value.charCodeAt(i);
-    if (code < 0x80) bytes[offset++] = code;
-    else if (code < 0x800) {
-      bytes[offset++] = 0xc0 | (code >> 6);
-      bytes[offset++] = 0x80 | (code & 63);
-    } else {
-      const next = value.charCodeAt(i + 1);
-      if (code >= 0xd800 && code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
-        code = 0x10000 + ((code - 0xd800) << 10) + next - 0xdc00;
-        bytes[offset++] = 0xf0 | (code >> 18);
-        bytes[offset++] = 0x80 | ((code >> 12) & 63);
-        bytes[offset++] = 0x80 | ((code >> 6) & 63);
-        bytes[offset++] = 0x80 | (code & 63);
-        i++;
-      } else {
-        // Lone surrogates retain their code units in WTF-8.
-        bytes[offset++] = 0xe0 | (code >> 12);
-        bytes[offset++] = 0x80 | ((code >> 6) & 63);
-        bytes[offset++] = 0x80 | (code & 63);
-      }
-    }
-  }
-}
+})();
 
 /**
  * Mutable SWE3 rows, extra data, and strings in one buffer. Counts are committed
  * to the header when publishing. Direct view/bytes writes must first call
  * ensureWritable(), and addresses must be reacquired after a possible growth.
+ * The string pool holds UTF-16 code units, the form a JS string already is, so the
+ * transfer copies a string without encoding it; the reader transcodes the units it merges
+ * into the pool an AST reads and rewrites the handles that addressed them.
  */
 export class DeltaArena {
   // Keep the empty layout alive when all input ASTs in a batch are collected.
@@ -105,6 +79,7 @@ export class DeltaArena {
     this.flags = u32(base.flags, "AST flags");
     this.bytes = null;
     this.view = null;
+    this.units = null;
     this.rowsOffset = HEADER_SIZE;
     this.extraOffset = HEADER_SIZE;
     this.stringsOffset = HEADER_SIZE;
@@ -260,30 +235,39 @@ export class DeltaArena {
     this.ensureWritable().setUint32(offset, value, true);
   }
 
+  /**
+   * Append a string to the pool as UTF-16 code units. The handle is `stringLength` before
+   * and after the call, so committing a string allocates no pair.
+   */
   appendString(value) {
     if (typeof value !== "string") throw new TypeError("Expected an AST string");
-    const length = wtf8Length(value);
-    const start = this.stringLength;
-    const end = u32(start + length, "String pool");
-    if (length !== 0) {
-      this.reserve(this.rowCount, this.extraUsed, this.stringUsed + length);
-      writeWtf8(this.bytes, this.stringsOffset + this.stringUsed, value);
-      this.stringUsed += length;
+    const length = value.length * 2;
+    if (length === 0) return;
+    const used = this.stringUsed;
+    u32(this.baseStringLength + used + length, "String pool");
+    this.reserve(this.rowCount, this.extraUsed, used + length);
+    const offset = this.stringsOffset + used;
+    if (encodeUtf16 === null) {
+      const units = this.units;
+      for (let index = 0, at = offset >>> 1; index < value.length; index++) {
+        units[at + index] = value.charCodeAt(index);
+      }
+    } else {
+      encodeUtf16.call(this.bytes, value, offset, length, "ucs2");
     }
-    return [start, end];
+    this.stringUsed = used + length;
   }
 
+  /** Append pool code units written by an encoder. Handle as for {@link DeltaArena#appendString}. */
   appendStringBytes(bytes) {
-    if (!(bytes instanceof Uint8Array)) throw new TypeError("Expected encoded AST string bytes");
+    if (!(bytes instanceof Uint8Array)) throw new TypeError("Expected AST string code units");
     const length = bytes.byteLength;
-    const start = this.stringLength;
-    const end = u32(start + length, "String pool");
-    if (length !== 0) {
-      this.reserve(this.rowCount, this.extraUsed, this.stringUsed + length);
-      this.bytes.set(bytes, this.stringsOffset + this.stringUsed);
-      this.stringUsed += length;
-    }
-    return [start, end];
+    if (length === 0) return;
+    u32(this.stringLength + length, "String pool");
+    const used = this.stringUsed;
+    this.reserve(this.rowCount, this.extraUsed, used + length);
+    this.bytes.set(bytes, this.stringsOffset + used);
+    this.stringUsed = used + length;
   }
 
   /** Reserve absolute section counts, excluding the immutable base sections. */
@@ -327,6 +311,7 @@ export class DeltaArena {
     }
     this.bytes = bytes;
     this.view = new DataView(bytes.buffer);
+    this.units = new Uint16Array(bytes.buffer);
     this.extraOffset = extraOffset;
     this.stringsOffset = stringsOffset;
     this.rowCapacity = rowCapacity;
@@ -339,7 +324,7 @@ export class DeltaArena {
   _writeHeader() {
     const view = this.view;
     view.setUint32(0, 0x33455753, true);
-    view.setUint32(4, 3, true);
+    view.setUint32(4, 4, true);
     view.setUint32(8, this.schemaId, true);
     view.setUint32(12, this.bytes.byteLength, true);
     view.setUint32(16, this.baseNodeCount, true);

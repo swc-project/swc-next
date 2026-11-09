@@ -1,9 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
-use swc_next_allocator::{Allocator, wtf8::Wtf8};
+use swc_next_allocator::{
+    Allocator,
+    hash_map::HashMap as ArenaHashMap,
+    hash_set::HashSet as ArenaHashSet,
+    wtf8::{Wtf8, utf16_le_has_unpaired_surrogate},
+};
 
 use super::{
-    DeserializeError as Error, HEADER_SIZE, MAGIC, NONE, PAYLOAD_SIZE, SPAN_SIZE, VERSION,
+    DELTA_VERSION, DeserializeError as Error, EXTENSION_VERSION, HEADER_SIZE, MAGIC, NONE,
+    PAYLOAD_SIZE, SPAN_SIZE, VERSION,
     schema::{self, Field, FieldValidator},
 };
 use crate::ffi::ast::BorrowedAst;
@@ -15,7 +21,6 @@ const EXTENSION_HEADER: usize = 64;
 const EXTENSION_MAGIC: u32 = u32::from_le_bytes(*b"SWE2");
 const DELTA_HEADER: usize = 96;
 const DELTA_MAGIC: u32 = u32::from_le_bytes(*b"SWE3");
-const DELTA_VERSION: u32 = 3;
 const ROW_SIZE: usize = 32;
 
 fn invalid(message: &'static str) -> Error {
@@ -129,7 +134,7 @@ impl<'a> Parts<'a> {
         }
         if bytes.len() < EXTENSION_HEADER
             || word(bytes, 0)? != EXTENSION_MAGIC
-            || word(bytes, 4)? != VERSION
+            || word(bytes, 4)? != EXTENSION_VERSION
             || word(bytes, 8)? != schema::SCHEMA_ID
         {
             return Err(invalid("extension format or schema mismatch"));
@@ -416,6 +421,7 @@ impl<'a> Reader<'a> {
                 reader: self,
                 payload: part.payload(index),
                 extra: 0,
+                from_extension: !std::ptr::eq(part, &self.base),
                 edges: &mut edges,
                 budget,
                 strings: &mut strings,
@@ -457,9 +463,34 @@ struct Validator<'a, 'b> {
     reader: &'b Reader<'a>,
     payload: &'b [u8],
     extra: usize,
+    /// Whether the validated row comes from the extension part, whose string pool
+    /// holds UTF-16 code units rather than WTF-8.
+    from_extension: bool,
     edges: &'b mut Vec<u32>,
     budget: usize,
     strings: &'b mut HashSet<(u32, u32, bool)>,
+}
+
+impl Validator<'_, '_> {
+    /// Validate a handle into the extension's UTF-16 pool. Every code-unit sequence
+    /// transcodes to WTF-8, so only the boundary and the guarantee of a UTF-8 field
+    /// are properties of a valid AST; the merge step rewrites the handle.
+    fn extension_string(
+        &self,
+        start: u32,
+        end: u32,
+        units: &[u8],
+        wtf8: bool,
+    ) -> Result<(), Error> {
+        let base = self.reader.base.string_len as u32;
+        if (start - base) % 2 != 0 || (end - start) % 2 != 0 {
+            return Err(invalid("string handle does not fall on a UTF-16 boundary"));
+        }
+        if !wtf8 && utf16_le_has_unpaired_surrogate(units) {
+            return Err(invalid("string requires WTF-8 in a UTF-8 field"));
+        }
+        Ok(())
+    }
 }
 
 impl Validator<'_, '_> {
@@ -532,6 +563,12 @@ impl FieldValidator for Validator<'_, '_> {
             return Ok(());
         }
         let value = self.reader.string(start as usize, end as usize)?;
+        if start as usize >= self.reader.base.string_len {
+            if !self.from_extension {
+                return Err(invalid("base node references extension strings"));
+            }
+            return self.extension_string(start, end, value, wtf8);
+        }
         if (end as usize) <= self.reader.base.source_len {
             self.reader
                 .source
@@ -588,6 +625,225 @@ pub unsafe fn deserialize_unchecked<'a>(
 ) -> Result<BorrowedAst<'a>, Error> {
     let reader = unsafe { Reader::new(base, extension, true) }?;
     unsafe { read_tables(reader, allocator) }
+}
+
+/// Collect or rewrite the string handles of an extension row.
+enum StringVisit<'a, 'm> {
+    Collect {
+        seen: &'m mut ArenaHashSet<'a, (u32, u32)>,
+        ranges: &'m mut ArenaVec<'a, (u32, u32)>,
+    },
+    Remap {
+        map: &'m ArenaHashMap<'a, (u32, u32), (u32, u32)>,
+    },
+}
+
+/// Visits the string fields of one extension row, either collecting the spans they
+/// reference or rewriting them. Handles and the extra-data index are read from the
+/// transferred bytes, which are little endian and identical to the copy the AST reads, so
+/// the rewrite only writes.
+struct ExtensionStrings<'a, 'm> {
+    /// Row payload as transferred.
+    payload: [u8; PAYLOAD_SIZE],
+    extra_base: usize,
+    /// Extra-data slots addressed by [`Self::extra_base`], always the transferred ones.
+    /// Slots are numbered across both parts, so the wire index subtracts [`Self::slots_bias`];
+    /// the arena tables keep that numbering and are written through [`Self::extra_out`].
+    slots: *const u8,
+    slots_bias: usize,
+    /// Copies to rewrite: the row payload and the extra-data table, absent while
+    /// collecting. Payload words are written in native order like every other payload
+    /// field, and slots hold the packed pair `ExtraData` stores. Handles are always read
+    /// from the transfer, so rewriting a slot twice, which shared extra blocks allow,
+    /// writes the same value twice.
+    payload_out: Option<&'m mut [u8]>,
+    extra_out: Option<*mut u8>,
+    base_string_len: u32,
+    visit: StringVisit<'a, 'm>,
+}
+
+impl ExtensionStrings<'_, '_> {
+    fn read_slot(&self, index: usize) -> (u32, u32) {
+        // SAFETY: `index` addresses a slot of the part's extra data, which validation
+        // placed within bounds, and the words are read unaligned from the transfer.
+        unsafe {
+            let slot = self.slots.add(index * 8);
+            (
+                std::ptr::read_unaligned(slot.cast::<u32>()).to_le(),
+                std::ptr::read_unaligned(slot.add(4).cast::<u32>()).to_le(),
+            )
+        }
+    }
+
+    fn write_slot(&self, index: usize, start: u32, end: u32) {
+        let extra = self
+            .extra_out
+            .expect("only the rewrite pass has arena tables");
+        // SAFETY: `index` addresses a slot the merged path copied into the tables it owns,
+        // and `ExtraData` holds the pair as one native word.
+        unsafe {
+            std::ptr::write_unaligned(
+                extra.add(index * 8).cast::<u64>(),
+                start as u64 | (end as u64) << 32,
+            );
+        }
+    }
+
+    /// Collect a referenced span, or resolve the transcoded span that replaces it. Spans
+    /// into the base pool keep their handle because that pool transfers as WTF-8.
+    fn relocate(
+        &mut self,
+        optional: bool,
+        start: u32,
+        end: u32,
+    ) -> Result<Option<(u32, u32)>, Error> {
+        if (optional && start == NONE && end == 0) || start < self.base_string_len {
+            return Ok(None);
+        }
+        match &mut self.visit {
+            StringVisit::Collect { seen, ranges } => {
+                if seen.insert((start, end)) {
+                    ranges.push((start, end));
+                }
+                Ok(None)
+            }
+            StringVisit::Remap { map } => map
+                .get(&(start, end))
+                .copied()
+                .ok_or(invalid("extension string handle was not transcoded"))
+                .map(Some),
+        }
+    }
+}
+
+impl FieldValidator for ExtensionStrings<'_, '_> {
+    fn extra(&mut self, pointer: usize, _count: usize) -> Result<(), Error> {
+        self.extra_base = word(&self.payload, pointer)? as usize;
+        Ok(())
+    }
+    fn node(&mut self, _field: Field, _kinds: &[NodeKind], _optional: bool) -> Result<(), Error> {
+        Ok(())
+    }
+    fn list(&mut self, _field: Field, _kinds: &[NodeKind], _optional: bool) -> Result<(), Error> {
+        Ok(())
+    }
+    fn boolean(&mut self, _field: Field) -> Result<(), Error> {
+        Ok(())
+    }
+    fn enumeration(&mut self, _field: Field, _count: usize, _optional: bool) -> Result<(), Error> {
+        Ok(())
+    }
+    fn index(&mut self, _field: Field, _nonzero: bool) -> Result<(), Error> {
+        Ok(())
+    }
+    fn string(&mut self, field: Field, _wtf8: bool, optional: bool) -> Result<(), Error> {
+        match field {
+            Field::Payload(offset) => {
+                let start = word(&self.payload, offset)?;
+                let end = word(&self.payload, offset + 4)?;
+                if let Some((start, end)) = self.relocate(optional, start, end)? {
+                    let payload = self
+                        .payload_out
+                        .as_mut()
+                        .expect("only the rewrite pass has arena tables");
+                    payload[offset..offset + 4].copy_from_slice(&start.to_ne_bytes());
+                    payload[offset + 4..offset + 8].copy_from_slice(&end.to_ne_bytes());
+                }
+            }
+            Field::Extra(offset) => {
+                let index = self.extra_base + offset;
+                let (start, end) = self.read_slot(index - self.slots_bias);
+                if let Some((start, end)) = self.relocate(optional, start, end)? {
+                    self.write_slot(index, start, end);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Rebuild the string pool an AST reads from an extension part.
+///
+/// An extension transfers UTF-16 code units, while a pool handle addresses WTF-8 whose span
+/// length is the distance between its own handles, so each referenced span is transcoded
+/// into the pool once and the extension's handles are rewritten to the transcoded spans.
+/// Base rows cannot reference extension strings, which [`Validator::string`] rejects, so
+/// walking the extension's rows reaches every handle that can change.
+unsafe fn merge_extension_strings(
+    reader: &Reader<'_>,
+    ast: &mut Ast<'_>,
+    allocator: &Allocator,
+) -> Result<(), Error> {
+    let extension = reader
+        .extension
+        .as_ref()
+        .expect("the caller checked for an extension");
+    // A delta maps final node IDs to sparse rows; a legacy extension keeps a dense table.
+    // Each row must be visited as the AST sees it, so pair its dense index with the node ID
+    // its copy lands at.
+    let mut targets = ArenaVec::new_in(allocator);
+    match &extension.rows {
+        Some(rows) => {
+            for (&target, &index) in rows {
+                targets.push((index, target));
+            }
+        }
+        None => {
+            for index in 0..extension.count {
+                targets.push((index, reader.base.count + index));
+            }
+        }
+    }
+    let base_string_len = reader.base.string_len;
+    // SAFETY: The validated part places its extra-data section within `bytes`.
+    let extra_wire = unsafe { extension.bytes.as_ptr().add(extension.extra) };
+    let mut seen = ArenaHashSet::new_in(allocator);
+    let mut ranges = ArenaVec::new_in(allocator);
+    for &(index, target) in targets.iter() {
+        let mut visit = ExtensionStrings {
+            payload: extension.payload(index).try_into().expect("payload width"),
+            extra_base: 0,
+            slots: extra_wire,
+            slots_bias: reader.base.extra_count,
+            payload_out: None,
+            extra_out: None,
+            base_string_len: base_string_len as u32,
+            visit: StringVisit::Collect {
+                seen: &mut seen,
+                ranges: &mut ranges,
+            },
+        };
+        schema::validate_fields(reader.kind(target)?, &mut visit)?;
+    }
+    ranges.sort_unstable();
+    let mut map = ArenaHashMap::with_capacity_in(ranges.len(), allocator);
+    for &(start, end) in ranges.iter() {
+        let units = &extension.bytes[extension.strings + start as usize - base_string_len
+            ..extension.strings + end as usize - base_string_len];
+        map.insert((start, end), ast.strings.extend_wtf8_from_utf16(units));
+    }
+    let extra = ast.extra_data.as_mut_ptr().cast::<u8>();
+    for &(index, target) in targets.iter() {
+        // SAFETY: `target` is a validated node ID within the tables reserved above.
+        let mut payload_out = unsafe {
+            slice::from_raw_parts_mut(
+                ast.nodes.data.as_ptr().add(target).cast::<u8>(),
+                PAYLOAD_SIZE,
+            )
+        };
+        let mut visit = ExtensionStrings {
+            payload: extension.payload(index).try_into().expect("payload width"),
+            extra_base: 0,
+            slots: extra_wire,
+            slots_bias: reader.base.extra_count,
+            payload_out: Some(&mut payload_out),
+            extra_out: Some(extra),
+            base_string_len: base_string_len as u32,
+            visit: StringVisit::Remap { map: &map },
+        };
+        schema::validate_fields(reader.kind(target)?, &mut visit)?;
+    }
+    Ok(())
 }
 
 unsafe fn read_tables<'a>(
@@ -718,10 +974,10 @@ unsafe fn read_tables<'a>(
     }
     ast.strings
         .extend_extra(&base.bytes[base.strings + base.source_len..base.strings + base.string_len]);
-    if let Some(extension) = &reader.extension {
-        ast.strings.extend_extra(
-            &extension.bytes[extension.strings..extension.strings + extension.string_len],
-        );
+    if reader.extension.is_some() {
+        // SAFETY: The extension part is validated or trusted, and the tables above are
+        // arena copies this function owns.
+        unsafe { merge_extension_strings(&reader, &mut ast, allocator)? };
     }
     ast.root = Some(NodeId::from_usize(reader.root));
     ast.set_source_metadata(
