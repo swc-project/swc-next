@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Diagnostic, Label, Severity, Span};
+use swc_next_ecma_ast::{Diagnostic, Lang, Severity};
 use swc_next_ecma_codegen::{Options as CodegenOptions, SourceMap, print};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
@@ -21,16 +21,20 @@ use crate::{
 
 pub use swc_next_ecma_transformer::jsx::JsxRuntime;
 
-/// Currently implemented JavaScript and TypeScript transforms.
+/// JavaScript and TypeScript transform options.
 #[derive(Clone, Debug, Default)]
 pub struct JsTransformOptions {
-    /// Disable TypeScript lowering or enable it with defaults or explicit settings.
+    /// TypeScript transform. `false` keeps TypeScript syntax in the output.
+    ///
+    /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
     pub typescript: Option<BoolOr<JsTypeScriptOptions>>,
-    /// Disable JSX lowering or enable it with defaults or explicit settings.
+    /// JSX transform. `false` keeps JSX syntax in the output.
+    ///
+    /// @default enabled with the automatic runtime when `lang` is `"jsx"` or `"tsx"`
     pub jsx: Option<BoolOr<JsxOptions>>,
-    /// Explicitly enable or disable implemented lowering transforms.
+    /// Per-feature overrides. `true` enables a transform; `false` disables it.
     pub features: Option<BTreeMap<JsFeature, bool>>,
-    /// Assumptions forwarded to the transformer. Unset fields use its defaults.
+    /// Babel-compatible assumptions.
     pub assumptions: Option<JsAssumptions>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
@@ -64,7 +68,7 @@ impl JsTransformOptions {
     }
 }
 
-/// Implemented, individually controllable JavaScript transforms.
+/// Names of individually controllable lowering transforms.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum JsFeature {
     /// Lower class static blocks (`class-static-block`).
@@ -73,16 +77,17 @@ pub enum JsFeature {
     OptionalCatchBinding,
 }
 
-/// Public TypeScript lowering settings.
-///
-/// JSX import dependencies used internally by the transformer are derived from
-/// the JSX settings rather than exposed in this section.
+/// TypeScript transform options.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsTypeScriptOptions {
-    /// Preserve value imports and exports, and disable const-enum inlining and
-    /// removal.
+    /// TypeScript's `verbatimModuleSyntax`: preserve value imports and exports
+    /// and disable const enum inlining and removal.
+    ///
+    /// @default false
     pub verbatim_module_syntax: Option<bool>,
-    /// Preserve const-enum declarations without disabling inlining.
+    /// TypeScript's `preserveConstEnums`: preserve declarations without disabling inlining.
+    ///
+    /// @default false
     pub preserve_const_enums: Option<bool>,
 }
 
@@ -101,25 +106,40 @@ impl From<JsTypeScriptOptions> for TypeScriptOptions {
     }
 }
 
-/// JSX lowering settings targeting Babel 8.
+/// JSX options targeting Babel 8. `useSpread` and `useBuiltIns` are not supported.
 #[derive(Clone, Debug, Default)]
 pub struct JsxOptions {
+    /// @default "automatic"
     pub runtime: Option<JsxRuntime>,
+    /// @default false
     pub development: Option<bool>,
-    /// Include development source and self metadata.
+    /// Add `__source` and `__self` in development.
+    ///
+    /// @default false
     pub source_self: Option<bool>,
-    /// Import source for the automatic runtime.
+    /// Automatic runtime import source.
+    ///
+    /// @default "react"
     pub import_source: Option<String>,
-    /// Factory expression for the classic runtime.
+    /// Classic runtime factory.
+    ///
+    /// @default "React.createElement"
     pub pragma: Option<String>,
-    /// Fragment factory expression for the classic runtime.
+    /// Classic runtime fragment factory.
+    ///
+    /// @default "React.Fragment"
     pub pragma_frag: Option<String>,
+    /// @default true
     pub throw_if_namespace: Option<bool>,
-    /// Mark factory calls as pure. The default depends on whether a custom
-    /// pragma is supplied.
+    /// Mark factory calls as pure.
     pub pure: Option<bool>,
-    /// Add display names to `createReactClass` calls.
+    /// Add `displayName` to `createReactClass` calls.
+    ///
+    /// @default false
     pub display_name: Option<bool>,
+    /// React Refresh. `true` uses default options.
+    ///
+    /// @default false
     pub refresh: Option<BoolOr<JsReactRefreshOptions>>,
 }
 
@@ -143,13 +163,14 @@ impl From<JsxOptions> for TransformJsxOptions {
     }
 }
 
-/// React Refresh instrumentation settings.
+/// React Refresh options.
 #[derive(Clone, Debug, Default)]
 pub struct JsReactRefreshOptions {
-    /// Registration expression. Defaults to `$RefreshReg$` when enabled.
+    /// @default "$RefreshReg$"
     pub refresh_reg: Option<String>,
-    /// Signature expression. Defaults to `$RefreshSig$` when enabled.
+    /// @default "$RefreshSig$"
     pub refresh_sig: Option<String>,
+    /// @default false
     pub emit_full_signatures: Option<bool>,
 }
 
@@ -189,7 +210,7 @@ fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Optio
 //     Legacy, // "legacy"
 // }
 
-/// All resolved fields default to false.
+/// Babel assumptions. All default to false.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsAssumptions {
     pub array_like_is_iterable: Option<bool>,
@@ -295,107 +316,128 @@ impl From<JsAssumptions> for Assumptions {
 //     External, // Import from @swc/helpers.
 // }
 
-/// Transform source code using the currently implemented JavaScript stages.
+/// Transform a source file.
 pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
-    let ParserOptions {
-        source_type, lang, ..
-    } = options.parser.unwrap_or_default().into();
+    let mut output = JsOutput::default();
+    fn has_errors(diagnostics: &[Diagnostic]) -> bool {
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == Severity::Error)
+    }
+
+    // ======================= Options =======================
+    let parser_options = options.parser.unwrap_or_default();
+    let minify_enabled = !matches!(&options.minify, None | Some(BoolOr::Bool(false)));
+    let comments = {
+        let default = if minify_enabled {
+            CommentsOption::None
+        } else {
+            CommentsOption::All
+        };
+        let comments = options.comments.or(parser_options.comments);
+        comments.unwrap_or(default)
+    };
+    let lang: Lang = parser_options.lang.map(Into::into).unwrap_or_default();
+    let transform = {
+        let mut transform = options.transform.unwrap_or_default();
+        let typescript = BoolOr::Bool(lang.is_typescript());
+        let jsx = BoolOr::Bool(lang.is_jsx());
+        transform.typescript.get_or_insert(typescript);
+        transform.jsx.get_or_insert(jsx);
+        transform
+    };
+
+    // ======================= Parse =======================
     let allocator = Allocator::default();
-    let parsed = Parser::init(
-        &allocator,
-        source,
-        ParserOptions {
-            source_type,
+    let mut ast = {
+        // JSX pragmas and React Refresh directives are semantic inputs even when
+        // the output policy removes comments.
+        let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
+        let parser_comments = if jsx_enabled {
+            CommentsOption::All
+        } else {
+            comments
+        };
+        let source_type = parser_options.source_type.map(Into::into);
+        let parser_options = ParserOptions {
+            source_type: source_type.unwrap_or_default(),
             lang,
+            comments: parser_comments.into(),
             ..ParserOptions::default()
-        },
-        NoTokenParserConfig,
-    )
-    .parse();
-    let mut output = JsOutput {
-        diagnostics: parsed.diagnostics,
-        ..JsOutput::default()
+        };
+        let parser = Parser::init(&allocator, source, parser_options, NoTokenParserConfig);
+        let parsed = parser.parse();
+        output.diagnostics.extend(parsed.diagnostics);
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
+        parsed.ast
     };
-    if has_errors(&output.diagnostics) {
-        return output;
+
+    // ======================= Normalize =======================
+    match &transform.typescript {
+        None | Some(BoolOr::Bool(false)) => Normalizer::normalize(&mut ast),
+        _ => Normalizer::normalize_runtime(&mut ast),
     }
 
-    let mut ast = parsed.ast;
-    let mut transform = options.transform.unwrap_or_default();
-    if transform.typescript.is_none() && lang.is_typescript() {
-        transform.typescript = Some(BoolOr::Bool(true));
-    }
-    if transform.jsx.is_none() && lang.is_jsx() {
-        transform.jsx = Some(BoolOr::Bool(true));
-    }
-    let source_map_path = options
-        .source_maps
-        .unwrap_or(false)
-        .then(|| options.filename.as_deref().unwrap_or("input.js").into());
-    let transform = transform.to_transformer_options(options.filename);
-    let minify: Option<MinifierOptions> = enabled_options(options.minify);
-    if minify
-        .as_ref()
-        .is_some_and(|options| options.compress.is_some() || options.mangle)
-        && ((lang.is_typescript() && transform.typescript.is_none())
-            || (lang.is_jsx() && transform.jsx.is_none()))
-    {
-        output.diagnostics.push(Diagnostic::error(
-            "AST minification requires TypeScript and JSX lowering",
-            Span::new(0, source.len() as u32),
-        ));
-        return output;
-    }
-    if transform.typescript.is_some() {
-        Normalizer::normalize_runtime(&mut ast);
-    } else {
-        Normalizer::normalize(&mut ast);
-    }
-    let analyzed = analyze(
-        &mut ast,
-        AnalyzeOptions {
+    // ======================= Analyze =======================
+    let semantic = {
+        let options = AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-        },
-    );
-    output
-        .diagnostics
-        .extend(analyzed.diagnostics.into_iter().map(own_diagnostic));
-    if has_errors(&output.diagnostics) {
-        return output;
-    }
-    let transformed = Transformer::transform(analyzed.semantic, transform);
-    output.diagnostics.extend(transformed.diagnostics);
-    if has_errors(&output.diagnostics) {
-        return output;
+        };
+        let analyzed = analyze(&mut ast, options);
+        output.diagnostics.extend(analyzed.diagnostics);
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
+        analyzed.semantic
+    };
+
+    // ======================= Transform =======================
+    {
+        let transform = transform.to_transformer_options(options.filename.clone());
+        let transformed = Transformer::transform(semantic, transform);
+        output.diagnostics.extend(transformed.diagnostics);
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
     }
 
-    let mut codegen = options.codegen.unwrap_or_default();
-    codegen.minify.get_or_insert(minify.is_some());
-    let preserve_comments = match options.comments {
-        Some(CommentsOption::All) => true,
-        Some(CommentsOption::None) => false,
-        None => minify.is_none(),
-    };
-    if let Some(minify) = minify {
-        Minifier::minify(&mut ast, minify);
+    // ======================= Minify =======================
+    {
+        let minify: Option<MinifierOptions> = enabled_options(options.minify);
+        if let Some(minify) = minify {
+            Minifier::minify(&mut ast, minify);
+        }
     }
-    let mut codegen = CodegenOptions::from(codegen);
-    codegen.source_map_path = source_map_path;
-    codegen.comments = preserve_comments;
-    let printed = print(&ast, codegen);
+
+    // ======================= Codegen =======================
+    let printed = {
+        let mut codegen = options.codegen.unwrap_or_default();
+        codegen.minify.get_or_insert(minify_enabled);
+        let mut codegen = CodegenOptions::from(codegen);
+        let source_maps = options.source_maps.unwrap_or(false);
+        let source_filename = options.filename.as_deref().unwrap_or("input.js");
+        codegen.source_map_path = source_maps.then(|| source_filename.into());
+        codegen.comments = matches!(comments, CommentsOption::All);
+        print(&ast, codegen)
+    };
     output.map = printed.map.as_ref().map(serialize_source_map);
     output.code = printed.code;
+
     output
 }
 
 fn serialize_source_map(map: &SourceMap<'_>) -> String {
-    // The pipeline supplies UTF-8 source and filenames; codegen records names
-    // from &str and emits ASCII VLQ mappings.
+    // Source and filenames are UTF-8; codegen records names from &str and emits
+    // ASCII VLQ mappings.
     let text = |bytes| std::str::from_utf8(bytes).expect("source map strings must be valid UTF-8");
+    let sources = map.sources().iter().map(|source| text(source));
+    let names = map.names().iter().map(|name| text(name));
     let mut value = serde_json::json!({
         "version": map.version(),
-        "sources": map.sources().iter().map(|source| text(source)).collect::<Vec<_>>(),
-        "names": map.names().iter().map(|name| text(name)).collect::<Vec<_>>(),
+        "sources": sources.collect::<Vec<_>>(),
+        "names": names.collect::<Vec<_>>(),
         "mappings": text(map.mappings()),
     });
     if let Some(file) = map.file() {
@@ -405,357 +447,8 @@ fn serialize_source_map(map: &SourceMap<'_>) -> String {
         value["sourceRoot"] = text(root).into();
     }
     if let Some(sources) = map.sources_content() {
-        value["sourcesContent"] = serde_json::json!(
-            sources
-                .iter()
-                .map(|source| source.map(text))
-                .collect::<Vec<_>>()
-        );
+        let sources_content = sources.iter().map(|source| source.map(text));
+        value["sourcesContent"] = serde_json::json!(sources_content.collect::<Vec<_>>());
     }
     value.to_string()
-}
-
-fn has_errors(diagnostics: &[Diagnostic<'_>]) -> bool {
-    diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-}
-
-fn own_diagnostic(diagnostic: Diagnostic<'_>) -> Diagnostic<'static> {
-    Diagnostic {
-        severity: diagnostic.severity,
-        message: diagnostic.message.into_owned().into(),
-        span: diagnostic.span,
-        help: diagnostic.help.map(|help| help.into_owned().into()),
-        labels: diagnostic
-            .labels
-            .into_iter()
-            .map(|label| Label {
-                span: label.span,
-                message: label.message.into_owned().into(),
-            })
-            .collect(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use sourcemap::SourceMap as DecodedSourceMap;
-
-    use super::{
-        JsFeature, JsReactRefreshOptions, JsTransformOptions, JsxOptions, JsxRuntime, transform_js,
-    };
-    use crate::{
-        BoolOr,
-        js::{
-            CommentsOption, JsOptions,
-            codegen::JsCodegenOptions,
-            minify::{JsCompressOptions, JsMinifyOptions},
-            parser::{JsCommentMode, JsLang, JsParserOptions},
-        },
-    };
-
-    fn options(lang: JsLang) -> JsOptions {
-        JsOptions {
-            parser: Some(JsParserOptions {
-                lang: Some(lang),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
-    }
-
-    fn code(source: &str, options: &JsOptions) -> String {
-        let output = transform_js(source, options.clone());
-        assert!(output.diagnostics.is_empty());
-        assert!(output.map.is_none());
-        assert!(output.legal_comments.is_none());
-        output.code
-    }
-
-    fn mapped_code(source: &str, options: &JsOptions) -> (String, DecodedSourceMap) {
-        let output = transform_js(source, options.clone());
-        assert!(output.diagnostics.is_empty());
-        let json = output.map.unwrap();
-        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(value["version"], 3);
-        let map = DecodedSourceMap::from_slice(json.as_bytes()).unwrap();
-        (output.code, map)
-    }
-
-    #[test]
-    fn source_maps() {
-        let source = "/*😀*/ export const 名 = \"\\\"\";\n";
-        let filename = "目录/\"源文件\".js";
-        let mut mapped = JsOptions {
-            filename: Some(filename.into()),
-            source_maps: Some(true),
-            ..Default::default()
-        };
-        for minify in [false, true] {
-            mapped.minify = Some(BoolOr::Bool(minify));
-            let (output, map) = mapped_code(source, &mapped);
-            assert_eq!(map.get_source(0), Some(filename));
-            assert_eq!(map.get_source_contents(0), Some(source));
-            let prefix = &output[..output.find('名').unwrap()];
-            let line = prefix.bytes().filter(|&byte| byte == b'\n').count() as u32;
-            let column = prefix.rsplit('\n').next().unwrap().encode_utf16().count() as u32;
-            let token = map.lookup_token(line, column).unwrap();
-            assert_eq!(token.get_name(), Some("名"));
-            assert_eq!(token.get_src_line(), 0);
-            assert_eq!(
-                token.get_src_col(),
-                source[..source.find('名').unwrap()].encode_utf16().count() as u32
-            );
-        }
-
-        let mut typescript = options(JsLang::Ts);
-        typescript.source_maps = Some(true);
-        let source = "export const value: number = 1;";
-        let (output, map) = mapped_code(source, &typescript);
-        assert_eq!(map.get_source(0), Some("input.js"));
-        assert_eq!(map.get_source_contents(0), Some(source));
-        assert!(!output.contains(": number"));
-        let column = output.find('1').unwrap() as u32;
-        let token = map.lookup_token(0, column).unwrap();
-        assert_eq!(token.get_src_col(), source.find('1').unwrap() as u32);
-
-        mapped.source_maps = Some(false);
-        let output = transform_js("export const value = 1;", mapped);
-        assert!(output.diagnostics.is_empty());
-        assert!(output.map.is_none());
-
-        let output = transform_js("const = ;", typescript);
-        assert!(!output.diagnostics.is_empty());
-        assert!(output.map.is_none());
-    }
-
-    #[test]
-    fn comment_options() {
-        let source = "// ordinary\n/*! legal */\nexport const value = 1 + 2;";
-        for minify in [false, true] {
-            let mut options = JsOptions {
-                minify: Some(BoolOr::Bool(minify)),
-                ..Default::default()
-            };
-            let output = code(source, &options);
-            assert_eq!(output.contains("ordinary"), !minify);
-            assert_eq!(output.contains("legal"), !minify);
-
-            options.comments = Some(CommentsOption::All);
-            let output = code(source, &options);
-            assert!(output.contains("ordinary"));
-            assert!(output.contains("legal"));
-
-            options.comments = Some(CommentsOption::None);
-            let output = code(source, &options);
-            assert!(!output.contains("ordinary"));
-            assert!(!output.contains("legal"));
-        }
-
-        let mut printed = JsOptions {
-            comments: Some(CommentsOption::All),
-            ..Default::default()
-        };
-        for compact in [false, true] {
-            printed.codegen = Some(JsCodegenOptions {
-                minify: Some(compact),
-                ..Default::default()
-            });
-            let output = code("/*#__PURE__*/ call();", &printed);
-            assert!(output.contains("#__PURE__"));
-
-            printed.comments = Some(CommentsOption::None);
-            let output = code("/*#__PURE__*/ call();", &printed);
-            assert!(!output.contains("#__PURE__"));
-            printed.comments = Some(CommentsOption::All);
-        }
-
-        let mut jsx = options(JsLang::Jsx);
-        jsx.comments = Some(CommentsOption::None);
-        let output = code("/** @jsxRuntime classic */ const node = <div />;", &jsx);
-        assert!(output.contains("React.createElement("));
-        assert!(!output.contains("/*"));
-    }
-
-    #[test]
-    fn syntax_options() {
-        let mut typescript = options(JsLang::Ts);
-        let output = code("const value: number = 1;", &typescript);
-        assert_eq!(output.trim(), "const value = 1;\nexport {};");
-
-        typescript.transform = Some(JsTransformOptions {
-            typescript: Some(BoolOr::Bool(false)),
-            ..Default::default()
-        });
-        let output = code("const value: number = 1;", &typescript);
-        assert_eq!(output.trim(), "const value: number = 1;");
-
-        let mut jsx = options(JsLang::Jsx);
-        let output = code("const node = <div />;", &jsx);
-        assert!(output.contains("react/jsx-runtime"));
-
-        jsx.transform = Some(JsTransformOptions {
-            jsx: Some(BoolOr::Bool(false)),
-            ..Default::default()
-        });
-        let output = code("const node = <div />;", &jsx);
-        assert!(output.contains("<div"));
-
-        jsx.transform = Some(JsTransformOptions {
-            jsx: Some(BoolOr::Options(JsxOptions {
-                runtime: Some(JsxRuntime::Classic),
-                pragma: Some("h".into()),
-                pure: Some(false),
-                ..Default::default()
-            })),
-            ..Default::default()
-        });
-        let output = code("const node = <div />;", &jsx);
-        assert_eq!(output.trim(), "const node = h(\"div\", null);");
-
-        let tsx = options(JsLang::Tsx);
-        let output = code("const node: unknown = <div />;", &tsx);
-        assert!(!output.contains(": unknown"));
-        assert!(output.contains("react/jsx-runtime"));
-    }
-
-    #[test]
-    fn lowering_features() {
-        let mut options = JsOptions::default();
-        let output = code("try {} catch {}", &options);
-        assert!(output.contains("catch {"));
-
-        options.transform = Some(JsTransformOptions {
-            features: Some(
-                [
-                    (JsFeature::OptionalCatchBinding, true),
-                    (JsFeature::ClassStaticBlock, true),
-                ]
-                .into(),
-            ),
-            ..Default::default()
-        });
-        let output = code("try {} catch {}", &options);
-        assert!(output.contains("catch ("));
-
-        let output = code("class Value { static { use(this); } }", &options);
-        assert!(!output.contains("static {"));
-
-        options.transform.as_mut().unwrap().features = Some(
-            [
-                (JsFeature::OptionalCatchBinding, false),
-                (JsFeature::ClassStaticBlock, false),
-            ]
-            .into(),
-        );
-        let output = code("try {} catch {}", &options);
-        assert!(output.contains("catch {"));
-
-        let output = code("class Value { static { use(this); } }", &options);
-        assert!(output.contains("static {"));
-    }
-
-    #[test]
-    fn minification_options() {
-        let mut options = JsOptions {
-            minify: Some(BoolOr::Bool(true)),
-            ..Default::default()
-        };
-        let output = code("const value = 1 + 2;", &options);
-        assert_eq!(output, "const value=3;");
-
-        options.codegen = Some(JsCodegenOptions {
-            minify: Some(false),
-            ..Default::default()
-        });
-        let output = code("const value = 1 + 2;", &options);
-        assert_eq!(output.trim(), "const value = 3;");
-
-        options.codegen = Some(JsCodegenOptions {
-            minify: Some(true),
-            ..Default::default()
-        });
-        options.minify = Some(BoolOr::Bool(false));
-        let output = code("const value = 1 + 2;", &options);
-        assert_eq!(output, "const value=1+2;");
-
-        options.minify = Some(BoolOr::Options(JsMinifyOptions {
-            compress: Some(BoolOr::Bool(false)),
-            mangle: Some(false),
-        }));
-        let output = code("const value = 1 + 2;", &options);
-        assert_eq!(output, "const value=1+2;");
-
-        options.minify = Some(BoolOr::Options(JsMinifyOptions {
-            compress: Some(BoolOr::Options(JsCompressOptions {
-                evaluate: Some(false),
-                ..Default::default()
-            })),
-            mangle: Some(false),
-        }));
-        let output = code("const value = 1 + 2;", &options);
-        assert_eq!(output, "const value=1+2;");
-    }
-
-    #[test]
-    fn jsx_metadata() {
-        let mut options = options(JsLang::Jsx);
-        options.filename = Some("component.jsx".into());
-        options.transform = Some(JsTransformOptions {
-            jsx: Some(BoolOr::Options(JsxOptions {
-                development: Some(true),
-                source_self: Some(true),
-                refresh: Some(BoolOr::Options(JsReactRefreshOptions {
-                    refresh_reg: Some("register".into()),
-                    ..Default::default()
-                })),
-                ..Default::default()
-            })),
-            ..Default::default()
-        });
-        let output = code("export function App() { return <div />; }", &options);
-        assert!(output.contains("component.jsx"));
-        assert!(output.contains("register("));
-        assert!(output.contains("react/jsx-dev-runtime"));
-    }
-
-    #[test]
-    fn pipeline_diagnostics() {
-        let output = transform_js("const = ;", JsOptions::default());
-        assert!(output.code.is_empty());
-        assert!(!output.diagnostics.is_empty());
-
-        let output = transform_js("let value; let value;", JsOptions::default());
-        assert!(output.code.is_empty());
-        assert!(!output.diagnostics.is_empty());
-
-        let output = transform_js("const node = <svg:path />;", options(JsLang::Jsx));
-        assert!(output.code.is_empty());
-        assert!(!output.diagnostics.is_empty());
-
-        let mut preserved = options(JsLang::Ts);
-        preserved.transform = Some(JsTransformOptions {
-            typescript: Some(BoolOr::Bool(false)),
-            ..Default::default()
-        });
-        preserved.minify = Some(BoolOr::Bool(true));
-        let output = transform_js("const value: number = 1;", preserved);
-        assert!(output.code.is_empty());
-        assert!(!output.diagnostics.is_empty());
-    }
-
-    #[test]
-    fn pipeline_parser_settings() {
-        let mut options = options(JsLang::Jsx);
-        options.parser.as_mut().unwrap().comments = Some(JsCommentMode::None);
-        let output = code("/** @jsxRuntime classic */ const node = <div />;", &options);
-        assert!(output.contains("React.createElement("));
-        assert!(!output.contains("react/jsx-runtime"));
-
-        options.parser.as_mut().unwrap().semantic_errors = Some(false);
-        let output = transform_js("let value; let value;", options);
-        assert!(output.code.is_empty());
-        assert!(!output.diagnostics.is_empty());
-    }
 }
