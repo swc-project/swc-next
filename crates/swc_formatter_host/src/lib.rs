@@ -4,11 +4,14 @@
 //! operation. Language producers retain their own parser configuration, syntax
 //! options and errors. Produced and decoded documents can be composed with
 //! [`Writer::write_doc`](swc_next_formatter_core::Writer::write_doc) before printing.
+//! Applications supply an [`EmbeddedDispatcher`]; the host controls nested calls
+//! through [`FormatContext`] without recognizing language syntax.
 
 #![deny(clippy::all)]
 #![deny(unused)]
 
 mod context;
+mod embedded;
 
 use std::fmt;
 
@@ -16,11 +19,16 @@ use swc_next_allocator::Allocator;
 use swc_next_formatter_core::{Doc, DocumentBufferError, PrintOptions};
 
 pub use context::FormatContext;
+pub use embedded::{
+    EmbeddedDispatcher, EmbeddedError, EmbeddedErrorKind, EmbeddedOptions, EmbeddedOutcome,
+    EmbeddedRequest, InputKind, PreserveReason,
+};
 
 /// A language-specific source-to-document implementation.
 ///
 /// The output may borrow the source and session storage. It must remain usable
-/// after the producer and its syntax options are dropped. Temporary parsed state must either live in the session or be
+/// after the producer, its syntax options and the context's dispatcher are
+/// dropped. Temporary parsed state must either live in the session or be
 /// released after copying the document's borrowed data into session storage.
 ///
 /// Each returned document has an independent named-group scope. Compose it
@@ -39,7 +47,7 @@ pub trait DocumentProducer {
     /// Produces a complete layout document using the current context.
     fn produce<'a>(
         &self,
-        context: FormatContext<'a>,
+        context: FormatContext<'a, '_>,
         source: &'a str,
         options: &Self::Options,
     ) -> Result<Doc<'a>, Self::Error>;
@@ -77,9 +85,22 @@ impl FormatSession {
         self.print_options
     }
 
-    /// Creates a root formatting context.
-    pub fn context(&self) -> FormatContext<'_> {
-        FormatContext::root(self)
+    /// Creates a root context without an embedded-language dispatcher.
+    pub fn context(&self) -> FormatContext<'_, 'static> {
+        FormatContext::root(self, None, EmbeddedOptions::default())
+    }
+
+    /// Creates a root context with application-provided embedded dispatch.
+    ///
+    /// Documents borrow the session and their source, independently of the
+    /// dispatcher lifetime. Nested producers must use the child context passed
+    /// to the dispatcher to retain the recursion budget and shared services.
+    pub fn context_with_embedded<'a, 'services>(
+        &'a self,
+        dispatcher: &'services dyn EmbeddedDispatcher,
+        options: EmbeddedOptions,
+    ) -> FormatContext<'a, 'services> {
+        FormatContext::root(self, Some(dispatcher), options)
     }
 
     /// Produces a document without erasing language-specific options or errors.

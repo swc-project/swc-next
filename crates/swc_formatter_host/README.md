@@ -2,8 +2,12 @@
 
 Language-independent formatting sessions for typed source-to-document producers
 and encoded documents. Sessions own an arena and shared layout options; language
-crates provide parsing, syntax options, and errors. The host has no language
-dependencies or runtime plugin loader.
+crates provide parsing, syntax options, and errors.
+
+Applications supply synchronous embedded-language dispatch. Child contexts share
+storage, inherit layout and carry a bounded recursion depth. Deliberate fallback
+leaves the original syntax with its parent; execution failures remain errors.
+The host has no language dependencies or runtime plugin loader.
 
 Documents borrow session storage and their inputs. Print or encode them before
 releasing either. Use `Writer::import_doc` or `Writer::write_doc` to compose
