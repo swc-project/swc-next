@@ -168,7 +168,7 @@ fn main() -> Result<(), String> {
     assert!(parse.diagnostics.is_empty());
 
     let semantic = analyze(
-        &parse.ast,
+        parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
         },
@@ -193,9 +193,12 @@ fn main() -> Result<(), String> {
         }
     }
 
+    let analyzed = semantic.semantic;
+    // SAFETY: The bound model and inspected handles belong to this AST.
+    let ast = unsafe { analyzed.ctx().ast() };
     print!(
         "{}",
-        ScopesTextWriter::new(&parse.ast, &semantic.semantic).build()
+        ScopesTextWriter::new(ast, analyzed.semantic()).build()
     );
     Ok(())
 }

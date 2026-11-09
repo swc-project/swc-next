@@ -15,7 +15,7 @@ fn type_argument_speculation() {
                 let allocator = Allocator::new();
                 let parsed =
                     Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
-                let result = inspect(&parsed.ast);
+                let result = inspect(unsafe { parsed.ast.ast() });
                 (parsed.diagnostics, result)
             })
             .unwrap()
@@ -128,7 +128,13 @@ fn binding_pattern_lookahead() {
                 let parsed =
                     Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
                 assert!(parsed.diagnostics.is_empty());
-                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 1);
+                assert_eq!(
+                    unsafe { parsed.ast.ast() }
+                        .root_program()
+                        .body(unsafe { parsed.ast.ast() })
+                        .len(),
+                    1
+                );
             })
             .unwrap()
             .join()
@@ -186,7 +192,13 @@ fn assignment_targets() {
                 let parsed =
                     Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
                 assert!(parsed.diagnostics.is_empty());
-                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 1);
+                assert_eq!(
+                    unsafe { parsed.ast.ast() }
+                        .root_program()
+                        .body(unsafe { parsed.ast.ast() })
+                        .len(),
+                    1
+                );
             })
             .unwrap()
             .join()

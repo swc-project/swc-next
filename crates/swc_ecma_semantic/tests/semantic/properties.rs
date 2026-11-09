@@ -6,7 +6,7 @@ fn abstract_method_syntax_check() {
     let source = "abstract class A { abstract m() {} }";
     let parse = Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
-    let ast = &parse.ast;
+    let ast = unsafe { parse.ast.ast() };
     let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
     let declaration = statement.as_declaration(ast).unwrap();
     let class = declaration.as_class(ast).unwrap();
@@ -20,13 +20,13 @@ fn abstract_method_syntax_check() {
     let options = AnalyzeOptions {
         check_syntax: SyntaxChecks::empty(),
     };
-    let unchecked = analyze(ast, options);
+    let unchecked = analyze(&parse.ast, options);
     assert!(unchecked.diagnostics.is_empty());
 
     let checked_options = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
     };
-    let checked = analyze(ast, checked_options);
+    let checked = analyze(&parse.ast, checked_options);
     assert_eq!(checked.diagnostics.len(), 1);
     assert_eq!(checked.diagnostics[0].span, ast.span(method.node_id()));
 }
@@ -36,13 +36,12 @@ fn assert_class_member_name_check(source: &str, parser_options: Options) {
     let allocator = Allocator::new();
     let parse = Parser::init(&allocator, source, parser_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
-    let ast = &parse.ast;
 
-    let unchecked = analyze(ast, AnalyzeOptions::default());
+    let unchecked = analyze(&parse.ast, AnalyzeOptions::default());
     assert!(unchecked.diagnostics.is_empty());
 
     let excluded = analyze(
-        ast,
+        &parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all() - SyntaxChecks::CLASS_MEMBER_NAMES,
         },
@@ -50,17 +49,20 @@ fn assert_class_member_name_check(source: &str, parser_options: Options) {
     assert!(excluded.diagnostics.is_empty());
 
     let checked = analyze(
-        ast,
+        &parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::CLASS_MEMBER_NAMES,
         },
     );
     assert_eq!(checked.diagnostics.len(), 1);
     assert_eq!(
-        check_syntax(ast, SyntaxChecks::CLASS_MEMBER_NAMES),
+        check_syntax(&parse.ast, SyntaxChecks::CLASS_MEMBER_NAMES),
         checked.diagnostics
     );
-    assert_eq!(check_syntax(ast, SyntaxChecks::all()), checked.diagnostics);
+    assert_eq!(
+        check_syntax(&parse.ast, SyntaxChecks::all()),
+        checked.diagnostics
+    );
 }
 
 #[test]

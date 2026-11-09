@@ -39,7 +39,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceFlags, ReferenceSpace, SemanticReturn, SymbolFlags, SyntaxChecks,
+    ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
     binder::{PreparedDeclaration, SymbolTracker},
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
@@ -83,12 +83,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
-    pub fn build(mut self) -> SemanticReturn<'a> {
+    pub fn build(mut self) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
         self.finish();
-        SemanticReturn {
-            semantic: self.symbols.finalize(self.ast, self.scope),
-            diagnostics: self.diagnostics,
-        }
+        (
+            self.symbols.finalize(self.ast, self.scope),
+            self.diagnostics,
+        )
     }
 
     pub fn into_diagnostics(mut self) -> Vec<Diagnostic<'a>> {

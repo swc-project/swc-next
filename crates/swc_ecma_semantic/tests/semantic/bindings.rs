@@ -242,7 +242,7 @@ fn assert_separate_lexical_binding(source: &str, options: Options) {
     let check = |options| {
         let result = analyze(&parse.ast, options);
         let semantic = &result.semantic;
-        let references = reference_symbols(&parse.ast, semantic, b"f");
+        let references = reference_symbols(unsafe { parse.ast.ast() }, semantic, b"f");
         assert_eq!(references.len(), 2);
         let lexical = references[0].unwrap();
         let hoisted = references[1].unwrap();
@@ -551,7 +551,7 @@ fn assert_annex_b_dual_binding(source: &str, options: Options) {
         let result = analyze(&parse.ast, AnalyzeOptions { check_syntax });
         assert!(result.diagnostics.is_empty());
         let semantic = result.semantic;
-        let references = reference_symbols(&parse.ast, &semantic, b"f");
+        let references = reference_symbols(unsafe { parse.ast.ast() }, &semantic, b"f");
         assert!(references.len() >= 2);
         let lexical = references[0].unwrap();
         let outer = references[1].unwrap();
@@ -584,7 +584,11 @@ fn assert_annex_b_dual_binding(source: &str, options: Options) {
         );
         let starts = semantic
             .iter_declarations()
-            .map(|entry| parse.ast.span(entry.declaration.node).start)
+            .map(|entry| {
+                unsafe { parse.ast.ast() }
+                    .span(entry.declaration.node)
+                    .start
+            })
             .collect::<Vec<_>>();
         assert!(starts.is_sorted());
         let facts = (

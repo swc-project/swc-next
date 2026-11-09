@@ -49,11 +49,13 @@ See the [project roadmap](https://github.com/swc-project/swc-next/issues/181) fo
 
 See the [Flattening AST design](https://next.swc.rs/architecture/flat-ast) and other documents.
 
-## Rust API Soundness
+## Rust API Safety
 
-The current Rust AST API has known soundness issues:
+Node IDs and typed handles are not tied to their owning `Ast`. Handles include `NodeId`, typed node handles such as `Expr`, `SubRange<T>` list ranges, and `AstUtf8` / `AstWtf8` string handles. Using them with the wrong AST or after invalidation can cause undefined behavior.
 
-- Node IDs and typed handles are not tied to their owning `Ast`. Using a handle with a different AST can access unrelated nodes or cause undefined behavior through unchecked access, even through safe APIs.
+Use `AstCtx` through its safe APIs where possible. Custom node access requires `unsafe { ctx.ast() }` for reading or `unsafe { ctx.ast_mut() }` for mutation. You must use handles with their owning AST, keep them valid and correctly typed, and preserve these guarantees when editing. Never reuse handles invalidated by mutation.
+
+See the [`Ast`](crates/swc_ecma_ast/src/lib.rs) and [`AstCtx`](crates/swc_ecma_ast/src/ast_ctx.rs) Rust docs for the full safety requirements.
 
 ## Compatibility
 

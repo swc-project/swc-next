@@ -304,7 +304,8 @@ mod tests {
     #[test]
     fn traverse_mut_descendant_stop() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
 
         let stmt = statement(&mut ast);
         let (action, hooks) = traverse(&mut ast, stmt, false);

@@ -61,18 +61,18 @@ fn main() -> Result<(), String> {
         ..TransformerOptions::default()
     };
     if options.typescript.is_some() {
-        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+        Normalizer::normalize_runtime(&mut ast);
     } else {
-        Normalizer::normalize(ast.root_program(), &mut ast);
+        Normalizer::normalize(&mut ast);
     }
     let analyzed = analyze(
-        &ast,
+        &mut ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
         },
     );
     report_diagnostics(path, &analyzed.diagnostics)?;
-    Transformer::transform(&mut ast, analyzed.semantic, options);
+    Transformer::transform(analyzed.semantic, options);
 
     let result = print(&ast, Default::default());
     print!("{}", result.code);

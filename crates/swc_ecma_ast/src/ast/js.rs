@@ -2376,7 +2376,8 @@ mod tests {
 
     fn bigint_value(raw: &str) -> Option<BigInt> {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let raw = ast.add_utf8(raw);
         let literal = ast.big_int_literal(DUMMY_SP, raw);
         literal.value(&ast)

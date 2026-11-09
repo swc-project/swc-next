@@ -24,7 +24,7 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{Ast, AstCtx, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
     binder::{Range, SymbolLinks, TsMemberIndex},
@@ -700,9 +700,76 @@ impl Iterator for DeclarationIterator<'_> {
     }
 }
 
+mod sealed {
+    use swc_next_ecma_ast::AstCtx;
+
+    pub trait Sealed {}
+
+    impl Sealed for AstCtx<'_> {}
+    impl Sealed for &AstCtx<'_> {}
+    impl Sealed for &mut AstCtx<'_> {}
+}
+
+/// An owned context or a shared or exclusive borrow accepted by [`crate::analyze`].
+///
+/// Implementations are restricted to `AstCtx`, `&AstCtx`, and `&mut AstCtx`, so analysis
+/// retains exactly the context and access permission supplied by its caller.
+pub trait AstBorrow<'a>: sealed::Sealed {
+    /// Returns the borrowed context without permitting mutation.
+    fn as_ast_ctx(&self) -> &AstCtx<'a>;
+}
+
+impl<'a> AstBorrow<'a> for AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+impl<'a> AstBorrow<'a> for &AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+impl<'a> AstBorrow<'a> for &mut AstCtx<'a> {
+    fn as_ast_ctx(&self) -> &AstCtx<'a> {
+        self
+    }
+}
+
+/// An owned or borrowed AST together with its current semantic model.
+///
+/// Only [`analyze`] can create this binding. Owned contexts and both forms of
+/// borrow permit queries while keeping the AST unchanged. Only a binding with
+/// an exclusive borrow can currently be consumed by an in-place transform.
+pub struct SemanticAst<'a, A: AstBorrow<'a>> {
+    ast: A,
+    semantic: Semantic<'a>,
+}
+
+impl<'a, A: AstBorrow<'a>> SemanticAst<'a, A> {
+    /// Returns the analyzed AST without permitting mutation.
+    pub fn ctx(&self) -> &AstCtx<'a> {
+        self.ast.as_ast_ctx()
+    }
+
+    /// Returns the current semantic model for queries.
+    pub fn semantic(&self) -> &Semantic<'a> {
+        &self.semantic
+    }
+
+    /// Consumes the binding and returns its original context or borrow and semantic model.
+    ///
+    /// Subsequent AST mutations may invalidate the detached model. A new
+    /// binding must be obtained by analyzing the context again.
+    pub fn into_parts(self) -> (A, Semantic<'a>) {
+        (self.ast, self.semantic)
+    }
+}
+
 /// Semantic analysis output and any requested scope-dependent early errors.
-pub struct SemanticReturn<'a> {
-    pub semantic: Semantic<'a>,
+pub struct SemanticReturn<'a, A: AstBorrow<'a>> {
+    pub semantic: SemanticAst<'a, A>,
     pub diagnostics: Vec<Diagnostic<'a>>,
 }
 
@@ -714,14 +781,34 @@ pub struct AnalyzeOptions {
     pub check_syntax: SyntaxChecks,
 }
 
-/// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
+/// Analyzes a tree and binds its current [`Semantic`] model to the supplied context or borrow.
+///
+/// Pass `AstCtx` to transfer ownership, `&AstCtx` for queries, or `&mut AstCtx` to
+/// reserve exclusive access for a subsequent in-place transform. Analysis itself
+/// only reads the AST.
+/// Reborrow an existing mutable reference with `&mut *ast` if it will be used
+/// again after consuming the analysis binding.
 ///
 /// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
 /// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
-pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
-    let root = ast.root_program();
-    let mut builder = SemanticBuilder::new(ast, options.check_syntax);
+pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> SemanticReturn<'a, A> {
+    // SAFETY: Analysis only reads handles obtained from this AST.
+    let tree = unsafe { ast.as_ast_ctx().ast() };
+    let (semantic, diagnostics) = analyze_impl(tree, options);
+    SemanticReturn {
+        semantic: SemanticAst { ast, semantic },
+        diagnostics,
+    }
+}
+
+// Keep AST traversal non-generic over the context's ownership or borrow form.
+fn analyze_impl<'a>(
+    tree: &Ast<'a>,
+    options: AnalyzeOptions,
+) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
+    let root = tree.root_program();
+    let mut builder = SemanticBuilder::new(tree, options.check_syntax);
     root.visit_with(&mut builder);
     builder.build()
 }
@@ -733,10 +820,12 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 /// to include every check, including TypeScript aliases.
 /// Reference resolution and the model's use indexes are not needed for these
 /// checks and are skipped. Messages borrow the tree's arena.
-pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
+pub fn check_syntax<'a>(ast: &AstCtx<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
     if checks.is_empty() {
         return Vec::new();
     }
+    // SAFETY: Syntax checking only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
     let mut builder = SemanticBuilder::new(ast, checks);
     ast.root_program().visit_with(&mut builder);
     builder.into_diagnostics()

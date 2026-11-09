@@ -46,9 +46,9 @@ fn pure_calls(source: &str, options: &PrintOptions) -> String {
     )
     .parse();
     assert!(parsed.diagnostics.is_empty());
-    let mut ast = parsed.ast;
+    let mut ast = unsafe { parsed.ast.into_ast() };
     ast.root_program().visit_mut_with(&mut PureCalls(&mut ast));
-    print(&ast, options.clone()).code.to_owned()
+    print(&ast.into(), options.clone()).code.to_owned()
 }
 
 #[test]
@@ -361,12 +361,12 @@ fn expect_empty_statement(source: &str, expected_minified: &str) {
         )
         .parse();
         assert!(reparsed.diagnostics.is_empty());
-        let ast = &reparsed.ast;
+        let ast = unsafe { reparsed.ast.ast() };
         let statement = ast.get_node_in_sub_range(ast.root_program().body(ast).first().unwrap());
         assert_empty_statement_body(ast, statement);
-        let reparsed_pretty = print(ast, PrintOptions::default());
+        let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
         assert_eq!(reparsed_pretty.code, original_pretty.code);
-        let repeated = print(ast, print_options);
+        let repeated = print(&reparsed.ast, print_options);
         assert_eq!(repeated.code, printed.code);
     }
 }
@@ -520,7 +520,8 @@ fn test_number_format() {
 #[test]
 fn numeric_literal_value_invalidates_raw() {
     let allocator = Allocator::new();
-    let mut ast = Ast::new("0x1", &allocator);
+    // SAFETY: All handles used below belong to this AST and remain valid.
+    let mut ast = unsafe { Ast::new("0x1", &allocator) };
     let raw = ast.source_slice(0, 3);
     let expression = ast.expr_numeric_literal(DUMMY_SP, 1.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
@@ -538,13 +539,14 @@ fn numeric_literal_value_invalidates_raw() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(print(&ast, PrintOptions::default()).code, "2;\n");
+    assert_eq!(print(&ast.into(), PrintOptions::default()).code, "2;\n");
 }
 
 #[test]
 fn numeric_literal_value_compares_float_bits() {
     let allocator = Allocator::new();
-    let mut ast = Ast::new("0", &allocator);
+    // SAFETY: All handles used below belong to this AST and remain valid.
+    let mut ast = unsafe { Ast::new("0", &allocator) };
     let raw = ast.source_slice(0, 1);
     let expression = ast.expr_numeric_literal(DUMMY_SP, 0.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
@@ -559,7 +561,7 @@ fn numeric_literal_value_compares_float_bits() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(print(&ast, PrintOptions::default()).code, "-0;\n");
+    assert_eq!(print(&ast.into(), PrintOptions::default()).code, "-0;\n");
 }
 
 #[test]
@@ -639,7 +641,8 @@ fn synthesized_number_formats() {
 
 fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> String {
     let allocator = Allocator::new();
-    let mut ast = Ast::new("", &allocator);
+    // SAFETY: All handles used below belong to this AST and remain valid.
+    let mut ast = unsafe { Ast::new("", &allocator) };
     let name = ast.add_utf8("x");
     let left = ast.expr_identifier_reference(DUMMY_SP, name);
     let right = ast.expr_numeric_literal(DUMMY_SP, value, None);
@@ -649,7 +652,7 @@ fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> St
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&ast, options).code
+    print(&ast.into(), options).code
 }
 
 #[test]
@@ -717,7 +720,8 @@ fn synthesized_number_property_keys() {
 
 fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify: bool) -> String {
     let allocator = Allocator::new();
-    let mut ast = Ast::new("", &allocator);
+    // SAFETY: All handles used below belong to this AST and remain valid.
+    let mut ast = unsafe { Ast::new("", &allocator) };
     let key = ast.property_key_expr_numeric_literal(DUMMY_SP, key_value, None);
     let value = ast.expr_numeric_literal(DUMMY_SP, 0.0, None);
     let property = ast.object_property(
@@ -738,7 +742,7 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
     ast.set_root_program(program);
 
     print(
-        &ast,
+        &ast.into(),
         PrintOptions {
             minify,
             ..PrintOptions::default()
@@ -751,14 +755,15 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
 fn synthesized_number_contexts() {
     fn print_unary(value: f64, options: PrintOptions) -> String {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let argument = ast.expr_numeric_literal(DUMMY_SP, value, None);
         let unary = ast.expr_unary_expression(DUMMY_SP, argument, UnaryOperator::Negate);
         let statement = ast.stmt_expression_statement(DUMMY_SP, unary);
         let body = ast.add_sub_range([statement]);
         let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
         ast.set_root_program(program);
-        print(&ast, options).code
+        print(&ast.into(), options).code
     }
 
     let pretty = PrintOptions::default();
@@ -782,7 +787,8 @@ fn synthesized_number_contexts() {
 
 fn print_negative_number_contexts(options: PrintOptions) -> String {
     let allocator = Allocator::new();
-    let mut ast = Ast::new("", &allocator);
+    // SAFETY: All handles used below belong to this AST and remain valid.
+    let mut ast = unsafe { Ast::new("", &allocator) };
 
     let member_object = ast.expr_numeric_literal(DUMMY_SP, -2.0, None);
     let property_name = ast.add_utf8("toString");
@@ -810,7 +816,7 @@ fn print_negative_number_contexts(options: PrintOptions) -> String {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&ast, options).code
+    print(&ast.into(), options).code
 }
 
 #[test]
@@ -1094,19 +1100,16 @@ fn expect_export_default_expression(
     )
     .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let body = reparsed.ast.root_program().body(&reparsed.ast);
+    // SAFETY: The export and all inspected children belong to the reparsed AST.
+    let ast = unsafe { reparsed.ast.ast() };
+    let body = ast.root_program().body(ast);
     assert_eq!(body.len(), 1);
     let export = body
-        .get_node(&reparsed.ast, 0)
+        .get_node(ast, 0)
         .unwrap()
-        .as_export_default_declaration(&reparsed.ast)
+        .as_export_default_declaration(ast)
         .unwrap();
-    assert!(
-        export
-            .declaration(&reparsed.ast)
-            .as_expr(&reparsed.ast)
-            .is_some()
-    );
+    assert!(export.declaration(ast).as_expr(ast).is_some());
     let repeated = print(&reparsed.ast, print_options);
     assert_eq!(repeated.code, printed.code);
 }

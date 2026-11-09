@@ -62,8 +62,8 @@ fn run_fixture(input: &Path, lang: Lang) {
     );
 
     let mut ast = parse.ast;
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let diagnostics = transform(&mut ast, &semantic)
+    let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
+    let diagnostics = transform(semantic)
         .into_iter()
         .map(|diagnostic| diagnostic.message);
     let actual = print(&ast, PrintOptions::default()).code;

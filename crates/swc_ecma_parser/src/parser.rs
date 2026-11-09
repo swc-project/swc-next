@@ -1211,7 +1211,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
 }
 
 pub struct ParseReturn<'a> {
-    pub ast: Ast<'a>,
+    pub ast: AstCtx<'a>,
     pub tokens: ArenaVec<'a, Token>,
     pub diagnostics: Vec<Diagnostic<'static>>,
 }
@@ -1488,7 +1488,8 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
 impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
-        let mut ast = Ast::new(source, allocator);
+        // SAFETY: The parser only uses handles from this AST and wraps it before returning.
+        let mut ast = unsafe { Ast::new(source, allocator) };
         ast.set_source_metadata(options.source_type, options.lang);
         let allow_html_like_comments = options.source_type != SourceType::Module;
         let lexer = Lexer::init(
@@ -1659,7 +1660,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         ParseReturn {
-            ast: self.ast,
+            ast: self.ast.into(),
             tokens,
             diagnostics,
         }
@@ -1669,7 +1670,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn parse_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
         if let Some(hashbang) = self.lexer.hashbang {
             let end = hashbang.start + u32::from(hashbang.len);
             self.report(
@@ -1697,7 +1698,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_unambiguous_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
         self.enter_fragment_context(SourceType::Module, fragment_context);
         let expr = self.parse_value_expression(Precedence::Lowest);
         match self.module_detection.parse_action(&self.diagnostics) {
@@ -1746,7 +1747,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn finish_expression_fragment(
         mut self,
         expr: Option<Expr>,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
         debug_assert!(self.cover.initialized_names.is_empty());
         if self.current_token.tag() != TokenTag::Eof {
             self.report_expected(
@@ -1767,7 +1768,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if self.comment_mode == CommentMode::Flat {
                     self.ast.set_attached_comments(self.lexer.comments);
                 }
-                Ok(self.ast)
+                Ok(self.ast.into())
             }
             _ => Err(diagnostics),
         }
@@ -2097,8 +2098,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.lexer.processed_comments = checkpoint.lexer_processed_comments;
         self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
-        self.ast
-            .truncate(checkpoint.nodes_len, checkpoint.extra_len);
+        // SAFETY: Speculative parsing only appends AST storage without linking it
+        // into the retained AST. Rewinding discards the speculative handles and
+        // ranges, and the retained storage still refers only to checkpoint data.
+        unsafe {
+            self.ast
+                .truncate(checkpoint.nodes_len, checkpoint.extra_len);
+        }
         self.diagnostics.truncate(checkpoint.diagnostics_len);
         self.context = checkpoint.context;
         self.statement_context = checkpoint.statement_context;
@@ -14910,6 +14916,16 @@ mod tests {
     use super::*;
     use crate::TokenParserConfig;
 
+    fn read_ast<'borrow, 'arena>(cell: &'borrow AstCtx<'arena>) -> &'borrow Ast<'arena> {
+        // SAFETY: These tests only read handles from the AST that created them.
+        unsafe { cell.ast() }
+    }
+
+    fn take_ast(cell: AstCtx<'_>) -> Ast<'_> {
+        // SAFETY: These tests keep all handles with their originating AST.
+        unsafe { cell.into_ast() }
+    }
+
     fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
         let options = Options {
             lang: Lang::Ts,
@@ -15069,7 +15085,7 @@ mod tests {
         let allocator = Allocator::new();
         let parse = |source| {
             let parsed = parse_tokens(&allocator, source);
-            (parsed.ast, !parsed.diagnostics.is_empty())
+            (take_ast(parsed.ast), !parsed.diagnostics.is_empty())
         };
         let options = Options {
             lang: Lang::Ts,
@@ -15189,7 +15205,7 @@ mod tests {
         fn namespace_name(source: &str) -> (bool, String) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let declaration = ast
                 .root_program()
                 .body(ast)
@@ -15206,7 +15222,7 @@ mod tests {
         fn import_name(source: &str) -> (bool, String) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let declaration = ast
                 .root_program()
                 .body(ast)
@@ -15251,7 +15267,12 @@ mod tests {
         let allocator = Allocator::new();
         let parsed = parse_tokens(&allocator, "export as namespace 1;");
         assert!(!parsed.diagnostics.is_empty());
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let parsed = parse_tokens(&allocator, "type T = A.if;");
         assert!(parsed.diagnostics.is_empty());
@@ -15310,7 +15331,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let declaration = ast
                 .root_program()
                 .body(ast)
@@ -15391,7 +15412,7 @@ mod tests {
         fn parse(source: &str) -> (bool, String, f64, bool) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let declaration = ast
                 .root_program()
                 .body(ast)
@@ -15447,7 +15468,7 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let label = ast
                 .root_program()
                 .body(ast)
@@ -15492,7 +15513,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast
                 .root_program()
                 .body(ast)
@@ -15535,7 +15556,7 @@ mod tests {
         fn parse(source: &str) -> (bool, NodeKind, usize) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let body = ast.root_program().body(ast);
             let alias = body
                 .get_node(ast, 0)
@@ -15583,7 +15604,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let class = if let Some(export) = statement.as_export_named_declaration(ast) {
                 export.declaration(ast).unwrap().as_class(ast).unwrap()
@@ -15636,7 +15657,7 @@ mod tests {
         fn parse(source: &str, options: Options) -> (Vec<Span>, Vec<NodeKind>) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
             let expressions = expression_kinds(ast, ast.root_program().body(ast));
             (errors, expressions)
@@ -15699,7 +15720,7 @@ mod tests {
         let parsed =
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         let function = ast
             .root_program()
             .body(ast)
@@ -15738,7 +15759,7 @@ mod tests {
             let parse = |source| {
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
-                result.ast
+                take_ast(result.ast)
             };
 
             assert!(has_errors("a++!;", options));
@@ -15780,7 +15801,7 @@ mod tests {
         fn parse(source: &str) -> (Vec<&str>, &str, Option<&str>, Option<&str>) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let body = ast.root_program().body(ast);
             assert_eq!(body.len(), 1);
             let statement = body.get_node(ast, 0).unwrap();
@@ -15851,7 +15872,7 @@ mod tests {
         ) -> (Vec<Diagnostic<'static>>, T) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let result = inspect(&parsed.ast);
+            let result = inspect(read_ast(&parsed.ast));
             (parsed.diagnostics, result)
         }
 
@@ -15990,7 +16011,7 @@ mod tests {
         fn parse(source: &str) -> (Vec<&str>, Vec<&str>, Option<&str>) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let variable = statement
                 .as_declaration(ast)
@@ -16014,7 +16035,10 @@ mod tests {
         fn is_discarded(source: &str) -> bool {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            parsed.ast.root_program().body(&parsed.ast).is_empty()
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
         }
 
         macro_rules! check {
@@ -16054,10 +16078,10 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let mut rests = Rests {
-                ast: &parsed.ast,
+                ast: read_ast(&parsed.ast),
                 spans: Vec::new(),
             };
-            parsed.ast.root_program().visit_with(&mut rests);
+            read_ast(&parsed.ast).root_program().visit_with(&mut rests);
             let errors = parsed
                 .diagnostics
                 .iter()
@@ -16301,7 +16325,7 @@ mod tests {
         let allocator = Allocator::new();
         let source = "throw\nvalue;\nafter;";
         let parsed = parse_tokens(&allocator, source);
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, throw_argument(ast).span(ast));
         assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
@@ -16322,22 +16346,32 @@ mod tests {
         );
 
         let parsed = parse_tokens(&allocator, "throw /*\n*/ value;");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
 
         let parsed = parse_tokens(&allocator, "throw // comment\nvalue;");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
 
         let parsed = parse_tokens(&allocator, "throw\n;");
         assert!(!parsed.diagnostics.is_empty());
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let parsed = parse_tokens(&allocator, "throw\n");
         assert!(!parsed.diagnostics.is_empty());
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
     }
 
     #[test]
@@ -16364,7 +16398,7 @@ mod tests {
         let allocator = Allocator::new();
         let source = "try { inside; }\nafter;";
         let parsed = parse_tokens(&allocator, source);
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(16, 21));
         let statement = first_try(ast);
@@ -16388,7 +16422,7 @@ mod tests {
         );
 
         let parsed = parse_tokens(&allocator, "try {}");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(6, 6));
         assert_eq!(ast.root_program().body(ast).len(), 1);
@@ -16399,15 +16433,30 @@ mod tests {
 
         let parsed = parse_tokens(&allocator, "try { inside;");
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let parsed = parse_tokens(&allocator, "try {} catch (error)");
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let parsed = parse_tokens(&allocator, "try {} finally");
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
     }
 
     fn parse_typescript_declaration<'a>(
@@ -16421,7 +16470,7 @@ mod tests {
         };
         let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
-        let ast = parsed.ast;
+        let ast = take_ast(parsed.ast);
         let body = ast.root_program().body(&ast);
         assert_eq!(body.len(), 1);
         let statement = body.get_node(&ast, 0).unwrap();
@@ -16525,7 +16574,7 @@ mod tests {
         fn parse(source: &str) -> (Vec<&str>, Vec<&str>) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let declaration = statement.as_declaration(ast).unwrap();
             let enumeration = declaration.as_ts_enum_declaration(ast).unwrap();
@@ -16558,7 +16607,7 @@ mod tests {
         ) -> (Ast<'a>, TsModuleDeclaration) {
             let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
             assert_eq!(parsed.diagnostics.len(), errors);
-            let ast = parsed.ast;
+            let ast = take_ast(parsed.ast);
             let body = ast.root_program().body(&ast);
             assert_eq!(body.len(), 1);
             let module = body
@@ -16810,7 +16859,7 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert_eq!(parsed.diagnostics.len(), 1);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let body = ast.root_program().body(ast);
             assert_eq!(body.len(), 2);
             let declaration = body.get_node(ast, 0).unwrap().as_declaration(ast).unwrap();
@@ -16852,7 +16901,7 @@ mod tests {
             let parsed =
                 Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let expression = statement
                 .as_expression_statement(ast)
@@ -16998,7 +17047,7 @@ mod tests {
             let parse = |source| {
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
-                result.ast
+                take_ast(result.ast)
             };
 
             let ast = parse("type T<A> = A extends infer U extends () => void ? U : never;");
@@ -17033,7 +17082,7 @@ mod tests {
                 ..Options::default()
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let alias = statement
                 .as_declaration(ast)
@@ -17101,7 +17150,7 @@ mod tests {
         assert_eq!(name, "await");
     }
 
-    fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
+    fn serialize_ast(ast: &AstCtx<'_>) -> Vec<u8> {
         use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer, ast.source().encode_utf16().count());
@@ -17133,7 +17182,7 @@ mod tests {
             let parse = |source| {
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
-                result.ast
+                take_ast(result.ast)
             };
 
             let ast = parse("export default\nasync function f() {}");
@@ -17186,7 +17235,7 @@ mod tests {
                 let source = "export default (async function f() {});";
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
-                let ast = result.ast;
+                let ast = take_ast(result.ast);
                 let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
                     panic!("expected a default-exported expression");
                 };
@@ -17217,7 +17266,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, TokenParserConfig).parse();
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let body = ast.root_program().body(ast);
             let arrow = body
                 .get_node(ast, 0)
@@ -17325,10 +17374,12 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
             let mut visitor = Parameters {
-                ast: &parsed.ast,
+                ast: read_ast(&parsed.ast),
                 kinds: Vec::new(),
             };
-            parsed.ast.root_program().visit_with(&mut visitor);
+            read_ast(&parsed.ast)
+                .root_program()
+                .visit_with(&mut visitor);
             visitor.kinds
         }
 
@@ -17371,7 +17422,7 @@ mod tests {
         let allocator = Allocator::new();
         let source = "class C { constructor(this: C, value) { return; } }\nafter;";
         let parsed = parse_tokens(&allocator, source);
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(22, 26));
         let body = ast.root_program().body(ast);
@@ -17419,7 +17470,7 @@ mod tests {
         );
 
         let parsed = parse_tokens(&allocator, "class C { constructor(this: C, ...args); }");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.root_program().body(ast).len(), 1);
         let members = class_members(ast);
@@ -17442,17 +17493,32 @@ mod tests {
         let source = "(this: C) => {};";
         let parsed = parse_tokens(&allocator, source);
         assert!(!parsed.diagnostics.is_empty());
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let source = "type C = new (this: C) => C;";
         let parsed = parse_tokens(&allocator, source);
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let source = "interface C { new (this: C): C; }";
         let parsed = parse_tokens(&allocator, source);
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let errors = error_spans("function f(...a,) {}", Options::default());
         assert_eq!(errors, ["...a,"]);
@@ -17469,7 +17535,10 @@ mod tests {
         fn parse(source: &str, options: Options) -> (bool, usize) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let statements = parsed.ast.root_program().body(&parsed.ast).len();
+            let statements = read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .len();
             (!parsed.diagnostics.is_empty(), statements)
         }
 
@@ -17506,7 +17575,7 @@ mod tests {
             };
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
-            let ast = &result.ast;
+            let ast = read_ast(&result.ast);
             assert_eq!(ast.root_program().body(ast).len(), 1);
             let declaration = ast
                 .root_program()
@@ -17568,6 +17637,7 @@ mod tests {
             };
             let ast = Parser::init(&allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
+                .map(take_ast)
                 .unwrap();
             let element = ast.root_expression().as_jsx_element(&ast).unwrap();
             let opening = element.opening_element(&ast);
@@ -17615,7 +17685,7 @@ mod tests {
         let allocator = Allocator::new();
         let source = "super;\nafter;";
         let parsed = parse_tokens(&allocator, source);
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 6));
         assert_eq!(ast.root_program().body(ast).len(), 2);
@@ -17628,7 +17698,7 @@ mod tests {
         );
 
         let parsed = parse_tokens(&allocator, "super\nafter;");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.root_program().body(ast).len(), 2);
         assert!(expression(ast, 0).is_super(ast));
@@ -17636,7 +17706,7 @@ mod tests {
         assert_eq!(ast.get_utf8(after.name(ast)), "after");
 
         let parsed = parse_tokens(&allocator, "super");
-        let ast = &parsed.ast;
+        let ast = read_ast(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 5));
         assert_eq!(ast.root_program().body(ast).len(), 1);
@@ -17644,11 +17714,21 @@ mod tests {
 
         let parsed = parse_tokens(&allocator, "super value;\nafter;");
         assert!(!parsed.diagnostics.is_empty());
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
 
         let parsed = parse_tokens(&allocator, "super.;\nafter;");
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+        assert!(
+            read_ast(&parsed.ast)
+                .root_program()
+                .body(read_ast(&parsed.ast))
+                .is_empty()
+        );
     }
 
     #[test]
@@ -17656,6 +17736,7 @@ mod tests {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
             Parser::init(allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
+                .map(take_ast)
                 .unwrap()
         }
 
@@ -17804,6 +17885,7 @@ mod tests {
         ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
             Parser::init(allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
+                .map(take_ast)
         }
 
         let allocator = Allocator::new();
@@ -17904,7 +17986,7 @@ mod tests {
             let result =
                 Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
-            let ast = result.ast;
+            let ast = take_ast(result.ast);
             let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
             let StmtData::Declaration(declaration) = ast.stmt_data(statement) else {
                 panic!("expected a class declaration");
@@ -17942,6 +18024,7 @@ mod tests {
         let source = "new @dec class {}(value)";
         let ast = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
             .parse_expression_fragment(FragmentContext::TopLevel)
+            .map(take_ast)
             .unwrap();
         let expression = ast.root_expression().as_new_expression(&ast).unwrap();
         let class = expression.callee(&ast).as_class(&ast).unwrap();
@@ -17960,7 +18043,7 @@ mod tests {
             };
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
-            let ast = &result.ast;
+            let ast = read_ast(&result.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let declaration = statement.as_declaration(ast).unwrap();
             let class = declaration.as_class(ast).unwrap();
@@ -18035,7 +18118,7 @@ mod tests {
         fn parse(source: &str) -> (Vec<&str>, Vec<NodeKind>) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
             let body = ast.root_program().body(ast);
             let statements = body
@@ -18104,7 +18187,13 @@ mod tests {
         let source = "import 'x'\nassert ({});";
         let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
-        assert_eq!(result.ast.root_program().body(&result.ast).len(), 2);
+        assert_eq!(
+            read_ast(&result.ast)
+                .root_program()
+                .body(read_ast(&result.ast))
+                .len(),
+            2
+        );
     }
 
     #[test]
@@ -18124,6 +18213,7 @@ mod tests {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
             Parser::init(allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
+                .map(take_ast)
                 .unwrap()
         }
 
@@ -18166,6 +18256,7 @@ mod tests {
                 NoTokenParserConfig,
             )
             .parse_expression_fragment(context)
+            .map(take_ast)
             .unwrap()
         }
 
@@ -18188,8 +18279,8 @@ mod tests {
             let explicit_allocator = Allocator::new();
             let explicit = parse(&explicit_allocator, source, lang, expected, context);
             assert_eq!(
-                serialize_ast(&unambiguous),
-                serialize_ast(&explicit),
+                serialize_ast(&unambiguous.into()),
+                serialize_ast(&explicit.into()),
                 "{source}"
             );
         }
@@ -18222,7 +18313,8 @@ mod tests {
             ..Options::default()
         };
         let result = Parser::init(&allocator, "new.target", options, NoTokenParserConfig)
-            .parse_expression_fragment(FragmentContext::TopLevel);
+            .parse_expression_fragment(FragmentContext::TopLevel)
+            .map(take_ast);
         assert!(result.is_err());
     }
 
@@ -18462,7 +18554,7 @@ mod tests {
         fn parse(source: &str) -> ([&str; 3], Vec<&str>) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let text = |span: Span| &source[span.start as usize..span.end as usize];
             let mut expressions = ast.root_program().body(ast).iter().map(|id| {
                 ast.get_node_in_sub_range(id)
@@ -18717,17 +18809,33 @@ mod tests {
         let result = parse(&allocator, "function f() { await value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
-        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+        assert_eq!(
+            first_function_body(read_ast(&result.ast))
+                .body(read_ast(&result.ast))
+                .len(),
+            1
+        );
 
         let result = parse(&allocator, "function f() { yield value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
-        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+        assert_eq!(
+            first_function_body(read_ast(&result.ast))
+                .body(read_ast(&result.ast))
+                .len(),
+            1
+        );
 
         let result = parse(&allocator, "return 1; function f() { await value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert!(!result.diagnostics.is_empty());
-        assert_eq!(result.ast.root_program().body(&result.ast).len(), 2);
+        assert_eq!(
+            read_ast(&result.ast)
+                .root_program()
+                .body(read_ast(&result.ast))
+                .len(),
+            2
+        );
 
         let allocator = Allocator::new();
         let result = parse(&allocator, "value + await \"unterminated");
@@ -18742,7 +18850,13 @@ mod tests {
         let result = parse(&allocator, "value\n<!-- comment");
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         assert_eq!(result.ast.source_type(), SourceType::Script);
-        assert_eq!(result.ast.root_program().body(&result.ast).len(), 1);
+        assert_eq!(
+            read_ast(&result.ast)
+                .root_program()
+                .body(read_ast(&result.ast))
+                .len(),
+            1
+        );
 
         let allocator = Allocator::new();
         let result = parse(&allocator, "value\n<!-- comment\nexport {};");
@@ -18755,7 +18869,7 @@ mod tests {
         fn parse(source: &str, options: Options) -> (Vec<Span>, SourceType, Vec<NodeKind>) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let nodes = ast
                 .root_program()
                 .body(ast)
@@ -19144,7 +19258,13 @@ mod tests {
                         .collect::<Vec<_>>(),
                     [Span::new(0, 6), Span::new(8, 20)]
                 );
-                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 2);
+                assert_eq!(
+                    read_ast(&parsed.ast)
+                        .root_program()
+                        .body(read_ast(&parsed.ast))
+                        .len(),
+                    2
+                );
                 assert_eq!(
                     token_texts(source, &parsed.tokens),
                     ["return", ";", "export", "{", "}", ";"]
@@ -19164,7 +19284,12 @@ mod tests {
                 assert_eq!(parsed.ast.source_type(), SourceType::Module);
                 assert_eq!(parsed.diagnostics.len(), 1);
                 assert_eq!(parsed.diagnostics[0].span, Span::new(12, 18));
-                assert!(parsed.ast.root_program().hashbang(&parsed.ast).is_some());
+                assert!(
+                    read_ast(&parsed.ast)
+                        .root_program()
+                        .hashbang(read_ast(&parsed.ast))
+                        .is_some()
+                );
                 assert_eq!(
                     token_texts(source, &parsed.tokens),
                     ["return", ";", "export", "{", "}", ";"]
@@ -19182,7 +19307,7 @@ mod tests {
             context: FragmentContext,
         ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
             let parser = Parser::init(allocator, source, options, NoTokenParserConfig);
-            parser.parse_expression_fragment(context)
+            parser.parse_expression_fragment(context).map(take_ast)
         }
 
         use FragmentContext::{AsyncFunction, Generator, TopLevel};
@@ -19765,7 +19890,7 @@ mod tests {
         fn alias(source: &str, options: Options) -> (Vec<&str>, NodeKind) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let alias = ast
                 .root_program()
                 .body(ast)
@@ -19792,7 +19917,7 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let expression = statement
                 .as_expression_statement(ast)
@@ -19861,7 +19986,7 @@ mod tests {
                 ..Options::default()
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
+            let ast = read_ast(&parsed.ast);
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let mut expression = statement
                 .as_expression_statement(ast)
@@ -19908,8 +20033,14 @@ mod tests {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
             let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
-            assert_eq!(result.ast.root_program().body(&result.ast).len(), 1);
-            result.ast
+            assert_eq!(
+                read_ast(&result.ast)
+                    .root_program()
+                    .body(read_ast(&result.ast))
+                    .len(),
+                1
+            );
+            take_ast(result.ast)
         }
 
         fn conditional(ast: &Ast<'_>) -> ConditionalExpression {
@@ -20244,7 +20375,7 @@ mod tests {
         let parse = |source| {
             let result = Parser::init(&allocator, source, script, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
-            result.ast
+            take_ast(result.ast)
         };
 
         let ast = parse("new async function(){};");
@@ -20507,6 +20638,7 @@ mod tests {
         let parse = |source| {
             Parser::init(&allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
+                .map(take_ast)
                 .unwrap()
         };
 

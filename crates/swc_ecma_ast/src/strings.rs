@@ -193,7 +193,8 @@ mod tests {
     fn string_lifetimes() {
         let allocator = Allocator::new();
         let (source, first, large, last, surrogate) = {
-            let mut ast = Ast::new("source", &allocator);
+            // SAFETY: All handles used below belong to this AST and remain valid.
+            let mut ast = unsafe { Ast::new("source", &allocator) };
             let source = ast.get_utf8(ast.source_slice(0, 6));
             let first = ast.add_utf8("first");
             let first = ast.get_utf8(first);

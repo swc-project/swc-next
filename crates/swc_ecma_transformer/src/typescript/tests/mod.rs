@@ -3,8 +3,8 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 
-use super::{TypeScriptOptions, transform};
-use crate::normalize::Normalizer;
+use super::TypeScriptOptions;
+use crate::{MultiPassTransformer, normalize::Normalizer};
 
 mod enums;
 mod jsx;
@@ -46,11 +46,12 @@ fn transformed_code_with_source_type(
     };
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let mut ast = parsed.ast;
-    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    transform(ast.root_program(), &mut ast, &semantic, &transform_options);
-    swc_next_ecma_codegen::print(&ast, Default::default()).code
+    let mut ctx = parsed.ast;
+    Normalizer::normalize_runtime(&mut ctx);
+    let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
+    let mut transformer = MultiPassTransformer::new(analyzed);
+    transformer.typescript(&transform_options);
+    swc_next_ecma_codegen::print(transformer.ctx, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.
@@ -59,7 +60,7 @@ pub(super) fn with_output_semantic(
     check: impl FnOnce(&swc_next_ecma_ast::Ast<'_>, &swc_next_ecma_semantic::Semantic<'_>),
 ) {
     let allocator = Allocator::new();
-    let parsed = Parser::init(
+    let mut parsed = Parser::init(
         &allocator,
         source,
         ParserOptions::default(),
@@ -68,11 +69,14 @@ pub(super) fn with_output_semantic(
     .parse();
     assert!(parsed.diagnostics.is_empty());
     let analyzed = analyze(
-        &parsed.ast,
+        &mut parsed.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
         },
     );
     assert!(analyzed.diagnostics.is_empty());
-    check(&parsed.ast, &analyzed.semantic);
+    check(
+        unsafe { analyzed.semantic.ctx().ast() },
+        analyzed.semantic.semantic(),
+    );
 }

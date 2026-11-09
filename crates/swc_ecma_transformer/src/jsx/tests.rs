@@ -99,7 +99,7 @@ fn lower_tsx(source: &str, options: &JsxOptions) -> String {
 
 fn helper_references(output: &str) -> (SymbolId, Vec<Option<SymbolId>>) {
     let allocator = Allocator::new();
-    let parsed = Parser::init(
+    let mut parsed = Parser::init(
         &allocator,
         output,
         ParserOptions::default(),
@@ -107,8 +107,11 @@ fn helper_references(output: &str) -> (SymbolId, Vec<Option<SymbolId>>) {
     )
     .parse();
     assert!(parsed.diagnostics.is_empty());
-    let ast = parsed.ast;
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let (_, semantic) = analyze(&mut parsed.ast, AnalyzeOptions::default())
+        .semantic
+        .into_parts();
+    // SAFETY: The semantic handles below come from this AST.
+    let ast = unsafe { parsed.ast.ast() };
     let helper = semantic
         .iter_symbols()
         .find(|entry| entry.symbol.flags.contains(SymbolFlags::IMPORT))
@@ -195,19 +198,21 @@ fn transform_options(
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
     if options.typescript.is_some() {
-        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+        Normalizer::normalize_runtime(&mut ast);
     } else {
-        Normalizer::normalize(ast.root_program(), &mut ast);
+        Normalizer::normalize(&mut ast);
     }
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let expected_lang = if options.jsx.is_some() {
         Lang::Js
     } else {
         lang
     };
-    let transformed = Transformer::transform(&mut ast, semantic, options);
+    let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
+    let transformed = Transformer::transform(semantic, options);
     assert_eq!(ast.lang(), expected_lang);
-    ast.root_program().visit_with(&mut ArrowBodies(&ast));
+    // SAFETY: The visitor only reads handles from this transformed AST.
+    let tree = unsafe { ast.ast() };
+    tree.root_program().visit_with(&mut ArrowBodies(tree));
     let output = print(&ast, CodegenOptions::default()).code.to_owned();
     let output_allocator = Allocator::new();
     let reparsed = Parser::init(

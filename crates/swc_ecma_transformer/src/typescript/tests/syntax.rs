@@ -18,12 +18,14 @@ fn declaration_files() {
     .parse();
     assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
 
-    let mut ast = parsed.ast;
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let program = ast.root_program();
-    Normalizer::normalize(program, &mut ast);
-    transform(program, &mut ast, &semantic, &TypeScriptOptions::default());
+    let mut ctx = parsed.ast;
+    Normalizer::normalize(&mut ctx);
+    let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
+    let mut transformer = MultiPassTransformer::new(analyzed);
+    transformer.typescript(&TypeScriptOptions::default());
+    // SAFETY: The inspected root belongs to the transformed AST.
+    let ast = unsafe { transformer.ctx.ast() };
 
-    assert!(program.body(&ast).is_empty());
+    assert!(ast.root_program().body(ast).is_empty());
     assert!(ast.comments().is_empty());
 }

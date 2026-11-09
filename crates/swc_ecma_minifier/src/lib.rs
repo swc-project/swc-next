@@ -18,7 +18,7 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
-use swc_next_ecma_ast::Ast;
+use swc_next_ecma_ast::AstCtx;
 
 mod compress;
 mod mangle;
@@ -51,7 +51,7 @@ impl Minifier {
     ///
     /// Panics if compression or mangling is enabled and the AST root is not a
     /// program.
-    pub fn minify(ast: &mut Ast<'_>, options: MinifierOptions) {
+    pub fn minify(ast: &mut AstCtx<'_>, options: MinifierOptions) {
         if options.compress.is_none() && !options.mangle {
             return;
         }

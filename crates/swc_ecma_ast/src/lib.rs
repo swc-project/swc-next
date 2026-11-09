@@ -1,5 +1,6 @@
 mod assert_layout;
 mod ast;
+mod ast_ctx;
 mod comment;
 mod derive;
 mod diagnostic;
@@ -28,6 +29,7 @@ use swc_next_allocator::{
 };
 
 pub use ast::*;
+pub use ast_ctx::AstCtx;
 pub use comment::*;
 pub use derive::*;
 pub use diagnostic::*;
@@ -44,6 +46,29 @@ use swc_next_allocator::vec::multi_index_vec;
 use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
+///
+/// # Safety
+///
+/// Handles are not tied to their owning AST. These include [`NodeId`], typed
+/// node handles such as [`Expr`] and [`Program`], [`ExtraDataId`], [`SubRange`],
+/// and string handles ([`AstUtf8`] and [`AstWtf8`]). They identify storage within
+/// one AST; copying a handle does not copy its data or track later mutations.
+///
+/// Access this type through [`AstCtx`]. Its unsafe accessors require callers to
+/// uphold the following invariants throughout subsequent uses of the AST and
+/// its handles, even when individual operations are safe functions:
+///
+/// - Handles belong to this AST and refer to initialized, in-bounds storage.
+/// - Typed node handles match the stored node kind. Field and list handles
+///   match the stored value types, and string ranges have the expected UTF-8
+///   or WTF-8 encoding.
+/// - Mutations preserve these invariants for all AST edges and handles that
+///   remain in use, including if a panic unwinds.
+/// - Handles invalidated by replacing or truncating storage are never reused,
+///   even if their indices are allocated again.
+///
+/// Accesses may use unchecked indexing or interpret storage according to the
+/// handle's type. Violating these invariants can cause undefined behavior.
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
@@ -354,7 +379,12 @@ impl<'a> Ast<'a> {
 #[doc(hidden)]
 impl<'a> Ast<'a> {
     /// Create a flattening AST backed by `source` and `allocator`.
-    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The caller must uphold the handle invariants documented on [`Ast`]
+    /// throughout all subsequent uses of the returned AST and its handles.
+    pub unsafe fn new(source: &'a str, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             root: None,
@@ -409,8 +439,19 @@ impl<'a> Ast<'a> {
     }
 
     /// Rewinds node and out-of-line field storage to an earlier checkpoint.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the root, retained nodes, and retained
+    /// out-of-line fields do not refer to removed nodes or fields. Every
+    /// out-of-line field range used after this call must remain fully within
+    /// the retained storage.
+    ///
+    /// Handles, indices, and ranges that refer to removed storage must never be
+    /// used to access the AST again, even if subsequent allocations reuse their
+    /// indices.
     #[inline]
-    pub fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
+    pub unsafe fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
         assert!(nodes_len <= self.nodes.len());
         assert!(extra_data_len <= self.extra_data.len());
         self.nodes.truncate(nodes_len);

@@ -10,13 +10,27 @@ mod visibility;
 use support::*;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, SymbolId};
+use swc_next_ecma_ast::{Ast, AstCtx, Diagnostic, Lang, ScopeId, SourceType, SymbolId};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SemanticReturn, SymbolFlags,
-    SyntaxChecks, analyze, check_syntax,
+    AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
+    check_syntax,
 };
+
+struct TestAnalysis<'a> {
+    semantic: Semantic<'a>,
+    diagnostics: Vec<Diagnostic<'a>>,
+}
+
+fn analyze<'a>(ast: &AstCtx<'a>, options: AnalyzeOptions) -> TestAnalysis<'a> {
+    let result = swc_next_ecma_semantic::analyze(ast, options);
+    let semantic = result.semantic.into_parts().1;
+    TestAnalysis {
+        semantic,
+        diagnostics: result.diagnostics,
+    }
+}
 
 #[track_caller]
 fn analyze_source<'a>(
@@ -35,18 +49,18 @@ fn analyze_with_options<'a>(
     analyze_options: AnalyzeOptions,
 ) -> (Ast<'a>, Semantic<'a>) {
     let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
-    let ast = parse.ast;
     assert!(parse.diagnostics.is_empty());
 
-    let result = analyze(&ast, analyze_options);
+    let result = analyze(&parse.ast, analyze_options);
     if !analyze_options.check_syntax.is_empty() {
         assert_eq!(
-            check_syntax(&ast, analyze_options.check_syntax),
+            check_syntax(&parse.ast, analyze_options.check_syntax),
             result.diagnostics
         );
     }
     assert!(result.diagnostics.is_empty());
-    (ast, result.semantic)
+    // SAFETY: The test helpers only use handles with their originating AST.
+    (unsafe { parse.ast.into_ast() }, result.semantic)
 }
 
 #[track_caller]
@@ -54,7 +68,7 @@ fn analyze_syntax_source<'a>(
     allocator: &'a Allocator,
     source: &'a str,
     parser_options: Options,
-) -> (Ast<'a>, SemanticReturn<'a>) {
+) -> (Ast<'a>, TestAnalysis<'a>) {
     let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
     let result = analyze(
@@ -67,7 +81,7 @@ fn analyze_syntax_source<'a>(
         check_syntax(&parse.ast, SyntaxChecks::all()),
         result.diagnostics
     );
-    (parse.ast, result)
+    (unsafe { parse.ast.into_ast() }, result)
 }
 
 #[track_caller]
@@ -157,8 +171,9 @@ fn regular_expression_diagnostics() {
         Span::new(1, source.len() as u32 - 1)
     );
     assert!(result.diagnostics[0].help.is_none());
-    assert!(analyze(&ast, unchecked_options).diagnostics.is_empty());
-    assert!(check_syntax(&ast, SyntaxChecks::all() - SyntaxChecks::REGEXP_LITERALS).is_empty());
+    let ctx = ast.into();
+    assert!(analyze(&ctx, unchecked_options).diagnostics.is_empty());
+    assert!(check_syntax(&ctx, SyntaxChecks::all() - SyntaxChecks::REGEXP_LITERALS).is_empty());
 
     let source = " /🥹[z-a]/u;";
     let (_, result) = analyze_syntax_source(&allocator, source, parser_options);
