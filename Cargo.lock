@@ -3805,6 +3805,9 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "swc_next_bridge_macros",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_formatter",
+ "swc_next_ecma_parser",
  "swc_next_formatter_core",
  "swc_next_formatter_host",
 ]

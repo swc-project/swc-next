@@ -12,10 +12,14 @@ version               = "0.6.1"
 crate-type = ["lib", "cdylib"]
 
 [features]
-formatter = ["dep:swc_next_formatter_core", "dep:swc_next_formatter_host"]
+ecma-formatter = ["dep:swc_next_ecma_ast", "dep:swc_next_ecma_formatter", "dep:swc_next_ecma_parser", "dep:swc_next_formatter_core"]
+formatter      = ["dep:swc_next_formatter_core", "dep:swc_next_formatter_host"]
 
 [dependencies]
 swc_next_bridge_macros  = { workspace = true }
+swc_next_ecma_ast       = { workspace = true, optional = true }
+swc_next_ecma_formatter = { workspace = true, optional = true }
+swc_next_ecma_parser    = { workspace = true, optional = true }
 swc_next_formatter_core = { workspace = true, optional = true }
 swc_next_formatter_host = { workspace = true, optional = true }
 

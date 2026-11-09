@@ -33,5 +33,10 @@ mod formatter;
 #[cfg(feature = "formatter")]
 pub use formatter::{print_doc, print_doc_with_cursor};
 
-#[cfg(feature = "formatter")]
+#[cfg(feature = "ecma-formatter")]
+mod ecma_formatter;
+#[cfg(feature = "ecma-formatter")]
+pub use ecma_formatter::format_doc;
+
+#[cfg(any(feature = "formatter", feature = "ecma-formatter"))]
 mod layout;
