@@ -770,7 +770,7 @@ impl<'a, A: AstBorrow<'a>> SemanticAst<'a, A> {
 /// Semantic analysis output and any requested scope-dependent early errors.
 pub struct SemanticReturn<'a, A: AstBorrow<'a>> {
     pub semantic: SemanticAst<'a, A>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Vec<Diagnostic<'a>>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -790,7 +790,8 @@ pub struct AnalyzeOptions {
 /// again after consuming the analysis binding.
 ///
 /// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
-/// errors separately from parser diagnostics. Diagnostics do not borrow the tree.
+/// errors separately from parser diagnostics. Their messages use
+/// the tree's arena, so the result is valid as long as the tree is alive.
 pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> SemanticReturn<'a, A> {
     // SAFETY: Analysis only reads handles obtained from this AST.
     let tree = unsafe { ast.as_ast_ctx().ast() };
@@ -802,7 +803,10 @@ pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> Semanti
 }
 
 // Keep AST traversal non-generic over the context's ownership or borrow form.
-fn analyze_impl<'a>(tree: &Ast<'a>, options: AnalyzeOptions) -> (Semantic<'a>, Vec<Diagnostic>) {
+fn analyze_impl<'a>(
+    tree: &Ast<'a>,
+    options: AnalyzeOptions,
+) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
     let root = tree.root_program();
     let mut builder = SemanticBuilder::new(tree, options.check_syntax);
     root.visit_with(&mut builder);
@@ -815,8 +819,8 @@ fn analyze_impl<'a>(tree: &Ast<'a>, options: AnalyzeOptions) -> (Semantic<'a>, V
 /// [`AnalyzeOptions::check_syntax`] set to `checks`. Use [`SyntaxChecks::all`]
 /// to include every check, including TypeScript aliases.
 /// Reference resolution and the model's use indexes are not needed for these
-/// checks and are skipped. Diagnostics do not borrow the tree.
-pub fn check_syntax(ast: &AstCtx<'_>, checks: SyntaxChecks) -> Vec<Diagnostic> {
+/// checks and are skipped. Messages borrow the tree's arena.
+pub fn check_syntax<'a>(ast: &AstCtx<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
     if checks.is_empty() {
         return Vec::new();
     }
