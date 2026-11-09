@@ -102,6 +102,8 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Annex B comments which become errors if an unambiguous program resolves
     /// to a module.
     pub(crate) module_mode_errors: ArenaVec<'a, Span>,
+    /// The first comment that may still need an attachment. Later comments
+    /// in this suffix may already be trailing.
     pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
@@ -1633,10 +1635,12 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
-            for comment in &mut self.comments[self.processed_comments..] {
-                comment.attached_to = self.state.prev_token_end;
+            if self.processed_comments == self.comments.len() {
+                self.processed_comments += 1;
             }
-            self.processed_comments = self.comments.len() + 1;
+        } else {
+            // Leading marks an unresolved comment in the unprocessed suffix.
+            comment.position = CommentPosition::Leading;
         }
         self.comments.push(comment);
         Ok(())
@@ -1655,8 +1659,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
 
         for comment in &mut self.comments[self.processed_comments..] {
-            comment.position = position;
-            comment.attached_to = attached_to;
+            if comment.position == CommentPosition::Leading {
+                comment.position = position;
+                comment.attached_to = attached_to;
+            }
         }
         self.processed_comments = self.comments.len();
     }
