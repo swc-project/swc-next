@@ -11,7 +11,8 @@ use swc_next_ecma_transformer::{
     assumptions::Assumptions,
     jsx::{JsxOptions as TransformJsxOptions, ReactRefreshOptions},
     normalize::Normalizer,
-    typescript::TypeScriptOptions,
+    proposal::ProposalOptions,
+    typescript::{JsxImportOptions, TypeScriptOptions},
 };
 
 use crate::{
@@ -36,6 +37,8 @@ pub struct JsTransformOptions {
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
     pub assumptions: Option<JsAssumptions>,
+    /// Proposal transform options.
+    pub proposal: Option<JsProposalOptions>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
     // pub define: Option<BTreeMap<String, String>>, // Global expression replacements.
@@ -63,7 +66,29 @@ impl JsTransformOptions {
                 .unwrap_or(defaults.assumptions),
             typescript: enabled_options(self.typescript),
             jsx: enabled_options(self.jsx),
+            proposal: self.proposal.map(Into::into).unwrap_or(defaults.proposal),
             ..defaults
+        }
+    }
+}
+
+/// Proposal transform options.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JsProposalOptions {
+    /// Preserve class static block behavior when a block makes the class
+    /// object non-extensible with `Object.preventExtensions`, `Object.seal`,
+    /// or `Object.freeze`.
+    ///
+    /// Applies when class static block lowering is enabled.
+    ///
+    /// @default false
+    pub prevent_extensions: Option<bool>,
+}
+
+impl From<JsProposalOptions> for ProposalOptions {
+    fn from(options: JsProposalOptions) -> Self {
+        Self {
+            prevent_extensions: options.prevent_extensions.unwrap_or_default(),
         }
     }
 }
@@ -78,7 +103,7 @@ pub enum JsFeature {
 }
 
 /// TypeScript transform options.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct JsTypeScriptOptions {
     /// TypeScript's `verbatimModuleSyntax`: preserve value imports and exports
     /// and disable const enum inlining and removal.
@@ -89,6 +114,16 @@ pub struct JsTypeScriptOptions {
     ///
     /// @default false
     pub preserve_const_enums: Option<bool>,
+    /// Classic JSX factory used to preserve its value import when JSX syntax
+    /// is retained.
+    ///
+    /// @default "React.createElement"
+    pub jsx_pragma: Option<String>,
+    /// Classic JSX fragment factory used to preserve its value import when JSX
+    /// syntax is retained.
+    ///
+    /// @default "React.Fragment"
+    pub jsx_pragma_frag: Option<String>,
 }
 
 impl From<JsTypeScriptOptions> for TypeScriptOptions {
@@ -101,7 +136,11 @@ impl From<JsTypeScriptOptions> for TypeScriptOptions {
             preserve_const_enums: options
                 .preserve_const_enums
                 .unwrap_or(defaults.preserve_const_enums),
-            ..defaults
+            jsx: JsxImportOptions {
+                pragma: options.jsx_pragma,
+                pragma_frag: options.jsx_pragma_frag,
+                ..defaults.jsx
+            },
         }
     }
 }

@@ -5,14 +5,13 @@ use std::{
 
 use jwalk::WalkDir;
 use rayon::prelude::*;
+use swc_core::base::config::Config;
+use swc_next_core::js::JsOptions;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_codegen::Options as CodegenOptions;
-use swc_next_ecma_transformer::TransformerOptions;
 
 use super::{Case, TransformCase, fixtures};
 use crate::util::{read_optional, with_suffix};
 mod options;
-use options::Swcrc;
 
 #[derive(Debug)]
 pub struct SwcTransformCase {
@@ -20,7 +19,7 @@ pub struct SwcTransformCase {
     name: String,
     input: String,
     output: String,
-    options: Option<Swcrc>,
+    options: Option<Config>,
     unsupported_snapshot: bool,
 }
 
@@ -59,7 +58,7 @@ impl SwcTransformCase {
         let mut cases = paths
             .into_par_iter()
             .map(|(path, output)| {
-                let options = Swcrc::from_test_path(&path, &root)?;
+                let options = options::from_test_path(&path, &root)?;
                 // This suite compares emitted code. Diagnostics, source maps and
                 // additional compiler products need APIs that are not yet exposed.
                 let mut unsupported_snapshot = false;
@@ -108,13 +107,11 @@ impl Case for SwcTransformCase {
     fn source_type(&self) -> SourceType {
         self.options
             .as_ref()
-            .map_or(SourceType::Module, Swcrc::source_type)
+            .map_or(SourceType::Module, options::source_type)
     }
 
     fn lang(&self) -> Lang {
-        self.options
-            .as_ref()
-            .map_or(Lang::Js, |o| o.lang(&self.path))
+        self.options.as_ref().map_or(Lang::Js, options::lang)
     }
 
     fn expects_error(&self) -> bool {
@@ -124,21 +121,14 @@ impl Case for SwcTransformCase {
 
 impl TransformCase for SwcTransformCase {
     fn supports_options(&self) -> bool {
-        !self.unsupported_snapshot && self.options.as_ref().is_some_and(Swcrc::supports_options)
+        !self.unsupported_snapshot && self.options.as_ref().is_some_and(options::supports_options)
     }
 
     fn expected_output(&self) -> Option<&str> {
         Some(&self.output)
     }
 
-    fn transformer_options(&self) -> TransformerOptions {
-        self.options
-            .as_ref()
-            .unwrap()
-            .transformer_options(&self.path)
-    }
-
-    fn codegen_options(&self) -> CodegenOptions {
-        self.options.as_ref().unwrap().codegen_options()
+    fn options(&self) -> JsOptions {
+        options::options(self.options.as_ref().unwrap(), &self.path)
     }
 }

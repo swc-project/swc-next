@@ -2,11 +2,17 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
-use swc_next_ecma_codegen::{NumberFormat, Options as CodegenOptions};
-use swc_next_ecma_transformer::{
-    TransformerOptions, assumptions::Assumptions, es2019::ES2019Options, es2022::ES2022Options,
-    proposal::ProposalOptions,
+use swc_core::ecma::transforms::base::assumptions::Assumptions;
+use swc_next_core::{
+    BoolOr,
+    js::{
+        JsOptions,
+        codegen::JsCodegenOptions,
+        transform::{JsFeature, JsProposalOptions, JsTransformOptions},
+    },
 };
+
+use crate::cases::assumptions;
 
 mod plugins;
 mod presets;
@@ -40,11 +46,11 @@ pub struct BabelOptions {
     /// Emit compact output using Babel's minified generator mode.
     pub minified: Option<bool>,
 
-    /// Literal escaping options forwarded to Babel's generator.
+    /// Literal escaping options.
     pub jsesc_option: Option<JsescOptions>,
 
     /// Compiler assumptions passed through Babel configuration.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_assumptions")]
     pub assumptions: Assumptions,
 
     // Test options
@@ -94,27 +100,56 @@ pub enum JsescNumberFormat {
     Hexadecimal,
 }
 
-impl From<BabelOptions> for TransformerOptions {
+fn deserialize_assumptions<'de, D>(deserializer: D) -> Result<Assumptions, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut value = serde_json::Value::deserialize(deserializer)?;
+    let defaults =
+        serde_json::to_value(Assumptions::default()).map_err(serde::de::Error::custom)?;
+    if let Some(fields) = value.as_object_mut() {
+        fields.retain(|name, _| defaults.get(name).is_some());
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
+}
+
+impl From<BabelOptions> for JsOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
         let mut jsx = plugins.react_jsx_dev.or(plugins.react_jsx);
         if plugins.react_display_name {
-            jsx.get_or_insert_with(Default::default).display_name = true;
+            jsx.get_or_insert_with(Default::default).display_name = Some(true);
         }
         Self {
-            filename: None,
-            assumptions: options.assumptions,
-            typescript: plugins.typescript,
-            es2019: ES2019Options {
-                optional_catch_binding: plugins.optional_catch_binding,
-            },
-            es2022: ES2022Options {
-                static_blocks: plugins.static_blocks,
-            },
-            proposal: ProposalOptions {
-                prevent_extensions: plugins.static_blocks,
-            },
-            jsx,
+            transform: Some(JsTransformOptions {
+                assumptions: Some(assumptions(options.assumptions)),
+                proposal: Some(JsProposalOptions {
+                    prevent_extensions: Some(plugins.static_blocks),
+                }),
+                typescript: Some(match plugins.typescript {
+                    Some(options) => BoolOr::Options(options),
+                    None => BoolOr::Bool(false),
+                }),
+                jsx: Some(match jsx {
+                    Some(options) => BoolOr::Options(options),
+                    None => BoolOr::Bool(false),
+                }),
+                features: Some(
+                    [
+                        (
+                            JsFeature::OptionalCatchBinding,
+                            plugins.optional_catch_binding,
+                        ),
+                        (JsFeature::ClassStaticBlock, plugins.static_blocks),
+                    ]
+                    .into(),
+                ),
+            }),
+            codegen: Some(JsCodegenOptions {
+                minify: options.minified,
+                ..Default::default()
+            }),
+            ..Default::default()
         }
     }
 }
@@ -152,25 +187,6 @@ impl PluginPresetEntry {
 }
 
 impl BabelOptions {
-    pub fn codegen_options(&self) -> CodegenOptions {
-        let jsesc = self.jsesc_option.as_ref();
-        let number_format = match jsesc.and_then(|options| options.numbers) {
-            None => NumberFormat::Preserve,
-            Some(JsescNumberFormat::Binary) => NumberFormat::Binary,
-            Some(JsescNumberFormat::Octal) => NumberFormat::Octal,
-            Some(JsescNumberFormat::Decimal) => NumberFormat::Decimal,
-            Some(JsescNumberFormat::Hexadecimal) => NumberFormat::Hexadecimal {
-                lowercase: jsesc.is_some_and(|options| options.lowercase_hex),
-            },
-        };
-
-        CodegenOptions {
-            minify: self.minified.unwrap_or(false),
-            number_format,
-            ..CodegenOptions::default()
-        }
-    }
-
     /// Read options.json and merge them with options.json from ancestors directories.
     ///
     /// Babel's fixture hierarchy: task → suite → category.
