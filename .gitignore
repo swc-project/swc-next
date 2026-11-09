@@ -1,4 +1,5 @@
 /target
+/npm/ecma-formatter/test/binding/
 *.json.gz
 callgrind*
 input.*
