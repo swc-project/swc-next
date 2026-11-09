@@ -78,7 +78,7 @@ const _: () = {
 };
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.
-pub fn buffer_size(tree: &AstCtx<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
+pub fn buffer_size(tree: &AstCtx<'_>, diagnostics: &[Diagnostic]) -> usize {
     // SAFETY: Sizing only reads this AST's storage lengths and comments.
     let tree = unsafe { tree.ast() };
     HEADER_SIZE
@@ -118,7 +118,7 @@ pub fn buffer_size(tree: &AstCtx<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
 /// `source_utf16_len` must be the UTF-16 code unit length of `tree.source()`.
 pub fn serialize_into(
     tree: &AstCtx<'_>,
-    diagnostics: &[Diagnostic<'_>],
+    diagnostics: &[Diagnostic],
     buf: &mut [u8],
     source_utf16_len: usize,
 ) -> usize {

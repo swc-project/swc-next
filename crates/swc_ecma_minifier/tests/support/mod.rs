@@ -153,7 +153,7 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
     .code)
 }
 
-fn check_diagnostics(stage: &str, diagnostics: &[Diagnostic<'_>]) -> Result<(), String> {
+fn check_diagnostics(stage: &str, diagnostics: &[Diagnostic]) -> Result<(), String> {
     if let Some(error) = diagnostics
         .iter()
         .find(|diagnostic| diagnostic.severity == Severity::Error)

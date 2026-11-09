@@ -42,7 +42,7 @@ pub struct TransformerOptions {
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
-    pub diagnostics: Vec<Diagnostic<'static>>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 pub struct Transformer;

@@ -74,7 +74,7 @@ impl EvaluatedValue {
 pub(super) fn transform_enum(
     declaration: TsEnumDeclaration,
     ambient: bool,
-    diagnostics: &mut Vec<Diagnostic<'static>>,
+    diagnostics: &mut Vec<Diagnostic>,
     semantic: &Semantic<'_>,
     ast: &mut Ast<'_>,
 ) {
