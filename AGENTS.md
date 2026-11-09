@@ -15,6 +15,13 @@ Keep local formatter regressions under
 and representative option sets. Review generated snapshots; see
 `crates/swc_ecma_formatter/tests/README.md` for commands and test guarantees.
 
+Prettier plugin tests also compare every local fixture and option set directly
+with the native Rust printer on Prettier-normalized input. Run
+`pnpm --filter @swc-next/prettier-plugin-swcfmt test` or `test:wasm` after building
+the corresponding formatter binding. These commands build a test-only N-API
+oracle with the formatter binding's `test-native` feature and receive native
+strings directly, including for Wasm plugin tests. Parity does not read `.snap` files.
+
 ### Adding Rust Unit Tests
 
 - Add tests to the existing module; group related cases by broad feature and use a coarse
@@ -36,7 +43,7 @@ and representative option sets. Review generated snapshots; see
 ### Adding JavaScript Unit Tests
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
-- New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
+- JavaScript API tests belong to `@swc-next/core`; independent Prettier plugin tests belong to `packages/prettier-plugin/test`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
 
 ## README Writing
 

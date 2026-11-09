@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "metricNote": "Native Rust Text measurement uses unicode-width; Prettier lays out the Doc with its JavaScript string-width behavior. These exact width-sensitive inputs differ only in line layout.",
+  "validation": "Both native and forced-Wasm matrices were run without exceptions first. Every listed pair was parsed and canonically printed through @swc-next/core with matching AST output; the Prettier plugin output was a fixed point. Test code repeats these checks and pins source/native/plugin/canonical/fixed-point SHA-256 values.",
+  "cases": [
+    {
+      "caseKeySha256": "3654c11e4816bc8415daaa9cc5370bd7e348df34b0d78e3c5b034e98ec7b1033",
+      "relative": "js/expressions/string-width/columns/arabic.js",
+      "options": {
+        "printWidth": 30
+      },
+      "classification": "width-only",
+      "sourceSha256": "c1fcd4c813f0eaba344e05803cf518c3a1949f1192b9ba23692a9ff2cf6f81ce",
+      "nativeExpectedSha256": "c1fcd4c813f0eaba344e05803cf518c3a1949f1192b9ba23692a9ff2cf6f81ce",
+      "pluginActualSha256": "5775783b1cf626615f5f18d3307c979bd1936df3a78dbac5371dda3d1184fb73",
+      "canonicalAstSha256": "c1fcd4c813f0eaba344e05803cf518c3a1949f1192b9ba23692a9ff2cf6f81ce",
+      "fixedPointSha256": "5775783b1cf626615f5f18d3307c979bd1936df3a78dbac5371dda3d1184fb73"
+    },
+    {
+      "caseKeySha256": "bbeec5cffa568c925144fdff623045e9d3b8695a7bdd2ec2c40582db59001c5e",
+      "relative": "js/expressions/string-width/tabs/call.js",
+      "options": {
+        "printWidth": 21,
+        "tabWidth": 0,
+        "useTabs": true
+      },
+      "classification": "width-only",
+      "sourceSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "nativeExpectedSha256": "8de9a8bb3d151814ba0170b02ce5a06efd9a71669f7bd28828d7316e0d509969",
+      "pluginActualSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "canonicalAstSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "fixedPointSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec"
+    },
+    {
+      "caseKeySha256": "6d1f206c405c06abf06e5a688d20ddde0b9272dcae9e4da97e21ad5626860961",
+      "relative": "js/expressions/string-width/tabs/call.js",
+      "options": {
+        "printWidth": 21,
+        "tabWidth": 0,
+        "useTabs": false
+      },
+      "classification": "width-only",
+      "sourceSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "nativeExpectedSha256": "75c7cbf8c9440e1dff2dc522ffcf8be1ab8918bc8e4feafae206b3331ea466ea",
+      "pluginActualSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "canonicalAstSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "fixedPointSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec"
+    },
+    {
+      "caseKeySha256": "05bc8fd51fd22e19c18c010f4cdccabfbe24b31fd6c22a6a0eeb1a0ce1a27e12",
+      "relative": "js/expressions/string-width/tabs/call.js",
+      "options": {
+        "printWidth": 21,
+        "tabWidth": 1,
+        "useTabs": true
+      },
+      "classification": "width-only",
+      "sourceSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "nativeExpectedSha256": "8de9a8bb3d151814ba0170b02ce5a06efd9a71669f7bd28828d7316e0d509969",
+      "pluginActualSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "canonicalAstSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "fixedPointSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec"
+    },
+    {
+      "caseKeySha256": "609a3ee33d844f4ee7b585da26648562cc984ec932bcfb27e1778d2c348e1add",
+      "relative": "js/expressions/string-width/tabs/call.js",
+      "options": {
+        "printWidth": 21,
+        "tabWidth": 4,
+        "useTabs": true
+      },
+      "classification": "width-only",
+      "sourceSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "nativeExpectedSha256": "8de9a8bb3d151814ba0170b02ce5a06efd9a71669f7bd28828d7316e0d509969",
+      "pluginActualSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "canonicalAstSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec",
+      "fixedPointSha256": "48c280d7f62d3eff993900bf2b32135650141f6f450188d631e29a9466a384ec"
+    }
+  ]
+}
