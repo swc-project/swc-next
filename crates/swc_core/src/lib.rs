@@ -2,7 +2,7 @@
 //!
 //! Enable `js` for JavaScript configuration types, and select stages with
 //! `js_parser`, `js_codegen`, and `js_transform`. The `js_transform` feature includes
-//! parsing, code generation, and minification configuration for code-to-code pipelines.
+//! parsing, code generation, and minification for code-to-code pipelines.
 //! The optional `bridge` feature enables FFI conversions and type generation for
 //! the enabled APIs.
 

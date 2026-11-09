@@ -2879,10 +2879,13 @@ dependencies = [
 name = "swc_next_core"
 version = "0.5.0"
 dependencies = [
+ "serde_json",
+ "sourcemap",
  "swc_next_allocator",
  "swc_next_bridge",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
+ "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
