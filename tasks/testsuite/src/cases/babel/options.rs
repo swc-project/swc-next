@@ -2,17 +2,14 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
-use swc_core::ecma::transforms::base::assumptions::Assumptions;
 use swc_next_core::{
     BoolOr,
     js::{
         JsOptions,
         codegen::JsCodegenOptions,
-        transform::{JsFeature, JsProposalOptions, JsTransformOptions},
+        transform::{JsAssumptions, JsFeature, JsProposalOptions, JsTransformOptions},
     },
 };
-
-use crate::cases::assumptions;
 
 mod plugins;
 mod presets;
@@ -50,8 +47,8 @@ pub struct BabelOptions {
     pub jsesc_option: Option<JsescOptions>,
 
     /// Compiler assumptions passed through Babel configuration.
-    #[serde(default, deserialize_with = "deserialize_assumptions")]
-    pub assumptions: Assumptions,
+    #[serde(default)]
+    pub assumptions: BabelAssumptions,
 
     // Test options
     /// Expected error message used by Babel fixture tests.
@@ -100,17 +97,10 @@ pub enum JsescNumberFormat {
     Hexadecimal,
 }
 
-fn deserialize_assumptions<'de, D>(deserializer: D) -> Result<Assumptions, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let mut value = serde_json::Value::deserialize(deserializer)?;
-    let defaults =
-        serde_json::to_value(Assumptions::default()).map_err(serde::de::Error::custom)?;
-    if let Some(fields) = value.as_object_mut() {
-        fields.retain(|name, _| defaults.get(name).is_some());
-    }
-    serde_json::from_value(value).map_err(serde::de::Error::custom)
+#[derive(Debug, Default, Clone, Deserialize)]
+pub struct BabelAssumptions {
+    #[serde(flatten)]
+    pub options: JsAssumptions,
 }
 
 impl From<BabelOptions> for JsOptions {
@@ -122,7 +112,7 @@ impl From<BabelOptions> for JsOptions {
         }
         Self {
             transform: Some(JsTransformOptions {
-                assumptions: Some(assumptions(options.assumptions)),
+                assumptions: Some(options.assumptions.options),
                 proposal: Some(JsProposalOptions {
                     prevent_extensions: Some(plugins.static_blocks),
                 }),

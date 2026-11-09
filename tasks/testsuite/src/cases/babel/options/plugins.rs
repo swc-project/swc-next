@@ -1,9 +1,5 @@
 use serde::Deserialize;
-use swc_core::ecma::transforms::react::RefreshOptions;
-use swc_next_core::{
-    BoolOr,
-    js::transform::{JsReactRefreshOptions, JsTypeScriptOptions, JsxOptions, JsxRuntime},
-};
+use swc_next_core::js::transform::{JsTypeScriptOptions, JsxOptions};
 
 use super::PluginPresetEntries;
 
@@ -32,55 +28,6 @@ impl From<TransformTypeScriptOptions> for JsTypeScriptOptions {
             preserve_const_enums: Some(!options.optimize_const_enums),
             jsx_pragma: options.jsx_pragma,
             jsx_pragma_frag: options.jsx_pragma_frag,
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum BabelJsxRuntime {
-    Classic,
-    #[default]
-    Automatic,
-}
-
-#[derive(Debug, Default, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct BabelJsxOptions {
-    runtime: BabelJsxRuntime,
-    development: bool,
-    source_self: bool,
-    import_source: Option<String>,
-    pragma: Option<String>,
-    pragma_frag: Option<String>,
-    throw_if_namespace: Option<bool>,
-    pure: Option<bool>,
-    display_name: bool,
-    refresh: Option<RefreshOptions>,
-}
-
-impl From<BabelJsxOptions> for JsxOptions {
-    fn from(options: BabelJsxOptions) -> Self {
-        Self {
-            runtime: Some(match options.runtime {
-                BabelJsxRuntime::Classic => JsxRuntime::Classic,
-                BabelJsxRuntime::Automatic => JsxRuntime::Automatic,
-            }),
-            development: Some(options.development),
-            source_self: Some(options.source_self),
-            import_source: options.import_source,
-            pragma: options.pragma,
-            pragma_frag: options.pragma_frag,
-            throw_if_namespace: options.throw_if_namespace,
-            pure: options.pure,
-            display_name: Some(options.display_name),
-            refresh: options.refresh.map(|options| {
-                BoolOr::Options(JsReactRefreshOptions {
-                    refresh_reg: Some(options.refresh_reg.to_string()),
-                    refresh_sig: Some(options.refresh_sig.to_string()),
-                    emit_full_signatures: Some(options.emit_full_signatures),
-                })
-            }),
         }
     }
 }
@@ -128,8 +75,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 },
                 "transform-react-jsx" => {
                     plugins.react_jsx = entry
-                        .value::<BabelJsxOptions>()
-                        .map(Into::into)
+                        .value::<JsxOptions>()
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
                 }
@@ -137,10 +83,10 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 // Metadata stays opt-in through this plugin's `sourceSelf` option.
                 "transform-react-jsx-development" => {
                     plugins.react_jsx_dev = entry
-                        .value::<BabelJsxOptions>()
+                        .value::<JsxOptions>()
                         .map(|mut options| {
-                            options.development = true;
-                            options.into()
+                            options.development = Some(true);
+                            options
                         })
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
@@ -196,7 +142,7 @@ mod tests {
         let plugins = parse(r#"["transform-react-jsx-development"]"#);
         let options = plugins.react_jsx_dev.unwrap();
         assert_eq!(options.development, Some(true));
-        assert_eq!(options.source_self, Some(false));
+        assert!(options.source_self.is_none());
 
         let plugins = parse(r#"[["transform-react-jsx-development", {"sourceSelf": true}]]"#);
         let options = plugins.react_jsx_dev.unwrap();
