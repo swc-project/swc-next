@@ -13612,11 +13612,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let expression = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
-        Some(self.ast.expr_ts_type_assertion(
-            Span::new(start, expression.span(&self.ast).end),
-            type_annotation,
-            expression,
-        ))
+        let span = Span::new(start, expression.span(&self.ast).end);
+        self.check_assertion_assignment_target(span);
+        Some(
+            self.ast
+                .expr_ts_type_assertion(span, type_annotation, expression),
+        )
+    }
+
+    fn check_assertion_assignment_target(&mut self, span: Span) {
+        // An assertion is not a left-hand-side expression. A parenthesized
+        // assertion target is followed by `)` here instead of the operator.
+        if self.current_token.tag().is_assignment_operator() {
+            self.report(
+                span,
+                "An unparenthesized type assertion cannot be an assignment target",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Wrap the assertion in parentheses, for example `(x as T) = y`.",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+        }
     }
 
     fn parse_as_or_satisfies_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
@@ -13637,6 +13655,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             left.span(&self.ast).start,
             type_annotation.span(&self.ast).end,
         );
+        self.check_assertion_assignment_target(span);
         Some(if tag == TokenTag::As {
             self.ast.expr_ts_as_expression(span, left, type_annotation)
         } else {
@@ -18359,6 +18378,60 @@ mod tests {
                     assert_eq!(errors, ["<number>-x"]);
 
                     let errors = error_spans("(<number>x) as number ** 2;", options);
+                    assert!(errors.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn assertion_assignment_targets() {
+        for lang in [Lang::Ts, Lang::Tsx] {
+            for preserve_parens in [false, true] {
+                let options = Options {
+                    lang,
+                    preserve_parens,
+                    ..Options::default()
+                };
+
+                let errors = error_spans("a as T = b;", options);
+                assert_eq!(errors, ["a as T"]);
+
+                let errors = error_spans("a satisfies T = b;", options);
+                assert_eq!(errors, ["a satisfies T"]);
+
+                let errors = error_spans("a as T += b;", options);
+                assert_eq!(errors, ["a as T"]);
+
+                let errors = error_spans("a.b as T ??= c;", options);
+                assert_eq!(errors, ["a.b as T"]);
+
+                let errors = error_spans("a as T as U = b;", options);
+                assert_eq!(errors, ["a as T as U"]);
+
+                let errors = error_spans("[a as T = b] = c;", options);
+                assert_eq!(errors, ["a as T"]);
+
+                let errors = error_spans("(a as T) = b;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("(a satisfies T) += b;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("a! = b;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("x = a as T;", options);
+                assert!(errors.is_empty());
+
+                if lang == Lang::Ts {
+                    let errors = error_spans("<T>a = b;", options);
+                    assert_eq!(errors, ["<T>a"]);
+
+                    let errors = error_spans("<T>a.b -= c;", options);
+                    assert_eq!(errors, ["<T>a.b"]);
+
+                    let errors = error_spans("(<T>a) = b;", options);
                     assert!(errors.is_empty());
                 }
             }
