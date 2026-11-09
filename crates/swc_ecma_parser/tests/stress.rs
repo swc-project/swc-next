@@ -8,7 +8,7 @@ fn type_argument_speculation() {
         source: String,
         options: Options,
         inspect: fn(&Ast<'_>) -> T,
-    ) -> (Vec<Diagnostic<'static>>, T) {
+    ) -> (Vec<Diagnostic>, T) {
         std::thread::Builder::new()
             .stack_size(2 << 20)
             .spawn(move || {
