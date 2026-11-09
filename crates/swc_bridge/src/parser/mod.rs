@@ -43,6 +43,13 @@ pub unsafe fn parse_to_buffer2(source: &[u8], options: Option<ParserOptions>) ->
     }
 }
 
+/// Parse step shared by the two FFI buffers.
+///
+/// Each instantiation has a single caller, and [`parse_to_buffer`] is the `parseSync`
+/// path that already shipped. Forcing the inline keeps that path materializing as the
+/// single body it was before the serialize closure was factored out, so sharing the
+/// parse step cannot change the code generated for it.
+#[inline(always)]
 unsafe fn parse_and_serialize(
     source: &[u8],
     options: Option<ParserOptions>,
