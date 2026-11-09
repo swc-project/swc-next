@@ -87,6 +87,16 @@ fn test_pure_calls() {
 
     let output = pure_calls("const f = () => ({})();", &pretty);
     assert_eq!(output, "const f = () => /* #__PURE__ */ ({})();\n");
+
+    let no_comments = PrintOptions {
+        comments: false,
+        ..minify
+    };
+    let output = pure_calls("pure().props.f();", &no_comments);
+    assert_eq!(output, "pure().props.f();");
+
+    let output = pure_calls("(function() {})();", &no_comments);
+    assert_eq!(output, "(function(){})();");
 }
 
 #[track_caller]

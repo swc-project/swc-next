@@ -2620,7 +2620,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
-        let print_pure = e.pure(self.ast);
+        let print_pure = self.options.comments && e.pure(self.ast);
         let wrap = level > Precedence::Call
             || in_new_callee
             || (print_pure && level >= Precedence::Postfix);
