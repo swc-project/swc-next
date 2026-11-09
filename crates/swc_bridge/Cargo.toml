@@ -11,8 +11,13 @@ version               = "0.6.1"
 [lib]
 crate-type = ["lib", "cdylib"]
 
+[features]
+formatter = ["dep:swc_next_formatter_core", "dep:swc_next_formatter_host"]
+
 [dependencies]
-swc_next_bridge_macros = { workspace = true }
+swc_next_bridge_macros  = { workspace = true }
+swc_next_formatter_core = { workspace = true, optional = true }
+swc_next_formatter_host = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 # `#[bridge]` expands to NAPI-RS types and attributes for native targets.

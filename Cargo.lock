@@ -3805,6 +3805,8 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "swc_next_bridge_macros",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
 ]
 
 [[package]]
