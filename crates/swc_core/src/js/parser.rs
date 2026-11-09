@@ -242,6 +242,13 @@ unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
     }
 }
 
+/// Parse step shared by the FFI and FFI2 transfer buffers.
+///
+/// `parse_to_buffer` and `parse_to_node_buffer` are the `parseSync` paths that
+/// already shipped. Forcing the inline keeps them materializing as the single body
+/// they were before the serialize step was factored out, so sharing the parse step
+/// cannot change the code generated for them.
+#[inline(always)]
 unsafe fn parse_and_serialize<T, E>(
     source: &[u8],
     options: Option<JsParseApiOptions>,
