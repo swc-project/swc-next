@@ -1,0 +1,18 @@
+[package]
+description           = "Native and Wasm host for language-independent SWCD documents"
+edition               = "2024"
+homepage.workspace    = true
+keywords              = ["formatting", "pretty-printing"]
+license.workspace     = true
+name                  = "swc_next_formatter_bridge"
+repository.workspace  = true
+version               = "0.3.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+swc_next_bridge = { workspace = true, features = ["formatter"] }
+
+[build-dependencies]
+napi-build = { workspace = true }

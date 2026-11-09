@@ -102,6 +102,16 @@ jobs:
           cache: pnpm
       - name: Install Node.js dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check formatter host dependency boundary
+        run: |
+          for target in x86_64-unknown-linux-gnu wasm32-unknown-unknown; do
+            dependencies="$(cargo tree --locked -p swc_next_formatter_bridge --target "$target" --edges normal,build --prefix none)"
+            if [[ "$dependencies" == *swc_next_ecma_* ]]; then
+              echo "The formatter host must build without ECMAScript dependencies."
+              echo "$dependencies"
+              exit 1
+            fi
+          done
       - name: Build WebAssembly bindings
         run: pnpm build:wasm --profile wasm-release
       - name: Prepare browser package
