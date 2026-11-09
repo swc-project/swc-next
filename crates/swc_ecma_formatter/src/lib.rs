@@ -27,7 +27,7 @@ pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.9.9";
 
 #[derive(Debug)]
 pub enum FormatError {
-    Parse(Vec<Diagnostic<'static>>),
+    Parse(Vec<Diagnostic>),
     Unsupported {
         construct: &'static str,
         kind: Option<NodeKind>,

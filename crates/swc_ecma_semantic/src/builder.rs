@@ -48,7 +48,7 @@ use crate::{
 pub struct SemanticBuilder<'traverse, 'a> {
     exported_names: FxHashMap<&'traverse [u8], NodeId>,
     export_specifiers: Vec<ExportSpecifier>,
-    diagnostics: Vec<Diagnostic<'a>>,
+    diagnostics: Vec<Diagnostic>,
     scope: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
     current_scope: ScopeId,
@@ -83,7 +83,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
-    pub fn build(mut self) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
+    pub fn build(mut self) -> (Semantic<'a>, Vec<Diagnostic>) {
         self.finish();
         (
             self.symbols.finalize(self.ast, self.scope),
@@ -91,7 +91,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         )
     }
 
-    pub fn into_diagnostics(mut self) -> Vec<Diagnostic<'a>> {
+    pub fn into_diagnostics(mut self) -> Vec<Diagnostic> {
         self.finish();
         self.diagnostics
     }
@@ -487,7 +487,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[cold]
-    fn report(&mut self, span: Span, message: impl Into<Cow<'a, str>>, options: ReportOptions<'a>) {
+    fn report(
+        &mut self,
+        span: Span,
+        message: impl Into<Cow<'static, str>>,
+        options: ReportOptions,
+    ) {
         let message = message.into();
         debug_assert!(span.start <= span.end);
         debug_assert!(!message.is_empty());
@@ -500,14 +505,14 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         });
     }
 
-    fn label(&self, span: Span, message: impl Into<Cow<'a, str>>) -> Label<'a> {
+    fn label(&self, span: Span, message: impl Into<Cow<'static, str>>) -> Label {
         Label {
             span,
             message: message.into(),
         }
     }
 
-    fn labels(&self, items: &[Label<'a>]) -> Vec<Label<'a>> {
+    fn labels(&self, items: &[Label]) -> Vec<Label> {
         items.to_vec()
     }
 
@@ -1887,13 +1892,13 @@ fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
     }
 }
 
-struct ReportOptions<'a> {
+struct ReportOptions {
     severity: Severity,
-    help: Option<Cow<'a, str>>,
-    labels: Vec<Label<'a>>,
+    help: Option<Cow<'static, str>>,
+    labels: Vec<Label>,
 }
 
-impl Default for ReportOptions<'_> {
+impl Default for ReportOptions {
     fn default() -> Self {
         Self {
             severity: Severity::Error,

@@ -287,7 +287,7 @@ enum CommonJsUse {
 
 impl CommonJsUse {
     #[cold]
-    fn diagnostic(self) -> Diagnostic<'static> {
+    fn diagnostic(self) -> Diagnostic {
         match self {
             Self::Return(span) => Diagnostic {
                 severity: Severity::Error,
@@ -417,7 +417,7 @@ impl ModuleDetection {
 struct ReportOptions {
     pub severity: Severity,
     pub help: Option<Cow<'static, str>>,
-    pub labels: Vec<Label<'static>>,
+    pub labels: Vec<Label>,
 }
 
 impl Default for ReportOptions {
@@ -438,8 +438,8 @@ struct ParserDiagnostics {
 }
 
 enum DiagnosticEntry {
-    Reported(Diagnostic<'static>),
-    Deferred(Diagnostic<'static>),
+    Reported(Diagnostic),
+    Deferred(Diagnostic),
 }
 
 impl ParserDiagnostics {
@@ -451,11 +451,11 @@ impl ParserDiagnostics {
         self.entries.truncate(checkpoint);
     }
 
-    fn push(&mut self, diagnostic: Diagnostic<'static>) {
+    fn push(&mut self, diagnostic: Diagnostic) {
         self.entries.push(DiagnosticEntry::Reported(diagnostic));
     }
 
-    fn defer(&mut self, diagnostic: Diagnostic<'static>) {
+    fn defer(&mut self, diagnostic: Diagnostic) {
         self.entries.push(DiagnosticEntry::Deferred(diagnostic));
     }
 
@@ -470,7 +470,7 @@ impl ParserDiagnostics {
         !self.is_clean_since(0)
     }
 
-    fn finish(self) -> Vec<Diagnostic<'static>> {
+    fn finish(self) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
         for entry in self.entries {
             let diagnostic = match entry {
@@ -1213,7 +1213,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
 pub struct ParseReturn<'a> {
     pub ast: AstCtx<'a>,
     pub tokens: ArenaVec<'a, Token>,
-    pub diagnostics: Vec<Diagnostic<'static>>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1670,7 +1670,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn parse_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
-    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
         if let Some(hashbang) = self.lexer.hashbang {
             let end = hashbang.start + u32::from(hashbang.len);
             self.report(
@@ -1698,7 +1698,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_unambiguous_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
-    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
         self.enter_fragment_context(SourceType::Module, fragment_context);
         let expr = self.parse_value_expression(Precedence::Lowest);
         match self.module_detection.parse_action(&self.diagnostics) {
@@ -1747,7 +1747,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn finish_expression_fragment(
         mut self,
         expr: Option<Expr>,
-    ) -> Result<AstCtx<'a>, Vec<Diagnostic<'a>>> {
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
         debug_assert!(self.cover.initialized_names.is_empty());
         if self.current_token.tag() != TokenTag::Eof {
             self.report_expected(
@@ -14451,7 +14451,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
     }
 
-    fn label(&self, span: Span, message: &'static str) -> Label<'static> {
+    fn label(&self, span: Span, message: &'static str) -> Label {
         Label {
             span,
             message: Cow::Borrowed(message),
@@ -15869,7 +15869,7 @@ mod tests {
             source: &str,
             options: Options,
             inspect: fn(&Ast<'_>) -> T,
-        ) -> (Vec<Diagnostic<'static>>, T) {
+        ) -> (Vec<Diagnostic>, T) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let result = inspect(read_ast(&parsed.ast));
@@ -16188,7 +16188,7 @@ mod tests {
 
     #[test]
     fn syntax_errors() {
-        fn diagnostics(source: &str, options: Options) -> Vec<Diagnostic<'static>> {
+        fn diagnostics(source: &str, options: Options) -> Vec<Diagnostic> {
             let allocator = Allocator::new();
             Parser::init(&allocator, source, options, NoTokenParserConfig)
                 .parse()
@@ -17882,7 +17882,7 @@ mod tests {
             allocator: &'a Allocator,
             source: &'a str,
             options: Options,
-        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        ) -> Result<Ast<'a>, Vec<Diagnostic>> {
             Parser::init(allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
                 .map(take_ast)
@@ -18320,7 +18320,7 @@ mod tests {
 
     #[test]
     fn disallow_unerasable_assertions() {
-        fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+        fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic> {
             let allocator = Allocator::new();
             Parser::init(
                 &allocator,
@@ -18602,7 +18602,7 @@ mod tests {
 
     #[test]
     fn await_using_context() {
-        fn parse(source: &str, source_type: SourceType) -> Vec<Diagnostic<'static>> {
+        fn parse(source: &str, source_type: SourceType) -> Vec<Diagnostic> {
             let allocator = Allocator::new();
             Parser::init(
                 &allocator,
@@ -19305,7 +19305,7 @@ mod tests {
             source: &'a str,
             options: Options,
             context: FragmentContext,
-        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        ) -> Result<Ast<'a>, Vec<Diagnostic>> {
             let parser = Parser::init(allocator, source, options, NoTokenParserConfig);
             parser.parse_expression_fragment(context).map(take_ast)
         }
@@ -19868,7 +19868,7 @@ mod tests {
 
     #[test]
     fn single_statement_function_expressions() {
-        fn parse_js_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+        fn parse_js_diagnostics(source: &str) -> Vec<Diagnostic> {
             let allocator = Allocator::new();
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
                 .parse()
