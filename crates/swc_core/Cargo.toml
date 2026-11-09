@@ -16,8 +16,6 @@ js_parser    = ["js", "dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
 js_transform = ["js", "js_parser", "js_codegen", "dep:swc_next_ecma_transformer"]
 
 [dependencies]
-serde = { workspace = true }
-
 swc_next_allocator        = { workspace = true, optional = true }
 swc_next_bridge           = { workspace = true, optional = true }
 swc_next_ecma_ast         = { workspace = true, optional = true }
