@@ -124,7 +124,10 @@ jobs:
             extra_args: --use-napi-cross
             target_cc: /usr/bin/clang
             llvm_target: systemz
-          - os: ubuntu-latest
+          # The host and target match, so cc-rs ignores TARGET_CC and compiles C
+          # with the runner's headers. glibc 2.38+ headers turn mimalloc's
+          # strtol into __isoc23_strtol, which breaks glibc 2.35 systems.
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             extra_args: --use-napi-cross
           - os: ubuntu-latest
