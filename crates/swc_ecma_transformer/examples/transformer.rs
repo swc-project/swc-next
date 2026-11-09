@@ -79,7 +79,7 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn report_diagnostics(path: &Path, diagnostics: &[Diagnostic]) -> Result<(), String> {
+fn report_diagnostics(path: &Path, diagnostics: &[Diagnostic<'_>]) -> Result<(), String> {
     for diagnostic in diagnostics {
         eprintln!(
             "{}:{}..{}: {}: {}",

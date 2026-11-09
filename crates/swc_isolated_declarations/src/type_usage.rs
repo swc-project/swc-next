@@ -125,7 +125,7 @@ pub(crate) struct TypeUsageAnalyzer<'visit, 'ast> {
     roots: Vec<SymbolKey>,
     scope_source: Source,
     source: Option<Source>,
-    diagnostics: Vec<(Source, Diagnostic)>,
+    diagnostics: Vec<(Source, Diagnostic<'static>)>,
     returns: Vec<(Span, Span)>,
     erased_function_names: Vec<SymbolId>,
     surface: DeclarationSurface,
@@ -137,7 +137,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
     pub(crate) fn analyze(
         ast: &'visit Ast<'ast>,
         semantic: &'visit Semantic<'ast>,
-    ) -> (UsedSymbols, Vec<Diagnostic>, DeclarationSurface) {
+    ) -> (UsedSymbols, Vec<Diagnostic<'static>>, DeclarationSurface) {
         let mut analyzer = Self {
             ast,
             semantic,
@@ -157,7 +157,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
         analyzer.finish()
     }
 
-    fn finish(self) -> (UsedSymbols, Vec<Diagnostic>, DeclarationSurface) {
+    fn finish(self) -> (UsedSymbols, Vec<Diagnostic<'static>>, DeclarationSurface) {
         let mut queue = SymbolQueue::default();
         queue.extend(self.roots);
 

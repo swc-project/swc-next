@@ -20,7 +20,7 @@ use swc_next_ecma_semantic::{
 
 struct TestAnalysis<'a> {
     semantic: Semantic<'a>,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic<'a>>,
 }
 
 fn analyze<'a>(ast: &AstCtx<'a>, options: AnalyzeOptions) -> TestAnalysis<'a> {
