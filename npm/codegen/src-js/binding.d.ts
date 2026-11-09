@@ -8,7 +8,7 @@
  * `swc_next_core::js::codegen::print_from_parts`.
  */
 export declare function printSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: CodegenOptions | undefined | null): CodegenOutput
-/** Currently implemented JavaScript code generation settings. */
+/** JavaScript code generation options. */
 export interface CodegenOptions {
   asciiOnly?: boolean
   /** Escape closing script tags. Tagged template raw text is preserved. */

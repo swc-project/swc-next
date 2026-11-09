@@ -8,7 +8,7 @@ const LANG_SHIFT = 2;
 
 const OPTION_SOURCE_TYPES = ["module", "script", "commonjs", "unambiguous"];
 const OPTION_LANGS = ["js", "ts", "jsx", "tsx", "dts"];
-const OPTION_COMMENT_MODES = ["none", "flat"];
+const OPTION_COMMENT_MODES = ["all", "none"];
 
 export function encodeOptions(options) {
   if (options === undefined || options === null) return 0;

@@ -10,7 +10,7 @@ use swc_next_bridge::napi;
 
 pub use ast::DeserializeError;
 
-/// Currently implemented JavaScript code generation settings.
+/// JavaScript code generation options.
 #[cfg_attr(feature = "bridge", bridge(object, js_name = "CodegenOptions"))]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsCodegenOptions {

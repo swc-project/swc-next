@@ -224,7 +224,7 @@ test("decoder preserves literal raw source", () => {
 test("parseSync exposes flat comments lazily", () => {
   const source =
     '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
-  const result = parseSync(source, { comments: "flat" });
+  const result = parseSync(source, { comments: "all" });
   const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
 
   assert.equal(typeof descriptor.get, "function");
@@ -254,7 +254,7 @@ test("parseSync exposes flat comments lazily", () => {
 test("parseSync exposes HTML comments without delimiters", () => {
   const source = "<!-- open\n--> close\n";
   const result = parseSync(source, {
-    comments: "flat",
+    comments: "all",
     sourceType: "script",
   });
 
@@ -271,10 +271,14 @@ test("parseSync defaults to flat comments and returns an empty array", () => {
   assert.equal(result.comments, result.comments);
 });
 
-test("parseSync can disable comment collection", () => {
-  const result = parseSync("// omitted", { comments: "none" });
+test("parseSync forwards shared comment policies", () => {
+  for (const parse of [parseSync, parseStandalone]) {
+    const omitted = parse("// omitted", { comments: "none" });
+    assert.deepEqual(omitted.comments, []);
 
-  assert.deepEqual(result.comments, []);
+    const collected = parse("// collected", { comments: "all" });
+    assert.deepEqual(collected.comments.map(comment => comment.value), [" collected"]);
+  }
 });
 
 test("errorRecovery controls whether the first diagnostic is thrown", () => {

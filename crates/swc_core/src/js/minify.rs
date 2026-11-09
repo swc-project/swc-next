@@ -2,13 +2,16 @@ use swc_next_ecma_minifier::{CompressOptions, MinifierOptions};
 
 use crate::BoolOr;
 
-/// JavaScript AST minification settings.
+/// JavaScript minification options.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsMinifyOptions {
-    /// Disable compression or enable it with defaults or explicit settings.
+    /// `false` disables compression. `true` uses default options.
+    ///
+    /// @default true
     pub compress: Option<BoolOr<JsCompressOptions>>,
-    /// Enable local binding mangling. Additional mangling options are not yet
-    /// implemented.
+    /// `false` disables mangling. `true` uses default options.
+    ///
+    /// @default true
     pub mangle: Option<bool>,
     // Extend the boolean shorthand when mangler options are supported.
     // pub mangle: Option<BoolOr<JsMangleOptions>>,
@@ -29,8 +32,7 @@ impl From<JsMinifyOptions> for MinifierOptions {
     }
 }
 
-/// Implemented compression passes. Each pass defaults to enabled when
-/// compression is enabled; unset fields preserve that decision for resolution.
+/// Compression options. All default to true.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsCompressOptions {
     /// Remove empty statements and unnecessary blocks.

@@ -47,7 +47,7 @@ import { parseSync, type ParserOptions } from "@swc-next/core";
 
 const options = {
   lang: "ts",
-  comments: "flat",
+  comments: "all",
 } satisfies ParserOptions;
 
 const result = parseSync("const answer: number = 42;", options);

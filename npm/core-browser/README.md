@@ -17,7 +17,7 @@ Call `init()` before parsing or printing. It loads the bundled `.wasm` file;
 subsequent calls are idempotent.
 
 Parser options use strings, for example
-`{ lang: "ts", sourceType: "module", comments: "flat" }`.
+`{ lang: "ts", sourceType: "module", comments: "all" }`.
 `Lang`, `SourceType`, and `CommentMode` are available only as TypeScript types.
 
 ## Building

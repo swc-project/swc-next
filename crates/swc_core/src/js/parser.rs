@@ -6,6 +6,8 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
 
+use super::CommentsOption;
+
 #[cfg(feature = "bridge")]
 use swc_next_bridge::{BridgeDecodeOptional, bridge};
 
@@ -83,28 +85,16 @@ impl From<Lang> for JsLang {
     }
 }
 
-#[cfg_attr(
-    feature = "bridge",
-    bridge(string_enum = "lowercase", js_name = "CommentMode")
-)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum JsCommentMode {
-    None,
-    Flat,
-}
-
-impl From<JsCommentMode> for CommentMode {
-    fn from(value: JsCommentMode) -> Self {
+impl From<CommentsOption> for CommentMode {
+    fn from(value: CommentsOption) -> Self {
         match value {
-            JsCommentMode::None => Self::None,
-            JsCommentMode::Flat => Self::Flat,
+            CommentsOption::All => Self::Flat,
+            CommentsOption::None => Self::None,
         }
     }
 }
 
-/// Complete parser settings shared by standalone parsing and JavaScript pipelines.
-///
-/// The JavaScript facade selects the relevant settings for each pipeline.
+/// JavaScript and TypeScript parser options.
 #[cfg_attr(feature = "bridge", bridge(object, js_name = "ParserOptions"))]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsParserOptions {
@@ -121,13 +111,10 @@ pub struct JsParserOptions {
     ///
     /// @default true
     pub preserve_parens: Option<bool>,
-    /// Determines how comments are exposed.
+    /// Comment policy.
     ///
-    /// `"none"` disables comment collection. `"flat"` exposes a
-    /// source-ordered comment list.
-    ///
-    /// @default "flat"
-    pub comments: Option<JsCommentMode>,
+    /// @default "all"
+    pub comments: Option<CommentsOption>,
     /// Run semantic early-error checks on the parsed AST, including after syntax
     /// error recovery, and append their diagnostics. This performs an additional
     /// AST pass.
@@ -249,8 +236,8 @@ const _: () = {
             };
             let comments = match field(value, COMMENTS_MASK, COMMENTS_SHIFT) {
                 0 => None,
-                1 => Some(JsCommentMode::None),
-                2 => Some(JsCommentMode::Flat),
+                1 => Some(CommentsOption::All),
+                2 => Some(CommentsOption::None),
                 _ => return None,
             };
 

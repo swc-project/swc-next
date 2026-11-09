@@ -25,7 +25,7 @@ declare function parseSync(
 | [`lang`](#lang) | `"js" \| "ts" \| "jsx" \| "tsx" \| "dts"` | `"js"` | Select the input syntax. |
 | [`sourceType`](#sourcetype) | `"module" \| "script" \| "commonjs" \| "unambiguous"` | `"module"` | Select module, script, or CommonJS parsing rules, or detect them from the source. |
 | [`preserveParens`](#preserveparens) | `boolean` | `true` | Keep explicit nodes for parenthesized expressions and types. |
-| [`comments`](#comments) | `"none" \| "flat"` | `"flat"` | Collect comments in a separate list, or skip collection. |
+| [`comments`](#comments) | `"all" \| "none"` | `"all"` | Collect comments in a separate list, or skip collection. |
 | [`errorRecovery`](#errorrecovery) | `boolean` | `false` | Return diagnostics and a recovered AST instead of throwing the first diagnostic. |
 | [`semanticErrors`](#semanticerrors) | `boolean` | `false` | Also check semantic early errors that require an AST pass. |
 
@@ -118,17 +118,17 @@ This changes the tree's shape, not expression precedence. The printer inserts pa
 
 ### comments
 
-Type: `"none" | "flat"`
+Type: `"all" | "none"`
 
-Default: `"flat"`
+Default: `"all"`
 
-With `"flat"`, return every collected comment in source order in `result.comments`. With `"none"`, skip collection and return an empty array. Comments are separate from the program and are not attached to AST nodes.
+With `"all"`, return every collected comment in source order in `result.comments`. With `"none"`, skip collection and return an empty array. Comments are separate from the program and are not attached to AST nodes.
 
 ```js
 import { parseSync } from "@swc-next/core";
 
 const source = "// header\nanswer; /* tail */";
-parseSync(source, { comments: "flat" }).comments;
+parseSync(source, { comments: "all" }).comments;
 // [
 //   { type: "Line", value: " header", start: 0, end: 9 },
 //   { type: "Block", value: " tail ", start: 18, end: 28 },

@@ -2,6 +2,27 @@
 
 use swc_next_ecma_ast::Diagnostic;
 
+#[cfg(all(feature = "bridge", feature = "js_parser"))]
+use swc_next_bridge::bridge;
+
+#[cfg(all(feature = "bridge", feature = "js_parser", not(target_family = "wasm")))]
+use swc_next_bridge::napi;
+
+/// Comment policy.
+#[cfg_attr(
+    all(feature = "bridge", feature = "js_parser"),
+    bridge(string_enum = "lowercase", js_name = "CommentMode")
+)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CommentsOption {
+    /// Keep all comments.
+    All,
+    // Some,
+    /// Remove all comments.
+    None,
+    // Options(CommentsOptions),
+}
+
 #[cfg(feature = "js_codegen")]
 pub mod codegen;
 #[cfg(feature = "js_transform")]
@@ -11,30 +32,29 @@ pub mod parser;
 #[cfg(feature = "js_transform")]
 pub mod transform;
 
-/// JavaScript and TypeScript stage settings.
-///
-/// Each stage field requires its corresponding `js_*` crate feature.
-/// Minification settings are included with `js_transform`.
+/// JavaScript and TypeScript options.
 #[derive(Clone, Debug, Default)]
 pub struct JsOptions {
-    /// Used to infer `lang` and `js.parser.sourceType`, and
-    /// also for some transformation, diagnostics and source maps.
+    /// Used to infer the language and source type, and for diagnostics and source maps.
     pub filename: Option<String>,
-    /// Generate a separate source map in `JsOutput.map`. Defaults to false.
-    /// Uses `filename` as the source path, or `input.js` when it is absent.
+    /// Source map generation.
+    ///
+    /// @default false
     pub source_maps: Option<bool>,
     // Override the shared target for all JavaScript stages.
     // pub target: Option<Target>,
-    /// Comment handling policy for the pipeline. Defaults to `All` without
-    /// minification and `None` with minification until `Some` is supported.
+    /// Comment policy.
     pub comments: Option<CommentsOption>,
+    /// Parser options.
     #[cfg(feature = "js_parser")]
     pub parser: Option<parser::JsParserOptions>,
+    /// Transform options.
     #[cfg(feature = "js_transform")]
     pub transform: Option<transform::JsTransformOptions>,
-    /// A boolean shorthand or explicit compression and mangling settings.
+    /// Minification. `true` uses default options.
     #[cfg(feature = "js_transform")]
     pub minify: Option<crate::BoolOr<minify::JsMinifyOptions>>,
+    /// Code generation options.
     #[cfg(feature = "js_codegen")]
     pub codegen: Option<codegen::JsCodegenOptions>,
 }
@@ -76,17 +96,6 @@ pub struct JsOptions {
 //     Bun,
 // }
 
-/// Comment policies currently supported by the JavaScript pipeline.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CommentsOption {
-    /// Keep all comments inline, including legal comments and annotations.
-    All,
-    // Some,
-    /// Remove all comments from the output. Transform pragmas are still read.
-    None,
-    // Options(CommentsOptions),
-}
-
 // pub struct CommentsOptions {
 //     pub other: Option<OtherComments>,
 //     pub legal: Option<LegalComments>,
@@ -106,15 +115,14 @@ pub enum CommentsOption {
 //     None,
 // }
 
-/// Rust pipeline output. Errors stop the pipeline and leave `code` empty.
+/// Source transformation output.
 #[derive(Debug, Default)]
 pub struct JsOutput {
     pub code: String,
-    /// Source Map v3 JSON when `source_maps` is enabled and the pipeline succeeds.
+    /// Source map as a JSON string. `None` when source maps are disabled.
     pub map: Option<String>,
     /// Legal comments when `comments.legal` is `"external"`.
-    /// Currently always `None` until comment policies are supported.
     pub legal_comments: Option<Vec<String>>,
-    /// Owned parser, semantic, and transform diagnostics with UTF-8 byte offsets.
-    pub diagnostics: Vec<Diagnostic<'static>>,
+    /// Diagnostics.
+    pub diagnostics: Vec<Diagnostic>,
 }
