@@ -1,6 +1,6 @@
 //! Layout options shared by all language printers.
 
-/// Options used only when laying out a completed document.
+/// Shared layout configuration for document construction and printing.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct PrintOptions {
     pub line_width: u16,
