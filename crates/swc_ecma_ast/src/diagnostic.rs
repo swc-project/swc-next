@@ -23,22 +23,22 @@ impl Severity {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Label<'a> {
+pub struct Label {
     pub span: Span,
-    pub message: Cow<'a, str>,
+    pub message: Cow<'static, str>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Diagnostic<'a> {
+pub struct Diagnostic {
     pub severity: Severity,
-    pub message: Cow<'a, str>,
+    pub message: Cow<'static, str>,
     pub span: Span,
-    pub help: Option<Cow<'a, str>>,
-    pub labels: Vec<Label<'a>>,
+    pub help: Option<Cow<'static, str>>,
+    pub labels: Vec<Label>,
 }
 
-impl<'a> Diagnostic<'a> {
-    pub fn error(message: &'a str, span: Span) -> Self {
+impl Diagnostic {
+    pub fn error(message: &'static str, span: Span) -> Self {
         Self {
             severity: Severity::Error,
             message: Cow::Borrowed(message),

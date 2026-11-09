@@ -28,7 +28,7 @@ use crate::type_usage::TypeUsageAnalyzer;
 ///
 /// Consumes the analysis binding and releases the AST for subsequent use.
 /// Re-run analysis before performing semantic work on the transformed tree.
-pub fn transform<'a>(analyzed: SemanticAst<'a, &mut AstCtx<'a>>) -> Vec<Diagnostic<'static>> {
+pub fn transform<'a>(analyzed: SemanticAst<'a, &mut AstCtx<'a>>) -> Vec<Diagnostic> {
     let (ast, semantic) = analyzed.into_parts();
     let semantic = &semantic;
     // SAFETY: The consumed binding supplies this AST's model; emitted handles stay in this AST.
@@ -51,7 +51,7 @@ struct Transformer<'semantic, 'ast> {
     semantic: &'semantic Semantic<'ast>,
     used: UsedSymbols,
     surface: DeclarationSurface,
-    diagnostics: Vec<Diagnostic<'static>>,
+    diagnostics: Vec<Diagnostic>,
     next_default_id: u32,
     reserved_names: Option<FxHashSet<&'ast [u8]>>,
     validated_type_methods: FxHashSet<NodeId>,

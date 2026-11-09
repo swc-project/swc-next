@@ -77,7 +77,7 @@ fn check(code: &str) -> Result<(), String> {
     check_diagnostics(&result.diagnostics)
 }
 
-fn check_diagnostics(diagnostics: &[Diagnostic<'_>]) -> Result<(), String> {
+fn check_diagnostics(diagnostics: &[Diagnostic]) -> Result<(), String> {
     match diagnostics
         .iter()
         .find(|diagnostic| diagnostic.severity == Severity::Error)

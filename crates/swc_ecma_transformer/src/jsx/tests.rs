@@ -30,7 +30,7 @@ fn transform_with_diagnostics(
     lang: Lang,
     jsx: JsxOptions,
     typescript: bool,
-) -> (String, Vec<swc_next_ecma_ast::Diagnostic<'static>>) {
+) -> (String, Vec<swc_next_ecma_ast::Diagnostic>) {
     transform_options(
         source,
         source_type,
@@ -47,7 +47,7 @@ fn diagnose(
     source: &str,
     lang: Lang,
     jsx: JsxOptions,
-) -> (String, Vec<swc_next_ecma_ast::Diagnostic<'static>>) {
+) -> (String, Vec<swc_next_ecma_ast::Diagnostic>) {
     transform_with_diagnostics(source, SourceType::Module, lang, jsx, lang == Lang::Tsx)
 }
 
@@ -181,7 +181,7 @@ fn transform_options(
     source_type: SourceType,
     lang: Lang,
     options: TransformerOptions,
-) -> (String, Vec<swc_next_ecma_ast::Diagnostic<'static>>) {
+) -> (String, Vec<swc_next_ecma_ast::Diagnostic>) {
     let allocator = Allocator::new();
     let parsed = Parser::init(
         &allocator,

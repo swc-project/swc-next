@@ -23,7 +23,7 @@ impl MultiPassTransformer<'_, '_> {
         &mut self,
         options: &JsxOptions,
         source_path: Option<&str>,
-    ) -> Vec<Diagnostic<'static>> {
+    ) -> Vec<Diagnostic> {
         let bindings = RuntimeBindings::new(options, self.ctx.source_type());
         let runtime_import_anchor = options
             .refresh

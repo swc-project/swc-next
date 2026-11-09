@@ -29,7 +29,7 @@ pub(crate) struct JsxLowerer<'options, 'ast> {
     source_locations: SourceLocations,
     source_path: &'options str,
     filename: Option<AstUtf8>,
-    diagnostics: Vec<Diagnostic<'static>>,
+    diagnostics: Vec<Diagnostic>,
     runtime_import_anchor: Option<Stmt>,
 }
 
@@ -62,7 +62,7 @@ impl<'options, 'ast> JsxLowerer<'options, 'ast> {
         self.runtime_import_anchor = anchor;
     }
 
-    pub(crate) fn take_diagnostics(&mut self) -> Vec<Diagnostic<'static>> {
+    pub(crate) fn take_diagnostics(&mut self) -> Vec<Diagnostic> {
         std::mem::take(&mut self.diagnostics)
     }
 }
