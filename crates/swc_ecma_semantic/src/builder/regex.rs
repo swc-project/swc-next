@@ -32,11 +32,33 @@ struct CaptureSite {
 #[derive(Default)]
 struct Validation {
     captures: usize,
-    names: FxHashMap<String, Vec<CaptureSite>>,
+    names: FxHashMap<String, Option<CaptureSite>>,
     max_numeric_reference: usize,
     path: Vec<(usize, usize)>,
     next_disjunction: usize,
     duplicate: bool,
+}
+
+impl Validation {
+    fn declare_name(&mut self, name: String) {
+        let previous = self.names.entry(name).or_default();
+        if let Some(previous) = previous {
+            // Traversal never revisits an earlier alternative, so the latest
+            // site suffices while previous sites are mutually exclusive.
+            let exclusive = self
+                .path
+                .iter()
+                .zip(&previous.path)
+                .take_while(|((id, _), (other_id, _))| id == other_id)
+                .any(|((_, branch), (_, other_branch))| branch != other_branch);
+            self.duplicate |= !exclusive;
+            previous.path.clone_from(&self.path);
+        } else {
+            *previous = Some(CaptureSite {
+                path: self.path.clone(),
+            });
+        }
+    }
 }
 
 type Extra = extra::Full<EmptyErr, extra::SimpleState<Validation>, Mode>;
@@ -95,7 +117,7 @@ pub(super) fn validate_literal(pattern_text: &str, flag_text: &str) -> bool {
     }
     !state.duplicate
         && state.max_numeric_reference <= state.captures
-        && state.names.values().all(|sites| !sites.is_empty())
+        && state.names.values().all(Option::is_some)
 }
 
 /// ```text
@@ -362,18 +384,7 @@ fn atom<'src>(input: &mut Input<'src, '_>, subpattern: &Subpattern<'src>) -> Par
                 input.state().captures += 1;
 
                 let name = input.parse(group_specifier())?;
-
-                let path = input.state().path.clone();
-                let previous = input.state().names.entry(name).or_default();
-                let duplicate = previous.iter().any(|other| {
-                    !path.iter().any(|(id, branch)| {
-                        other.path.iter().any(|(other_id, other_branch)| {
-                            id == other_id && branch != other_branch
-                        })
-                    })
-                });
-                previous.push(CaptureSite { path });
-                input.state().duplicate |= duplicate;
+                input.state().declare_name(name);
             } else if eat(input, '?') {
                 if !eat(input, ':') {
                     let enabled = regular_expression_modifiers(input)?;
@@ -537,7 +548,7 @@ fn atom_escape<'src>(input: &mut Input<'src, '_>) -> Parsed<()> {
             }
             let name = input.parse(group_name())?;
 
-            // An empty declaration list marks a forward reference until its group is parsed.
+            // None marks a forward reference until its group is parsed.
             input.state().names.entry(name).or_default();
         }
         None => return Err(EmptyErr::default()),
@@ -2031,6 +2042,29 @@ mod tests {
 
     fn check(pattern: &str, flags: &str) -> bool {
         validate_literal(pattern, flags)
+    }
+
+    #[test]
+    fn named_captures() {
+        for flags in ["", "u", "v"] {
+            let result = check("(?<n>a)|(?:(?<n>b)|(?<n>c))", flags);
+            assert!(result);
+
+            let result = check("(?:(?<n>a)|b)(?:c|(?<n>d))", flags);
+            assert!(!result);
+
+            let result = check("(?:(?<n>a)|(?<n>b))(?<n>c)", flags);
+            assert!(!result);
+
+            let result = check("(?<n>a)(?<n>b)|(?<n>c)", flags);
+            assert!(!result);
+
+            let result = check(r"\k<n>(?<n>a)|(?<n>b)", flags);
+            assert!(result);
+
+            let result = check(r"\k<n>(?<n>a)|(?<n>b)\k<m>", flags);
+            assert!(!result);
+        }
     }
 
     #[test]
