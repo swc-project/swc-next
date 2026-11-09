@@ -6,8 +6,8 @@
   and JavaScript types/codecs with `ast_tools`, and review the generated diff.
   Edit the declarations or generators rather than generated files.
 - After adding, removing, or renaming a helper in `packages/helpers/esm`, manually
-  run `pnpm build:helpers` to regenerate the entry stubs and CommonJS files, and
-  review the generated diff. The stubs must explicitly export each helper by
+  run `pnpm build:helpers` to regenerate the ESM entry stub and review the
+  generated diff. The stub must explicitly export each helper by
   name; do not use `export *` or edit generated files directly.
 
 ## Testing

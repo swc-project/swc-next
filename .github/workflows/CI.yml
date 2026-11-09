@@ -137,7 +137,7 @@ jobs:
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Check generated helpers
-        run: git diff --exit-code -- packages/helpers/esm/index.js packages/helpers/cjs
+        run: git diff --exit-code -- packages/helpers/esm/index.js
       - name: Run ESTree conformance
         run: pnpm test:conformance
       - name: Run codec conformance

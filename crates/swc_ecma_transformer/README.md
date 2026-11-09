@@ -13,9 +13,9 @@ cargo run -p swc_next_ecma_transformer --example transformer -- input.ts
 
 The example lowers TypeScript and class static blocks while preserving JSX.
 
-Transforms that need runtime helpers emit named imports or `require` calls to
+Modules that need runtime helpers emit named imports from
 [`@swc-next/helpers`](../../packages/helpers). Install that package when
-running the generated code. Helpers are imported once per file, only when used.
+running the generated modules. Scripts embed the helpers they use.
 
 Set `TransformerOptions::helpers` to `HelperMode::Inline` to embed the required
 helpers instead. Inline helpers are parsed from the shared package sources;

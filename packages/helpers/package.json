@@ -11,15 +11,10 @@
   "sideEffects": false,
   "exports": {
     "./package.json": "./package.json",
-    ".": {
-      "import": "./esm/index.js",
-      "require": "./cjs/index.js",
-      "default": "./esm/index.js"
-    }
+    ".": "./esm/index.js"
   },
   "files": [
     "esm",
-    "cjs",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES"
@@ -32,8 +27,5 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "license": "Apache-2.0",
-  "devDependencies": {
-    "@swc/core": "catalog:"
-  }
+  "license": "Apache-2.0"
 }

@@ -30,7 +30,7 @@ pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
-    /// Emit external imports (the default) or inline only the helpers in use.
+    /// How to emit runtime helpers. Modules default to imports, and scripts inline helpers.
     pub helpers: HelperMode,
     pub filename: Option<String>,
     pub assumptions: Assumptions,

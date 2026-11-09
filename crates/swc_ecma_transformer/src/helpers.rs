@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use swc_next_ecma_ast::{Ast, AstUtf8, Stmt};
+use swc_next_ecma_ast::Stmt;
 
 use crate::context::BoundIdentifier;
 pub(crate) use swc_next_helpers::Helper as HelperKind;
@@ -8,7 +8,7 @@ pub(crate) use swc_next_helpers::Helper as HelperKind;
 /// How runtime helpers are provided to transformed code.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HelperMode {
-    /// Import each helper from `@swc-next/helpers` (or use `require` in scripts).
+    /// Import helpers from `@swc-next/helpers` in modules and inline them in scripts.
     #[default]
     External,
     /// Parse the packaged helper sources and inject their declarations and dependencies.
@@ -18,7 +18,6 @@ pub enum HelperMode {
 /// Prepared helper declarations, allocated on first use and attached once.
 pub(crate) struct Helpers {
     pub(crate) mode: HelperMode,
-    require: Option<AstUtf8>,
     entries: [Option<PreparedHelper>; HelperKind::ALL.len()],
     pub(crate) preparing: [bool; HelperKind::ALL.len()],
     pub(crate) globals: BTreeSet<String>,
@@ -33,7 +32,6 @@ impl Helpers {
     pub(crate) fn new(mode: HelperMode) -> Self {
         Self {
             mode,
-            require: None,
             entries: Default::default(),
             preparing: Default::default(),
             globals: BTreeSet::new(),
@@ -44,10 +42,6 @@ impl Helpers {
         self.entries[helper as usize]
             .as_ref()
             .map(|entry| entry.bound_identifier)
-    }
-
-    pub(crate) fn require(&mut self, ast: &mut Ast) -> AstUtf8 {
-        *self.require.get_or_insert_with(|| ast.add_utf8("require"))
     }
 
     pub(crate) fn insert(&mut self, helper: HelperKind, prepared: PreparedHelper) {
@@ -373,15 +367,13 @@ mod tests {
         assert!(code.contains("import { _set_function_name } from \"@swc-next/helpers\";"));
         assert!(code.contains("_to_property_key(key())"));
 
-        let code = transformed_code(source, SourceType::Script);
-        assert!(
-            code.contains(
-                "var _to_property_key = require(\"@swc-next/helpers\")._to_property_key;"
-            )
-        );
-        assert!(code.contains(
-            "var _set_function_name = require(\"@swc-next/helpers\")._set_function_name;"
-        ));
+        for source_type in [SourceType::Script, SourceType::CommonJs] {
+            let code = transformed_code(source, source_type);
+            assert!(!code.contains("@swc-next/helpers"));
+            assert!(code.contains("function _to_property_key("));
+            assert!(code.contains("function _to_primitive("));
+            assert!(code.contains("function _set_function_name("));
+        }
 
         let code = transformed_code(
             "const C = class { static { init(); } };",
