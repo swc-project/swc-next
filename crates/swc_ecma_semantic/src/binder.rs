@@ -4089,6 +4089,15 @@ impl<'a> SymbolTracker<'a> {
         self.node_semantic[node].symbol()
     }
 
+    pub(crate) fn record_scope(&mut self, node: NodeId, id: ScopeId) {
+        let slot = &mut self.node_semantic[node];
+        debug_assert!(matches!(
+            *slot,
+            NodeSemanticId::None | NodeSemanticId::Scope(_)
+        ));
+        *slot = NodeSemanticId::Scope(id);
+    }
+
     fn default_export_symbol(&self) -> Option<SymbolId> {
         self.ts_source_exports
             .as_ref()?
@@ -4390,14 +4399,6 @@ impl<'a> SymbolTracker<'a> {
                 NodeSemanticId::None | NodeSemanticId::Reference(_)
             ));
             *slot = NodeSemanticId::Reference(id);
-        }
-        for (id, scope) in scopes.list.iter_enumerated() {
-            let slot = &mut self.node_semantic[scope.node];
-            debug_assert!(matches!(
-                *slot,
-                NodeSemanticId::None | NodeSemanticId::Scope(_)
-            ));
-            *slot = NodeSemanticId::Scope(id);
         }
         let declarations = self.declarations;
         let redeclarations = self.redeclarations;

@@ -66,12 +66,16 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
         let scope = ScopeTree::init(ast);
         let current_scope = ScopeId::from_usize(scope.list.len() - 1);
+        let mut symbols = SymbolTracker::init(ast);
+        for (id, scope) in scope.list.iter_enumerated() {
+            symbols.record_scope(scope.node, id);
+        }
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
             scope,
-            symbols: SymbolTracker::init(ast),
+            symbols,
             current_scope,
             default_reference_flags: ReferenceFlags::default(),
             ts_namespace_depth: 0,
@@ -270,6 +274,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn push_scope(&mut self, kind: ScopeKind, node: NodeId, flags: ScopeFlags) {
         self.current_scope = self.scope.push_scope(self.current_scope, kind, node, flags);
+        self.symbols.record_scope(node, self.current_scope);
     }
 
     fn pop_scope(&mut self) {
