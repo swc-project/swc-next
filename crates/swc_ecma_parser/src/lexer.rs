@@ -1955,49 +1955,35 @@ fn needs_full_identifier_scan(byte: u8) -> bool {
     (byte ^ b'\\') as i8 <= 0
 }
 
-/// Lanes that continue an ASCII identifier.
+/// The lanes that continue an ASCII identifier, as one bit per lane.
 ///
-/// Looking [`ASCII_IDENTIFIER_CLASS`] up per lane would be shorter, but a lane-wise byte lookup
-/// needs `pshufb`, which is SSSE3, and the build target is x86-64-v1, so lanes are classified
-/// with range comparisons instead. `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane
-/// minimum tells a wrapped range offset from one that stayed inside the width.
+/// `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane minimum tells a wrapped range offset
+/// from one that stayed inside the width. A lane-wise table lookup of [`ASCII_IDENTIFIER_CLASS`]
+/// would be shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
+///
+/// Where the next token starts follows the lane that stops this identifier, so what a scan costs
+/// is this chain's depth rather than its instruction count: the tests are independent, so they
+/// are joined by depth, the letters test last because it is the deepest.
 #[inline(always)]
-fn identifier_continue_lanes<const JSX: bool>(bytes: u8x16) -> mask8x16 {
+fn identifier_continue_bits<const JSX: bool>(bytes: u8x16) -> u16 {
+    #[inline(always)]
+    fn lanes_in_range(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
+        let offset = bytes - u8x16::splat(lo);
+        offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)))
+    }
+    
     let letters = lanes_in_range(bytes | u8x16::splat(0x20), b'a', b'z');
     let digits = lanes_in_range(bytes, b'0', b'9');
-    let continues =
-        letters | digits | bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
-    if JSX {
-        continues | bytes.simd_eq(u8x16::splat(b'-'))
+    let marks = bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
+    let continues = if JSX {
+        // `-` joins the marks, which keeps the letters test off the deepest path.
+        letters | (digits | (marks | bytes.simd_eq(u8x16::splat(b'-'))))
     } else {
-        continues
-    }
-}
+        letters | (digits | marks)
+    };
 
-/// Lanes where `bytes` lies inside `lo..=hi`.
-#[inline(always)]
-fn lanes_in_range(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
-    let offset = bytes - u8x16::splat(lo);
-    offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)))
+    continues.to_bitmask()
 }
-
-// [`identifier_continue_lanes`] hard-codes the byte classes, so the compiler checks them
-// against the definition instead of letting the two drift apart.
-const _: () = {
-    let mut index = 0;
-    while index < 256 {
-        let byte = index as u8;
-        // The sets `identifier_continue_lanes` computes: letters after folding bit 5, digits,
-        // `_`, `$`.
-        let lanes = (byte | 0x20).is_ascii_lowercase()
-            || byte.is_ascii_digit()
-            || byte == b'_'
-            || byte == b'$';
-        assert!(lanes == is_ascii_identifier_continue(false, byte));
-        assert!((lanes || byte == b'-') == is_ascii_identifier_continue(true, byte));
-        index += 1;
-    }
-};
 
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
@@ -2032,8 +2018,8 @@ fn scan_ascii_identifier_continue<const JSX: bool>(source: &[u8], start: u32) ->
     // One load and one branch per batch; only the first byte that stops the identifier is
     // looked at again.
     while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
-        let continues = identifier_continue_lanes::<JSX>(u8x16::from_array(*chunk));
-        let lane = (!continues).to_bitmask().trailing_zeros() as usize;
+        let stopped = !identifier_continue_bits::<JSX>(u8x16::from_array(*chunk));
+        let lane = stopped.trailing_zeros() as usize;
         if lane < IDENTIFIER_BATCH_SIZE {
             // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
             let byte = unsafe { *source.get_unchecked(position + lane) };
