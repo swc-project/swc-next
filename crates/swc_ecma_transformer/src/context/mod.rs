@@ -2,7 +2,10 @@ use swc_next_ecma_ast::{Ast, GetSpan, NodeId, NodeKindData, ScopeId, Stmt, Trave
 
 mod comments;
 mod container;
+mod helper_globals;
+mod helper_names;
 mod helpers;
+mod inline_helpers;
 mod semantic;
 mod statement_injector;
 
@@ -11,7 +14,10 @@ pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
-use crate::{helpers::Helpers, uid::UidGenerator};
+use crate::{
+    helpers::{HelperMode, Helpers},
+    uid::UidGenerator,
+};
 use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 
 /// Configuration, caches and pending work for a single transform.
@@ -28,12 +34,12 @@ pub(crate) struct TransformerState<'a> {
 }
 
 impl<'a> TransformerState<'a> {
-    pub(crate) fn new(semantic: ScopeModel<'a>) -> Self {
+    pub(crate) fn new(semantic: ScopeModel<'a>, helper_mode: HelperMode) -> Self {
         Self {
             path: Vec::with_capacity(64),
             scope_stack: Vec::with_capacity(64),
             semantic,
-            helpers: Helpers::default(),
+            helpers: Helpers::new(helper_mode),
             statement_injector: Default::default(),
             container: Default::default(),
             comments: Default::default(),

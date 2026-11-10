@@ -1169,8 +1169,10 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
     }
 }
 
-/// Parser state and typed AST writer.
-pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
+/// ECMAScript and TypeScript parser.
+pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig>(ParserState<'a, C, false>);
+
+struct ParserState<'a, C: ParserConfig, const SYNTHETIC: bool> {
     ast: Ast<'a>,
     source: &'a str,
     source_type: SourceType,
@@ -1208,6 +1210,27 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     type_argument_speculation_depth: u32,
     type_argument_lookahead: TypeArgumentLookahead,
     computed_key_lookahead: ComputedKeyLookahead,
+}
+
+// The parser owns the target AST while it appends nodes. Return it to the
+// caller even if parsing unwinds, so its existing handles remain valid.
+struct AppendingParser<'target, 'a> {
+    parser: ParserState<'a, NoTokenParserConfig, true>,
+    target: &'target mut Ast<'a>,
+    nodes: usize,
+    extra_data: usize,
+    committed: bool,
+}
+
+impl Drop for AppendingParser<'_, '_> {
+    fn drop(&mut self) {
+        if !self.committed {
+            // SAFETY: This parse only builds detached nodes and fields. No
+            // handle to the appended storage escapes an unsuccessful parse.
+            unsafe { self.parser.ast.truncate(self.nodes, self.extra_data) };
+        }
+        mem::swap(&mut self.parser.ast, self.target);
+    }
 }
 
 pub struct ParseReturn<'a> {
@@ -1487,6 +1510,65 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
 
 impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
+        Self(ParserState::init(allocator, source, options, config))
+    }
+
+    pub fn parse(self) -> ParseReturn<'a> {
+        self.0.parse()
+    }
+
+    /// Parses the source as exactly one expression in `fragment_context`.
+    pub fn parse_expression_fragment(
+        self,
+        fragment_context: FragmentContext,
+    ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
+        self.0.parse_expression_fragment(fragment_context)
+    }
+}
+
+impl<'a> Parser<'a> {
+    /// Parse JavaScript module source into an existing AST and return a detached
+    /// program. The original root, source metadata and comments are retained.
+    /// The appended nodes have dummy spans. On error, diagnostics use offsets
+    /// into `source` and the appended nodes and fields are discarded.
+    pub fn parse_synthetic_module(
+        ast: &mut Ast<'a>,
+        source: &'a str,
+    ) -> Result<Program, Vec<Diagnostic>> {
+        let start = ast.node_count();
+        let extra_data = ast.extra_data_count();
+        let options = Options {
+            comments: CommentMode::None,
+            ..Options::default()
+        };
+        let mut parser = ParserState::init(ast.allocator(), source, options, NoTokenParserConfig);
+        mem::swap(&mut parser.ast, ast);
+        let mut append = AppendingParser {
+            parser,
+            target: ast,
+            nodes: start,
+            extra_data,
+            committed: false,
+        };
+        let parser = &mut append.parser;
+        parser.start_parse();
+        parser.enter_program_context(SourceType::Module);
+        let body = parser.parse_program_body();
+        let (body, diagnostics) = parser.program_parts(body);
+        if !diagnostics.is_empty() {
+            return Err(diagnostics);
+        }
+        let program = parser
+            .ast
+            .program(DUMMY_SP, body.directives, body.body, None);
+        parser.ast.clear_spans_from(start);
+        append.committed = true;
+        Ok(program)
+    }
+}
+
+impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
+    fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
         // SAFETY: The parser only uses handles from this AST and wraps it before returning.
         let mut ast = unsafe { Ast::new(source, allocator) };
@@ -1535,11 +1617,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    pub fn parse(mut self) -> ParseReturn<'a> {
+    fn start_parse(&mut self) {
         self.ensure_capacity();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
+    }
+
+    fn parse(mut self) -> ParseReturn<'a> {
+        self.start_parse();
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_program(),
             source_type => {
@@ -1613,10 +1699,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.statement_context = source_type.into();
     }
 
-    fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
+    fn program_parts(&mut self, parsed_body: Option<ParsedBody>) -> (ParsedBody, Vec<Diagnostic>) {
         debug_assert!(self.cover.initialized_names.is_empty());
         self.report_module_mode_errors();
-        let mut diagnostics = self.diagnostics.finish();
+        let mut diagnostics = mem::take(&mut self.diagnostics).finish();
         if parsed_body.is_none() && diagnostics.is_empty() {
             diagnostics.push(Diagnostic::error(
                 "Invalid statement",
@@ -1624,10 +1710,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ));
         }
         // A failed body still needs a program root for callers inspecting diagnostics.
-        let ParsedBody { directives, body } = parsed_body.unwrap_or(ParsedBody {
+        let body = parsed_body.unwrap_or(ParsedBody {
             directives: SubRange::empty(),
             body: SubRange::empty(),
         });
+
+        (body, diagnostics)
+    }
+
+    fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
+        let (ParsedBody { directives, body }, diagnostics) = self.program_parts(parsed_body);
 
         // Create the root node and set it as the AST's root.
         let end = self.current_token.end();
@@ -1635,7 +1727,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
-            let value = self.ast.source_slice(start, end);
+            let value = self.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
         let program = self.ast.program(root_span, directives, body, hashbang);
@@ -1666,8 +1758,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    /// Parses the source as exactly one expression in `fragment_context`.
-    pub fn parse_expression_fragment(
+    fn parse_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
@@ -1805,7 +1896,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn set_source_type(&mut self, source_type: SourceType) {
         self.source_type = source_type;
-        self.ast.set_source_metadata(source_type, self.lang);
+        if !SYNTHETIC {
+            self.ast.set_source_metadata(source_type, self.lang);
+        }
     }
 
     fn record_module_syntax(&mut self) {
@@ -1857,13 +1950,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    #[inline]
+    fn source_slice(&mut self, start: u32, end: u32) -> AstUtf8 {
+        if SYNTHETIC {
+            self.ast
+                .add_utf8(&self.source[start as usize..end as usize])
+        } else {
+            self.ast.source_slice(start, end)
+        }
+    }
+
     /// Returns the resolved name for an identifier-like token.
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
     #[inline]
     fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag() != TokenTag::PrivateIdentifier && !token.is_escaped() {
-            return self.ast.source_slice(token.start(), token.end());
+            return self.source_slice(token.start(), token.end());
         }
 
         self.identifier_name_slow(token)
@@ -1877,7 +1980,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.decode_escaped_identifier(start, token.end());
         }
 
-        self.ast.source_slice(start, token.end())
+        self.source_slice(start, token.end())
     }
 
     /// Returns the decoded string value without the surrounding quotes.
@@ -1885,8 +1988,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if token.is_escaped() {
             return self.decode_escaped_string(token.start() + 1, token.end() - 1);
         }
-        self.ast
-            .source_slice_wtf8(token.start() + 1, token.end() - 1)
+        self.source_slice(token.start() + 1, token.end() - 1).into()
     }
 
     /// Returns the decoded content of a template quasi span.
@@ -1894,11 +1996,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // The lexer marks physical CR as escaped. Ordinary source-backed raw
         // values need neither a second scan nor an allocation.
         if !token.is_escaped() {
-            return self.ast.source_slice(span.start, span.end);
+            return self.source_slice(span.start, span.end);
         }
         let raw = &self.source[span.start as usize..span.end as usize];
         let Some(first_cr) = memchr::memchr(b'\r', raw.as_bytes()) else {
-            return self.ast.source_slice(span.start, span.end);
+            return self.source_slice(span.start, span.end);
         };
         // Template Raw Value normalizes CR and CRLF even when an invalid
         // escape makes the cooked value undefined in a tagged template.
@@ -1913,7 +2015,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
-            return self.ast.source_slice_wtf8(span.start, span.end);
+            return self.source_slice(span.start, span.end).into();
         }
         self.decode_escaped_string(span.start, span.end)
     }
@@ -2088,7 +2190,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert!(inserted, "TypeScript speculation was already rejected");
     }
 
-    /// Restores parser state captured by [`Parser::checkpoint`].
+    /// Restores parser state captured by [`Self::checkpoint`].
     fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
@@ -2121,7 +2223,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     /// Peeks at the token immediately after `current_token` without advancing.
     ///
-    /// For multi-token lookahead, use [`Parser::begin_peek`].
+    /// For multi-token lookahead, use [`Self::begin_peek`].
     fn peek_ahead(&mut self) -> Option<Token> {
         let mut peek = self.begin_peek();
         let token = peek.next();
@@ -2884,7 +2986,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_directive(&mut self, string_literal: StringLiteral, span: Span) -> Option<Directive> {
-        let raw_value = self.ast.source_slice(span.start + 1, span.end - 1);
+        let raw_value = self.source_slice(span.start + 1, span.end - 1);
         let end = self.eat_semicolon(span.end)?;
         Some(
             self.ast
@@ -9800,11 +9902,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let token = self.current_token;
         if token.tag() == TokenTag::BigIntLiteral {
             self.advance()?;
-            let raw = self.ast.source_slice(token.start(), token.end() - 1);
+            let raw = self.source_slice(token.start(), token.end() - 1);
             return Some(self.ast.expr_big_int_literal(token.span(), raw));
         }
         self.advance()?;
-        let raw = self.ast.source_slice(token.start(), token.end());
+        let raw = self.source_slice(token.start(), token.end());
         let raw_text = self.ast.get_utf8(raw);
         let value = match token.tag() {
             TokenTag::NumericLiteral => parse_decimal_literal(raw_text),
@@ -9831,7 +9933,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.advance()?;
         let value = self.string_value(token);
-        let raw = self.ast.source_slice(token.start(), token.end());
+        let raw = self.source_slice(token.start(), token.end());
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9840,7 +9942,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(token.tag(), TokenTag::StringLiteral);
         self.advance_jsx_tag()?;
         let value = self.string_value(token);
-        let raw = self.ast.source_slice(token.start(), token.end());
+        let raw = self.source_slice(token.start(), token.end());
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9868,10 +9970,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.lexer
                 .create_token(TokenTag::RegexLiteral, result.span.start, result.span.end);
         self.advance_with_rescanned_token(regex_token)?;
-        let pattern = self
-            .ast
-            .source_slice(result.pattern.start, result.pattern.end);
-        let flags = self.ast.source_slice(result.flags.start, result.flags.end);
+        let pattern = self.source_slice(result.pattern.start, result.pattern.end);
+        let flags = self.source_slice(result.flags.start, result.flags.end);
         Some(self.ast.expr_reg_exp_literal(result.span, pattern, flags))
     }
 
@@ -13115,7 +13215,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.current_token = token;
                 match token.tag() {
                     TokenTag::JsxText => {
-                        let value = self.ast.source_slice(token.start(), token.end());
+                        let value = self.source_slice(token.start(), token.end());
                         let jsx_text = self.ast.jsx_child_jsx_text(token.span(), value);
                         self.scratch_b.append(jsx_text);
                     }
@@ -14953,6 +15053,61 @@ mod tests {
         unsafe { cell.into_ast() }
     }
 
+    #[test]
+    fn synthetic_module() {
+        let allocator = Allocator::new();
+        let options = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let parsed = Parser::init(
+            &allocator,
+            "// user\noriginal;",
+            options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parsed.diagnostics.is_empty());
+        let mut ast = take_ast(parsed.ast);
+        let root = ast.root_program();
+        let original = root.body(&ast).get_node(&ast, 0).unwrap();
+        let span = original.span(&ast);
+        let start = ast.node_count();
+        let comments = ast.comments().len();
+
+        let module = Parser::parse_synthetic_module(
+            &mut ast,
+            "function helper() { return 'text'; } export { helper };",
+        )
+        .unwrap();
+        let function = module
+            .body(&ast)
+            .get_node(&ast, 0)
+            .unwrap()
+            .as_declaration(&ast)
+            .unwrap()
+            .as_function(&ast)
+            .unwrap();
+        assert_eq!(
+            ast.get_utf8(function.id(&ast).unwrap().name(&ast)),
+            "helper"
+        );
+        assert!(function.node_id().index() >= start);
+        assert_eq!(function.span(&ast), DUMMY_SP);
+        assert_eq!(ast.root_program(), root);
+        assert_eq!(ast.source_type(), SourceType::Script);
+        assert_eq!(ast.source(), "// user\noriginal;");
+        assert_eq!(ast.comments().len(), comments);
+        assert_eq!(original.span(&ast), span);
+
+        let node_count = ast.node_count();
+        let extra_count = ast.extra_data_count();
+        assert!(Parser::parse_synthetic_module(&mut ast, "function invalid() {").is_err());
+        assert_eq!(ast.node_count(), node_count);
+        assert_eq!(ast.extra_data_count(), extra_count);
+        assert_eq!(ast.root_program(), root);
+    }
+
     fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
         let options = Options {
             lang: Lang::Ts,
@@ -15017,7 +15172,8 @@ mod tests {
             ..Options::default()
         };
         let parser = |source| {
-            let mut parser = Parser::init(&allocator, source, options, TokenParserConfig);
+            let mut parser =
+                ParserState::<_, false>::init(&allocator, source, options, TokenParserConfig);
             parser.advance().unwrap();
             parser
         };
@@ -15119,7 +15275,8 @@ mod tests {
             ..Options::default()
         };
         let parse_type = |source| {
-            let mut parser = Parser::init(&allocator, source, options, NoTokenParserConfig);
+            let mut parser =
+                ParserState::<_, false>::init(&allocator, source, options, NoTokenParserConfig);
             parser.advance().unwrap();
             let ty = parser.parse_type().unwrap();
             let kind = parser.ast.node_kind(ty.node_id());

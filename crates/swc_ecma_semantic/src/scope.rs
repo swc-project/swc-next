@@ -131,14 +131,14 @@ pub struct ScopeTree<'a> {
 }
 
 impl<'a> ScopeTree<'a> {
-    pub(crate) fn init(tree: &Ast<'a>) -> Self {
+    pub(crate) fn init(tree: &Ast<'a>, first_node: usize) -> Self {
         let root = tree.root_program();
         let root_strict = root.directives(tree).iter().any(|directive| {
             let directive = tree.get_node_in_sub_range(directive);
             tree.get_utf8(directive.value(tree)) == "use strict"
         });
         let allocator = tree.allocator();
-        let estimated_scopes = 16usize.max(tree.node_count() / 16);
+        let estimated_scopes = 16usize.max((tree.node_count() - first_node) / 16);
         let mut scopes = Self {
             list: ArenaIndexVec::with_capacity_in(estimated_scopes, allocator),
         };

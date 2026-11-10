@@ -18,6 +18,8 @@ mod context;
 mod helpers;
 mod uid;
 
+pub use helpers::HelperMode;
+
 pub mod assumptions;
 pub mod es2019;
 pub mod es2022;
@@ -28,6 +30,8 @@ pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    /// How to emit runtime helpers. Modules default to imports, and scripts inline helpers.
+    pub helpers: HelperMode,
     pub filename: Option<String>,
     pub assumptions: Assumptions,
     pub proposal: proposal::ProposalOptions,
@@ -129,7 +133,7 @@ impl ECMAScriptTransformer {
     ) -> ScopeModel<'a> {
         let MultiPassTransformer { ctx: ast, semantic } = multi_pass;
         let program = ast.root_program();
-        let state = TransformerState::new(ScopeModel::new(semantic));
+        let state = TransformerState::new(ScopeModel::new(semantic), options.helpers);
         let mut transformer = Self {
             es2019: es2019::ES2019::new(options.es2019),
             es2022: es2022::ES2022::new(options.es2022, options.proposal),
@@ -172,6 +176,7 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<Program> {
         let mut transform = TransformCtx::new(ctx);
+        transform.protect_helper_globals();
         transform.inject_helpers(node);
         transform.inject_statements_to(node.node_id());
         ctx.state.scope_stack.pop().unwrap();

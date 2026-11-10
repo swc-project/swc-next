@@ -2998,6 +2998,7 @@ dependencies = [
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_helpers",
  "zmij_ecma",
 ]
 
@@ -3009,6 +3010,10 @@ dependencies = [
  "rustc-hash",
  "swc_next_allocator",
 ]
+
+[[package]]
+name = "swc_next_helpers"
+version = "0.6.1"
 
 [[package]]
 name = "swc_next_isolated_declarations"

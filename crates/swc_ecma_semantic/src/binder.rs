@@ -22,8 +22,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, Declarations, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps,
-    Scopes, Semantic, Symbols,
+    DeclarationId, Declarations, HoistingMap, NodeSemanticId, NodeSemanticIndex, Redeclarations,
+    ScopeMap, ScopeMaps, Scopes, Semantic, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -1881,7 +1881,7 @@ pub(crate) struct SymbolTracker<'a> {
     jsx_usages: ArenaVec<'a, crate::JsxUsage>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
-    node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    node_semantic: NodeSemanticIndex<'a>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
@@ -2071,11 +2071,10 @@ struct SavedContext {
 }
 
 impl<'a> SymbolTracker<'a> {
-    pub fn init(tree: &Ast<'a>) -> Self {
+    pub fn init(tree: &Ast<'a>, first_node: usize) -> Self {
         let allocator = tree.allocator();
-        let nodes = tree.node_count();
-        let mut node_semantic = ArenaIndexVec::with_capacity_in(nodes, allocator);
-        node_semantic.resize(nodes, NodeSemanticId::None);
+        let nodes = tree.node_count() - first_node;
+        let node_semantic = NodeSemanticIndex::new(first_node, tree.node_count(), allocator);
         let mut tracker = Self {
             allocator,
             internal_names: crate::InternalNames::new_in(allocator),

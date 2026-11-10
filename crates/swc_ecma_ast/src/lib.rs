@@ -374,6 +374,14 @@ impl<'a> Ast<'a> {
     pub fn span(&self, node_id: NodeId) -> Span {
         *self.nodes.span(node_id)
     }
+
+    /// Mark appended nodes as synthesized without changing earlier spans.
+    pub fn clear_spans_from(&mut self, start: usize) {
+        assert!(start <= self.node_count());
+        for index in start..self.node_count() {
+            *self.nodes.span_mut(NodeId::from_usize_unchecked(index)) = DUMMY_SP;
+        }
+    }
 }
 
 #[doc(hidden)]

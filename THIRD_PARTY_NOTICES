@@ -5,6 +5,10 @@ the projects below. Their copyright notices and complete license texts are
 reproduced here. SWC Next's
 own contributions are licensed under [Apache-2.0](LICENSE).
 
+Runtime helpers adapted from SWC and Babel have additional notices in
+the [helpers README](packages/helpers/README.md#third-party-notices),
+which is distributed with the helpers package.
+
 ## Yuku
 
 Source: [Yuku](https://github.com/yuku-toolchain/yuku).
