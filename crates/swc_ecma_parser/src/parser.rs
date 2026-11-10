@@ -15994,6 +15994,17 @@ mod tests {
             assert_eq!(kind, NodeKind::BinaryExpression);
 
             assert!(has_errors("f<super>();", options));
+
+            let (errors, kind) = parse("a < (super.b) > (0);", options, expression_kind);
+            assert!(errors.is_empty());
+            assert_eq!(kind, NodeKind::BinaryExpression);
+
+            let (errors, kind) = parse("a < ((delete[0])) > (0);", options, expression_kind);
+            assert!(errors.is_empty());
+            assert_eq!(kind, NodeKind::BinaryExpression);
+
+            assert!(has_errors("a < (if[0]) > (0);", options));
+            assert!(!has_errors("f<(const)>();", options));
         }
     }
 
