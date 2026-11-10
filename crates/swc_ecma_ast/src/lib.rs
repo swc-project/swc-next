@@ -5,7 +5,6 @@ mod comment;
 mod derive;
 mod diagnostic;
 pub mod ffi;
-mod import;
 mod node_id;
 mod semantic;
 mod strings;
@@ -15,7 +14,6 @@ mod visit;
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
-    mod ast_import;
     pub mod ast_node;
     pub(crate) mod ast_payload;
     mod ast_property;
@@ -37,7 +35,6 @@ pub use derive::*;
 pub use diagnostic::*;
 pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
-pub use import::ImportedAst;
 pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstUtf8, AstWtf8};
@@ -376,6 +373,14 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn span(&self, node_id: NodeId) -> Span {
         *self.nodes.span(node_id)
+    }
+
+    /// Mark appended nodes as synthesized without changing earlier spans.
+    pub fn clear_spans_from(&mut self, start: usize) {
+        assert!(start <= self.node_count());
+        for index in start..self.node_count() {
+            *self.nodes.span_mut(NodeId::from_usize_unchecked(index)) = DUMMY_SP;
+        }
     }
 }
 

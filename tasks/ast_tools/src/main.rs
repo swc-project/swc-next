@@ -45,8 +45,6 @@ fn main() -> std::io::Result<()> {
     let ast_clone_in = ast_clone_in(&schema);
     ast_clone_in.write_to_file()?;
 
-    generator::ast_import::ast_import(&schema).write_to_file()?;
-
     let ast_visitor = ast_visitor(&schema);
     ast_visitor.write_to_file()?;
 

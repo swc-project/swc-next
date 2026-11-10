@@ -108,7 +108,6 @@ impl TransformCtx<'_, '_> {
     /// const C = _set_function_name(class {}, "C");
     /// ```
     pub(crate) fn inject_helpers(&mut self, program: Program) {
-        self.protect_helper_globals();
         let statements: Vec<_> = self.state.helpers.take_statements().collect();
         for statement in statements {
             self.inject_statement(program.node_id(), statement, Anchor::First);

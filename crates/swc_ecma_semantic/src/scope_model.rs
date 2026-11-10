@@ -10,8 +10,8 @@ use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
-    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
-    Semantic, Symbol, SymbolFlags, SymbolIterator,
+    NodeSemanticId, NodeSemanticIndex, Redeclarations, Reference, ReferenceIterator, ScopeIterator,
+    ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -32,7 +32,7 @@ pub struct ScopeModel<'a> {
     /// Independently growable use lists, indexed by SymbolId.
     uses: ArenaIndexVec<'a, SymbolId, ArenaVec<'a, ReferenceId>>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
-    node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    node_semantic: NodeSemanticIndex<'a>,
 }
 
 impl<'a> ScopeModel<'a> {
@@ -229,9 +229,7 @@ impl<'a> ScopeModel<'a> {
     /// ```
     pub fn grow_to(&mut self, node_count: usize) {
         // Never truncate indexes when an already registered node is reused.
-        if node_count > self.node_semantic.len() {
-            self.node_semantic.resize(node_count, NodeSemanticId::None);
-        }
+        self.node_semantic.grow_to(node_count);
     }
 
     /// Register a declaration and its scope binding using the caller-supplied name, text and flags.

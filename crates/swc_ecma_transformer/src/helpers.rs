@@ -304,7 +304,7 @@ mod tests {
     }
 
     #[test]
-    fn imported_ast() {
+    fn synthetic_helper_ast() {
         let allocator = Allocator::new();
         let mut ctx = Parser::init(
             &allocator,
@@ -317,32 +317,17 @@ mod tests {
         )
         .parse()
         .ast;
-        // SAFETY: All nodes attached to this AST come from this AST or are
-        // remapped by import_synthesized before use.
+        // SAFETY: Parsing appends detached nodes to this AST. All handles
+        // used below belong to this AST.
         let ast = unsafe { ctx.ast_mut() };
         let root = ast.root_program();
-        let count = ast.node_count();
-        let imported = {
-            let source_allocator = Allocator::new();
-            let source = Parser::init(
-                &source_allocator,
-                "function helper(value = '\\uD800') { return [value, null, true, 0xFF]; }",
-                ParserOptions::default(),
-                NoTokenParserConfig,
-            )
-            .parse()
-            .ast;
-            // SAFETY: All reads use handles from this source AST.
-            let source = unsafe { source.ast() };
-            let mapping = ast.import_synthesized(source);
-            for index in 0..source.node_count() {
-                let node = swc_next_ecma_ast::NodeId::from_usize_unchecked(index);
-                assert_eq!(ast.node_kind(mapping.node_id(node)), source.node_kind(node));
-                assert_eq!(ast.span(mapping.node_id(node)), swc_next_ecma_ast::DUMMY_SP);
-            }
-            assert_eq!(ast.node_count(), count + source.node_count());
-            mapping.node(source.root_program())
-        };
+        let first_node = ast.node_count();
+        let source = "function helper(value = '\\uD800') { return [value, null, true, 0xFF]; }";
+        let imported = Parser::parse_synthetic_module(ast, source).unwrap();
+        for index in first_node..ast.node_count() {
+            let node = swc_next_ecma_ast::NodeId::from_usize_unchecked(index);
+            assert_eq!(ast.span(node), swc_next_ecma_ast::DUMMY_SP);
+        }
         assert_eq!(ast.root_program(), root);
         assert_eq!(ast.source_type(), SourceType::Script);
         let statements: Vec<_> = root

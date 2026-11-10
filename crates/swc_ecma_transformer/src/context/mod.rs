@@ -2,6 +2,7 @@ use swc_next_ecma_ast::{Ast, GetSpan, NodeId, NodeKindData, ScopeId, Stmt, Trave
 
 mod comments;
 mod container;
+mod helper_globals;
 mod helper_names;
 mod helpers;
 mod inline_helpers;

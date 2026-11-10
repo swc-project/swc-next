@@ -176,6 +176,7 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<Program> {
         let mut transform = TransformCtx::new(ctx);
+        transform.protect_helper_globals();
         transform.inject_helpers(node);
         transform.inject_statements_to(node.node_id());
         ctx.state.scope_stack.pop().unwrap();

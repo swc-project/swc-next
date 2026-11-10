@@ -63,15 +63,15 @@ pub struct SemanticBuilder<'traverse, 'a> {
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
-        let scope = ScopeTree::init(ast);
+    pub fn new(ast: &'traverse Ast<'a>, first_node: usize, check_syntax: SyntaxChecks) -> Self {
+        let scope = ScopeTree::init(ast, first_node);
         let current_scope = ScopeId::from_usize(scope.list.len() - 1);
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
             scope,
-            symbols: SymbolTracker::init(ast),
+            symbols: SymbolTracker::init(ast, first_node),
             current_scope,
             default_reference_flags: ReferenceFlags::default(),
             ts_namespace_depth: 0,
