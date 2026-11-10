@@ -10564,15 +10564,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
         let mut peek = self.begin_peek();
         let next = peek.next()?;
-        if !next.tag().is_identifier_like() && next.tag() != TokenTag::Const {
+        // Like TypeScript, `<in T>` does not start an arrow because `in` is reserved.
+        if next.tag() == TokenTag::In
+            || !next.tag().is_identifier_like() && next.tag() != TokenTag::Const
+        {
             return Some(None);
         }
         // A parameter name must be followed by a constraint, default, comma,
         // or closing angle. Modifiers and escaped names retain the full parser.
         // Reject JSX names/attributes before allocating a speculative AST.
-        if !next.is_escaped()
-            && !matches!(next.tag(), TokenTag::Const | TokenTag::In | TokenTag::Out)
-        {
+        if !next.is_escaped() && !matches!(next.tag(), TokenTag::Const | TokenTag::Out) {
             let Some(after_name) = peek.next() else {
                 return Some(None);
             };
@@ -18573,6 +18574,26 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn generic_arrow_in_modifier() {
+        let ts = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let tsx = Options {
+            lang: Lang::Tsx,
+            ..Options::default()
+        };
+
+        assert!(has_errors("const f = <in T>(x: T) => x;", ts));
+
+        assert!(has_errors("const f = async <in T>(x: T) => x;", ts));
+
+        assert!(has_errors("const f = <in T>(x: T) => x;", tsx));
+
+        assert!(!has_errors("const f = <out T>(x: T) => x;", ts));
     }
 
     #[test]
