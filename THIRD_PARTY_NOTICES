@@ -6,8 +6,8 @@ reproduced here. SWC Next's
 own contributions are licensed under [Apache-2.0](LICENSE).
 
 Runtime helpers adapted from SWC and Babel have additional notices in
-[packages/helpers/THIRD_PARTY_NOTICES](packages/helpers/THIRD_PARTY_NOTICES),
-which are also distributed with the helpers package.
+the [helpers README](packages/helpers/README.md#third-party-notices),
+which is distributed with the helpers package.
 
 ## Yuku
 

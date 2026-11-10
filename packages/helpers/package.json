@@ -15,9 +15,7 @@
   },
   "files": [
     "esm",
-    "README.md",
-    "LICENSE",
-    "THIRD_PARTY_NOTICES"
+    "README.md"
   ],
   "scripts": {
     "build": "node scripts/build.js",

@@ -5,4 +5,4 @@ edition = "2024"
 description = "Runtime helper sources shared by SWC Next transforms and JavaScript packages"
 license.workspace = true
 repository.workspace = true
-include = ["src/**", "esm/**", "Cargo.toml", "README.md", "LICENSE", "THIRD_PARTY_NOTICES"]
+include = ["/src/**", "/esm/**", "/Cargo.toml", "/README.md"]

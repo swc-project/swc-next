@@ -1,4 +1,4 @@
-// Adapted from SWC helpers. See THIRD_PARTY_NOTICES.
+// Adapted from SWC helpers. See ../README.md for licensing notices.
 import { _ as _type_of } from "./_type_of.js";
 
 function _to_primitive(input, hint) {

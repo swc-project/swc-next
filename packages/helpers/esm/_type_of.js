@@ -1,4 +1,4 @@
-// Adapted from SWC helpers. See THIRD_PARTY_NOTICES.
+// Adapted from SWC helpers. See ../README.md for licensing notices.
 function _type_of(obj) {
     return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
 }
