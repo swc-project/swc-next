@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { encode, encodeOptions } from "@swc-next/encoder";
-import { printSync as printStandalone } from "../../codegen/src-js/index.js";
+import { generateSync as generateStandalone } from "../../generator/src-js/index.js";
 import * as binding from "../src-js/binding.js";
-import { parseSync, printSync } from "../src-js/index.js";
+import { parseSync, generateSync } from "../src-js/index.js";
 
 function assertTransfer(program, meta, options, expected) {
   const parts = encode(program, meta);
@@ -15,9 +15,9 @@ function assertTransfer(program, meta, options, expected) {
     view.getUint32(8, true) + view.getUint32(12, true),
   ]);
   const optionBits = encodeOptions(options);
-  assert.equal(binding.printSync(...parts, optionBits), expected);
-  assert.equal(printSync(program, options, meta).code, expected);
-  assert.equal(printStandalone(program, options, meta).code, expected);
+  assert.equal(binding.generateSync(...parts, optionBits), expected);
+  assert.equal(generateSync(program, options, meta).code, expected);
+  assert.equal(generateStandalone(program, options, meta).code, expected);
 }
 
 test("section transfers preserve metadata, strings, and options", () => {
@@ -41,13 +41,13 @@ test("section transfers use current buffers after growth", () => {
   program.body[0].declarations[0].init.elements = Array.from({ length: 2000 }, (_, index) => ({
     type: "Literal", value: `${index}雪🌍\uD800`, raw: null,
   }));
-  const printed = printSync(program, { minify: true }, meta).code;
+  const printed = generateSync(program, { minify: true }, meta).code;
   const roundtrip = parseSync(printed).program.body[0].declarations[0].init;
   assert.deepEqual(
     roundtrip.elements.map(element => element.value),
     program.body[0].declarations[0].init.elements.map(element => element.value),
   );
-  assert.equal(printStandalone(program, { minify: true }, meta).code, printed);
+  assert.equal(generateStandalone(program, { minify: true }, meta).code, printed);
 
   const empty = parseSync("");
   assertTransfer(empty.program, empty.meta, undefined, "");

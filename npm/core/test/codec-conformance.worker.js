@@ -46,8 +46,8 @@ function checkUnit(file, unit, suite, sourceType) {
   result.parsed = true;
   try {
     const program = parsed.program;
-    const native = binding.nativeParsePrintSync(source, options, 0);
-    const codec = binding.printSync(...encode(program, parsed.meta), 0);
+    const native = binding.nativeParseGenerateSync(source, options, 0);
+    const codec = binding.generateSync(...encode(program, parsed.meta), 0);
     if (codec !== native) {
       return { ...result, error: "Codec output differs from native output" };
     }

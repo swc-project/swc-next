@@ -574,10 +574,10 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { langFromPath, parseSync, printSync, sourceTypeFromPath, CommentMode, Lang, SourceType } = nativeBinding
+const { langFromPath, parseSync, generateSync, sourceTypeFromPath, CommentMode, Lang, SourceType } = nativeBinding
 export { langFromPath }
 export { parseSync }
-export { printSync }
+export { generateSync }
 export { sourceTypeFromPath }
 export { CommentMode }
 export { Lang }

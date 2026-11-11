@@ -4,13 +4,13 @@ The browser WebAssembly API for SWC Next. The package includes its WebAssembly
 binary and browser JavaScript bindings.
 
 ```js
-import init, { parseSync, printSync } from "@swc-next/core-browser";
+import init, { parseSync, generateSync } from "@swc-next/core-browser";
 
 await init();
 
 const { program } = parseSync("const value = 1;");
 program.body[0].declarations[0].init.value = 2;
-console.log(printSync(program).code);
+console.log(generateSync(program).code);
 ```
 
 Call `init()` before parsing or printing. It loads the bundled `.wasm` file;

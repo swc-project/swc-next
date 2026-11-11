@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
-import { parseSync, printSync } from "../src-js/index.js";
+import { parseSync, generateSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
   const [, spans] = encode({
@@ -20,12 +20,12 @@ test("encode writes spans in canonical little-endian order", () => {
   );
 });
 
-test("printSync prints modified parser-produced ESTree", () => {
+test("generateSync prints modified parser-produced ESTree", () => {
   const { program } = parseSync("const answer = 1;");
   program.body[0].declarations[0].id.name = "changed";
   program.body[0].declarations[0].init.value = 42;
 
-  assert.equal(printSync(program).code, "const changed = 42;\n");
+  assert.equal(generateSync(program).code, "const changed = 42;\n");
 });
 
 test("encoder preserves modified module attribute types", () => {
@@ -37,7 +37,7 @@ test("encoder preserves modified module attribute types", () => {
     assert.equal(value.value, "text");
     value.value = "文本";
 
-    const printed = printSync(program, {}, { lang }).code;
+    const printed = generateSync(program, {}, { lang }).code;
     const roundtrip = parseSync(printed, { lang }).program.body[0];
     assert.equal(roundtrip.attributes.members[0].typeAnnotation.typeAnnotation.literal.value, "文本");
     assert.equal(roundtrip.id.value, "*.txt");
@@ -53,22 +53,22 @@ test("encoder normalizes template raw line endings", () => {
     const value = program.body[0].expression.quasi.quasis[0].value;
 
     value.raw = "a\rb\r\nc";
-    assert.equal(printSync(program, {}, { lang }).code, "tag`a\nb\nc`;\n");
+    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\nb\nc`;\n");
 
     value.raw = "a\\\r\nb";
-    assert.equal(printSync(program, {}, { lang }).code, "tag`a\\\nb`;\n");
+    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\\\nb`;\n");
 
     value.raw = "a\\rb";
-    assert.equal(printSync(program, {}, { lang }).code, "tag`a\\rb`;\n");
+    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\\rb`;\n");
 
     value.raw = "\\xZ\r";
     value.cooked = null;
-    assert.equal(printSync(program, {}, { lang }).code, "tag`\\xZ\n`;\n");
+    assert.equal(generateSync(program, {}, { lang }).code, "tag`\\xZ\n`;\n");
   }
 });
 
 test("encoder preserves array rests", () => {
-  const print = (source, lang) => printSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
+  const print = (source, lang) => generateSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
 
   assert.equal(print("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
   assert.equal(print("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
@@ -77,14 +77,14 @@ test("encoder preserves array rests", () => {
   assert.equal(print("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
 });
 
-test("printSync accepts surrogate pairs in UTF-8 fields", () => {
+test("generateSync accepts surrogate pairs in UTF-8 fields", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\u{10400}";
 
-  assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
+  assert.equal(generateSync(program).code, "const 𐐀 = 1;\n");
 });
 
-test("printSync preserves lone surrogates in string values", () => {
+test("generateSync preserves lone surrogates in string values", () => {
   for (const lang of ["js", "ts"]) {
     const { program } = parseSync('const text = "";', { lang });
     const value = "\uD800é😀\0\uDC00";
@@ -94,85 +94,85 @@ test("printSync preserves lone surrogates in string values", () => {
     const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     assert.ok(header.getUint32(8, true) > 0);
     assert.equal(header.getUint32(12, true), 0);
-    const printed = printSync(program, {}, { lang });
+    const printed = generateSync(program, {}, { lang });
     assert.equal(parseSync(printed.code).program.body[0].declarations[0].init.value, value);
 
     const escaped = parseSync('const text = "\\uD800";', { lang }).program;
-    const roundtrip = parseSync(printSync(escaped, {}, { lang }).code).program;
+    const roundtrip = parseSync(generateSync(escaped, {}, { lang }).code).program;
     assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
   }
 });
 
-test("printSync preserves special numeric values across FFI", () => {
+test("generateSync preserves special numeric values across FFI", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].init.value = -0;
 
-  assert.equal(printSync(program).code, "const value = -0;\n");
+  assert.equal(generateSync(program).code, "const value = -0;\n");
 
   program.body[0].declarations[0].init.value = -Infinity;
-  assert.equal(printSync(program).code, "const value = -1 / 0;\n");
+  assert.equal(generateSync(program).code, "const value = -1 / 0;\n");
 });
 
 test("encoder rebuilds the directive prologue after reordering", () => {
   const { program } = parseSync('"use strict"; work();');
   program.body.reverse();
 
-  assert.equal(printSync(program).code, 'work();\n"use strict";\n');
+  assert.equal(generateSync(program).code, 'work();\n"use strict";\n');
 });
 
 test("encoder invalidates stale directive raw text", () => {
   const { program } = parseSync('"use client";');
   program.body[0].expression.value = "use server";
 
-  assert.equal(printSync(program).code, '"use server";\n');
+  assert.equal(generateSync(program).code, '"use server";\n');
 
   const updated = parseSync('"use client";').program;
   updated.body[0].expression.value = "use server";
   updated.body[0].directive = "use server";
 
-  assert.equal(printSync(updated).code, '"use server";\n');
+  assert.equal(generateSync(updated).code, '"use server";\n');
 
   const escaped = parseSync('"use\\x20client";').program;
-  assert.equal(printSync(escaped).code, '"use\\x20client";\n');
+  assert.equal(generateSync(escaped).code, '"use\\x20client";\n');
 
   escaped.body[0].expression.value = "use server";
-  assert.equal(printSync(escaped).code, '"use server";\n');
+  assert.equal(generateSync(escaped).code, '"use server";\n');
 });
 
 test("encoder preserves expressions with stale directive metadata", () => {
   const script = parseSync("1;").program;
   script.body[0].directive = "foo";
-  assert.equal(printSync(script, {}, { lang: "js" }).code, "1;\n");
+  assert.equal(generateSync(script, {}, { lang: "js" }).code, "1;\n");
 
   const modified = parseSync('"use strict";', { lang: "ts" }).program;
   modified.body[0].expression.value = 1;
-  assert.equal(printSync(modified, {}, { lang: "ts" }).code, "1;\n");
+  assert.equal(generateSync(modified, {}, { lang: "ts" }).code, "1;\n");
 
   const functionBody = parseSync("function f() { 1; }").program;
   functionBody.body[0].body.body[0].directive = "foo";
-  assert.equal(printSync(functionBody, {}, { lang: "js" }).code, "function f() {\n  1;\n}\n");
+  assert.equal(generateSync(functionBody, {}, { lang: "js" }).code, "function f() {\n  1;\n}\n");
 
   const namespace = parseSync("namespace N { 1; }", { lang: "ts" }).program;
   namespace.body[0].body.body[0].directive = "foo";
-  assert.equal(printSync(namespace).code, "namespace N {\n  1;\n}\n");
+  assert.equal(generateSync(namespace).code, "namespace N {\n  1;\n}\n");
 });
 
 test("encoder preserves method bodies and signatures", () => {
   const typescript = { lang: "ts" };
 
   const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
-  assert.equal(printSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+  assert.equal(generateSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
   assert.equal((new DataView(encode(body)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
 
   const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
-  assert.equal(printSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
+  assert.equal(generateSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
 
   const signature = parseSync("class C { m(): number; }", typescript).program;
-  assert.equal(printSync(signature).code, "class C {\n  m(): number;\n}\n");
+  assert.equal(generateSync(signature).code, "class C {\n  m(): number;\n}\n");
 
   const modified = parseSync("class C { m() { return 1; } }").program;
   modified.body[0].body.body[0].type = "TSAbstractMethodDefinition";
-  assert.equal(printSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+  assert.equal(generateSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
 });
 
 test("encoder accepts directive raw escapes with leading zeros", () => {
@@ -180,32 +180,32 @@ test("encoder accepts directive raw escapes with leading zeros", () => {
     sourceType: "script",
   });
 
-  assert.equal(printSync(program).code, '"use\\u{0000020}strict";\n');
+  assert.equal(generateSync(program).code, '"use\\u{0000020}strict";\n');
 });
 
 test("encoder preserves BigInt raw radix", () => {
   const { program } = parseSync("0x1_2_3n;");
 
-  assert.equal(printSync(program).code, "0x123n;\n");
+  assert.equal(generateSync(program).code, "0x123n;\n");
 });
 
 test("encoder validates legacy octal raw text", () => {
   const { program } = parseSync("077;", { sourceType: "script" });
 
-  assert.equal(printSync(program).code, "077;\n");
+  assert.equal(generateSync(program).code, "077;\n");
 
   program.body[0].expression.value = 64;
-  assert.equal(printSync(program).code, "64;\n");
+  assert.equal(generateSync(program).code, "64;\n");
 });
 
 test("encoder normalizes negative BigInts and property keys", () => {
   const { program } = parseSync("1n;");
   program.body[0].expression.value = -1n;
-  assert.equal(printSync(program).code, "-1n;\n");
+  assert.equal(generateSync(program).code, "-1n;\n");
 
   const property = parseSync("({ 1n: 0 });").program;
   property.body[0].expression.expression.properties[0].key.value = -1n;
-  assert.equal(printSync(property).code, '({ "-1": 0 });\n');
+  assert.equal(generateSync(property).code, '({ "-1": 0 });\n');
 });
 
 test("encoder uses modified RegExp metadata", () => {
@@ -213,24 +213,24 @@ test("encoder uses modified RegExp metadata", () => {
   program.body[0].expression.regex.pattern = "new";
   program.body[0].expression.regex.flags = "g";
 
-  assert.equal(printSync(program).code, "/new/g;\n");
+  assert.equal(generateSync(program).code, "/new/g;\n");
 });
 
-test("printSync forwards codegen options", () => {
+test("generateSync forwards codegen options", () => {
   const { program } = parseSync("const emoji = '😀';");
 
   assert.equal(
-    printSync(program, { asciiOnly: true, minify: true }).code,
+    generateSync(program, { asciiOnly: true, minify: true }).code,
     'const emoji="\\u{1F600}";',
   );
 
   const script = parseSync('const text = "</ScRiPt>";').program;
   assert.equal(
-    printSync(script, { inlineScript: false }).code,
+    generateSync(script, { inlineScript: false }).code,
     'const text = "</ScRiPt>";\n',
   );
   assert.equal(
-    printSync(script, { inlineScript: true }).code,
+    generateSync(script, { inlineScript: true }).code,
     'const text = "<\\/ScRiPt>";\n',
   );
 });
@@ -243,13 +243,13 @@ test("encoder invalidates stale JSX attribute raw text", () => {
   const value = program.body[0].declarations[0].init.openingElement.attributes[0].value;
 
   value.value = "new";
-  assert.equal(printSync(program).code, 'const element = <div title="new" />;\n');
+  assert.equal(generateSync(program).code, 'const element = <div title="new" />;\n');
 });
 
-test("printSync rejects unsupported ESTree nodes", () => {
+test("generateSync rejects unsupported ESTree nodes", () => {
   assert.throws(
     () =>
-      printSync({
+      generateSync({
         type: "Program",
         sourceType: "script",
         body: [{ type: "Unsupported" }],
