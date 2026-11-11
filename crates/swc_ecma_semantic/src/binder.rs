@@ -4089,6 +4089,7 @@ impl<'a> SymbolTracker<'a> {
         self.node_semantic[node].symbol()
     }
 
+    #[inline]
     pub(crate) fn record_scope(&mut self, node: NodeId, id: ScopeId) {
         let slot = &mut self.node_semantic[node];
         debug_assert!(matches!(

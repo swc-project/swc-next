@@ -272,6 +272,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
+    #[inline]
     fn push_scope(&mut self, kind: ScopeKind, node: NodeId, flags: ScopeFlags) {
         self.current_scope = self.scope.push_scope(self.current_scope, kind, node, flags);
         self.symbols.record_scope(node, self.current_scope);
