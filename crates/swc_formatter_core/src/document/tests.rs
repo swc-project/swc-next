@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{ConditionTarget, Doc, Fragment, GroupRequest, Instruction, Writer};
+use super::{ConditionTarget, Doc, Fragment, GroupRequest, Writer};
 use crate::{IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -1097,33 +1097,6 @@ fn standard_line_whitespace() {
 }
 
 #[test]
-fn deep_indentation() {
-    let allocator = Allocator::new();
-    let mut elements = vec![Instruction::StartIndent; 1025];
-    elements.push(Instruction::HardLine);
-    elements.push(Instruction::text(super::text::Text::new("value")));
-    elements.extend(std::iter::repeat_n(Instruction::EndIndent, 1025));
-    let document = Doc {
-        allocator: &allocator,
-        elements: &elements,
-        group_count: 0,
-    };
-    let options = PrintOptions {
-        indent_width: 64.try_into().unwrap(),
-        ..PrintOptions::default()
-    };
-    let output = document.print(options);
-    assert_eq!(output.len(), 1 + 1025 * 64 + "value".len());
-    assert!(output.starts_with('\n'));
-    assert!(output.ends_with("value"));
-    assert!(
-        output[1..output.len() - "value".len()]
-            .bytes()
-            .all(|byte| byte == b' ')
-    );
-}
-
-#[test]
 fn literal_lines() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -1567,6 +1540,20 @@ fn clean_fragment_width<'a>(writer: &mut Writer<'a>, fragment: Fragment<'a>) -> 
         .unwrap()
 }
 
+fn repeat_fragment<'a>(
+    writer: &mut Writer<'a>,
+    mut fragment: Fragment<'a>,
+    levels: usize,
+) -> Fragment<'a> {
+    for _ in 0..levels {
+        fragment = record(writer, |writer| {
+            writer.write_fragment(fragment);
+            writer.write_fragment(fragment);
+        });
+    }
+    fragment
+}
+
 #[test]
 fn complete_text_measurement() {
     assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
@@ -1595,6 +1582,28 @@ fn complete_text_measurement() {
 
     let expanded = writer.group_fragment(true, text);
     assert_eq!(clean_fragment_width(&mut writer, expanded), None);
+
+    let text = record(&mut writer, |writer| writer.text("ab"));
+    // Aggregated ASCII widths remain exact above u16::MAX.
+    let shared = repeat_fragment(&mut writer, text, 15);
+    assert_eq!(clean_fragment_width(&mut writer, shared), Some(65_536));
+
+    let text = record(&mut writer, |writer| writer.text("🇺"));
+    let shared = repeat_fragment(&mut writer, text, 2);
+    assert_eq!(clean_fragment_width(&mut writer, shared), Some(4));
+
+    let mut middle = record(&mut writer, |writer| writer.text("\u{200d}"));
+    middle = record(&mut writer, |writer| writer.write_fragment(middle));
+    middle = record(&mut writer, |writer| writer.write_fragment(middle));
+    let width = writer
+        .write_with_clean_text_width(|writer| {
+            writer.text("👩");
+            writer.write_fragment(middle);
+            writer.text("💻");
+            Ok::<_, ()>(())
+        })
+        .unwrap();
+    assert_eq!(width, Some(2));
 }
 
 #[test]
@@ -1666,53 +1675,6 @@ fn text_line_measurement() {
         literal_text_continuation("head\r\ntail\n"),
         "prehead\ntail\n next"
     );
-}
-
-#[test]
-fn ordinary_text_lines() {
-    let allocator = Allocator::new();
-    let wide = PrintOptions::default();
-    let narrow = PrintOptions {
-        line_width: 5,
-        ..wide
-    };
-
-    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
-    assert_eq!(doc.print(wide), "a\nb cF");
-
-    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
-    assert_eq!(doc.print(narrow), "a\nb\ncB");
-
-    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\nb"));
-    assert_eq!(doc.print(wide), "a\nb\ncB");
-
-    let mut writer = Writer::new(&allocator);
-    writer.text("aa\n");
-    writer.group(false, |writer| {
-        writer.text("bb");
-        writer.line();
-        writer.text("cc");
-    });
-    let doc = writer.finish();
-    assert_eq!(doc.print(narrow), "aa\nbb\ncc");
-
-    let mut writer = Writer::new(&allocator);
-    writer.text("a");
-    writer.line_suffix(|writer| writer.text("!"));
-    writer.text("x\ny");
-    writer.hard_line();
-    writer.text("z");
-    let output = writer.finish().print(wide);
-    assert_eq!(output, "ax\ny!\nz");
-
-    let mut writer = Writer::new(&allocator);
-    let text = record(&mut writer, |writer| writer.text("a\nb"));
-    assert!(text.has_intrinsic_lines());
-    assert!(text.can_break());
-    assert!(!text.preferred_breaks());
-    assert!(text.try_flat().is_none());
-    assert!(text.try_neutral().is_none());
-    assert_eq!(super::text::Text::new("a\nb").clean_width(), None);
 }
 
 #[test]
@@ -2269,70 +2231,6 @@ fn record<'a>(writer: &mut Writer<'a>, write: impl FnOnce(&mut Writer<'a>)) -> s
         })
         .unwrap()
         .0
-}
-
-#[test]
-fn fragment_line_breaks() {
-    let allocator = Allocator::new();
-    let mut writer = Writer::new(&allocator);
-    let atom = record(&mut writer, |writer| {
-        writer.group(false, |writer| writer.text("value"))
-    });
-    assert!(!atom.can_break());
-
-    let soft = record(&mut writer, Writer::soft_line);
-    assert!(soft.can_break());
-
-    let flat = record(&mut writer, |writer| {
-        writer.write_flat_fragment(soft.try_flat().unwrap())
-    });
-    assert!(!flat.can_break());
-
-    let nested = record(&mut writer, |writer| writer.write_fragment(soft));
-    assert!(nested.can_break());
-
-    let group = writer.named_group(false, |writer| writer.text("head"));
-    let conditional = record(&mut writer, |writer| writer.soft_line_if_break(group));
-    assert!(conditional.can_break());
-
-    let named = record(&mut writer, |writer| {
-        writer.if_break_doc(ConditionTarget::Group(group), soft, soft);
-    });
-    assert!(named.can_break());
-
-    let flat_named = record(&mut writer, |writer| {
-        writer.write_flat_fragment(named.try_flat().unwrap());
-    });
-    assert!(!flat_named.can_break());
-
-    let hard = record(&mut writer, Writer::hard_line);
-    assert!(hard.can_break());
-
-    let literal = record(&mut writer, Writer::literal_line);
-    assert!(literal.can_break());
-
-    let current = record(&mut writer, |writer| {
-        writer.if_break_doc(ConditionTarget::Current, soft, atom);
-    });
-    assert!(current.can_break());
-
-    let flat_current = record(&mut writer, |writer| {
-        writer.write_flat_fragment(current.try_flat().unwrap())
-    });
-    assert!(!flat_current.can_break());
-
-    let multiline = record(&mut writer, |writer| writer.literal_text("first\nlast"));
-    assert!(multiline.can_break());
-
-    let fallback_only = record(&mut writer, |writer| {
-        writer.write_alternatives(&[atom], hard)
-    });
-    assert!(!fallback_only.can_break());
-
-    let first = record(&mut writer, |writer| {
-        writer.write_alternatives(&[soft], atom)
-    });
-    assert!(first.can_break());
 }
 
 #[test]

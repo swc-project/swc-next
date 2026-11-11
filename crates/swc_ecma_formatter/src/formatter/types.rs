@@ -1593,7 +1593,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let layout = content.alias_layout();
-        let expand = head.preferred_breaks() || !content.is_object_type() && head.can_break();
+        let expand = head.preferred_breaks() || !content.is_object_type() && head.has_line_breaks();
         if expand || layout == TypeLayout::AliasRhs {
             writer.group(false, |writer| {
                 writer.indent(|writer| {

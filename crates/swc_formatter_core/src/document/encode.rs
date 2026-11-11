@@ -5,16 +5,19 @@
 //! Integers are little endian. Scope ends identify their opening scope; all indent forms share one end tag.
 use rustc_hash::FxHashMap;
 
-use super::{ConditionTarget, Doc, GroupId, Instruction};
+use super::{ConditionTarget, Doc, Group, GroupId, Instruction};
 
-pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
-    let mut encoder = Encoder::default();
-    encoder.reference(document.elements, false);
+pub(crate) fn encode<const PRETTIER: bool>(document: Doc<'_>) -> Vec<u8> {
+    let mut encoder = Encoder {
+        normalize_groups: document.root.has_source_groups(),
+        ..Encoder::default()
+    };
+    encoder.reference(document.root.elements(), false);
     // Fragments form a DAG. A work list avoids recursion through shared scopes.
     let mut index = 0;
     while index < encoder.pending.len() {
-        let (elements, flat) = encoder.pending[index];
-        let instructions = encoder.instructions(elements, flat);
+        let (elements, flat, group_root) = encoder.pending[index];
+        let instructions = encoder.instructions::<PRETTIER>(elements, flat, group_root);
         encoder.fragments.push(instructions);
         index += 1;
     }
@@ -33,8 +36,10 @@ pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
 #[derive(Default)]
 struct Encoder<'a> {
     fragments: Vec<Vec<u8>>,
-    pending: Vec<(&'a [Instruction<'a>], bool)>,
-    fragment_ids: FxHashMap<(usize, usize, bool), usize>,
+    pending: Vec<(&'a [Instruction<'a>], bool, bool)>,
+    normalize_groups: bool,
+    fragment_ids: FxHashMap<(usize, usize, bool, bool), usize>,
+    group_records: FxHashMap<usize, usize>,
     strings: Vec<u8>,
     string_ids: FxHashMap<&'a str, (usize, usize)>,
 }
@@ -50,38 +55,101 @@ fn group(output: &mut Vec<u8>, id: Option<GroupId>) {
 
 impl<'a> Encoder<'a> {
     fn reference(&mut self, elements: &'a [Instruction<'a>], flat: bool) -> usize {
-        let key = (elements.as_ptr() as usize, elements.len(), flat);
+        self.reference_kind(elements, flat, false)
+    }
+
+    fn reference_kind(
+        &mut self,
+        elements: &'a [Instruction<'a>],
+        flat: bool,
+        group_root: bool,
+    ) -> usize {
+        let key = (elements.as_ptr() as usize, elements.len(), flat, group_root);
         let next_id = self.pending.len();
         *self.fragment_ids.entry(key).or_insert_with(|| {
-            self.pending.push((elements, flat));
+            self.pending.push((elements, flat, group_root));
             next_id
         })
     }
 
-    fn text(&mut self, output: &mut Vec<u8>, text: &'a str) {
-        let (start, length) = *self.string_ids.entry(text).or_insert_with(|| {
+    fn string(&mut self, text: &'a str) -> (usize, usize) {
+        *self.string_ids.entry(text).or_insert_with(|| {
             let start = self.strings.len();
             self.strings.extend(text.as_bytes());
             (start, text.len())
-        });
+        })
+    }
+
+    fn text(&mut self, output: &mut Vec<u8>, text: &'a str) {
+        let (start, length) = self.string(text);
         output.push(0);
         word(output, start);
         word(output, length);
     }
 
-    fn instructions(&mut self, elements: &'a [Instruction<'a>], flat: bool) -> Vec<u8> {
+    fn instructions<const PRETTIER: bool>(
+        &mut self,
+        elements: &'a [Instruction<'a>],
+        flat: bool,
+        group_root: bool,
+    ) -> Vec<u8> {
         let mut output = Vec::new();
         let mut index = 0;
         while let Some(&element) = elements.get(index) {
             index += 1;
+            if self.normalize_groups
+                && !flat
+                && !(group_root && index == 1)
+                && let Instruction::StartGroup { end_offset, .. }
+                | Instruction::StartGroupWithFlatWidth { end_offset, .. } = element
+            {
+                let end = index + end_offset as usize;
+                output.push(9);
+                word(
+                    &mut output,
+                    self.reference_kind(&elements[index - 1..end], false, true),
+                );
+                index = end;
+                continue;
+            }
+            if self.normalize_groups
+                && !flat
+                && !(group_root && index == 1)
+                && let Instruction::SourceGroup(group) = element
+            {
+                let key = group.key();
+                let next = self.pending.len();
+                let reference = *self.group_records.entry(key).or_insert_with(|| {
+                    self.pending
+                        .push((&elements[index - 1..index], false, true));
+                    next
+                });
+                output.push(9);
+                word(&mut output, reference);
+                continue;
+            }
             // A flat projection retains the named condition but projects only
             // this complete indent body. Its scope end is consumed here.
-            if let Instruction::StartIndentIfBreak { id, end_offset } = element {
+            if let Instruction::StartIndentIfBreak {
+                target,
+                negate,
+                end_offset,
+            } = element
+            {
+                if flat && matches!(target, ConditionTarget::Current) {
+                    continue;
+                }
                 let end = index
                     .checked_add(end_offset as usize)
                     .expect("document scope offset exceeds usize");
-                output.push(7);
-                group(&mut output, Some(id));
+                output.extend([7, u8::from(negate)]);
+                group(
+                    &mut output,
+                    match target {
+                        ConditionTarget::Current => None,
+                        ConditionTarget::Group(id) => Some(id),
+                    },
+                );
                 output.push(9);
                 word(&mut output, self.reference(&elements[index..end - 1], flat));
                 output.extend([17, 4]);
@@ -100,9 +168,20 @@ impl<'a> Encoder<'a> {
                 Instruction::Text { source, .. } => self.text(&mut output, source.as_str()),
                 Instruction::NormalLine => output.extend([2, 0]),
                 Instruction::SoftLine => output.extend([2, 1]),
+                Instruction::NormalLiteralLine => output.extend([2, 7]),
+                Instruction::SoftLiteralLine => output.extend([2, 8]),
                 Instruction::HardLine => output.extend([2, 2]),
+                Instruction::HardLineOnly => output.extend([2, 3]),
                 Instruction::LiteralLine => output.extend([2, 4]),
+                Instruction::LiteralLineOnly => output.extend([2, 6]),
                 Instruction::LiteralLineAtCurrentIndent => output.extend([2, 5]),
+                Instruction::Trim => output.push(27),
+                Instruction::Cursor => output.push(28),
+                Instruction::StartLabel(id) => {
+                    output.push(29);
+                    word(&mut output, id.0 as usize);
+                }
+                Instruction::EndLabel => output.extend([17, 29]),
                 Instruction::SoftLineIfGroupBreaks(id) => {
                     output.extend([8, 1]);
                     group(&mut output, Some(id));
@@ -118,7 +197,7 @@ impl<'a> Encoder<'a> {
                     self.text(&mut output, source.as_str());
                     output.extend([17, 8]);
                 }
-                Instruction::IfBreak(conditional) | Instruction::FlatConditional(conditional) => {
+                Instruction::IfBreak(conditional) | Instruction::FlatIfBreak(conditional) => {
                     output.push(21);
                     group(
                         &mut output,
@@ -127,7 +206,7 @@ impl<'a> Encoder<'a> {
                             ConditionTarget::Group(id) => Some(id),
                         },
                     );
-                    let flat = matches!(element, Instruction::FlatConditional(_));
+                    let flat = matches!(element, Instruction::FlatIfBreak(_));
                     word(
                         &mut output,
                         self.reference(conditional.broken.elements(), flat),
@@ -140,8 +219,11 @@ impl<'a> Encoder<'a> {
                 Instruction::LineSuffixBoundary => output.push(15),
                 Instruction::StartLineSuffix { .. } => output.push(14),
                 Instruction::EndLineSuffix => output.extend([17, 14]),
-                Instruction::StartGroup { effect, id } => {
-                    output.extend([3, u8::from(effect.preferred_breaks())]);
+                Instruction::StartGroup { request, id, .. } => {
+                    output.extend([
+                        3,
+                        u8::from(matches!(request, super::GroupRequest::Expanded)),
+                    ]);
                     group(&mut output, id);
                 }
                 Instruction::StartGroupWithFlatWidth { .. } => {
@@ -158,6 +240,18 @@ impl<'a> Encoder<'a> {
                     unreachable!("named indent scopes are encoded before projection")
                 }
                 Instruction::EndIndent => output.extend([17, 4]),
+                Instruction::StartAlignText(prefix) => {
+                    let (start, length) = self.string(prefix.source);
+                    output.push(23);
+                    word(&mut output, start);
+                    word(&mut output, length);
+                }
+                Instruction::StartDedent => output.push(24),
+                Instruction::StartMarkRoot => output.push(25),
+                Instruction::StartDedentToRoot => output.push(26),
+                Instruction::EndRichIndent(kind) => {
+                    output.extend([17, super::wire::rich_indent_tag(kind)])
+                }
                 Instruction::StartAlign { width } => {
                     output.push(6);
                     word(&mut output, width as usize);
@@ -175,16 +269,47 @@ impl<'a> Encoder<'a> {
                     output.push(9);
                     word(&mut output, self.reference(elements.get(), true));
                 }
-                Instruction::CompactGroup(alternatives) => {
+                Instruction::CompactGroup(data) => {
+                    let group = data;
                     output.push(10);
-                    word(&mut output, alternatives.preferred.len() + 1);
-                    for fragment in alternatives.preferred {
+                    word(&mut output, group.stored_states().len() + 1);
+                    for fragment in group.stored_states() {
                         word(&mut output, self.reference(fragment.elements(), false));
                     }
                     word(
                         &mut output,
-                        self.reference(alternatives.fallback.elements(), false),
+                        self.reference(group.fallback().elements(), false),
                     );
+                }
+                Instruction::SourceGroup(data) => {
+                    let group_data = data;
+                    output.extend([
+                        22,
+                        2 | u8::from(matches!(
+                            group_data.request(),
+                            super::GroupRequest::Expanded
+                        )),
+                    ]);
+                    group(&mut output, group_data.id());
+                    word(
+                        &mut output,
+                        self.reference(group_data.primary().elements(), false),
+                    );
+                    if PRETTIER {
+                        // Prettier's propagation visits expandedStates instead
+                        // of contents. Put the primary first so every executable
+                        // layout is visible, including independently rewritten contents.
+                        let layouts = group_data.layouts();
+                        word(&mut output, layouts.alternatives.len() + 2);
+                        for state in layouts.all() {
+                            word(&mut output, self.reference(state.elements(), false));
+                        }
+                    } else {
+                        word(&mut output, group_data.stored_states().len());
+                        for state in group_data.stored_states() {
+                            word(&mut output, self.reference(state.elements(), false));
+                        }
+                    }
                 }
                 Instruction::BreakParent => output.push(16),
             }

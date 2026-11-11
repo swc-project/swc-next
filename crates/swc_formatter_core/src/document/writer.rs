@@ -5,19 +5,17 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    BreakEffect, CompactGroup, ConditionTarget, Doc, FlatFragment, Fragment, FragmentCapabilities,
-    GroupId, GroupRequest, IfBreak, Instruction, NeutralFragment, RecordedGroup, text::Text,
-    thin::ThinSlice,
+    AlignText, BreakEffect, ConditionTarget, Doc, FlatFragment, Fragment, FragmentCapabilities,
+    Group, GroupId, GroupRequest, IfBreak, IndentIfBreakOptions, Instruction, LabelId, LineOptions,
+    NeutralFragment, RecordedGroup, RichIndentKind, facts::Facts, text::Text,
 };
 
 pub struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, Instruction<'a>>,
-    effect: BreakEffect,
+    facts: Facts,
     flattening: bool,
     group_count: u32,
-    conditional_lines: bool,
-    intrinsic_lines: bool,
 }
 
 /// A completed entry can retain a suffix while it is still the final scope.
@@ -46,11 +44,9 @@ impl<'a> Writer<'a> {
         Self {
             allocator,
             elements: ArenaVec::new_in(allocator),
-            effect: BreakEffect::default(),
+            facts: Facts::default(),
             flattening: false,
             group_count: 0,
-            conditional_lines: false,
-            intrinsic_lines: false,
         }
     }
 
@@ -71,9 +67,7 @@ impl<'a> Writer<'a> {
             Cow::Owned(text) => self.allocator.alloc_str(&text),
         };
         let text = Text::new(text);
-        if !text.is_single_line() {
-            self.intrinsic_lines = true;
-        }
+        self.facts.nonempty_text(text);
         self.elements.push(Instruction::text(text));
     }
 
@@ -84,9 +78,7 @@ impl<'a> Writer<'a> {
         }
         let text = self.allocator.alloc_str(text);
         let text = Text::new(text);
-        if !text.is_single_line() {
-            self.intrinsic_lines = true;
-        }
+        self.facts.nonempty_text(text);
         self.elements.push(Instruction::text(text));
     }
 
@@ -111,24 +103,35 @@ impl<'a> Writer<'a> {
         self.text(text);
     }
 
+    /// Writes a hard line and requests expansion of its enclosing groups.
     pub fn hard_line(&mut self) {
-        self.intrinsic_lines = true;
+        self.facts.hard_line(true);
         self.elements.push(Instruction::HardLine);
-        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
+    /// Writes a hard line without requesting expansion of its enclosing groups.
+    pub fn hard_line_without_break_parent(&mut self) {
+        self.facts.hard_line(false);
+        self.elements.push(Instruction::HardLineOnly);
+    }
+
+    /// Preserves trailing whitespace, resets indentation, and expands enclosing groups.
     pub fn literal_line(&mut self) {
-        self.intrinsic_lines = true;
+        self.facts.hard_line(true);
         self.elements.push(Instruction::LiteralLine);
-        self.effect = self.effect.join(BreakEffect::REQUIRED);
+    }
+
+    /// Preserves trailing whitespace and resets indentation without expanding parents.
+    pub fn literal_line_without_break_parent(&mut self) {
+        self.facts.hard_line(false);
+        self.elements.push(Instruction::LiteralLineOnly);
     }
 
     /// Preserves source whitespace while returning to the current indentation.
     /// This is the standard Doc composition `markAsRoot(literalline)`.
     pub fn literal_line_with_indent(&mut self) {
-        self.intrinsic_lines = true;
+        self.facts.hard_line(true);
         self.elements.push(Instruction::LiteralLineAtCurrentIndent);
-        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     /// Writes one literal separator; the syntax owner decides whether it is needed.
@@ -141,13 +144,40 @@ impl<'a> Writer<'a> {
     }
 
     pub fn soft_line_if_break(&mut self, group: GroupId) {
-        self.conditional_lines = true;
+        self.facts.conditional_line();
         self.elements
             .push(Instruction::SoftLineIfGroupBreaks(group));
     }
 
     pub fn line(&mut self) {
         self.elements.push(Instruction::NormalLine);
+    }
+
+    /// Writes one raw Prettier `line` Doc without an added `breakParent`.
+    /// Use [`Self::hard_line`] for Prettier's complete `hardline` composition.
+    pub fn raw_line(&mut self, options: LineOptions) {
+        let element = Instruction::raw_line(options);
+        self.facts.observe(element);
+        self.elements.push(element);
+    }
+
+    /// Removes the spaces and tabs trailing the output at this point.
+    pub fn trim(&mut self) {
+        self.facts.require_extended_print();
+        self.elements.push(Instruction::Trim);
+    }
+
+    /// Marks a position for printing with cursor tracking.
+    pub fn cursor(&mut self) {
+        self.elements.push(Instruction::Cursor);
+    }
+
+    /// Associates caller-owned metadata with a scope without affecting layout.
+    pub fn label<T>(&mut self, id: LabelId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.elements.push(Instruction::StartLabel(id));
+        let result = write(self);
+        self.elements.push(Instruction::EndLabel);
+        result
     }
 
     pub fn if_break(&mut self, text: &'a str) {
@@ -163,8 +193,8 @@ impl<'a> Writer<'a> {
             match target {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
-                    self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(Instruction::if_break(text));
+                    self.facts.nonempty_text(text);
+                    self.elements.push(Instruction::text_if_break(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment(text);
@@ -180,8 +210,8 @@ impl<'a> Writer<'a> {
             match target {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
-                    self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(Instruction::if_flat(text));
+                    self.facts.nonempty_text(text);
+                    self.elements.push(Instruction::text_if_flat(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment("");
@@ -194,18 +224,14 @@ impl<'a> Writer<'a> {
 
     fn text_fragment(&self, text: &'a str) -> Fragment<'a> {
         let text = Text::new(text);
+        let mut facts = Facts::default();
         let elements: &[Instruction<'a>] = if text.source().is_empty() {
             &[]
         } else {
+            facts.nonempty_text(text);
             self.allocator.alloc([Instruction::text(text)])
         };
-        Fragment::new(
-            elements,
-            BreakEffect::default(),
-            FragmentCapabilities::classify(elements),
-            false,
-            !text.is_single_line(),
-        )
+        Fragment::new(elements, facts.finish(elements))
     }
 
     /// Both branches contribute break effects, including the unselected branch.
@@ -215,20 +241,20 @@ impl<'a> Writer<'a> {
         broken: Fragment<'a>,
         flat: Fragment<'a>,
     ) {
-        self.effect = self.effect.join(broken.effect()).join(flat.effect());
-        self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
-        self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
         let conditional = self.allocator.alloc(IfBreak {
             target,
             broken,
             flat,
         });
+        self.facts.if_break(conditional, false);
         self.elements.push(Instruction::IfBreak(conditional));
     }
 
+    /// Defers content until the next line break, suffix boundary, or end of the Doc.
+    /// Even empty content registers a pending suffix and affects boundaries.
     pub fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        self.intrinsic_lines = true;
         let start = self.elements.len();
+        self.facts.line_suffix();
         self.elements
             .push(Instruction::StartLineSuffix { end_offset: 0 });
         let result = write(self);
@@ -243,8 +269,8 @@ impl<'a> Writer<'a> {
     }
 
     pub fn break_parent(&mut self) {
+        self.facts.require_break();
         self.elements.push(Instruction::BreakParent);
-        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     pub fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
@@ -310,23 +336,26 @@ impl<'a> Writer<'a> {
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let start = self.elements.len();
-        let outer_effect = self.effect;
-        self.effect = BreakEffect::from_request(request);
+        let outer_effect = self.facts.begin_group();
         self.elements.push(Instruction::StartGroup {
-            effect: self.effect,
+            request,
+            effect: self.facts.effect(),
             id,
+            end_offset: 0,
         });
         let result = write(self);
-        let effect = self.effect;
-        self.effect = outer_effect.join(effect);
+        let effect = self.facts.end_group(request, outer_effect);
+        let distance = instruction_offset(self.elements.len() - start);
         let Instruction::StartGroup {
             effect: group_effect,
+            end_offset,
             ..
         } = &mut self.elements[start]
         else {
             unreachable!("group scope retains its opening instruction");
         };
         *group_effect = effect;
+        *end_offset = distance;
         self.elements.push(Instruction::EndGroup);
         result
     }
@@ -369,15 +398,32 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent_if_break<T>(&mut self, group: GroupId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.indent_if_break_with_options(
+            IndentIfBreakOptions {
+                target: ConditionTarget::Group(group),
+                negate: false,
+            },
+            write,
+        )
+    }
+
+    /// Indents the scope when the selected group mode matches the options.
+    pub fn indent_if_break_with_options<T>(
+        &mut self,
+        options: IndentIfBreakOptions,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let start = self.elements.len();
         self.elements.push(Instruction::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset: 0,
         });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = Instruction::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset,
         };
         self.elements.push(Instruction::EndIndent);
@@ -392,6 +438,50 @@ impl<'a> Writer<'a> {
         self.elements.push(Instruction::StartAlign { width });
         let result = write(self);
         self.elements.push(Instruction::EndAlign { width });
+        result
+    }
+
+    /// Aligns the scope with an unchanged string prefix.
+    pub fn align_text<T>(&mut self, prefix: &'a str, write: impl FnOnce(&mut Self) -> T) -> T {
+        if prefix.is_empty() {
+            return write(self);
+        }
+        let text = self.allocator.alloc(AlignText {
+            source: prefix,
+            width: crate::measure_text_width(prefix),
+        });
+        self.facts.require_rich_indent();
+        self.elements.push(Instruction::StartAlignText(text));
+        let result = write(self);
+        self.elements
+            .push(Instruction::EndRichIndent(RichIndentKind::AlignText));
+        result
+    }
+
+    pub fn dedent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.facts.require_rich_indent();
+        self.elements.push(Instruction::StartDedent);
+        let result = write(self);
+        self.elements
+            .push(Instruction::EndRichIndent(RichIndentKind::Dedent));
+        result
+    }
+
+    pub fn mark_as_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.facts.require_rich_indent();
+        self.elements.push(Instruction::StartMarkRoot);
+        let result = write(self);
+        self.elements
+            .push(Instruction::EndRichIndent(RichIndentKind::MarkRoot));
+        result
+    }
+
+    pub fn dedent_to_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.facts.require_rich_indent();
+        self.elements.push(Instruction::StartDedentToRoot);
+        let result = write(self);
+        self.elements
+            .push(Instruction::EndRichIndent(RichIndentKind::DedentToRoot));
         result
     }
 
@@ -481,7 +571,7 @@ impl<'a> Writer<'a> {
     ) -> Result<Option<usize>, E> {
         let start = self.elements.len();
         write(self)?;
-        Ok(super::clean_text_width(&self.elements[start..]))
+        Ok(super::text::clean_text_width(&self.elements[start..]))
     }
 
     /// Observes this construction scope without scanning its instruction stream.
@@ -489,11 +579,10 @@ impl<'a> Writer<'a> {
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
     ) -> Result<(T, bool), E> {
-        let outer = self.intrinsic_lines;
-        self.intrinsic_lines = false;
+        let outer = self.facts.take_intrinsic_lines();
         let result = write(self);
-        let intrinsic_lines = self.intrinsic_lines;
-        self.intrinsic_lines |= outer;
+        let intrinsic_lines = self.facts.has_intrinsic_lines();
+        self.facts.include_intrinsic_lines(outer);
         result.map(|value| (value, intrinsic_lines))
     }
 
@@ -506,21 +595,12 @@ impl<'a> Writer<'a> {
         child.group_count = self.group_count;
         let value = write(&mut child)?;
         self.group_count = child.group_count;
-        let capabilities = if child.effect.preferred_breaks() || child.conditional_lines {
-            FragmentCapabilities::from_flat(
-                child.elements.iter().all(|element| element.permits_flat()),
-            )
-        } else {
-            FragmentCapabilities::classify(&child.elements)
-        };
-        let fragment = Fragment::new(
-            child.elements.into_bump_slice(),
-            child.effect,
-            capabilities,
-            child.conditional_lines,
-            child.intrinsic_lines,
-        );
-        Ok((fragment, value))
+        Ok((child.finish_fragment(), value))
+    }
+
+    fn finish_fragment(self) -> Fragment<'a> {
+        let summary = self.facts.finish(&self.elements);
+        Fragment::new(self.elements.into_bump_slice(), summary)
     }
 
     pub fn record_group_with_value<T, E>(
@@ -568,33 +648,65 @@ impl<'a> Writer<'a> {
             fragment.capabilities()
         };
         let elements = self.allocator.alloc([
-            Instruction::StartGroup { effect, id },
+            Instruction::StartGroup {
+                request,
+                effect,
+                id,
+                end_offset: 2,
+            },
             Instruction::fragment(fragment),
             Instruction::EndGroup,
         ]);
-        Fragment::new(
-            elements,
-            effect,
-            capabilities,
-            fragment.conditional_lines(),
-            fragment.has_intrinsic_lines(),
-        )
+        let mut facts = Facts::default();
+        facts.fragment(fragment);
+        facts.include_request(request);
+        Fragment::new(elements, facts.finish_with_capabilities(capabilities))
     }
 
+    /// Writes a group with independent contents and at least one expanded state.
+    ///
+    /// `contents` is the primary layout. `first` retains Prettier's original
+    /// `expandedStates[0]`; when `rest` is nonempty it is not an executable
+    /// candidate. The intermediate entries of `rest` are tried after `contents`,
+    /// and the final state is the fallback. With no `rest`, `first` is the fallback.
+    /// An inherited flat layout selects `contents`; otherwise `Expanded` selects
+    /// the fallback without fitting. Use [`Self::write_alternatives`] when every
+    /// supplied preferred layout should participate in candidate selection.
+    pub fn write_group_with_states(
+        &mut self,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        contents: Fragment<'a>,
+        first: Fragment<'a>,
+        rest: &[Fragment<'a>],
+    ) {
+        let mut states = ArenaVec::with_capacity_in(rest.len() + 1, self.allocator);
+        states.push(first);
+        states.extend_from_slice(rest);
+        let group = super::group::with_states(
+            self.allocator,
+            request,
+            id,
+            contents,
+            states.into_bump_slice(),
+        );
+        self.facts.group(group);
+        self.elements.push(group.element());
+    }
+
+    /// Appends a fragment created or imported in this writer's group namespace.
     pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
-        self.effect = self.effect.join(fragment.effect());
-        self.conditional_lines |= fragment.conditional_lines();
-        self.intrinsic_lines |= fragment.has_intrinsic_lines();
+        self.facts.fragment(fragment);
         self.elements.push(Instruction::fragment(fragment));
     }
 
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
+        self.facts.flat_fragment(fragment.0);
         self.elements.push(Instruction::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
-        self.effect = self.effect.join(fragment.effect());
-        self.conditional_lines |= fragment.conditional_lines();
+        self.facts.flat_fragment(fragment);
         self.elements
             .push(Instruction::flat_fragment(FlatFragment(fragment)));
     }
@@ -608,25 +720,16 @@ impl<'a> Writer<'a> {
         } else {
             choices.extend_from_slice(preferred);
         }
-        self.conditional_lines |= fallback.conditional_lines()
-            || preferred
-                .iter()
-                .any(|fragment| fragment.conditional_lines());
-        let alternatives = self.allocator.alloc(CompactGroup {
-            preferred: choices.into_bump_slice(),
-            fallback,
-        });
-        // Only the first candidate participates in the intrinsic-line summary. Later
-        // choices can introduce layout lines without making them intrinsic.
-        self.intrinsic_lines |= alternatives.first().has_intrinsic_lines();
-        self.elements.push(Instruction::CompactGroup(alternatives));
+        let group = super::group::compact(self.allocator, choices.into_bump_slice(), fallback);
+        self.facts.group(group);
+        self.elements.push(group.element());
     }
 
     pub fn finish(self) -> Doc<'a> {
         Doc {
             allocator: self.allocator,
-            elements: ThinSlice::new(self.elements.into_bump_slice()).get(),
             group_count: self.group_count,
+            root: self.finish_fragment(),
         }
     }
 }

@@ -5,26 +5,44 @@
 //! Compact instructions retain immutable borrows with checked lengths.
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
+//!
+//! [`Writer`] selects flat [`Instruction`] storage directly from semantic builders.
+//! [`Fragment`] seals a complete scope with its construction facts. Fit probes and
+//! printing execute the same instructions; each graph analysis chooses its own
+//! traversal policy. Encoding and decoding handle transport and Prettier interop.
 
+mod breaks;
 mod encode;
+mod facts;
+mod group;
+mod indent;
 mod instruction;
+mod layout;
+mod line;
 mod printer;
+mod query;
 #[cfg(test)]
 mod tests;
 mod text;
 mod thin;
+mod transform;
+mod wire;
 mod writer;
 
+pub use line::{LineMode, LineOptions};
+pub use printer::{CursorError, PrintResult};
 pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
 
 use std::num::NonZeroU32;
 
 use crate::PrintOptions;
-use instruction::Instruction;
-use text::{Text, Width};
-use thin::{ThinSlice, ThinStr};
+use group::Group;
+use instruction::{AlignText, IfBreak, Instruction, RichIndentKind};
+use text::Text;
+use thin::ThinSlice;
 
-#[derive(Debug, Clone, Copy)]
+/// Prettier group `id` / conditional `groupId`, remapped to a document-local identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GroupId(NonZeroU32);
 
 impl GroupId {
@@ -33,17 +51,43 @@ impl GroupId {
     }
 }
 
+/// Prettier `label.label`, represented by a caller-owned metadata ID.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LabelId(pub u32);
+
 /// Conditions read either the active execution mode or an explicitly named group.
 #[derive(Debug, Clone, Copy)]
 pub enum ConditionTarget {
+    /// An omitted Prettier `groupId`, reading the active execution mode.
     Current,
+    /// Prettier `groupId`, reading the resolved mode of that named group.
     Group(GroupId),
+}
+
+/// Selects the group mode that controls conditional indentation.
+#[derive(Debug, Clone, Copy)]
+pub struct IndentIfBreakOptions {
+    /// Prettier `groupId`; `Current` corresponds to an omitted group ID.
+    pub target: ConditionTarget,
+    /// Prettier `negate`: indent in flat mode instead of break mode.
+    pub negate: bool,
+}
+
+impl Default for IndentIfBreakOptions {
+    fn default() -> Self {
+        Self {
+            target: ConditionTarget::Current,
+            negate: false,
+        }
+    }
 }
 
 /// Explicit layout requests use the same meaning during measurement and printing.
 #[derive(Debug, Clone, Copy)]
 pub enum GroupRequest {
+    /// Prettier `group.break = false`, leaving layout to fitting and child effects.
     Auto,
+    /// Prettier `group.break = true`, requesting its expanded layout.
     Expanded,
 }
 
@@ -76,14 +120,16 @@ impl BreakEffect {
     }
 }
 
-const _: () = assert!(std::mem::size_of::<Instruction<'_>>() <= 16);
-
 /// A complete immutable scope, owned by the current formatting call.
 #[derive(Debug, Clone, Copy)]
 pub struct Fragment<'a> {
+    /// A complete Doc scope stored as flat instructions; no separate Prettier node type.
     elements: ThinSlice<'a, Instruction<'a>>,
+    /// Cached construction facts; no Prettier field.
     summary: FragmentSummary,
 }
+
+const _: () = assert!(std::mem::size_of::<Fragment<'_>>() <= 16);
 
 /// Construction facts travel with every borrowed scope, including flat views.
 /// They describe independent properties; projecting a scope does not erase them.
@@ -95,20 +141,9 @@ impl FragmentSummary {
     const CAPABILITIES: u8 = 0b110;
     const CONDITIONAL_LINES: u8 = 1 << 3;
     const INTRINSIC_LINES: u8 = 1 << 4;
-
-    fn new(
-        effect: BreakEffect,
-        capabilities: FragmentCapabilities,
-        conditional_lines: bool,
-        intrinsic_lines: bool,
-    ) -> Self {
-        Self(
-            u8::from(effect.preferred_breaks())
-                | ((capabilities as u8) << 1)
-                | (u8::from(conditional_lines) << 3)
-                | (u8::from(intrinsic_lines) << 4),
-        )
-    }
+    const SOURCE_GROUPS: u8 = 1 << 5;
+    const RICH_INDENT: u8 = 1 << 6;
+    const EXTENDED_PRINT: u8 = 1 << 7;
 
     fn effect(self) -> BreakEffect {
         BreakEffect(self.0 & Self::REQUIRED)
@@ -127,6 +162,14 @@ impl FragmentSummary {
         self.0 & Self::CONDITIONAL_LINES != 0
     }
 
+    fn rich_indent(self) -> bool {
+        self.0 & Self::RICH_INDENT != 0
+    }
+
+    fn has_source_groups(self) -> bool {
+        self.0 & Self::SOURCE_GROUPS != 0
+    }
+
     fn intrinsic_lines(self) -> bool {
         self.0 & Self::INTRINSIC_LINES != 0
     }
@@ -135,6 +178,7 @@ impl FragmentSummary {
 /// Both views retain the same complete scope; only the anonymous outer group differs.
 #[derive(Debug, Clone, Copy)]
 pub struct RecordedGroup<'a> {
+    /// One complete Prettier `group(contents)` scope, retained for both views.
     grouped: Fragment<'a>,
 }
 
@@ -155,102 +199,18 @@ impl<'a> RecordedGroup<'a> {
     }
 }
 
-#[derive(Default)]
-struct CleanTextWidth {
-    width: usize,
-    ascii_width: Option<usize>,
-    unicode: Option<CleanUnicodeText>,
-}
-
-#[derive(Clone, Copy)]
-enum CleanUnicodeText {
-    Single(usize),
-    Joined(usize),
-}
-
-fn clean_text_width(elements: &[Instruction<'_>]) -> Option<usize> {
-    let mut text = CleanTextWidth {
-        ascii_width: Some(0),
-        ..CleanTextWidth::default()
-    };
-    add_clean_text_width(elements, &mut text)?;
-    if let Some(width) = text.ascii_width {
-        // ASCII string widths are additive, including control characters.
-        return Some(width);
-    }
-    let Some(CleanUnicodeText::Joined(bytes)) = text.unicode else {
-        return Some(text.width);
-    };
-    // Unicode sequences can compose across clean instruction boundaries.
-    // The synthesized spelling belongs to this measurement, not to the Doc.
-    let mut joined = String::with_capacity(bytes);
-    append_clean_text(elements, &mut joined)?;
-    Some(crate::measure_text_width(&joined))
-}
-
-fn add_clean_text_width(elements: &[Instruction<'_>], text: &mut CleanTextWidth) -> Option<()> {
-    for element in elements {
-        match *element {
-            Instruction::Text { source, width } => {
-                let part = Text::from_parts(source, width);
-                let part_width = part.clean_width()?;
-                let ascii_width = part.clean_ascii_width();
-                if let Some(unicode) = text.unicode {
-                    let bytes = match unicode {
-                        CleanUnicodeText::Single(bytes) | CleanUnicodeText::Joined(bytes) => bytes,
-                    };
-                    text.unicode = Some(CleanUnicodeText::Joined(
-                        bytes.saturating_add(part.source().len()),
-                    ));
-                } else if ascii_width.is_none() {
-                    // Until this first Unicode part, width also equals byte length.
-                    let bytes = text.width.saturating_add(part.source().len());
-                    text.unicode = Some(if text.width == 0 {
-                        CleanUnicodeText::Single(bytes)
-                    } else {
-                        CleanUnicodeText::Joined(bytes)
-                    });
-                }
-                text.width = text.width.saturating_add(part_width);
-                text.ascii_width = match (text.ascii_width, ascii_width) {
-                    (Some(width), Some(part_width)) => Some(width.saturating_add(part_width)),
-                    _ => None,
-                };
-            }
-            Instruction::Fragment { elements, summary }
-            | Instruction::FlatFragment { elements, summary } => {
-                if summary.effect().preferred_breaks() || summary.conditional_lines() {
-                    return None;
-                }
-                add_clean_text_width(elements.get(), text)?;
-            }
-            _ => return None,
-        }
-    }
-    Some(())
-}
-
-fn append_clean_text(elements: &[Instruction<'_>], output: &mut String) -> Option<()> {
-    for element in elements {
-        match *element {
-            Instruction::Text { source, .. } => output.push_str(source.as_str()),
-            Instruction::Fragment { elements, .. } | Instruction::FlatFragment { elements, .. } => {
-                append_clean_text(elements.get(), output)?;
-            }
-            _ => return None,
-        }
-    }
-    Some(())
-}
-
 /// Context-free ASCII measurements, saturated at the supported width limit.
 /// Literal text spaces remain part of `width`;
 /// only spaces contributed by `line` remain pending at the scope boundaries.
 #[derive(Debug, Clone, Copy, Default)]
 struct FlatSummary {
+    /// Cached ASCII flat width; no Prettier field.
     width: u16,
+    /// Whether flat contents include non-line text; no Prettier field.
     has_text: bool,
+    /// Whether a leading `line` space is pending; internal measurement metadata.
     starts_with_line: bool,
+    /// Whether a trailing `line` space is pending; internal measurement metadata.
     ends_with_line: bool,
 }
 
@@ -297,6 +257,7 @@ fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
             | Instruction::StartGroup {
                 effect: BreakEffect(0),
                 id: None,
+                ..
             }
             | Instruction::EndGroup
             | Instruction::StartIndent
@@ -311,21 +272,31 @@ fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
 }
 
 impl<'a> Fragment<'a> {
-    fn new(
-        elements: &'a [Instruction<'a>],
-        effect: BreakEffect,
-        capabilities: FragmentCapabilities,
-        conditional_lines: bool,
-        intrinsic_lines: bool,
-    ) -> Self {
+    fn new(elements: &'a [Instruction<'a>], summary: FragmentSummary) -> Self {
         Self {
             elements: ThinSlice::new(elements),
-            summary: FragmentSummary::new(effect, capabilities, conditional_lines, intrinsic_lines),
+            summary,
         }
     }
 
     fn elements(self) -> &'a [Instruction<'a>] {
         self.elements.get()
+    }
+
+    fn rich_indent(self) -> bool {
+        self.summary.rich_indent()
+    }
+
+    fn has_source_groups(self) -> bool {
+        self.summary.has_source_groups()
+    }
+
+    fn requires_group_analysis(self) -> bool {
+        self.has_source_groups() && group::requires_analysis(self)
+    }
+
+    fn extended_print(self) -> bool {
+        self.summary.0 & FragmentSummary::EXTENDED_PRINT != 0
     }
 
     fn effect(self) -> BreakEffect {
@@ -340,58 +311,22 @@ impl<'a> Fragment<'a> {
         self.summary.conditional_lines()
     }
 
-    /// Whether the normal render path contains a line-breaking opportunity.
-    /// Alternatives follow their first candidate, while flat views inspect
-    /// only the instructions that survive their existing projection.
+    /// Whether the primary contents contain an explicit line instruction.
+    /// Visits both conditional branches and line suffixes, respects flat views,
+    /// and ignores newlines in Text and requests to expand a group.
     pub fn can_break(self) -> bool {
-        if matches!(self.capabilities(), FragmentCapabilities::Neutral) {
-            return false;
-        }
-        let mut pending = vec![(self.elements(), false)];
-        while let Some((elements, flat)) = pending.pop() {
-            for &element in elements {
-                let element = if flat {
-                    let Some(element) = element.flattened() else {
-                        continue;
-                    };
-                    element
-                } else {
-                    element
-                };
-                match element {
-                    Instruction::SoftLine
-                    | Instruction::SoftLineIfGroupBreaks(_)
-                    | Instruction::NormalLine
-                    | Instruction::HardLine
-                    | Instruction::LiteralLine
-                    | Instruction::LiteralLineAtCurrentIndent => return true,
-                    Instruction::Text { source, width }
-                    | Instruction::TextIfBreak { source, width }
-                    | Instruction::TextIfFlat { source, width } => {
-                        if !Text::from_parts(source, width).is_single_line() {
-                            return true;
-                        }
-                    }
-                    Instruction::IfBreak(conditional)
-                    | Instruction::FlatConditional(conditional) => {
-                        let flat = matches!(element, Instruction::FlatConditional(_));
-                        pending.push((conditional.broken.elements(), flat));
-                        pending.push((conditional.flat.elements(), flat));
-                    }
-                    Instruction::Fragment { elements, .. } => pending.push((elements.get(), false)),
-                    Instruction::FlatFragment { elements, .. } => {
-                        pending.push((elements.get(), true));
-                    }
-                    Instruction::CompactGroup(alternatives) => {
-                        pending.push((alternatives.first().elements(), false));
-                    }
-                    _ => {}
-                }
-            }
-        }
-        false
+        query::can_break(self)
     }
 
+    /// Whether the primary contents contain a line instruction or multiline Text.
+    /// Uses the same traversal and flat-view rules as [`Self::can_break`].
+    pub fn has_line_breaks(self) -> bool {
+        query::has_line_breaks(self)
+    }
+
+    /// Whether construction requests expansion of enclosing groups. Candidate
+    /// layouts form propagation barriers; explicit hard lines without a parent
+    /// break request do not contribute.
     pub fn preferred_breaks(self) -> bool {
         self.effect().preferred_breaks()
     }
@@ -455,6 +390,7 @@ impl FragmentCapabilities {
                 Instruction::StartGroup {
                     effect: BreakEffect(0),
                     id: None,
+                    ..
                 }
                 | Instruction::StartGroupWithFlatWidth { .. }
                 | Instruction::EndGroup => continue,
@@ -477,124 +413,50 @@ impl FragmentCapabilities {
     }
 }
 
+/// A flat-layout view of retained instructions, exported through standard Prettier
+/// Docs. This is a layout projection, independent of the flat storage format.
 #[derive(Debug, Clone, Copy)]
 pub struct FlatFragment<'a>(Fragment<'a>);
 
-#[derive(Debug)]
-struct CompactGroup<'a> {
-    preferred: &'a [Fragment<'a>],
-    fallback: Fragment<'a>,
-}
-
-#[derive(Debug)]
-struct IfBreak<'a> {
-    target: ConditionTarget,
-    broken: Fragment<'a>,
-    flat: Fragment<'a>,
-}
-
-impl<'a> CompactGroup<'a> {
-    /// Flat views and their eligibility always follow this exact path.
-    fn first(&self) -> Fragment<'a> {
-        self.preferred.first().copied().unwrap_or(self.fallback)
-    }
-}
-
-impl<'a> Instruction<'a> {
-    fn text(text: Text<'a>) -> Self {
-        let (source, width) = text.into_parts();
-        Self::Text { source, width }
-    }
-
-    fn if_break(text: Text<'a>) -> Self {
-        let (source, width) = text.into_parts();
-        Self::TextIfBreak { source, width }
-    }
-
-    fn if_flat(text: Text<'a>) -> Self {
-        let (source, width) = text.into_parts();
-        Self::TextIfFlat { source, width }
-    }
-
-    fn fragment(fragment: Fragment<'a>) -> Self {
-        Self::Fragment {
-            elements: fragment.elements,
-            summary: fragment.summary,
-        }
-    }
-
-    fn flat_fragment(FlatFragment(fragment): FlatFragment<'a>) -> Self {
-        Self::FlatFragment {
-            elements: fragment.elements,
-            summary: fragment.summary,
-        }
-    }
-
-    fn permits_flat(self) -> bool {
-        match self {
-            Self::HardLine
-            | Self::LiteralLine
-            | Self::LiteralLineAtCurrentIndent
-            | Self::StartLineSuffix { .. }
-            | Self::EndLineSuffix
-            | Self::BreakParent
-            // Named groups commit an observable layout decision. Removing that
-            // decision cannot be expressed by a flat view of standard Doc.
-            | Self::StartGroup { id: Some(_), .. } => false,
-            Self::IfBreak(conditional) | Self::FlatConditional(conditional) => {
-                conditional.broken.capabilities().permits_flat()
-                    && conditional.flat.capabilities().permits_flat()
-            }
-            Self::Text { source, width } | Self::TextIfFlat { source, width } => Text::from_parts(source, width).is_single_line(),
-            Self::Fragment { summary, .. } => summary.capabilities().permits_flat(),
-            Self::CompactGroup(alternatives) => alternatives.first().capabilities().permits_flat(),
-            _ => true,
-        }
-    }
-
-    /// Applies a flat view without changing any retained instructions.
-    // Keep projection state out of the ordinary printer and fit dispatch loops.
-    #[inline(never)]
-    fn flattened(self) -> Option<Self> {
-        match self {
-            Self::NormalLine => Some(Self::text(Text::new(" "))),
-            Self::TextIfFlat { source, width } => Some(Self::Text { source, width }),
-            Self::IfBreak(conditional) | Self::FlatConditional(conditional) => {
-                Some(match conditional.target {
-                    ConditionTarget::Current => Self::flat_fragment(FlatFragment(conditional.flat)),
-                    ConditionTarget::Group(_) => Self::FlatConditional(conditional),
-                })
-            }
-            Self::Fragment { elements, summary } => Some(Self::FlatFragment { elements, summary }),
-            Self::CompactGroup(alternatives) => {
-                Some(Self::flat_fragment(FlatFragment(alternatives.first())))
-            }
-            element @ (Self::Text { .. }
-            | Self::LineSuffixBoundary
-            | Self::StartIndentIfBreak { .. }
-            | Self::FlatFragment { .. }) => Some(element),
-            _ => None,
-        }
-    }
-}
-
 pub struct Doc<'a> {
+    /// Arena owning instruction storage; no Prettier field.
     allocator: &'a swc_next_allocator::Allocator,
-    elements: &'a [Instruction<'a>],
+    /// The root Prettier Doc represented as a complete flat scope.
+    root: Fragment<'a>,
+    /// Capacity for local group decisions; no Prettier field.
     group_count: u32,
 }
 
-impl Doc<'_> {
+impl<'a> Doc<'a> {
     /// Encodes the logical document into an owned version-0 buffer.
     ///
     /// Text instructions retain their complete strings, including source newlines.
     /// This transport is still evolving and does not yet cover every document that
     /// the native printer can render.
     pub fn encode(self) -> Vec<u8> {
-        encode::encode(self)
+        encode::encode::<false>(self)
+    }
+
+    /// Encodes a version-0 buffer for execution by a Prettier Doc printer.
+    ///
+    /// Expanded groups export their primary contents as the first state,
+    /// followed by their executable alternatives and fallback. This preserves
+    /// group decisions and shared scopes while exposing all executable layouts
+    /// to Prettier's break propagation. Use [`Self::encode`] to retain the
+    /// original contents and expanded-state fields for structural round trips.
+    pub fn encode_for_prettier(self) -> Vec<u8> {
+        encode::encode::<true>(self)
     }
 
     pub fn print(self, options: PrintOptions) -> String {
-        printer::print(self.elements, self.allocator, self.group_count, options)
+        printer::print(self, options, false)
+            .expect("cursor collection is disabled")
+            .text
+    }
+
+    /// Prints the Doc and returns the UTF-8 byte range between two emitted cursors.
+    /// Zero or one cursor produces no range. More than two produces an error.
+    pub fn print_with_cursor(self, options: PrintOptions) -> Result<PrintResult, CursorError> {
+        printer::print(self, options, true)
     }
 }
