@@ -4,11 +4,11 @@ use swc_next_ecma_ast::{
     BindingIdentifier, BindingPattern, BindingPatternData, BindingProperty, BlockStatement,
     CallExpression, ConditionalExpression, DeclData, Expr, ExprData, ForStatement,
     ForStatementInitData, Function, FunctionBody, FunctionType, GetSpan, IdentifierReference,
-    IfStatement, LogicalExpression, LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program,
-    PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData,
-    SubRange, SwitchCase, TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx,
-    TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator,
-    VariableKind, WhileStatement,
+    IfStatement, LogicalExpression, LogicalOperator, MemberExpression, NodeId, NodeKindData,
+    ObjectProperty, Program, PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span,
+    StaticBlock, Stmt, StmtData, SubRange, SwitchCase, TaggedTemplateExpression, TraverseAction,
+    TraverseMut, TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator,
+    VariableDeclaration, VariableDeclarator, VariableKind, WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
@@ -19,6 +19,7 @@ use crate::{CompressOptions, mangle::Renames};
 mod conditionals;
 mod dead_code;
 mod effects;
+mod properties;
 mod reduce;
 mod side_effects;
 mod statements;
@@ -1183,6 +1184,20 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             if !key_is(ast, node.key(ast), name) {
                 node.set_shorthand(ast, false);
             }
+        }
+        if self.options.properties {
+            properties::object_property(ast, node);
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_member_expression(
+        &mut self,
+        node: MemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<MemberExpression> {
+        if self.options.properties {
+            properties::member(ctx.ast, node);
         }
         TraverseAction::Continue
     }

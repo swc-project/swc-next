@@ -66,6 +66,9 @@ pub struct CompressOptions {
     /// Negate a function expression that an expression statement calls, so
     /// `(function(){})()` prints as `!function(){}()`. Enabled by default.
     pub negate_iife: bool,
+    /// Shorten property names: `a["b"]` to `a.b`, and `{ "a": b }` to
+    /// `{ a: b }`. Only ASCII names are converted. Enabled by default.
+    pub properties: bool,
     /// Replace the reads of a local binding that is initialized with a
     /// constant and never assigned with the constant, when the reads run
     /// after the initialization and the output gets shorter, and remove
@@ -102,6 +105,7 @@ impl Default for CompressOptions {
             if_return: true,
             join_vars: true,
             negate_iife: true,
+            properties: true,
             reduce_vars: true,
             sequences: true,
             side_effects: true,
@@ -125,6 +129,7 @@ impl CompressOptions {
             if_return: false,
             join_vars: false,
             negate_iife: false,
+            properties: false,
             reduce_vars: false,
             sequences: false,
             side_effects: false,
