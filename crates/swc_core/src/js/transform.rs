@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Diagnostic, Lang, Severity};
+use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as CodegenOptions, SourceMap, print};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
@@ -426,7 +426,11 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
         let comments = options.comments.or(parser_options.comments);
         comments.unwrap_or(default)
     };
-    let lang: Lang = parser_options.lang.map(Into::into).unwrap_or_default();
+    let lang = {
+        let inferred = options.filename.as_deref().map(Lang::from_path);
+        let explicit = parser_options.lang.map(Into::into);
+        explicit.or(inferred).unwrap_or_default()
+    };
     let transform = {
         let mut transform = options.transform.unwrap_or_default();
         let typescript = BoolOr::Bool(lang.is_typescript());
@@ -447,9 +451,13 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
         } else {
             comments
         };
-        let source_type = parser_options.source_type.map(Into::into);
+        let source_type = {
+            let inferred = options.filename.as_deref().map(SourceType::from_path);
+            let explicit = parser_options.source_type.map(Into::into);
+            explicit.or(inferred).unwrap_or_default()
+        };
         let parser_options = ParserOptions {
-            source_type: source_type.unwrap_or_default(),
+            source_type,
             lang,
             comments: parser_comments.into(),
             ..ParserOptions::default()
