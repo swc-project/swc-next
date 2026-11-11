@@ -18,6 +18,10 @@ use super::util::{
     unicode_separator_len,
 };
 
+mod scan_ident;
+
+use scan_ident::{is_identifier_byte, scan_ascii_identifier_continue};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
     UnterminatedString,
@@ -499,9 +503,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
         if let Some(&next) = self.source.get(end)
-            && (ASCII_IDENTIFIER_CLASS.contains(next)
-                || needs_full_identifier_scan(next)
-                || next == b'.')
+            && (is_identifier_byte(next) || next == b'.')
         {
             return false;
         }
@@ -1897,94 +1899,6 @@ const FAST_CLASS: [FastClass; 256] = {
     table
 };
 
-/// A class of byte values, held as one bit per byte.
-///
-/// Four words rather than the 1 KiB table this replaces, so classifying a byte is a bit test
-/// inside two cache lines.
-#[derive(Clone, Copy)]
-struct ClassBits(u64x4);
-
-impl ClassBits {
-    const EMPTY: Self = Self(u64x4::splat(0));
-
-    /// The class with `byte` added.
-    const fn insert(self, byte: u8) -> Self {
-        let index = byte as usize;
-        let mut words = self.0.to_array();
-        words[index >> 6] |= 1u64 << (index & 63);
-        Self(u64x4::from_array(words))
-    }
-
-    /// Whether `byte` is in the class.
-    const fn contains(self, byte: u8) -> bool {
-        let index = byte as usize;
-        self.0.to_array()[index >> 6] >> (index & 63) & 1 != 0
-    }
-}
-
-/// The bytes that continue an ASCII identifier.
-const ASCII_IDENTIFIER_CLASS: ClassBits = identifier_class(false);
-
-/// [`ASCII_IDENTIFIER_CLASS`] plus `-`, which continues a JSX tag name.
-const ASCII_JSX_IDENTIFIER_CLASS: ClassBits = identifier_class(true);
-
-const fn identifier_class(jsx: bool) -> ClassBits {
-    const fn is_ascii_identifier_continue(jsx: bool, byte: u8) -> bool {
-        matches!(byte, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
-            || byte == b'_'
-            || byte == b'$'
-            || (jsx && byte == b'-')
-    }
-    
-    let mut class = ClassBits::EMPTY;
-    let mut byte = 0;
-    while byte < 256 {
-        if is_ascii_identifier_continue(jsx, byte as u8) {
-            class = class.insert(byte as u8);
-        }
-        byte += 1;
-    }
-    class
-}
-
-/// Bytes that go to the full scanner instead of ending the identifier: `\\` starts an escape
-/// and non-ASCII bytes need the identifier tables. `byte ^ b'\\'` covers both in one signed
-/// comparison.
-#[inline(always)]
-fn needs_full_identifier_scan(byte: u8) -> bool {
-    (byte ^ b'\\') as i8 <= 0
-}
-
-/// The lanes that continue an ASCII identifier, as one bit per lane.
-///
-/// `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane minimum tells a wrapped range offset
-/// from one that stayed inside the width. A lane-wise table lookup of [`ASCII_IDENTIFIER_CLASS`]
-/// would be shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
-///
-/// Where the next token starts follows the lane that stops this identifier, so what a scan costs
-/// is this chain's depth rather than its instruction count: the tests are independent, so they
-/// are joined by depth, the letters test last because it is the deepest.
-#[inline(always)]
-fn identifier_continue_bits<const JSX: bool>(bytes: u8x16) -> u16 {
-    #[inline(always)]
-    fn lanes_in_range(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
-        let offset = bytes - u8x16::splat(lo);
-        offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)))
-    }
-    
-    let letters = lanes_in_range(bytes | u8x16::splat(0x20), b'a', b'z');
-    let digits = lanes_in_range(bytes, b'0', b'9');
-    let marks = bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
-    let continues = if JSX {
-        // `-` joins the marks, which keeps the letters test off the deepest path.
-        letters | (digits | (marks | bytes.simd_eq(u8x16::splat(b'-'))))
-    } else {
-        letters | (digits | marks)
-    };
-
-    continues.to_bitmask()
-}
-
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
 fn fast_token_flags(line_break: bool) -> u8 {
@@ -1993,60 +1907,6 @@ fn fast_token_flags(line_break: bool) -> u8 {
     } else {
         0
     }
-}
-
-/// Bytes one [`u8x16`] batch covers.
-const IDENTIFIER_BATCH_SIZE: usize = 16;
-
-// This is a very hot path. Inline this loop too
-// to avoid losing the single-call-site bonus and
-// introducing a new helper call.
-/// Returns the end of the ASCII identifier part at `start`, or `None` if an
-/// escape or a non-ASCII byte follows it and the full scanner is needed.
-#[inline(always)]
-fn scan_ascii_identifier_continue<const JSX: bool>(source: &[u8], start: u32) -> Option<u32> {
-    debug_assert!(u32::try_from(source.len()).is_ok());
-    debug_assert!((start as usize) <= source.len());
-    // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
-    let mut position = start as usize;
-    let class = if JSX {
-        ASCII_JSX_IDENTIFIER_CLASS
-    } else {
-        ASCII_IDENTIFIER_CLASS
-    };
-
-    // One load and one branch per batch; only the first byte that stops the identifier is
-    // looked at again.
-    while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
-        let stopped = !identifier_continue_bits::<JSX>(u8x16::from_array(*chunk));
-        let lane = stopped.trailing_zeros() as usize;
-        if lane < IDENTIFIER_BATCH_SIZE {
-            // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
-            let byte = unsafe { *source.get_unchecked(position + lane) };
-            return ascii_identifier_end(byte, position + lane);
-        }
-        position += IDENTIFIER_BATCH_SIZE;
-    }
-    // Fewer than a batch of bytes remain, so scan them one at a time.
-    while let Some(&byte) = source.get(position) {
-        if !class.contains(byte) {
-            return ascii_identifier_end(byte, position);
-        }
-        position += 1;
-    }
-
-    debug_assert!(position >= start as usize);
-    debug_assert!(position <= source.len());
-    Some(position as u32)
-}
-
-/// Ends an ASCII identifier part at `position`, where `byte` is not an
-/// identifier part. Returns `None` for `\\` and non-ASCII bytes, which need the
-/// full scanner. Testing the byte instead of the class bits keeps the scan loop
-/// from holding the class of each byte.
-#[inline(always)]
-fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
-    (!needs_full_identifier_scan(byte)).then_some(position as u32)
 }
 
 #[inline]

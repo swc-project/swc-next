@@ -1,0 +1,248 @@
+//! Scans the ASCII identifier part after an identifier start byte, and says whether a byte can
+//! belong to an identifier. The scan lives in `imp`, defined once per target: x86-64 classifies a
+//! whole batch at once, where a lane mask is one `pmovmskb`, and other targets read a byte table.
+
+/// Whether `byte` continues a non-JSX ASCII identifier.
+#[inline(always)]
+const fn is_ascii_identifier_continue(byte: u8) -> bool {
+    matches!(byte, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' | b'_' | b'$')
+}
+
+/// Bytes that go to the full scanner instead of ending the identifier: `\\` starts an escape
+/// and non-ASCII bytes need the identifier tables. `byte ^ b'\\'` covers both in one signed
+/// comparison.
+#[inline(always)]
+fn needs_full_identifier_scan(byte: u8) -> bool {
+    (byte ^ b'\\') as i8 <= 0
+}
+
+/// Whether `byte` can still belong to an identifier, as an ASCII identifier part or through
+/// the full identifier scanner.
+#[inline(always)]
+pub(super) fn is_identifier_byte(byte: u8) -> bool {
+    is_ascii_identifier_continue(byte) || needs_full_identifier_scan(byte)
+}
+
+/// Ends an ASCII identifier part at `position`, where `byte` is not an identifier part. Returns
+/// `None` for `\\` and non-ASCII bytes, which need the full scanner. Testing the byte instead of
+/// the class keeps the scan loop from holding the class of each byte.
+#[inline(always)]
+fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
+    (!needs_full_identifier_scan(byte)).then_some(position as u32)
+}
+
+#[cfg(target_arch = "x86_64")]
+mod imp {
+    use swc_next_simd::prelude::*;
+
+    use super::{ascii_identifier_end, is_ascii_identifier_continue};
+
+    /// A class of byte values, held as one bit per byte.
+    ///
+    /// Four words rather than the 1 KiB table this replaces, so classifying a byte is a bit test
+    /// inside two cache lines.
+    #[derive(Clone, Copy)]
+    struct ClassBits(u64x4);
+
+    impl ClassBits {
+        const EMPTY: Self = Self(u64x4::splat(0));
+
+        /// The class with `byte` added.
+        const fn insert(self, byte: u8) -> Self {
+            let index = byte as usize;
+            let mut words = self.0.to_array();
+            words[index >> 6] |= 1u64 << (index & 63);
+            Self(u64x4::from_array(words))
+        }
+
+        /// Whether `byte` is in the class.
+        const fn contains(self, byte: u8) -> bool {
+            let index = byte as usize;
+            self.0.to_array()[index >> 6] >> (index & 63) & 1 != 0
+        }
+    }
+
+    /// The bytes that continue an ASCII identifier.
+    const ASCII_IDENTIFIER_CLASS: ClassBits = identifier_class(false);
+
+    /// [`ASCII_IDENTIFIER_CLASS`] plus `-`, which continues a JSX tag name.
+    const ASCII_JSX_IDENTIFIER_CLASS: ClassBits = identifier_class(true);
+
+    const fn identifier_class(jsx: bool) -> ClassBits {
+        let mut class = ClassBits::EMPTY;
+        let mut byte = 0;
+        while byte < 256 {
+            if is_ascii_identifier_continue(byte as u8) || (jsx && byte as u8 == b'-') {
+                class = class.insert(byte as u8);
+            }
+            byte += 1;
+        }
+        class
+    }
+
+    /// The lanes that continue an ASCII identifier, as one bit per lane.
+    ///
+    /// `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane minimum tells a wrapped range offset
+    /// from one that stayed inside the width. A lane-wise table lookup of [`ASCII_IDENTIFIER_CLASS`]
+    /// would be shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
+    ///
+    /// Where the next token starts follows the lane that stops this identifier, so what a scan costs
+    /// is this chain's depth rather than its instruction count: the tests are independent, so they
+    /// are joined by depth, the letters test last because it is the deepest.
+    #[inline(always)]
+    fn identifier_continue_bits<const JSX: bool>(bytes: u8x16) -> u16 {
+        #[inline(always)]
+        fn lanes_in_range(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
+            let offset = bytes - u8x16::splat(lo);
+            offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)))
+        }
+
+        let letters = lanes_in_range(bytes | u8x16::splat(0x20), b'a', b'z');
+        let digits = lanes_in_range(bytes, b'0', b'9');
+        let marks = bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
+        let continues = if JSX {
+            // `-` joins the marks, which keeps the letters test off the deepest path.
+            letters | (digits | (marks | bytes.simd_eq(u8x16::splat(b'-'))))
+        } else {
+            letters | (digits | marks)
+        };
+
+        continues.to_bitmask()
+    }
+
+    /// Bytes one [`u8x16`] batch covers.
+    const IDENTIFIER_BATCH_SIZE: usize = 16;
+
+    // This is a very hot path. Inline this loop too
+    // to avoid losing the single-call-site bonus and
+    // introducing a new helper call.
+    /// Returns the end of the ASCII identifier part at `start`, or `None` if an
+    /// escape or a non-ASCII byte follows it and the full scanner is needed.
+    #[inline(always)]
+    pub fn scan_ascii_identifier_continue<const JSX: bool>(
+        source: &[u8],
+        start: u32,
+    ) -> Option<u32> {
+        debug_assert!(u32::try_from(source.len()).is_ok());
+        debug_assert!((start as usize) <= source.len());
+        // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
+        let mut position = start as usize;
+        let class = if JSX {
+            ASCII_JSX_IDENTIFIER_CLASS
+        } else {
+            ASCII_IDENTIFIER_CLASS
+        };
+
+        // One load and one branch per batch; only the first byte that stops the identifier is
+        // looked at again.
+        while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
+            let stopped = !identifier_continue_bits::<JSX>(u8x16::from_array(*chunk));
+            let lane = stopped.trailing_zeros() as usize;
+            if lane < IDENTIFIER_BATCH_SIZE {
+                // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
+                let byte = unsafe { *source.get_unchecked(position + lane) };
+                return ascii_identifier_end(byte, position + lane);
+            }
+            position += IDENTIFIER_BATCH_SIZE;
+        }
+        // Fewer than a batch of bytes remain, so scan them one at a time.
+        while let Some(&byte) = source.get(position) {
+            if !class.contains(byte) {
+                return ascii_identifier_end(byte, position);
+            }
+            position += 1;
+        }
+
+        debug_assert!(position >= start as usize);
+        debug_assert!(position <= source.len());
+        Some(position as u32)
+    }
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+mod imp {
+    use super::{ascii_identifier_end, is_ascii_identifier_continue};
+
+    /// How a byte after an ASCII identifier prefix affects the identifier.
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    #[repr(u8)]
+    enum IdentifierClass {
+        /// An ASCII identifier part.
+        Continue,
+        /// A byte that ends the identifier.
+        End,
+        /// An escape or non-ASCII byte that needs the full identifier scanner.
+        Slow,
+    }
+
+    const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
+        let mut table = [IdentifierClass::End; 256];
+        let mut byte = 0;
+        while byte < 256 {
+            if is_ascii_identifier_continue(byte as u8) {
+                table[byte] = IdentifierClass::Continue;
+            } else if byte == b'\\' as usize || byte >= 0x80 {
+                table[byte] = IdentifierClass::Slow;
+            }
+            byte += 1;
+        }
+        table
+    };
+
+    const ASCII_JSX_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
+        let mut table = ASCII_IDENTIFIER_CLASS;
+        table[b'-' as usize] = IdentifierClass::Continue;
+        table
+    };
+
+    const IDENTIFIER_BATCH_SIZE: usize = 32;
+
+    // This is a very hot path. Inline this loop too
+    // to avoid losing the single-call-site bonus and
+    // introducing a new helper call.
+    /// Returns the end of the ASCII identifier part at `start`, or `None` if an
+    /// escape or a non-ASCII byte follows it and the full scanner is needed.
+    #[inline(always)]
+    pub fn scan_ascii_identifier_continue<const JSX: bool>(
+        source: &[u8],
+        start: u32,
+    ) -> Option<u32> {
+        debug_assert!(u32::try_from(source.len()).is_ok());
+        debug_assert!((start as usize) <= source.len());
+        // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
+        let mut position = start as usize;
+        let classes = if JSX {
+            &ASCII_JSX_IDENTIFIER_CLASS
+        } else {
+            &ASCII_IDENTIFIER_CLASS
+        };
+
+        // Comparing the batch end instead of the remaining length keeps no extra counter live, so
+        // the scan fits in caller-saved registers. `position + IDENTIFIER_BATCH_SIZE` cannot overflow
+        // because a slice length is at most `isize::MAX`.
+        while position + IDENTIFIER_BATCH_SIZE <= source.len() {
+            let batch_end = position + IDENTIFIER_BATCH_SIZE;
+            // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
+            // guarantees that `batch_end` is within `source`.
+            let batch = unsafe { source.get_unchecked(position..batch_end) };
+            for (offset, byte) in batch.iter().enumerate() {
+                if classes[*byte as usize] != IdentifierClass::Continue {
+                    return ascii_identifier_end(*byte, position + offset);
+                }
+            }
+            position += IDENTIFIER_BATCH_SIZE;
+        }
+        while let Some(byte) = source.get(position) {
+            if classes[*byte as usize] != IdentifierClass::Continue {
+                return ascii_identifier_end(*byte, position);
+            }
+            position += 1;
+        }
+
+        debug_assert!(position >= start as usize);
+        debug_assert!(position <= source.len());
+        Some(position as u32)
+    }
+}
+
+pub use imp::*;
