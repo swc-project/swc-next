@@ -12,13 +12,13 @@ description: parseSync inputs, parser options, results, and diagnostics.
 ```ts
 declare function parseSync(
   source: string,
-  options?: ParserOptions | null,
+  options?: ParseApiOptions | null,
 ): ParseResult;
 ```
 
 `source` is the complete source text. Omitting `options` or passing `null` uses the defaults below. Parsing is synchronous. By default, the first diagnostic is thrown; enable `errorRecovery` to return diagnostics and a recovered AST.
 
-## ParserOptions
+## ParseApiOptions
 
 | Option | Type | Default | Behavior |
 | --- | --- | --- | --- |
@@ -140,7 +140,7 @@ parseSync(source, { comments: "none" }).comments;
 
 `value` excludes the comment delimiters, while `start` and `end` include them. Offsets use UTF-16 code units and the end is exclusive. A hashbang such as `#!/usr/bin/env node` is stored separately in `program.hashbang`.
 
-Collecting comments does not make [`printSync`](/api/javascript/codegen) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
+Collecting comments does not make [`generateSync`](/api/javascript/generator) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
 
 ### errorRecovery
 
@@ -185,7 +185,7 @@ interface ParseResult {
 | Field | Contents |
 | --- | --- |
 | `program` | The ESTree-based program. Its nodes can be inspected and edited. |
-| `meta` | `{ lang, sourceType }`; keep it with the AST and pass it to [printSync](/api/javascript/codegen#metadata). |
+| `meta` | `{ lang, sourceType }`; keep it with the AST and pass it to [generateSync](/api/javascript/generator#metadata). |
 | `comments` | Flat comments with `type: "Line" \| "Block"`, delimiter-free `value`, `start`, and `end`. Empty when collection is disabled. |
 | `diagnostics` | Syntax diagnostics and, with `semanticErrors`, semantic early errors. Check these before using recovered output. |
 

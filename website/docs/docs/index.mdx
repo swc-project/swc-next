@@ -24,10 +24,10 @@ npm install @swc-next/core
 Parse a program and print it back to source:
 
 ```js title="index.mjs"
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program } = parseSync("const answer = 42;");
-console.log(printSync(program).code); // const answer = 42;
+console.log(generateSync(program).code); // const answer = 42;
 ```
 
 See [Install](/guide/install) for browser setup, or explore the [JavaScript API](/api/javascript/core).

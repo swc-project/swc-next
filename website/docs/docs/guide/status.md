@@ -23,7 +23,7 @@ These labels describe feature availability, not conformance pass rates or API st
 | --- | --- | --- | --- |
 | [Parsing](/api/javascript/parser) | Implemented | Implemented | JavaScript, TypeScript, JSX, TSX, and declaration files. |
 | [AST traversal and editing](/api/javascript/walk) | Implemented | Implemented | Structural traversal, visitor hooks, and node edits. |
-| [Code generation](/api/javascript/codegen) | Implemented | Implemented | Readable or compact output, ASCII-only output, and inline-script escaping. |
+| [Code generation](/api/javascript/generator) | Implemented | Implemented | Readable or compact output, ASCII-only output, and inline-script escaping. |
 | Parser diagnostics and comments | Implemented | Implemented | Syntax recovery, diagnostic spans, and comment collection. |
 | Semantic early errors | Implemented | Implemented | Enable `semanticErrors` in the JavaScript parser options. |
 | [Scopes, symbols, and references](/api/components/semantic) | Not started | Implemented | The full semantic model is separate from parser early-error diagnostics. |
@@ -31,5 +31,5 @@ These labels describe feature availability, not conformance pass rates or API st
 | [Minification](/api/components/minifier) | Not started | Partial | Selected compression passes. Name mangling is not implemented; the printer's `minify` option only controls formatting. |
 | [Type stripping](/api/components/type-strip) | Not started | Implemented | The `erasableSyntaxOnly` subset, preserving UTF-16 length and line layout. |
 | [Isolated declarations](/api/components/isolated-declarations) | Not started | Implemented | Declaration-surface generation, without full TypeScript type checking. |
-| Comment and source-map emission | Not started | Implemented | JavaScript `printSync` currently returns code only. |
+| Comment and source-map emission | Not started | Implemented | JavaScript `generateSync` currently returns code only. |
 | SWC configuration compatibility | Not started | Not started | Selected `.swcrc` options are planned. |
