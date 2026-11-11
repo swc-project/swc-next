@@ -66,6 +66,7 @@ pub(super) enum Operation<'a> {
     RemoveLines,
     ReplaceEndOfLine(Fragment<'a>),
     Remap(u32),
+    Clean,
 }
 
 pub(super) fn children<'a>(
@@ -328,6 +329,12 @@ pub(super) fn map_element<'a>(
         I::IfBreak(c) | I::FlatIfBreak(c) => {
             let broken = lookup(c.broken);
             let flat = lookup(c.flat);
+            if matches!(operation, Operation::Clean)
+                && broken.elements().is_empty()
+                && flat.elements().is_empty()
+            {
+                return Some(I::text(Text::new("")));
+            }
             let target = remap_target(c.target);
             if target.is_none() && same(c.broken, broken) && same(c.flat, flat) {
                 return None;

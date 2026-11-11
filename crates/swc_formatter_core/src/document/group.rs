@@ -164,6 +164,8 @@ pub(super) trait Group<'a>: Copy {
         lookup: impl Fn(Fragment<'a>) -> Fragment<'a>,
         remap_id: impl FnOnce(GroupId) -> Option<GroupId>,
     ) -> Option<Instruction<'a>>;
+
+    fn replace_primary(self, allocator: &'a Allocator, contents: Fragment<'a>) -> Instruction<'a>;
 }
 
 impl<'a> Group<'a> for &'a CompactGroup<'a> {
@@ -254,6 +256,20 @@ impl<'a> Group<'a> for &'a CompactGroup<'a> {
             .element(),
         )
     }
+
+    fn replace_primary(self, allocator: &'a Allocator, contents: Fragment<'a>) -> Instruction<'a> {
+        let mut states = ArenaVec::with_capacity_in(self.preferred.len() + 1, allocator);
+        states.extend_from_slice(self.preferred);
+        states.push(self.fallback);
+        with_states(
+            allocator,
+            GroupRequest::Auto,
+            None,
+            contents,
+            states.into_bump_slice(),
+        )
+        .element()
+    }
 }
 
 impl<'a> Group<'a> for &'a SourceGroup<'a> {
@@ -338,6 +354,10 @@ impl<'a> Group<'a> for &'a SourceGroup<'a> {
             )
             .element(),
         )
+    }
+
+    fn replace_primary(self, allocator: &'a Allocator, contents: Fragment<'a>) -> Instruction<'a> {
+        with_states(allocator, self.request, self.id, contents, self.states).element()
     }
 }
 

@@ -20,6 +20,7 @@ mod indent;
 mod instruction;
 mod layout;
 mod line;
+mod normalize;
 mod printer;
 mod query;
 #[cfg(test)]
@@ -139,6 +140,8 @@ const _: () = assert!(std::mem::size_of::<Fragment<'_>>() <= 16);
 struct FragmentSummary(u8);
 
 impl FragmentSummary {
+    const EMPTY: Self = Self((FragmentCapabilities::Neutral as u8) << 1);
+
     const REQUIRED: u8 = 1;
     const CAPABILITIES: u8 = 0b110;
     const CONDITIONAL_LINES: u8 = 1 << 3;
@@ -274,6 +277,10 @@ fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
 }
 
 impl<'a> Fragment<'a> {
+    fn empty() -> Self {
+        Self::new(&[], FragmentSummary::EMPTY)
+    }
+
     fn new(elements: &'a [Instruction<'a>], summary: FragmentSummary) -> Self {
         Self {
             elements: ThinSlice::new(elements),
@@ -472,6 +479,18 @@ impl<'a> Doc<'a> {
     /// groups are scoped independently and its label IDs are preserved.
     pub fn replace_end_of_line_with(self, replacement: Self) -> Self {
         transform::replace_end_of_line(self, Some(replacement))
+    }
+
+    /// Coalesces adjacent Text and removes inert empty wrappers in logical sequences.
+    /// Empty scopes with layout or metadata effects are retained.
+    pub fn clean(self) -> Self {
+        normalize::clean(self)
+    }
+
+    /// Cleans the Doc, then removes trailing hardline pairs and terminal
+    /// newlines from the final logical part of each eligible branch.
+    pub fn strip_trailing_hardline(self) -> Self {
+        normalize::strip_trailing_hardline(self)
     }
 
     /// Decodes a versioned document, borrowing its text from the input buffer.
