@@ -37,54 +37,18 @@ mod imp {
 
     use super::{ascii_identifier_end, is_ascii_identifier_continue};
 
-    /// A class of byte values, held as one bit per byte.
-    ///
-    /// Four words rather than the 1 KiB table this replaces, so classifying a byte is a bit test
-    /// inside two cache lines.
-    #[derive(Clone, Copy)]
-    struct ClassBits(u64x4);
-
-    impl ClassBits {
-        const EMPTY: Self = Self(u64x4::splat(0));
-
-        /// The class with `byte` added.
-        const fn insert(self, byte: u8) -> Self {
-            let index = byte as usize;
-            let mut words = self.0.to_array();
-            words[index >> 6] |= 1u64 << (index & 63);
-            Self(u64x4::from_array(words))
-        }
-
-        /// Whether `byte` is in the class.
-        const fn contains(self, byte: u8) -> bool {
-            let index = byte as usize;
-            self.0.to_array()[index >> 6] >> (index & 63) & 1 != 0
-        }
-    }
-
-    /// The bytes that continue an ASCII identifier.
-    const ASCII_IDENTIFIER_CLASS: ClassBits = identifier_class(false);
-
-    /// [`ASCII_IDENTIFIER_CLASS`] plus `-`, which continues a JSX tag name.
-    const ASCII_JSX_IDENTIFIER_CLASS: ClassBits = identifier_class(true);
-
-    const fn identifier_class(jsx: bool) -> ClassBits {
-        let mut class = ClassBits::EMPTY;
-        let mut byte = 0;
-        while byte < 256 {
-            if is_ascii_identifier_continue(byte as u8) || (jsx && byte as u8 == b'-') {
-                class = class.insert(byte as u8);
-            }
-            byte += 1;
-        }
-        class
+    /// Whether `byte` continues an identifier, the set that [`identifier_continue_bits`] computes
+    /// a batch at a time.
+    #[inline(always)]
+    fn continues<const JSX: bool>(byte: u8) -> bool {
+        is_ascii_identifier_continue(byte) || (JSX && byte == b'-')
     }
 
     /// The lanes that continue an ASCII identifier, as one bit per lane.
     ///
     /// `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane minimum tells a wrapped range offset
-    /// from one that stayed inside the width. A lane-wise table lookup of [`ASCII_IDENTIFIER_CLASS`]
-    /// would be shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
+    /// from one that stayed inside the width. A lane-wise table lookup of the class would be
+    /// shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
     ///
     /// Where the next token starts follows the lane that stops this identifier, so what a scan costs
     /// is this chain's depth rather than its instruction count: the tests are independent, so they
@@ -127,11 +91,6 @@ mod imp {
         debug_assert!((start as usize) <= source.len());
         // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
         let mut position = start as usize;
-        let class = if JSX {
-            ASCII_JSX_IDENTIFIER_CLASS
-        } else {
-            ASCII_IDENTIFIER_CLASS
-        };
 
         // One load and one branch per batch; only the first byte that stops the identifier is
         // looked at again.
@@ -147,7 +106,7 @@ mod imp {
         }
         // Fewer than a batch of bytes remain, so scan them one at a time.
         while let Some(&byte) = source.get(position) {
-            if !class.contains(byte) {
+            if !continues::<JSX>(byte) {
                 return ascii_identifier_end(byte, position);
             }
             position += 1;
