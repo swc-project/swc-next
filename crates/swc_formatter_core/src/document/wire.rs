@@ -10,3 +10,13 @@ pub(super) fn rich_indent_tag(kind: RichIndentKind) -> u8 {
         RichIndentKind::DedentToRoot => 26,
     }
 }
+
+pub(super) fn rich_indent_kind(tag: u8) -> Option<RichIndentKind> {
+    match tag {
+        23 => Some(RichIndentKind::AlignText),
+        24 => Some(RichIndentKind::Dedent),
+        25 => Some(RichIndentKind::MarkRoot),
+        26 => Some(RichIndentKind::DedentToRoot),
+        _ => None,
+    }
+}
