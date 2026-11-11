@@ -13,6 +13,8 @@ use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, NodeId, NodeKind, SymbolId};
 use swc_next_ecma_semantic::{NameResolution, Semantic};
 
+use crate::dynamic::DynamicScopes;
+
 /// Sentinel for a node that keeps its name.
 const KEPT: u32 = u32::MAX;
 
@@ -52,8 +54,8 @@ fn name(mut index: usize) -> String {
 impl Renames {
     /// Plans names for the symbols of `semantic` that only local code can see.
     ///
-    /// The caller must reject programs with dynamic name lookup.
-    pub(crate) fn build(ast: &Ast<'_>, semantic: &Semantic<'_>) -> Self {
+    /// Symbols that dynamic name lookup can see keep their names.
+    pub(crate) fn build(ast: &Ast<'_>, semantic: &Semantic<'_>, dynamic: &DynamicScopes) -> Self {
         let program = ast.root_program().node_id();
         let mut reserved: FxHashSet<&[u8]> = RESERVED
             .split_ascii_whitespace()
@@ -66,7 +68,7 @@ impl Renames {
         let mut offsets = vec![0usize; scope_count + 1];
         let mut symbols = Vec::new();
         for entry in semantic.iter_symbols() {
-            match occurrences(ast, semantic, entry.id, program) {
+            match occurrences(ast, semantic, dynamic, entry.id, program) {
                 Some(count) => {
                     let scope = semantic.scope_of_symbol(entry.id);
                     offsets[scope.index() + 1] += 1;
@@ -146,6 +148,7 @@ impl Renames {
 fn occurrences(
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
+    dynamic: &DynamicScopes,
     id: SymbolId,
     program: NodeId,
 ) -> Option<u32> {
@@ -153,6 +156,8 @@ fn occurrences(
     if semantic.linked_symbols(id).nth(1).is_some()
         // Top-level names are visible to other scripts and modules.
         || semantic.scope(semantic.scope_of_symbol(id)).node == program
+        // `eval` and `with` look names up at run time.
+        || dynamic.contains(semantic, id)
         // `var arguments` keeps the arguments object, and the shorthand `{ __proto__ }`
         // defines an own property where `{ __proto__: a }` sets the prototype.
         || matches!(
