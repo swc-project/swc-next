@@ -164,15 +164,17 @@ mod imp {
     use super::{ascii_identifier_end, is_ascii_identifier_continue};
 
     /// How a byte after an ASCII identifier prefix affects the identifier.
+    ///
+    /// A `\` or a non-ASCII byte is [`End`](IdentifierClass::End) as well, because no caller reads
+    /// a third state: the scan tells the two apart by the byte itself, see
+    /// [`super::ascii_identifier_end`].
     #[derive(Clone, Copy, PartialEq, Eq)]
     #[repr(u8)]
     enum IdentifierClass {
         /// An ASCII identifier part.
         Continue,
-        /// A byte that ends the identifier.
+        /// A byte that ends the identifier, including one the full scanner has to decide on.
         End,
-        /// An escape or non-ASCII byte that needs the full identifier scanner.
-        Slow,
     }
 
     const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
@@ -181,8 +183,6 @@ mod imp {
         while byte < 256 {
             if is_ascii_identifier_continue(byte as u8) {
                 table[byte] = IdentifierClass::Continue;
-            } else if byte == b'\\' as usize || byte >= 0x80 {
-                table[byte] = IdentifierClass::Slow;
             }
             byte += 1;
         }
@@ -246,3 +246,36 @@ mod imp {
 }
 
 pub use imp::*;
+
+#[cfg(test)]
+mod tests {
+    use super::scan_ascii_identifier_continue;
+
+    fn end<const JSX: bool>(source: &str, start: u32) -> Option<u32> {
+        scan_ascii_identifier_continue::<JSX>(source.as_bytes(), start)
+    }
+
+    /// `len` identifier bytes followed by `terminator`.
+    fn ident(len: usize, terminator: &str) -> String {
+        "a".repeat(len) + terminator
+    }
+
+    #[test]
+    fn scan_ends_at_a_terminator() {
+        assert_eq!(end::<false>("ab c", 1), Some(2));
+        assert_eq!(end::<false>("ab", 1), Some(2));
+        // Identifiers longer than one batch, so the stop byte is not in the first one.
+        assert_eq!(end::<false>(&ident(20, ";"), 1), Some(20));
+        assert_eq!(end::<false>(&ident(48, ";"), 1), Some(48));
+        // `-` continues a JSX tag name only.
+        assert_eq!(end::<false>("a-b", 1), Some(1));
+        assert_eq!(end::<true>("a-b", 1), Some(3));
+    }
+
+    #[test]
+    fn scan_needs_the_full_scanner() {
+        assert_eq!(end::<false>(r"a\u0062", 1), None);
+        assert_eq!(end::<false>("a\u{e9}", 1), None);
+        assert_eq!(end::<true>(r"a\", 1), None);
+    }
+}
