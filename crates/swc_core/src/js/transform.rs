@@ -443,10 +443,11 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
     // ======================= Parse =======================
     let allocator = Allocator::default();
     let mut ast = {
-        // JSX pragmas and React Refresh directives are semantic inputs even when
-        // the output policy removes comments.
+        // JSX transforms and TypeScript import elision consume JSX pragmas
+        // even when the output policy removes comments.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
-        let parser_comments = if jsx_enabled {
+        let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
+        let parser_comments = if jsx_enabled || (typescript_enabled && lang.is_jsx()) {
             CommentsOption::All
         } else {
             comments
