@@ -7,6 +7,7 @@
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
 mod encode;
+mod instruction;
 mod printer;
 #[cfg(test)]
 mod tests;
@@ -19,6 +20,7 @@ pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
 use std::num::NonZeroU32;
 
 use crate::PrintOptions;
+use instruction::Instruction;
 use text::{Text, Width};
 use thin::{ThinSlice, ThinStr};
 
@@ -74,87 +76,12 @@ impl BreakEffect {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum FormatElement<'a> {
-    Text {
-        source: ThinStr<'a>,
-        width: Width,
-    },
-    SoftLine,
-    SoftLineIfBreak(GroupId),
-    Line,
-    HardLine,
-    BreakParent,
-    LiteralLine,
-    /// The standard composition `markAsRoot(literalline)`.
-    LiteralLineWithIndent,
-    IfBreak {
-        source: ThinStr<'a>,
-        width: Width,
-    },
-    IfFlat {
-        source: ThinStr<'a>,
-        width: Width,
-    },
-    Conditional(&'a Conditional<'a>),
-    FlatConditional(&'a Conditional<'a>),
-    /// A deferred Doc scope; its contents own their spacing and break requests.
-    StartLineSuffix {
-        end_offset: u32,
-    },
-    EndLineSuffix,
-    /// Flushes pending line suffixes before continuing on a new line.
-    LineSuffixBoundary,
-    StartGroup {
-        effect: BreakEffect,
-        id: Option<GroupId>,
-    },
-    /// An anonymous Auto group with exact context-free flat measurements and
-    /// the distance from this opening instruction to its matching EndGroup.
-    StartGroupWithFlatWidth {
-        summary: FlatSummary,
-        end_offset: u32,
-    },
-    EndGroup,
-    StartIndent,
-    StartAbsoluteIndent {
-        width: u32,
-    },
-    StartIndentIfBreak {
-        id: GroupId,
-        end_offset: u32,
-    },
-    EndIndent,
-    StartAlign {
-        width: u32,
-    },
-    EndAlign {
-        width: u32,
-    },
-    StartFill,
-    EndFill,
-    /// Distance from this opening instruction to its matching EndEntry.
-    StartEntry {
-        end_offset: u32,
-    },
-    EndEntry,
-    Fragment {
-        elements: ThinSlice<'a, FormatElement<'a>>,
-        summary: FragmentSummary,
-    },
-    FlatFragment {
-        elements: ThinSlice<'a, FormatElement<'a>>,
-        summary: FragmentSummary,
-    },
-    Alternatives(&'a Alternatives<'a>),
-}
-
-const _: () = assert!(std::mem::size_of::<FormatElement<'_>>() <= 16);
+const _: () = assert!(std::mem::size_of::<Instruction<'_>>() <= 16);
 
 /// A complete immutable scope, owned by the current formatting call.
 #[derive(Debug, Clone, Copy)]
 pub struct Fragment<'a> {
-    elements: ThinSlice<'a, FormatElement<'a>>,
+    elements: ThinSlice<'a, Instruction<'a>>,
     summary: FragmentSummary,
 }
 
@@ -241,7 +168,7 @@ enum CleanUnicodeText {
     Joined(usize),
 }
 
-fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
+fn clean_text_width(elements: &[Instruction<'_>]) -> Option<usize> {
     let mut text = CleanTextWidth {
         ascii_width: Some(0),
         ..CleanTextWidth::default()
@@ -261,10 +188,10 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     Some(crate::measure_text_width(&joined))
 }
 
-fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {
+fn add_clean_text_width(elements: &[Instruction<'_>], text: &mut CleanTextWidth) -> Option<()> {
     for element in elements {
         match *element {
-            FormatElement::Text { source, width } => {
+            Instruction::Text { source, width } => {
                 let part = Text::from_parts(source, width);
                 let part_width = part.clean_width()?;
                 let ascii_width = part.clean_ascii_width();
@@ -290,8 +217,8 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
                     _ => None,
                 };
             }
-            FormatElement::Fragment { elements, summary }
-            | FormatElement::FlatFragment { elements, summary } => {
+            Instruction::Fragment { elements, summary }
+            | Instruction::FlatFragment { elements, summary } => {
                 if summary.effect().preferred_breaks() || summary.conditional_lines() {
                     return None;
                 }
@@ -303,12 +230,11 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
     Some(())
 }
 
-fn append_clean_text(elements: &[FormatElement<'_>], output: &mut String) -> Option<()> {
+fn append_clean_text(elements: &[Instruction<'_>], output: &mut String) -> Option<()> {
     for element in elements {
         match *element {
-            FormatElement::Text { source, .. } => output.push_str(source.as_str()),
-            FormatElement::Fragment { elements, .. }
-            | FormatElement::FlatFragment { elements, .. } => {
+            Instruction::Text { source, .. } => output.push_str(source.as_str()),
+            Instruction::Fragment { elements, .. } | Instruction::FlatFragment { elements, .. } => {
                 append_clean_text(elements.get(), output)?;
             }
             _ => return None,
@@ -346,11 +272,11 @@ impl FlatSummary {
 
 /// Measures a completed group once, retaining only context-free ASCII results.
 /// Literal text spaces count directly; flat line spaces stay pending until text.
-fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
+fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
     let mut summary = FlatSummary::default();
     for element in elements {
         match element {
-            FormatElement::Text { source, width } | FormatElement::IfFlat { source, width } => {
+            Instruction::Text { source, width } | Instruction::TextIfFlat { source, width } => {
                 let width = Text::from_parts(*source, *width).clean_ascii_width()?;
                 let width = u16::try_from(width).unwrap_or(u16::MAX);
                 if summary.has_text {
@@ -365,19 +291,19 @@ fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
                 }
                 summary.ends_with_line = false;
             }
-            FormatElement::Line => summary.ends_with_line = true,
-            FormatElement::SoftLine
-            | FormatElement::IfBreak { .. }
-            | FormatElement::StartGroup {
+            Instruction::NormalLine => summary.ends_with_line = true,
+            Instruction::SoftLine
+            | Instruction::TextIfBreak { .. }
+            | Instruction::StartGroup {
                 effect: BreakEffect(0),
                 id: None,
             }
-            | FormatElement::EndGroup
-            | FormatElement::StartIndent
-            | FormatElement::StartAbsoluteIndent { .. }
-            | FormatElement::EndIndent
-            | FormatElement::StartAlign { .. }
-            | FormatElement::EndAlign { .. } => {}
+            | Instruction::EndGroup
+            | Instruction::StartIndent
+            | Instruction::StartAbsoluteIndent { .. }
+            | Instruction::EndIndent
+            | Instruction::StartAlign { .. }
+            | Instruction::EndAlign { .. } => {}
             _ => return None,
         }
     }
@@ -386,7 +312,7 @@ fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
 
 impl<'a> Fragment<'a> {
     fn new(
-        elements: &'a [FormatElement<'a>],
+        elements: &'a [Instruction<'a>],
         effect: BreakEffect,
         capabilities: FragmentCapabilities,
         conditional_lines: bool,
@@ -398,7 +324,7 @@ impl<'a> Fragment<'a> {
         }
     }
 
-    fn elements(self) -> &'a [FormatElement<'a>] {
+    fn elements(self) -> &'a [Instruction<'a>] {
         self.elements.get()
     }
 
@@ -433,32 +359,30 @@ impl<'a> Fragment<'a> {
                     element
                 };
                 match element {
-                    FormatElement::SoftLine
-                    | FormatElement::SoftLineIfBreak(_)
-                    | FormatElement::Line
-                    | FormatElement::HardLine
-                    | FormatElement::LiteralLine
-                    | FormatElement::LiteralLineWithIndent => return true,
-                    FormatElement::Text { source, width }
-                    | FormatElement::IfBreak { source, width }
-                    | FormatElement::IfFlat { source, width } => {
+                    Instruction::SoftLine
+                    | Instruction::SoftLineIfGroupBreaks(_)
+                    | Instruction::NormalLine
+                    | Instruction::HardLine
+                    | Instruction::LiteralLine
+                    | Instruction::LiteralLineAtCurrentIndent => return true,
+                    Instruction::Text { source, width }
+                    | Instruction::TextIfBreak { source, width }
+                    | Instruction::TextIfFlat { source, width } => {
                         if !Text::from_parts(source, width).is_single_line() {
                             return true;
                         }
                     }
-                    FormatElement::Conditional(conditional)
-                    | FormatElement::FlatConditional(conditional) => {
-                        let flat = matches!(element, FormatElement::FlatConditional(_));
+                    Instruction::IfBreak(conditional)
+                    | Instruction::FlatConditional(conditional) => {
+                        let flat = matches!(element, Instruction::FlatConditional(_));
                         pending.push((conditional.broken.elements(), flat));
                         pending.push((conditional.flat.elements(), flat));
                     }
-                    FormatElement::Fragment { elements, .. } => {
-                        pending.push((elements.get(), false))
-                    }
-                    FormatElement::FlatFragment { elements, .. } => {
+                    Instruction::Fragment { elements, .. } => pending.push((elements.get(), false)),
+                    Instruction::FlatFragment { elements, .. } => {
                         pending.push((elements.get(), true));
                     }
-                    FormatElement::Alternatives(alternatives) => {
+                    Instruction::CompactGroup(alternatives) => {
                         pending.push((alternatives.first().elements(), false));
                     }
                     _ => {}
@@ -518,36 +442,36 @@ impl FragmentCapabilities {
 
     /// Fresh Writer records contain complete, balanced scopes. Once neutrality
     /// is ruled out, the same iterator resumes the existing flat-only scan.
-    fn classify(elements: &[FormatElement<'_>]) -> Self {
+    fn classify(elements: &[Instruction<'_>]) -> Self {
         let mut elements = elements.iter().copied();
         while let Some(element) = elements.next() {
             let flat = match element {
-                FormatElement::Text { source, width } => {
+                Instruction::Text { source, width } => {
                     if !Text::from_parts(source, width).is_single_line() {
                         return Self::General;
                     }
                     continue;
                 }
-                FormatElement::StartGroup {
+                Instruction::StartGroup {
                     effect: BreakEffect(0),
                     id: None,
                 }
-                | FormatElement::StartGroupWithFlatWidth { .. }
-                | FormatElement::EndGroup => continue,
-                FormatElement::Fragment { summary, .. } => match summary.capabilities() {
+                | Instruction::StartGroupWithFlatWidth { .. }
+                | Instruction::EndGroup => continue,
+                Instruction::Fragment { summary, .. } => match summary.capabilities() {
                     Self::Neutral => continue,
                     Self::General => return Self::General,
                     Self::FlatEligible => true,
                 },
-                FormatElement::FlatFragment { summary, .. }
+                Instruction::FlatFragment { summary, .. }
                     if matches!(summary.capabilities(), Self::Neutral) =>
                 {
                     continue;
                 }
-                FormatElement::FlatFragment { .. } => true,
+                Instruction::FlatFragment { .. } => true,
                 element => element.permits_flat(),
             };
-            return Self::from_flat(flat && elements.all(FormatElement::permits_flat));
+            return Self::from_flat(flat && elements.all(Instruction::permits_flat));
         }
         Self::Neutral
     }
@@ -557,26 +481,26 @@ impl FragmentCapabilities {
 pub struct FlatFragment<'a>(Fragment<'a>);
 
 #[derive(Debug)]
-struct Alternatives<'a> {
+struct CompactGroup<'a> {
     preferred: &'a [Fragment<'a>],
     fallback: Fragment<'a>,
 }
 
 #[derive(Debug)]
-struct Conditional<'a> {
+struct IfBreak<'a> {
     target: ConditionTarget,
     broken: Fragment<'a>,
     flat: Fragment<'a>,
 }
 
-impl<'a> Alternatives<'a> {
+impl<'a> CompactGroup<'a> {
     /// Flat views and their eligibility always follow this exact path.
     fn first(&self) -> Fragment<'a> {
         self.preferred.first().copied().unwrap_or(self.fallback)
     }
 }
 
-impl<'a> FormatElement<'a> {
+impl<'a> Instruction<'a> {
     fn text(text: Text<'a>) -> Self {
         let (source, width) = text.into_parts();
         Self::Text { source, width }
@@ -584,12 +508,12 @@ impl<'a> FormatElement<'a> {
 
     fn if_break(text: Text<'a>) -> Self {
         let (source, width) = text.into_parts();
-        Self::IfBreak { source, width }
+        Self::TextIfBreak { source, width }
     }
 
     fn if_flat(text: Text<'a>) -> Self {
         let (source, width) = text.into_parts();
-        Self::IfFlat { source, width }
+        Self::TextIfFlat { source, width }
     }
 
     fn fragment(fragment: Fragment<'a>) -> Self {
@@ -610,20 +534,20 @@ impl<'a> FormatElement<'a> {
         match self {
             Self::HardLine
             | Self::LiteralLine
-            | Self::LiteralLineWithIndent
+            | Self::LiteralLineAtCurrentIndent
             | Self::StartLineSuffix { .. }
             | Self::EndLineSuffix
             | Self::BreakParent
             // Named groups commit an observable layout decision. Removing that
             // decision cannot be expressed by a flat view of standard Doc.
             | Self::StartGroup { id: Some(_), .. } => false,
-            Self::Conditional(conditional) | Self::FlatConditional(conditional) => {
+            Self::IfBreak(conditional) | Self::FlatConditional(conditional) => {
                 conditional.broken.capabilities().permits_flat()
                     && conditional.flat.capabilities().permits_flat()
             }
-            Self::Text { source, width } | Self::IfFlat { source, width } => Text::from_parts(source, width).is_single_line(),
+            Self::Text { source, width } | Self::TextIfFlat { source, width } => Text::from_parts(source, width).is_single_line(),
             Self::Fragment { summary, .. } => summary.capabilities().permits_flat(),
-            Self::Alternatives(alternatives) => alternatives.first().capabilities().permits_flat(),
+            Self::CompactGroup(alternatives) => alternatives.first().capabilities().permits_flat(),
             _ => true,
         }
     }
@@ -633,16 +557,16 @@ impl<'a> FormatElement<'a> {
     #[inline(never)]
     fn flattened(self) -> Option<Self> {
         match self {
-            Self::Line => Some(Self::text(Text::new(" "))),
-            Self::IfFlat { source, width } => Some(Self::Text { source, width }),
-            Self::Conditional(conditional) | Self::FlatConditional(conditional) => {
+            Self::NormalLine => Some(Self::text(Text::new(" "))),
+            Self::TextIfFlat { source, width } => Some(Self::Text { source, width }),
+            Self::IfBreak(conditional) | Self::FlatConditional(conditional) => {
                 Some(match conditional.target {
                     ConditionTarget::Current => Self::flat_fragment(FlatFragment(conditional.flat)),
                     ConditionTarget::Group(_) => Self::FlatConditional(conditional),
                 })
             }
             Self::Fragment { elements, summary } => Some(Self::FlatFragment { elements, summary }),
-            Self::Alternatives(alternatives) => {
+            Self::CompactGroup(alternatives) => {
                 Some(Self::flat_fragment(FlatFragment(alternatives.first())))
             }
             element @ (Self::Text { .. }
@@ -656,7 +580,7 @@ impl<'a> FormatElement<'a> {
 
 pub struct Doc<'a> {
     allocator: &'a swc_next_allocator::Allocator,
-    elements: &'a [FormatElement<'a>],
+    elements: &'a [Instruction<'a>],
     group_count: u32,
 }
 

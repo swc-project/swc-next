@@ -5,7 +5,7 @@
 //! Integers are little endian. Scope ends identify their opening scope; all indent forms share one end tag.
 use rustc_hash::FxHashMap;
 
-use super::{ConditionTarget, Doc, FormatElement, GroupId};
+use super::{ConditionTarget, Doc, GroupId, Instruction};
 
 pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
     let mut encoder = Encoder::default();
@@ -33,7 +33,7 @@ pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
 #[derive(Default)]
 struct Encoder<'a> {
     fragments: Vec<Vec<u8>>,
-    pending: Vec<(&'a [FormatElement<'a>], bool)>,
+    pending: Vec<(&'a [Instruction<'a>], bool)>,
     fragment_ids: FxHashMap<(usize, usize, bool), usize>,
     strings: Vec<u8>,
     string_ids: FxHashMap<&'a str, (usize, usize)>,
@@ -49,7 +49,7 @@ fn group(output: &mut Vec<u8>, id: Option<GroupId>) {
 }
 
 impl<'a> Encoder<'a> {
-    fn reference(&mut self, elements: &'a [FormatElement<'a>], flat: bool) -> usize {
+    fn reference(&mut self, elements: &'a [Instruction<'a>], flat: bool) -> usize {
         let key = (elements.as_ptr() as usize, elements.len(), flat);
         let next_id = self.pending.len();
         *self.fragment_ids.entry(key).or_insert_with(|| {
@@ -69,14 +69,14 @@ impl<'a> Encoder<'a> {
         word(output, length);
     }
 
-    fn instructions(&mut self, elements: &'a [FormatElement<'a>], flat: bool) -> Vec<u8> {
+    fn instructions(&mut self, elements: &'a [Instruction<'a>], flat: bool) -> Vec<u8> {
         let mut output = Vec::new();
         let mut index = 0;
         while let Some(&element) = elements.get(index) {
             index += 1;
             // A flat projection retains the named condition but projects only
             // this complete indent body. Its scope end is consumed here.
-            if let FormatElement::StartIndentIfBreak { id, end_offset } = element {
+            if let Instruction::StartIndentIfBreak { id, end_offset } = element {
                 let end = index
                     .checked_add(end_offset as usize)
                     .expect("document scope offset exceeds usize");
@@ -97,28 +97,28 @@ impl<'a> Encoder<'a> {
                 element
             };
             match element {
-                FormatElement::Text { source, .. } => self.text(&mut output, source.as_str()),
-                FormatElement::Line => output.extend([2, 0]),
-                FormatElement::SoftLine => output.extend([2, 1]),
-                FormatElement::HardLine => output.extend([2, 2]),
-                FormatElement::LiteralLine => output.extend([2, 4]),
-                FormatElement::LiteralLineWithIndent => output.extend([2, 5]),
-                FormatElement::SoftLineIfBreak(id) => {
+                Instruction::Text { source, .. } => self.text(&mut output, source.as_str()),
+                Instruction::NormalLine => output.extend([2, 0]),
+                Instruction::SoftLine => output.extend([2, 1]),
+                Instruction::HardLine => output.extend([2, 2]),
+                Instruction::LiteralLine => output.extend([2, 4]),
+                Instruction::LiteralLineAtCurrentIndent => output.extend([2, 5]),
+                Instruction::SoftLineIfGroupBreaks(id) => {
                     output.extend([8, 1]);
                     group(&mut output, Some(id));
                     output.extend([2, 1, 17, 8]);
                 }
-                FormatElement::IfBreak { source, .. } | FormatElement::IfFlat { source, .. } => {
+                Instruction::TextIfBreak { source, .. }
+                | Instruction::TextIfFlat { source, .. } => {
                     output.extend([
                         8,
-                        u8::from(matches!(element, FormatElement::IfBreak { .. })),
+                        u8::from(matches!(element, Instruction::TextIfBreak { .. })),
                     ]);
                     group(&mut output, None);
                     self.text(&mut output, source.as_str());
                     output.extend([17, 8]);
                 }
-                FormatElement::Conditional(conditional)
-                | FormatElement::FlatConditional(conditional) => {
+                Instruction::IfBreak(conditional) | Instruction::FlatConditional(conditional) => {
                     output.push(21);
                     group(
                         &mut output,
@@ -127,7 +127,7 @@ impl<'a> Encoder<'a> {
                             ConditionTarget::Group(id) => Some(id),
                         },
                     );
-                    let flat = matches!(element, FormatElement::FlatConditional(_));
+                    let flat = matches!(element, Instruction::FlatConditional(_));
                     word(
                         &mut output,
                         self.reference(conditional.broken.elements(), flat),
@@ -137,45 +137,45 @@ impl<'a> Encoder<'a> {
                         self.reference(conditional.flat.elements(), flat),
                     );
                 }
-                FormatElement::LineSuffixBoundary => output.push(15),
-                FormatElement::StartLineSuffix { .. } => output.push(14),
-                FormatElement::EndLineSuffix => output.extend([17, 14]),
-                FormatElement::StartGroup { effect, id } => {
+                Instruction::LineSuffixBoundary => output.push(15),
+                Instruction::StartLineSuffix { .. } => output.push(14),
+                Instruction::EndLineSuffix => output.extend([17, 14]),
+                Instruction::StartGroup { effect, id } => {
                     output.extend([3, u8::from(effect.preferred_breaks())]);
                     group(&mut output, id);
                 }
-                FormatElement::StartGroupWithFlatWidth { .. } => {
+                Instruction::StartGroupWithFlatWidth { .. } => {
                     output.extend([3, 0]);
                     group(&mut output, None);
                 }
-                FormatElement::EndGroup => output.extend([17, 3]),
-                FormatElement::StartIndent => output.push(4),
-                FormatElement::StartAbsoluteIndent { width } => {
+                Instruction::EndGroup => output.extend([17, 3]),
+                Instruction::StartIndent => output.push(4),
+                Instruction::StartAbsoluteIndent { width } => {
                     output.push(19);
                     word(&mut output, width as usize);
                 }
-                FormatElement::StartIndentIfBreak { .. } => {
+                Instruction::StartIndentIfBreak { .. } => {
                     unreachable!("named indent scopes are encoded before projection")
                 }
-                FormatElement::EndIndent => output.extend([17, 4]),
-                FormatElement::StartAlign { width } => {
+                Instruction::EndIndent => output.extend([17, 4]),
+                Instruction::StartAlign { width } => {
                     output.push(6);
                     word(&mut output, width as usize);
                 }
-                FormatElement::EndAlign { .. } => output.extend([17, 6]),
-                FormatElement::StartFill => output.push(11),
-                FormatElement::EndFill => output.extend([17, 11]),
-                FormatElement::StartEntry { .. } => output.push(12),
-                FormatElement::EndEntry => output.extend([17, 12]),
-                FormatElement::Fragment { elements, .. } => {
+                Instruction::EndAlign { .. } => output.extend([17, 6]),
+                Instruction::StartFill => output.push(11),
+                Instruction::EndFill => output.extend([17, 11]),
+                Instruction::StartFillPart { .. } => output.push(12),
+                Instruction::EndFillPart => output.extend([17, 12]),
+                Instruction::Fragment { elements, .. } => {
                     output.push(9);
                     word(&mut output, self.reference(elements.get(), false));
                 }
-                FormatElement::FlatFragment { elements, .. } => {
+                Instruction::FlatFragment { elements, .. } => {
                     output.push(9);
                     word(&mut output, self.reference(elements.get(), true));
                 }
-                FormatElement::Alternatives(alternatives) => {
+                Instruction::CompactGroup(alternatives) => {
                     output.push(10);
                     word(&mut output, alternatives.preferred.len() + 1);
                     for fragment in alternatives.preferred {
@@ -186,7 +186,7 @@ impl<'a> Encoder<'a> {
                         self.reference(alternatives.fallback.elements(), false),
                     );
                 }
-                FormatElement::BreakParent => output.push(16),
+                Instruction::BreakParent => output.push(16),
             }
         }
         output

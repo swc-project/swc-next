@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{ConditionTarget, Doc, FormatElement, Fragment, GroupRequest, Writer};
+use super::{ConditionTarget, Doc, Fragment, GroupRequest, Instruction, Writer};
 use crate::{IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -1099,10 +1099,10 @@ fn standard_line_whitespace() {
 #[test]
 fn deep_indentation() {
     let allocator = Allocator::new();
-    let mut elements = vec![FormatElement::StartIndent; 1025];
-    elements.push(FormatElement::HardLine);
-    elements.push(FormatElement::text(super::text::Text::new("value")));
-    elements.extend(std::iter::repeat_n(FormatElement::EndIndent, 1025));
+    let mut elements = vec![Instruction::StartIndent; 1025];
+    elements.push(Instruction::HardLine);
+    elements.push(Instruction::text(super::text::Text::new("value")));
+    elements.extend(std::iter::repeat_n(Instruction::EndIndent, 1025));
     let document = Doc {
         allocator: &allocator,
         elements: &elements,

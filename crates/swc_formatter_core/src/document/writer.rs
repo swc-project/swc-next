@@ -5,14 +5,14 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
-    Fragment, FragmentCapabilities, GroupId, GroupRequest, NeutralFragment, RecordedGroup,
-    text::Text, thin::ThinSlice,
+    BreakEffect, CompactGroup, ConditionTarget, Doc, FlatFragment, Fragment, FragmentCapabilities,
+    GroupId, GroupRequest, IfBreak, Instruction, NeutralFragment, RecordedGroup, text::Text,
+    thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
     allocator: &'a Allocator,
-    elements: ArenaVec<'a, FormatElement<'a>>,
+    elements: ArenaVec<'a, Instruction<'a>>,
     effect: BreakEffect,
     flattening: bool,
     group_count: u32,
@@ -74,7 +74,7 @@ impl<'a> Writer<'a> {
         if !text.is_single_line() {
             self.intrinsic_lines = true;
         }
-        self.elements.push(FormatElement::text(text));
+        self.elements.push(Instruction::text(text));
     }
 
     /// Copies transient text into storage owned by this formatting call.
@@ -87,7 +87,7 @@ impl<'a> Writer<'a> {
         if !text.is_single_line() {
             self.intrinsic_lines = true;
         }
-        self.elements.push(FormatElement::text(text));
+        self.elements.push(Instruction::text(text));
     }
 
     /// Splits source lines with explicit literal lines, expanding enclosing groups.
@@ -113,13 +113,13 @@ impl<'a> Writer<'a> {
 
     pub fn hard_line(&mut self) {
         self.intrinsic_lines = true;
-        self.elements.push(FormatElement::HardLine);
+        self.elements.push(Instruction::HardLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     pub fn literal_line(&mut self) {
         self.intrinsic_lines = true;
-        self.elements.push(FormatElement::LiteralLine);
+        self.elements.push(Instruction::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
@@ -127,26 +127,27 @@ impl<'a> Writer<'a> {
     /// This is the standard Doc composition `markAsRoot(literalline)`.
     pub fn literal_line_with_indent(&mut self) {
         self.intrinsic_lines = true;
-        self.elements.push(FormatElement::LiteralLineWithIndent);
+        self.elements.push(Instruction::LiteralLineAtCurrentIndent);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     /// Writes one literal separator; the syntax owner decides whether it is needed.
     pub fn space(&mut self) {
-        self.elements.push(FormatElement::text(Text::new(" ")));
+        self.elements.push(Instruction::text(Text::new(" ")));
     }
 
     pub fn soft_line(&mut self) {
-        self.elements.push(FormatElement::SoftLine);
+        self.elements.push(Instruction::SoftLine);
     }
 
     pub fn soft_line_if_break(&mut self, group: GroupId) {
         self.conditional_lines = true;
-        self.elements.push(FormatElement::SoftLineIfBreak(group));
+        self.elements
+            .push(Instruction::SoftLineIfGroupBreaks(group));
     }
 
     pub fn line(&mut self) {
-        self.elements.push(FormatElement::Line);
+        self.elements.push(Instruction::NormalLine);
     }
 
     pub fn if_break(&mut self, text: &'a str) {
@@ -163,7 +164,7 @@ impl<'a> Writer<'a> {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
                     self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(FormatElement::if_break(text));
+                    self.elements.push(Instruction::if_break(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment(text);
@@ -180,7 +181,7 @@ impl<'a> Writer<'a> {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
                     self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(FormatElement::if_flat(text));
+                    self.elements.push(Instruction::if_flat(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment("");
@@ -193,10 +194,10 @@ impl<'a> Writer<'a> {
 
     fn text_fragment(&self, text: &'a str) -> Fragment<'a> {
         let text = Text::new(text);
-        let elements: &[FormatElement<'a>] = if text.source().is_empty() {
+        let elements: &[Instruction<'a>] = if text.source().is_empty() {
             &[]
         } else {
-            self.allocator.alloc([FormatElement::text(text)])
+            self.allocator.alloc([Instruction::text(text)])
         };
         Fragment::new(
             elements,
@@ -217,32 +218,32 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(broken.effect()).join(flat.effect());
         self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
         self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
-        let conditional = self.allocator.alloc(Conditional {
+        let conditional = self.allocator.alloc(IfBreak {
             target,
             broken,
             flat,
         });
-        self.elements.push(FormatElement::Conditional(conditional));
+        self.elements.push(Instruction::IfBreak(conditional));
     }
 
     pub fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.intrinsic_lines = true;
         let start = self.elements.len();
         self.elements
-            .push(FormatElement::StartLineSuffix { end_offset: 0 });
+            .push(Instruction::StartLineSuffix { end_offset: 0 });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
-        self.elements[start] = FormatElement::StartLineSuffix { end_offset };
-        self.elements.push(FormatElement::EndLineSuffix);
+        self.elements[start] = Instruction::StartLineSuffix { end_offset };
+        self.elements.push(Instruction::EndLineSuffix);
         result
     }
 
     pub fn line_suffix_boundary(&mut self) {
-        self.elements.push(FormatElement::LineSuffixBoundary);
+        self.elements.push(Instruction::LineSuffixBoundary);
     }
 
     pub fn break_parent(&mut self) {
-        self.elements.push(FormatElement::BreakParent);
+        self.elements.push(Instruction::BreakParent);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
@@ -263,14 +264,14 @@ impl<'a> Writer<'a> {
     pub fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
         let result = self.group(false, write);
-        let FormatElement::StartGroup { effect, .. } = self.elements[start] else {
+        let Instruction::StartGroup { effect, .. } = self.elements[start] else {
             unreachable!("group scope retains its opening instruction");
         };
         if !effect.preferred_breaks()
             && let Some(summary) =
                 super::flat_summary(&self.elements[start + 1..self.elements.len() - 1])
         {
-            self.elements[start] = FormatElement::StartGroupWithFlatWidth {
+            self.elements[start] = Instruction::StartGroupWithFlatWidth {
                 summary,
                 end_offset: instruction_offset(self.elements.len() - start - 1),
             };
@@ -311,14 +312,14 @@ impl<'a> Writer<'a> {
         let start = self.elements.len();
         let outer_effect = self.effect;
         self.effect = BreakEffect::from_request(request);
-        self.elements.push(FormatElement::StartGroup {
+        self.elements.push(Instruction::StartGroup {
             effect: self.effect,
             id,
         });
         let result = write(self);
         let effect = self.effect;
         self.effect = outer_effect.join(effect);
-        let FormatElement::StartGroup {
+        let Instruction::StartGroup {
             effect: group_effect,
             ..
         } = &mut self.elements[start]
@@ -326,7 +327,7 @@ impl<'a> Writer<'a> {
             unreachable!("group scope retains its opening instruction");
         };
         *group_effect = effect;
-        self.elements.push(FormatElement::EndGroup);
+        self.elements.push(Instruction::EndGroup);
         result
     }
 
@@ -351,9 +352,9 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        self.elements.push(FormatElement::StartIndent);
+        self.elements.push(Instruction::StartIndent);
         let result = write(self);
-        self.elements.push(FormatElement::EndIndent);
+        self.elements.push(Instruction::EndIndent);
         result
     }
 
@@ -361,25 +362,25 @@ impl<'a> Writer<'a> {
     pub fn absolute_indent<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
         let width = indentation_width(width);
         self.elements
-            .push(FormatElement::StartAbsoluteIndent { width });
+            .push(Instruction::StartAbsoluteIndent { width });
         let result = write(self);
-        self.elements.push(FormatElement::EndIndent);
+        self.elements.push(Instruction::EndIndent);
         result
     }
 
     pub fn indent_if_break<T>(&mut self, group: GroupId, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
-        self.elements.push(FormatElement::StartIndentIfBreak {
+        self.elements.push(Instruction::StartIndentIfBreak {
             id: group,
             end_offset: 0,
         });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
-        self.elements[start] = FormatElement::StartIndentIfBreak {
+        self.elements[start] = Instruction::StartIndentIfBreak {
             id: group,
             end_offset,
         };
-        self.elements.push(FormatElement::EndIndent);
+        self.elements.push(Instruction::EndIndent);
         result
     }
 
@@ -388,9 +389,9 @@ impl<'a> Writer<'a> {
             return write(self);
         }
         let width = indentation_width(width);
-        self.elements.push(FormatElement::StartAlign { width });
+        self.elements.push(Instruction::StartAlign { width });
         let result = write(self);
-        self.elements.push(FormatElement::EndAlign { width });
+        self.elements.push(Instruction::EndAlign { width });
         result
     }
 
@@ -406,10 +407,10 @@ impl<'a> Writer<'a> {
         write: impl FnOnce(&mut Self) -> (T, FillSeparatorPolicy),
     ) -> T {
         let start = self.elements.len();
-        self.elements.push(FormatElement::StartFill);
+        self.elements.push(Instruction::StartFill);
         let (result, policy) = write(self);
         let end = self.elements.len();
-        self.elements.push(FormatElement::EndFill);
+        self.elements.push(Instruction::EndFill);
         if policy == FillSeparatorPolicy::CollapseEmptyLines {
             self.collapse_empty_fill_separators(start + 1, end);
         }
@@ -419,7 +420,7 @@ impl<'a> Writer<'a> {
     fn collapse_empty_fill_separators(&mut self, mut index: usize, scope_end: usize) {
         let mut separator = false;
         while index < scope_end {
-            let FormatElement::StartEntry { end_offset } = self.elements[index] else {
+            let Instruction::StartFillPart { end_offset } = self.elements[index] else {
                 unreachable!("fill cleanup visits complete owned entries");
             };
             let end = index + end_offset as usize;
@@ -430,10 +431,10 @@ impl<'a> Writer<'a> {
             if separator
                 && matches!(
                     self.elements[index + 1..end],
-                    [FormatElement::HardLine, FormatElement::HardLine]
+                    [Instruction::HardLine, Instruction::HardLine]
                 )
             {
-                self.elements[end - 1] = FormatElement::BreakParent;
+                self.elements[end - 1] = Instruction::BreakParent;
             }
             separator = !separator;
             index = end + 1;
@@ -451,11 +452,11 @@ impl<'a> Writer<'a> {
     ) -> (FillEntry, T) {
         let start = self.elements.len();
         self.elements
-            .push(FormatElement::StartEntry { end_offset: 0 });
+            .push(Instruction::StartFillPart { end_offset: 0 });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
-        self.elements[start] = FormatElement::StartEntry { end_offset };
-        self.elements.push(FormatElement::EndEntry);
+        self.elements[start] = Instruction::StartFillPart { end_offset };
+        self.elements.push(Instruction::EndFillPart);
         let end = self.elements.len();
         (FillEntry { start, end }, result)
     }
@@ -469,8 +470,8 @@ impl<'a> Writer<'a> {
         self.elements.pop();
         write(self);
         let end_offset = instruction_offset(self.elements.len() - entry.start);
-        self.elements[entry.start] = FormatElement::StartEntry { end_offset };
-        self.elements.push(FormatElement::EndEntry);
+        self.elements[entry.start] = Instruction::StartFillPart { end_offset };
+        self.elements.push(Instruction::EndFillPart);
     }
 
     /// Writes once and measures only appended instructions; the slice never escapes.
@@ -529,9 +530,9 @@ impl<'a> Writer<'a> {
         let (grouped, value) =
             self.record_with_value(|writer| writer.group_with_request(GroupRequest::Auto, write))?;
         let [
-            FormatElement::StartGroup { id: None, .. },
+            Instruction::StartGroup { id: None, .. },
             ..,
-            FormatElement::EndGroup,
+            Instruction::EndGroup,
         ] = grouped.elements()
         else {
             unreachable!("recorded group retains its complete anonymous outer scope");
@@ -567,9 +568,9 @@ impl<'a> Writer<'a> {
             fragment.capabilities()
         };
         let elements = self.allocator.alloc([
-            FormatElement::StartGroup { effect, id },
-            FormatElement::fragment(fragment),
-            FormatElement::EndGroup,
+            Instruction::StartGroup { effect, id },
+            Instruction::fragment(fragment),
+            Instruction::EndGroup,
         ]);
         Fragment::new(
             elements,
@@ -584,18 +585,18 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
-        self.elements.push(FormatElement::fragment(fragment));
+        self.elements.push(Instruction::fragment(fragment));
     }
 
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
-        self.elements.push(FormatElement::flat_fragment(fragment));
+        self.elements.push(Instruction::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
-            .push(FormatElement::flat_fragment(FlatFragment(fragment)));
+            .push(Instruction::flat_fragment(FlatFragment(fragment)));
     }
 
     /// Writes a standard conditional group. Branch-local break requests do not
@@ -611,15 +612,14 @@ impl<'a> Writer<'a> {
             || preferred
                 .iter()
                 .any(|fragment| fragment.conditional_lines());
-        let alternatives = self.allocator.alloc(Alternatives {
+        let alternatives = self.allocator.alloc(CompactGroup {
             preferred: choices.into_bump_slice(),
             fallback,
         });
         // Only the first candidate participates in the intrinsic-line summary. Later
         // choices can introduce layout lines without making them intrinsic.
         self.intrinsic_lines |= alternatives.first().has_intrinsic_lines();
-        self.elements
-            .push(FormatElement::Alternatives(alternatives));
+        self.elements.push(Instruction::CompactGroup(alternatives));
     }
 
     pub fn finish(self) -> Doc<'a> {
