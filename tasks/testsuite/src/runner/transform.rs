@@ -147,11 +147,9 @@ fn normalize_output(options: &JsTransformApiOptions, source: &str) -> Option<Str
 
 fn codegen_options(options: &JsTransformApiOptions) -> CodegenOptions {
     let parser = options.parser.unwrap_or_default();
-    let comments = options
-        .comments
-        .or(parser.comments)
-        .unwrap_or(CommentsOption::All);
-    let mut codegen = CodegenOptions::from(options.generator.unwrap_or_default());
-    codegen.comments = comments == CommentsOption::All;
-    codegen
+    let comments = options.comments.unwrap_or(CommentsOption::All);
+    let parser_comments = parser.comments.unwrap_or(CommentsOption::All);
+    let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+    generator.comments = comments == CommentsOption::All && parser_comments == CommentsOption::All;
+    generator
 }

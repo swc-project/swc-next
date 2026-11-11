@@ -1,4 +1,11 @@
-use swc_next_ecma_minifier::{CompressOptions, MinifierOptions};
+use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::{Diagnostic, Severity};
+use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_minifier::{CompressOptions, Minifier, MinifierOptions};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+
+use super::{CommentsOption, JsMinifyApiOptions, JsOutput, serialize_source_map};
 
 use crate::BoolOr;
 
@@ -105,3 +112,62 @@ impl From<JsCompressConfig> for CompressOptions {
 //     pub keep_class_names: Option<bool>,
 //     pub keep_fn_names: Option<bool>,
 // }
+
+/// Minify JavaScript source without lowering TypeScript or JSX syntax.
+///
+/// Compression and mangling use the minifier configuration. Compact printing
+/// is controlled independently by `generator.minify` and defaults to false.
+pub fn minify_js(source: &str, options: JsMinifyApiOptions) -> JsOutput {
+    let mut output = JsOutput::default();
+    fn has_errors(diagnostics: &[Diagnostic]) -> bool {
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == Severity::Error)
+    }
+
+    // ======================= Parse =======================
+    let allocator = Allocator::default();
+    let mut ast = {
+        let comments = options.comments.unwrap_or(CommentsOption::None);
+        let parser = ParserOptions {
+            comments: comments.into(),
+            ..ParserOptions::default()
+        };
+        let parsed = Parser::init(&allocator, source, parser, NoTokenParserConfig).parse();
+        output.diagnostics.extend(parsed.diagnostics);
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
+        parsed.ast
+    };
+
+    // ======================= Analyze =======================
+    {
+        let diagnostics = check_syntax(&ast, SyntaxChecks::all());
+        output.diagnostics.extend(diagnostics);
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
+    }
+
+    // ======================= Minify =======================
+    {
+        let minifier = options.minifier.unwrap_or_default().into();
+        Minifier::minify(&mut ast, minifier);
+    }
+
+    // ======================= Generate =======================
+    {
+        let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+        let source_map = options.source_map.unwrap_or(false);
+        let filename = options.filename.as_deref().unwrap_or("input.js");
+        generator.source_map_path = source_map.then(|| filename.into());
+        generator.comments =
+            options.comments.unwrap_or(CommentsOption::None) == CommentsOption::All;
+        let generated = print(&ast, generator);
+        output.code = generated.code;
+        output.map = generated.map.as_ref().map(serialize_source_map);
+    }
+
+    output
+}

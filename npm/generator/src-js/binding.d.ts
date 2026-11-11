@@ -4,7 +4,14 @@ export interface GenerateOutput {
   code: string
 }
 
-/** JavaScript code generation options. */
+/**
+ * JavaScript code generation options.
+ *
+ * Standalone generation prints a caller-supplied AST, which commonly lacks
+ * original source text and reliable comment attachments. Comment preservation
+ * and source maps are therefore provided by the source-to-source transform and
+ * minify APIs instead of this AST-only API.
+ */
 export interface GeneratorConfig {
   asciiOnly?: boolean
   /** Escape closing script tags. Tagged template raw text is preserved. */

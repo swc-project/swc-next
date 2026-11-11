@@ -47,8 +47,7 @@ pub struct JsTransformApiOptions {
     /// Source map generation.
     ///
     /// @default false
-    #[cfg_attr(feature = "serde", serde(rename = "sourceMap"))]
-    pub source_maps: Option<bool>,
+    pub source_map: Option<bool>,
     // Override the shared target for all JavaScript stages.
     // pub target: Option<Target>,
     /// Comment policy.
@@ -64,7 +63,7 @@ pub struct JsTransformApiOptions {
     pub generator: Option<generator::JsGeneratorConfig>,
 }
 
-/// Options for minifying JavaScript and TypeScript source.
+/// Options for minifying JavaScript source.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -72,20 +71,16 @@ pub struct JsTransformApiOptions {
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsMinifyApiOptions {
-    /// Used to infer the language and source type, and for diagnostics and source maps.
+    /// Source filename used for source maps.
     pub filename: Option<String>,
     /// Source map generation.
     ///
     /// @default false
-    #[cfg_attr(feature = "serde", serde(rename = "sourceMap"))]
-    pub source_maps: Option<bool>,
+    pub source_map: Option<bool>,
     // Override the shared target for all JavaScript stages.
     // pub target: Option<Target>,
     /// Comment policy.
     pub comments: Option<CommentsOption>,
-    /// Parser configuration.
-    #[cfg(feature = "js_parser")]
-    pub parser: Option<parser::JsParserConfig>,
     /// Minifier configuration.
     #[cfg(feature = "js_minifier")]
     pub minifier: Option<minifier::JsMinifierConfig>,
@@ -150,7 +145,7 @@ pub struct JsMinifyApiOptions {
 //     None,
 // }
 
-/// Source transformation output.
+/// Source processing output.
 #[derive(Debug, Default)]
 pub struct JsOutput {
     pub code: String,
@@ -160,4 +155,30 @@ pub struct JsOutput {
     pub legal_comments: Option<Vec<String>>,
     /// Diagnostics.
     pub diagnostics: Vec<Diagnostic>,
+}
+
+#[cfg(any(feature = "js_transformer", feature = "js_minifier"))]
+fn serialize_source_map(map: &swc_next_ecma_codegen::SourceMap<'_>) -> String {
+    // Source and filenames are UTF-8; codegen records names from &str and emits
+    // ASCII VLQ mappings.
+    let text = |bytes| std::str::from_utf8(bytes).expect("source map strings must be valid UTF-8");
+    let sources = map.sources().iter().map(|source| text(source));
+    let names = map.names().iter().map(|name| text(name));
+    let mut value = serde_json::json!({
+        "version": map.version(),
+        "sources": sources.collect::<Vec<_>>(),
+        "names": names.collect::<Vec<_>>(),
+        "mappings": text(map.mappings()),
+    });
+    if let Some(file) = map.file() {
+        value["file"] = text(file).into();
+    }
+    if let Some(root) = map.source_root() {
+        value["sourceRoot"] = text(root).into();
+    }
+    if let Some(sources) = map.sources_content() {
+        let sources_content = sources.iter().map(|source| source.map(text));
+        value["sourcesContent"] = serde_json::json!(sources_content.collect::<Vec<_>>());
+    }
+    value.to_string()
 }

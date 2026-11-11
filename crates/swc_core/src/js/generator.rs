@@ -11,6 +11,11 @@ use swc_next_bridge::napi;
 pub use ast::DeserializeError;
 
 /// JavaScript code generation options.
+///
+/// Standalone generation prints a caller-supplied AST, which commonly lacks
+/// original source text and reliable comment attachments. Comment preservation
+/// and source maps are therefore provided by the source-to-source transform and
+/// minify APIs instead of this AST-only API.
 #[cfg_attr(feature = "bridge", bridge(object, js_name = "GeneratorConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(

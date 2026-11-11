@@ -134,6 +134,7 @@ impl From<BabelOptions> for JsTransformApiOptions {
                     ]
                     .into(),
                 ),
+                ..Default::default()
             }),
             generator: Some(JsGeneratorConfig {
                 minify: options.minified,

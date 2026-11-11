@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::{Options as CodegenOptions, SourceMap, print};
+use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
@@ -16,7 +16,7 @@ use swc_next_ecma_transformer::{
 
 use crate::{
     BoolOr,
-    js::{CommentsOption, JsOutput, JsTransformApiOptions},
+    js::{CommentsOption, JsOutput, JsTransformApiOptions, serialize_source_map},
 };
 
 /// JavaScript and TypeScript transform options.
@@ -27,6 +27,9 @@ use crate::{
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsTransformerConfig {
+    /// Source filename used by transforms, including JSX development metadata.
+    /// Overrides the API's shared filename when set.
+    pub filename: Option<String>,
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
     /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
@@ -61,7 +64,7 @@ impl JsTransformerConfig {
             }
         }
         TransformerOptions {
-            filename,
+            filename: self.filename.or(filename),
             assumptions: self
                 .assumptions
                 .map(Into::into)
@@ -413,9 +416,9 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let comments = options
+    let comments = parser_options
         .comments
-        .or(parser_options.comments)
+        .or(options.comments)
         .unwrap_or(CommentsOption::All);
     let lang = {
         let inferred = options.filename.as_deref().map(Lang::from_path);
@@ -434,11 +437,13 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     // ======================= Parse =======================
     let allocator = Allocator::default();
     let mut ast = {
-        // JSX transforms and TypeScript import elision consume JSX pragmas
-        // even when the output policy removes comments.
+        // An explicit parser comment policy wins. Otherwise retain JSX pragmas
+        // for semantic transforms, then discard comments before generation if needed.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
-        let parser_comments = if jsx_enabled || (typescript_enabled && lang.is_jsx()) {
+        let collect_pragmas = parser_options.comments.is_none()
+            && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
+        let parser_comments = if collect_pragmas {
             CommentsOption::All
         } else {
             comments
@@ -452,7 +457,7 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
             source_type,
             lang,
             comments: parser_comments.into(),
-            ..ParserOptions::default()
+            ..parser_options.into()
         };
         let parser = Parser::init(&allocator, source, parser_options, NoTokenParserConfig);
         let parsed = parser.parse();
@@ -493,41 +498,20 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     }
 
     // ======================= Generate =======================
-    let printed = {
-        let mut codegen = CodegenOptions::from(options.generator.unwrap_or_default());
-        let source_maps = options.source_maps.unwrap_or(false);
-        let source_filename = options.filename.as_deref().unwrap_or("input.js");
-        codegen.source_map_path = source_maps.then(|| source_filename.into());
-        codegen.comments = matches!(comments, CommentsOption::All);
-        print(&ast, codegen)
-    };
-    output.map = printed.map.as_ref().map(serialize_source_map);
-    output.code = printed.code;
+    {
+        if comments == CommentsOption::None {
+            // SAFETY: This AST remains owned by the transform call.
+            unsafe { ast.ast_mut() }.clear_attached_comments();
+        }
+        let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+        let source_map = options.source_map.unwrap_or(false);
+        let filename = options.filename.as_deref().unwrap_or("input.js");
+        generator.source_map_path = source_map.then(|| filename.into());
+        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
+        let generated = print(&ast, generator);
+        output.code = generated.code;
+        output.map = generated.map.as_ref().map(serialize_source_map);
+    }
 
     output
-}
-
-fn serialize_source_map(map: &SourceMap<'_>) -> String {
-    // Source and filenames are UTF-8; codegen records names from &str and emits
-    // ASCII VLQ mappings.
-    let text = |bytes| std::str::from_utf8(bytes).expect("source map strings must be valid UTF-8");
-    let sources = map.sources().iter().map(|source| text(source));
-    let names = map.names().iter().map(|name| text(name));
-    let mut value = serde_json::json!({
-        "version": map.version(),
-        "sources": sources.collect::<Vec<_>>(),
-        "names": names.collect::<Vec<_>>(),
-        "mappings": text(map.mappings()),
-    });
-    if let Some(file) = map.file() {
-        value["file"] = text(file).into();
-    }
-    if let Some(root) = map.source_root() {
-        value["sourceRoot"] = text(root).into();
-    }
-    if let Some(sources) = map.sources_content() {
-        let sources_content = sources.iter().map(|source| source.map(text));
-        value["sourcesContent"] = serde_json::json!(sources_content.collect::<Vec<_>>());
-    }
-    value.to_string()
 }
