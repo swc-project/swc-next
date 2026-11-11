@@ -1,6 +1,6 @@
 use swc_next_bridge::bridge;
 use swc_next_core::js::parser::{
-    JsLang, JsParserOptions as ParserOptions, JsSourceType, parse_to_buffer,
+    JsLang, JsParserConfig as ParserConfig, JsSourceType, parse_to_buffer,
 };
 use swc_next_ecma_ast::{Lang, SourceType};
 
@@ -12,7 +12,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 pub unsafe fn parse_sync(
     source: &[u8],
     source_utf16_len: u32,
-    options: Option<ParserOptions>,
+    options: Option<ParserConfig>,
 ) -> Vec<u8> {
     unsafe { parse_to_buffer(source, source_utf16_len, options) }
 }

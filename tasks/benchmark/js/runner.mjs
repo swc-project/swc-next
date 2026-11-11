@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const apiNames = ["langFromPath", "parseSync", "printSync", "sourceTypeFromPath"];
+export const apiNames = ["langFromPath", "parseSync", "generateSync", "sourceTypeFromPath"];
 export const fixtures = ["underscore-1.5.2.js", "jquery-1.9.1.js", "astro-config.ts", "cal.com.tsx"];
 export const extensions = ["js", "ts", "tsx", "mjs", "cjs", "unknown"];
 
@@ -38,8 +38,10 @@ export function touch(value) {
 }
 
 export function prepare(api, operation, name, source) {
+  // Comparisons may include revisions before the generator API was renamed.
+  const generateSync = api.generateSync ?? api.printSync;
   for (const name of apiNames) {
-    assert.equal(typeof api[name], "function", `benchmark requires API export "${name}" to be a function`);
+    assert.equal(typeof (name === "generateSync" ? generateSync : api[name]), "function", `benchmark requires API export "${name}" to be a function`);
   }
   if (operation === "lang" || operation === "source_type") {
     assert(extensions.includes(name), "unknown extension case");
@@ -54,7 +56,7 @@ export function prepare(api, operation, name, source) {
   if (operation === "print") {
     // Materialize input outside the measured region, including lazy strings.
     touch(parsed.program);
-    return { iterations: 10, run: () => api.printSync(parsed.program, {}, parsed.meta), validate: value => assert(value.code.length > 0) };
+    return { iterations: 10, run: () => generateSync(parsed.program, {}, parsed.meta), validate: value => assert(value.code.length > 0) };
   }
   return { iterations: 10, run: () => touch(api.parseSync(source, options).program), validate: value => assert(value > 1) };
 }

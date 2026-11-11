@@ -13,7 +13,7 @@ export type Lang =  'js'|
 'dts';
 
 /** JavaScript and TypeScript parser options. */
-export interface ParserOptions {
+export interface ParserConfig {
   /**
    * Determines how the source is parsed and evaluated.
    *
@@ -61,6 +61,6 @@ export declare function langFromPath(path: string): Lang
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserOptions | undefined | null): Buffer
+export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Buffer
 
 export declare function sourceTypeFromPath(path: string): SourceType
