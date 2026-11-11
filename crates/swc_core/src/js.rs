@@ -25,23 +25,23 @@ pub enum CommentsOption {
     // Options(CommentsOptions),
 }
 
-#[cfg(feature = "js_codegen")]
-pub mod codegen;
-#[cfg(feature = "js_transform")]
-pub mod minify;
+#[cfg(feature = "js_generator")]
+pub mod generator;
+#[cfg(feature = "js_minifier")]
+pub mod minifier;
 #[cfg(feature = "js_parser")]
 pub mod parser;
-#[cfg(feature = "js_transform")]
-pub mod transform;
+#[cfg(feature = "js_transformer")]
+pub mod transformer;
 
-/// JavaScript and TypeScript options.
+/// Options for transforming JavaScript and TypeScript source.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Debug, Default)]
-pub struct JsOptions {
+pub struct JsTransformApiOptions {
     /// Used to infer the language and source type, and for diagnostics and source maps.
     pub filename: Option<String>,
     /// Source map generation.
@@ -53,21 +53,48 @@ pub struct JsOptions {
     // pub target: Option<Target>,
     /// Comment policy.
     pub comments: Option<CommentsOption>,
-    /// Parser options.
+    /// Parser configuration.
     #[cfg(feature = "js_parser")]
-    pub parser: Option<parser::JsParserOptions>,
-    /// Transform options.
-    #[cfg(feature = "js_transform")]
-    pub transform: Option<transform::JsTransformOptions>,
-    /// Minification. `true` uses default options.
-    #[cfg(feature = "js_transform")]
-    pub minify: Option<crate::BoolOr<minify::JsMinifyOptions>>,
-    /// Code generation options.
-    #[cfg(feature = "js_codegen")]
-    pub codegen: Option<codegen::JsCodegenOptions>,
+    pub parser: Option<parser::JsParserConfig>,
+    /// Transformer configuration.
+    #[cfg(feature = "js_transformer")]
+    pub transformer: Option<transformer::JsTransformerConfig>,
+    /// Generator configuration.
+    #[cfg(feature = "js_generator")]
+    pub generator: Option<generator::JsGeneratorConfig>,
 }
 
-// Draft-only shared types reachable from JsOptions. These declarations remain
+/// Options for minifying JavaScript and TypeScript source.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[derive(Clone, Debug, Default)]
+pub struct JsMinifyApiOptions {
+    /// Used to infer the language and source type, and for diagnostics and source maps.
+    pub filename: Option<String>,
+    /// Source map generation.
+    ///
+    /// @default false
+    #[cfg_attr(feature = "serde", serde(rename = "sourceMap"))]
+    pub source_maps: Option<bool>,
+    // Override the shared target for all JavaScript stages.
+    // pub target: Option<Target>,
+    /// Comment policy.
+    pub comments: Option<CommentsOption>,
+    /// Parser configuration.
+    #[cfg(feature = "js_parser")]
+    pub parser: Option<parser::JsParserConfig>,
+    /// Minifier configuration.
+    #[cfg(feature = "js_minifier")]
+    pub minifier: Option<minifier::JsMinifierConfig>,
+    /// Generator configuration.
+    #[cfg(feature = "js_generator")]
+    pub generator: Option<generator::JsGeneratorConfig>,
+}
+
+// Draft-only shared types reachable from JsTransformApiOptions. These declarations remain
 // commented out until their policies are implemented.
 // pub enum Target {
 //     EsVersion(EsVersion),

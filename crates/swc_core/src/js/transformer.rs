@@ -3,15 +3,12 @@ use std::collections::BTreeMap;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as CodegenOptions, SourceMap, print};
-use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     assumptions::Assumptions,
-    jsx::{
-        JsxOptions as TransformJsxOptions, JsxRuntime as TransformJsxRuntime, ReactRefreshOptions,
-    },
+    jsx::{JsxOptions, JsxRuntime as TransformJsxRuntime, ReactRefreshOptions},
     normalize::Normalizer,
     proposal::ProposalOptions,
     typescript::{JsxImportOptions, TypeScriptOptions},
@@ -19,7 +16,7 @@ use swc_next_ecma_transformer::{
 
 use crate::{
     BoolOr,
-    js::{CommentsOption, JsOptions, JsOutput},
+    js::{CommentsOption, JsOutput, JsTransformApiOptions},
 };
 
 /// JavaScript and TypeScript transform options.
@@ -29,28 +26,28 @@ use crate::{
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Debug, Default)]
-pub struct JsTransformOptions {
+pub struct JsTransformerConfig {
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
     /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
-    pub typescript: Option<BoolOr<JsTypeScriptOptions>>,
+    pub typescript: Option<BoolOr<JsTypeScriptConfig>>,
     /// JSX transform. `false` keeps JSX syntax in the output.
     ///
     /// @default enabled with the automatic runtime when `lang` is `"jsx"` or `"tsx"`
-    pub jsx: Option<BoolOr<JsxOptions>>,
+    pub jsx: Option<BoolOr<JsxConfig>>,
     /// Per-feature overrides. `true` enables a transform; `false` disables it.
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
     pub assumptions: Option<JsAssumptions>,
     /// Proposal transform options.
-    pub proposal: Option<JsProposalOptions>,
+    pub proposal: Option<JsProposalConfig>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
     // pub define: Option<BTreeMap<String, String>>, // Global expression replacements.
     // pub helpers: Option<JsHelpers>, // Defaults to inline helpers.
 }
 
-impl JsTransformOptions {
+impl JsTransformerConfig {
     pub fn to_transformer_options(self, filename: Option<String>) -> TransformerOptions {
         let mut defaults = TransformerOptions::default();
         if let Some(features) = self.features {
@@ -84,7 +81,7 @@ impl JsTransformOptions {
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct JsProposalOptions {
+pub struct JsProposalConfig {
     /// Preserve class static block behavior when a block makes the class
     /// object non-extensible with `Object.preventExtensions`, `Object.seal`,
     /// or `Object.freeze`.
@@ -95,8 +92,8 @@ pub struct JsProposalOptions {
     pub prevent_extensions: Option<bool>,
 }
 
-impl From<JsProposalOptions> for ProposalOptions {
-    fn from(options: JsProposalOptions) -> Self {
+impl From<JsProposalConfig> for ProposalOptions {
+    fn from(options: JsProposalConfig) -> Self {
         Self {
             prevent_extensions: options.prevent_extensions.unwrap_or_default(),
         }
@@ -121,7 +118,7 @@ pub enum JsFeature {
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Debug, Default)]
-pub struct JsTypeScriptOptions {
+pub struct JsTypeScriptConfig {
     /// TypeScript's `verbatimModuleSyntax`: preserve value imports and exports
     /// and disable const enum inlining and removal.
     ///
@@ -143,8 +140,8 @@ pub struct JsTypeScriptOptions {
     pub jsx_pragma_frag: Option<String>,
 }
 
-impl From<JsTypeScriptOptions> for TypeScriptOptions {
-    fn from(options: JsTypeScriptOptions) -> Self {
+impl From<JsTypeScriptConfig> for TypeScriptOptions {
+    fn from(options: JsTypeScriptConfig) -> Self {
         let defaults = Self::default();
         Self {
             verbatim_module_syntax: options
@@ -187,7 +184,7 @@ impl From<JsxRuntime> for TransformJsxRuntime {
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Debug, Default)]
-pub struct JsxOptions {
+pub struct JsxConfig {
     /// @default "automatic"
     pub runtime: Option<JsxRuntime>,
     /// @default false
@@ -219,11 +216,11 @@ pub struct JsxOptions {
     /// React Refresh. `true` uses default options.
     ///
     /// @default false
-    pub refresh: Option<BoolOr<JsReactRefreshOptions>>,
+    pub refresh: Option<BoolOr<JsReactRefreshConfig>>,
 }
 
-impl From<JsxOptions> for TransformJsxOptions {
-    fn from(options: JsxOptions) -> Self {
+impl From<JsxConfig> for JsxOptions {
+    fn from(options: JsxConfig) -> Self {
         let defaults = Self::default();
         Self {
             runtime: options.runtime.map(Into::into).unwrap_or(defaults.runtime),
@@ -249,7 +246,7 @@ impl From<JsxOptions> for TransformJsxOptions {
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Debug, Default)]
-pub struct JsReactRefreshOptions {
+pub struct JsReactRefreshConfig {
     /// @default "$RefreshReg$"
     pub refresh_reg: Option<String>,
     /// @default "$RefreshSig$"
@@ -258,8 +255,8 @@ pub struct JsReactRefreshOptions {
     pub emit_full_signatures: Option<bool>,
 }
 
-impl From<JsReactRefreshOptions> for ReactRefreshOptions {
-    fn from(options: JsReactRefreshOptions) -> Self {
+impl From<JsReactRefreshConfig> for ReactRefreshOptions {
+    fn from(options: JsReactRefreshConfig) -> Self {
         let defaults = Self::default();
         Self {
             refresh_reg: options.refresh_reg.unwrap_or(defaults.refresh_reg),
@@ -406,7 +403,7 @@ impl From<JsAssumptions> for Assumptions {
 // }
 
 /// Transform a source file.
-pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
+pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     let mut output = JsOutput::default();
     fn has_errors(diagnostics: &[Diagnostic]) -> bool {
         diagnostics
@@ -416,23 +413,17 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let comments = {
-        let minify_enabled = !matches!(&options.minify, None | Some(BoolOr::Bool(false)));
-        let default = if minify_enabled {
-            CommentsOption::None
-        } else {
-            CommentsOption::All
-        };
-        let comments = options.comments.or(parser_options.comments);
-        comments.unwrap_or(default)
-    };
+    let comments = options
+        .comments
+        .or(parser_options.comments)
+        .unwrap_or(CommentsOption::All);
     let lang = {
         let inferred = options.filename.as_deref().map(Lang::from_path);
         let explicit = parser_options.lang.map(Into::into);
         explicit.or(inferred).unwrap_or_default()
     };
     let transform = {
-        let mut transform = options.transform.unwrap_or_default();
+        let mut transform = options.transformer.unwrap_or_default();
         let typescript = BoolOr::Bool(lang.is_typescript());
         let jsx = BoolOr::Bool(lang.is_jsx());
         transform.typescript.get_or_insert(typescript);
@@ -501,17 +492,9 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
         }
     }
 
-    // ======================= Minify =======================
-    {
-        let minify: Option<MinifierOptions> = enabled_options(options.minify);
-        if let Some(minify) = minify {
-            Minifier::minify(&mut ast, minify);
-        }
-    }
-
-    // ======================= Codegen =======================
+    // ======================= Generate =======================
     let printed = {
-        let mut codegen = CodegenOptions::from(options.codegen.unwrap_or_default());
+        let mut codegen = CodegenOptions::from(options.generator.unwrap_or_default());
         let source_maps = options.source_maps.unwrap_or(false);
         let source_filename = options.filename.as_deref().unwrap_or("input.js");
         codegen.source_map_path = source_maps.then(|| source_filename.into());

@@ -99,14 +99,14 @@ impl From<CommentsOption> for CommentMode {
 }
 
 /// JavaScript and TypeScript parser options.
-#[cfg_attr(feature = "bridge", bridge(object, js_name = "ParserOptions"))]
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "ParserConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct JsParserOptions {
+pub struct JsParserConfig {
     /// Determines how the source is parsed and evaluated.
     ///
     /// @default "module"
@@ -132,8 +132,11 @@ pub struct JsParserOptions {
     pub semantic_errors: Option<bool>,
 }
 
-impl From<JsParserOptions> for Options {
-    fn from(options: JsParserOptions) -> Self {
+/// Options accepted by the standalone parser API.
+pub type JsParseApiOptions = JsParserConfig;
+
+impl From<JsParserConfig> for Options {
+    fn from(options: JsParserConfig) -> Self {
         let defaults = Self::default();
         Self {
             source_type: options
@@ -157,7 +160,7 @@ impl From<JsParserOptions> for Options {
 pub unsafe fn parse_to_buffer(
     source: &[u8],
     source_utf16_len: u32,
-    options: Option<JsParserOptions>,
+    options: Option<JsParseApiOptions>,
 ) -> Vec<u8> {
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
@@ -182,7 +185,7 @@ pub unsafe fn parse_to_buffer(
 
 #[cfg(feature = "bridge")]
 const _: () = {
-    use self::JsParserOptions as ParserOptions;
+    use self::JsParserConfig as ParserConfig;
 
     const OPTIONS_PRESENT: u32 = 1 << 0;
 
@@ -209,7 +212,7 @@ const _: () = {
         | SEMANTIC_ERRORS_MASK;
 
     #[bridge]
-    impl BridgeDecodeOptional for ParserOptions {
+    impl BridgeDecodeOptional for ParserConfig {
         type Wire = u32;
 
         fn decode_optional(value: Self::Wire) -> Option<Option<Self>> {
@@ -257,7 +260,7 @@ const _: () = {
                 _ => return None,
             };
 
-            Some(Some(JsParserOptions {
+            Some(Some(JsParserConfig {
                 source_type,
                 lang,
                 preserve_parens,

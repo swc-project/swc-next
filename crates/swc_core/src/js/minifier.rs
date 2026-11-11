@@ -9,11 +9,11 @@ use crate::BoolOr;
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct JsMinifyOptions {
+pub struct JsMinifierConfig {
     /// `false` disables compression. `true` uses default options.
     ///
     /// @default true
-    pub compress: Option<BoolOr<JsCompressOptions>>,
+    pub compress: Option<BoolOr<JsCompressConfig>>,
     /// `false` disables mangling. `true` uses default options.
     ///
     /// @default true
@@ -22,8 +22,8 @@ pub struct JsMinifyOptions {
     // pub mangle: Option<BoolOr<JsMangleOptions>>,
 }
 
-impl From<JsMinifyOptions> for MinifierOptions {
-    fn from(options: JsMinifyOptions) -> Self {
+impl From<JsMinifierConfig> for MinifierOptions {
+    fn from(options: JsMinifierConfig) -> Self {
         let defaults = Self::default();
         Self {
             compress: match options.compress {
@@ -44,7 +44,7 @@ impl From<JsMinifyOptions> for MinifierOptions {
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct JsCompressOptions {
+pub struct JsCompressConfig {
     /// Remove empty statements and unnecessary blocks.
     pub blocks: Option<bool>,
     /// Shorten boolean literals.
@@ -77,8 +77,8 @@ pub struct JsCompressOptions {
     pub unused: Option<bool>,
 }
 
-impl From<JsCompressOptions> for CompressOptions {
-    fn from(options: JsCompressOptions) -> Self {
+impl From<JsCompressConfig> for CompressOptions {
+    fn from(options: JsCompressConfig) -> Self {
         let defaults = Self::default();
         Self {
             blocks: options.blocks.unwrap_or(defaults.blocks),

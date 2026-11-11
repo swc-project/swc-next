@@ -277,7 +277,7 @@ importers:
         specifier: 'catalog:'
         version: 1.62.1
 
-  npm/codegen:
+  npm/generator:
     dependencies:
       '@swc-next/encoder':
         specifier: workspace:*

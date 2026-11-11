@@ -11,14 +11,14 @@ use swc_next_bridge::napi;
 pub use ast::DeserializeError;
 
 /// JavaScript code generation options.
-#[cfg_attr(feature = "bridge", bridge(object, js_name = "CodegenOptions"))]
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "GeneratorConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct JsCodegenOptions {
+pub struct JsGeneratorConfig {
     pub ascii_only: Option<bool>,
     /// Escape closing script tags. Tagged template raw text is preserved.
     pub inline_script: Option<bool>,
@@ -27,8 +27,11 @@ pub struct JsCodegenOptions {
     // pub preamble: Option<String>,
 }
 
-impl From<JsCodegenOptions> for Options {
-    fn from(options: JsCodegenOptions) -> Self {
+/// Options accepted by the standalone generator API.
+pub type JsGenerateApiOptions = JsGeneratorConfig;
+
+impl From<JsGeneratorConfig> for Options {
+    fn from(options: JsGeneratorConfig) -> Self {
         let defaults = Self::default();
         Self {
             ascii_only: options.ascii_only.unwrap_or(defaults.ascii_only),
@@ -41,7 +44,7 @@ impl From<JsCodegenOptions> for Options {
 }
 
 #[cfg_attr(feature = "bridge", bridge(object))]
-pub struct CodegenOutput {
+pub struct GenerateOutput {
     pub code: String,
 }
 
@@ -53,15 +56,15 @@ pub struct CodegenOutput {
 /// crate and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
 /// It must satisfy the alignment requirements of [`ast::deserialize_from`] and remain
 /// immutable throughout this call.
-pub unsafe fn print_from_buffer(
+pub unsafe fn generate_from_buffer(
     buffer: &[u8],
-    options: Option<JsCodegenOptions>,
-) -> Result<CodegenOutput, DeserializeError> {
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, DeserializeError> {
     let allocator = Allocator::default();
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
     let tree = unsafe { ast::deserialize_from(buffer, &allocator) }?;
     let result = print(&tree, options.unwrap_or_default().into());
-    Ok(CodegenOutput { code: result.code })
+    Ok(GenerateOutput { code: result.code })
 }
 
 /// Print separate, trusted JavaScript encoder sections.
@@ -76,15 +79,15 @@ pub unsafe fn print_from_buffer(
 /// without section padding. They must come from the matching JavaScript encoder
 /// and remain immutable throughout this call. On native little-endian targets,
 /// spans must be aligned to four bytes, payloads and extra data to eight bytes.
-pub unsafe fn print_from_parts(
+pub unsafe fn generate_from_parts(
     header: &[u8],
     spans: &[u8],
     kinds: &[u8],
     payloads: &[u8],
     extra: &[u8],
     strings: &[u8],
-    options: Option<JsCodegenOptions>,
-) -> Result<CodegenOutput, DeserializeError> {
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, DeserializeError> {
     #[cfg(all(not(target_family = "wasm"), target_endian = "little"))]
     {
         let allocator = Allocator::default();
@@ -93,7 +96,7 @@ pub unsafe fn print_from_parts(
             ast::deserialize_parts(header, spans, kinds, payloads, extra, strings, &allocator)
         }?;
         let result = print(&tree, options.unwrap_or_default().into());
-        Ok(CodegenOutput { code: result.code })
+        Ok(GenerateOutput { code: result.code })
     }
     #[cfg(any(target_family = "wasm", target_endian = "big"))]
     {
@@ -117,16 +120,16 @@ pub unsafe fn print_from_parts(
             offset += part.len();
         }
         // SAFETY: The trusted sections now form an aligned transfer buffer.
-        unsafe { print_from_buffer(buffer, options) }
+        unsafe { generate_from_buffer(buffer, options) }
     }
 }
 
 #[cfg(feature = "bridge")]
 const _: () = {
-    use self::JsCodegenOptions as CodegenOptions;
+    use self::JsGeneratorConfig as GeneratorConfig;
 
     #[bridge]
-    impl BridgeEncode for CodegenOutput {
+    impl BridgeEncode for GenerateOutput {
         type Wire = String;
 
         fn encode(self) -> Self::Wire {
@@ -148,7 +151,7 @@ const _: () = {
     const KNOWN_MASK: u32 = OPTIONS_PRESENT | ASCII_ONLY_MASK | MINIFY_MASK | INLINE_SCRIPT_MASK;
 
     #[bridge]
-    impl BridgeDecodeOptional for CodegenOptions {
+    impl BridgeDecodeOptional for GeneratorConfig {
         type Wire = u32;
 
         fn decode_optional(value: Self::Wire) -> Option<Option<Self>> {
@@ -163,7 +166,7 @@ const _: () = {
             let minify = boolean_field(value, MINIFY_MASK, MINIFY_SHIFT)?;
 
             let inline_script = boolean_field(value, INLINE_SCRIPT_MASK, INLINE_SCRIPT_SHIFT)?;
-            Some(Some(CodegenOptions {
+            Some(Some(JsGeneratorConfig {
                 ascii_only,
                 minify,
                 inline_script,

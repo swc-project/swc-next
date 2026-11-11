@@ -1,8 +1,8 @@
 //! Core APIs for swc-next.
 //!
 //! Enable `js` for JavaScript configuration types, and select stages with
-//! `js_parser`, `js_codegen`, and `js_transform`. The `js_transform` feature includes
-//! parsing, code generation, and minification.
+//! `js_parser`, `js_generator`, `js_transformer`, and `js_minifier`. The transformer
+//! and minifier features include parsing and code generation.
 //! The optional `bridge` feature enables FFI conversions and type generation for
 //! the enabled APIs.
 //! Enable `serde` to deserialize configuration types. JSON uses camelCase fields

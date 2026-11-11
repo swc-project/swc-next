@@ -3648,15 +3648,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_next_codegen_bridge"
-version = "0.6.1"
-dependencies = [
- "napi-build",
- "swc_next_bridge",
- "swc_next_core",
-]
-
-[[package]]
 name = "swc_next_core"
 version = "0.5.0"
 dependencies = [
@@ -3801,6 +3792,15 @@ dependencies = [
  "memchr",
  "rustc-hash",
  "swc_next_allocator",
+]
+
+[[package]]
+name = "swc_next_generator_bridge"
+version = "0.6.1"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_core",
 ]
 
 [[package]]
