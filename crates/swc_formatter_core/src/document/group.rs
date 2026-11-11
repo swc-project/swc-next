@@ -5,7 +5,7 @@
 //! Source fields and executable layouts have distinct traversal policies.
 
 use rustc_hash::FxHashSet;
-use swc_next_allocator::Allocator;
+use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
     Fragment, GroupId, GroupRequest, Instruction,
@@ -139,6 +139,9 @@ pub(super) trait Group<'a>: Copy {
         )
     }
 
+    /// Structural traversal visits every retained field, including unused states.
+    fn source_fragments(self) -> impl Iterator<Item = Fragment<'a>>;
+
     #[inline(always)]
     fn select(
         self,
@@ -154,6 +157,13 @@ pub(super) trait Group<'a>: Copy {
             fits,
         )
     }
+
+    fn map_sources(
+        self,
+        allocator: &'a Allocator,
+        lookup: impl Fn(Fragment<'a>) -> Fragment<'a>,
+        remap_id: impl FnOnce(GroupId) -> Option<GroupId>,
+    ) -> Option<Instruction<'a>>;
 }
 
 impl<'a> Group<'a> for &'a CompactGroup<'a> {
@@ -213,6 +223,37 @@ impl<'a> Group<'a> for &'a CompactGroup<'a> {
                 flags | state.summary.0
             })
     }
+    #[inline]
+    fn source_fragments(self) -> impl Iterator<Item = Fragment<'a>> {
+        std::iter::once(self.fallback).chain(self.preferred.iter().copied())
+    }
+
+    #[inline(always)]
+    fn map_sources(
+        self,
+        allocator: &'a Allocator,
+        lookup: impl Fn(Fragment<'a>) -> Fragment<'a>,
+        _: impl FnOnce(GroupId) -> Option<GroupId>,
+    ) -> Option<Instruction<'a>> {
+        let fallback = lookup(self.fallback);
+        if same(self.fallback, fallback)
+            && self
+                .preferred
+                .iter()
+                .copied()
+                .all(|state| same(state, lookup(state)))
+        {
+            return None;
+        }
+        Some(
+            compact(
+                allocator,
+                map_slice(allocator, self.preferred, lookup),
+                fallback,
+            )
+            .element(),
+        )
+    }
 }
 
 impl<'a> Group<'a> for &'a SourceGroup<'a> {
@@ -263,10 +304,55 @@ impl<'a> Group<'a> for &'a SourceGroup<'a> {
         let layouts = self.layouts();
         std::iter::once(layouts.primary).chain(layouts.alternatives.iter())
     }
+    #[inline]
+    fn source_fragments(self) -> impl Iterator<Item = Fragment<'a>> {
+        std::iter::once(self.contents).chain(self.states.iter().copied())
+    }
+
+    #[inline(always)]
+    fn map_sources(
+        self,
+        allocator: &'a Allocator,
+        lookup: impl Fn(Fragment<'a>) -> Fragment<'a>,
+        remap_id: impl FnOnce(GroupId) -> Option<GroupId>,
+    ) -> Option<Instruction<'a>> {
+        let contents = lookup(self.contents);
+        let id = self.id.and_then(remap_id);
+        if id.is_none()
+            && same(self.contents, contents)
+            && self
+                .states
+                .iter()
+                .copied()
+                .all(|state| same(state, lookup(state)))
+        {
+            return None;
+        }
+        Some(
+            with_states(
+                allocator,
+                self.request,
+                id.or(self.id),
+                contents,
+                map_slice(allocator, self.states, lookup),
+            )
+            .element(),
+        )
+    }
 }
 
 fn same(left: Fragment<'_>, right: Fragment<'_>) -> bool {
     std::ptr::eq(left.elements(), right.elements())
+}
+
+fn map_slice<'a>(
+    allocator: &'a Allocator,
+    source: &[Fragment<'a>],
+    lookup: impl Fn(Fragment<'a>) -> Fragment<'a>,
+) -> &'a [Fragment<'a>] {
+    let mut result = ArenaVec::with_capacity_in(source.len(), allocator);
+    result.extend(source.iter().copied().map(lookup));
+    result.into_bump_slice()
 }
 
 /// Qualify only source-bearing scopes before allocating propagation facts.

@@ -430,6 +430,23 @@ pub struct Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
+    /// Replaces ordinary lines with spaces and soft lines with empty text.
+    /// Selects the flat branch of IfBreak and retains hard lines and groups.
+    pub fn remove_lines(self) -> Self {
+        transform::remove_lines(self)
+    }
+
+    /// Replaces LF within Text with a literal line and a parent break request.
+    pub fn replace_end_of_line(self) -> Self {
+        transform::replace_end_of_line(self, None)
+    }
+
+    /// Replaces LF within Text with a separate Doc. The replacement's named
+    /// groups are scoped independently and its label IDs are preserved.
+    pub fn replace_end_of_line_with(self, replacement: Self) -> Self {
+        transform::replace_end_of_line(self, Some(replacement))
+    }
+
     /// Decodes a versioned document, borrowing its text from the input buffer.
     ///
     /// Supports version 0's complete balanced fragment scopes, including

@@ -7,7 +7,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 use super::{
     AlignText, BreakEffect, ConditionTarget, Doc, FlatFragment, Fragment, FragmentCapabilities,
     Group, GroupId, GroupRequest, IfBreak, IndentIfBreakOptions, Instruction, LabelId, LineOptions,
-    NeutralFragment, RecordedGroup, RichIndentKind, facts::Facts, text::Text,
+    NeutralFragment, RecordedGroup, RichIndentKind, facts::Facts, text::Text, transform,
 };
 
 pub struct Writer<'a> {
@@ -692,6 +692,25 @@ impl<'a> Writer<'a> {
         );
         self.facts.group(group);
         self.elements.push(group.element());
+    }
+
+    /// Imports an independent document as a fragment in this writer's group namespace.
+    /// Each call reserves fresh named group IDs, including their conditional references.
+    /// Reusing the returned fragment shares those IDs within this formatting call.
+    /// Current-mode conditions and caller-owned label IDs retain their meaning.
+    ///
+    /// The document's arena and any borrowed source or encoded buffer must remain
+    /// alive for `'a`. Shared scopes are retained while changed instructions are
+    /// allocated in this writer's arena.
+    pub fn import_doc(&mut self, doc: &Doc<'a>) -> Fragment<'a> {
+        transform::import_doc(self.allocator, doc, &mut self.group_count)
+    }
+
+    /// Imports and appends an independent document. See [`Self::import_doc`] for
+    /// group scoping and borrowed storage requirements.
+    pub fn write_doc(&mut self, doc: &Doc<'a>) {
+        let fragment = self.import_doc(doc);
+        self.write_fragment(fragment);
     }
 
     /// Appends a fragment created or imported in this writer's group namespace.

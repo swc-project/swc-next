@@ -232,6 +232,15 @@ impl<'a> Instruction<'a> {
         }
     }
 
+    #[inline]
+    pub(super) fn group_key(&self) -> Option<usize> {
+        match self {
+            Self::CompactGroup(group) => Some(group.key()),
+            Self::SourceGroup(group) => Some(group.key()),
+            _ => None,
+        }
+    }
+
     pub(super) fn text(text: Text<'a>) -> Self {
         let (source, width) = text.into_parts();
         Self::Text { source, width }

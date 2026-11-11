@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{ConditionTarget, Doc, Fragment, GroupRequest, Writer};
+use super::{ConditionTarget, Doc, Fragment, GroupRequest, Instruction, Writer};
 use crate::{IndentIfBreakOptions, IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -1513,6 +1513,33 @@ fn rich_indentation_layout_and_codec() {
     assert_eq!(
         Doc::decode(&allocator, &no_op).unwrap().print(tabs),
         "\n\tx"
+    );
+}
+
+#[test]
+fn deep_indentation() {
+    let allocator = Allocator::new();
+    let mut elements = vec![Instruction::StartIndent; 1025];
+    elements.push(Instruction::HardLine);
+    elements.push(Instruction::text(super::text::Text::new("value")));
+    elements.extend(std::iter::repeat_n(Instruction::EndIndent, 1025));
+    let document = Doc {
+        allocator: &allocator,
+        root: super::transform::summarize(&allocator, elements),
+        group_count: 0,
+    };
+    let options = PrintOptions {
+        indent_width: 64.try_into().unwrap(),
+        ..PrintOptions::default()
+    };
+    let output = document.print(options);
+    assert_eq!(output.len(), 1 + 1025 * 64 + "value".len());
+    assert!(output.starts_with('\n'));
+    assert!(output.ends_with("value"));
+    assert!(
+        output[1..output.len() - "value".len()]
+            .bytes()
+            .all(|byte| byte == b' ')
     );
 }
 
@@ -4348,6 +4375,28 @@ fn group_states_shared_propagation() {
     assert_eq!(shared_states_layout(true), "a\nb");
 }
 
+#[test]
+fn group_states_inactive_layouts() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let primary = record(&mut writer, |writer| writer.text("p"));
+    let unused = record(&mut writer, |writer| {
+        writer.align_text(">", |writer| {
+            writer.trim();
+            writer.hard_line();
+        });
+    });
+    let fallback = record(&mut writer, |writer| writer.text("z"));
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.write_group_with_states(GroupRequest::Auto, None, primary, unused, &[fallback]);
+    });
+    let document = writer.finish();
+    assert_decoded_prints(Doc { ..document }, PrintOptions::default());
+    assert_eq!(document.print(PrintOptions::default()), "a p");
+}
+
 fn group_fill_layout(source_storage: bool, width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -4854,6 +4903,143 @@ fn doc<'a>(allocator: &'a Allocator, write: impl FnOnce(&mut Writer<'a>)) -> Doc
     let mut writer = Writer::new(allocator);
     write(&mut writer);
     writer.finish()
+}
+
+fn deferred_group_doc(allocator: &Allocator, expanded: bool) -> Doc<'_> {
+    doc(allocator, |writer| {
+        let id = writer.named_group(expanded, |writer| writer.text("x"));
+        writer.line_suffix(|writer| {
+            writer.if_break_for(ConditionTarget::Group(id), "B");
+            writer.if_flat_for(ConditionTarget::Group(id), "F");
+        });
+    })
+}
+
+#[test]
+fn document_composition_groups() {
+    let allocator = Allocator::new();
+    let child_allocator = Allocator::new();
+    let options = PrintOptions::default();
+    let broken = deferred_group_doc(&child_allocator, true);
+    let flat_bytes = deferred_group_doc(&child_allocator, false).encode();
+    let flat = Doc::decode(&child_allocator, &flat_bytes).unwrap();
+
+    let document = doc(&allocator, |writer| {
+        writer.write_doc(&broken);
+        writer.write_doc(&flat);
+        let last = writer.named_group(false, |writer| writer.text("z"));
+        writer.if_flat_for(ConditionTarget::Group(last), "F");
+    });
+    assert_decoded_prints(Doc { ..document }, options);
+    assert_eq!(document.print(options), "xxzFBF");
+
+    let document = doc(&allocator, |writer| {
+        let first = writer.named_group(true, |writer| writer.text("p"));
+        writer.write_doc(&broken);
+        writer.write_doc(&flat);
+        writer.write_doc(&flat);
+        writer.if_break_for(ConditionTarget::Group(first), "B");
+    });
+    assert_decoded_prints(Doc { ..document }, options);
+    assert_eq!(document.print(options), "pxxxBBFF");
+}
+
+#[test]
+fn document_composition_layout() {
+    let allocator = Allocator::new();
+    let child_allocator = Allocator::new();
+    let options = PrintOptions::default();
+    let child = doc(&child_allocator, Writer::break_parent);
+    let document = doc(&allocator, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.write_doc(&child);
+            writer.text("b");
+        });
+    });
+    assert_eq!(document.print(options), "a\nb");
+
+    let child = doc(&child_allocator, |writer| {
+        let id = writer.named_group(true, |writer| writer.text("a"));
+        writer.indent_if_break(id, |writer| {
+            writer.soft_line_if_break(id);
+            writer.text("b");
+        });
+    });
+    let document = doc(&allocator, |writer| {
+        writer.named_group(false, |writer| writer.text("p"));
+        writer.write_doc(&child);
+    });
+    assert_decoded_prints(Doc { ..document }, options);
+    assert_eq!(document.print(options), "pa\n  b");
+
+    let child = doc(&child_allocator, |writer| {
+        let id = writer.next_group_id();
+        let contents = record(writer, |writer| writer.text("contents"));
+        let state = record(writer, |writer| {
+            writer.if_break_for(ConditionTarget::Group(id), "B");
+            writer.if_flat_for(ConditionTarget::Group(id), "F");
+        });
+        writer.write_group_with_states(GroupRequest::Expanded, Some(id), contents, state, &[]);
+    });
+    let document = doc(&allocator, |writer| {
+        let parent = writer.named_group(false, |writer| writer.text("p"));
+        writer.write_doc(&child);
+        writer.if_flat_for(ConditionTarget::Group(parent), "F");
+    });
+    assert_decoded_prints(Doc { ..document }, options);
+    assert_eq!(document.print(options), "pBF");
+
+    let child = doc(&child_allocator, |writer| {
+        writer.if_break("B");
+        writer.if_flat("F");
+        writer.line();
+    });
+    let document = doc(&allocator, |writer| {
+        let fragment = writer.import_doc(&child);
+        writer.write_flat_fragment(fragment.try_flat().unwrap());
+    });
+    assert_eq!(document.print(options), "F ");
+}
+
+fn imported_shared_group(allocator: &Allocator) -> Doc<'_> {
+    doc(allocator, |writer| {
+        let (recorded, ()) = writer
+            .record_group_with_value(|writer| {
+                writer.named_group(false, |writer| {
+                    writer.text("a");
+                    writer.line();
+                    writer.text("b");
+                    writer.break_parent();
+                });
+                Ok::<_, std::convert::Infallible>(())
+            })
+            .unwrap();
+        let fallback = record(writer, |writer| writer.text("fallback"));
+        writer.write_group_with_states(
+            GroupRequest::Auto,
+            None,
+            recorded.grouped(),
+            recorded.contents(),
+            &[fallback],
+        );
+    })
+}
+
+#[test]
+fn document_composition_shared_scopes() {
+    let allocator = Allocator::new();
+    let child_allocator = Allocator::new();
+    let options = PrintOptions::default();
+    let child = imported_shared_group(&child_allocator);
+    assert_eq!(Doc { ..child }.print(options), "a\nb");
+    let document = doc(&allocator, |writer| {
+        writer.named_group(false, |writer| writer.text("p"));
+        writer.write_doc(&child);
+    });
+    assert_eq!(Doc { ..document }.print(options), "pa\nb");
+    assert_decoded_prints(document, options);
 }
 
 #[test]
