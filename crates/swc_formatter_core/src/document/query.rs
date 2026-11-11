@@ -2,7 +2,7 @@
 
 use rustc_hash::FxHashSet;
 
-use super::{Fragment, FragmentCapabilities, Group, Instruction as I, Text};
+use super::{Fragment, FragmentCapabilities, Group, GroupRequest, Instruction as I, Text};
 
 fn is_line(element: I<'_>) -> bool {
     matches!(
@@ -35,6 +35,23 @@ pub(super) fn has_line_breaks(root: Fragment<'_>) -> bool {
                 }
                 _ => false,
             }
+    })
+}
+
+pub(super) fn will_break(root: Fragment<'_>) -> bool {
+    any_in_primary_contents(root, |element| match element {
+        I::BreakParent
+        | I::HardLine
+        | I::HardLineOnly
+        | I::LiteralLine
+        | I::LiteralLineOnly
+        | I::LiteralLineAtCurrentIndent
+        | I::StartGroup {
+            request: GroupRequest::Expanded,
+            ..
+        } => true,
+        I::SourceGroup(group) => matches!(group.request(), GroupRequest::Expanded),
+        _ => false,
     })
 }
 

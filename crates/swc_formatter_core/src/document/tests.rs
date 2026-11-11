@@ -1566,6 +1566,59 @@ fn literal_lines() {
 }
 
 #[test]
+fn line_break_requests() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 0,
+        ..wide
+    };
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.hard_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.literal_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = indented_line_doc(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\n  bF");
+
+    let doc = indented_line_doc(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a \nbF");
+
+    let mut writer = Writer::new(&allocator);
+    let hard = record(&mut writer, Writer::hard_line_without_break_parent);
+    assert!(hard.can_break());
+    assert!(hard.has_intrinsic_lines());
+    assert!(!hard.preferred_breaks());
+    assert!(hard.try_flat().is_none());
+
+    let literal = record(&mut writer, Writer::literal_line_without_break_parent);
+    assert!(literal.can_break());
+    assert!(literal.has_intrinsic_lines());
+    assert!(!literal.preferred_breaks());
+    assert!(literal.try_flat().is_none());
+}
+
+#[test]
 fn group_continuation() {
     assert_eq!(pair_document("aa", "bb", 9), "[aa, bb];");
 
@@ -2125,6 +2178,54 @@ fn text_line_measurement() {
 }
 
 #[test]
+fn ordinary_text_lines() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("aa\n");
+    writer.group(false, |writer| {
+        writer.text("bb");
+        writer.line();
+        writer.text("cc");
+    });
+    let doc = writer.finish();
+    assert_eq!(doc.print(narrow), "aa\nbb\ncc");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.text("x\ny");
+    writer.hard_line();
+    writer.text("z");
+    let output = writer.finish().print(wide);
+    assert_eq!(output, "ax\ny!\nz");
+
+    let mut writer = Writer::new(&allocator);
+    let text = record(&mut writer, |writer| writer.text("a\nb"));
+    assert!(text.has_intrinsic_lines());
+    assert!(!text.can_break());
+    assert!(text.has_line_breaks());
+    assert!(!text.preferred_breaks());
+    assert!(text.try_flat().is_none());
+    assert!(text.try_neutral().is_none());
+    assert_eq!(super::text::Text::new("a\nb").clean_width(), None);
+}
+
+#[test]
 fn text_line_endings() {
     let allocator = Allocator::new();
     let lf = PrintOptions::default();
@@ -2678,6 +2779,70 @@ fn record<'a>(writer: &mut Writer<'a>, write: impl FnOnce(&mut Writer<'a>)) -> s
         })
         .unwrap()
         .0
+}
+
+#[test]
+fn fragment_line_breaks() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let atom = record(&mut writer, |writer| {
+        writer.group(false, |writer| writer.text("value"))
+    });
+    assert!(!atom.can_break());
+
+    let soft = record(&mut writer, Writer::soft_line);
+    assert!(soft.can_break());
+
+    let flat = record(&mut writer, |writer| {
+        writer.write_flat_fragment(soft.try_flat().unwrap())
+    });
+    assert!(!flat.can_break());
+
+    let nested = record(&mut writer, |writer| writer.write_fragment(soft));
+    assert!(nested.can_break());
+
+    let group = writer.named_group(false, |writer| writer.text("head"));
+    let conditional = record(&mut writer, |writer| writer.soft_line_if_break(group));
+    assert!(conditional.can_break());
+
+    let named = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Group(group), soft, soft);
+    });
+    assert!(named.can_break());
+
+    let flat_named = record(&mut writer, |writer| {
+        writer.write_flat_fragment(named.try_flat().unwrap());
+    });
+    assert!(!flat_named.can_break());
+
+    let hard = record(&mut writer, Writer::hard_line);
+    assert!(hard.can_break());
+
+    let literal = record(&mut writer, Writer::literal_line);
+    assert!(literal.can_break());
+
+    let current = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, soft, atom);
+    });
+    assert!(current.can_break());
+
+    let flat_current = record(&mut writer, |writer| {
+        writer.write_flat_fragment(current.try_flat().unwrap())
+    });
+    assert!(!flat_current.can_break());
+
+    let multiline = record(&mut writer, |writer| writer.literal_text("first\nlast"));
+    assert!(multiline.can_break());
+
+    let fallback_only = record(&mut writer, |writer| {
+        writer.write_alternatives(&[atom], hard)
+    });
+    assert!(!fallback_only.can_break());
+
+    let first = record(&mut writer, |writer| {
+        writer.write_alternatives(&[soft], atom)
+    });
+    assert!(first.can_break());
 }
 
 #[test]
@@ -5197,4 +5362,239 @@ fn trim_during_group_measurement() {
     });
     assert_decoded_prints(Doc { ..document }, options);
     assert_eq!(document.print(options), "abcF");
+}
+
+#[test]
+fn document_line_breaks() {
+    let allocator = Allocator::new();
+
+    let document = doc(&allocator, |writer| writer.text("a\nb"));
+    assert!(!document.can_break());
+    assert!(document.replace_end_of_line().can_break());
+
+    let document = doc(&allocator, Writer::break_parent);
+    assert!(!document.can_break());
+    assert!(document.will_break());
+
+    let document = doc(&allocator, |writer| writer.line_suffix(Writer::soft_line));
+    assert!(document.can_break());
+    assert!(!document.will_break());
+
+    let document = doc(&allocator, |writer| {
+        let broken = record(writer, Writer::line);
+        let flat = record(writer, |writer| writer.text("a"));
+        writer.if_break_doc(ConditionTarget::Current, broken, flat);
+    });
+    assert!(document.can_break());
+
+    let document = doc(&allocator, |writer| {
+        let broken = record(writer, |writer| writer.text("a"));
+        let flat = record(writer, Writer::line);
+        writer.if_break_doc(ConditionTarget::Current, broken, flat);
+    });
+    assert!(document.can_break());
+
+    let document = doc(&allocator, |writer| {
+        let contents = record(writer, |writer| writer.text("a"));
+        let first = record(writer, Writer::line);
+        writer.write_group_with_states(GroupRequest::Expanded, None, contents, first, &[]);
+    });
+    assert!(!document.can_break());
+    assert!(document.will_break());
+
+    let document = doc(&allocator, |writer| {
+        let line = record(writer, Writer::line);
+        writer.write_flat_fragment(line.try_flat().unwrap());
+    });
+    assert!(!document.can_break());
+}
+
+fn assert_logical_queries<'a>(
+    allocator: &'a Allocator,
+    write: impl FnOnce(&mut Writer<'a>),
+    expected: (bool, bool, bool),
+) {
+    let mut writer = Writer::new(allocator);
+    let fragment = record(&mut writer, write);
+    assert_eq!(
+        (
+            fragment.can_break(),
+            fragment.has_line_breaks(),
+            fragment.will_break()
+        ),
+        expected
+    );
+
+    writer.write_fragment(fragment);
+    let document = writer.finish();
+    assert_eq!(
+        (
+            document.can_break(),
+            document.has_line_breaks(),
+            document.will_break()
+        ),
+        expected
+    );
+
+    let encoded = document.encode();
+    let decoded = Doc::decode(allocator, &encoded).unwrap();
+    assert_eq!(
+        (
+            decoded.can_break(),
+            decoded.has_line_breaks(),
+            decoded.will_break()
+        ),
+        expected
+    );
+}
+
+#[test]
+fn logical_query_views() {
+    let allocator = Allocator::new();
+    assert_logical_queries(
+        &allocator,
+        |writer| writer.text("a\nb"),
+        (false, true, false),
+    );
+
+    assert_logical_queries(
+        &allocator,
+        Writer::hard_line_without_break_parent,
+        (true, true, true),
+    );
+
+    assert_logical_queries(&allocator, Writer::break_parent, (false, false, true));
+
+    assert_logical_queries(
+        &allocator,
+        |writer| writer.group(true, |writer| writer.text("a")),
+        (false, false, true),
+    );
+
+    assert_logical_queries(
+        &allocator,
+        |writer| {
+            let conditional = record(writer, |writer| writer.if_break("a\nb"));
+            writer.write_flat_fragment(conditional.try_flat().unwrap());
+        },
+        (false, false, false),
+    );
+
+    assert_logical_queries(
+        &allocator,
+        |writer| {
+            let contents = record(writer, |writer| writer.text("a"));
+            let state = record(writer, Writer::hard_line);
+            writer.write_group_with_states(GroupRequest::Auto, None, contents, state, &[]);
+        },
+        (false, false, false),
+    );
+
+    assert_logical_queries(
+        &allocator,
+        |writer| {
+            let mut shared = record(writer, |writer| {
+                writer.named_group(false, |writer| writer.text("a"));
+            });
+            for _ in 0..2 {
+                shared = record(writer, |writer| {
+                    writer.write_fragment(shared);
+                    writer.write_fragment(shared);
+                });
+            }
+            writer.write_fragment(shared);
+        },
+        (false, false, false),
+    );
+}
+
+#[test]
+fn logical_breaks_and_line_removal() {
+    let allocator = Allocator::new();
+    let options = PrintOptions::default();
+    let document = doc(&allocator, |writer| {
+        writer.text("a\nb");
+        writer.line();
+    });
+    assert!(!document.will_break());
+
+    let document = doc(&allocator, |writer| {
+        let id = writer.named_group(true, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.soft_line();
+            writer.text("b");
+        });
+        writer.if_break_for(ConditionTarget::Group(id), " broken");
+        writer.if_flat_for(ConditionTarget::Group(id), " flat");
+        writer.hard_line_without_break_parent();
+        writer.text("c");
+    });
+    assert!(document.will_break());
+    let removed = document.remove_lines();
+    assert!(removed.will_break());
+    let bytes = removed.encode();
+    let printed = Doc::decode(&allocator, &bytes).unwrap().print(options);
+    assert_eq!(printed, "a b flat\nc");
+
+    let document = doc(&allocator, |writer| {
+        let (primary, ()) = writer
+            .record_with_value(|writer| {
+                writer.text("primary");
+                Ok::<_, std::convert::Infallible>(())
+            })
+            .unwrap();
+        let (expanded, ()) = writer
+            .record_with_value(|writer| {
+                writer.hard_line();
+                Ok::<_, std::convert::Infallible>(())
+            })
+            .unwrap();
+        writer.write_group_with_states(GroupRequest::Auto, None, primary, primary, &[expanded]);
+    });
+    assert!(!document.will_break());
+}
+
+#[test]
+fn replace_end_of_line_and_group_identity() {
+    let allocator = Allocator::new();
+    let replacement_allocator = Allocator::new();
+    let options = PrintOptions::default();
+
+    let document = doc(&allocator, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a \nb");
+            writer.if_break("B");
+        })
+    });
+    let replaced = document.replace_end_of_line();
+    assert!(replaced.will_break());
+    assert_eq!(replaced.print(options), "a \nbB");
+
+    let document = doc(&allocator, |writer| {
+        let id = writer.named_group(true, |writer| writer.text("a\nb\nc"));
+        writer.if_break_for(ConditionTarget::Group(id), "B");
+    });
+    let replacement = doc(&replacement_allocator, |writer| {
+        let id = writer.named_group(false, |writer| writer.text("/\n/"));
+        writer.if_flat_for(ConditionTarget::Group(id), "F");
+    });
+    let replaced = document.replace_end_of_line_with(replacement);
+    let bytes = replaced.encode();
+    assert_eq!(
+        Doc::decode(&allocator, &bytes).unwrap().print(options),
+        "a/\n/Fb/\n/FcB"
+    );
+
+    let document = doc(&allocator, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a\nb");
+            writer.if_break("B");
+        })
+    });
+    let replacement = doc(&replacement_allocator, Writer::hard_line);
+    let result = document
+        .replace_end_of_line_with(replacement)
+        .print(options);
+    assert_eq!(result, "a\nbB");
 }

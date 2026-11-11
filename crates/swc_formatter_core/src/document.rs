@@ -326,9 +326,16 @@ impl<'a> Fragment<'a> {
         query::has_line_breaks(self)
     }
 
+    /// Whether primary group contents request a break or contain a hard line.
+    /// This query is independent of print width and distinct from propagation
+    /// through a conditional group's candidate layouts.
+    pub fn will_break(self) -> bool {
+        query::will_break(self)
+    }
+
     /// Whether construction requests expansion of enclosing groups. Candidate
     /// layouts form propagation barriers; explicit hard lines without a parent
-    /// break request do not contribute.
+    /// break request do not contribute. This is not [`Self::will_break`].
     pub fn preferred_breaks(self) -> bool {
         self.effect().preferred_breaks()
     }
@@ -430,6 +437,26 @@ pub struct Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
+    /// Whether the Doc contains an explicit line instruction, independent of
+    /// print width. Visits both IfBreak branches and line suffixes, follows
+    /// only the primary contents of conditional groups, and respects flat
+    /// projections. Ignores newlines in Text and requests to expand a group.
+    pub fn can_break(&self) -> bool {
+        self.root.can_break()
+    }
+
+    /// Whether primary contents contain a line instruction or multiline Text.
+    /// See [`Fragment::has_line_breaks`] for traversal and projection rules.
+    pub fn has_line_breaks(&self) -> bool {
+        self.root.has_line_breaks()
+    }
+
+    /// Whether the Doc requests a break or contains a hard line in its primary
+    /// group contents. This query is independent of the print width.
+    pub fn will_break(&self) -> bool {
+        self.root.will_break()
+    }
+
     /// Replaces ordinary lines with spaces and soft lines with empty text.
     /// Selects the flat branch of IfBreak and retains hard lines and groups.
     pub fn remove_lines(self) -> Self {
