@@ -158,9 +158,7 @@ fn codegen_options(options: &JsOptions) -> CodegenOptions {
     };
     let comments = options.comments.or(parser.comments);
     let comments = comments.unwrap_or(default_comments);
-    let mut codegen = options.codegen.unwrap_or_default();
-    codegen.minify.get_or_insert(minify_enabled);
-    let mut codegen = CodegenOptions::from(codegen);
+    let mut codegen = CodegenOptions::from(options.codegen.unwrap_or_default());
     codegen.comments = comments == CommentsOption::All;
     codegen
 }

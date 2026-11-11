@@ -416,8 +416,8 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let minify_enabled = !matches!(&options.minify, None | Some(BoolOr::Bool(false)));
     let comments = {
+        let minify_enabled = !matches!(&options.minify, None | Some(BoolOr::Bool(false)));
         let default = if minify_enabled {
             CommentsOption::None
         } else {
@@ -511,9 +511,7 @@ pub fn transform_js(source: &str, options: JsOptions) -> JsOutput {
 
     // ======================= Codegen =======================
     let printed = {
-        let mut codegen = options.codegen.unwrap_or_default();
-        codegen.minify.get_or_insert(minify_enabled);
-        let mut codegen = CodegenOptions::from(codegen);
+        let mut codegen = CodegenOptions::from(options.codegen.unwrap_or_default());
         let source_maps = options.source_maps.unwrap_or(false);
         let source_filename = options.filename.as_deref().unwrap_or("input.js");
         codegen.source_map_path = source_maps.then(|| source_filename.into());
