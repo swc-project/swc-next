@@ -54,9 +54,10 @@ impl<'a> Writer<'a> {
         }
     }
 
-    /// Appends text using the native printer's whitespace handling.
-    /// For portable version-0 encoding, text must not contain physical line breaks;
-    /// use [`Self::literal_text`] when preserving multiline source text.
+    /// Appends one string whose complete source width participates in layout.
+    /// Internal newlines do not reset the layout column or expand groups; LF is
+    /// converted to the selected output line ending. Use [`Self::literal_text`]
+    /// when source lines should instead behave as explicit literal lines.
     pub fn text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
@@ -89,7 +90,9 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::text(text));
     }
 
-    /// Literal source lines retain their contents without structural indentation.
+    /// Splits source lines with explicit literal lines, expanding enclosing groups.
+    /// Source CR, LF, and CRLF become the selected output line ending, and each
+    /// line resets the layout column without structural indentation.
     pub fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,

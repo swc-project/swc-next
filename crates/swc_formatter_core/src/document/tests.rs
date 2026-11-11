@@ -39,6 +39,31 @@ fn line_document(options: PrintOptions) -> String {
     writer.finish().print(options)
 }
 
+fn text_layout_document<'a>(
+    allocator: &'a Allocator,
+    text: impl FnOnce(&mut Writer<'a>),
+) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        text(writer);
+        writer.line();
+        writer.text("c");
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn indented_text_document<'a>(allocator: &'a Allocator, text: &'a str) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.indent(|writer| {
+        writer.hard_line();
+        writer.text(text);
+        writer.text("end");
+    });
+    writer.finish()
+}
+
 fn independent_document(allocator: &Allocator) -> Doc<'_> {
     let mut writer = Writer::new(allocator);
     let group = writer.named_group(false, |writer| {
@@ -123,17 +148,17 @@ fn compact_widths() {
     let ascii = "a".repeat(80_000);
     let text = Text::new(&ascii);
     assert_eq!(text.clean_ascii_width(), Some(80_000));
-    assert_eq!(text.first_line(17), (80_017, false));
+    assert_eq!(text.advance_column(17), 80_017);
 
     let unicode = "界".repeat(40_000);
     let text = Text::new(&unicode);
     assert_eq!(text.clean_width(), Some(usize::from(u16::MAX)));
-    assert_eq!(text.first_line(17), (usize::from(u16::MAX) + 17, false));
+    assert_eq!(text.advance_column(17), usize::from(u16::MAX) + 17);
 
     let controls = "界\tend";
     let text = Text::new(controls);
-    assert_eq!(text.clean_width(), Some(5));
-    assert_eq!(text.first_line(17), (22, false));
+    assert_eq!(text.clean_width(), Some(6));
+    assert_eq!(text.advance_column(17), 23);
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -574,9 +599,9 @@ fn prepared_group_columns() {
 
     assert_eq!(flat_width_text("世界", 6), "a (\n  世界\n);");
 
-    assert_eq!(flat_width_text("a\tb", 5), "a a\tb;");
+    assert_eq!(flat_width_text("a\tb", 6), "a a\tb;");
 
-    assert_eq!(flat_width_text("a\tb", 4), "a (\n  a\tb\n);");
+    assert_eq!(flat_width_text("a\tb", 5), "a (\n  a\tb\n);");
 
     assert_eq!(flat_width_text("a\u{7f}b", 6), "a a\u{7f}b;");
 
@@ -1545,8 +1570,8 @@ fn clean_fragment_width<'a>(writer: &mut Writer<'a>, fragment: Fragment<'a>) -> 
 #[test]
 fn complete_text_measurement() {
     assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
-    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(1));
-    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(2));
+    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(2));
+    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(3));
     assert_eq!(clean_parts_width(&["👩", "\u{200d}", "💻"]), Some(2));
     assert_eq!(clean_parts_width(&["©", "\u{fe0f}"]), Some(2));
     assert_eq!(clean_parts_width(&["🇺", "🇸"]), Some(2));
@@ -1574,11 +1599,11 @@ fn complete_text_measurement() {
 
 #[test]
 fn cached_text_columns() {
-    assert_eq!(pair_document("لا", "a", 8), "[لا, a];");
-    assert_eq!(pair_document("لا", "a", 7), "[\n  لا,\n  a,\n];");
-    assert_eq!(pair_document("a\u{200d}bcd", "a", 11), "[a\u{200d}bcd, a];");
+    assert_eq!(pair_document("لا", "a", 7), "[لا, a];");
+    assert_eq!(pair_document("لا", "a", 6), "[\n  لا,\n  a,\n];");
+    assert_eq!(pair_document("a\u{200d}bcd", "a", 10), "[a\u{200d}bcd, a];");
     assert_eq!(
-        pair_document("a\u{200d}bcd", "a", 10),
+        pair_document("a\u{200d}bcd", "a", 9),
         "[\n  a\u{200d}bcd,\n  a,\n];"
     );
     assert_eq!(pair_document("a\u{7f}b", "a", 9), "[a\u{7f}b, a];");
@@ -1589,9 +1614,8 @@ fn cached_text_columns() {
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
     let tab = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(tab.clean_width(), Some(2));
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(0), (2, false));
+    assert_eq!(tab.clean_width(), Some(4));
+    assert_eq!(tab.advance_column(0), 4);
 }
 
 fn literal_text_continuation(text: &'static str) -> String {
@@ -1608,20 +1632,20 @@ fn literal_text_continuation(text: &'static str) -> String {
 #[test]
 fn text_line_measurement() {
     let ascii = super::text::Text::new("ASCII");
-    assert_eq!(ascii.last_line(3), (8, false));
+    assert_eq!(ascii.advance_column(3), 8);
 
     let unicode = super::text::Text::new("世界");
-    assert_eq!(unicode.last_line(3), (7, false));
+    assert_eq!(unicode.advance_column(3), 7);
 
     let controls = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(controls.last_line(3), (5, false));
+    assert_eq!(controls.advance_column(3), 7);
 
     let tab = super::text::Text::new("a\tb");
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(3), (5, false));
+    assert_eq!(tab.advance_column(0), 3);
+    assert_eq!(tab.advance_column(3), 6);
 
     let separators = super::text::Text::new("a\u{2028}b\u{2029}c");
-    assert_eq!(separators.last_line(3), (8, false));
+    assert_eq!(separators.advance_column(3), 8);
 
     assert_eq!(
         literal_text_continuation("é\r\n\u{7f}b"),
@@ -1642,6 +1666,85 @@ fn text_line_measurement() {
         literal_text_continuation("head\r\ntail\n"),
         "prehead\ntail\n next"
     );
+}
+
+#[test]
+fn ordinary_text_lines() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("aa\n");
+    writer.group(false, |writer| {
+        writer.text("bb");
+        writer.line();
+        writer.text("cc");
+    });
+    let doc = writer.finish();
+    assert_eq!(doc.print(narrow), "aa\nbb\ncc");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.text("x\ny");
+    writer.hard_line();
+    writer.text("z");
+    let output = writer.finish().print(wide);
+    assert_eq!(output, "ax\ny!\nz");
+
+    let mut writer = Writer::new(&allocator);
+    let text = record(&mut writer, |writer| writer.text("a\nb"));
+    assert!(text.has_intrinsic_lines());
+    assert!(text.can_break());
+    assert!(!text.preferred_breaks());
+    assert!(text.try_flat().is_none());
+    assert!(text.try_neutral().is_none());
+    assert_eq!(super::text::Text::new("a\nb").clean_width(), None);
+}
+
+#[test]
+fn text_line_endings() {
+    let allocator = Allocator::new();
+    let lf = PrintOptions::default();
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..lf
+    };
+    let cr = PrintOptions {
+        line_ending: LineEnding::Cr,
+        ..lf
+    };
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(lf), "\n  a \n\tb\r\nc\rd\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(crlf), "\r\n  a \r\n\tb\r\r\nc\rd\r\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(cr), "\r  a \r\tb\r\rc\rd\rend");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(lf), "a\nb\nc\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(crlf), "a\r\nb\r\nc\r\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(cr), "a\rb\rc\rcB");
 }
 
 fn recorded_fill_document(width: u16, inherited: bool, nested: bool) -> String {

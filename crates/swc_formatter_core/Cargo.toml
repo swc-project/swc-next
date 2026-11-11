@@ -12,3 +12,4 @@ version              = "0.6.1"
 memchr             = { workspace = true }
 rustc-hash         = { workspace = true }
 swc_next_allocator = { workspace = true }
+unicode-width      = { workspace = true }
