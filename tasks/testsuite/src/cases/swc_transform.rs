@@ -6,7 +6,7 @@ use std::{
 use jwalk::WalkDir;
 use rayon::prelude::*;
 use swc_core::base::config::Config;
-use swc_next_core::js::JsOptions;
+use swc_next_core::js::JsTransformApiOptions;
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use super::{Case, TransformCase, fixtures};
@@ -128,7 +128,7 @@ impl TransformCase for SwcTransformCase {
         Some(&self.output)
     }
 
-    fn options(&self) -> JsOptions {
+    fn options(&self) -> JsTransformApiOptions {
         options::options(self.options.as_ref().unwrap(), &self.path)
     }
 }

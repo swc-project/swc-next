@@ -1,10 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_core::{
-    BoolOr,
-    js::{CommentsOption, JsOptions, transform::transform_js},
-};
+use swc_next_core::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
@@ -118,7 +115,7 @@ fn check_diagnostics(diagnostics: &[Diagnostic]) -> Result<(), String> {
 
 fn parse_program<'a>(
     allocator: &'a Allocator,
-    options: &JsOptions,
+    options: &JsTransformApiOptions,
     source: &'a str,
     preserve_parens: bool,
 ) -> Option<AstCtx<'a>> {
@@ -139,7 +136,7 @@ fn parse_program<'a>(
 }
 
 /// Compare output with comments while ignoring redundant parentheses and formatting.
-fn normalize_output(options: &JsOptions, source: &str) -> Option<String> {
+fn normalize_output(options: &JsTransformApiOptions, source: &str) -> Option<String> {
     let allocator = Allocator::default();
     let ast = parse_program(&allocator, options, source, false)?;
     let mut codegen = codegen_options(options);
@@ -148,17 +145,13 @@ fn normalize_output(options: &JsOptions, source: &str) -> Option<String> {
     Some(print(&ast, codegen).code)
 }
 
-fn codegen_options(options: &JsOptions) -> CodegenOptions {
+fn codegen_options(options: &JsTransformApiOptions) -> CodegenOptions {
     let parser = options.parser.unwrap_or_default();
-    let minify_enabled = !matches!(&options.minify, None | Some(BoolOr::Bool(false)));
-    let default_comments = if minify_enabled {
-        CommentsOption::None
-    } else {
-        CommentsOption::All
-    };
-    let comments = options.comments.or(parser.comments);
-    let comments = comments.unwrap_or(default_comments);
-    let mut codegen = CodegenOptions::from(options.codegen.unwrap_or_default());
+    let comments = options
+        .comments
+        .or(parser.comments)
+        .unwrap_or(CommentsOption::All);
+    let mut codegen = CodegenOptions::from(options.generator.unwrap_or_default());
     codegen.comments = comments == CommentsOption::All;
     codegen
 }

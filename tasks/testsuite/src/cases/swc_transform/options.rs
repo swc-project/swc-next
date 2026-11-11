@@ -16,11 +16,11 @@ use swc_core::{
 use swc_next_core::{
     BoolOr,
     js::{
-        CommentsOption, JsOptions,
-        codegen::JsCodegenOptions,
-        parser::JsParserOptions,
-        transform::{
-            JsFeature, JsReactRefreshOptions, JsTransformOptions, JsTypeScriptOptions, JsxOptions,
+        CommentsOption, JsTransformApiOptions,
+        generator::JsGeneratorConfig,
+        parser::JsParserConfig,
+        transformer::{
+            JsFeature, JsReactRefreshConfig, JsTransformerConfig, JsTypeScriptConfig, JsxConfig,
             JsxRuntime,
         },
     },
@@ -220,13 +220,13 @@ fn feature_enabled(config: &Config, feature: Feature) -> bool {
     }
 }
 
-pub fn options(config: &Config, path: &Path) -> JsOptions {
+pub fn options(config: &Config, path: &Path) -> JsTransformApiOptions {
     let default_transform = TransformConfig::default();
     let transform = config.jsc.transform.as_ref().unwrap_or(&default_transform);
     let react = &transform.react;
     let lang = lang(config);
     let jsx = if lang.is_jsx() && react.runtime != Some(Runtime::Preserve) {
-        BoolOr::Options(JsxOptions {
+        BoolOr::Options(JsxConfig {
             runtime: Some(match react.runtime {
                 Some(Runtime::Automatic) => JsxRuntime::Automatic,
                 _ => JsxRuntime::Classic,
@@ -239,7 +239,7 @@ pub fn options(config: &Config, path: &Path) -> JsOptions {
             throw_if_namespace: react.throw_if_namespace,
             display_name: Some(true),
             refresh: react.refresh.as_ref().map(|options| {
-                BoolOr::Options(JsReactRefreshOptions {
+                BoolOr::Options(JsReactRefreshConfig {
                     refresh_reg: Some(options.refresh_reg.to_string()),
                     refresh_sig: Some(options.refresh_sig.to_string()),
                     emit_full_signatures: Some(options.emit_full_signatures),
@@ -251,7 +251,7 @@ pub fn options(config: &Config, path: &Path) -> JsOptions {
         BoolOr::Bool(false)
     };
     let typescript = if lang.is_typescript() {
-        BoolOr::Options(JsTypeScriptOptions {
+        BoolOr::Options(JsTypeScriptConfig {
             verbatim_module_syntax: Some(transform.verbatim_module_syntax.into_bool()),
             ..Default::default()
         })
@@ -260,15 +260,15 @@ pub fn options(config: &Config, path: &Path) -> JsOptions {
     };
     let static_blocks = feature_enabled(config, Feature::ClassStaticBlock);
     let optional_catch_binding = feature_enabled(config, Feature::OptionalCatchBinding);
-    JsOptions {
+    JsTransformApiOptions {
         // SWC's snapshots normalize the source file to its basename.
         filename: Some(path.file_name().unwrap().to_string_lossy().into_owned()),
-        parser: Some(JsParserOptions {
+        parser: Some(JsParserConfig {
             source_type: Some(source_type(config).into()),
             lang: Some(lang.into()),
             ..Default::default()
         }),
-        transform: Some(JsTransformOptions {
+        transformer: Some(JsTransformerConfig {
             jsx: Some(jsx),
             typescript: Some(typescript),
             assumptions: config.jsc.assumptions.map(assumptions),
@@ -281,7 +281,7 @@ pub fn options(config: &Config, path: &Path) -> JsOptions {
             ),
             ..Default::default()
         }),
-        codegen: Some(JsCodegenOptions {
+        generator: Some(JsGeneratorConfig {
             minify: Some(config.minify.into_bool()),
             ascii_only: Some(matches!(
                 config.jsc.output.charset,

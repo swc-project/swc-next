@@ -6,9 +6,9 @@ use std::{
 use swc_next_core::{
     BoolOr,
     js::{
-        JsOptions,
-        parser::JsParserOptions,
-        transform::{JsTransformOptions, JsTypeScriptOptions},
+        JsTransformApiOptions,
+        parser::JsParserConfig,
+        transformer::{JsTransformerConfig, JsTypeScriptConfig},
     },
 };
 use swc_next_ecma_ast::{Lang, SourceType};
@@ -133,15 +133,15 @@ impl TransformCase for TypeScriptTransformCase {
         Some(self.mode.name())
     }
 
-    fn options(&self) -> JsOptions {
-        JsOptions {
-            parser: Some(JsParserOptions {
+    fn options(&self) -> JsTransformApiOptions {
+        JsTransformApiOptions {
+            parser: Some(JsParserConfig {
                 source_type: Some(self.source_type.into()),
                 lang: Some(self.lang.into()),
                 ..Default::default()
             }),
-            transform: Some(JsTransformOptions {
-                typescript: Some(BoolOr::Options(JsTypeScriptOptions {
+            transformer: Some(JsTransformerConfig {
+                typescript: Some(BoolOr::Options(JsTypeScriptConfig {
                     verbatim_module_syntax: Some(self.mode.verbatim_module_syntax),
                     preserve_const_enums: Some(self.mode.preserve_const_enums),
                     ..Default::default()

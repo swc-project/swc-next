@@ -5,9 +5,9 @@ use serde::{Deserialize, de::DeserializeOwned};
 use swc_next_core::{
     BoolOr,
     js::{
-        JsOptions,
-        codegen::JsCodegenOptions,
-        transform::{JsAssumptions, JsFeature, JsProposalOptions, JsTransformOptions},
+        JsTransformApiOptions,
+        generator::JsGeneratorConfig,
+        transformer::{JsAssumptions, JsFeature, JsProposalConfig, JsTransformerConfig},
     },
 };
 
@@ -103,7 +103,7 @@ pub struct BabelAssumptions {
     pub options: JsAssumptions,
 }
 
-impl From<BabelOptions> for JsOptions {
+impl From<BabelOptions> for JsTransformApiOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
         let mut jsx = plugins.react_jsx_dev.or(plugins.react_jsx);
@@ -111,9 +111,9 @@ impl From<BabelOptions> for JsOptions {
             jsx.get_or_insert_with(Default::default).display_name = Some(true);
         }
         Self {
-            transform: Some(JsTransformOptions {
+            transformer: Some(JsTransformerConfig {
                 assumptions: Some(options.assumptions.options),
-                proposal: Some(JsProposalOptions {
+                proposal: Some(JsProposalConfig {
                     prevent_extensions: Some(plugins.static_blocks),
                 }),
                 typescript: Some(match plugins.typescript {
@@ -135,7 +135,7 @@ impl From<BabelOptions> for JsOptions {
                     .into(),
                 ),
             }),
-            codegen: Some(JsCodegenOptions {
+            generator: Some(JsGeneratorConfig {
                 minify: options.minified,
                 ..Default::default()
             }),

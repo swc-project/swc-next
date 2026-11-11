@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use swc_next_core::js::transform::{JsTypeScriptOptions, JsxOptions};
+use swc_next_core::js::transformer::{JsTypeScriptConfig, JsxConfig};
 
 use super::PluginPresetEntries;
 
@@ -21,7 +21,7 @@ struct TransformTypeScriptOptions {
     jsx_pragma_frag: Option<String>,
 }
 
-impl From<TransformTypeScriptOptions> for JsTypeScriptOptions {
+impl From<TransformTypeScriptOptions> for JsTypeScriptConfig {
     fn from(options: TransformTypeScriptOptions) -> Self {
         Self {
             verbatim_module_syntax: Some(options.only_remove_type_imports),
@@ -43,9 +43,9 @@ pub struct BabelPlugins {
     pub syntax_jsx: bool,
 
     // TypeScript / JSX
-    pub typescript: Option<JsTypeScriptOptions>,
-    pub react_jsx: Option<JsxOptions>,
-    pub react_jsx_dev: Option<JsxOptions>,
+    pub typescript: Option<JsTypeScriptConfig>,
+    pub react_jsx: Option<JsxConfig>,
+    pub react_jsx_dev: Option<JsxConfig>,
     pub react_display_name: bool,
 
     // ES2019
@@ -75,7 +75,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 },
                 "transform-react-jsx" => {
                     plugins.react_jsx = entry
-                        .value::<JsxOptions>()
+                        .value::<JsxConfig>()
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
                 }
@@ -83,7 +83,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 // Metadata stays opt-in through this plugin's `sourceSelf` option.
                 "transform-react-jsx-development" => {
                     plugins.react_jsx_dev = entry
-                        .value::<JsxOptions>()
+                        .value::<JsxConfig>()
                         .map(|mut options| {
                             options.development = Some(true);
                             options

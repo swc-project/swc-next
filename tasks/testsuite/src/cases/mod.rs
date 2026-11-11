@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use swc_core::ecma::transforms::base::assumptions::Assumptions;
-use swc_next_core::js::{JsOptions, transform::JsAssumptions};
+use swc_next_core::js::{JsTransformApiOptions, transformer::JsAssumptions};
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_minifier::MinifierOptions;
 
@@ -41,7 +41,7 @@ pub trait Case: Sized + Sync {
 
 /// Fixture adapters provide the configuration consumed by the shared transform pipeline.
 pub trait TransformCase: Case {
-    fn options(&self) -> JsOptions;
+    fn options(&self) -> JsTransformApiOptions;
 
     /// Identifies the input unit when a fixture contains multiple virtual files.
     fn virtual_file_name(&self) -> Option<&str> {

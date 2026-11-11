@@ -6,7 +6,7 @@ use std::{
 
 use jwalk::WalkDir;
 use rayon::prelude::*;
-use swc_next_core::js::{JsOptions, parser::JsParserOptions};
+use swc_next_core::js::{JsTransformApiOptions, parser::JsParserConfig};
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::cases::{Case, TransformCase, fixtures};
@@ -160,12 +160,12 @@ impl TransformCase for BabelTransformCase {
         Some(&self.output)
     }
 
-    fn options(&self) -> JsOptions {
-        let mut options: JsOptions = self.options.clone().into();
+    fn options(&self) -> JsTransformApiOptions {
+        let mut options: JsTransformApiOptions = self.options.clone().into();
         let babel_root = fixtures().join("babel");
         let relative_path = self.path.strip_prefix(babel_root).unwrap();
         options.filename = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
-        options.parser = Some(JsParserOptions {
+        options.parser = Some(JsParserConfig {
             source_type: Some(self.source_type().into()),
             lang: Some(self.lang().into()),
             ..Default::default()
