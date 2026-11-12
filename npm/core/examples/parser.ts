@@ -10,7 +10,7 @@ const filePath = process.argv[2];
 
 const source = fs.readFileSync(filePath, "utf8");
 const result = parseSync(source, {
-  comments: "flat",
+  comments: "all",
   lang: langFromPath(filePath),
   preserveParens: true,
   sourceType: sourceTypeFromPath(filePath),

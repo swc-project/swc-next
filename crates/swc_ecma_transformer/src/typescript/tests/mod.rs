@@ -51,7 +51,7 @@ fn transformed_code_with_source_type(
     let analyzed = analyze(&mut ctx, AnalyzeOptions::default()).semantic;
     let mut transformer = MultiPassTransformer::new(analyzed);
     transformer.typescript(&transform_options);
-    swc_next_ecma_codegen::print(transformer.ctx, Default::default()).code
+    swc_next_ecma_codegen::generate(transformer.ctx, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.

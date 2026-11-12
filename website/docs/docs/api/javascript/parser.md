@@ -12,20 +12,20 @@ description: parseSync inputs, parser options, results, and diagnostics.
 ```ts
 declare function parseSync(
   source: string,
-  options?: ParserOptions | null,
+  options?: ParseApiOptions | null,
 ): ParseResult;
 ```
 
 `source` is the complete source text. Omitting `options` or passing `null` uses the defaults below. Parsing is synchronous. By default, the first diagnostic is thrown; enable `errorRecovery` to return diagnostics and a recovered AST.
 
-## ParserOptions
+## ParseApiOptions
 
 | Option | Type | Default | Behavior |
 | --- | --- | --- | --- |
 | [`lang`](#lang) | `"js" \| "ts" \| "jsx" \| "tsx" \| "dts"` | `"js"` | Select the input syntax. |
 | [`sourceType`](#sourcetype) | `"module" \| "script" \| "commonjs" \| "unambiguous"` | `"module"` | Select module, script, or CommonJS parsing rules, or detect them from the source. |
 | [`preserveParens`](#preserveparens) | `boolean` | `true` | Keep explicit nodes for parenthesized expressions and types. |
-| [`comments`](#comments) | `"none" \| "flat"` | `"flat"` | Collect comments in a separate list, or skip collection. |
+| [`comments`](#comments) | `"all" \| "none"` | `"all"` | Collect comments in a separate list, or skip collection. |
 | [`errorRecovery`](#errorrecovery) | `boolean` | `false` | Return diagnostics and a recovered AST instead of throwing the first diagnostic. |
 | [`semanticErrors`](#semanticerrors) | `boolean` | `false` | Also check semantic early errors that require an AST pass. |
 
@@ -114,21 +114,21 @@ unwrapped.program.body[0].expression.type;
 // "Identifier"
 ```
 
-This changes the tree's shape, not expression precedence. The printer inserts parentheses required to preserve the AST's meaning even when explicit parenthesized nodes were omitted.
+This changes the tree's shape, not expression precedence. The generator inserts parentheses required to preserve the AST's meaning even when explicit parenthesized nodes were omitted.
 
 ### comments
 
-Type: `"none" | "flat"`
+Type: `"all" | "none"`
 
-Default: `"flat"`
+Default: `"all"`
 
-With `"flat"`, return every collected comment in source order in `result.comments`. With `"none"`, skip collection and return an empty array. Comments are separate from the program and are not attached to AST nodes.
+With `"all"`, return every collected comment in source order in `result.comments`. With `"none"`, skip collection and return an empty array. Comments are separate from the program and are not attached to AST nodes.
 
 ```js
 import { parseSync } from "@swc-next/core";
 
 const source = "// header\nanswer; /* tail */";
-parseSync(source, { comments: "flat" }).comments;
+parseSync(source, { comments: "all" }).comments;
 // [
 //   { type: "Line", value: " header", start: 0, end: 9 },
 //   { type: "Block", value: " tail ", start: 18, end: 28 },
@@ -140,7 +140,7 @@ parseSync(source, { comments: "none" }).comments;
 
 `value` excludes the comment delimiters, while `start` and `end` include them. Offsets use UTF-16 code units and the end is exclusive. A hashbang such as `#!/usr/bin/env node` is stored separately in `program.hashbang`.
 
-Collecting comments does not make [`printSync`](/api/javascript/codegen) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
+Collecting comments does not make [`generateSync`](/api/javascript/generator) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
 
 ### errorRecovery
 
@@ -185,7 +185,7 @@ interface ParseResult {
 | Field | Contents |
 | --- | --- |
 | `program` | The ESTree-based program. Its nodes can be inspected and edited. |
-| `meta` | `{ lang, sourceType }`; keep it with the AST and pass it to [printSync](/api/javascript/codegen#metadata). |
+| `meta` | `{ lang, sourceType }`; keep it with the AST and pass it to [generateSync](/api/javascript/generator#metadata). |
 | `comments` | Flat comments with `type: "Line" \| "Block"`, delimiter-free `value`, `start`, and `end`. Empty when collection is disabled. |
 | `diagnostics` | Syntax diagnostics and, with `semanticErrors`, semantic early errors. Check these before using recovered output. |
 

@@ -18,7 +18,7 @@ import {
   sourceTypeFromPath as yukuSourceTypeFromPath,
 } from "yuku-parser";
 import {
-  type ParserOptions,
+  type ParseApiOptions,
   langFromPath,
   parseSync,
   sourceTypeFromPath,
@@ -98,7 +98,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
     lang,
     preserveParens: true,
     sourceType,
-  } satisfies ParserOptions;
+  } satisfies ParseApiOptions;
 
   const yukuOptions = {
     attachComments: false,

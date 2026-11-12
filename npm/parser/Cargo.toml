@@ -12,7 +12,8 @@ version               = "0.6.1"
 crate-type = ["cdylib"]
 
 [dependencies]
-swc_next_bridge   = { workspace = true, features = ["parser"] }
+swc_next_bridge   = { workspace = true }
+swc_next_core     = { workspace = true, features = ["bridge", "js_parser"] }
 swc_next_ecma_ast = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]

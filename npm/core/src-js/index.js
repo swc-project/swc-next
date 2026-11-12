@@ -1,14 +1,14 @@
 import {
   parseSync as __parseSync,
-  printSync as __printSync,
+  generateSync as __generateSync,
 } from "./binding.js";
 import {
   decode,
-  encodeOptions as encodeParserOptions,
+  encodeOptions as encodeParserConfig,
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeOptions as encodeCodegenOptions,
+  encodeOptions as encodeGeneratorConfig,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
@@ -30,7 +30,7 @@ export function parseSync(source, options) {
   const sourceBytes = canTransferToFixedLength
     ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
     : sourceBuffer.slice(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
+  const buffer = __parseSync(sourceBytes, source.length, encodeParserConfig(options));
   const result = decode(buffer, source, sourceBytes);
   if (!options?.errorRecovery) {
     const diagnostics = result.diagnostics;
@@ -39,7 +39,7 @@ export function parseSync(source, options) {
   return result;
 }
 
-export function printSync(program, options, meta) {
-  const code = __printSync(...encode(program, meta), encodeCodegenOptions(options));
+export function generateSync(program, options, meta) {
+  const code = __generateSync(...encode(program, meta), encodeGeneratorConfig(options));
   return { code };
 }

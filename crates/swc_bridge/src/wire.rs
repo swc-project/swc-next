@@ -18,6 +18,23 @@ pub trait BridgeDecode: Sized {
     fn decode(value: Self::Wire) -> Option<Self>;
 }
 
+/// Decode an optional input from a wire value that also represents absence.
+///
+/// Implemented on the input type so it can live outside this crate.
+pub trait BridgeDecodeOptional: Sized {
+    type Wire: BridgeWire;
+
+    fn decode_optional(value: Self::Wire) -> Option<Option<Self>>;
+}
+
+impl<T: BridgeDecodeOptional> BridgeDecode for Option<T> {
+    type Wire = T::Wire;
+
+    fn decode(value: Self::Wire) -> Option<Self> {
+        T::decode_optional(value)
+    }
+}
+
 /// Encode a semantic API output as a bridge wire value.
 pub trait BridgeEncode {
     type Wire: BridgeWire;

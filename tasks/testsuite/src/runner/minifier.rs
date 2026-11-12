@@ -2,7 +2,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, Severity, SourceType};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, Options as ParserOptions};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
@@ -83,7 +83,7 @@ fn check_output(first: &Minified, expected: &str, options: MinifierOptions) -> R
 fn normalize(source: &str, source_type: SourceType) -> Result<String, String> {
     let allocator = Allocator::new();
     let ast = parse_with_options(&allocator, source, parser_options(source_type))?;
-    Ok(print(&ast, codegen_options()).code)
+    Ok(generate(&ast, generator_options()).code)
 }
 
 fn parser_options(source_type: SourceType) -> ParserOptions {
@@ -95,11 +95,11 @@ fn parser_options(source_type: SourceType) -> ParserOptions {
     }
 }
 
-fn codegen_options() -> CodegenOptions {
-    CodegenOptions {
+fn generator_options() -> GeneratorOptions {
+    GeneratorOptions {
         minify: true,
         comments: false,
-        ..CodegenOptions::default()
+        ..GeneratorOptions::default()
     }
 }
 
@@ -134,7 +134,7 @@ fn minify(
     drop(analysis);
 
     Minifier::minify(&mut ast, options);
-    let code = print(&ast, codegen_options()).code;
+    let code = generate(&ast, generator_options()).code;
     Ok(Minified {
         code,
         module: ast.is_module(),

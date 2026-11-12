@@ -1,7 +1,4 @@
-use serde::Deserialize;
-
-#[derive(Debug, Default, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[derive(Debug, Default, Clone)]
 pub struct TypeScriptOptions {
     /// TypeScript's `verbatimModuleSyntax`: preserves value imports/exports
     /// and disables const-enum inlining and removal. Defaults to `false`.
@@ -16,8 +13,7 @@ pub struct TypeScriptOptions {
     pub jsx: JsxImportOptions,
 }
 
-#[derive(Debug, Default, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[derive(Debug, Default, Clone)]
 pub struct JsxImportOptions {
     pub automatic: bool,
     pub pragma: Option<String>,

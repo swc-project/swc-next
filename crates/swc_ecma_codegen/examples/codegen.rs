@@ -8,7 +8,7 @@ use std::{fs, path::Path};
 use clap::Parser;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 
 #[derive(Parser)]
@@ -57,13 +57,13 @@ fn main() -> Result<(), String> {
     assert!(ret.diagnostics.is_empty());
 
     // Generate JavaScript from the parsed program
-    let options = CodegenOptions {
+    let options = GeneratorOptions {
         minify: args.minify,
         ascii_only: args.ascii_only,
         inline_script: args.inline_script,
-        ..CodegenOptions::default()
+        ..GeneratorOptions::default()
     };
-    let result = print(&ret.ast, options);
+    let result = generate(&ret.ast, options);
     print!("{}", result.code);
 
     Ok(())

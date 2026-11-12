@@ -8,8 +8,8 @@ export interface Options {
     preserveParens: boolean;
     semanticErrors: boolean;
   };
-  transform: { ts: boolean; es2022: { classStaticBlock: boolean } };
-  codegen: { minify: boolean; asciiOnly: boolean; inlineScript: boolean };
+  transformer: { ts: boolean; es2022: { classStaticBlock: boolean } };
+  generator: { minify: boolean; asciiOnly: boolean; inlineScript: boolean };
 }
 
 export interface PlaygroundState {

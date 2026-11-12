@@ -2,7 +2,7 @@
 //!
 //! Run with:
 //! `cargo run -p swc_next_ecma_transformer --example transformer -- [filename]`
-//! Class static block transforms are enabled; codegen uses default options.
+//! Class static block transforms are enabled; generator uses default options.
 //! TypeScript is lowered automatically; JSX is preserved.
 
 use std::{fs, path::Path};
@@ -10,7 +10,7 @@ use std::{fs, path::Path};
 use clap::Parser;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::print;
+use swc_next_ecma_codegen::generate;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
@@ -74,7 +74,7 @@ fn main() -> Result<(), String> {
     report_diagnostics(path, &analyzed.diagnostics)?;
     Transformer::transform(analyzed.semantic, options);
 
-    let result = print(&ast, Default::default());
+    let result = generate(&ast, Default::default());
     print!("{}", result.code);
     Ok(())
 }

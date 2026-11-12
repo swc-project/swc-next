@@ -19,7 +19,7 @@ The core packages provide synchronous parsing and code generation with the same 
 | Export | Purpose | Reference |
 | --- | --- | --- |
 | `parseSync(source, options?)` | Parse source text into a program, comments, diagnostics, and metadata | [Parser](/api/javascript/parser) |
-| `printSync(program, options?, meta?)` | Generate a `{ code }` result from a program | [Codegen](/api/javascript/codegen) |
+| `generateSync(program, options?, meta?)` | Generate a `{ code }` result from a program | [Generator](/api/javascript/generator) |
 | `walk(root, hooks, state?)` | Traverse and edit an AST synchronously; exported by the Node.js package | [Walk](/api/javascript/walk) |
 | `langFromPath(path)` | Infer the parser language from a file path | [Parser helpers](/api/javascript/parser#path-helpers) |
 | `sourceTypeFromPath(path)` | Infer the source type from a file path | [Parser helpers](/api/javascript/parser#path-helpers) |
@@ -34,7 +34,7 @@ The browser package includes the WebAssembly binary and its JavaScript bindings.
 export default function init(): Promise<void>;
 ```
 
-Await `init()` before calling `parseSync` or `printSync`. It loads the bundled `.wasm` file; after successful initialization, subsequent calls are idempotent no-ops. Serve the package with a bundler that resolves its WebAssembly asset.
+Await `init()` before calling `parseSync` or `generateSync`. It loads the bundled `.wasm` file; after successful initialization, subsequent calls are idempotent no-ops. Serve the package with a bundler that resolves its WebAssembly asset.
 
 Parsing and printing are synchronous after initialization. Run substantial workloads in a worker to keep the interface responsive.
 
@@ -43,12 +43,12 @@ Parsing and printing are synchronous after initialization. Run substantial workl
 Import types alongside the functions they configure:
 
 ```ts
-import { parseSync, type ParserOptions } from "@swc-next/core";
+import { parseSync, type ParseApiOptions } from "@swc-next/core";
 
 const options = {
   lang: "ts",
-  comments: "flat",
-} satisfies ParserOptions;
+  comments: "all",
+} satisfies ParseApiOptions;
 
 const result = parseSync("const answer: number = 42;", options);
 ```

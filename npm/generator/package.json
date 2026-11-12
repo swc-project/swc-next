@@ -1,11 +1,11 @@
 {
-  "name": "@swc-next/codegen",
+  "name": "@swc-next/generator",
   "version": "0.6.1",
   "description": "The focused JavaScript and TypeScript code generator for SWC Next",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/swc-project/swc-next.git",
-    "directory": "npm/codegen"
+    "directory": "npm/generator"
   },
   "main": "src-js/index.js",
   "type": "module",
@@ -28,11 +28,11 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build codegen --output-dir src-js"
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build generator --output-dir src-js"
   },
   "keywords": [
     "ast",
-    "codegen",
+    "generator",
     "javascript",
     "swc",
     "typescript"
@@ -40,8 +40,8 @@
   "license": "Apache-2.0",
   "napi": {
     "constEnum": false,
-    "binaryName": "swc-next-codegen",
-    "packageName": "@swc-next/codegen-binding",
+    "binaryName": "swc-next-generator",
+    "packageName": "@swc-next/generator-binding",
     "targets": [
       "aarch64-apple-darwin",
       "aarch64-pc-windows-msvc",
@@ -63,8 +63,8 @@
     "@swc-next/types": "workspace:*"
   },
   "wasm": {
-    "binaryName": "swc-next-codegen",
-    "packageName": "@swc-next/codegen-binding-wasm"
+    "binaryName": "swc-next-generator",
+    "packageName": "@swc-next/generator-binding-wasm"
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",

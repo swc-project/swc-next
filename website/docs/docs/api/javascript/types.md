@@ -5,7 +5,7 @@ description: ESTree and typescript-eslint compatible AST declarations and source
 
 # AST types
 
-`@swc-next/types` provides TypeScript declarations for the AST, including TypeScript, JSX, and error recovery nodes. These types are also re-exported by the core, parser, codegen, and browser packages.
+`@swc-next/types` provides TypeScript declarations for the AST, including TypeScript, JSX, and error recovery nodes. These types are also re-exported by the core, parser, generator, and browser packages.
 
 ```ts
 import type { Node, Program, Lang, SourceType } from "@swc-next/types";

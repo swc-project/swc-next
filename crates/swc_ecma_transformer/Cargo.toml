@@ -14,7 +14,6 @@ version               = "0.6.1"
 memchr     = { workspace = true }
 phf        = { workspace = true, features = ["macros"] }
 rustc-hash = { workspace = true }
-serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }
 
 swc_next_allocator     = { workspace = true }

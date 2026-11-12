@@ -1,5 +1,5 @@
 import { expect, test } from "@rstest/core";
-import { parseSync, printSync, walk } from "@swc-next/core";
+import { parseSync, generateSync, walk } from "@swc-next/core";
 
 const ast = (source) => parseSync(source).program;
 
@@ -26,7 +26,7 @@ test("edits round-trip through the core encoder and parser", () => {
       if (node.callee.name === "original") ctx.replace(replacement);
     },
   });
-  const { code } = printSync(program, {}, meta);
+  const { code } = generateSync(program, {}, meta);
   expect(seen).toEqual(["hashbang", "original", "nested", "after", "tail"]);
   expect(code).toBe("#!/usr/bin/env bun\nbefore();\nreplacement(nested());\nafter();\ntail();\n");
   expect(parseSync(code).diagnostics).toEqual([]);

@@ -1,59 +1,59 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_codegen::{Options as PrintOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
 #[track_caller]
-pub fn expect_printed_ts_pair(source: &str, pretty: &str, minified: &str) {
+pub fn expect_generated_ts_pair(source: &str, pretty: &str, minified: &str) {
     let options = ParseOptions {
         lang: Lang::Ts,
         preserve_parens: false,
         ..ParseOptions::default()
     };
-    expect_printed_pair(source, options, pretty, minified);
+    expect_generated_pair(source, options, pretty, minified);
 }
 
 #[track_caller]
-pub fn expect_printed_pair(source: &str, options: ParseOptions, pretty: &str, minified: &str) {
+pub fn expect_generated_pair(source: &str, options: ParseOptions, pretty: &str, minified: &str) {
     let allocator = Allocator::new();
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let output = print(&parsed.ast, PrintOptions::default());
+    let output = generate(&parsed.ast, GeneratorOptions::default());
     assert_eq!(output.code, pretty);
 
-    let output = print(
+    let output = generate(
         &parsed.ast,
-        PrintOptions {
+        GeneratorOptions {
             minify: true,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     assert_eq!(output.code, minified);
 }
 
 #[track_caller]
-pub fn expect_printed(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Js, SourceType::Module, false, false);
+pub fn expect_generated(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Js, SourceType::Module, false, false);
 }
 
 #[track_caller]
-pub fn expect_printed_minify(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Js, SourceType::Module, true, false);
+pub fn expect_generated_minify(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Js, SourceType::Module, true, false);
 }
 
 #[track_caller]
-pub fn expect_printed_ts(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Ts, SourceType::Module, false, false);
+pub fn expect_generated_ts(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Ts, SourceType::Module, false, false);
 }
 
 #[track_caller]
-pub fn expect_printed_ts_minify(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Ts, SourceType::Module, true, false);
+pub fn expect_generated_ts_minify(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Ts, SourceType::Module, true, false);
 }
 
 #[track_caller]
-pub fn expect_printed_jsx(source: &str, expected: &str) {
-    expect_printed_common(
+pub fn expect_generated_jsx(source: &str, expected: &str) {
+    expect_generated_common(
         source,
         expected,
         Lang::Jsx,
@@ -64,49 +64,53 @@ pub fn expect_printed_jsx(source: &str, expected: &str) {
 }
 
 #[track_caller]
-pub fn expect_printed_jsx_minify(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Jsx, SourceType::Module, true, false);
+pub fn expect_generated_jsx_minify(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Jsx, SourceType::Module, true, false);
 }
 
 #[track_caller]
-pub fn expect_printed_ascii(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Js, SourceType::Module, false, true);
+pub fn expect_generated_ascii(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Js, SourceType::Module, false, true);
 }
 
 #[track_caller]
-pub fn expect_printed_minify_ascii(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Js, SourceType::Module, true, true);
+pub fn expect_generated_minify_ascii(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Js, SourceType::Module, true, true);
 }
 
 #[track_caller]
-pub fn expect_printed_jsx_ascii(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Jsx, SourceType::Module, false, true);
+pub fn expect_generated_jsx_ascii(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Jsx, SourceType::Module, false, true);
 }
 
 #[track_caller]
-pub fn expect_printed_script(source: &str, expected: &str) {
-    expect_printed_common(source, expected, Lang::Js, SourceType::Script, false, false);
+pub fn expect_generated_script(source: &str, expected: &str) {
+    expect_generated_common(source, expected, Lang::Js, SourceType::Script, false, false);
 }
 
 #[track_caller]
-pub fn expect_printed_with_options(source: &str, expected: &str, print_options: PrintOptions) {
-    expect_printed_common_with_options(
+pub fn expect_generated_with_options(
+    source: &str,
+    expected: &str,
+    generator_options: GeneratorOptions,
+) {
+    expect_generated_common_with_options(
         source,
         expected,
         Lang::Js,
         SourceType::Module,
-        print_options,
+        generator_options,
     );
 }
 
 #[track_caller]
 pub fn expect_stable(source: &str, expected: &str) {
-    expect_printed(source, expected);
-    expect_printed(expected, expected);
+    expect_generated(source, expected);
+    expect_generated(expected, expected);
 }
 
 #[track_caller]
-fn expect_printed_common(
+fn expect_generated_common(
     source: &str,
     expected: &str,
     lang: Lang,
@@ -114,21 +118,21 @@ fn expect_printed_common(
     minify: bool,
     ascii_only: bool,
 ) {
-    let print_options = PrintOptions {
+    let generator_options = GeneratorOptions {
         minify,
         ascii_only,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    expect_printed_common_with_options(source, expected, lang, source_type, print_options);
+    expect_generated_common_with_options(source, expected, lang, source_type, generator_options);
 }
 
 #[track_caller]
-fn expect_printed_common_with_options(
+fn expect_generated_common_with_options(
     source: &str,
     expected: &str,
     lang: Lang,
     source_type: SourceType,
-    print_options: PrintOptions,
+    generator_options: GeneratorOptions,
 ) {
     let allocator = Allocator::new();
     let parse_options = ParseOptions {
@@ -145,7 +149,7 @@ fn expect_printed_common_with_options(
     if has_errors {
         return;
     }
-    let result = print(&result.ast, print_options);
+    let result = generate(&result.ast, generator_options);
 
     assert_eq!(
         result.code, expected,

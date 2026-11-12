@@ -76,8 +76,8 @@ export default function OptionsPanel() {
   const onReset = useSetAtom(resetOptionsAtom);
   const parser = (patch: Partial<Options["parser"]>) =>
     onChange({ ...options, parser: { ...options.parser, ...patch } });
-  const codegen = (patch: Partial<Options["codegen"]>) =>
-    onChange({ ...options, codegen: { ...options.codegen, ...patch } });
+  const generator = (patch: Partial<Options["generator"]>) =>
+    onChange({ ...options, generator: { ...options.generator, ...patch } });
   const typescript = ["ts", "tsx", "dts"].includes(options.parser.lang);
   return (
     <aside
@@ -150,13 +150,13 @@ export default function OptionsPanel() {
             hint="Check scope-dependent early errors. Required checks also run before transforms."
           />
         </Group>
-        <Group title="Transform" icon={<WandSparkles size={14} />}>
+        <Group title="Transformer" icon={<WandSparkles size={14} />}>
           <Toggle
             label="TypeScript"
-            checked={options.transform.ts}
+            checked={options.transformer.ts}
             disabled={!typescript}
             onChange={(ts) =>
-              onChange({ ...options, transform: { ...options.transform, ts } })
+              onChange({ ...options, transformer: { ...options.transformer, ts } })
             }
             hint="Lower TypeScript syntax to JavaScript; JSX is preserved."
           />
@@ -172,12 +172,12 @@ export default function OptionsPanel() {
             <div className="mt-0.75 ml-1.25 border-l border-border pl-3.5 max-[720px]:pl-3 max-[720px]:[&>label]:items-start">
               <Toggle
                 label="Class static block"
-                checked={options.transform.es2022.classStaticBlock}
+                checked={options.transformer.es2022.classStaticBlock}
                 onChange={(classStaticBlock) =>
                   onChange({
                     ...options,
-                    transform: {
-                      ...options.transform,
+                    transformer: {
+                      ...options.transformer,
                       es2022: { classStaticBlock },
                     },
                   })
@@ -186,22 +186,22 @@ export default function OptionsPanel() {
             </div>
           </details>
         </Group>
-        <Group title="Codegen" icon={<Code2 size={14} />}>
+        <Group title="Generator" icon={<Code2 size={14} />}>
           <Toggle
             label="Minify"
-            checked={options.codegen.minify}
-            onChange={(minify) => codegen({ minify })}
+            checked={options.generator.minify}
+            onChange={(minify) => generator({ minify })}
             hint="Print compact code without extra whitespace."
           />
           <Toggle
             label="ASCII only"
-            checked={options.codegen.asciiOnly}
-            onChange={(asciiOnly) => codegen({ asciiOnly })}
+            checked={options.generator.asciiOnly}
+            onChange={(asciiOnly) => generator({ asciiOnly })}
           />
           <Toggle
             label="Inline script"
-            checked={options.codegen.inlineScript}
-            onChange={(inlineScript) => codegen({ inlineScript })}
+            checked={options.generator.inlineScript}
+            onChange={(inlineScript) => generator({ inlineScript })}
             hint="Escape closing script tags for HTML embedding."
           />
         </Group>

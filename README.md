@@ -32,11 +32,11 @@ npm install @swc-next/core
 Then parse and print a program:
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program, diagnostics } = parseSync("const answer = 42;");
 console.log(diagnostics);
-console.log(printSync(program).code);
+console.log(generateSync(program).code);
 ```
 
 ## Roadmap

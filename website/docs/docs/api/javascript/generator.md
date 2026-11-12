@@ -1,20 +1,20 @@
 ---
-title: Codegen
-description: printSync AST inputs, metadata, formatting options, and output.
+title: Generator
+description: generateSync AST inputs, metadata, formatting options, and output.
 ---
 
-# Codegen
+# Generator
 
-`printSync` generates source text from a program AST. It is exported by `@swc-next/core`, `@swc-next/codegen`, and the initialized `@swc-next/core-browser` package.
+`generateSync` generates source text from a program AST. It is exported by `@swc-next/core`, `@swc-next/generator`, and the initialized `@swc-next/core-browser` package.
 
 ## Signature and inputs
 
 ```ts
-declare function printSync(
+declare function generateSync(
   program: Program,
-  options?: CodegenOptions | null,
+  options?: GenerateApiOptions | null,
   meta?: Partial<AstMeta>,
-): CodegenOutput;
+): GenerateOutput;
 ```
 
 | Input | Meaning |
@@ -25,11 +25,11 @@ declare function printSync(
 
 Input nodes follow the [AST declarations](/api/javascript/types) shared with the parser.
 
-## CodegenOptions
+## GenerateApiOptions
 
 | Option | Type | Default | Behavior |
 | --- | --- | --- | --- |
-| [`asciiOnly`](#asciionly) | `boolean` | `false` | Escape non-ASCII characters where supported by the printer. |
+| [`asciiOnly`](#asciionly) | `boolean` | `false` | Escape non-ASCII characters where supported by the generator. |
 | [`inlineScript`](#inlinescript) | `boolean` | `false` | Escape closing script tags in supported contexts. |
 | [`minify`](#minify) | `boolean` | `false` | Generate compact output with reduced whitespace. |
 
@@ -41,16 +41,16 @@ Type: `boolean`
 
 Default: `false`
 
-Use escape sequences for non-ASCII characters in identifiers, strings, and supported template text. With `false`, the printer can emit Unicode characters directly.
+Use escape sequences for non-ASCII characters in identifiers, strings, and supported template text. With `false`, the generator can emit Unicode characters directly.
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program } = parseSync('const greeting = "你好";');
-printSync(program, { asciiOnly: false }).code;
+generateSync(program, { asciiOnly: false }).code;
 // 'const greeting = "你好";\n'
 
-printSync(program, { asciiOnly: true }).code;
+generateSync(program, { asciiOnly: true }).code;
 // 'const greeting = "\\u4F60\\u597D";\n'
 ```
 
@@ -65,13 +65,13 @@ Default: `false`
 Escape case-insensitive `</script` sequences in strings and untagged templates, and insert separators when neighboring tokens would form such a sequence. This helps prevent generated JavaScript text from closing an HTML `<script>` element early.
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program } = parseSync('const text = "</script>";');
-printSync(program, { inlineScript: false }).code;
+generateSync(program, { inlineScript: false }).code;
 // 'const text = "</script>";\n'
 
-printSync(program, { inlineScript: true }).code;
+generateSync(program, { inlineScript: true }).code;
 // 'const text = "<\\/script>";\n'
 ```
 
@@ -86,13 +86,13 @@ Default: `false`
 Use compact printing: remove optional whitespace, indentation, and line breaks, and choose shorter spellings where supported. Required separators remain so that adjacent tokens are parsed correctly. With `false`, print readable, indented code.
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program } = parseSync("const answer = 1 + 2;");
-printSync(program, { minify: false }).code;
+generateSync(program, { minify: false }).code;
 // 'const answer = 1 + 2;\n'
 
-printSync(program, { minify: true }).code;
+generateSync(program, { minify: true }).code;
 // 'const answer=1+2;'
 ```
 
@@ -115,18 +115,18 @@ Pass `parseSync(...).meta` to preserve the input language and source type. Expli
 | `sourceType` | Select the program's source type for printing. Pass the parser's resolved value to retain module, script, or CommonJS mode. |
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const result = parseSync("export const answer: number = 42;", { lang: "ts" });
-const { code } = printSync(result.program, { minify: true }, result.meta);
+const { code } = generateSync(result.program, { minify: true }, result.meta);
 ```
 
-## CodegenOutput
+## GenerateOutput
 
 ```ts
-interface CodegenOutput {
+interface GenerateOutput {
   code: string;
 }
 ```
 
-The JavaScript interface returns generated code only. It does not expose source maps or comment emission options; the parser's separate comment list is not passed to the printer.
+The JavaScript interface returns generated code only. It does not expose source maps or comment emission options; the parser's separate comment list is not passed to the generator.

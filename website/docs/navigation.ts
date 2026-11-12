@@ -32,8 +32,8 @@ const guide = [
         "link": "/guide/walk"
       },
       {
-        "text": "Codegen",
-        "link": "/guide/codegen"
+        "text": "Generator",
+        "link": "/guide/generator"
       }
     ]
   },
@@ -72,8 +72,8 @@ export const sidebar = {
           "link": "/api/javascript/walk"
         },
         {
-          "text": "Codegen",
-          "link": "/api/javascript/codegen"
+          "text": "Generator",
+          "link": "/api/javascript/generator"
         },
         {
           "text": "AST types",
