@@ -44,12 +44,12 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-export function decode(buffer, source, sourceBuffer) {
+export function decode(buffer, source, sourceBuffer, useSourceSpans = true) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const view = new DataView(arrayBuffer, buffer.byteOffset ?? 0, buffer.byteLength);
   const flags = view.getInt32(FLAGS_OFFSET, true);
   const lang = (flags >> LANG_SHIFT) & 7;
   return lang === 1 || lang === 3 || lang === 4
-    ? decodeTs(buffer, source, sourceBuffer)
-    : decodeJs(buffer, source, sourceBuffer);
+    ? decodeTs(buffer, source, sourceBuffer, useSourceSpans)
+    : decodeJs(buffer, source, sourceBuffer, useSourceSpans);
 }

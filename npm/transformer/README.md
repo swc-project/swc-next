@@ -27,12 +27,41 @@ them. Set `sourceMap: true` to return a JSON source map in `result.map`. `genera
 `minify` or run compression and mangling. The independent package does not depend
 on the minifier.
 
-Unsupported options throw `TypeError`. JavaScript plugins and general target
-lowering are not supported by this package yet. Additional semantic error checks
+Unsupported options throw `TypeError`. General target lowering is not supported
+by this package yet. Additional semantic error checks
 are controlled by `parser.semanticErrors` and default to `false`, as in
 `parseSync`; the binding analysis needed by Rust transforms still runs. Parser,
 enabled semantic, and transform errors throw `SyntaxError` with a `diagnostics`
 array containing UTF-16 source offsets.
+
+## JavaScript plugins
+
+Plugins edit the complete ESTree / TS-ESTree tree after parsing or before printing:
+
+```js
+transformSync("const value: number = 1; debugger;", {
+  filename: "input.ts",
+  plugins: [{
+    name: "remove-debugger",
+    stage: "afterParse",
+    visitor: {
+      DebuggerStatement(_node, ctx) {
+        if (ctx.index !== null) ctx.remove();
+        else ctx.replace({ type: "EmptyStatement" });
+      },
+    },
+  }],
+});
+```
+
+`afterParse` is the default. `beforeCodegen` sees the AST after Rust transforms.
+Each plugin completes its walk in array order within its stage; hooks must return
+`undefined` synchronously. With no plugins, the AST stays in Rust.
+
+Plugin transfers currently do not support source maps or preserved source
+comments. `afterParse` cannot be combined with JSX pragmas, JSX `sourceSelf`, or
+React Refresh. `beforeCodegen` transfers do not retain generated JSX PURE
+annotations. General AST transfer fidelity remains under development.
 
 ## Testing
 

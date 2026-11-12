@@ -280,7 +280,6 @@ for (const { name, transformSync } of [
       assert.throws(() => transformSync(source, { generator: { minify: "true" } }), TypeError);
 
       assert.throws(() => transformSync(source, { js: {} }), TypeError);
-      assert.throws(() => transformSync(source, { plugins: [] }), TypeError);
       assert.throws(() => transformSync(source, { typescript: {} }), TypeError);
       assert.throws(() => transformSync(source, { transformer: { proposal: { unknown: true } } }), TypeError);
       assert.throws(() => transformSync(source, { transformer: { typescript: { jsx: {} } } }), TypeError);

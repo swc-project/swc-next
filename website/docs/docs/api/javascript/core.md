@@ -86,3 +86,29 @@ transforms still runs. Parser, enabled semantic, and transform errors throw
 `SyntaxError` with UTF-16 diagnostics; invalid or unsupported options throw
 `TypeError`. Source maps are JSON strings in `map`. This API is currently provided
 by the Node.js package with a Wasm fallback.
+
+### JavaScript plugins
+
+Add synchronous AST visitors with `plugins`. `afterParse` (the default) runs before
+Rust transforms; `beforeCodegen` runs immediately before printing. Each plugin
+completes its walk in array order within its stage. Empty plugin lists keep the
+whole pipeline in Rust.
+
+```ts
+transformSync("debugger;", {
+  plugins: [{
+    name: "remove-debugger",
+    visitor: {
+      DebuggerStatement(_node, ctx) {
+        if (ctx.index !== null) ctx.remove();
+        else ctx.replace({ type: "EmptyStatement" });
+      },
+    },
+  }],
+});
+```
+
+Hooks receive ESTree / TS-ESTree nodes and must synchronously return `undefined`.
+Nonempty plugin lists do not support source maps. Preserved source comments,
+JSX pragmas, source-dependent JSX settings, and AST transfer fidelity have
+limitations; see the [plugin draft](https://github.com/swc-project/swc-next/pull/1075).

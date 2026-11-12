@@ -1,12 +1,14 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 export * from "@swc-next/walker";
+import type { WalkHooks } from "@swc-next/walker";
+import type { Node } from "@swc-next/types";
 
 import type {
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
-  TransformApiOptions,
+  TransformApiOptions as BindingTransformApiOptions,
 } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
@@ -63,7 +65,6 @@ export declare function generateSync(
 ): GenerateOutput;
 
 export type {
-  TransformApiOptions,
   TransformerConfig,
   TypeScriptConfig,
   JsxConfig,
@@ -81,7 +82,11 @@ export interface Output extends GenerateOutput {
 }
 
 /**
- * Parse, transform, and print synchronously using the Rust core options.
+ * Parse, run synchronous JavaScript plugins around Rust transforms, and print.
+ * Empty plugin lists keep the AST in Rust. Plugins with preserved source comments
+ * require comments: "none" and do not support source maps. Plugin errors propagate.
+ * Enabled semantic checks run after afterParse edits; beforeCodegen edits print
+ * without another semantic check.
  * TypeScript and JSX lowering follow the input language. Set parser.semanticErrors
  * to true for additional semantic error checks; transform binding analysis always runs.
  * @throws {SyntaxError} On parser, enabled semantic, or transform errors, with a
@@ -91,3 +96,13 @@ export declare function transformSync(
   source: string,
   options?: TransformApiOptions | null,
 ): Output;
+
+/** Synchronous plugin; each completes a walk in array order within its stage. */
+export interface JsPlugin {
+  name: string;
+  stage?: "afterParse" | "beforeCodegen";
+  visitor: WalkHooks<unknown, Node>;
+}
+export interface TransformApiOptions extends BindingTransformApiOptions {
+  plugins?: readonly JsPlugin[];
+}

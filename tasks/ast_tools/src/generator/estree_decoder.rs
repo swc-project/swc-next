@@ -88,7 +88,7 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     output.push_str(DECODE_HELPERS);
     writeln!(
         output,
-        "export function {name}(buffer, source, sourceBuffer) {{"
+        "export function {name}(buffer, source, sourceBuffer, useSourceSpans = true) {{"
     )
     .unwrap();
     output.push_str(DECODE_PREAMBLE);
@@ -164,7 +164,9 @@ fn write_node_case(
 ) {
     writeln!(output, "      case {kind}: {{").unwrap();
     if ast.name == "RegExpLiteral" {
-        output.push_str("        const separator = source.lastIndexOf(\"/\", end - 1);\n");
+        output.push_str(
+            "        const separator = useSourceSpans ? source.lastIndexOf(\"/\", end - 1) : 0;\n",
+        );
     }
 
     let layout = &ast.layout;
@@ -182,8 +184,11 @@ fn write_node_case(
         if skip {
             continue;
         }
-        // These fields are source-backed, and node spans use UTF-16 offsets.
-        let expression = match (ast.name.as_str(), field.name.as_str()) {
+        // Parse-only buffers retain the fast source-span slices. Transformed
+        // buffers can reuse strings at different spans or move them to the pool,
+        // so those callers decode the authoritative string offsets instead.
+        let from_offsets = read_expression(field_ty, schema, &location, aligned_i32);
+        let from_spans = match (ast.name.as_str(), field.name.as_str()) {
             (
                 "IdentifierReference"
                 | "BindingIdentifier"
@@ -228,7 +233,17 @@ fn write_node_case(
             ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
             ("RegExpLiteral", "pattern") => "source.slice(start + 1, separator)".into(),
             ("RegExpLiteral", "flags") => "source.slice(separator + 1, end)".into(),
-            _ => read_expression(field_ty, schema, &location, aligned_i32),
+            _ => from_offsets.clone(),
+        };
+        let from_offsets = if ast.name == "TemplateElement" && field.name == "raw" && !is_ts {
+            format!(r#"{from_offsets}.replace(/\r\n?/g, "\n")"#)
+        } else {
+            from_offsets
+        };
+        let expression = if from_spans == from_offsets {
+            from_offsets
+        } else {
+            format!("useSourceSpans ? {from_spans} : {from_offsets}")
         };
         let field_name = estree_field_name(&ast.name, &field.name);
         let range = matches!(field_ty, AstType::SubRange(_)).then(|| {
@@ -300,13 +315,17 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: b
                 format!("{{ start: {start}, end: {end} }}")
             }
             AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
-                panic!("optional source strings need a field-specific decoder")
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
+                format!("{start} === NULL && {end} === 0 ? null : str({start}, {end})")
             }
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
             "AstUtf8" | "AstWtf8" => {
-                panic!("source strings need a field-specific decoder")
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
+                format!("str({start}, {end})")
             }
             "bool" => format!("_dv.getUint8({location}) !== 0"),
             "u8" => format!("_dv.getUint8({location})"),
@@ -600,12 +619,12 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         ),
         "NumericLiteral" => output.push_str(
             r#"        const value = f_value;
-        result = { type: "Literal", start, end, value, raw: f_raw };
+        result = { type: "Literal", start, end, value, raw: f_raw ?? String(value) };
 "#,
         ),
         "BigIntLiteral" => output.push_str(
             r#"        const value = BigInt(f_raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
+        result = { type: "Literal", start, end, value, raw: useSourceSpans ? source.slice(start, end) : `${f_raw}n`, bigint: value.toString() };
 "#,
         ),
         "BooleanLiteral" => output.push_str(
@@ -625,7 +644,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         } catch {}
         result = {
           type: "Literal", start, end, value,
-          raw: source.slice(start, end),
+          raw: useSourceSpans ? source.slice(start, end) : `/${f_pattern}/${f_flags}`,
           regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
         };
 "#,
@@ -980,10 +999,12 @@ const DECODE_PREAMBLE: &str = r#"
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  const str = (start, end) => decodePool(bytes.subarray(
-    strings + start - sourceLength,
-    strings + end - sourceLength,
-  ));
+  const str = (start, end) => start === end ? "" : start < sourceLength
+    ? utf8Slice.call(sourceBuffer, start, end)
+    : decodePool(bytes.subarray(
+        strings + start - sourceLength,
+        strings + end - sourceLength,
+      ));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
