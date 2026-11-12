@@ -1,0 +1,1 @@
+const node = <svg:path />;

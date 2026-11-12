@@ -29,4 +29,4 @@ Update intentional changes, review the snapshot diff, then rerun without updates
 INSTA_UPDATE=always cargo test -p swc_next_ecma_transformer --test compile --locked
 ```
 
-Binding resolution, AST invariants, and diagnostic spans remain unit tests.
+Binding resolution, AST invariants, and internal helpers remain unit tests.

@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+[
+    Diagnostic {
+        severity: Error,
+        message: "Namespace tags are not supported by default because React's JSX does not support them. Set `throwIfNamespace: false` to allow this tag.",
+        span: 14..22,
+        help: None,
+        labels: [],
+    },
+]

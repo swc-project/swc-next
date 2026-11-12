@@ -6,16 +6,10 @@ use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SymbolFlags, analyze};
 
-use super::{JsxOptions, JsxRuntime, ReactRefreshOptions};
+use super::{JsxOptions, ReactRefreshOptions};
 use crate::{
     Transformer, TransformerOptions, normalize::Normalizer, typescript::TypeScriptOptions,
 };
-
-fn transform(source: &str, lang: Lang, jsx: JsxOptions) -> String {
-    let (output, diagnostics) = diagnose(source, lang, jsx);
-    assert!(diagnostics.is_empty());
-    output
-}
 
 fn helper_references(output: &str) -> (SymbolId, Vec<Option<SymbolId>>) {
     let allocator = Allocator::new();
@@ -56,11 +50,7 @@ impl<'ast> Visit<'ast> for ArrowBodies<'_, 'ast> {
     }
 }
 
-fn diagnose(
-    source: &str,
-    lang: Lang,
-    jsx: JsxOptions,
-) -> (String, Vec<swc_next_ecma_ast::Diagnostic>) {
+fn transform(source: &str, lang: Lang, jsx: JsxOptions) -> String {
     let options = TransformerOptions {
         jsx: Some(jsx),
         typescript: lang.is_typescript().then(TypeScriptOptions::default),
@@ -83,6 +73,7 @@ fn diagnose(
     }
     let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
     let transformed = Transformer::transform(semantic, options);
+    assert!(transformed.diagnostics.is_empty());
     assert_eq!(ast.lang(), Lang::Js);
     // SAFETY: The visitor only reads handles from this transformed AST.
     let tree = unsafe { ast.ast() };
@@ -97,76 +88,7 @@ fn diagnose(
     let parser = Parser::init(&arena, &output, options, NoTokenParserConfig);
     let reparsed = parser.parse();
     assert!(reparsed.diagnostics.is_empty());
-    (output, transformed.diagnostics)
-}
-
-#[test]
-fn diagnostics() {
-    let lang = Lang::Jsx;
-    let automatic = JsxOptions::default();
-    let (_, diagnostics) = diagnose("const node = <div key />;", lang, automatic.clone());
-    assert_eq!(diagnostics.len(), 1);
-
-    let (_, diagnostics) = diagnose("const node = <svg:path />;", lang, automatic);
-    assert_eq!(diagnostics.len(), 1);
-}
-
-#[test]
-fn namespace_attributes() {
-    let lang = Lang::Jsx;
-    let automatic = JsxOptions::default();
-    let classic = JsxOptions {
-        runtime: JsxRuntime::Classic,
-        ..JsxOptions::default()
-    };
-    let source = "<svg xlink:href=\"value\" />;";
-    let (_, diagnostics) = diagnose(source, lang, automatic.clone());
-    assert_eq!(diagnostics.len(), 1);
-    let span = diagnostics[0].span;
-    assert_eq!(
-        &source[span.start as usize..span.end as usize],
-        "xlink:href"
-    );
-
-    let (_, diagnostics) = diagnose(source, lang, classic);
-    assert_eq!(diagnostics.len(), 1);
-
-    let source = "const node: unknown = <svg xlink:href=\"value\" />;";
-    let (_, diagnostics) = diagnose(source, Lang::Tsx, automatic);
-    assert_eq!(diagnostics.len(), 1);
-}
-
-#[test]
-fn spread_children() {
-    let lang = Lang::Jsx;
-    let automatic = JsxOptions::default();
-    let classic = JsxOptions {
-        runtime: JsxRuntime::Classic,
-        ..JsxOptions::default()
-    };
-    let source = "<Comp>{...items}</Comp>;";
-    let (_, diagnostics) = diagnose(source, lang, automatic.clone());
-    assert_eq!(diagnostics.len(), 1);
-    let span = diagnostics[0].span;
-    assert_eq!(
-        &source[span.start as usize..span.end as usize],
-        "{...items}"
-    );
-
-    let (_, diagnostics) = diagnose(source, lang, classic);
-    assert_eq!(diagnostics.len(), 1);
-
-    let source = "<>{...items}</>;";
-    let (_, diagnostics) = diagnose(source, lang, automatic.clone());
-    assert_eq!(diagnostics.len(), 1);
-
-    let source = "<Comp {...props} key=\"value\">{...items}</Comp>;";
-    let (_, diagnostics) = diagnose(source, lang, automatic.clone());
-    assert_eq!(diagnostics.len(), 1);
-
-    let source = "const node: unknown = <Comp>{...items}</Comp>;";
-    let (_, diagnostics) = diagnose(source, Lang::Tsx, automatic);
-    assert_eq!(diagnostics.len(), 1);
+    output
 }
 
 #[test]
