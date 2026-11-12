@@ -21,6 +21,7 @@
 use swc_next_ecma_ast::AstCtx;
 
 mod compress;
+mod dynamic;
 mod mangle;
 mod options;
 
@@ -41,8 +42,9 @@ impl Minifier {
     /// do not reuse a model computed before minification.
     ///
     /// Semantic optimizations and mangling build their own model before the
-    /// single traversal. Dynamic lookup (`eval` references or `with`) disables
-    /// them.
+    /// single traversal. They skip the bindings of the scopes around an `eval`
+    /// reference or a `with` statement, and the unresolved names that such
+    /// dynamic lookup can shadow.
     ///
     /// With `compress: None` and `mangle: false`, the AST is left unchanged and
     /// analysis is skipped.

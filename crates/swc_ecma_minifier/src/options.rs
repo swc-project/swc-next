@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct MinifierOptions {
     /// Compression settings. `None` disables all compression.
     pub compress: Option<CompressOptions>,
-    /// Shorten the names of local bindings. Top-level names are kept, and a
-    /// program that uses `eval` or `with` is not mangled. Enabled by default.
+    /// Shorten the names of local bindings. Top-level names and the bindings
+    /// that `eval` or a `with` statement can see are kept. Enabled by default.
     pub mangle: bool,
 }
 

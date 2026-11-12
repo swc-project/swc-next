@@ -16,8 +16,9 @@ Parsing, TypeScript/JSX lowering, and printing are separate operations. Print
 with the code generator's `minify` option for compact output, and recompute
 semantic analysis before querying the optimized AST.
 
-See [minifier options](src/options.rs) for configuration. A program that uses
-`eval` or `with` is neither compressed with semantic optimizations nor mangled.
+See [minifier options](src/options.rs) for configuration. Bindings that `eval`
+or a `with` statement can see keep their names and declarations; the rest of
+the program is optimized as usual.
 
 ## Testing
 
