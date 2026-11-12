@@ -523,11 +523,11 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         .comments
         .or(options.comments)
         .unwrap_or(CommentsOption::All);
-    let lang = parser_options
-        .lang
-        .map(Into::into)
-        .or_else(|| options.filename.as_deref().map(Lang::from_path))
-        .unwrap_or_default();
+    let lang = {
+        let inferred = options.filename.as_deref().map(Lang::from_path);
+        let explicit = parser_options.lang.map(Into::into);
+        explicit.or(inferred).unwrap_or_default()
+    };
     let transform = {
         let mut transform = options.transformer.unwrap_or_default();
         let typescript = BoolOr::Bool(lang.is_typescript());
@@ -544,22 +544,23 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         // for semantic transforms, then discard comments before generation if needed.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
-        let parser_comments = if parser_options.comments.is_none()
-            && (jsx_enabled || (lang.is_jsx() && typescript_enabled))
-        {
+        let collect_pragmas = parser_options.comments.is_none()
+            && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
+        let parser_comments = if collect_pragmas {
             CommentsOption::All
         } else {
-            parser_options.comments.unwrap_or(comments)
+            comments
         };
-        let source_type = parser_options
-            .source_type
-            .map(Into::into)
-            .or_else(|| options.filename.as_deref().map(SourceType::from_path));
+        let source_type = {
+            let inferred = options.filename.as_deref().map(SourceType::from_path);
+            let explicit = parser_options.source_type.map(Into::into);
+            explicit.or(inferred).unwrap_or_default()
+        };
         let parser_options = ParserOptions {
-            source_type: source_type.unwrap_or_default(),
+            source_type,
             lang,
             comments: parser_comments.into(),
-            preserve_parens: parser_options.preserve_parens.unwrap_or(true),
+            ..parser_options.into()
         };
         let parser = Parser::init(&allocator, source, parser_options, NoTokenParserConfig);
         let parsed = parser.parse();
@@ -604,24 +605,20 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     }
 
     // ======================= Generate =======================
-    if comments == CommentsOption::None {
-        // SAFETY: This AST remains owned by the transform call.
-        unsafe { ast.ast_mut() }.clear_attached_comments();
-    }
-    let printed = {
-        let codegen = options.generator.unwrap_or_default();
-        let mut codegen = GeneratorOptions::from(codegen);
+    {
+        if comments == CommentsOption::None {
+            // SAFETY: This AST remains owned by the transform call.
+            unsafe { ast.ast_mut() }.clear_attached_comments();
+        }
+        let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
         let source_map = options.source_map.unwrap_or(false);
-        let source_filename = options.filename.as_deref().unwrap_or("input.js");
-        codegen.source_map_path = source_map.then(|| source_filename.into());
-        // JSX may collect comments internally even when the parser option
-        // disables them. Those semantic inputs must not leak into the output.
-        codegen.comments = matches!(comments, CommentsOption::All)
-            && parser_options.comments != Some(CommentsOption::None);
-        generate(&ast, codegen)
-    };
-    output.map = printed.map.as_ref().map(serialize_source_map);
-    output.code = printed.code;
+        let filename = options.filename.as_deref().unwrap_or("input.js");
+        generator.source_map_path = source_map.then(|| filename.into());
+        generator.comments = comments == CommentsOption::All;
+        let generated = generate(&ast, generator);
+        output.code = generated.code;
+        output.map = generated.map.as_ref().map(serialize_source_map);
+    }
 
     output
 }
