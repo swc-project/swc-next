@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { createElement as _createElement } from "react";
+/* #__PURE__ */ _createElement(Comp, { ...props, key: "value" });

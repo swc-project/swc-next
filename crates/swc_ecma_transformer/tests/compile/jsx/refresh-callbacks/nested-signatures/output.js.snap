@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s2 = useSig();
+function Outer() {
+  _s2();
+  var _s = useSig();
+  function Inner() {
+    _s();
+    useState(0);
+  }
+  _s(Inner, "useState{(0)}");
+  useEffect(() => {
+  });
+}
+_s2(Outer, "useEffect{}");
+_c = Outer;
+var _c;
+$RefreshReg$(_c, "Outer");

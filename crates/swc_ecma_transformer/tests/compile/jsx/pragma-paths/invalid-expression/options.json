@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "pragma": "bad-name",
+      "runtime": "classic"
+    },
+    "typescript": false
+  }
+}

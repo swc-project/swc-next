@@ -1,0 +1,1 @@
+class B {} class C extends B { constructor(public x: number) { try { throw 99; } catch (x) { super(); } } }

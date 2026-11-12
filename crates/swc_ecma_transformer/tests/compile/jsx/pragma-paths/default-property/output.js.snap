@@ -1,0 +1,4 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+factory.default("div", null);

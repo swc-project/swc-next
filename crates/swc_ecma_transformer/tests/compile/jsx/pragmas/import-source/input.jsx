@@ -1,0 +1,1 @@
+/** @jsxImportSource custom */ const node = <div />;

@@ -1,0 +1,1 @@
+export {}; const value=42; namespace Types { export interface T {} } namespace N { export import value=Types.T; export function f(){return value;} }

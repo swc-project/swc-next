@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "lang": "tsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": false,
+    "typescript": {
+      "jsxPragma": "h",
+      "jsxPragmaFrag": "Frag"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+class C {
+  static value = (() => {
+    let E;
+    (function(E) {
+      E[E["A"] = x] = "A";
+    })(E || (E = {}));
+    return E.A;
+  })();
+}
+const x = 42;
+export {};

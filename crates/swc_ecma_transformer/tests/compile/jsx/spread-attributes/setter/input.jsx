@@ -1,0 +1,1 @@
+<Comp {...{ set value(v) { sideEffect(v); } }} />;

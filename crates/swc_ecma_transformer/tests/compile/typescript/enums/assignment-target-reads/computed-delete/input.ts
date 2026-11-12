@@ -1,0 +1,1 @@
+const enum E { X = 0 } const a = []; delete a[E.X];

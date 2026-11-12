@@ -1,0 +1,1 @@
+class B {} class C extends B { constructor(public x: number) { { let x = 99; super(); } } }

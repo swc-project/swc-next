@@ -1,0 +1,1 @@
+namespace N { export interface T {} } import Alias = N.T;

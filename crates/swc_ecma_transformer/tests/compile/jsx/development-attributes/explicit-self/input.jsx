@@ -1,0 +1,1 @@
+<Foo __self={owner} />;

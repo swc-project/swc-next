@@ -1067,6 +1067,7 @@ checksum = "e47d37d2ae4464254884b60ab7071be2b876a9c35b696bd018ddcc76847309cd"
 dependencies = [
  "aho-corasick",
  "bstr",
+ "log",
  "regex-automata",
  "regex-syntax",
 ]
@@ -1340,9 +1341,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b67d3d2e287e4b86c10b3f3b641033d1f89b74bdb39d05f34952e2b9a6fe21cd"
 dependencies = [
  "console",
+ "globset",
  "once_cell",
  "similar",
  "tempfile",
+ "walkdir",
 ]
 
 [[package]]
@@ -3774,10 +3777,13 @@ name = "swc_next_ecma_transformer"
 version = "0.6.1"
 dependencies = [
  "clap",
+ "insta",
  "memchr",
  "phf 0.14.0",
  "rustc-hash",
+ "serde_json",
  "swc_next_allocator",
+ "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",

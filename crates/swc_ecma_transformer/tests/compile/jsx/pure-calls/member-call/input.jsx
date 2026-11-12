@@ -1,0 +1,1 @@
+(<A f={tick} />).props.f();

@@ -1,0 +1,1 @@
+import React = require('react'); export const x = <div />;

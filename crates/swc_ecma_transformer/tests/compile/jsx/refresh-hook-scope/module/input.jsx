@@ -1,0 +1,1 @@
+const useThing = () => {}; function App() { useThing(); }

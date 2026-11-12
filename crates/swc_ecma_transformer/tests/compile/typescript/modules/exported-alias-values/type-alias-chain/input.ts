@@ -1,0 +1,1 @@
+namespace Original { export interface T {} export const x = 1; } import Root = Original; export import A = Root.T;

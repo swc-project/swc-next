@@ -1,0 +1,1 @@
+import { suffix } from 'dep'; const value = `${suffix}`; enum E { A='fixed', B=value, C=B }

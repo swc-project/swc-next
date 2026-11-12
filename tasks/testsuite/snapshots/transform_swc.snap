@@ -1,6 +1,6 @@
 transform * swc
 ========================
-Positive Passed: 288/2089 (13.79%)
+Positive Passed: 289/2089 (13.83%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2089 (0.00%)
 Skipped: 1409/2089 (67.45%)
@@ -256,7 +256,7 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2476/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2493/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2758/1/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2793/input/index.js - transform: Identifier 'foo' has already been declared at 28..31
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2793/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2822/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-3xxx/3266/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-3xxx/3381/1/input/index.ts - transformed output differs from expected output
@@ -265,7 +265,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-4xxx/4224/3/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5102/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5752/input/index.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5783/input/input.js - transform: Identifier 'x2' has already been declared at 349..351
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5859/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-6xxx/6255/1/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-6xxx/6306/input/index.js - transformed output differs from expected output

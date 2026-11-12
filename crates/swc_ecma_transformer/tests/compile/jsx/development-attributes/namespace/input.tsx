@@ -1,0 +1,1 @@
+namespace N { export const node = <div />; }

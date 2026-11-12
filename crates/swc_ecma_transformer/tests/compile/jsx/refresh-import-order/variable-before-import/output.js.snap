@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const _source = initialize();
+import { value } from "source";
+import { jsx as _jsx } from "react/jsx-runtime";
+export const View = () => /* #__PURE__ */ _jsx("div", {});
+_c = View;
+var _c;
+$RefreshReg$(_c, "View");

@@ -1,0 +1,1 @@
+interface X {} export const X = 1; export default X;

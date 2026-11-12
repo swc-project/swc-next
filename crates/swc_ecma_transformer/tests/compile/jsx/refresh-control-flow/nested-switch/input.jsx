@@ -1,0 +1,1 @@
+switch (1) { case 0: switch (2) { case 1: function Foo() { useState(); } break; case 2: Foo(); } }

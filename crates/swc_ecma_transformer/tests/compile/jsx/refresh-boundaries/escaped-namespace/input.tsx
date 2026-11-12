@@ -1,0 +1,1 @@
+namespace F\u006fo.Bar { export function App() {} }

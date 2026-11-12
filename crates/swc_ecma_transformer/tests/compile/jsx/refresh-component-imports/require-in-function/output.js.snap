@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const App = () => require("dep");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

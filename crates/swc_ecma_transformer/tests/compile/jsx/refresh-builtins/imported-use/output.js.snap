@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { use } from "react";
+function App() {
+  use(promise);
+}
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

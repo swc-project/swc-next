@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _jsxFileName = "";
+import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+const node = /* #__PURE__ */ _jsxDEV(Foo, { children: /* #__PURE__ */ _jsxDEV("span", {}, void 0, false, { fileName: _jsxFileName, lineNumber: 1, columnNumber: 19 }, this) }, void 0, false, { fileName: _jsxFileName, lineNumber: 1, columnNumber: 14 }, this);

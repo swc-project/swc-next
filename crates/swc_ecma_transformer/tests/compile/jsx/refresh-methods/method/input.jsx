@@ -1,0 +1,1 @@
+const o = { method() { useThing(); return super.value; } };

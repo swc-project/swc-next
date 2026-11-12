@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const x = 42;
+var N;
+(function(N) {
+  function f() {
+    return x;
+  }
+  N.f = f;
+})(N || (N = {}));
+export {};

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+class B {
+}
+class C extends B {
+  x;
+  constructor(x) {
+    super(), this.x = x;
+    class Inner extends B {
+      constructor() {
+        super();
+      }
+    }
+  }
+}
+export {};

@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "react/jsx-runtime";
+const Bar = memo(_c = () => /* #__PURE__ */ _jsx(Hello, {}));
+_c2 = Bar;
+var _c, _c2;
+$RefreshReg$(_c, "Bar$memo");
+$RefreshReg$(_c2, "Bar");

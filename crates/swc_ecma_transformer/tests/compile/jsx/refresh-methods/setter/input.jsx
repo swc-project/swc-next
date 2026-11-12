@@ -1,0 +1,1 @@
+const o = { set value(v) { useThing(v); } };

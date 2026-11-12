@@ -1,0 +1,1 @@
+class B {} class C extends B { constructor(public x: number) { const init = () => { const x = 99; super(); }; x = 2; init(); } }

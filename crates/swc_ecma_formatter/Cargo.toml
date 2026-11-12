@@ -17,5 +17,5 @@ swc_next_formatter_core = { workspace = true }
 zmij_ecma               = { workspace = true }
 
 [dev-dependencies]
-insta      = "1.49.0"
+insta      = { workspace = true }
 serde_json = { workspace = true }

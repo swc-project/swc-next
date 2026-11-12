@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { suffix } from "dep";
+const value = `${suffix}`;
+var E;
+(function(E) {
+  E["A"] = "fixed";
+  E["B"] = value;
+  E["C"] = E.B;
+})(E || (E = {}));

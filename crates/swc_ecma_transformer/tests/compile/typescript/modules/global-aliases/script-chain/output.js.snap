@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  N.value = 7;
+})(N || (N = {}));
+var A = N;
+var B = A;

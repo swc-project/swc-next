@@ -1,0 +1,1 @@
+function f(){ enum F { A=E.B, B } return F.B; } enum E { A=41, B }

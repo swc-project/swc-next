@@ -1,0 +1,14 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "refresh": {
+        "emitFullSignatures": true
+      }
+    },
+    "typescript": false
+  }
+}

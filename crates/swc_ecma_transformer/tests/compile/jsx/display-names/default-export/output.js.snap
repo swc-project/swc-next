@@ -1,0 +1,4 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export default createReactClass({ displayName: "Component", render: () => /* #__PURE__ */ React.createElement("div", null) });

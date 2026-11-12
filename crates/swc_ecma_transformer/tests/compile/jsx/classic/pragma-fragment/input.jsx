@@ -1,0 +1,1 @@
+/** @jsx h */ const node = <><this /><foo.Bar /></>;

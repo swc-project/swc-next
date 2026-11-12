@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/* #__PURE__ */ React.createElement(Comp, { ...{ get value() {
+  sideEffect();
+  return 1;
+} }, other: 2 });

@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const o = { set value(v) {
+  useThing(v);
+} };

@@ -1,0 +1,1 @@
+let seen: boolean; namespace N { export namespace M { export const x=1; const original=M; Object.defineProperty(N, 'M', {value:{}, configurable:true}); seen=M===original; } }

@@ -1,0 +1,1 @@
+import * as remote from 'pkg'; namespace N { import value=remote.value; export function f(){return value;} }

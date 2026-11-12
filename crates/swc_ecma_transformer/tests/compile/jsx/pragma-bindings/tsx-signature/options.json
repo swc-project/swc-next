@@ -1,0 +1,14 @@
+{
+  "parser": {
+    "lang": "tsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "pragma": "_s",
+      "refresh": {},
+      "runtime": "classic"
+    },
+    "typescript": {}
+  }
+}

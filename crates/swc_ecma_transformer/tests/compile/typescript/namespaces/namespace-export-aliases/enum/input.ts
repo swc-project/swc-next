@@ -1,0 +1,1 @@
+declare namespace N { enum E { A=42 } export { E as F }; } enum G { A=N.F.A, B }

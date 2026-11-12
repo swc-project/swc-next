@@ -1,0 +1,1 @@
+const App=()=>{ useState(); return <div/>; }; import 'first'; import 'last';

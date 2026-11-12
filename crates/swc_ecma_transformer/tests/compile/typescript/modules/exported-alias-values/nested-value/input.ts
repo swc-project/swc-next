@@ -1,0 +1,1 @@
+namespace N { export const x = 1; } export namespace Use { export import A = N.x; }

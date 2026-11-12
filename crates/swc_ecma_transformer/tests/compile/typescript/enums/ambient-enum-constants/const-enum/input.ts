@@ -1,0 +1,1 @@
+declare const enum E { A, B } enum F { X = E.B }

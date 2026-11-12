@@ -1,0 +1,1 @@
+import { suffix } from 'dep'; const enum E { A=`${suffix}` } console.log(E.A);

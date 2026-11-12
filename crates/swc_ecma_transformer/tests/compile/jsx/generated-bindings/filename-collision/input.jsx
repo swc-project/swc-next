@@ -1,0 +1,1 @@
+const _jsxFileName = 'source'; const render = () => <div />;

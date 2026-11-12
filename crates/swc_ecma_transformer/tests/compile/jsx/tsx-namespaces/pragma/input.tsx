@@ -1,0 +1,1 @@
+/** @jsx h */ namespace N { export const h = factory; export const node = <div />; }
