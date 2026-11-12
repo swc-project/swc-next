@@ -1118,7 +1118,6 @@ const POSTAMBLE: &str = r#"      default:
 
   let _program, _comments, _diagnostics;
   return {
-    meta: { lang: enumValue("Lang", (flags >> 2) & 7), sourceType },
     get program() {
       return _program !== undefined
         ? _program

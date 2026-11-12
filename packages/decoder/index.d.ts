@@ -1,11 +1,5 @@
 import type { Program } from "@swc-next/types";
 
-/** Source metadata, reusable by the encoder. */
-export interface AstMeta {
-  readonly lang: "js" | "jsx" | "ts" | "tsx" | "dts";
-  readonly sourceType: "module" | "script" | "commonjs" | "unambiguous";
-}
-
 export interface Comment {
   type: "Line" | "Block";
   value: string;
@@ -28,7 +22,6 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface DecodeResult {
-  readonly meta: AstMeta;
   readonly program: Program;
   readonly comments: Comment[];
   readonly diagnostics: Diagnostic[];

@@ -21,9 +21,9 @@ install `@swc-next/walker` separately. Import the walker APIs directly from
 ```js
 import { parseSync, generateSync, walk } from "@swc-next/core";
 
-const { program, meta } = parseSync("debugger; run();");
+const { program } = parseSync("debugger; run();");
 walk(program, { DebuggerStatement(node, ctx) { ctx.remove(); } });
-const { code } = generateSync(program, {}, meta);
+const { code } = generateSync(program);
 // run();
 ```
 

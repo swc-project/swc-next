@@ -81,64 +81,66 @@ fn test_minify_type_spacing() {
 }
 
 #[test]
-fn test_tsx_generic_arrows() {
-    expect_generic_parameters(
-        "const f = <T,>(x: T) => x;",
-        Lang::Tsx,
-        "const f = <T,>(x: T) => x;\n",
-        "const f=<T,>(x:T)=>x;",
-    );
+fn test_generic_arrows() {
+    for lang in [Lang::Ts, Lang::Tsx] {
+        expect_generic_parameters(
+            "const f = <T,>(x: T) => x;",
+            lang,
+            "const f = <T,>(x: T) => x;\n",
+            "const f=<T,>(x:T)=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = <const T,>(x: T) => x;",
-        Lang::Tsx,
-        "const f = <const T,>(x: T) => x;\n",
-        "const f=<const T,>(x:T)=>x;",
-    );
+        expect_generic_parameters(
+            "const f = <const T,>(x: T) => x;",
+            lang,
+            "const f = <const T,>(x: T) => x;\n",
+            "const f=<const T,>(x:T)=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = <T extends object>(x: T) => x;",
-        Lang::Tsx,
-        "const f = <T extends object,>(x: T) => x;\n",
-        "const f=<T extends object,>(x:T)=>x;",
-    );
+        expect_generic_parameters(
+            "const f = <T extends object>(x: T) => x;",
+            lang,
+            "const f = <T extends object>(x: T) => x;\n",
+            "const f=<T extends object>(x:T)=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = <T = string,>(x: T) => x;",
-        Lang::Tsx,
-        "const f = <T = string,>(x: T) => x;\n",
-        "const f=<T=string,>(x:T)=>x;",
-    );
+        expect_generic_parameters(
+            "const f = <T = string,>(x: T) => x;",
+            lang,
+            "const f = <T = string,>(x: T) => x;\n",
+            "const f=<T=string,>(x:T)=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = <const T extends object = {},>(x: T) => x;",
-        Lang::Tsx,
-        "const f = <const T extends object = {},>(x: T) => x;\n",
-        "const f=<const T extends object={},>(x:T)=>x;",
-    );
+        expect_generic_parameters(
+            "const f = <const T extends object = {}>(x: T) => x;",
+            lang,
+            "const f = <const T extends object = {}>(x: T) => x;\n",
+            "const f=<const T extends object={}>(x:T)=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = async <T,>(x: T): Promise<T> => x;",
-        Lang::Tsx,
-        "const f = async <T,>(x: T): Promise<T> => x;\n",
-        "const f=async<T,>(x:T):Promise<T>=>x;",
-    );
+        expect_generic_parameters(
+            "const f = async <T,>(x: T): Promise<T> => x;",
+            lang,
+            "const f = async <T,>(x: T): Promise<T> => x;\n",
+            "const f=async<T,>(x:T):Promise<T>=>x;",
+        );
 
-    expect_generic_parameters(
-        "const f = <T, U,>(x: T, y: U) => x;",
-        Lang::Tsx,
-        "const f = <T, U>(x: T, y: U) => x;\n",
-        "const f=<T,U>(x:T,y:U)=>x;",
-    );
+        expect_generic_parameters(
+            "const f = <T, U,>(x: T, y: U) => x;",
+            lang,
+            "const f = <T, U>(x: T, y: U) => x;\n",
+            "const f=<T,U>(x:T,y:U)=>x;",
+        );
+    }
 }
 
 #[test]
 fn test_generic_parameter_contexts() {
     expect_generic_parameters(
-        "const f = <T,>(x: T) => x;",
+        "const f = <T>(x: T) => x;",
         Lang::Ts,
-        "const f = <T>(x: T) => x;\n",
-        "const f=<T>(x:T)=>x;",
+        "const f = <T,>(x: T) => x;\n",
+        "const f=<T,>(x:T)=>x;",
     );
 
     expect_generic_parameters(

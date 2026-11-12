@@ -8,7 +8,7 @@ test("edits round-trip through the core encoder and parser", () => {
   const before = ast("before();").body[0];
   const after = ast("after();").body[0];
   const seen = [];
-  const { program, meta } = parseSync("#!/usr/bin/env node\ndebugger; original(); tail();");
+  const { program } = parseSync("#!/usr/bin/env node\ndebugger; original(); tail();");
   walk(program, {
     Hashbang(node) {
       seen.push("hashbang");
@@ -26,7 +26,7 @@ test("edits round-trip through the core encoder and parser", () => {
       if (node.callee.name === "original") ctx.replace(replacement);
     },
   });
-  const { code } = generateSync(program, {}, meta);
+  const { code } = generateSync(program);
   expect(seen).toEqual(["hashbang", "original", "nested", "after", "tail"]);
   expect(code).toBe("#!/usr/bin/env bun\nbefore();\nreplacement(nested());\nafter();\ntail();\n");
   expect(parseSync(code).diagnostics).toEqual([]);

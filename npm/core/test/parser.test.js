@@ -18,8 +18,8 @@ test("parser options use strings without enum value exports", () => {
     sourceType: "script",
     comments: "none",
   });
-  assert.equal(result.meta.lang, "ts");
-  assert.equal(result.meta.sourceType, "script");
+  assert.equal("meta" in result, false);
+  assert.equal(result.program.sourceType, "script");
   assert.deepEqual(result.comments, []);
   assert.equal(result.program.body[0].declarations[0].id.typeAnnotation.type, "TSTypeAnnotation");
 });

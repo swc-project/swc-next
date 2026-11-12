@@ -1940,7 +1940,6 @@ export function decodeTs(buffer, source, sourceBuffer) {
 
   let _program, _comments, _diagnostics;
   return {
-    meta: { lang: enumValue(0, (flags >> 2) & 7), sourceType },
     get program() {
       if (_program !== undefined) return _program;
       try {

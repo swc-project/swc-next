@@ -7,12 +7,12 @@ SWC Next crates. Use the exact package version matching your native binding's
 ```js
 import { encode } from "@swc-next/encoder";
 
-const parts = encode(program, meta);
+const parts = encode(program);
 ```
 
-Pass the decoder result's `meta: { lang, sourceType }` to preserve source
-metadata. `encode(program)` supports TypeScript by default; `encodeJs` and
-`encodeTs` are available when the language is known.
+`encode(program)` infers JavaScript or TypeScript from the nodes and reads
+source type from `program.sourceType`. `encodeJs` and `encodeTs` are also
+available for callers that know whether TypeScript support is needed.
 
 Node spans use UTF-16 offsets. String literal values and cooked template values
 preserve lone surrogates through the WTF-8 pool. UTF-8 fields, including
