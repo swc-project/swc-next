@@ -77,7 +77,8 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-const RETAINED_BUFFER_BYTES = 128 * 1024 * 1024;
+// Maximum combined capacity of the reusable data buffers.
+const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
 let reusableBuffers;
 
 function createBuffers(sizeHint) {
@@ -1958,9 +1959,9 @@ function encodeJs(program) {
     new Uint8Array(extraBuffer, 0, extraCount * 8),
     pool.subarray(0, poolLength),
   ];
-  const retainedBytes = spans.byteLength + kinds.byteLength +
+  const bufferCapacityBytes = spans.byteLength + kinds.byteLength +
     payloadBuffer.byteLength + extraBuffer.byteLength + pool.byteLength;
-  if (retainedBytes <= RETAINED_BUFFER_BYTES) {
+  if (bufferCapacityBytes <= MAX_ENCODER_CACHE_BYTES) {
     Object.assign(buffers, {
       nodeCapacity, spans, kinds, payloadBuffer, payload, nodeCount,
       extraCapacity, extraBuffer, extra, extraCount, poolCapacity, pool,
