@@ -171,12 +171,12 @@ for (const { name, transformSync } of [
       }), defaults);
     });
 
-    test("transformSync lets parser.comments override top-level comments", () => {
+    test("transformSync keeps parser comment collection separate from output comments", () => {
       const source = "/* keep me */ const value = 1;";
       assert.ok(transformSync(source).code.includes("keep me"));
       assert.equal(transformSync(source, { comments: "none" }).code, "const value = 1;\n");
       assert.equal(transformSync(source, { comments: "all", parser: { comments: "none" } }).code, "const value = 1;\n");
-      assert.ok(transformSync(source, { comments: "none", parser: { comments: "all" } }).code.includes("keep me"));
+      assert.equal(transformSync(source, { comments: "none", parser: { comments: "all" } }).code, "const value = 1;\n");
 
       const pragma = transformSync("/** @jsxRuntime classic */ export const view = <section />;", {
         filename: "input.jsx",

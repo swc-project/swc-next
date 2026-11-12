@@ -608,7 +608,7 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
-        generator.comments = comments == CommentsOption::All;
+        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
         let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);
@@ -688,7 +688,7 @@ mod tests {
         assert!(output.code.contains("/* comment */"));
 
         let output = transform_js("/* comment */ value();", remove_output);
-        assert!(output.code.contains("/* comment */"));
+        assert_eq!(output.code, "value();\n");
 
         let output = transform_js("/* comment */ value();", skip_collection);
         assert_eq!(output.code, "value();\n");
