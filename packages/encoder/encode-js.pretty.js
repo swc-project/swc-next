@@ -199,7 +199,7 @@ function encStr(value, view, offset, wtf8) {
     const start = poolLength;
     const end = start + length;
     // Keep the short ASCII path small enough to inline into field encoders.
-    if (length > 0 && length <= 12 && end <= pool.length && end <= 0x7fffffff) {
+    if (length > 0 && length <= 64 && end <= pool.length && end <= 0x7fffffff) {
       let index = 0;
       for (; index < length; index++) {
         const code = value.charCodeAt(index);
