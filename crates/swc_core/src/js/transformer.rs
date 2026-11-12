@@ -540,8 +540,8 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     // ======================= Parse =======================
     let allocator = Allocator::default();
     let mut ast = {
-        // JSX pragmas and React Refresh directives are semantic inputs even when
-        // the output policy removes comments.
+        // An explicit parser comment policy wins. Otherwise retain JSX pragmas
+        // for semantic transforms, then discard comments before generation if needed.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
         let parser_comments = if parser_options.comments.is_none()
