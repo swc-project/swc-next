@@ -15,6 +15,10 @@ export type EncodedAstParts = [
 /** Encode an ESTree Program into sections consumed by SWC Next crates.
  * Infer JS/TS from the nodes using the TypeScript-capable encoder.
  * Source type comes from program.sourceType.
+ *
+ * Encoders reuse module-level state and are not reentrant. AST property getters
+ * and Proxy traps must not reenter the active encoder, including via generateSync.
+ * encode and encodeTs share the same state.
  */
 export declare function encode(program: Program): EncodedAstParts;
 export declare function encodeJs(program: Program): EncodedAstParts;
