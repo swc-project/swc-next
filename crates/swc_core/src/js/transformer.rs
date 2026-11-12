@@ -476,9 +476,12 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
 
     // ======================= Analyze =======================
     let semantic = {
-        let options = AnalyzeOptions {
-            check_syntax: SyntaxChecks::all(),
+        let check_syntax = if parser_options.semantic_errors.unwrap_or(false) {
+            SyntaxChecks::all()
+        } else {
+            SyntaxChecks::empty()
         };
+        let options = AnalyzeOptions { check_syntax };
         let analyzed = analyze(&mut ast, options);
         output.diagnostics.extend(analyzed.diagnostics);
         if has_errors(&output.diagnostics) {
