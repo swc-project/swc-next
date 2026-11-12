@@ -1,6 +1,6 @@
 ---
 title: Generator
-description: generateSync AST inputs, metadata, formatting options, and output.
+description: generateSync AST inputs, formatting options, and output.
 ---
 
 # Generator
@@ -13,7 +13,6 @@ description: generateSync AST inputs, metadata, formatting options, and output.
 declare function generateSync(
   program: Program,
   options?: GenerateApiOptions | null,
-  meta?: Partial<AstMeta>,
 ): GenerateOutput;
 ```
 
@@ -21,7 +20,6 @@ declare function generateSync(
 | --- | --- |
 | `program` | A valid program AST, usually returned by `parseSync` and optionally edited with `walk`. |
 | `options` | Formatting options. Omit or pass `null` for defaults. |
-| `meta` | Optional language and source type metadata from the parser. |
 
 Input nodes follow the [AST declarations](/api/javascript/types) shared with the parser.
 
@@ -98,28 +96,7 @@ generateSync(program, { minify: true }).code;
 
 `minify` does not evaluate `1 + 2`, remove unused declarations, or shorten variable names. Compression and name mangling belong to the separate [Minifier component](/api/components/minifier). Printing preserves TypeScript and JSX syntax with either setting.
 
-## Metadata
-
-```ts
-interface AstMeta {
-  readonly lang: "js" | "jsx" | "ts" | "tsx" | "dts";
-  readonly sourceType: "module" | "script" | "commonjs" | "unambiguous";
-}
-```
-
-Pass `parseSync(...).meta` to preserve the input language and source type. Explicit metadata takes precedence; when omitted, source type comes from the program and language is inferred from the tree. Printing does not remove TypeScript types or lower JSX.
-
-| Field | Meaning |
-| --- | --- |
-| `lang` | Select the AST language variant used for encoding and printing. Pass the parser's value to retain its JavaScript, JSX, TypeScript, TSX, or declaration-file mode. |
-| `sourceType` | Select the program's source type for printing. Pass the parser's resolved value to retain module, script, or CommonJS mode. |
-
-```js
-import { parseSync, generateSync } from "@swc-next/core";
-
-const result = parseSync("export const answer: number = 42;", { lang: "ts" });
-const { code } = generateSync(result.program, { minify: true }, result.meta);
-```
+Printing infers JavaScript or TypeScript from the AST and reads source type from `program.sourceType`. It preserves TypeScript types and JSX syntax. Single type parameter arrow functions without a constraint receive a trailing comma, so their output is valid in both TS and TSX.
 
 ## GenerateOutput
 

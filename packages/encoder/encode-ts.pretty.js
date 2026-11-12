@@ -77,7 +77,7 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-function encodeTs(program, meta = {}) {
+function encodeTs(program) {
   const sizeHint = program.end || 0;
   let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
@@ -2984,8 +2984,8 @@ function encodeTs(program, meta = {}) {
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
-  const sourceType = enumValue(1, meta.sourceType ?? program.sourceType);
-  const lang = meta.lang ?? (isTs ? "ts" : "js");
+  const sourceType = enumValue(1, program.sourceType);
+  const lang = isTs ? "ts" : "js";
   view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 

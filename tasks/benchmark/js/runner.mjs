@@ -56,7 +56,7 @@ export function prepare(api, operation, name, source) {
   if (operation === "generate") {
     // Materialize input outside the measured region, including lazy strings.
     touch(parsed.program);
-    return { iterations: 10, run: () => generateSync(parsed.program, {}, parsed.meta), validate: value => assert(value.code.length > 0) };
+    return { iterations: 10, run: () => generateSync(parsed.program), validate: value => assert(value.code.length > 0) };
   }
   return { iterations: 10, run: () => touch(api.parseSync(source, options).program), validate: value => assert(value > 1) };
 }

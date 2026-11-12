@@ -3054,8 +3054,12 @@ impl<'a> Printer<'a> {
         }
         let type_parameters = e.type_parameters(self.ast);
         if let Some(t) = type_parameters {
-            // Disambiguate singleton generic arrows from JSX.
-            let trailing_comma = self.ast.lang() == Lang::Tsx && t.params(self.ast).len() == 1;
+            // Disambiguate singleton generic arrows from JSX. The comma is valid in TS too.
+            let params = t.params(self.ast);
+            let trailing_comma = match params.get_node(self.ast, 0) {
+                Some(param) if params.len() == 1 => param.constraint(self.ast).is_none(),
+                _ => false,
+            };
             self.print_ts_type_params_with_trailing_comma(t, trailing_comma);
         }
         let params = e.params(self.ast);

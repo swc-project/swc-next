@@ -39,7 +39,7 @@ export function parseSync(source, options) {
   return result;
 }
 
-export function generateSync(program, options, meta) {
-  const code = __generateSync(...encode(program, meta), encodeGeneratorConfig(options));
+export function generateSync(program, options) {
+  const code = __generateSync(...encode(program), encodeGeneratorConfig(options));
   return { code };
 }

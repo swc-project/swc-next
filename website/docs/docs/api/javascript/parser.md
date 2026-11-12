@@ -70,7 +70,7 @@ Choose the rules for the file's top level:
 | `"module"` | Parse an ES module with strict mode, static `import` / `export`, `import.meta`, and top-level `await`. |
 | `"script"` | Parse a classic script. Strict mode applies when enabled by a `"use strict"` directive; static imports and exports are not allowed. |
 | `"commonjs"` | Parse with CommonJS wrapper rules, allowing top-level `return` and `new.target`. Strict mode is not enabled automatically. |
-| `"unambiguous"` | Detect module syntax first, then CommonJS wrapper syntax, and otherwise use script rules. The resolved value is returned in `program.sourceType` and `meta.sourceType`. |
+| `"unambiguous"` | Detect module syntax first, then CommonJS wrapper syntax, and otherwise use script rules. The resolved value is returned in `program.sourceType`. |
 
 Detection is based on syntax, rather than calls to `require` or assignments to `module.exports`. A dynamic `import()` alone also does not select module mode.
 
@@ -80,13 +80,13 @@ import { parseSync } from "@swc-next/core";
 parseSync("return 42;", { sourceType: "commonjs" }).diagnostics;
 // []
 
-parseSync("export const answer = 42;", { sourceType: "unambiguous" }).meta.sourceType;
+parseSync("export const answer = 42;", { sourceType: "unambiguous" }).program.sourceType;
 // "module"
 
-parseSync("return 42;", { sourceType: "unambiguous" }).meta.sourceType;
+parseSync("return 42;", { sourceType: "unambiguous" }).program.sourceType;
 // "commonjs"
 
-parseSync("const answer = 42;", { sourceType: "unambiguous" }).meta.sourceType;
+parseSync("const answer = 42;", { sourceType: "unambiguous" }).program.sourceType;
 // "script"
 ```
 
@@ -140,7 +140,7 @@ parseSync(source, { comments: "none" }).comments;
 
 `value` excludes the comment delimiters, while `start` and `end` include them. Offsets use UTF-16 code units and the end is exclusive. A hashbang such as `#!/usr/bin/env node` is stored separately in `program.hashbang`.
 
-Collecting comments does not make [`generateSync`](/api/javascript/generator) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
+Collecting comments does not make [`generateSync`](/api/javascript/generator) emit them: its JavaScript interface takes the program and formatting options, without the flat comment list.
 
 ### errorRecovery
 
@@ -176,7 +176,6 @@ Enabling this option adds diagnostics without changing the AST. It does not expo
 ```ts
 interface ParseResult {
   readonly program: Program;
-  readonly meta: AstMeta;
   readonly comments: Comment[];
   readonly diagnostics: Diagnostic[];
 }
@@ -185,7 +184,6 @@ interface ParseResult {
 | Field | Contents |
 | --- | --- |
 | `program` | The ESTree-based program. Its nodes can be inspected and edited. |
-| `meta` | `{ lang, sourceType }`; keep it with the AST and pass it to [generateSync](/api/javascript/generator#metadata). |
 | `comments` | Flat comments with `type: "Line" \| "Block"`, delimiter-free `value`, `start`, and `end`. Empty when collection is disabled. |
 | `diagnostics` | Syntax diagnostics and, with `semanticErrors`, semantic early errors. Check these before using recovered output. |
 

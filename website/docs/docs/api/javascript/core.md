@@ -18,8 +18,8 @@ The core packages provide synchronous parsing and code generation with the same 
 
 | Export | Purpose | Reference |
 | --- | --- | --- |
-| `parseSync(source, options?)` | Parse source text into a program, comments, diagnostics, and metadata | [Parser](/api/javascript/parser) |
-| `generateSync(program, options?, meta?)` | Generate a `{ code }` result from a program | [Generator](/api/javascript/generator) |
+| `parseSync(source, options?)` | Parse source text into a program, comments, and diagnostics | [Parser](/api/javascript/parser) |
+| `generateSync(program, options?)` | Generate a `{ code }` result from a program | [Generator](/api/javascript/generator) |
 | `walk(root, hooks, state?)` | Traverse and edit an AST synchronously; exported by the Node.js package | [Walk](/api/javascript/walk) |
 | `langFromPath(path)` | Infer the parser language from a file path | [Parser helpers](/api/javascript/parser#path-helpers) |
 | `sourceTypeFromPath(path)` | Infer the source type from a file path | [Parser helpers](/api/javascript/parser#path-helpers) |

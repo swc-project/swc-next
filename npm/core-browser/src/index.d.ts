@@ -6,8 +6,6 @@ import type {
   GenerateOutput,
   ParserConfig,
 } from "./binding.js";
-import type { AstMeta } from "@swc-next/decoder";
-export type { AstMeta } from "@swc-next/decoder";
 
 export type {
   CommentMode,
@@ -45,7 +43,6 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
-  readonly meta: AstMeta;
   readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
@@ -66,7 +63,6 @@ export declare function parseSync(
 export declare function generateSync(
   program: Program,
   options?: GenerateApiOptions | undefined | null,
-  meta?: Partial<AstMeta>,
 ): GenerateOutput;
 
 export declare function langFromPath(path: string): Lang;

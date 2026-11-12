@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
 
-import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
+import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
 import { parseSync, generateSync } from "../src-js/index.js";
+import { generateSync as generateNative } from "../src-js/binding.js";
+
+function generateEncoded(program, encoder) {
+  return generateNative(...encoder(program), encodeOptions());
+}
 
 test("encode writes spans in canonical little-endian order", () => {
   const [, spans] = encode({
@@ -37,7 +42,7 @@ test("encoder preserves modified module attribute types", () => {
     assert.equal(value.value, "text");
     value.value = "文本";
 
-    const generated = generateSync(program, {}, { lang }).code;
+    const generated = generateSync(program).code;
     const roundtrip = parseSync(generated, { lang }).program.body[0];
     assert.equal(roundtrip.attributes.members[0].typeAnnotation.typeAnnotation.literal.value, "文本");
     assert.equal(roundtrip.id.value, "*.txt");
@@ -48,33 +53,33 @@ test("encoder preserves modified module attribute types", () => {
 });
 
 test("encoder normalizes template raw line endings", () => {
-  for (const lang of ["js", "ts"]) {
-    const { program } = parseSync("tag`placeholder`;", { lang });
+  for (const encoder of [encodeJs, encodeTs]) {
+    const { program } = parseSync("tag`placeholder`;");
     const value = program.body[0].expression.quasi.quasis[0].value;
 
     value.raw = "a\rb\r\nc";
-    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\nb\nc`;\n");
+    assert.equal(generateEncoded(program, encoder), "tag`a\nb\nc`;\n");
 
     value.raw = "a\\\r\nb";
-    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\\\nb`;\n");
+    assert.equal(generateEncoded(program, encoder), "tag`a\\\nb`;\n");
 
     value.raw = "a\\rb";
-    assert.equal(generateSync(program, {}, { lang }).code, "tag`a\\rb`;\n");
+    assert.equal(generateEncoded(program, encoder), "tag`a\\rb`;\n");
 
     value.raw = "\\xZ\r";
     value.cooked = null;
-    assert.equal(generateSync(program, {}, { lang }).code, "tag`\\xZ\n`;\n");
+    assert.equal(generateEncoded(program, encoder), "tag`\\xZ\n`;\n");
   }
 });
 
 test("encoder preserves array rests", () => {
-  const generate = (source, lang) => generateSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
+  const generate = (source, encoder) => generateEncoded(parseSync(source, { errorRecovery: true }).program, encoder);
 
-  assert.equal(generate("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
-  assert.equal(generate("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
+  for (const encoder of [encodeJs, encodeTs]) {
+    assert.equal(generate("const [...a, b] = v;", encoder), "const [...a, b] = v;\n");
 
-  assert.equal(generate("const [...a, b, ...c] = v;", "js"), "const [...a, b, ...c] = v;\n");
-  assert.equal(generate("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
+    assert.equal(generate("const [...a, b, ...c] = v;", encoder), "const [...a, b, ...c] = v;\n");
+  }
 });
 
 test("generateSync accepts surrogate pairs in UTF-8 fields", () => {
@@ -84,21 +89,21 @@ test("generateSync accepts surrogate pairs in UTF-8 fields", () => {
   assert.equal(generateSync(program).code, "const 𐐀 = 1;\n");
 });
 
-test("generateSync preserves lone surrogates in string values", () => {
-  for (const lang of ["js", "ts"]) {
-    const { program } = parseSync('const text = "";', { lang });
+test("encoders preserve lone surrogates in string values", () => {
+  for (const encoder of [encodeJs, encodeTs]) {
+    const { program } = parseSync('const text = "";');
     const value = "\uD800é😀\0\uDC00";
     program.body[0].declarations[0].init.value = value;
 
-    const [buffer] = encode(program, { lang });
+    const [buffer] = encoder(program);
     const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     assert.ok(header.getUint32(8, true) > 0);
     assert.equal(header.getUint32(12, true), 0);
-    const generated = generateSync(program, {}, { lang });
-    assert.equal(parseSync(generated.code).program.body[0].declarations[0].init.value, value);
+    const generated = generateEncoded(program, encoder);
+    assert.equal(parseSync(generated).program.body[0].declarations[0].init.value, value);
 
-    const escaped = parseSync('const text = "\\uD800";', { lang }).program;
-    const roundtrip = parseSync(generateSync(escaped, {}, { lang }).code).program;
+    const escaped = parseSync('const text = "\\uD800";').program;
+    const roundtrip = parseSync(generateEncoded(escaped, encoder)).program;
     assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
   }
 });
@@ -142,15 +147,15 @@ test("encoder invalidates stale directive raw text", () => {
 test("encoder preserves expressions with stale directive metadata", () => {
   const script = parseSync("1;").program;
   script.body[0].directive = "foo";
-  assert.equal(generateSync(script, {}, { lang: "js" }).code, "1;\n");
+  assert.equal(generateSync(script).code, "1;\n");
 
   const modified = parseSync('"use strict";', { lang: "ts" }).program;
   modified.body[0].expression.value = 1;
-  assert.equal(generateSync(modified, {}, { lang: "ts" }).code, "1;\n");
+  assert.equal(generateSync(modified).code, "1;\n");
 
   const functionBody = parseSync("function f() { 1; }").program;
   functionBody.body[0].body.body[0].directive = "foo";
-  assert.equal(generateSync(functionBody, {}, { lang: "js" }).code, "function f() {\n  1;\n}\n");
+  assert.equal(generateSync(functionBody).code, "function f() {\n  1;\n}\n");
 
   const namespace = parseSync("namespace N { 1; }", { lang: "ts" }).program;
   namespace.body[0].body.body[0].directive = "foo";
@@ -258,18 +263,21 @@ test("generateSync rejects unsupported ESTree nodes", () => {
   );
 });
 
-test("encoder metadata selects compatible JS and TS variants", () => {
+test("encoders infer language and preserve source type from ESTree", () => {
   const { program } = parseSync("const value = (a) => a;");
   assert.deepEqual(encodeJs(program), encodeTs(program));
-  assert.deepEqual(encode(program, { lang: "js" }), encodeJs(program));
-  assert.deepEqual(encode(program, { lang: "jsx" }), encodeJs(program, { lang: "jsx" }));
   assert.deepEqual(encode(program), encodeTs(program));
 
-  const typed = parseSync("const value: string = 'ok';", { lang: "ts" }).program;
-  assert.deepEqual(encode(typed, { lang: "ts" }), encodeTs(typed));
-  assert.deepEqual(encode(typed, { lang: "tsx" }), encodeTs(typed, { lang: "tsx" }));
-  assert.equal((new DataView(encodeTs(typed)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
-  assert.equal((new DataView(encode(typed, { lang: "tsx" })[0].buffer).getUint32(32, true) >> 2) & 7, 3);
+  for (const lang of ["ts", "tsx"]) {
+    const typed = parseSync("const value: string = 'ok';", { lang }).program;
+    assert.deepEqual(encode(typed), encodeTs(typed));
+    const [header] = encode(typed);
+    assert.equal((new DataView(header.buffer).getUint32(32, true) >> 2) & 7, 1);
+  }
+
+  program.sourceType = "commonjs";
+  const [updatedHeader] = encode(program);
+  assert.equal(new DataView(updatedHeader.buffer).getUint32(32, true) & 3, 2);
 });
 
 

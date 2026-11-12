@@ -2,8 +2,6 @@ import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 
 import type { ParserConfig } from "./binding.js";
-import type { AstMeta } from "@swc-next/decoder";
-export type { AstMeta } from "@swc-next/decoder";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export type { CommentMode, ParserConfig } from "./binding.js";
@@ -35,7 +33,6 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
-  readonly meta: AstMeta;
   readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */

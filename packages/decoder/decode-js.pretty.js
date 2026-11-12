@@ -1004,7 +1004,6 @@ export function decodeJs(buffer, source, sourceBuffer) {
 
   let _program, _comments, _diagnostics;
   return {
-    meta: { lang: enumValue(0, (flags >> 2) & 7), sourceType },
     get program() {
       return _program !== undefined
         ? _program
