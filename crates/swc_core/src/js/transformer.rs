@@ -1,10 +1,15 @@
+#[cfg(feature = "bridge")]
+use swc_next_bridge::bridge;
+#[cfg(all(feature = "bridge", not(target_family = "wasm")))]
+use swc_next_bridge::napi;
+
 use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     assumptions::Assumptions,
@@ -19,11 +24,25 @@ use crate::{
     js::{CommentsOption, JsOutput, JsTransformApiOptions, serialize_source_map},
 };
 
+#[cfg(all(feature = "bridge", feature = "serde"))]
+mod bridge;
+#[cfg(all(feature = "bridge", feature = "serde"))]
+pub use bridge::transform_source_to_buffer;
+
 /// JavaScript and TypeScript transform options.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "TransformerConfig"
+    )
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsTransformerConfig {
@@ -33,16 +52,36 @@ pub struct JsTransformerConfig {
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
     /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "boolean | TypeScriptConfig")
+    )]
     pub typescript: Option<BoolOr<JsTypeScriptConfig>>,
     /// JSX transform. `false` keeps JSX syntax in the output.
     ///
     /// @default enabled with the automatic runtime when `lang` is `"jsx"` or `"tsx"`
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "boolean | JsxConfig")
+    )]
     pub jsx: Option<BoolOr<JsxConfig>>,
     /// Per-feature overrides. `true` enables a transform; `false` disables it.
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "Partial<Record<JsFeature, boolean>>")
+    )]
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "Assumptions")
+    )]
     pub assumptions: Option<JsAssumptions>,
     /// Proposal transform options.
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "ProposalConfig")
+    )]
     pub proposal: Option<JsProposalConfig>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
@@ -83,6 +122,15 @@ impl JsTransformerConfig {
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
 )]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "ProposalConfig"
+    )
+)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsProposalConfig {
     /// Preserve class static block behavior when a block makes the class
@@ -106,6 +154,14 @@ impl From<JsProposalConfig> for ProposalOptions {
 /// Names of individually controllable lowering transforms.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
+#[cfg_attr(
+    all(feature = "bridge", not(target_family = "wasm")),
+    swc_next_bridge::napi_derive::napi(
+        string_enum = "kebab-case",
+        object_from_js = false,
+        object_to_js = false
+    )
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum JsFeature {
     /// Lower class static blocks (`class-static-block`).
@@ -119,6 +175,15 @@ pub enum JsFeature {
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "TypeScriptConfig"
+    )
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsTypeScriptConfig {
@@ -170,6 +235,7 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[cfg_attr(feature = "bridge", bridge(string_enum = "lowercase"))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum JsxRuntime {
     Classic,
@@ -191,6 +257,15 @@ impl From<JsxRuntime> for TransformJsxRuntime {
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "JsxConfig"
+    )
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsxConfig {
@@ -225,6 +300,10 @@ pub struct JsxConfig {
     /// React Refresh. `true` uses default options.
     ///
     /// @default false
+    #[cfg_attr(
+        all(feature = "bridge", not(target_family = "wasm")),
+        napi(ts_type = "boolean | ReactRefreshConfig")
+    )]
     pub refresh: Option<BoolOr<JsReactRefreshConfig>>,
 }
 
@@ -253,6 +332,15 @@ impl From<JsxConfig> for JsxOptions {
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "ReactRefreshConfig"
+    )
 )]
 #[derive(Clone, Debug, Default)]
 pub struct JsReactRefreshConfig {
@@ -305,6 +393,15 @@ fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Optio
 #[cfg_attr(
     feature = "serde",
     serde(default, rename_all = "camelCase", deny_unknown_fields)
+)]
+#[cfg_attr(
+    feature = "bridge",
+    bridge(
+        object,
+        object_from_js = false,
+        object_to_js = false,
+        js_name = "Assumptions"
+    )
 )]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsAssumptions {
@@ -426,11 +523,11 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         .comments
         .or(options.comments)
         .unwrap_or(CommentsOption::All);
-    let lang = {
-        let inferred = options.filename.as_deref().map(Lang::from_path);
-        let explicit = parser_options.lang.map(Into::into);
-        explicit.or(inferred).unwrap_or_default()
-    };
+    let lang = parser_options
+        .lang
+        .map(Into::into)
+        .or_else(|| options.filename.as_deref().map(Lang::from_path))
+        .unwrap_or_default();
     let transform = {
         let mut transform = options.transformer.unwrap_or_default();
         let typescript = BoolOr::Bool(lang.is_typescript());
@@ -443,27 +540,26 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     // ======================= Parse =======================
     let allocator = Allocator::default();
     let mut ast = {
-        // An explicit parser comment policy wins. Otherwise retain JSX pragmas
-        // for semantic transforms, then discard comments before generation if needed.
+        // JSX pragmas and React Refresh directives are semantic inputs even when
+        // the output policy removes comments.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
-        let collect_pragmas = parser_options.comments.is_none()
-            && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
-        let parser_comments = if collect_pragmas {
+        let parser_comments = if parser_options.comments.is_none()
+            && (jsx_enabled || (lang.is_jsx() && typescript_enabled))
+        {
             CommentsOption::All
         } else {
-            comments
+            parser_options.comments.unwrap_or(comments)
         };
-        let source_type = {
-            let inferred = options.filename.as_deref().map(SourceType::from_path);
-            let explicit = parser_options.source_type.map(Into::into);
-            explicit.or(inferred).unwrap_or_default()
-        };
+        let source_type = parser_options
+            .source_type
+            .map(Into::into)
+            .or_else(|| options.filename.as_deref().map(SourceType::from_path));
         let parser_options = ParserOptions {
-            source_type,
+            source_type: source_type.unwrap_or_default(),
             lang,
             comments: parser_comments.into(),
-            ..parser_options.into()
+            preserve_parens: parser_options.preserve_parens.unwrap_or(true),
         };
         let parser = Parser::init(&allocator, source, parser_options, NoTokenParserConfig);
         let parsed = parser.parse();
@@ -474,6 +570,16 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         parsed.ast
     };
 
+    // Check the original syntax before normalization removes TypeScript nodes.
+    if parser_options.semantic_errors.unwrap_or(false) {
+        output
+            .diagnostics
+            .extend(check_syntax(&ast, SyntaxChecks::all()));
+        if has_errors(&output.diagnostics) {
+            return output;
+        }
+    }
+
     // ======================= Normalize =======================
     match &transform.typescript {
         None | Some(BoolOr::Bool(false)) => Normalizer::normalize(&mut ast),
@@ -482,13 +588,7 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
 
     // ======================= Analyze =======================
     let semantic = {
-        let check_syntax = if parser_options.semantic_errors.unwrap_or(false) {
-            SyntaxChecks::all()
-        } else {
-            SyntaxChecks::empty()
-        };
-        let options = AnalyzeOptions { check_syntax };
-        let analyzed = analyze(&mut ast, options);
+        let analyzed = analyze(&mut ast, AnalyzeOptions::default());
         output.diagnostics.extend(analyzed.diagnostics);
         if has_errors(&output.diagnostics) {
             return output;
@@ -504,20 +604,137 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     }
 
     // ======================= Generate =======================
-    {
-        if comments == CommentsOption::None {
-            // SAFETY: This AST remains owned by the transform call.
-            unsafe { ast.ast_mut() }.clear_attached_comments();
-        }
-        let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
-        let source_map = options.source_map.unwrap_or(false);
-        let filename = options.filename.as_deref().unwrap_or("input.js");
-        generator.source_map_path = source_map.then(|| filename.into());
-        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
-        let generated = generate(&ast, generator);
-        output.code = generated.code;
-        output.map = generated.map.as_ref().map(serialize_source_map);
+    if comments == CommentsOption::None {
+        // SAFETY: This AST remains owned by the transform call.
+        unsafe { ast.ast_mut() }.clear_attached_comments();
     }
+    let printed = {
+        let codegen = options.generator.unwrap_or_default();
+        let mut codegen = GeneratorOptions::from(codegen);
+        let source_map = options.source_map.unwrap_or(false);
+        let source_filename = options.filename.as_deref().unwrap_or("input.js");
+        codegen.source_map_path = source_map.then(|| source_filename.into());
+        // JSX may collect comments internally even when the parser option
+        // disables them. Those semantic inputs must not leak into the output.
+        codegen.comments = matches!(comments, CommentsOption::All)
+            && parser_options.comments != Some(CommentsOption::None);
+        generate(&ast, codegen)
+    };
+    output.map = printed.map.as_ref().map(serialize_source_map);
+    output.code = printed.code;
 
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::js::parser::{JsLang, JsParserConfig, JsSourceType};
+
+    fn has_errors(output: &JsOutput) -> bool {
+        output
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == Severity::Error)
+    }
+
+    #[test]
+    fn semantic_options() {
+        let defaults = JsTransformApiOptions::default();
+        let disabled = JsTransformApiOptions {
+            parser: Some(JsParserConfig {
+                semantic_errors: Some(false),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let enabled = JsTransformApiOptions {
+            parser: Some(JsParserConfig {
+                semantic_errors: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let output = transform_js("let value; let value;", defaults);
+        assert!(!has_errors(&output));
+        assert!(!output.code.is_empty());
+
+        let output = transform_js("let value; let value;", disabled);
+        assert!(!has_errors(&output));
+        assert!(!output.code.is_empty());
+
+        let output = transform_js("let value; let value;", enabled);
+        assert!(has_errors(&output));
+        assert!(output.code.is_empty());
+    }
+
+    #[test]
+    fn filename_options() {
+        let typescript = JsTransformApiOptions {
+            filename: Some("input.ts".into()),
+            ..Default::default()
+        };
+        let commonjs = JsTransformApiOptions {
+            filename: Some("input.cjs".into()),
+            ..Default::default()
+        };
+        let javascript_override = JsTransformApiOptions {
+            parser: Some(JsParserConfig {
+                lang: Some(JsLang::Js),
+                ..Default::default()
+            }),
+            ..typescript.clone()
+        };
+        let module_override = JsTransformApiOptions {
+            parser: Some(JsParserConfig {
+                source_type: Some(JsSourceType::Module),
+                ..Default::default()
+            }),
+            ..commonjs.clone()
+        };
+
+        let output = transform_js("const value: number = 1;", typescript);
+        assert_eq!(output.code, "const value = 1;\n");
+        assert!(!has_errors(&output));
+
+        let output = transform_js("const value: number = 1;", javascript_override);
+        assert!(has_errors(&output));
+
+        let output = transform_js("return 1;", commonjs);
+        assert_eq!(output.code, "return 1;\n");
+        assert!(!has_errors(&output));
+
+        let output = transform_js("return 1;", module_override);
+        assert!(has_errors(&output));
+    }
+
+    #[test]
+    fn comment_options() {
+        let remove_output = JsTransformApiOptions {
+            comments: Some(CommentsOption::None),
+            parser: Some(JsParserConfig {
+                comments: Some(CommentsOption::All),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let skip_collection = JsTransformApiOptions {
+            comments: Some(CommentsOption::All),
+            parser: Some(JsParserConfig {
+                comments: Some(CommentsOption::None),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let output = transform_js("/* comment */ value();", JsTransformApiOptions::default());
+        assert!(output.code.contains("/* comment */"));
+
+        let output = transform_js("/* comment */ value();", remove_output);
+        assert!(output.code.contains("/* comment */"));
+
+        let output = transform_js("/* comment */ value();", skip_collection);
+        assert_eq!(output.code, "value();\n");
+    }
 }

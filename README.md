@@ -23,6 +23,9 @@ The Rust API is still in a very early stage; please continue to use SWC's Rust A
 
 ## Usage
 
+The focused [`@swc-next/transformer`](npm/transformer) package provides synchronous
+source transformation with `transformSync`.
+
 The JavaScript API is available from [`@swc-next/core`](npm/core). Install it with `npm install @swc-next/core`:
 
 ```sh

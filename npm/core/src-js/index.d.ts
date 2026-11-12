@@ -60,3 +60,38 @@ export declare function generateSync(
   program: Program,
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;
+
+import type { TransformApiOptions } from "./binding.js";
+export type {
+  TransformApiOptions,
+  TransformerConfig,
+  TypeScriptConfig,
+  TypeScriptConfig as TypeScriptOptions,
+  JsxConfig,
+  JsxRuntime,
+  ReactRefreshConfig,
+  ReactRefreshConfig as ReactRefreshOptions,
+  JsFeature,
+  Assumptions,
+  ProposalConfig,
+} from "./binding.js";
+
+export interface Output extends GenerateOutput {
+  /** Source map as JSON when sourceMap is enabled. */
+  map?: string;
+  diagnostics: Diagnostic[];
+}
+
+export type TransformOutput = Output;
+
+/**
+ * Parse, transform, and print synchronously using the Rust core options.
+ * TypeScript and JSX lowering follow the input language. Set parser.semanticErrors
+ * to true for additional semantic error checks; transform binding analysis always runs.
+ * @throws {SyntaxError} On parser, enabled semantic, or transform errors, with a
+ * diagnostics array containing UTF-16 source offsets. Invalid options throw TypeError.
+ */
+export declare function transformSync(
+  source: string,
+  options?: TransformApiOptions | null,
+): Output;
