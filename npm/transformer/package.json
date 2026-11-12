@@ -65,5 +65,11 @@
   "devDependencies": {
     "@napi-rs/cli": "catalog:",
     "@types/node": "catalog:"
+  },
+  "dependencies": {
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/encoder": "workspace:*",
+    "@swc-next/types": "workspace:*",
+    "@swc-next/walker": "workspace:*"
   }
 }

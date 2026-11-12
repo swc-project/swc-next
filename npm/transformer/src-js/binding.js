@@ -574,5 +574,11 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { transformSync } = nativeBinding
+const { transformSync, parseForTransformSync, parseTransformSync, printTransformedSync, transformAstSync, transformPrintSync } = nativeBinding
 export { transformSync }
+
+export { parseForTransformSync }
+export { parseTransformSync }
+export { printTransformedSync }
+export { transformAstSync }
+export { transformPrintSync }

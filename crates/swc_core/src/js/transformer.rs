@@ -27,6 +27,14 @@ use crate::{
 #[cfg(all(feature = "bridge", feature = "serde"))]
 use swc_next_ecma_ast::ffi::ast::{diagnostics_buffer_size, serialize_diagnostics_into};
 
+#[cfg(all(feature = "bridge", feature = "serde"))]
+mod plugins;
+#[cfg(all(feature = "bridge", feature = "serde"))]
+pub use plugins::{
+    parse_for_transform_to_buffer, parse_transform_to_buffer, print_transformed_from_parts,
+    transform_from_parts, transform_print_from_parts,
+};
+
 /// JavaScript and TypeScript transform options.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
@@ -638,6 +646,11 @@ pub unsafe fn transform_source_to_buffer(
     // SAFETY: The caller guarantees valid UTF-8.
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let result = transform_js(source, options);
+    Ok(encode_output(&result, source, source_utf16_len))
+}
+
+#[cfg(all(feature = "bridge", feature = "serde"))]
+fn encode_output(result: &JsOutput, source: &str, source_utf16_len: u32) -> Vec<u8> {
     let code = result.code.as_bytes();
     let map = result.map.as_deref().unwrap_or_default().as_bytes();
     let code_len = u32::try_from(code.len()).expect("generated code length exceeds u32");
@@ -657,7 +670,7 @@ pub unsafe fn transform_source_to_buffer(
         &mut output[diagnostics_offset..],
         source_utf16_len as usize,
     );
-    Ok(output)
+    output
 }
 
 #[cfg(test)]

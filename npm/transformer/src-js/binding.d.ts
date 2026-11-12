@@ -272,4 +272,47 @@ export interface TypeScriptConfig {
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
+export declare function parseForTransformSync(source: Buffer, sourceUtf16Len: number, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function parseTransformSync(source: Buffer, sourceUtf16Len: number, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * Sections must come from the matching JavaScript encoder and satisfy the
+ * validity, alignment, and immutability contracts of
+ * `swc_next_core::js::transformer::print_transformed_from_parts`.
+ */
+export declare function printTransformedSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * Sections must come from the matching JavaScript encoder and satisfy the
+ * validity, alignment, and immutability contracts of
+ * `swc_next_core::js::transformer::transform_from_parts`.
+ */
+export declare function transformAstSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * Sections must come from the matching JavaScript encoder and satisfy the
+ * validity, alignment, and immutability contracts of
+ * `swc_next_core::js::transformer::transform_print_from_parts`.
+ */
+export declare function transformPrintSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
 export declare function transformSync(source: Buffer, sourceUtf16Len: number, options: string): Buffer
