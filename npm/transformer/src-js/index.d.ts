@@ -1,10 +1,7 @@
 import type {
-  GeneratorConfig as GeneratorOptions,
   GenerateOutput,
   TransformApiOptions,
-  ParserConfig as BindingParserOptions,
 } from "./binding.js";
-export type { GeneratorConfig as GeneratorOptions, GenerateOutput } from "./binding.js";
 
 export interface DiagnosticLabel {
   message: string;
@@ -24,11 +21,9 @@ export type {
   TransformApiOptions,
   TransformerConfig,
   TypeScriptConfig,
-  TypeScriptConfig as TypeScriptOptions,
   JsxConfig,
   JsxRuntime,
   ReactRefreshConfig,
-  ReactRefreshConfig as ReactRefreshOptions,
   JsFeature,
   Assumptions,
   ProposalConfig,
@@ -39,8 +34,6 @@ export interface Output extends GenerateOutput {
   map?: string;
   diagnostics: Diagnostic[];
 }
-
-export type TransformOutput = Output;
 
 /**
  * Parse, transform, and print synchronously using the Rust core options.
@@ -55,5 +48,3 @@ export declare function transformSync(
 ): Output;
 
 export type { ParserConfig, GeneratorConfig } from "./binding.js";
-export type ParserApiOptions = BindingParserOptions;
-export type GenerateApiOptions = GeneratorOptions;

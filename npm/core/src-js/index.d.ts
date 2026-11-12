@@ -6,6 +6,7 @@ import type {
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
+  TransformApiOptions,
 } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
@@ -61,16 +62,13 @@ export declare function generateSync(
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;
 
-import type { TransformApiOptions } from "./binding.js";
 export type {
   TransformApiOptions,
   TransformerConfig,
   TypeScriptConfig,
-  TypeScriptConfig as TypeScriptOptions,
   JsxConfig,
   JsxRuntime,
   ReactRefreshConfig,
-  ReactRefreshConfig as ReactRefreshOptions,
   JsFeature,
   Assumptions,
   ProposalConfig,
@@ -81,8 +79,6 @@ export interface Output extends GenerateOutput {
   map?: string;
   diagnostics: Diagnostic[];
 }
-
-export type TransformOutput = Output;
 
 /**
  * Parse, transform, and print synchronously using the Rust core options.

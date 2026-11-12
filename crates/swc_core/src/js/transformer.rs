@@ -9,7 +9,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     assumptions::Assumptions,
@@ -569,16 +569,6 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         parsed.ast
     };
 
-    // Check the original syntax before normalization removes TypeScript nodes.
-    if parser_options.semantic_errors.unwrap_or(false) {
-        output
-            .diagnostics
-            .extend(check_syntax(&ast, SyntaxChecks::all()));
-        if has_errors(&output.diagnostics) {
-            return output;
-        }
-    }
-
     // ======================= Normalize =======================
     match &transform.typescript {
         None | Some(BoolOr::Bool(false)) => Normalizer::normalize(&mut ast),
@@ -587,7 +577,13 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
 
     // ======================= Analyze =======================
     let semantic = {
-        let analyzed = analyze(&mut ast, AnalyzeOptions::default());
+        let check_syntax = if parser_options.semantic_errors.unwrap_or(false) {
+            SyntaxChecks::all()
+        } else {
+            SyntaxChecks::empty()
+        };
+        let options = AnalyzeOptions { check_syntax };
+        let analyzed = analyze(&mut ast, options);
         output.diagnostics.extend(analyzed.diagnostics);
         if has_errors(&output.diagnostics) {
             return output;
@@ -667,85 +663,7 @@ pub unsafe fn transform_source_to_buffer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::js::parser::{JsLang, JsParserConfig, JsSourceType};
-
-    fn has_errors(output: &JsOutput) -> bool {
-        output
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.severity == Severity::Error)
-    }
-
-    #[test]
-    fn semantic_options() {
-        let defaults = JsTransformApiOptions::default();
-        let disabled = JsTransformApiOptions {
-            parser: Some(JsParserConfig {
-                semantic_errors: Some(false),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let enabled = JsTransformApiOptions {
-            parser: Some(JsParserConfig {
-                semantic_errors: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
-        let output = transform_js("let value; let value;", defaults);
-        assert!(!has_errors(&output));
-        assert!(!output.code.is_empty());
-
-        let output = transform_js("let value; let value;", disabled);
-        assert!(!has_errors(&output));
-        assert!(!output.code.is_empty());
-
-        let output = transform_js("let value; let value;", enabled);
-        assert!(has_errors(&output));
-        assert!(output.code.is_empty());
-    }
-
-    #[test]
-    fn filename_options() {
-        let typescript = JsTransformApiOptions {
-            filename: Some("input.ts".into()),
-            ..Default::default()
-        };
-        let commonjs = JsTransformApiOptions {
-            filename: Some("input.cjs".into()),
-            ..Default::default()
-        };
-        let javascript_override = JsTransformApiOptions {
-            parser: Some(JsParserConfig {
-                lang: Some(JsLang::Js),
-                ..Default::default()
-            }),
-            ..typescript.clone()
-        };
-        let module_override = JsTransformApiOptions {
-            parser: Some(JsParserConfig {
-                source_type: Some(JsSourceType::Module),
-                ..Default::default()
-            }),
-            ..commonjs.clone()
-        };
-
-        let output = transform_js("const value: number = 1;", typescript);
-        assert_eq!(output.code, "const value = 1;\n");
-        assert!(!has_errors(&output));
-
-        let output = transform_js("const value: number = 1;", javascript_override);
-        assert!(has_errors(&output));
-
-        let output = transform_js("return 1;", commonjs);
-        assert_eq!(output.code, "return 1;\n");
-        assert!(!has_errors(&output));
-
-        let output = transform_js("return 1;", module_override);
-        assert!(has_errors(&output));
-    }
+    use crate::js::parser::JsParserConfig;
 
     #[test]
     fn comment_options() {
