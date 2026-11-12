@@ -270,46 +270,67 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         byte: u8,
     ) -> bool {
         let flags = fast_token_flags(LINE_BREAK);
-        match FAST_CLASS[byte as usize] {
-            FastClass::Identifier => return self.try_identifier_token::<LINE_BREAK>(target, start),
-            FastClass::Punctuation => {
-                self.cursor = start + 1;
-                *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
-            }
-            FastClass::Digit => {
-                if !self.scan_decimal_integer(start, byte, flags, target) {
-                    return false;
-                }
-            }
-            FastClass::Dot => {
-                if self
-                    .source
-                    .get(start as usize + 1)
-                    .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
-                {
-                    return false;
-                }
-                self.cursor = start + 1;
-                *target = Token::new(start, start + 1, TokenTag::Dot, flags);
-            }
-            FastClass::Operator => {
-                let end = start + 1;
-                // A second byte outside this set ends the operator, so the token is
-                // one byte long and does not need the full punctuation scan.
-                let Some(&next) = self.source.get(end as usize) else {
-                    return self.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
-                };
-                if OPERATOR_EXTENDS[next as usize] {
-                    return self.try_operator_token::<LINE_BREAK>(target, start, byte, next);
-                }
-                self.cursor = end;
-                *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
-            }
-            FastClass::Quote => return self.try_string_token::<LINE_BREAK>(target, start),
-            FastClass::Slow => return false,
+        let class = FAST_CLASS[byte as usize];
+
+        if class == FastClass::Punctuation {
+            self.cursor = start + 1;
+            *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
+            self.handle_fast_token(*target);
+            return true;
+        } else if class == FastClass::Identifier {
+            return self.try_identifier_token::<LINE_BREAK>(target, start);
         }
-        self.handle_fast_token(*target);
-        true
+
+        /// Scans a token of one of the classes the two tests above do not cover, and returns
+        /// `false` when the token needs the full scanner. `#[cold]` names it the rare path, which
+        /// is what keeps the jump table out of the hot code above.
+        #[cold]
+        fn cold_class_token<C: ParserConfig, const LINE_BREAK: bool>(
+            lexer: &mut Lexer<'_, C>,
+            target: &mut Token,
+            start: u32,
+            byte: u8,
+            class: FastClass,
+            flags: u8,
+        ) -> bool {
+            match class {
+                FastClass::Digit => {
+                    if !lexer.scan_decimal_integer(start, byte, flags, target) {
+                        return false;
+                    }
+                }
+                FastClass::Dot => {
+                    if lexer
+                        .source
+                        .get(start as usize + 1)
+                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
+                    {
+                        return false;
+                    }
+                    lexer.cursor = start + 1;
+                    *target = Token::new(start, start + 1, TokenTag::Dot, flags);
+                }
+                FastClass::Operator => {
+                    let end = start + 1;
+                    // A second byte outside this set ends the operator, so the token is
+                    // one byte long and does not need the full punctuation scan.
+                    let Some(&next) = lexer.source.get(end as usize) else {
+                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
+                    };
+                    if OPERATOR_EXTENDS[next as usize] {
+                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, next);
+                    }
+                    lexer.cursor = end;
+                    *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
+                }
+                FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
+                FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
+            }
+            lexer.handle_fast_token(*target);
+            true
+        }
+
+        cold_class_token::<C, LINE_BREAK>(self, target, start, byte, class, flags)
     }
 
     /// Reads an ASCII identifier or keyword at `start`. Identifier, string, and
