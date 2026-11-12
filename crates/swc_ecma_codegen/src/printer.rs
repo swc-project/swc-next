@@ -52,7 +52,7 @@ impl Default for Options {
     }
 }
 
-pub struct PrintResult<'a> {
+pub struct GenerateResult<'a> {
     pub code: String,
     pub legal_comments: Vec<Comment>,
     pub map: Option<SourceMap<'a>>,
@@ -185,7 +185,7 @@ impl TsTypeContext {
 }
 
 /// Prints an AST without exposing its unbranded handles.
-pub fn print<'a>(tree: &'a AstCtx<'a>, options: Options) -> PrintResult<'a> {
+pub fn generate<'a>(tree: &'a AstCtx<'a>, options: Options) -> GenerateResult<'a> {
     // SAFETY: The printer only reads handles obtained from this AST.
     Printer::init(unsafe { tree.ast() }, options).generate()
 }
@@ -356,7 +356,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn generate(mut self) -> PrintResult<'a> {
+    fn generate(mut self) -> GenerateResult<'a> {
         self.print_program(self.ast.root_program());
         let Self {
             ast,
@@ -381,7 +381,7 @@ impl<'a> Printer<'a> {
             .copied()
             .collect();
 
-        PrintResult {
+        GenerateResult {
             code,
             legal_comments,
             map,

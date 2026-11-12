@@ -4,7 +4,7 @@ Gungraun benchmarks for the public `@swc-next/core` N-API entry point,
 including JavaScript, AST encoding/decoding, and Rust work. They measure
 synchronous executed instructions with JIT disabled; Wasm is not measured.
 
-`parse` reads the complete AST, `print` uses a materialized AST, and `lang`
+`parse` reads the complete AST, `generate` uses a materialized AST, and `lang`
 and `source_type` exercise path helpers. Setup, warmup, and explicit GC are
 outside the measured region; GC triggered during measurement remains included.
 

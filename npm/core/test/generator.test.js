@@ -37,8 +37,8 @@ test("encoder preserves modified module attribute types", () => {
     assert.equal(value.value, "text");
     value.value = "文本";
 
-    const printed = generateSync(program, {}, { lang }).code;
-    const roundtrip = parseSync(printed, { lang }).program.body[0];
+    const generated = generateSync(program, {}, { lang }).code;
+    const roundtrip = parseSync(generated, { lang }).program.body[0];
     assert.equal(roundtrip.attributes.members[0].typeAnnotation.typeAnnotation.literal.value, "文本");
     assert.equal(roundtrip.id.value, "*.txt");
     assert.equal(roundtrip.body.type, "TSModuleBlock");
@@ -68,13 +68,13 @@ test("encoder normalizes template raw line endings", () => {
 });
 
 test("encoder preserves array rests", () => {
-  const print = (source, lang) => generateSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
+  const generate = (source, lang) => generateSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
 
-  assert.equal(print("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
-  assert.equal(print("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
+  assert.equal(generate("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
+  assert.equal(generate("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
 
-  assert.equal(print("const [...a, b, ...c] = v;", "js"), "const [...a, b, ...c] = v;\n");
-  assert.equal(print("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
+  assert.equal(generate("const [...a, b, ...c] = v;", "js"), "const [...a, b, ...c] = v;\n");
+  assert.equal(generate("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
 });
 
 test("generateSync accepts surrogate pairs in UTF-8 fields", () => {
@@ -94,8 +94,8 @@ test("generateSync preserves lone surrogates in string values", () => {
     const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     assert.ok(header.getUint32(8, true) > 0);
     assert.equal(header.getUint32(12, true), 0);
-    const printed = generateSync(program, {}, { lang });
-    assert.equal(parseSync(printed.code).program.body[0].declarations[0].init.value, value);
+    const generated = generateSync(program, {}, { lang });
+    assert.equal(parseSync(generated.code).program.body[0].declarations[0].init.value, value);
 
     const escaped = parseSync('const text = "\\uD800";', { lang }).program;
     const roundtrip = parseSync(generateSync(escaped, {}, { lang }).code).program;
@@ -216,7 +216,7 @@ test("encoder uses modified RegExp metadata", () => {
   assert.equal(generateSync(program).code, "/new/g;\n");
 });
 
-test("generateSync forwards codegen options", () => {
+test("generateSync forwards generator options", () => {
   const { program } = parseSync("const emoji = '😀';");
 
   assert.equal(

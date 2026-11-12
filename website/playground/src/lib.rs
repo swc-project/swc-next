@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     Lang, Severity, SourceType,
     ffi::ast::{buffer_size, serialize_into},
 };
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 use swc_next_ecma_transformer::{
@@ -16,8 +16,8 @@ use swc_next_ecma_transformer::{
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 struct Options {
     parser: ParserConfig,
-    transform: TransformConfig,
-    codegen: CodegenConfig,
+    transformer: TransformerConfig,
+    generator: GeneratorConfig,
 }
 
 #[derive(Deserialize)]
@@ -68,7 +68,7 @@ impl ParserConfig {
 
 #[derive(Default, Deserialize)]
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct TransformConfig {
+struct TransformerConfig {
     ts: bool,
     es2022: ES2022Config,
 }
@@ -81,7 +81,7 @@ struct ES2022Config {
 
 #[derive(Default, Deserialize)]
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct CodegenConfig {
+struct GeneratorConfig {
     minify: bool,
     ascii_only: bool,
     inline_script: bool,
@@ -98,8 +98,8 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
     let parsed = Parser::init(&allocator, &source, parser, NoTokenParserConfig).parse();
     let mut ast = parsed.ast;
     let mut diagnostics = parsed.diagnostics;
-    let typescript = options.transform.ts && parser.lang.is_typescript();
-    let static_blocks = options.transform.es2022.class_static_block;
+    let typescript = options.transformer.ts && parser.lang.is_typescript();
+    let static_blocks = options.transformer.es2022.class_static_block;
     let transform = typescript || static_blocks;
 
     // Transforms require valid scopes even when optional semantic checks are off.
@@ -142,13 +142,13 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
             },
         );
     }
-    let output = print(
+    let output = generate(
         &ast,
-        CodegenOptions {
-            minify: options.codegen.minify,
-            ascii_only: options.codegen.ascii_only,
-            inline_script: options.codegen.inline_script,
-            ..CodegenOptions::default()
+        GeneratorOptions {
+            minify: options.generator.minify,
+            ascii_only: options.generator.ascii_only,
+            inline_script: options.generator.inline_script,
+            ..GeneratorOptions::default()
         },
     );
     result.extend_from_slice(output.code.as_bytes());

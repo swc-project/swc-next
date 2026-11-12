@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::ffi::ast;
-use swc_next_ecma_codegen::{Options, print};
+use swc_next_ecma_codegen::{Options, generate};
 
 #[cfg(feature = "bridge")]
 use swc_next_bridge::{BridgeDecodeOptional, BridgeEncode, bridge};
@@ -68,7 +68,7 @@ pub unsafe fn generate_from_buffer(
     let allocator = Allocator::default();
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
     let tree = unsafe { ast::deserialize_from(buffer, &allocator) }?;
-    let result = print(&tree, options.unwrap_or_default().into());
+    let result = generate(&tree, options.unwrap_or_default().into());
     Ok(GenerateOutput { code: result.code })
 }
 
@@ -100,7 +100,7 @@ pub unsafe fn generate_from_parts(
         let tree = unsafe {
             ast::deserialize_parts(header, spans, kinds, payloads, extra, strings, &allocator)
         }?;
-        let result = print(&tree, options.unwrap_or_default().into());
+        let result = generate(&tree, options.unwrap_or_default().into());
         Ok(GenerateOutput { code: result.code })
     }
     #[cfg(any(target_family = "wasm", target_endian = "big"))]

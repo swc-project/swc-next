@@ -3,15 +3,15 @@ use swc_next_ecma_ast::{
     Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
     PropertyKind, SourceType, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
-use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
+use swc_next_ecma_codegen::{NumberFormat, Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
 use crate::{
-    expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
-    expect_printed_script, expect_printed_with_options, expect_stable,
+    expect_generated, expect_generated_jsx, expect_generated_jsx_minify, expect_generated_minify,
+    expect_generated_script, expect_generated_with_options, expect_stable,
 };
 
-fn pure_calls(source: &str, options: &PrintOptions) -> String {
+fn pure_calls(source: &str, options: &GeneratorOptions) -> String {
     struct PureCalls<'visit, 'ast>(&'visit mut Ast<'ast>);
 
     impl<'ast> VisitMut<'ast> for PureCalls<'_, 'ast> {
@@ -48,15 +48,15 @@ fn pure_calls(source: &str, options: &PrintOptions) -> String {
     assert!(parsed.diagnostics.is_empty());
     let mut ast = unsafe { parsed.ast.into_ast() };
     ast.root_program().visit_mut_with(&mut PureCalls(&mut ast));
-    print(&ast.into(), options.clone()).code.to_owned()
+    generate(&ast.into(), options.clone()).code.to_owned()
 }
 
 #[test]
 fn test_pure_calls() {
-    let pretty = PrintOptions::default();
-    let minify = PrintOptions {
+    let pretty = GeneratorOptions::default();
+    let minify = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
     let output = pure_calls("pure().props.f();", &pretty);
     assert_eq!(output, "(/* #__PURE__ */ pure()).props.f();\n");
@@ -88,7 +88,7 @@ fn test_pure_calls() {
     let output = pure_calls("const f = () => ({})();", &pretty);
     assert_eq!(output, "const f = () => /* #__PURE__ */ ({})();\n");
 
-    let no_comments = PrintOptions {
+    let no_comments = GeneratorOptions {
         comments: false,
         ..minify
     };
@@ -106,14 +106,14 @@ fn expect_token_boundary(source: &str, expected: &str) {
 
 #[track_caller]
 fn expect_token_boundary_with_options(source: &str, expected: &str, parse_options: ParseOptions) {
-    let print_options = PrintOptions {
+    let generator_options = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
     let allocator = Allocator::new();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let compact = print(&original.ast, print_options.clone());
+    let compact = generate(&original.ast, generator_options.clone());
     assert_eq!(compact.code, expected);
 
     let reparsed = Parser::init(
@@ -124,10 +124,10 @@ fn expect_token_boundary_with_options(source: &str, expected: &str, parse_option
     )
     .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let original_pretty = print(&original.ast, PrintOptions::default());
-    let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
+    let original_pretty = generate(&original.ast, GeneratorOptions::default());
+    let reparsed_pretty = generate(&reparsed.ast, GeneratorOptions::default());
     assert_eq!(reparsed_pretty.code, original_pretty.code);
-    let repeated = print(&reparsed.ast, print_options.clone());
+    let repeated = generate(&reparsed.ast, generator_options.clone());
     assert_eq!(repeated.code, compact.code);
 }
 
@@ -144,70 +144,70 @@ fn expect_token_boundary_mapping(source: &str, expected: &[u8]) {
     )
     .parse();
     assert!(parsed.diagnostics.is_empty());
-    let print_options = PrintOptions {
+    let generator_options = GeneratorOptions {
         minify: true,
         source_map_path: Some("input.js".into()),
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    let printed = print(&parsed.ast, print_options);
-    assert_eq!(printed.map.unwrap().mappings(), expected);
+    let generated = generate(&parsed.ast, generator_options);
+    assert_eq!(generated.map.unwrap().mappings(), expected);
 }
 
 #[test]
-fn test_print_result_ownership() {
+fn test_generate_result_ownership() {
     let code = {
         let allocator = Allocator::new();
         let source = "const value = 1;";
         let parse_options = ParseOptions::default();
         let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
-        let print_options = PrintOptions {
+        let generator_options = GeneratorOptions {
             source_map_path: Some("路径.js".into()),
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         };
-        let printed = print(&parsed.ast, print_options);
-        let map = printed.map.unwrap();
+        let generated = generate(&parsed.ast, generator_options);
+        let map = generated.map.unwrap();
         assert_eq!(map.sources().len(), 1);
         assert_eq!(map.sources()[0], "路径.js".as_bytes());
         assert_eq!(map.sources_content().unwrap(), &[Some(source.as_bytes())]);
         assert_eq!(map.names(), &[b"value".as_slice()]);
         assert!(!map.mappings().is_empty());
-        printed.code
+        generated.code
     };
     assert_eq!(code, "const value = 1;\n");
 }
 
 #[test]
 fn test_minify_computed_properties() {
-    expect_printed_minify("({get [x](){}});", "({get[x](){}});");
+    expect_generated_minify("({get [x](){}});", "({get[x](){}});");
 
-    expect_printed_minify("({set [x](v){}});", "({set[x](v){}});");
+    expect_generated_minify("({set [x](v){}});", "({set[x](v){}});");
 
-    expect_printed_minify("({get \"0\"(){}});", "({get\"0\"(){}});");
+    expect_generated_minify("({get \"0\"(){}});", "({get\"0\"(){}});");
 
-    expect_printed_minify("({set \"0\"(v){}});", "({set\"0\"(v){}});");
+    expect_generated_minify("({set \"0\"(v){}});", "({set\"0\"(v){}});");
 
-    expect_printed_minify("class C{static get [x](){}}", "class C{static get[x](){}}");
+    expect_generated_minify("class C{static get [x](){}}", "class C{static get[x](){}}");
 
-    expect_printed_minify("class C{get \"x\"(){}}", "class C{get\"x\"(){}}");
+    expect_generated_minify("class C{get \"x\"(){}}", "class C{get\"x\"(){}}");
 
-    expect_printed_minify("class C{get x(){}}", "class C{get x(){}}");
+    expect_generated_minify("class C{get x(){}}", "class C{get x(){}}");
 }
 
 #[test]
 fn test_minify_class_modifiers() {
-    expect_printed_minify("class C{static [x](){}}", "class C{static[x](){}}");
+    expect_generated_minify("class C{static [x](){}}", "class C{static[x](){}}");
 
-    expect_printed_minify("class C{static *[x](){}}", "class C{static*[x](){}}");
+    expect_generated_minify("class C{static *[x](){}}", "class C{static*[x](){}}");
 
-    expect_printed_minify("class C{static {}}", "class C{static{}}");
+    expect_generated_minify("class C{static {}}", "class C{static{}}");
 }
 
 #[test]
 fn test_minify_keyword_expressions() {
-    expect_printed_minify("class C extends (a,b){}", "class C extends(a,b){}");
+    expect_generated_minify("class C extends (a,b){}", "class C extends(a,b){}");
 
-    expect_printed_minify(
+    expect_generated_minify(
         "export default \"x\" in value;",
         "export default\"x\"in value;",
     );
@@ -215,46 +215,46 @@ fn test_minify_keyword_expressions() {
 
 #[test]
 fn test_minify_empty_bodies() {
-    expect_printed_minify("do;while(false);", "do;while(false)");
+    expect_generated_minify("do;while(false);", "do;while(false)");
 
-    expect_printed_minify("if(a)b();else;", "if(a)b();else;");
+    expect_generated_minify("if(a)b();else;", "if(a)b();else;");
 }
 
 #[test]
 fn test_minify_iteration_spacing() {
-    expect_printed_minify("for (a in {});", "for(a in{});");
+    expect_generated_minify("for (a in {});", "for(a in{});");
 
-    expect_printed_minify("for (a of []);", "for(a of[]);");
+    expect_generated_minify("for (a of []);", "for(a of[]);");
 
-    expect_printed_minify("`${\"x\" in {x:1}}`;", "`${\"x\"in{x:1}}`;");
+    expect_generated_minify("`${\"x\" in {x:1}}`;", "`${\"x\"in{x:1}}`;");
 }
 
 #[test]
 fn test_minify_keyword_spacing() {
-    expect_printed_minify("function f(){return [1]}", "function f(){return[1]}");
+    expect_generated_minify("function f(){return [1]}", "function f(){return[1]}");
 
-    expect_printed_minify("function* f(){yield [1]}", "function*f(){yield[1]}");
+    expect_generated_minify("function* f(){yield [1]}", "function*f(){yield[1]}");
 
-    expect_printed_minify(
+    expect_generated_minify(
         "function*g(){return yield*x}",
         "function*g(){return yield*x}",
     );
 
-    expect_printed_minify("typeof [];", "typeof[];");
+    expect_generated_minify("typeof [];", "typeof[];");
 
-    expect_printed_minify("void [];", "void[];");
+    expect_generated_minify("void [];", "void[];");
 
-    expect_printed_minify("delete (x+y).p;", "delete(x+y).p;");
+    expect_generated_minify("delete (x+y).p;", "delete(x+y).p;");
 
-    expect_printed_minify("()=>{return async()=>0}", "()=>{return async()=>0};");
+    expect_generated_minify("()=>{return async()=>0}", "()=>{return async()=>0};");
 
-    expect_printed_minify("function f(){return value}", "function f(){return value}");
+    expect_generated_minify("function f(){return value}", "function f(){return value}");
 }
 
 #[test]
 #[ignore = "minified numeric member expressions do not choose the shortest literal"]
 fn test_minify_numeric_member() {
-    expect_printed_minify("4294967295 .x;", "0xffffffff.x;");
+    expect_generated_minify("4294967295 .x;", "0xffffffff.x;");
 }
 
 #[test]
@@ -324,11 +324,11 @@ fn test_expression_token_boundary_controls() {
 
     expect_token_boundary("await /x/", "await/x/;");
 
-    expect_printed("await true", "await true;\n");
+    expect_generated("await true", "await true;\n");
 
-    expect_printed("await 1_000n", "await 1000n;\n");
+    expect_generated("await 1_000n", "await 1000n;\n");
 
-    expect_printed("new this", "new this();\n");
+    expect_generated("new this", "new this();\n");
 }
 
 #[test]
@@ -351,21 +351,21 @@ fn expect_empty_statement(source: &str, expected_minified: &str) {
     let parse_options = ParseOptions::default();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let original_pretty = print(&original.ast, PrintOptions::default());
+    let original_pretty = generate(&original.ast, GeneratorOptions::default());
 
     for minify in [false, true] {
-        let print_options = PrintOptions {
+        let generator_options = GeneratorOptions {
             minify,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         };
-        let printed = print(&original.ast, print_options.clone());
+        let generated = generate(&original.ast, generator_options.clone());
         if minify {
-            assert_eq!(printed.code, expected_minified);
+            assert_eq!(generated.code, expected_minified);
         }
 
         let reparsed = Parser::init(
             &allocator,
-            &printed.code,
+            &generated.code,
             parse_options,
             NoTokenParserConfig,
         )
@@ -374,10 +374,10 @@ fn expect_empty_statement(source: &str, expected_minified: &str) {
         let ast = unsafe { reparsed.ast.ast() };
         let statement = ast.get_node_in_sub_range(ast.root_program().body(ast).first().unwrap());
         assert_empty_statement_body(ast, statement);
-        let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
+        let reparsed_pretty = generate(&reparsed.ast, GeneratorOptions::default());
         assert_eq!(reparsed_pretty.code, original_pretty.code);
-        let repeated = print(&reparsed.ast, print_options);
-        assert_eq!(repeated.code, printed.code);
+        let repeated = generate(&reparsed.ast, generator_options);
+        assert_eq!(repeated.code, generated.code);
     }
 }
 
@@ -469,59 +469,59 @@ fn test_empty_statement_delimiters() {
 
     expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else;}");
 
-    expect_printed_minify("function f(){x();}", "function f(){x()}");
+    expect_generated_minify("function f(){x();}", "function f(){x()}");
 
-    expect_printed_minify("{x();}", "{x()}");
+    expect_generated_minify("{x();}", "{x()}");
 
-    expect_printed_minify("switch(a){default:x();}", "switch(a){default:x()}");
+    expect_generated_minify("switch(a){default:x();}", "switch(a){default:x()}");
 }
 
 #[test]
 fn test_number_format() {
-    expect_printed_with_options(
+    expect_generated_with_options(
         "42",
         "0x2a;\n",
-        PrintOptions {
+        GeneratorOptions {
             number_format: NumberFormat::Hexadecimal { lowercase: true },
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "42",
         "0x2A;\n",
-        PrintOptions {
+        GeneratorOptions {
             number_format: NumberFormat::Hexadecimal { lowercase: false },
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "0x2a",
         "42;\n",
-        PrintOptions {
+        GeneratorOptions {
             number_format: NumberFormat::Decimal,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "42",
         "0b101010;\n",
-        PrintOptions {
+        GeneratorOptions {
             number_format: NumberFormat::Binary,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "42",
         "0o52;\n",
-        PrintOptions {
+        GeneratorOptions {
             number_format: NumberFormat::Octal,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     assert_eq!(
-        print_negative_number_contexts(PrintOptions {
+        generate_negative_number_contexts(GeneratorOptions {
             number_format: NumberFormat::Hexadecimal { lowercase: true },
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         }),
         "(-0x2).toString;\n(-0x2) ** 0x2;\n"
     );
@@ -549,7 +549,10 @@ fn numeric_literal_value_invalidates_raw() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(print(&ast.into(), PrintOptions::default()).code, "2;\n");
+    assert_eq!(
+        generate(&ast.into(), GeneratorOptions::default()).code,
+        "2;\n"
+    );
 }
 
 #[test]
@@ -571,85 +574,88 @@ fn numeric_literal_value_compares_float_bits() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(print(&ast.into(), PrintOptions::default()).code, "-0;\n");
+    assert_eq!(
+        generate(&ast.into(), GeneratorOptions::default()).code,
+        "-0;\n"
+    );
 }
 
 #[test]
 fn synthesized_number_subtraction() {
-    let minified = PrintOptions {
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
 
-    let code = print_synthesized_number_subtraction(-1.0, minified.clone());
+    let code = generate_synthesized_number_subtraction(-1.0, minified.clone());
     assert_eq!(code, "x- -1;");
 
-    let code = print_synthesized_number_subtraction(-0.0, minified.clone());
+    let code = generate_synthesized_number_subtraction(-0.0, minified.clone());
     assert_eq!(code, "x- -0;");
 
-    let code = print_synthesized_number_subtraction(f64::NEG_INFINITY, minified.clone());
+    let code = generate_synthesized_number_subtraction(f64::NEG_INFINITY, minified.clone());
     assert_eq!(code, "x- -1/0;");
 
-    let code = print_synthesized_number_subtraction(1.0, minified);
+    let code = generate_synthesized_number_subtraction(1.0, minified);
     assert_eq!(code, "x-1;");
 
-    let pretty = PrintOptions::default();
+    let pretty = GeneratorOptions::default();
 
-    let code = print_synthesized_number_subtraction(-1.0, pretty.clone());
+    let code = generate_synthesized_number_subtraction(-1.0, pretty.clone());
     assert_eq!(code, "x - -1;\n");
 
-    let code = print_synthesized_number_subtraction(-0.0, pretty.clone());
+    let code = generate_synthesized_number_subtraction(-0.0, pretty.clone());
     assert_eq!(code, "x - -0;\n");
 
-    let code = print_synthesized_number_subtraction(f64::NEG_INFINITY, pretty.clone());
+    let code = generate_synthesized_number_subtraction(f64::NEG_INFINITY, pretty.clone());
     assert_eq!(code, "x - -1 / 0;\n");
 
-    let code = print_synthesized_number_subtraction(1.0, pretty);
+    let code = generate_synthesized_number_subtraction(1.0, pretty);
     assert_eq!(code, "x - 1;\n");
 }
 
 #[test]
 fn synthesized_number_formats() {
-    let print = |value, number_format| {
-        print_synthesized_number_subtraction(
+    let generate = |value, number_format| {
+        generate_synthesized_number_subtraction(
             value,
-            PrintOptions {
+            GeneratorOptions {
                 minify: true,
                 number_format,
-                ..PrintOptions::default()
+                ..GeneratorOptions::default()
             },
         )
     };
 
-    let code = print(-42.0, NumberFormat::Preserve);
+    let code = generate(-42.0, NumberFormat::Preserve);
     assert_eq!(code, "x- -42;");
 
-    let code = print(-42.0, NumberFormat::Decimal);
+    let code = generate(-42.0, NumberFormat::Decimal);
     assert_eq!(code, "x- -42;");
 
-    let code = print(-42.0, NumberFormat::Binary);
+    let code = generate(-42.0, NumberFormat::Binary);
     assert_eq!(code, "x- -0b101010;");
 
-    let code = print(-42.0, NumberFormat::Octal);
+    let code = generate(-42.0, NumberFormat::Octal);
     assert_eq!(code, "x- -0o52;");
 
-    let code = print(-42.0, NumberFormat::Hexadecimal { lowercase: true });
+    let code = generate(-42.0, NumberFormat::Hexadecimal { lowercase: true });
     assert_eq!(code, "x- -0x2a;");
 
-    let code = print(-42.0, NumberFormat::Hexadecimal { lowercase: false });
+    let code = generate(-42.0, NumberFormat::Hexadecimal { lowercase: false });
     assert_eq!(code, "x- -0x2A;");
 
-    let code = print(-0.5, NumberFormat::Binary);
+    let code = generate(-0.5, NumberFormat::Binary);
     assert_eq!(code, "x- -.5;");
 
-    let code = print(-0.0, NumberFormat::Hexadecimal { lowercase: true });
+    let code = generate(-0.0, NumberFormat::Hexadecimal { lowercase: true });
     assert_eq!(code, "x- -0x0;");
 
-    let code = print(f64::NEG_INFINITY, NumberFormat::Decimal);
+    let code = generate(f64::NEG_INFINITY, NumberFormat::Decimal);
     assert_eq!(code, "x- -1/0;");
 }
 
-fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> String {
+fn generate_synthesized_number_subtraction(value: f64, options: GeneratorOptions) -> String {
     let allocator = Allocator::new();
     // SAFETY: All handles used below belong to this AST and remain valid.
     let mut ast = unsafe { Ast::new("", &allocator) };
@@ -662,73 +668,77 @@ fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> St
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&ast.into(), options).code
+    generate(&ast.into(), options).code
 }
 
 #[test]
 fn test_string_property_keys() {
-    expect_printed_minify(r#"({ "'\"": 1 });"#, r#"({"'\"":1});"#);
+    expect_generated_minify(r#"({ "'\"": 1 });"#, r#"({"'\"":1});"#);
 
-    expect_printed_minify(r#"class C { "'\"" = 1; }"#, r#"class C{"'\""=1}"#);
+    expect_generated_minify(r#"class C { "'\"" = 1; }"#, r#"class C{"'\""=1}"#);
 
-    expect_printed_minify(r#"const { "'\"": x } = o;"#, r#"const{"'\"":x}=o;"#);
+    expect_generated_minify(r#"const { "'\"": x } = o;"#, r#"const{"'\"":x}=o;"#);
 
-    expect_printed_minify(r#"({ ["'\""]: 1 });"#, r#"({[`'"`]:1});"#);
+    expect_generated_minify(r#"({ ["'\""]: 1 });"#, r#"({[`'"`]:1});"#);
 }
 
 #[test]
 fn synthesized_number_property_keys() {
     assert_eq!(
-        print_synthesized_number_property_key(f64::NAN, false, false),
+        generate_synthesized_number_property_key(f64::NAN, false, false),
         "({ \"NaN\": 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::INFINITY, false, false),
+        generate_synthesized_number_property_key(f64::INFINITY, false, false),
         "({ \"Infinity\": 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::NEG_INFINITY, false, false),
+        generate_synthesized_number_property_key(f64::NEG_INFINITY, false, false),
         "({ \"-Infinity\": 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(-1.0, false, false),
+        generate_synthesized_number_property_key(-1.0, false, false),
         "({ \"-1\": 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(-0.0, false, false),
+        generate_synthesized_number_property_key(-0.0, false, false),
         "({ \"0\": 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::NAN, false, true),
+        generate_synthesized_number_property_key(f64::NAN, false, true),
         "({\"NaN\":0});"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::NAN, true, false),
+        generate_synthesized_number_property_key(f64::NAN, true, false),
         "({ [0 / 0]: 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::INFINITY, true, false),
+        generate_synthesized_number_property_key(f64::INFINITY, true, false),
         "({ [1 / 0]: 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::NEG_INFINITY, true, false),
+        generate_synthesized_number_property_key(f64::NEG_INFINITY, true, false),
         "({ [-1 / 0]: 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(-1.0, true, false),
+        generate_synthesized_number_property_key(-1.0, true, false),
         "({ [-1]: 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(-0.0, true, false),
+        generate_synthesized_number_property_key(-0.0, true, false),
         "({ [-0]: 0 });\n"
     );
     assert_eq!(
-        print_synthesized_number_property_key(f64::NAN, true, true),
+        generate_synthesized_number_property_key(f64::NAN, true, true),
         "({[0/0]:0});"
     );
 }
 
-fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify: bool) -> String {
+fn generate_synthesized_number_property_key(
+    key_value: f64,
+    computed: bool,
+    minify: bool,
+) -> String {
     let allocator = Allocator::new();
     // SAFETY: All handles used below belong to this AST and remain valid.
     let mut ast = unsafe { Ast::new("", &allocator) };
@@ -751,11 +761,11 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(
+    generate(
         &ast.into(),
-        PrintOptions {
+        GeneratorOptions {
             minify,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     )
     .code
@@ -763,7 +773,7 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
 
 #[test]
 fn synthesized_number_contexts() {
-    fn print_unary(value: f64, options: PrintOptions) -> String {
+    fn generate_unary(value: f64, options: GeneratorOptions) -> String {
         let allocator = Allocator::new();
         // SAFETY: All handles used below belong to this AST and remain valid.
         let mut ast = unsafe { Ast::new("", &allocator) };
@@ -773,29 +783,29 @@ fn synthesized_number_contexts() {
         let body = ast.add_sub_range([statement]);
         let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
         ast.set_root_program(program);
-        print(&ast.into(), options).code
+        generate(&ast.into(), options).code
     }
 
-    let pretty = PrintOptions::default();
-    let minified = PrintOptions {
+    let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
 
-    let code = print_negative_number_contexts(pretty);
+    let code = generate_negative_number_contexts(pretty);
     assert_eq!(code, "(-2).toString;\n(-2) ** 2;\n");
 
-    let code = print_negative_number_contexts(minified.clone());
+    let code = generate_negative_number_contexts(minified.clone());
     assert_eq!(code, "(-2).toString;(-2)**2;");
 
-    let code = print_unary(-1.0, minified.clone());
+    let code = generate_unary(-1.0, minified.clone());
     assert_eq!(code, "-(-1);");
 
-    let code = print_unary(f64::NEG_INFINITY, minified);
+    let code = generate_unary(f64::NEG_INFINITY, minified);
     assert_eq!(code, "-(-1/0);");
 }
 
-fn print_negative_number_contexts(options: PrintOptions) -> String {
+fn generate_negative_number_contexts(options: GeneratorOptions) -> String {
     let allocator = Allocator::new();
     // SAFETY: All handles used below belong to this AST and remain valid.
     let mut ast = unsafe { Ast::new("", &allocator) };
@@ -826,69 +836,69 @@ fn print_negative_number_contexts(options: PrintOptions) -> String {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&ast.into(), options).code
+    generate(&ast.into(), options).code
 }
 
 #[test]
 fn identifier_names() {
-    let minified = PrintOptions {
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    let ascii = PrintOptions {
+    let ascii = GeneratorOptions {
         ascii_only: true,
         ..minified.clone()
     };
 
-    expect_printed_with_options("value.𐐀;", "value.𐐀;", minified.clone());
+    expect_generated_with_options("value.𐐀;", "value.𐐀;", minified.clone());
 
-    expect_printed_with_options("({ 𐐀: 0 });", "({𐐀:0});", minified.clone());
+    expect_generated_with_options("({ 𐐀: 0 });", "({𐐀:0});", minified.clone());
 
-    expect_printed_with_options("({ 𐐀 });", "({𐐀});", minified);
+    expect_generated_with_options("({ 𐐀 });", "({𐐀});", minified);
 
-    expect_printed_with_options("value.𐐀;", "value.\\u{10400};", ascii.clone());
+    expect_generated_with_options("value.𐐀;", "value.\\u{10400};", ascii.clone());
 
-    expect_printed_with_options("({ 𐐀: 0 });", "({\\u{10400}:0});", ascii.clone());
+    expect_generated_with_options("({ 𐐀: 0 });", "({\\u{10400}:0});", ascii.clone());
 
-    expect_printed_with_options("({ 𐐀 });", "({\\u{10400}});", ascii);
+    expect_generated_with_options("({ 𐐀 });", "({\\u{10400}});", ascii);
 }
 
 #[test]
 fn test_directive_string_value() {
-    expect_printed_script(r#""\u0061""#, "\"\\u0061\";\n");
+    expect_generated_script(r#""\u0061""#, "\"\\u0061\";\n");
     // The following statement verifies that the escaped directive stays non-strict.
-    expect_printed_script(
+    expect_generated_script(
         r#"'use\x20strict'; with (x) foo = bar;"#,
         "'use\\x20strict';\nwith (x) foo = bar;\n",
     );
-    expect_printed_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
-    expect_printed_minify(r#"'use\x20asm';"#, "\"use asm\";");
-    expect_printed_script(r#""</script";"#, "\"</script\";\n");
-    expect_printed(
+    expect_generated_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
+    expect_generated_minify(r#"'use\x20asm';"#, "\"use asm\";");
+    expect_generated_script(r#""</script";"#, "\"</script\";\n");
+    expect_generated(
         r#"function f() { "\0" }"#,
         "function f() {\n  \"\\0\";\n}\n",
     );
-    expect_printed_minify(r#"'use\x20strict';"#, "'use\\x20strict';");
+    expect_generated_minify(r#"'use\x20strict';"#, "'use\\x20strict';");
 }
 
 #[test]
 fn test_computed_key_comments() {
-    expect_printed(
+    expect_generated(
         "({ [/* @__PURE__ */ 'x']: make() })",
         "({ [ /* @__PURE__ */ \"x\"]: make() });\n",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "({ [/* @__PURE__ */ 'x']: make() })",
         "({[ /* @__PURE__ */ \"x\"]:make()});",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "({ [/* @__PURE__ */ 1]: make() })",
         "({[ /* @__PURE__ */ 1]:make()});",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "({ [/* @__PURE__ */ 1n]: make() })",
         "({[ /* @__PURE__ */ 1n]:make()});",
     );
@@ -896,36 +906,36 @@ fn test_computed_key_comments() {
 
 #[test]
 fn test_jsx_spread_attributes() {
-    expect_printed_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
+    expect_generated_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
 
-    expect_printed_jsx_minify("<C {...(a, b)} />;", "<C{...(a,b)}/>;");
+    expect_generated_jsx_minify("<C {...(a, b)} />;", "<C{...(a,b)}/>;");
 
-    expect_printed_jsx("<C {...(a = b)} />;", "<C {...a = b} />;\n");
+    expect_generated_jsx("<C {...(a = b)} />;", "<C {...a = b} />;\n");
 
-    expect_printed_jsx_minify("<C {...a} />;", "<C{...a}/>;");
+    expect_generated_jsx_minify("<C {...a} />;", "<C{...a}/>;");
 }
 
 #[test]
 fn test_jsx_container_comments() {
-    expect_printed_jsx(
+    expect_generated_jsx(
         "<C value={x /* keep */} />;",
         "<C value={x /* keep */ } />;\n",
     );
 
-    expect_printed_jsx("<C>{x /* keep */}</C>;", "<C>{x /* keep */ }</C>;\n");
+    expect_generated_jsx("<C>{x /* keep */}</C>;", "<C>{x /* keep */ }</C>;\n");
 
-    expect_printed_jsx("<C {...x /* keep */} />;", "<C {...x /* keep */ } />;\n");
+    expect_generated_jsx("<C {...x /* keep */} />;", "<C {...x /* keep */ } />;\n");
 
-    expect_printed_jsx("<C>{...x /* keep */}</C>;", "<C>{...x /* keep */ }</C>;\n");
+    expect_generated_jsx("<C>{...x /* keep */}</C>;", "<C>{...x /* keep */ }</C>;\n");
 
-    expect_printed_jsx(
+    expect_generated_jsx(
         "<C /* tag */ value={x // keep\n} />;",
         "<C value={x // keep\n} />;\n",
     );
 
-    expect_printed_jsx_minify("<C value={x /* keep */} />;", "<C value={x/* keep */}/>;");
+    expect_generated_jsx_minify("<C value={x /* keep */} />;", "<C value={x/* keep */}/>;");
 
-    expect_printed_jsx_minify("<C>{/* keep */}</C>;", "<C>{/* keep */}</C>;");
+    expect_generated_jsx_minify("<C>{/* keep */}</C>;", "<C>{/* keep */}</C>;");
 }
 
 #[test]
@@ -946,59 +956,59 @@ fn test_container_comments() {
 
     expect_stable("/* only */", "/* only */\n");
 
-    expect_printed_minify("[1 /* keep */];", "[1/* keep */];");
+    expect_generated_minify("[1 /* keep */];", "[1/* keep */];");
 }
 
 #[test]
 fn test_update_expression_parentheses() {
-    expect_printed("(a++)`x`;", "(a++)`x`;\n");
+    expect_generated("(a++)`x`;", "(a++)`x`;\n");
 
-    expect_printed_minify("(a++)`x`;", "(a++)`x`;");
+    expect_generated_minify("(a++)`x`;", "(a++)`x`;");
 
-    expect_printed("(++a)`x`;", "(++a)`x`;\n");
+    expect_generated("(++a)`x`;", "(++a)`x`;\n");
 
-    expect_printed_minify("(++a)`x`;", "(++a)`x`;");
+    expect_generated_minify("(++a)`x`;", "(++a)`x`;");
 
-    expect_printed("(a--)`x`;", "(a--)`x`;\n");
+    expect_generated("(a--)`x`;", "(a--)`x`;\n");
 
-    expect_printed_minify("(a--)`x`;", "(a--)`x`;");
+    expect_generated_minify("(a--)`x`;", "(a--)`x`;");
 
-    expect_printed("(--a)`x`;", "(--a)`x`;\n");
+    expect_generated("(--a)`x`;", "(--a)`x`;\n");
 
-    expect_printed_minify("(--a)`x`;", "(--a)`x`;");
+    expect_generated_minify("(--a)`x`;", "(--a)`x`;");
 
-    expect_printed_minify("a++;", "a++;");
+    expect_generated_minify("a++;", "a++;");
 
-    expect_printed_minify("++a;", "++a;");
+    expect_generated_minify("++a;", "++a;");
 }
 
 #[test]
 #[ignore = "minified BigInt literals do not yet choose the shortest representation"]
 fn test_minify_bigint() {
-    expect_printed_minify("0x33333333n;", "858993459n;");
+    expect_generated_minify("0x33333333n;", "858993459n;");
 
-    expect_printed_minify("0b1010n;", "10n;");
+    expect_generated_minify("0b1010n;", "10n;");
 
-    expect_printed_minify("0x0001n;", "1n;");
+    expect_generated_minify("0x0001n;", "1n;");
 
-    expect_printed_minify("123456789012345678901n;", "0x6b14e9f812f366c35n;");
+    expect_generated_minify("123456789012345678901n;", "0x6b14e9f812f366c35n;");
 }
 
 #[test]
 fn test_minify_do_while() {
-    expect_printed_minify("do {} while (false);", "do{}while(false)");
+    expect_generated_minify("do {} while (false);", "do{}while(false)");
 
-    expect_printed_minify(
+    expect_generated_minify(
         "if (a) do {} while (b); else x();",
         "if(a)do{}while(b)else x();",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "do {} while (false); /x/.test('x');",
         "do{}while(false)/x/.test(\"x\");",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "do do; while (false); while (false);",
         "do do;while(false)while(false)",
     );
@@ -1016,18 +1026,18 @@ fn test_parenthesized_comments() {
         "/* before */\nvalue /* after */ ;\n/* end */\n",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "function f() { (/* before */ value /* after */); }",
         "function f(){/* before */value/* after */}",
     );
-    expect_printed_minify(
+    expect_generated_minify(
         "function f(){/* before */value/* after */}",
         "function f(){/* before */value/* after */}",
     );
 }
 
 #[track_caller]
-fn expect_stable_with_parens(source: &str, expected: &str, print_options: &PrintOptions) {
+fn expect_stable_with_parens(source: &str, expected: &str, generator_options: &GeneratorOptions) {
     let allocator = Allocator::new();
     let parse_options = ParseOptions {
         preserve_parens: true,
@@ -1035,27 +1045,27 @@ fn expect_stable_with_parens(source: &str, expected: &str, print_options: &Print
     };
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let printed = print(&original.ast, print_options.clone());
-    assert_eq!(printed.code, expected);
+    let generated = generate(&original.ast, generator_options.clone());
+    assert_eq!(generated.code, expected);
 
     let reparsed = Parser::init(
         &allocator,
-        &printed.code,
+        &generated.code,
         parse_options,
         NoTokenParserConfig,
     )
     .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let repeated = print(&reparsed.ast, print_options.clone());
+    let repeated = generate(&reparsed.ast, generator_options.clone());
     assert_eq!(repeated.code, expected);
 }
 
 #[test]
 fn test_yield_comments() {
-    let pretty = PrintOptions::default();
-    let minified = PrintOptions {
+    let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
 
     expect_stable_with_parens(
@@ -1087,7 +1097,7 @@ fn test_yield_comments() {
 fn expect_export_default_expression(
     source: &str,
     expected: &str,
-    print_options: PrintOptions,
+    generator_options: GeneratorOptions,
     preserve_parens: bool,
 ) {
     use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -1099,12 +1109,12 @@ fn expect_export_default_expression(
     };
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let printed = print(&original.ast, print_options.clone());
-    assert_eq!(printed.code, expected);
+    let generated = generate(&original.ast, generator_options.clone());
+    assert_eq!(generated.code, expected);
 
     let reparsed = Parser::init(
         &allocator,
-        &printed.code,
+        &generated.code,
         parse_options,
         NoTokenParserConfig,
     )
@@ -1120,16 +1130,16 @@ fn expect_export_default_expression(
         .as_export_default_declaration(ast)
         .unwrap();
     assert!(export.declaration(ast).as_expr(ast).is_some());
-    let repeated = print(&reparsed.ast, print_options);
-    assert_eq!(repeated.code, printed.code);
+    let repeated = generate(&reparsed.ast, generator_options);
+    assert_eq!(repeated.code, generated.code);
 }
 
 #[test]
 fn test_export_default_comments() {
-    let pretty = PrintOptions::default();
-    let minified = PrintOptions {
+    let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
 
     expect_export_default_expression(
@@ -1188,17 +1198,17 @@ fn test_export_default_comments() {
         true,
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "export default (function(){} + 1) + 2;",
         "export default(function(){})+1+2;",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "export default /* a */ (function(){} + 1) + 2;",
         "export default/* a */(function(){})+1+2;",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "export default (/* a */ function(){} + 1) * 2;",
         "export default/* a */(function(){}+1)*2;",
     );
@@ -1208,7 +1218,7 @@ fn test_export_default_comments() {
         "/* a */\n(function() {\n}) + 1 + 2;\n",
     );
 
-    expect_printed_minify(
+    expect_generated_minify(
         "(/* a */ function(){} + 1) + 2;",
         "/* a */(function(){})+1+2;",
     );
@@ -1227,7 +1237,7 @@ fn test_export_default_comments() {
 #[test]
 fn test_multiline_block_comment_is_stable() {
     // The newline inside the comment triggers ASI before the apparent label.
-    expect_printed(
+    expect_generated(
         "while (true) { continue /* Multiline\nComment */there; }",
         "while (true) {\n  continue;\n  /* Multiline\n   Comment */\n  there;\n}\n",
     );
@@ -1244,11 +1254,11 @@ fn expect_statement_body(source: &str, expected: &str) {
     };
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let print_options = PrintOptions {
+    let generator_options = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    let compact = print(&original.ast, print_options.clone());
+    let compact = generate(&original.ast, generator_options.clone());
     assert_eq!(compact.code, expected);
 
     let reparsed = Parser::init(
@@ -1259,10 +1269,10 @@ fn expect_statement_body(source: &str, expected: &str) {
     )
     .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let original_pretty = print(&original.ast, PrintOptions::default());
-    let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
+    let original_pretty = generate(&original.ast, GeneratorOptions::default());
+    let reparsed_pretty = generate(&reparsed.ast, GeneratorOptions::default());
     assert_eq!(reparsed_pretty.code, original_pretty.code);
-    let repeated = print(&reparsed.ast, print_options);
+    let repeated = generate(&reparsed.ast, generator_options);
     assert_eq!(repeated.code, compact.code);
 }
 
@@ -1370,7 +1380,7 @@ fn test_statement_body_formatting() {
 
 #[test]
 fn test_object_property_comments() {
-    expect_printed(
+    expect_generated(
         "const value = { /* before */ first: 1, // between\nsecond: 2 };",
         "const value = { /* before */ first: 1, // between\nsecond: 2 };\n",
     );
@@ -1378,11 +1388,11 @@ fn test_object_property_comments() {
 
 #[test]
 fn test_for_destructuring_default_initializer() {
-    expect_printed(
+    expect_generated(
         "for (const [arrow = () => {}] = []; test;);",
         "for (const [arrow = () => {\n}] = []; test; ) ;\n",
     );
-    expect_printed(
+    expect_generated(
         "for (const { arrow = () => {} } = {}; test;);",
         "for (const { arrow = () => {\n} } = {}; test; ) ;\n",
     );
@@ -1390,19 +1400,19 @@ fn test_for_destructuring_default_initializer() {
 
 #[test]
 fn test_for_of_async_identifier() {
-    expect_printed("for ((async) of []) ;", "for ((async) of []) ;\n");
-    expect_printed("for (\\u0061sync of []) ;", "for ((async) of []) ;\n");
-    expect_printed("for (async.x of []) ;", "for (async.x of []) ;\n");
-    expect_printed("for await (async of []) ;", "for await (async of []) ;\n");
+    expect_generated("for ((async) of []) ;", "for ((async) of []) ;\n");
+    expect_generated("for (\\u0061sync of []) ;", "for ((async) of []) ;\n");
+    expect_generated("for (async.x of []) ;", "for (async.x of []) ;\n");
+    expect_generated("for await (async of []) ;", "for await (async of []) ;\n");
 }
 
 #[test]
 fn test_array_pattern_rest_after_elision() {
-    expect_printed(
+    expect_generated(
         "function foo([,,...rest]) {}",
         "function foo([, , ...rest]) {\n}\n",
     );
-    expect_printed("([,,...rest] = value)", "[, , ...rest] = value;\n");
+    expect_generated("([,,...rest] = value)", "[, , ...rest] = value;\n");
 }
 
 #[test]
@@ -1431,11 +1441,11 @@ fn test_for_initializer_nested_in_context() {
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
         "for (obj = { get [\"x\" in empty]() {\n}, value: \"x\" in empty }; ; ) ;\n",
     );
-    expect_printed_minify(
+    expect_generated_minify(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
         "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
-    expect_printed_minify(
+    expect_generated_minify(
         "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
         "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
@@ -1443,11 +1453,11 @@ fn test_for_initializer_nested_in_context() {
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
         "for (C = class {\n  get [\"x\" in empty]() {\n  }\n  static set [\"x\" in empty](value) {\n  }\n}; ; ) ;\n",
     );
-    expect_printed_minify(
+    expect_generated_minify(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
         "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
-    expect_printed_minify(
+    expect_generated_minify(
         "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
         "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
@@ -1507,54 +1517,54 @@ fn test_function_source_comments_are_stable() {
 
 #[test]
 fn test_inline_script() {
-    let inline = PrintOptions {
+    let inline = GeneratorOptions {
         inline_script: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    let ascii = PrintOptions {
+    let ascii = GeneratorOptions {
         ascii_only: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    let minified = PrintOptions {
+    let minified = GeneratorOptions {
         minify: true,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
 
-    expect_printed("x = `</script>`", "x = `</script>`;\n");
-    expect_printed_with_options("x = `</script>`", "x = `</script>`;\n", ascii.clone());
-    expect_printed_with_options("x = `</script>`", "x=`</script>`;", minified.clone());
-    expect_printed_with_options("x = `</script>`", "x = `<\\/script>`;\n", inline.clone());
-    expect_printed_with_options(
+    expect_generated("x = `</script>`", "x = `</script>`;\n");
+    expect_generated_with_options("x = `</script>`", "x = `</script>`;\n", ascii.clone());
+    expect_generated_with_options("x = `</script>`", "x=`</script>`;", minified.clone());
+    expect_generated_with_options("x = `</script>`", "x = `<\\/script>`;\n", inline.clone());
+    expect_generated_with_options(
         "x = `</script>`",
         "x = `<\\/script>`;\n",
-        PrintOptions {
+        GeneratorOptions {
             inline_script: true,
             ..ascii
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "x = `</script>`",
         "x=`<\\/script>`;",
-        PrintOptions {
+        GeneratorOptions {
             inline_script: true,
             ..minified
         },
     );
-    expect_printed_with_options(
+    expect_generated_with_options(
         "String.raw`</script>`",
         "String.raw`</script>`;\n",
         inline.clone(),
     );
-    expect_printed_with_options(r#""</SCRIPT>";"#, "\"<\\/SCRIPT>\";\n", inline.clone());
-    expect_printed_with_options(r#""use\x20script";"#, "\"use\\x20script\";\n", inline);
-    expect_printed("//! </script>", "//! </script>\n");
-    expect_printed_minify("x < /script/.test(y)", "x</script/.test(y);");
-    expect_printed_minify("x / /script/.test(y)", "x/ /script/.test(y);");
+    expect_generated_with_options(r#""</SCRIPT>";"#, "\"<\\/SCRIPT>\";\n", inline.clone());
+    expect_generated_with_options(r#""use\x20script";"#, "\"use\\x20script\";\n", inline);
+    expect_generated("//! </script>", "//! </script>\n");
+    expect_generated_minify("x < /script/.test(y)", "x</script/.test(y);");
+    expect_generated_minify("x / /script/.test(y)", "x/ /script/.test(y);");
 }
 
 #[test]
 fn test_comment_line_terminators() {
-    let pretty = PrintOptions::default();
+    let pretty = GeneratorOptions::default();
 
     expect_stable_with_parens(
         "function f() { return (/* lead\rtrail */ value); }",

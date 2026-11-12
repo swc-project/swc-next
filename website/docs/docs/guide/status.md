@@ -28,7 +28,7 @@ These labels describe feature availability, not conformance pass rates or API st
 | Semantic early errors | Implemented | Implemented | Enable `semanticErrors` in the JavaScript parser options. |
 | [Scopes, symbols, and references](/api/components/semantic) | Not started | Implemented | The full semantic model is separate from parser early-error diagnostics. |
 | [Syntax transformations](/api/components/transformer) | Not started | Partial | TypeScript lowering and class static blocks; no general browser-target compilation pipeline. |
-| [Minification](/api/components/minifier) | Not started | Partial | Selected compression passes. Name mangling is not implemented; the printer's `minify` option only controls formatting. |
+| [Minification](/api/components/minifier) | Not started | Partial | Selected compression passes. Name mangling is not implemented; the generator's `minify` option only controls formatting. |
 | [Type stripping](/api/components/type-strip) | Not started | Implemented | The `erasableSyntaxOnly` subset, preserving UTF-16 length and line layout. |
 | [Isolated declarations](/api/components/isolated-declarations) | Not started | Implemented | Declaration-surface generation, without full TypeScript type checking. |
 | Comment and source-map emission | Not started | Implemented | JavaScript `generateSync` currently returns code only. |

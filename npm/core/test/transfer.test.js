@@ -41,13 +41,13 @@ test("section transfers use current buffers after growth", () => {
   program.body[0].declarations[0].init.elements = Array.from({ length: 2000 }, (_, index) => ({
     type: "Literal", value: `${index}雪🌍\uD800`, raw: null,
   }));
-  const printed = generateSync(program, { minify: true }, meta).code;
-  const roundtrip = parseSync(printed).program.body[0].declarations[0].init;
+  const generated = generateSync(program, { minify: true }, meta).code;
+  const roundtrip = parseSync(generated).program.body[0].declarations[0].init;
   assert.deepEqual(
     roundtrip.elements.map(element => element.value),
     program.body[0].declarations[0].init.elements.map(element => element.value),
   );
-  assert.equal(generateStandalone(program, { minify: true }, meta).code, printed);
+  assert.equal(generateStandalone(program, { minify: true }, meta).code, generated);
 
   const empty = parseSync("");
   assertTransfer(empty.program, empty.meta, undefined, "");

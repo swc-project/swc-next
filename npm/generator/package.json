@@ -32,7 +32,7 @@
   },
   "keywords": [
     "ast",
-    "codegen",
+    "generator",
     "javascript",
     "swc",
     "typescript"

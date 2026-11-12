@@ -114,7 +114,7 @@ unwrapped.program.body[0].expression.type;
 // "Identifier"
 ```
 
-This changes the tree's shape, not expression precedence. The printer inserts parentheses required to preserve the AST's meaning even when explicit parenthesized nodes were omitted.
+This changes the tree's shape, not expression precedence. The generator inserts parentheses required to preserve the AST's meaning even when explicit parenthesized nodes were omitted.
 
 ### comments
 

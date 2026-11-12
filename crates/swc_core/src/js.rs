@@ -159,7 +159,7 @@ pub struct JsOutput {
 
 #[cfg(any(feature = "js_transformer", feature = "js_minifier"))]
 fn serialize_source_map(map: &swc_next_ecma_codegen::SourceMap<'_>) -> String {
-    // Source and filenames are UTF-8; codegen records names from &str and emits
+    // Source and filenames are UTF-8; generator records names from &str and emits
     // ASCII VLQ mappings.
     let text = |bytes| std::str::from_utf8(bytes).expect("source map strings must be valid UTF-8");
     let sources = map.sources().iter().map(|source| text(source));

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
@@ -503,12 +503,12 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
             // SAFETY: This AST remains owned by the transform call.
             unsafe { ast.ast_mut() }.clear_attached_comments();
         }
-        let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+        let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
         generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
-        let generated = print(&ast, generator);
+        let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);
     }

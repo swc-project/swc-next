@@ -85,7 +85,7 @@ export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffe
 export declare function langFromPath(path: string): Lang
 
 /** Parse and print directly in Rust, without serializing or converting the AST. */
-export declare function nativeParseGenerateSync(source: string, parserOptions?: ParserConfig | undefined | null, codegenOptions?: GeneratorConfig | undefined | null): string
+export declare function nativeParseGenerateSync(source: string, parserOptions?: ParserConfig | undefined | null, generatorOptions?: GeneratorConfig | undefined | null): string
 
 /**
  * # Safety

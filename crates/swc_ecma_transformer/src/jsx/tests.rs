@@ -2,7 +2,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Lang, SourceType, SymbolId, Visit, VisitWith,
 };
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SymbolFlags, analyze};
 
@@ -213,7 +213,7 @@ fn transform_options(
     // SAFETY: The visitor only reads handles from this transformed AST.
     let tree = unsafe { ast.ast() };
     tree.root_program().visit_with(&mut ArrowBodies(tree));
-    let output = print(&ast, CodegenOptions::default()).code.to_owned();
+    let output = generate(&ast, GeneratorOptions::default()).code.to_owned();
     let output_allocator = Allocator::new();
     let reparsed = Parser::init(
         &output_allocator,

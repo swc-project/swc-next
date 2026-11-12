@@ -3,7 +3,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use swc_next_allocator::Allocator;
 use swc_next_core::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 use crate::{cases::TransformCase, runner::Runner, suite::TestResult, util::workspace_root};
@@ -66,7 +66,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         let Some(ast) = parse_program(&allocator, &options, expected, true) else {
             return Ok(false);
         };
-        let expected = print(&ast, codegen_options(&options)).code;
+        let expected = generate(&ast, generator_options(&options)).code;
         let Some(actual) = normalize_output(&options, &output.code) else {
             return Ok(false);
         };
@@ -139,17 +139,17 @@ fn parse_program<'a>(
 fn normalize_output(options: &JsTransformApiOptions, source: &str) -> Option<String> {
     let allocator = Allocator::default();
     let ast = parse_program(&allocator, options, source, false)?;
-    let mut codegen = codegen_options(options);
-    codegen.minify = true;
-    codegen.comments = true;
-    Some(print(&ast, codegen).code)
+    let mut generator = generator_options(options);
+    generator.minify = true;
+    generator.comments = true;
+    Some(generate(&ast, generator).code)
 }
 
-fn codegen_options(options: &JsTransformApiOptions) -> CodegenOptions {
+fn generator_options(options: &JsTransformApiOptions) -> GeneratorOptions {
     let parser = options.parser.unwrap_or_default();
     let comments = options.comments.unwrap_or(CommentsOption::All);
     let parser_comments = parser.comments.unwrap_or(CommentsOption::All);
-    let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+    let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
     generator.comments = comments == CommentsOption::All && parser_comments == CommentsOption::All;
     generator
 }

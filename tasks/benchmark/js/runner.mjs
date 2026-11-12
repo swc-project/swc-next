@@ -9,14 +9,14 @@ export const fixtures = ["underscore-1.5.2.js", "jquery-1.9.1.js", "astro-config
 export const extensions = ["js", "ts", "tsx", "mjs", "cjs", "unknown"];
 
 export const cases = [
-  ...[...fixtures].reverse().flatMap(name => ["parse", "print"].map(operation => `${operation}/${name}`)),
+  ...[...fixtures].reverse().flatMap(name => ["parse", "generate"].map(operation => `${operation}/${name}`)),
   ...["lang", "source_type"].flatMap(operation => extensions.map(name => `${operation}/${name}`)),
 ];
 
 // Keep PR coverage of all four operations without the large profiling fixtures.
 export const representativeCases = [
   "parse/underscore-1.5.2.js",
-  "print/underscore-1.5.2.js",
+  "generate/underscore-1.5.2.js",
   "lang/tsx",
   "source_type/mjs",
 ];
@@ -49,11 +49,11 @@ export function prepare(api, operation, name, source) {
     return { iterations: 10_000, run: () => fn(`input.${name}`), validate: value => assert.equal(typeof value, "string") };
   }
   assert(fixtures.includes(name), "unknown fixture");
-  assert(["parse", "print"].includes(operation), "unknown operation");
+  assert(["parse", "generate"].includes(operation), "unknown operation");
   const options = { lang: name.endsWith(".tsx") ? "tsx" : name.endsWith(".ts") ? "ts" : "js" };
   const parsed = api.parseSync(source, options);
   assert.equal(parsed.diagnostics.length, 0);
-  if (operation === "print") {
+  if (operation === "generate") {
     // Materialize input outside the measured region, including lazy strings.
     touch(parsed.program);
     return { iterations: 10, run: () => generateSync(parsed.program, {}, parsed.meta), validate: value => assert(value.code.length > 0) };

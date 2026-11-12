@@ -93,7 +93,7 @@ export default function App() {
     ? "typescript"
     : "javascript";
   const outputLanguage =
-    options.transform.ts && editorLanguage === "typescript"
+    options.transformer.ts && editorLanguage === "typescript"
       ? "javascript"
       : editorLanguage;
   const outputFilename =

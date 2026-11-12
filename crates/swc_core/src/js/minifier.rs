@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Severity};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{CompressOptions, Minifier, MinifierOptions};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
@@ -158,13 +158,13 @@ pub fn minify_js(source: &str, options: JsMinifyApiOptions) -> JsOutput {
 
     // ======================= Generate =======================
     {
-        let mut generator = CodegenOptions::from(options.generator.unwrap_or_default());
+        let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
         generator.comments =
             options.comments.unwrap_or(CommentsOption::None) == CommentsOption::All;
-        let generated = print(&ast, generator);
+        let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);
     }

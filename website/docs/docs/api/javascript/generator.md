@@ -29,7 +29,7 @@ Input nodes follow the [AST declarations](/api/javascript/types) shared with the
 
 | Option | Type | Default | Behavior |
 | --- | --- | --- | --- |
-| [`asciiOnly`](#asciionly) | `boolean` | `false` | Escape non-ASCII characters where supported by the printer. |
+| [`asciiOnly`](#asciionly) | `boolean` | `false` | Escape non-ASCII characters where supported by the generator. |
 | [`inlineScript`](#inlinescript) | `boolean` | `false` | Escape closing script tags in supported contexts. |
 | [`minify`](#minify) | `boolean` | `false` | Generate compact output with reduced whitespace. |
 
@@ -41,7 +41,7 @@ Type: `boolean`
 
 Default: `false`
 
-Use escape sequences for non-ASCII characters in identifiers, strings, and supported template text. With `false`, the printer can emit Unicode characters directly.
+Use escape sequences for non-ASCII characters in identifiers, strings, and supported template text. With `false`, the generator can emit Unicode characters directly.
 
 ```js
 import { parseSync, generateSync } from "@swc-next/core";
@@ -129,4 +129,4 @@ interface GenerateOutput {
 }
 ```
 
-The JavaScript interface returns generated code only. It does not expose source maps or comment emission options; the parser's separate comment list is not passed to the printer.
+The JavaScript interface returns generated code only. It does not expose source maps or comment emission options; the parser's separate comment list is not passed to the generator.
