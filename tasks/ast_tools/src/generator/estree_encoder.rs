@@ -197,13 +197,8 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         writeln!(enums, "  [{}], // {name}", values.join(", ")).unwrap();
     }
     enums.push_str("]);\n");
-    let mut output = PREAMBLE.replace("__ENUMS__", &enums).replace(
-        "function encode(program)",
-        &format!("function {name}(program)"),
-    );
-    if !is_ts {
-        output = output.replace("let isTs = false;", "const isTs = false;");
-    }
+    let mut output = PREAMBLE.replace("__ENUMS__", &enums);
+    let mut helpers = String::from(HELPERS);
     let dispatch = EncoderDispatch::new(schema, is_ts);
     for (kind, ast) in schema
         .types
@@ -217,9 +212,13 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         if !is_ts && ast.name.starts_with("Ts") {
             continue;
         }
-        write_struct_encoder(&mut output, kind, ast, schema, &dispatch);
+        write_struct_encoder(&mut helpers, kind, ast, schema, &dispatch);
     }
-    write_enum_encoders(&mut output, &dispatch);
+    write_enum_encoders(&mut helpers, &dispatch);
+    for line in helpers.lines() {
+        writeln!(output, "{}", line.strip_prefix("  ").unwrap_or(line)).unwrap();
+    }
+    output.push_str(&ENCODE_START.replace("encode(program)", &format!("{name}(program)")));
     output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     // Assign indices from the same table used to emit the enum arrays.
     for (index, (name, _)) in encoder_enums.iter().enumerate() {
@@ -1208,6 +1207,10 @@ function encodeOptionBoolean(value, name) {
 // Maximum combined capacity of the reusable data buffers.
 const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
 let reusableBuffers;
+let nodeCapacity, spans, kinds, payloadBuffer, payload;
+let extraCapacity, extraBuffer, extra, poolCapacity, pool;
+let nodeCount = 0, extraCount = 0, poolLength = 0;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
 
 function createBuffers(sizeHint) {
   const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
@@ -1227,31 +1230,17 @@ function createBuffers(sizeHint) {
   };
 }
 
-function encode(program) {
-  const sizeHint = program.end || 0;
-  const buffers = reusableBuffers ?? createBuffers(sizeHint);
-  // A getter on the AST may call the encoder again. Nested calls must use
-  // separate storage until the current call has finished.
-  reusableBuffers = undefined;
-  let {
-    nodeCapacity, spans, kinds, payloadBuffer, payload,
-    extraCapacity, extraBuffer, extra, poolCapacity, pool,
-  } = buffers;
-  let nodeCount = 0;
-  let extraCount = 0;
-  let poolLength = 0;
-  let hasWtf8 = false;
-  let firstNonAsciiPos = NULL;
-  let isTs = false;
+"#;
 
-  // Fields and padding not explicitly written by a node must remain zero.
-  new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
-  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
+const HELPERS: &str = r#"  function clearState() {
+    // Uncached buffers must not remain reachable through the module state.
+    spans = kinds = payloadBuffer = payload = extraBuffer = extra = pool = undefined;
+  }
 
-  const enumValue = (enumIndex, value) => {
+  function enumValue(enumIndex, value) {
     const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
-  };
+  }
 
   function ensureNodes() {
     if (nodeCount < nodeCapacity) return;
@@ -1543,6 +1532,32 @@ function encode(program) {
       : "";
   }
 
+"#;
+
+const ENCODE_START: &str = r#"
+function encode(program) {
+  try {
+    return _encode(program);
+  } finally {
+    clearState();
+  }
+}
+
+function _encode(program) {
+  const sizeHint = program.end || 0;
+  const buffers = reusableBuffers ?? createBuffers(sizeHint);
+  reusableBuffers = undefined;
+  ({
+    nodeCapacity, spans, kinds, payloadBuffer, payload,
+    extraCapacity, extraBuffer, extra, poolCapacity, pool,
+  } = buffers);
+  nodeCount = extraCount = poolLength = 0;
+  hasWtf8 = isTs = false;
+  firstNonAsciiPos = NULL;
+
+  // Fields and padding not explicitly written by a node must remain zero.
+  new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
 "#;
 
 const POSTAMBLE: &str = r#"  const root = encProgram(program);

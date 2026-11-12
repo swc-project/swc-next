@@ -10,6 +10,17 @@ function generateEncoded(program, encoder) {
   return generateNative(...encoder(program), encodeOptions());
 }
 
+test("encoders recover from errors", () => {
+  for (const encoder of [encodeJs, encodeTs]) {
+    const broken = parseSync('const value = "雪";').program;
+    broken.body.push({ type: "Unsupported" });
+    assert.throws(() => encoder(broken), TypeError);
+
+    const valid = parseSync('const value = "valid";').program;
+    assert.equal(generateEncoded(valid, encoder), 'const value = "valid";\n');
+  }
+});
+
 test("encode writes spans in canonical little-endian order", () => {
   const [, spans] = encode({
     type: "Program",
