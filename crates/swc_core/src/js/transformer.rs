@@ -501,9 +501,6 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         let transform = transform.to_transformer_options(options.filename.clone());
         let transformed = Transformer::transform(semantic, transform);
         output.diagnostics.extend(transformed.diagnostics);
-        if has_errors(&output.diagnostics) {
-            return output;
-        }
     }
 
     // ======================= Generate =======================
