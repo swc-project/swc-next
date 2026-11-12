@@ -171,7 +171,7 @@ for (const { name, transformSync } of [
       }), defaults);
     });
 
-    test("transformSync forwards comments and preserves JSX pragmas independently", () => {
+    test("transformSync lets parser.comments override top-level comments", () => {
       const source = "/* keep me */ const value = 1;";
       assert.ok(transformSync(source).code.includes("keep me"));
       assert.equal(transformSync(source, { comments: "none" }).code, "const value = 1;\n");
