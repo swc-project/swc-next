@@ -42,6 +42,36 @@ pub unsafe fn print_from_buffer(
     Ok(CodegenOutput { code: result.code })
 }
 
+/// Print an FFI2 base buffer and its optional edit extension.
+/// Both byte buffers are validated before native AST fields are accessed.
+pub fn print_from_buffers(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<CodegenOptions>,
+) -> Result<CodegenOutput, swc_next_ecma_ast::ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree = swc_next_ecma_ast::ffi2::deserialize(base, extension, &allocator)?;
+    let result = print(&tree, options.unwrap_or_default().into());
+    Ok(CodegenOutput { code: result.code })
+}
+
+/// Print FFI2 tables produced by the matching parser and incremental encoder.
+///
+/// # Safety
+/// Both buffers must obey ffi2::deserialize_unchecked's validity and immutability
+/// contract. In particular, callers must not mutate a parser-produced base.
+pub unsafe fn print_from_buffers_unchecked(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<CodegenOptions>,
+) -> Result<CodegenOutput, swc_next_ecma_ast::ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree =
+        unsafe { swc_next_ecma_ast::ffi2::deserialize_unchecked(base, extension, &allocator) }?;
+    let result = print(&tree, options.unwrap_or_default().into());
+    Ok(CodegenOutput { code: result.code })
+}
+
 /// Print separate, trusted JavaScript encoder sections.
 ///
 /// Native little-endian targets borrow the sections. WebAssembly and big-endian

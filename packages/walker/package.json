@@ -10,6 +10,9 @@
   "main": "index.js",
   "type": "module",
   "sideEffects": false,
+  "dependencies": {
+    "@swc-next/ast": "workspace:*"
+  },
   "types": "./index.d.ts",
   "exports": {
     ".": {

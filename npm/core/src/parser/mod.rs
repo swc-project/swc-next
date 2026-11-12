@@ -1,4 +1,4 @@
-use swc_next_bridge::{Lang, ParserOptions, SourceType, bridge, parse_to_buffer};
+use swc_next_bridge::{Lang, ParserOptions, SourceType, bridge, parse_to_buffer, parse_to_buffer2};
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 
 #[bridge]
@@ -12,6 +12,13 @@ pub unsafe fn parse_sync(
     options: Option<ParserOptions>,
 ) -> Vec<u8> {
     unsafe { parse_to_buffer(source, source_utf16_len, options) }
+}
+
+#[bridge]
+/// # Safety
+/// The caller must ensure that `source` contains valid UTF-8.
+pub unsafe fn parse_buffer_sync(source: &[u8], options: Option<ParserOptions>) -> Vec<u8> {
+    unsafe { parse_to_buffer2(source, options) }
 }
 
 #[bridge]

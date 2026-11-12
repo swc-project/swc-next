@@ -59,6 +59,7 @@
     ]
   },
   "dependencies": {
+    "@swc-next/ast": "workspace:*",
     "@swc-next/decoder": "workspace:*",
     "@swc-next/encoder": "workspace:*",
     "@swc-next/types": "workspace:*",

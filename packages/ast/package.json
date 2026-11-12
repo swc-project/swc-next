@@ -1,0 +1,45 @@
+{
+  "name": "@swc-next/ast",
+  "version": "0.4.1",
+  "description": "Editable AST views with zero-copy reads and incremental two-buffer encoding",
+  "type": "module",
+  "sideEffects": false,
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "node.js",
+    "projection.js",
+    "topology.js",
+    "references.js",
+    "arena.js",
+    "storage.js",
+    "writer.js",
+    "edits.js",
+    "encode-js.js",
+    "encode-ts.js",
+    "schema.js",
+    "schema.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@swc-next/types": "workspace:*"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/ast"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
