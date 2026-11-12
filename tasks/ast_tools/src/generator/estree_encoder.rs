@@ -197,13 +197,8 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         writeln!(enums, "  [{}], // {name}", values.join(", ")).unwrap();
     }
     enums.push_str("]);\n");
-    let mut output = PREAMBLE.replace("__ENUMS__", &enums).replace(
-        "function encode(program)",
-        &format!("function {name}(program)"),
-    );
-    if !is_ts {
-        output = output.replace("let isTs = false;", "const isTs = false;");
-    }
+    let mut output = PREAMBLE.replace("__ENUMS__", &enums);
+    let mut helpers = String::from(HELPERS);
     let dispatch = EncoderDispatch::new(schema, is_ts);
     for (kind, ast) in schema
         .types
@@ -217,9 +212,13 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         if !is_ts && ast.name.starts_with("Ts") {
             continue;
         }
-        write_struct_encoder(&mut output, kind, ast, schema, &dispatch);
+        write_struct_encoder(&mut helpers, kind, ast, schema, &dispatch);
     }
-    write_enum_encoders(&mut output, &dispatch);
+    write_enum_encoders(&mut helpers, &dispatch);
+    for line in helpers.lines() {
+        writeln!(output, "{}", line.strip_prefix("  ").unwrap_or(line)).unwrap();
+    }
+    output.push_str(&ENCODE_START.replace("encode(program)", &format!("{name}(program)")));
     output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     // Assign indices from the same table used to emit the enum arrays.
     for (index, (name, _)) in encoder_enums.iter().enumerate() {
@@ -1205,31 +1204,43 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-function encode(program) {
-  const sizeHint = program.end || 0;
-  let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
-  let spans = new Uint32Array(nodeCapacity * 2);
-  let kinds = new Uint8Array(nodeCapacity);
-  let payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
-  let payload = new DataView(payloadBuffer);
-  let nodeCount = 0;
+// Maximum combined capacity of the reusable data buffers.
+const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
+let reusableBuffers;
+let nodeCapacity, spans, kinds, payloadBuffer, payload;
+let extraCapacity, extraBuffer, extra, poolCapacity, pool;
+let nodeCount = 0, extraCount = 0, poolLength = 0;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
 
-  let extraCapacity = Math.max(512, (sizeHint / 20) | 0);
-  let extraBuffer = new ArrayBuffer(extraCapacity * 8);
-  let extra = new DataView(extraBuffer);
-  let extraCount = 0;
+function createBuffers(sizeHint) {
+  const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
+  const extraCapacity = Math.max(512, (sizeHint / 20) | 0);
+  const poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
+  const payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
+  const extraBuffer = new ArrayBuffer(extraCapacity * 8);
+  return {
+    nodeCapacity, extraCapacity, poolCapacity,
+    spans: new Uint32Array(nodeCapacity * 2),
+    kinds: new Uint8Array(nodeCapacity),
+    payloadBuffer, payload: new DataView(payloadBuffer),
+    extraBuffer, extra: new DataView(extraBuffer),
+    pool: new Uint8Array(poolCapacity),
+    header: new Uint8Array(HEADER_SIZE),
+    nodeCount: 0, extraCount: 0,
+  };
+}
 
-  let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
-  let pool = new Uint8Array(poolCapacity);
-  let poolLength = 0;
-  let hasWtf8 = false;
-  let firstNonAsciiPos = NULL;
-  let isTs = false;
+"#;
 
-  const enumValue = (enumIndex, value) => {
+const HELPERS: &str = r#"  function clearState() {
+    // Uncached buffers must not remain reachable through the module state.
+    spans = kinds = payloadBuffer = payload = extraBuffer = extra = pool = undefined;
+  }
+
+  function enumValue(enumIndex, value) {
     const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
-  };
+  }
 
   function ensureNodes() {
     if (nodeCount < nodeCapacity) return;
@@ -1317,7 +1328,7 @@ function encode(program) {
       const start = poolLength;
       const end = start + length;
       // Keep the short ASCII path small enough to inline into field encoders.
-      if (length > 0 && length <= 12 && end <= pool.length && end <= 0x7fffffff) {
+      if (length > 0 && length <= 64 && end <= pool.length && end <= 0x7fffffff) {
         let index = 0;
         for (; index < length; index++) {
           const code = value.charCodeAt(index);
@@ -1523,8 +1534,34 @@ function encode(program) {
 
 "#;
 
+const ENCODE_START: &str = r#"
+function encode(program) {
+  try {
+    return _encode(program);
+  } finally {
+    clearState();
+  }
+}
+
+function _encode(program) {
+  const sizeHint = program.end || 0;
+  const buffers = reusableBuffers ?? createBuffers(sizeHint);
+  reusableBuffers = undefined;
+  ({
+    nodeCapacity, spans, kinds, payloadBuffer, payload,
+    extraCapacity, extraBuffer, extra, poolCapacity, pool,
+  } = buffers);
+  nodeCount = extraCount = poolLength = 0;
+  hasWtf8 = isTs = false;
+  firstNonAsciiPos = NULL;
+
+  // Fields and padding not explicitly written by a node must remain zero.
+  new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
+"#;
+
 const POSTAMBLE: &str = r#"  const root = encProgram(program);
-  const header = new Uint8Array(HEADER_SIZE);
+  const header = buffers.header;
   const view = new DataView(header.buffer);
 
   view.setUint32(0, nodeCount, true);
@@ -1550,7 +1587,7 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
       spanView.setUint32(index * 4, spans[index], true);
     }
   }
-  return [
+  const parts = [
     header,
     spanBytes,
     kinds.subarray(0, nodeCount),
@@ -1558,6 +1595,16 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
     new Uint8Array(extraBuffer, 0, extraCount * 8),
     pool.subarray(0, poolLength),
   ];
+  const bufferCapacityBytes = spans.byteLength + kinds.byteLength +
+    payloadBuffer.byteLength + extraBuffer.byteLength + pool.byteLength;
+  if (bufferCapacityBytes <= MAX_ENCODER_CACHE_BYTES) {
+    Object.assign(buffers, {
+      nodeCapacity, spans, kinds, payloadBuffer, payload, nodeCount,
+      extraCapacity, extraBuffer, extra, extraCount, poolCapacity, pool,
+    });
+    reusableBuffers = buffers;
+  }
+  return parts;
 }
 
 export { encode };

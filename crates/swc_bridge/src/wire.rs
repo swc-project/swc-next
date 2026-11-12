@@ -101,6 +101,24 @@ macro_rules! identity_native_abi {
 #[cfg(not(target_family = "wasm"))]
 identity_native_abi!((), u32, i32, f64, bool);
 
+/// Allocate initialized bytes owned by Node, without an external-buffer finalizer.
+#[cfg(not(target_family = "wasm"))]
+pub fn create_buffer(env: &napi::Env, length: usize) -> napi::Result<Buffer> {
+    let mut data = std::ptr::null_mut();
+    let mut value = std::ptr::null_mut();
+    napi::check_status!(unsafe {
+        sys::napi_create_buffer(env.raw(), length, &mut data, &mut value)
+    })?;
+    if length != 0 {
+        // Initialize before exposing the bytes as a Rust slice. Node's buffer
+        // allocator does not promise initialized memory.
+        unsafe { std::ptr::write_bytes(data.cast::<u8>(), 0, length) };
+    }
+    // The reference keeps the buffer alive while native code fills it. Returning
+    // this Buffer reuses its JS handle rather than creating an external buffer.
+    unsafe { Buffer::from_napi_value(env.raw(), value) }
+}
+
 /// An owned string with a bounded short-input conversion at the N-API boundary.
 #[cfg(not(target_family = "wasm"))]
 #[doc(hidden)]
