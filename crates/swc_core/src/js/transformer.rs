@@ -131,6 +131,12 @@ pub struct JsTypeScriptConfig {
     ///
     /// @default false
     pub preserve_const_enums: Option<bool>,
+    /// JSX runtime used to determine which factory imports to retain when JSX
+    /// syntax is preserved. Does not enable JSX lowering. When JSX lowering is
+    /// enabled, its runtime takes precedence.
+    ///
+    /// @default "classic"
+    pub jsx_runtime: Option<JsxRuntime>,
     /// Classic JSX factory used to preserve its value import when JSX syntax
     /// is retained.
     ///
@@ -154,9 +160,9 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
                 .preserve_const_enums
                 .unwrap_or(defaults.preserve_const_enums),
             jsx: JsxImportOptions {
+                automatic: options.jsx_runtime == Some(JsxRuntime::Automatic),
                 pragma: options.jsx_pragma,
                 pragma_frag: options.jsx_pragma_frag,
-                ..defaults.jsx
             },
         }
     }

@@ -28,6 +28,7 @@ impl From<TransformTypeScriptOptions> for JsTypeScriptConfig {
             preserve_const_enums: Some(!options.optimize_const_enums),
             jsx_pragma: options.jsx_pragma,
             jsx_pragma_frag: options.jsx_pragma_frag,
+            ..Default::default()
         }
     }
 }
