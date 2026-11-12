@@ -1,6 +1,8 @@
 import type { Program } from "@swc-next/types";
 
-/** Transfer sections in canonical little-endian order. Keep them immutable during printing. */
+/** Borrowed sections in canonical little-endian order. Consume before calling
+ * the same encoder again, and keep them immutable during printing.
+ */
 export type EncodedAstParts = [
   header: Uint8Array,
   spans: Uint8Array,

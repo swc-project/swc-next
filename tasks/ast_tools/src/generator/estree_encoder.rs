@@ -1205,26 +1205,47 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
+const RETAINED_BUFFER_BYTES = 128 * 1024 * 1024;
+let reusableBuffers;
+
+function createBuffers(sizeHint) {
+  const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
+  const extraCapacity = Math.max(512, (sizeHint / 20) | 0);
+  const poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
+  const payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
+  const extraBuffer = new ArrayBuffer(extraCapacity * 8);
+  return {
+    nodeCapacity, extraCapacity, poolCapacity,
+    spans: new Uint32Array(nodeCapacity * 2),
+    kinds: new Uint8Array(nodeCapacity),
+    payloadBuffer, payload: new DataView(payloadBuffer),
+    extraBuffer, extra: new DataView(extraBuffer),
+    pool: new Uint8Array(poolCapacity),
+    header: new Uint8Array(HEADER_SIZE),
+    nodeCount: 0, extraCount: 0,
+  };
+}
+
 function encode(program) {
   const sizeHint = program.end || 0;
-  let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
-  let spans = new Uint32Array(nodeCapacity * 2);
-  let kinds = new Uint8Array(nodeCapacity);
-  let payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
-  let payload = new DataView(payloadBuffer);
+  const buffers = reusableBuffers ?? createBuffers(sizeHint);
+  // A getter on the AST may call the encoder again. Nested calls must use
+  // separate storage until the current call has finished.
+  reusableBuffers = undefined;
+  let {
+    nodeCapacity, spans, kinds, payloadBuffer, payload,
+    extraCapacity, extraBuffer, extra, poolCapacity, pool,
+  } = buffers;
   let nodeCount = 0;
-
-  let extraCapacity = Math.max(512, (sizeHint / 20) | 0);
-  let extraBuffer = new ArrayBuffer(extraCapacity * 8);
-  let extra = new DataView(extraBuffer);
   let extraCount = 0;
-
-  let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
-  let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
   let hasWtf8 = false;
   let firstNonAsciiPos = NULL;
   let isTs = false;
+
+  // Fields and padding not explicitly written by a node must remain zero.
+  new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
 
   const enumValue = (enumIndex, value) => {
     const index = ENUMS[enumIndex]?.indexOf(value);
@@ -1524,7 +1545,7 @@ function encode(program) {
 "#;
 
 const POSTAMBLE: &str = r#"  const root = encProgram(program);
-  const header = new Uint8Array(HEADER_SIZE);
+  const header = buffers.header;
   const view = new DataView(header.buffer);
 
   view.setUint32(0, nodeCount, true);
@@ -1550,7 +1571,7 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
       spanView.setUint32(index * 4, spans[index], true);
     }
   }
-  return [
+  const parts = [
     header,
     spanBytes,
     kinds.subarray(0, nodeCount),
@@ -1558,6 +1579,16 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
     new Uint8Array(extraBuffer, 0, extraCount * 8),
     pool.subarray(0, poolLength),
   ];
+  const retainedBytes = spans.byteLength + kinds.byteLength +
+    payloadBuffer.byteLength + extraBuffer.byteLength + pool.byteLength;
+  if (retainedBytes <= RETAINED_BUFFER_BYTES) {
+    Object.assign(buffers, {
+      nodeCapacity, spans, kinds, payloadBuffer, payload, nodeCount,
+      extraCapacity, extraBuffer, extra, extraCount, poolCapacity, pool,
+    });
+    reusableBuffers = buffers;
+  }
+  return parts;
 }
 
 export { encode };
