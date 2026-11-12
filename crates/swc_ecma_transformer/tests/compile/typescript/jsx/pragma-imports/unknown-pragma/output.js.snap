@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsxFactory h */
+import React from "react";
+export const x = <div />;

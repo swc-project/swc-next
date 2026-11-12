@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var Foo;
+(function(Foo) {
+  let Hidden;
+  (function(Hidden) {
+    Hidden.C = () => null;
+  })(Hidden || (Hidden = {}));
+})(Foo || (Foo = {}));
+export {};

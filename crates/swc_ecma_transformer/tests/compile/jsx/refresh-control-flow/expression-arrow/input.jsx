@@ -1,0 +1,1 @@
+const Foo = () => useState(0);

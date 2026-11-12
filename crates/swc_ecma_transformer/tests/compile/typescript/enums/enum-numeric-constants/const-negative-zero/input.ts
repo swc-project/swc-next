@@ -1,0 +1,1 @@
+const enum E { A = -0 } export const value = E.A;

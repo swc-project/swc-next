@@ -1,0 +1,15 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "refresh": {
+        "refreshReg": "_c",
+        "refreshSig": "_s"
+      }
+    },
+    "typescript": false
+  }
+}

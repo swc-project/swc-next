@@ -1,0 +1,1 @@
+namespace N { export namespace M { export namespace P { export const original=M; Object.defineProperty(N, 'M', {value:{}, configurable:true}); export const seen=M===original; } } }

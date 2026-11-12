@@ -1,0 +1,1 @@
+enum E { A=42 } import X=E.A; enum F { A=X, B }

@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  N.x = 1;
+  for ({ x: N.x } of [{ x: 2 }]) {
+  }
+})(N || (N = {}));
+export {};

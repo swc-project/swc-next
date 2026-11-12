@@ -1,0 +1,14 @@
+{
+  "parser": {
+    "lang": "tsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "pragma": "h",
+      "pragmaFrag": "Frag",
+      "runtime": "classic"
+    },
+    "typescript": {}
+  }
+}

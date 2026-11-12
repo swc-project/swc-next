@@ -1,0 +1,1 @@
+const App = require('dep'); const node = <App />;

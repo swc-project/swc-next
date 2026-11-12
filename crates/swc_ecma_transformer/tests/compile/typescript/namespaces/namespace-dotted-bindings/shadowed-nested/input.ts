@@ -1,0 +1,1 @@
+namespace N { export namespace M { const M=1; export const value=M; } } namespace N { export namespace M { export const value2=M; } }

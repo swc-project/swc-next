@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+export function Shallow() {
+  _s();
+  A.B.C.useHook();
+}
+_s(Shallow, "useHook{}");
+_c = Shallow;
+var _c;
+$RefreshReg$(_c, "Shallow");

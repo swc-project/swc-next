@@ -1,0 +1,1 @@
+namespace Foo /* comment */ . Bar { export function App() {} }

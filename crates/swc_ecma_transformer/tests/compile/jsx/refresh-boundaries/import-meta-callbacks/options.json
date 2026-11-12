@@ -1,0 +1,16 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "refresh": {
+        "emitFullSignatures": true,
+        "refreshReg": "import.meta.refreshReg",
+        "refreshSig": "import.meta.refreshSig"
+      }
+    },
+    "typescript": false
+  }
+}

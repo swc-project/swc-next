@@ -1,0 +1,1 @@
+const enum E { X = 0 } delete E.X;

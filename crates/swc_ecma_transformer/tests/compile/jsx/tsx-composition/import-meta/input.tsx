@@ -1,0 +1,1 @@
+/** @jsx import.meta.h */ import React from 'react'; const node = <div />;

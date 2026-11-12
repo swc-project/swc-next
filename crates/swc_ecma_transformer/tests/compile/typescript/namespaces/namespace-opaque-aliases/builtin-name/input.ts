@@ -1,0 +1,1 @@
+import * as remote from 'pkg'; namespace N { export import Infinity=remote.value; export enum E { A=Infinity } }

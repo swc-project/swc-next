@@ -4,19 +4,14 @@ use super::*;
 fn declaration_files() {
     let allocator = Allocator::new();
     let source = "/*! license */ declare const value: number;";
-    let parsed = Parser::init(
-        &allocator,
-        source,
-        ParserOptions {
-            source_type: SourceType::Module,
-            lang: Lang::Dts,
-            comments: CommentMode::Flat,
-            ..ParserOptions::default()
-        },
-        NoTokenParserConfig,
-    )
-    .parse();
-    assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
+    let options = ParserOptions {
+        source_type: SourceType::Module,
+        lang: Lang::Dts,
+        ..ParserOptions::default()
+    };
+    let parser = Parser::init(&allocator, source, options, NoTokenParserConfig);
+    let parsed = parser.parse();
+    assert!(parsed.diagnostics.is_empty());
 
     let mut ctx = parsed.ast;
     Normalizer::normalize(&mut ctx);

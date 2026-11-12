@@ -1,0 +1,1 @@
+function App() { const useLocal = () => {}; useLocal(); }

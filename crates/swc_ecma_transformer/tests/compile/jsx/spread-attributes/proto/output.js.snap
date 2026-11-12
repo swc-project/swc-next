@@ -1,0 +1,4 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/* #__PURE__ */ React.createElement("div", { ...{ __proto__: proto, value: 1 } });

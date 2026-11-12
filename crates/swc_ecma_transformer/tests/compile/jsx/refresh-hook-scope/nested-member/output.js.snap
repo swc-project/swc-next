@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+export function App() {
+  _s();
+  const value = GlobalHook.property.useNestedThing();
+}
+_s(App, "useNestedThing{value}", true);
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

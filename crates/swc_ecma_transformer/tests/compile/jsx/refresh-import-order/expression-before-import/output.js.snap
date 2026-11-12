@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+init();
+import x from "x";
+import { jsx as _jsx } from "react/jsx-runtime";
+export function App() {
+  _s();
+  useState();
+  return /* #__PURE__ */ _jsx("div", {});
+}
+_s(App, "useState{}");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

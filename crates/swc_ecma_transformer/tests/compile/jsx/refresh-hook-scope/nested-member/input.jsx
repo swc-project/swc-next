@@ -1,0 +1,1 @@
+export function App() { const value = GlobalHook.property.useNestedThing(); }

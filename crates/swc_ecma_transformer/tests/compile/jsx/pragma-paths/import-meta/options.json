@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "pragma": "import.meta.h",
+      "runtime": "classic"
+    },
+    "typescript": false
+  }
+}

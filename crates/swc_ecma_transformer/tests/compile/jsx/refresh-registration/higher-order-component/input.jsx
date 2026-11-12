@@ -1,0 +1,1 @@
+const Bar = memo(() => <Hello />);

@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const App = memo({ render: _s(() => {
+  _s();
+  return useState(0);
+}, "useState{(0)}") });

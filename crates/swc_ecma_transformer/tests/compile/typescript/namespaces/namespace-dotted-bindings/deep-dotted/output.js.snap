@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  let M;
+  (function(M) {
+    let P;
+    (function(P) {
+      P.original = M;
+      Object.defineProperty(N, "M", { value: {}, configurable: true });
+      P.seen = M === P.original;
+    })(P = M.P || (M.P = {}));
+  })(M = N.M || (N.M = {}));
+})(N || (N = {}));
+export {};

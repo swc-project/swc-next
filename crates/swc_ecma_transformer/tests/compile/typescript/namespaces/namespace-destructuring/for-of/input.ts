@@ -1,0 +1,1 @@
+namespace N { export let x=1; for ({x} of [{x:2}]) {} }

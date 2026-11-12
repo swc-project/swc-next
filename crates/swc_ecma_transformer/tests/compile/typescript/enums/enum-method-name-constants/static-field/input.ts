@@ -1,0 +1,1 @@
+class C { static value=(()=>{ enum E { A=x } return E.A; })(); } const x=42;

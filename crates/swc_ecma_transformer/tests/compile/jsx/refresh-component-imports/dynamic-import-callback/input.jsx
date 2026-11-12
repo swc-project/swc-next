@@ -1,0 +1,1 @@
+const App = () => <A onClick={() => import('dep')} />;

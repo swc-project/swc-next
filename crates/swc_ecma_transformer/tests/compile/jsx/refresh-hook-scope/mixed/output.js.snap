@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const useExternal = () => {
+};
+function App(useParameter) {
+  _s();
+  const useLocal = () => {
+  };
+  useLocal();
+  useParameter();
+  useExternal();
+}
+_s(App, "useLocal{}\\nuseParameter{}\\nuseExternal{}", true, function() {
+  return [useExternal];
+});
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

@@ -1,0 +1,1 @@
+for (let useThing = () => useState(0); ready; ) useThing();

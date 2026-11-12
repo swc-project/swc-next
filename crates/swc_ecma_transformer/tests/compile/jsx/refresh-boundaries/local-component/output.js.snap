@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var Foo;
+(function(Foo) {
+  let Bar;
+  (function(Bar) {
+    function B() {
+    }
+    _c = B;
+  })(Bar = Foo.Bar || (Foo.Bar = {}));
+})(Foo || (Foo = {}));
+var _c;
+$RefreshReg$(_c, "Foo$Bar$B");
+export {};

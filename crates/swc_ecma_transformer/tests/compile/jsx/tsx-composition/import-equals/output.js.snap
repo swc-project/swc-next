@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const h = import.sync("ui");
+const node = h("div", null);
+export {};

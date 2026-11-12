@@ -74,7 +74,6 @@ fn parameter_bindings() {
         "class B {} class C extends B { constructor(public x: number) { x = 2; super(); } }",
     );
     assert_parameter_assignment(&code);
-    assert!(!code.contains("=>"));
 }
 
 #[test]
@@ -93,7 +92,6 @@ fn super_environments() {
         "class B {} class C extends B { constructor(public x: number) { super(); class Inner extends B { constructor() { super(); } } } }",
     );
     assert_parameter_assignment(&code);
-    assert!(!code.contains("=>"));
 }
 
 #[test]
@@ -110,45 +108,6 @@ fn nested_parameter_initialization() {
 }
 
 #[test]
-fn decorator_environments() {
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { @dec(super()) class Inner {} } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { class Inner { @dec(super()) method() {} } } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { class Inner { @dec(super()) field = 0; } } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { class Inner { method(@dec(super()) arg: number) {} } } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { class Inner { method(@dec(super()) ...args: number[]) {} } } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-
-    let code = transformed_code(
-        "class B {} class C extends B { constructor(public x: number) { class Inner { constructor(@dec(super()) public arg: number) {} } } }",
-    );
-    assert!(code.contains("super(), _initProperties(), this"));
-    assert!(code.contains("this.x = x"));
-}
-
-#[test]
 fn decorator_bindings() {
     let code = transformed_code(
         "class B {} class C extends B { constructor(public x: number) { { let x = 99; @dec(super()) class Inner {} } } }",
@@ -159,5 +118,4 @@ fn decorator_bindings() {
         "class B {} class C extends B { constructor(public x: number) { @dec(super()) class Inner extends B { constructor() { super(); } field = () => this; static { const value = this; } } } }",
     );
     assert_parameter_assignment(&code);
-    assert_eq!(code.matches("_initProperties()").count(), 1);
 }

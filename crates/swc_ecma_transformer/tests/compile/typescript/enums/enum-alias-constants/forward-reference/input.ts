@@ -1,0 +1,1 @@
+import X=N.x; enum E { A=X } namespace N { export const x=42; }

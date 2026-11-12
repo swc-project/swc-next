@@ -1,0 +1,1 @@
+import * as remote from 'pkg'; import NaN=remote.value; enum E { A=NaN }

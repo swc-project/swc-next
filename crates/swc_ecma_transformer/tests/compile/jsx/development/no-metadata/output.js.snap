@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+const node = /* #__PURE__ */ _jsxDEV(Foo, {}, void 0, false);

@@ -1,0 +1,1 @@
+namespace N { export const h = factory; export const Frag = fragment; export const node = <><div /></>; }

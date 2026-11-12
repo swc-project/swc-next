@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  N.React = factory;
+  N.node = /* #__PURE__ */ N.React.createElement("div", null);
+})(N || (N = {}));
+export {};

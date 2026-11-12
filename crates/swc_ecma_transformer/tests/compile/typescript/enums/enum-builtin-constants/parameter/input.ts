@@ -1,0 +1,1 @@
+function f(Infinity:number){ enum E { A=Infinity } return E.A; }

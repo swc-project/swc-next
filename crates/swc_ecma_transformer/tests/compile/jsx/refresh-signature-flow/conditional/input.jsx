@@ -1,0 +1,1 @@
+const App = memo(flag ? () => useState(0) : null);

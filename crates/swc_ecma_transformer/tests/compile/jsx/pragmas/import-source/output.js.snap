@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "custom/jsx-runtime";
+/** @jsxImportSource custom */
+const node = _jsx("div", {});

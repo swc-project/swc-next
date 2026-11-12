@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsx
+ * @jsx h */
+import { h } from "h";
+export const x = <div />;

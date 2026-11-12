@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export var N;
+(function(N) {
+})(N || (N = {}));

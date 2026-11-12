@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+function f(Infinity) {
+  let E;
+  (function(E) {
+    E[E["A"] = Infinity] = "A";
+  })(E || (E = {}));
+  return E.A;
+}
+export {};

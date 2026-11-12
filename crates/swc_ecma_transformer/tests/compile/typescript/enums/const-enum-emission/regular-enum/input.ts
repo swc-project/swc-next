@@ -1,0 +1,1 @@
+namespace N { export enum E { X = 1 } } export import A = N.E;

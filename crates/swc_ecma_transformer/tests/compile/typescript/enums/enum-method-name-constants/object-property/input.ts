@@ -1,0 +1,1 @@
+const obj={ [(()=>{ enum E { A=x } return E.A; })()]:0 }; const x=42;

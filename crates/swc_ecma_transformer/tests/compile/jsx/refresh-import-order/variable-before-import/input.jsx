@@ -1,0 +1,1 @@
+const _source = initialize(); import { value } from 'source'; export const View = () => <div />;
