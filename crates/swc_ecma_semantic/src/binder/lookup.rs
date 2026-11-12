@@ -372,7 +372,10 @@ pub(super) fn lookup_javascript_name(
     // with bindings through one read of the compact ancestor table.
     let mut ancestor = Some(query.scope);
     while let Some(current) = ancestor {
-        if let Some(symbol) = lookup_scope_name(lexical.scope_maps, current, query.name, hash) {
+        if let Some((_, &symbol)) = lexical.scope_maps[current]
+            .raw_entry()
+            .from_hash(hash, |name| *name == query.name)
+        {
             return NameResolution::Resolved(symbol);
         }
         ancestor = binding_ancestors[current.index()];
