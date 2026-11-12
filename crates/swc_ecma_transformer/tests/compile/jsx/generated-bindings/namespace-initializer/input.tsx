@@ -1,0 +1,1 @@
+export namespace _jsx { export const _jsx = <div />; }

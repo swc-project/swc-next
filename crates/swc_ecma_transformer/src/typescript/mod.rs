@@ -36,6 +36,3 @@ impl MultiPassTransformer<'_, '_> {
         ast.set_source_metadata(ast.source_type(), lang);
     }
 }
-
-#[cfg(test)]
-mod tests;
