@@ -6250,8 +6250,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let body = body?;
         let end = if let Some(body) = body {
             body.span(&self.ast).end
-        } else {
+        } else if id.is_string_literal(&self.ast) {
             self.eat_semicolon(self.lexer.state.prev_token_end)?
+        } else {
+            // Only `module "name"` may omit its body. Like TypeScript, keep the
+            // declaration and continue at the current token.
+            self.report_expected(
+                self.current_token.span(),
+                "Expected '{' to start a module body",
+                ReportOptions {
+                    help: Some(Cow::Borrowed("A module body is written '{ <statements> }'")),
+                    ..ReportOptions::default()
+                },
+            );
+            self.lexer.state.prev_token_end
         };
         let declaration = self.ast.ts_module_declaration(
             Span::new(start, end),
@@ -16622,6 +16634,41 @@ mod tests {
         check!("enum E { `a`, B }", errors: ["`a`"], members: ["`a`", "B"]);
 
         check!("enum E { [`a`] }", errors: [], members: ["`a`"]);
+    }
+
+    #[test]
+    fn module_bodies() {
+        fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
+            spans
+                .map(|span| &source[span.start as usize..span.end as usize])
+                .collect()
+        }
+
+        fn parse(source: &str) -> (Vec<&str>, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = read_ast(&parsed.ast);
+            let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
+            let body = ast.root_program().body(ast);
+            let statements = body
+                .iter()
+                .map(|id| ast.node_kind(ast.get_node_in_sub_range(id).node_id()));
+            (texts(source, errors), statements.collect())
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], statements: [$($statement:expr),*]) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($statement),*]))
+            };
+        }
+
+        use NodeKind::{EmptyStatement, TsModuleDeclaration, VariableDeclaration};
+
+        check!("namespace A;\nlet b = 2;", errors: [";"], statements: [TsModuleDeclaration, EmptyStatement, VariableDeclaration]);
+
+        check!("declare namespace A.B;", errors: [";"], statements: [TsModuleDeclaration, EmptyStatement]);
+
+        check!("declare module \"x\";", errors: [], statements: [TsModuleDeclaration]);
     }
 
     #[test]
