@@ -162,6 +162,55 @@ pub unsafe fn parse_to_buffer(
     source_utf16_len: u32,
     options: Option<JsParseApiOptions>,
 ) -> Vec<u8> {
+    let Ok(buffer) = unsafe {
+        parse_with_buffer(source, source_utf16_len, options, |size| {
+            Ok::<_, std::convert::Infallible>(vec![0; size])
+        })
+    };
+    buffer
+}
+
+/// Parse directly into a Node-owned buffer using the packed JavaScript options.
+///
+/// # Safety
+///
+/// The caller must ensure that `source` contains valid UTF-8.
+/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+#[cfg(all(feature = "bridge", not(target_family = "wasm")))]
+pub unsafe fn parse_to_node_buffer(
+    env: &napi::Env,
+    source: &[u8],
+    source_utf16_len: u32,
+    options: u32,
+) -> napi::Result<napi::bindgen_prelude::Buffer> {
+    use swc_next_bridge::BridgeDecode;
+
+    let options = <Option<JsParserConfig> as BridgeDecode>::decode(options).ok_or_else(|| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            "invalid bridge value for `options`",
+        )
+    })?;
+    unsafe {
+        parse_with_buffer(source, source_utf16_len, options, |size| {
+            swc_next_bridge::create_buffer(env, size)
+        })
+    }
+}
+
+/// Parse and serialize into a buffer allocated by the caller after its exact
+/// size is known. The returned buffer must contain at least that many bytes.
+///
+/// # Safety
+///
+/// The caller must ensure that `source` contains valid UTF-8.
+/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
+    source: &[u8],
+    source_utf16_len: u32,
+    options: Option<JsParseApiOptions>,
+    allocate: impl FnOnce(usize) -> Result<T, E>,
+) -> Result<T, E> {
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
     let options = options.unwrap_or_default();
@@ -173,14 +222,11 @@ pub unsafe fn parse_to_buffer(
     }
 
     let buffer_size = buffer_size(&result.ast, &diagnostics);
-    let mut buffer = vec![0; buffer_size];
-    serialize_into(
-        &result.ast,
-        &diagnostics,
-        &mut buffer,
-        source_utf16_len as usize,
-    );
-    buffer
+    let mut buffer = allocate(buffer_size)?;
+    let bytes = buffer.as_mut();
+    assert!(bytes.len() >= buffer_size);
+    serialize_into(&result.ast, &diagnostics, bytes, source_utf16_len as usize);
+    Ok(buffer)
 }
 
 #[cfg(feature = "bridge")]
