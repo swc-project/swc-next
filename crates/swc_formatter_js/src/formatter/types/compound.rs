@@ -1538,7 +1538,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.write_fragment(head);
             }
             let content = |writer: &mut Writer<'ast>| {
-                let leading = self.format_union_leading(leading, hug, writer)?;
+                let leading = self.format_union_leading(leading, hug, preserve_lines, writer)?;
                 let mut prefix = leading;
                 let mut prepared = None;
                 let mut links = links.into_iter().peekable();
@@ -1640,21 +1640,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         leading: UnionLeading<'ast>,
         hug: bool,
+        preserve_lines: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<UnionMemberPrefix<'ast>>, FormatError> {
+        // A source-sensitive union can inherit a broken group while its own
+        // separators remain on their original lines. Its leading operator must
+        // therefore come from the source rather than the surrounding group.
         match leading {
             UnionLeading::Source(span) => {
                 self.format_verbatim(span, writer)?;
                 Ok(None)
             }
             UnionLeading::Empty => {
-                if !hug {
+                if !hug && !preserve_lines {
                     writer.if_break("| ");
                 }
                 Ok(None)
             }
             UnionLeading::MemberHead(prefix) => {
-                if !hug {
+                if !hug && !preserve_lines {
                     writer.if_break("| ");
                 }
                 Ok(Some(prefix))
@@ -1678,7 +1682,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 if retain_operator {
                     writer.text(operator);
-                } else if !hug {
+                } else if !hug && !preserve_lines {
                     writer.if_break(operator);
                 }
                 if after.boundary().is_empty() {
