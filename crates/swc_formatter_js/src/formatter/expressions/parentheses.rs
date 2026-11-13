@@ -14,6 +14,7 @@ use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
 use crate::formatter::diagnostics::{DiagnosticCoverage, FlatSeparator, LineConstraint};
+use crate::formatter::literals::StringContext;
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
 use crate::{
@@ -3635,8 +3636,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("(");
             context.expression_start = ExpressionStart::None;
         }
-        let output =
-            self.format_expression_data(expression, data, context, parenthesize, entry, writer)?;
+        // Leaves finish here without entering the recursive node dispatcher.
+        let output = match data {
+            ExprData::IdentifierReference(node) => {
+                writer.text(self.ast.get_utf8(node.name(self.ast)));
+                ExpressionOutput::closed(None)
+            }
+            ExprData::BooleanLiteral(node) => {
+                writer.text(if node.value(self.ast) {
+                    "true"
+                } else {
+                    "false"
+                });
+                ExpressionOutput::closed(None)
+            }
+            ExprData::NullLiteral(_) => {
+                writer.text("null");
+                ExpressionOutput::closed(None)
+            }
+            ExprData::StringLiteral(node) => {
+                self.format_string_literal(node, StringContext::Expression, writer);
+                ExpressionOutput::closed(None)
+            }
+            ExprData::NumericLiteral(node) => {
+                self.format_numeric_literal(node, writer);
+                ExpressionOutput::closed(None)
+            }
+            ExprData::BigIntLiteral(node) => {
+                self.format_bigint_literal(node, writer);
+                ExpressionOutput::closed(None)
+            }
+            ExprData::RegExpLiteral(node) => {
+                self.format_regexp_literal(node, writer);
+                ExpressionOutput::closed(None)
+            }
+            ExprData::Super(_) => {
+                writer.text("super");
+                ExpressionOutput::closed(None)
+            }
+            ExprData::PrivateIdentifier(identifier) => {
+                writer.text("#");
+                writer.text(self.ast.get_utf8(identifier.name(self.ast)));
+                ExpressionOutput::closed(None)
+            }
+            ExprData::ThisExpression(_) => {
+                writer.text("this");
+                ExpressionOutput::closed(None)
+            }
+            ExprData::MetaProperty(node) => {
+                self.format_meta_property(node, writer)?;
+                ExpressionOutput::closed(None)
+            }
+            _ => self.format_recursive_expression_data(
+                expression,
+                data,
+                context,
+                parenthesize,
+                entry,
+                writer,
+            )?,
+        };
         let tail = if parenthesize {
             self.format_parentheses_tail(
                 context.source_parentheses_tail,

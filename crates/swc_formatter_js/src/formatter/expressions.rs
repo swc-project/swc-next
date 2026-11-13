@@ -47,7 +47,6 @@ use super::Formatter;
 use super::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, PreparedHeadGaps,
 };
-use super::literals::StringContext;
 use super::suppression::ContentMode;
 use crate::{
     FormatError, Semicolons,
@@ -1747,7 +1746,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|_| ())
     }
 
-    fn format_expression_data<P: ExpressionEntry<'ast>>(
+    fn format_recursive_expression_data<P: ExpressionEntry<'ast>>(
         &mut self,
         expression: Expr,
         data: ExprData,
@@ -1827,31 +1826,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .format_instantiation(node, context, writer)
                     .map(ExpressionOutput::closed);
             }
-            ExprData::IdentifierReference(node) => {
-                writer.text(self.ast.get_utf8(node.name(self.ast)))
-            }
-            ExprData::BooleanLiteral(node) => writer.text(if node.value(self.ast) {
-                "true"
-            } else {
-                "false"
-            }),
-            ExprData::NullLiteral(_) => writer.text("null"),
-            ExprData::StringLiteral(node) => {
-                self.format_string_literal(node, StringContext::Expression, writer)
-            }
-            ExprData::NumericLiteral(node) => self.format_numeric_literal(node, writer),
-            ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
-            ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
-            ExprData::Super(_) => writer.text("super"),
-            ExprData::PrivateIdentifier(identifier) => {
-                writer.text("#");
-                writer.text(self.ast.get_utf8(identifier.name(self.ast)));
-            }
             ExprData::Class(class) => {
                 let _scope = self.recursion_scope(class)?;
                 self.format_class(class, context.position, has_expression_parentheses, writer)?
             }
-            ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ChainExpression(chain) => {
                 let _scope = self.recursion_scope(chain)?;
                 let child_context = if self
@@ -1880,9 +1858,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self
                     .format_import_expression(import, writer)
                     .map(ExpressionOutput::closed);
-            }
-            ExprData::MetaProperty(node) => {
-                self.format_meta_property(node, writer)?;
             }
             ExprData::Function(function) => {
                 let _scope = self.recursion_scope(function)?;
