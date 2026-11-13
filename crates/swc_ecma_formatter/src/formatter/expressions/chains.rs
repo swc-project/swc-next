@@ -1218,6 +1218,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut source,
                 writer,
             )?;
+            // A computed lookup followed by another call-bearing group may
+            // break before the lookup rather than inside its brackets.
+            let first_computed = source
+                .pending
+                .as_ref()
+                .is_some_and(|member| member.member.source.is_computed());
             source.head_argument_frame = MemberCalleeFrame::Inline;
             // Merging the head leaves at most two groups in a short chain. Source
             // boundaries may split those groups, but already require expansion.
@@ -1230,6 +1236,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let groups = ChainGroups { head, tail };
             let merge_head = merge_head
+                && !(first_computed && groups.tail.len() > 1 && !atomic_chain_head(head_data))
                 && !groups.head.facts.has_boundary_comments
                 && groups.tail.first().is_some_and(|group| {
                     !group.facts.has_boundary_comments && !group.facts.source_break
