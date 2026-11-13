@@ -1,6 +1,6 @@
 minifier * terser
 ========================
-Positive Passed: 128/1577 (8.12%)
+Positive Passed: 130/1577 (8.24%)
 Negative Passed: 602/610 (98.69%)
 Panicked: 0/2187 (0.00%)
 Skipped: 353/2187 (16.14%)
