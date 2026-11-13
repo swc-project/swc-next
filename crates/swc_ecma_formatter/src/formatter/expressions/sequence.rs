@@ -65,6 +65,31 @@ struct SequenceItem<'ast> {
     mode: ContentMode,
 }
 
+/// A sequence's first-value head keeps its producer's inherited placement.
+#[derive(Clone, Copy)]
+pub(super) struct PreparedSequenceHead {
+    owner: SequenceExpression,
+    start: u32,
+}
+
+impl PreparedSequenceHead {
+    pub(super) fn owner(self) -> SequenceExpression {
+        self.owner
+    }
+
+    pub(super) fn content_start(self) -> u32 {
+        self.start
+    }
+
+    pub(super) fn layout(self) -> CommentRunLayout {
+        Self::inherited_layout(self.start)
+    }
+
+    fn inherited_layout(start: u32) -> CommentRunLayout {
+        CommentRunLayout::FlatLeading(start)
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn sequence_grammar_pair_is_enclosed(position: ExpressionPosition) -> bool {
         matches!(
@@ -109,7 +134,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// A real enclosing pair can own the ordinary head exposed by removing the
     /// first member's source envelope. Bound packets stay with that member.
-    pub(super) fn enclosed_sequence_head_start(&self, sequence: SequenceExpression) -> Option<u32> {
+    pub(super) fn prepare_enclosed_sequence_head(
+        &self,
+        sequence: SequenceExpression,
+    ) -> Option<PreparedSequenceHead> {
         let first = self
             .ast
             .get_node_in_sub_range(sequence.expressions(self.ast).first()?);
@@ -135,7 +163,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.expression_head_binding(&comments[..count], content.expression),
             CommentBinding::Unbound
         )
-        .then_some(start)
+        .then_some(PreparedSequenceHead {
+            owner: sequence,
+            start,
+        })
     }
 
     pub(super) fn sequence_head_has_source_cast(&self, sequence: SequenceExpression) -> bool {
@@ -304,7 +335,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         head: NodeHead {
                             comments: inherited,
                             content_start: first_start,
-                            layout: CommentRunLayout::FlatLeading(first_start),
+                            layout: PreparedSequenceHead::inherited_layout(first_start),
                             gap_end: None,
                         },
                         mode: ContentMode::Formatted,

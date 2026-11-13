@@ -5,7 +5,8 @@ use std::ops::ControlFlow;
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
 use super::parentheses::{
-    EmittedHeadAnnotation, ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket,
+    EmittedHeadAnnotation, ExpressionContent, PreparedExpressionPlan, ResolvedExpressionHead,
+    SourceOpeningPacket,
 };
 use super::{ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
@@ -150,6 +151,7 @@ enum AssignmentLayout {
 struct RhsContent {
     data: ExprData,
     unary_operand: Option<Expr>,
+    head_is_framed: bool,
 }
 
 struct AssignmentSuppression<'ast> {
@@ -223,6 +225,7 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     enclose_moved_head: bool,
     value_tail_operator_prefix: bool,
     operator_tail_destination: OperatorTailDestination,
+    prepared_unary_operand: Option<&'ast super::unary::PreparedUnaryOperand<'ast>>,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
@@ -436,13 +439,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_operator_tail_destination(context.operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(&content);
-        let boundary = self.assignment_boundary(
+        let mut boundary = self.assignment_boundary(
             target.left_end(),
             &rhs,
             target.operator_span,
             right.span(self.ast).end,
             right_context,
         )?;
+        self.prepare_assignment_rhs(&rhs, &mut boundary, &right_context)?;
         let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
         let mut layout = self.assignment_layout(&rhs, context.position, right_context, &boundary);
         let binding = target.binding();
@@ -633,23 +637,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         match content {
-            Some(content) => match boundary.resolved_right_head() {
-                Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
-                    right, content, head, context, writer,
-                ),
-                None => self.format_prepared_expression_with_leading_comments_and_raw_end(
+            Some(content) => {
+                if let Some(unary) = boundary.prepared_unary_operand {
+                    let plan = PreparedExpressionPlan::Unary(unary);
+                    return self.format_assignment_right_with_plan(
+                        right, content, boundary, context, &plan, writer,
+                    );
+                }
+                match boundary.resolved_right_head() {
+                    Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
+                        right, content, head, context, writer,
+                    ),
+                    None => self.format_prepared_expression_with_leading_comments_and_raw_end(
+                        right,
+                        content,
+                        boundary.right_head(),
+                        context,
+                        writer,
+                    ),
+                }
+            }
+            None => {
+                // A parent can select raw mode after preparing these facts.
+                // The lazy binding entry expires them in its final raw context.
+                debug_assert!(context.content_mode == ContentMode::Verbatim);
+                self.format_expression_with_leading_comments_and_raw_end(
                     right,
-                    content,
                     boundary.right_head(),
                     context,
+                    None,
                     writer,
-                ),
-            },
-            None => self.format_expression_with_leading_comments_and_raw_end(
+                )
+            }
+        }
+    }
+
+    fn format_assignment_right_with_plan(
+        &mut self,
+        right: Expr,
+        content: ExpressionContent,
+        boundary: &AssignmentBoundary<'ast>,
+        context: ExpressionContext<'ast>,
+        plan: &PreparedExpressionPlan<'_, 'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        match boundary.resolved_right_head() {
+            Some(head) => self.format_expression_leading_with_plan(
                 right,
-                boundary.right_head(),
+                Some(content),
+                head,
                 context,
                 None,
+                plan,
+                writer,
+            ),
+            None => self.format_prepared_expression_with_plan_and_leading_comments(
+                right,
+                content,
+                boundary.right_head(),
+                context,
+                plan,
                 writer,
             ),
         }
@@ -1317,6 +1364,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             enclose_moved_head: false,
             value_tail_operator_prefix: false,
             operator_tail_destination: context.operator_tail_destination,
+            prepared_unary_operand: None,
         };
         let head_context = projected.as_ref().map_or(context, |head| head.context);
         let head_mode = head_context.content_mode;
@@ -1671,6 +1719,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(boundary)
     }
 
+    /// Prepare the value only after its parent has selected the final source mode.
+    pub(in crate::formatter) fn prepare_assignment_rhs(
+        &self,
+        rhs: &AssignmentRhs<'_>,
+        boundary: &mut AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+    ) -> Result<(), FormatError> {
+        if context.content_mode == ContentMode::Formatted
+            && boundary.mode == ContentMode::Formatted
+            && (self.has_suppression
+                || self.has_target_annotations
+                || self.has_file_directives
+                || !self.diagnostic_lines.is_empty())
+            && let ExprData::UnaryExpression(unary) = rhs.content.data
+        {
+            let context = boundary.with_head_gap(context.with_content_mode(boundary.mode));
+            boundary.prepared_unary_operand = self.prepare_unary_operand(unary, context)?;
+        }
+        Ok(())
+    }
+
     fn assignment_generated_cast_layout(
         &self,
         content: &ExpressionContent,
@@ -1775,6 +1844,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .leading
             .first()
             .map_or(boundary.right_start, |comment| comment.span.start);
+        if let Some(body) = boundary
+            .prepared_unary_operand
+            .and_then(|operand| operand.formatted_layout_body())
+        {
+            return self.property_rhs_content_layout(
+                RhsContent {
+                    data: body.data,
+                    unary_operand: Some(body.expression),
+                    head_is_framed: true,
+                },
+                prefix_start,
+                false,
+            );
+        }
         self.property_rhs_layout(data, prefix_start, false)
     }
 
@@ -1787,6 +1870,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(content) = self.assignment_right_fluid_content(data) else {
             return RhsLayout::BreakAfterOperator;
         };
+        self.property_rhs_content_layout(content, prefix_start, has_short_key)
+    }
+
+    fn property_rhs_content_layout(
+        &self,
+        content: RhsContent,
+        prefix_start: u32,
+        has_short_key: bool,
+    ) -> RhsLayout {
         if has_short_key {
             return RhsLayout::NeverBreakAfterOperator;
         }
@@ -1826,6 +1918,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut content = RhsContent {
             data,
             unary_operand: None,
+            head_is_framed: false,
         };
         match data {
             ExprData::Class(class) if !class.decorators(self.ast).is_empty() => return None,
@@ -1866,7 +1959,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: RhsContent,
         prefix_start: u32,
     ) -> bool {
-        if let Some(operand) = content.unary_operand
+        if !content.head_is_framed
+            && let Some(operand) = content.unary_operand
             && !self.rhs_head_is_inspectable(prefix_start, operand)
         {
             return false;
@@ -1903,7 +1997,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::CallExpression(call) => {
                     let covered_span = *outer_span.get_or_insert(call.span(self.ast));
-                    if content.unary_operand.is_none()
+                    if !content.head_is_framed
+                        && content.unary_operand.is_none()
                         && !self.rhs_head_is_inspectable(prefix_start, Expr::CallExpression(call))
                     {
                         return false;

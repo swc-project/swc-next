@@ -4997,13 +4997,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .with_decorated_function_call(self.decorated_function_call_content(&content));
             }
             let rhs = self.assignment_rhs(&content);
-            let boundary = self.assignment_boundary(
+            let mut boundary = self.assignment_boundary(
                 left_end,
                 &rhs,
                 Span::new(operator, operator + 1),
                 right.span(self.ast).end,
                 context,
             )?;
+            self.prepare_assignment_rhs(&rhs, &mut boundary, &context)?;
             let data = if is_identifier_annotation {
                 self.source_parentheses_rhs_content(
                     &content,
