@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new Observable<number>((subscriber) => subscriber.error(failure))[distinctUntilChanged]().subscribe({ error: (error) => errors.push(error) });
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new Observable<number>((subscriber) => subscriber.error(failure))
+  [distinctUntilChanged]()
+  .subscribe({ error: (error) => errors.push(error) });
+
+---------- Options ----------
+{"printWidth":200}
+---------- Output ----------
+new Observable<number>((subscriber) => subscriber.error(failure))[distinctUntilChanged]().subscribe({ error: (error) => errors.push(error) });
