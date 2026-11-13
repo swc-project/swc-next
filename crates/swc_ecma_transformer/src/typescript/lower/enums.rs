@@ -1,13 +1,17 @@
 use rustc_hash::FxHashSet;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, AstWtf8, DUMMY_SP, Expr, ExprData, GetSpan,
-    ObjectProperty, PropertyKey, SimpleAssignmentTarget, Stmt, SubRange, SymbolId,
-    TsEnumDeclaration, UnaryOperator, VisitMut, VisitMutWith,
+    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, AstWtf8, BindingProperty, DUMMY_SP, Expr,
+    ExprData, GetSpan, IdentifierReference, MemberExpression, ObjectProperty, PropertyKey,
+    SimpleAssignmentTarget, Stmt, SubRange, SymbolId, TsEnumDeclaration, UnaryOperator, VisitMut,
+    VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
-use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
+use super::{
+    StatementExpansion, TypeScriptLowerer, erase::update_binding_property_shorthand,
+    runtime::RuntimeTarget,
+};
 use crate::typescript::analysis::TsEnumConstantValue;
 
 impl<'ast> TypeScriptLowerer<'_, 'ast> {
@@ -245,15 +249,8 @@ struct EnumInitializerRewriter<'visit, 'ast> {
     enum_name: AstUtf8,
 }
 
-impl<'ast> VisitMut<'ast> for EnumInitializerRewriter<'_, 'ast> {
-    fn ast(&mut self) -> &mut Ast<'ast> {
-        self.ast
-    }
-
-    fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
-        let ExprData::IdentifierReference(identifier) = self.ast.expr_data(expression) else {
-            return expression.visit_mut_children_with(self);
-        };
+impl EnumInitializerRewriter<'_, '_> {
+    fn member_reference(&mut self, identifier: IdentifierReference) -> Option<MemberExpression> {
         if identifier.node_id().index() >= self.semantic_node_count {
             return None;
         }
@@ -269,13 +266,46 @@ impl<'ast> VisitMut<'ast> for EnumInitializerRewriter<'_, 'ast> {
         let name = identifier.name(self.ast);
         let object = self.ast.expr_identifier_reference(DUMMY_SP, self.enum_name);
         let property = self.ast.identifier_name(span, name);
-        Some(self.ast.expr_member_expression(
+        Some(self.ast.member_expression(
             span,
             object,
             PropertyKey::IdentifierName(property),
             false,
             false,
         ))
+    }
+}
+
+impl<'ast> VisitMut<'ast> for EnumInitializerRewriter<'_, 'ast> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.ast
+    }
+
+    fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
+        if let Some(identifier) = expression.as_identifier_reference(self.ast) {
+            self.member_reference(identifier)
+                .map(Expr::MemberExpression)
+        } else {
+            expression.visit_mut_children_with(self)
+        }
+    }
+
+    fn visit_mut_simple_assignment_target(
+        &mut self,
+        target: SimpleAssignmentTarget,
+    ) -> Option<SimpleAssignmentTarget> {
+        if let Some(identifier) = target.as_identifier_reference(self.ast) {
+            self.member_reference(identifier)
+                .map(SimpleAssignmentTarget::MemberExpression)
+        } else {
+            target.visit_mut_children_with(self)
+        }
+    }
+
+    fn visit_mut_binding_property(&mut self, property: BindingProperty) -> Option<BindingProperty> {
+        property.visit_mut_children_with(self);
+        update_binding_property_shorthand(self.ast, property);
+        None
     }
 
     fn visit_mut_object_property(&mut self, property: ObjectProperty) -> Option<ObjectProperty> {
