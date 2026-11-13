@@ -200,6 +200,15 @@ impl DiagnosticLines {
             .get(index)
             .is_some_and(|line| line.span.start <= position && line.sensitive_start <= position)
     }
+
+    /// Coverage starts on a later physical line; the directive's own suffix is
+    /// sensitive to layout but is not itself a covered line.
+    fn covered_at(&self, position: u32) -> bool {
+        let index = self.lines.partition_point(|line| line.span.end < position);
+        self.lines.get(index).is_some_and(|line| {
+            line.span.start <= position && line.sensitive_start == line.span.start
+        })
+    }
 }
 
 // Each covered line and parser comment is visited monotonically. Unknown
@@ -408,6 +417,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn diagnostic_line_is_sensitive(&self, position: u32) -> bool {
         self.diagnostic_lines.sensitive_at(position)
+    }
+
+    pub(super) fn diagnostic_line_is_covered(&self, position: u32) -> bool {
+        self.diagnostic_lines.covered_at(position)
     }
 
     pub(super) fn line_constraint(&self, start: u32, end: u32) -> LineConstraint {
