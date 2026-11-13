@@ -10,7 +10,10 @@ mod typescript_modules;
 pub(in crate::formatter) use self::declarations::DeclarationKeyword;
 mod tails;
 
-use self::tails::{StatementContent, StatementTailModes, StatementTailRelation, VerbatimContent};
+use self::tails::{
+    StatementContent, StatementSourcePacket, StatementTailModes, StatementTailRelation,
+    VerbatimContent,
+};
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
@@ -242,12 +245,30 @@ struct OmittedStatementTail<'ast> {
     has_following_comments: bool,
 }
 
+#[derive(Clone, Copy)]
+struct StatementSourceLine {
+    incoming: bool,
+    outgoing: Option<Span>,
+}
+
+impl StatementSourceLine {
+    fn owns(self) -> bool {
+        self.incoming || self.outgoing.is_some()
+    }
+}
+
+struct StatementPreparation {
+    end: u32,
+    incoming_source_line: bool,
+}
+
 struct PreparedStatement<'ast> {
     item: StatementItem,
     span: Span,
     decorators: Option<StatementDecorators>,
     mode: ContentMode,
     source_gap: Option<LineConstraint>,
+    source_line: StatementSourceLine,
     annotation_tail: Option<StatementAnnotationTail<'ast>>,
     empty_binding: CommentBinding,
 }
@@ -255,6 +276,7 @@ struct PreparedStatement<'ast> {
 impl PreparedStatement<'_> {
     fn can_omit(&self, ast: &Ast<'_>, header_barrier: Option<Span>) -> bool {
         self.item.empty(ast).is_some()
+            && !self.source_line.owns()
             && header_barrier != Some(self.span)
             && self.empty_binding.allows_relocation(None)
     }
@@ -263,6 +285,7 @@ impl PreparedStatement<'_> {
 enum StatementMode {
     Formatted,
     Verbatim(VerbatimContent),
+    SourceLine,
 }
 
 fn statement_body_has_items(
@@ -640,13 +663,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut first_statement = true;
         let mut previous_span_end = hashbang_end.unwrap_or(span.start);
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
-        let mut prepared_end = hashbang_end.unwrap_or(span.start);
+        let mut preparation = StatementPreparation {
+            end: hashbang_end.unwrap_or(span.start),
+            incoming_source_line: false,
+        };
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(
                 item,
                 statements.peek().copied(),
                 incoming,
-                &mut prepared_end,
+                &mut preparation,
             )
         });
         while let Some(prepared) = pending {
@@ -655,7 +681,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     item,
                     statements.peek().copied(),
                     incoming,
-                    &mut prepared_end,
+                    &mut preparation,
                 )
             });
             if prepared.can_omit(ast, header_barrier) {
@@ -667,6 +693,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 decorators,
                 mode: source_mode,
                 source_gap,
+                source_line,
                 annotation_tail,
                 empty_binding: _,
             } = prepared;
@@ -690,7 +717,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         item,
                         statements.peek().copied(),
                         incoming,
-                        &mut prepared_end,
+                        &mut preparation,
                     )
                 });
             }
@@ -726,7 +753,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 next.mode = ContentMode::Verbatim;
                 next.source_gap = tail.following_gap;
             }
-            let mode = if source_mode == ContentMode::Verbatim
+            let mode = if source_line.owns()
+                || source_mode == ContentMode::Verbatim
                 || leading_mode == ContentMode::Verbatim
                 || annotation_tail
                     .as_ref()
@@ -798,10 +826,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None
                 }
             });
-            let source_packet = suppression_tail
-                .as_ref()
-                .and_then(|tail| tail.source_packet);
-            let punctuation = if let StatementSequenceKind::Case {
+            let source_packet = source_line
+                .outgoing
+                .map(|span| StatementSourcePacket {
+                    span,
+                    following: LineConstraint::SameLine,
+                })
+                .or_else(|| {
+                    suppression_tail
+                        .as_ref()
+                        .and_then(|tail| tail.source_packet)
+                });
+            let punctuation = if source_line.owns() {
+                self.statement_source_terminator(statement_span).map_or(
+                    StatementPunctuation::Canonical(Semicolons::AsNeeded),
+                    StatementPunctuation::Source,
+                )
+            } else if let StatementSequenceKind::Case {
                 terminator: Some(terminator),
                 ..
             } = kind
@@ -864,7 +905,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 next.mode = ContentMode::Verbatim;
             }
             let leading = self.comments.take(leading.len());
-            let mut expression_start = ExpressionStart::StatementPending;
+            let mut expression_start = if source_line.incoming {
+                ExpressionStart::StatementGuarded
+            } else {
+                ExpressionStart::StatementPending
+            };
             if first_statement
                 && matches!(kind, StatementSequenceKind::Case { .. })
                 && mode == ContentMode::Verbatim
@@ -942,7 +987,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     FlatSeparator::Space
                 };
-                if !matches!(boundary, StatementBoundary::Hashbang { .. }) {
+                if !matches!(boundary, StatementBoundary::Hashbang { .. }) && !source_line.incoming
+                {
                     constraint.write(writer, separator, Writer::hard_line);
                 }
                 if constraint == LineConstraint::Unconstrained {
@@ -1019,6 +1065,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             }
             let printed = match statement {
+                StatementItem::Directive(_) if source_line.owns() => {
+                    self.format_node_head(head, expression_start, None, writer)?;
+                    self.format_verbatim(statement_span, writer)?;
+                    StatementBoundary::SourceEnd {
+                        end: statement_span.end,
+                        has_terminator: self.statement_source_terminator(statement_span).is_some(),
+                    }
+                    .into()
+                }
                 StatementItem::Directive(directive) => {
                     self.format_node_head(head, expression_start, None, writer)?;
                     let expression = directive.expression(ast);
@@ -1073,7 +1128,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                         .into()
                     } else {
-                        let content = if mode == ContentMode::Verbatim {
+                        let content = if source_line.owns() {
+                            StatementMode::SourceLine
+                        } else if mode == ContentMode::Verbatim {
                             let content = suppression_tail.as_ref().map_or_else(
                                 || self.statement_content(StatementItem::Statement(statement)),
                                 |tail| tail.content,
@@ -1123,7 +1180,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let trailing_start = if let Some(packet) = source_packet {
                 let start = packet.span.start.max(boundary.end());
                 self.format_verbatim(Span::new(start, packet.span.end), writer)?;
-                directive_prologue = DirectivePrologue::Closed;
+                if source_line.outgoing.is_none() {
+                    directive_prologue = DirectivePrologue::Closed;
+                }
                 if let Some(next) = pending.as_mut() {
                     next.source_gap = Some(packet.following);
                 }
@@ -1362,7 +1421,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         item: StatementItem,
         following: Option<StatementItem>,
         incoming: Option<IncomingStatement>,
-        prepared_end: &mut u32,
+        preparation: &mut StatementPreparation,
     ) -> PreparedStatement<'ast> {
         let decorators = match item {
             StatementItem::Statement(node) => self.statement_decorators(node),
@@ -1372,8 +1431,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some((span, decorators)) => (span, Some(decorators)),
             None => (item.span(self.ast), None),
         };
-        let gap_start = *prepared_end;
-        *prepared_end = span.end;
+        let gap_start = preparation.end;
+        preparation.end = span.end;
+        let outgoing = if self.ast.comments().is_empty() {
+            None
+        } else {
+            following.and_then(|next| {
+                let start = match next {
+                    StatementItem::Statement(node) => self
+                        .statement_decorators(node)
+                        .map_or_else(|| node.span(self.ast).start, |(span, _)| span.start),
+                    StatementItem::Directive(node) => node.span(self.ast).start,
+                };
+                self.covered_statement_gap(span.end, start)
+            })
+        };
+        let source_line = StatementSourceLine {
+            incoming: preparation.incoming_source_line,
+            outgoing,
+        };
+        preparation.incoming_source_line = outgoing.is_some();
         let empty = item.empty(self.ast);
         let empty_binding = if empty.is_some() {
             // Only direct statement gaps can contain this owner's leading packet.
@@ -1397,9 +1474,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .filter(|target| target.span == span)
                 .map_or(ContentMode::Formatted, |target| target.mode),
             source_gap: None,
+            source_line,
             annotation_tail,
             empty_binding,
         }
+    }
+
+    /// The immutable source line owns both adjacent statements and their gap.
+    fn covered_statement_gap(&self, left: u32, right: u32) -> Option<Span> {
+        if left == 0
+            || left > right
+            || right as usize >= self.ast.source().len()
+            || self.source_line_breaks(left, right) != 0
+            || !self.lint_line_intersects(Span::new(left - 1, right + 1))
+        {
+            return None;
+        }
+        Some(Span::new(left, right))
     }
 
     fn empty_statement_binding(&self, comments: &[Comment], span: Span) -> CommentBinding {
@@ -1595,7 +1686,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let mode = match content {
             StatementMode::Formatted => ContentMode::Formatted,
-            StatementMode::Verbatim(_) => ContentMode::Verbatim,
+            StatementMode::Verbatim(_) | StatementMode::SourceLine => ContentMode::Verbatim,
         };
         let data = self.ast.stmt_data(statement);
         if let StmtData::ExpressionStatement(node) = data {
@@ -1620,6 +1711,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
                 writer,
             )?;
+            if matches!(content, StatementMode::SourceLine) {
+                if output.pending.is_some() || output.operator_tail.is_some() {
+                    return Err(self.unsupported("covered statement expression tail", statement));
+                }
+                self.format_verbatim(Span::new(expression.span(self.ast).end, span.end), writer)?;
+                return Ok(StatementBoundary::SourceEnd {
+                    end: span.end,
+                    has_terminator: self.statement_source_terminator(span).is_some(),
+                }
+                .into());
+            }
             let punctuation = self.punctuation_for_expression_output(
                 punctuation,
                 layout.source_candidate,
@@ -1646,6 +1748,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         self.format_node_head(head, layout.start, None, writer)?;
+        if matches!(content, StatementMode::SourceLine) {
+            self.format_verbatim(span, writer)?;
+            let boundary = StatementBoundary::SourceEnd {
+                end: span.end,
+                has_terminator: self.statement_source_terminator(span).is_some(),
+            };
+            return Ok(self
+                .statement_declaration_boundary(statement, boundary)
+                .into());
+        }
         if mode == ContentMode::Formatted
             && let Some(decorators) = decorators
         {
@@ -1890,41 +2002,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     source_fence,
                     writer,
                 )?;
-                let declaration = match data {
-                    StmtData::Declaration(declaration) => Some(declaration),
-                    StmtData::ExportNamedDeclaration(node) => node.declaration(self.ast),
-                    StmtData::ExportDefaultDeclaration(node) => match self
-                        .ast
-                        .export_default_declaration_kind_data(node.declaration(self.ast))
-                    {
-                        ExportDefaultDeclarationKindData::TsFunction(function) => {
-                            Some(Decl::TsFunction(function))
-                        }
-                        ExportDefaultDeclarationKindData::TsInterfaceDeclaration(interface) => {
-                            Some(Decl::TsInterfaceDeclaration(interface))
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                };
-                if matches!(data, StmtData::TsNamespaceExportDeclaration(_))
-                    || declaration.is_some_and(|declaration| {
-                        matches!(
-                            self.ast.decl_data(declaration),
-                            DeclData::TsFunction(_)
-                                | DeclData::TsTypeAliasDeclaration(_)
-                                | DeclData::TsInterfaceDeclaration(_)
-                                | DeclData::TsModuleDeclaration(_)
-                                | DeclData::TsGlobalDeclaration(_)
-                                | DeclData::TsImportEqualsDeclaration(_)
-                                | DeclData::TsEnumDeclaration(_)
-                        )
-                    })
-                {
-                    printed.boundary = printed.boundary.type_declaration();
-                }
+                printed.boundary = self.statement_declaration_boundary(statement, printed.boundary);
                 Ok(printed)
             }
+        }
+    }
+
+    fn statement_declaration_boundary(
+        &self,
+        statement: Stmt,
+        boundary: StatementBoundary,
+    ) -> StatementBoundary {
+        let type_declaration = StatementItem::Statement(statement)
+            .declaration(self.ast)
+            .is_some_and(|declaration| {
+                matches!(
+                    self.ast.decl_data(declaration),
+                    DeclData::TsFunction(_)
+                        | DeclData::TsTypeAliasDeclaration(_)
+                        | DeclData::TsInterfaceDeclaration(_)
+                        | DeclData::TsModuleDeclaration(_)
+                        | DeclData::TsGlobalDeclaration(_)
+                        | DeclData::TsImportEqualsDeclaration(_)
+                        | DeclData::TsEnumDeclaration(_)
+                )
+            })
+            || matches!(
+                self.ast.stmt_data(statement),
+                StmtData::TsNamespaceExportDeclaration(_)
+            );
+        if type_declaration {
+            boundary.type_declaration()
+        } else {
+            boundary
         }
     }
 

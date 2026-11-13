@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+unknown(); class C { /* eslint-disable-line no-undef */ value = Missing; }
+---------- Options ----------
+{}
+---------- Output ----------
+unknown(); class C { /* eslint-disable-line no-undef */ value = Missing; }
