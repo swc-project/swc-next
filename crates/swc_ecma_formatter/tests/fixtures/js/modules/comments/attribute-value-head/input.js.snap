@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import value from "module" with { "mode": /* prettier-ignore */
+// comment
+'strict' };
+---------- Options ----------
+{}
+---------- Output ----------
+import value from "module" with {
+  mode:
+    /* prettier-ignore */
+    // comment
+    'strict',
+};
