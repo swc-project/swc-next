@@ -6,7 +6,7 @@ import type {
   GenerateOutput,
   ParserConfig,
   TransformApiOptions,
-  TransformOutput,
+  JsOutput,
 } from "./binding.js";
 
 export type {
@@ -15,7 +15,7 @@ export type {
   GeneratorConfig,
   GenerateOutput,
   TransformApiOptions,
-  TransformOutput,
+  JsOutput,
 } from "./binding.js";
 
 export type GenerateApiOptions = GeneratorConfig;
@@ -79,4 +79,4 @@ export declare function sourceTypeFromPath(path: string): SourceType;
 export declare function transformSync(
   source: string,
   options?: TransformApiOptions | undefined | null,
-): TransformOutput;
+): JsOutput;

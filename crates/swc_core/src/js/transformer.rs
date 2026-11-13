@@ -542,7 +542,12 @@ pub mod bridge {
     #[cfg(not(target_family = "wasm"))]
     use swc_next_bridge::napi;
 
-    #[bridge(object, object_from_js = false, object_to_js = false)]
+    #[bridge(
+        object,
+        js_name = "JsOutput",
+        object_from_js = false,
+        object_to_js = false
+    )]
     pub struct TransformOutput {
         pub code: String,
         /// Source map as a JSON string. Absent when source maps are disabled.

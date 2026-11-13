@@ -33,7 +33,7 @@ provide the same API. Calls are synchronous.
 function transformSync(
   source: string,
   options?: TransformApiOptions | null,
-): TransformOutput;
+): JsOutput;
 ```
 
 Options default to an empty object. Unknown options and invalid values throw an

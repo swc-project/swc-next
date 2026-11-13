@@ -35,10 +35,10 @@ function storage(length) {
     : new Uint8Array(length);
 }
 
-function createJsTransformApiOptionsEncoder() {
+function createTransformApiOptionsEncoder() {
   let buffer = empty;
   let view;
-  return function encodeJsTransformApiOptions(options) {
+  return function encodeTransformApiOptions(options) {
     if (options == null) return empty;
     object(options, rootKeys, "options");
     const parser = options.parser;
@@ -68,7 +68,7 @@ function createJsTransformApiOptionsEncoder() {
  * The returned buffer is valid until the next call. Option getters and Proxy traps
  * must not reenter this encoder while it is encoding.
  */
-export const encodeJsTransformApiOptions = createJsTransformApiOptionsEncoder();
+export const encodeTransformApiOptions = createTransformApiOptionsEncoder();
 
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
   ? Buffer.prototype.utf8Slice
@@ -113,7 +113,7 @@ export function decodeJsOutput(buffer) {
  * traps must not reenter the same wrapper while it is encoding options.
  */
 export function createTransformSync(binding) {
-  const encodeOptions = createJsTransformApiOptionsEncoder();
+  const encodeOptions = createTransformApiOptionsEncoder();
   let sourceBuffer = empty;
   return function transformSync(source, options) {
     if (typeof source !== "string") throw new TypeError("source must be a string");

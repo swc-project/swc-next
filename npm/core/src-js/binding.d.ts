@@ -45,6 +45,13 @@ export interface GeneratorConfig {
   minify?: boolean
 }
 
+export interface JsOutput {
+  code: string
+  /** Source map as a JSON string. Absent when source maps are disabled. */
+  map?: string
+  diagnostics: Array<Diagnostic>
+}
+
 export type Lang =  'js'|
 'ts'|
 'jsx'|
@@ -109,13 +116,6 @@ export interface TransformApiOptions {
   parser?: ParserConfig
   /** Generator configuration. */
   generator?: GeneratorConfig
-}
-
-export interface TransformOutput {
-  code: string
-  /** Source map as a JSON string. Absent when source maps are disabled. */
-  map?: string
-  diagnostics: Array<Diagnostic>
 }
 /**
  * # Safety

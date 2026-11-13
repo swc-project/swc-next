@@ -1,4 +1,4 @@
-import type { TransformApiOptions, TransformOutput } from "./binding.js";
+import type { TransformApiOptions, JsOutput } from "./binding.js";
 
 export type {
   CommentMode,
@@ -9,7 +9,7 @@ export type {
   ParserConfig,
   SourceType,
   TransformApiOptions,
-  TransformOutput,
+  JsOutput,
 } from "./binding.js";
 
 /** Transform source synchronously. Syntax errors are returned in diagnostics.
@@ -19,4 +19,4 @@ export type {
 export declare function transformSync(
   source: string,
   options?: TransformApiOptions | undefined | null,
-): TransformOutput;
+): JsOutput;
