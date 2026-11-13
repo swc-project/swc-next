@@ -10,7 +10,7 @@ import {
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeOptions as encodeGeneratorConfig,
+  encodeGeneratorOptions,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
@@ -42,9 +42,9 @@ export function parseSync(source, options) {
 }
 
 export function generateSync(program, options) {
-  const generatorConfig = encodeGeneratorConfig(options);
+  const generatorConfig = encodeGeneratorOptions(options);
   const code = __generateSync(...encode(program), generatorConfig);
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync, encodeGeneratorConfig);
+export const transformSync = createTransformSync(__transformSync, encodeGeneratorOptions);
