@@ -1481,7 +1481,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::ForHead
                     | ExpressionPosition::ForUpdate
                     | ExpressionPosition::ForSequenceMember
-                    | ExpressionPosition::ForInitializer { .. }
+                    | ExpressionPosition::ForInitializer {
+                        grammar: ForInitializerGrammar::Expression,
+                        ..
+                    }
             ),
             (
                 ExpressionPosition::UnaryArgument(_)
