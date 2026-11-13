@@ -99,6 +99,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(content) => self.template_expression_slot_layout(content.data),
             None => TemplateSlotLayout::Boundaries(mode),
         };
+        let head_layout = self.template_slot_head_layout(leading, span.start);
         self.format_template_slot(
             slot,
             opening,
@@ -110,7 +111,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let head = NodeHead {
                     comments: leading,
                     content_start: span.start,
-                    layout: CommentRunLayout::Leading(span.start),
+                    layout: head_layout,
                     gap_end: None,
                 };
                 let operand_indent = match layout {
