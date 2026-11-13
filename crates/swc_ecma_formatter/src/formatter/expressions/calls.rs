@@ -1,7 +1,7 @@
 //! Callees and source-owned argument delimiters.
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
 use super::chains::FluentChainEligibility;
-use super::members::MemberLookupOwner;
+use super::members::{MemberLookupOwner, PreparedMember, SourceMember};
 use super::parentheses::ExpressionContent;
 use super::{AccessKind, EmittedHeadBinding, OperandIndent};
 use super::{
@@ -9,7 +9,6 @@ use super::{
     MemberLayout, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, ExpressionTail};
-use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::ArgumentData;
@@ -130,7 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<CallCallee, FormatError> {
         // Only suppression can change the callee's content mode.
         if self.has_suppression {
-            return Ok(self.source_call(call, context)?.callee_head());
+            return Ok(self.source_call(call, &context)?.callee_head());
         }
         let ast = self.ast;
         let expression = call.callee(ast);
@@ -157,7 +156,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<CallCallee> {
         let ast = self.ast;
         if self.has_suppression || call.type_arguments(ast).is_some() {
-            let source = self.source_call(call, context).ok()?;
+            let source = self.source_call(call, &context).ok()?;
             if source.call_mode != ContentMode::Formatted
                 || source.callee_mode != ContentMode::Formatted
                 || source.has_outside_prefix()
@@ -182,7 +181,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let arguments = self.source_call(call, context)?;
+        let arguments = self.source_call(call, &context)?;
         if arguments.call_mode == ContentMode::Verbatim {
             self.format_verbatim_expression(Expr::CallExpression(call), context, writer)?;
             return Ok(None);
@@ -241,7 +240,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if member_callee
             && callee_context.member_layout != MemberLayout::Tight
             && let Some((member, callee_context)) =
-                self.direct_member_callee(arguments.callee, callee_context)
+                self.direct_member_callee(arguments.callee, callee_context)?
         {
             let lookup_owner = if arguments.allow_composition
                 && matches!(arguments.frame, CallArgumentFrame::Ordinary)
@@ -257,7 +256,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context.position,
                     ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
                 )
-                && self.member_callee_has_conditional_receiver(member)
+                && matches!(&member, PreparedMember::Formatted(member)
+                    if self.member_callee_has_conditional_receiver(member))
                 && self.call_span_is_source_clear(call.span(self.ast))
             {
                 // The complete call owns this terminal continuation. Its
@@ -267,15 +267,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 MemberLookupOwner::from_context(callee_context)
             };
             return writer.group(false, |writer| {
-                let (tail, group) =
+                let (tail, frame) =
                     self.format_member_callee(member, callee_context, lookup_owner, writer)?;
                 let write = |writer: &mut Writer<'ast>| {
                     self.format_source_arguments(arguments, tail, writer)
                 };
-                match group {
-                    Some(group) => writer.indent_if_break(group, write),
-                    None => write(writer),
-                }
+                frame.write(writer, write)
             });
         }
         let group = arguments.curried_callee.map(|_| arguments.group);
@@ -297,11 +294,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Inspect only receiver syntax after the existing compact path failed.
     /// The conditional's grammar frame stays with its original expression owner.
-    fn member_callee_has_conditional_receiver(
-        &self,
-        member: swc_next_ecma_ast::MemberExpression,
-    ) -> bool {
-        let mut receiver = member.object(self.ast);
+    fn member_callee_has_conditional_receiver(&self, member: &SourceMember) -> bool {
+        let mut receiver = member.object;
         loop {
             receiver = match self.ast.expr_data(receiver) {
                 ExprData::MemberExpression(member) => member.object(self.ast),
@@ -316,42 +310,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         expression: Expr,
         mut context: ExpressionContext<'ast>,
-    ) -> Option<(swc_next_ecma_ast::MemberExpression, ExpressionContext<'ast>)> {
+    ) -> Result<Option<(PreparedMember<'ast>, ExpressionContext<'ast>)>, FormatError> {
         // Bound heads retain their complete expression-envelope printer.
         if context.protected_head_start.is_some()
-            || !self.call_span_is_source_clear(expression.span(self.ast))
+            || self.diagnostic_range_is_sensitive(expression.span(self.ast))
+            || matches!(context.emitted_head_binding,
+                EmittedHeadBinding::Resolved { binding, .. }
+                    if !matches!(binding, CommentBinding::Unbound))
         {
-            return None;
+            return Ok(None);
         }
-        let start = expression.span(self.ast).start;
-        let comments = self.ast.comments();
-        let before = comments.partition_point(|comment| comment.span.end <= start);
-        if before != 0
-            && self
-                .source(Span::new(comments[before - 1].span.end, start))
-                .chars()
-                .all(is_source_whitespace)
+        let content = self.expression_content(expression);
+        if content
+            .parentheses
+            .is_some_and(|removed| removed.head.has_comments || removed.tail.is_some())
         {
-            return None;
+            return Ok(None);
         }
-        let data = self.expression_data(expression);
+        let data = content.data;
         let ExprData::MemberExpression(member) = data else {
-            return None;
+            return Ok(None);
         };
         match self.fluent_chain_eligibility(data, context, self.expression_layout(expression)) {
-            FluentChainEligibility::Fluent => return None,
+            FluentChainEligibility::Fluent => return Ok(None),
             FluentChainEligibility::MemberOnly => {
                 context.member_chain_layout = super::MemberChainLayout::Local;
             }
             FluentChainEligibility::Unqualified => {}
         }
-        Some((member, context))
+        let member = self.source_member(member)?;
+        if matches!(&member, PreparedMember::Formatted(member)
+            if member.receiver_mode != ContentMode::Formatted)
+        {
+            return Ok(None);
+        }
+        Ok(Some((member, context)))
     }
 
     pub(super) fn source_call(
         &self,
         call: CallExpression,
-        context: ExpressionContext<'ast>,
+        context: &ExpressionContext<'ast>,
     ) -> Result<SourceArguments<'ast>, FormatError> {
         let ast = self.ast;
         let callee = call.callee(ast);
@@ -472,7 +471,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn module_call_frame(
         &self,
         call: CallExpression,
-        context: ExpressionContext<'ast>,
+        context: &ExpressionContext<'ast>,
         list: &SourceArguments<'ast>,
     ) -> Option<CallArgumentFrame> {
         let ast = self.ast;

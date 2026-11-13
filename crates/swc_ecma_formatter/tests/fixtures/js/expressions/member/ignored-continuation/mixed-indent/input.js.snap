@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+receiver
+ 	// prettier-ignore
+ 	.bbbbbbbbbbbbbbbb(dddddddddddddddd, dddddddddddddddd).cccccccccccccccc();
+---------- Options ----------
+{"printWidth":40,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+receiver
+ 	// prettier-ignore
+ 	.bbbbbbbbbbbbbbbb(
+ 		dddddddddddddddd,
+ 		dddddddddddddddd,
+ 	)
+ 	.cccccccccccccccc();

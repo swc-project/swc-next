@@ -9,7 +9,8 @@ use swc_next_ecma_ast::{
 
 use super::arguments::{ArgumentGroup, ChainArgumentFacts, SourceArguments};
 use super::members::{
-    MemberBoundary, MemberHead, MemberLookupLayout, MemberLookupOwner, PreparedMember, SourceMember,
+    MemberBoundary, MemberCalleeFrame, MemberHead, MemberLookupLayout, MemberLookupOwner,
+    PreparedMember, SourceMember,
 };
 use super::parentheses::{
     ExpressionContent, ParenthesisInner, RemovedExpressionParentheses, ResolvedExpressionHead,
@@ -166,6 +167,7 @@ pub(in crate::formatter) struct PreparedChain<'ast> {
     calls: usize,
     // Source boundaries can add groups and independently require expansion.
     groups: usize,
+    head_argument_frame: MemberCalleeFrame<'ast>,
 }
 
 struct PreparedChainHead<'ast> {
@@ -276,7 +278,7 @@ impl PendingMember<'_> {
     }
 
     fn source_break(&self) -> bool {
-        self.boundary.has_comments
+        self.boundary.has_boundary_comments
             || self.boundary.empty_line
             || self.boundary.gap().requires_line()
     }
@@ -303,6 +305,7 @@ struct ChainSource<'ast, 'parts> {
     tail: Option<ExpressionTail<'ast>>,
     operation_head: Option<(CallExpression, NodeHead<'ast>)>,
     argument_layout: ChainArgumentLayout,
+    head_argument_frame: MemberCalleeFrame<'ast>,
 }
 
 #[derive(Clone, Copy)]
@@ -553,7 +556,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     let (callee_comments, frame_comments) = comments.split_at(count);
                     let callee = if let Some(first) = frame_comments.first() {
-                        let arguments = self.source_call(call, context).ok()?;
+                        let arguments = self.source_call(call, &context).ok()?;
                         let content = arguments.empty_argument_content()?;
                         if arguments.callee_mode != ContentMode::Formatted
                             || arguments.has_outside_prefix()
@@ -729,6 +732,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut calls = 0;
+        let mut head_argument_frame = MemberCalleeFrame::Inline;
         let mut next_part_is_member = false;
         let terminal_member = matches!(
             self.ast.expr_data(expression),
@@ -773,13 +777,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         next_part_is_member = true;
                     }
                     PreparedMember::Verbatim(member) => {
-                        current = Expr::MemberExpression(member);
+                        current = Expr::MemberExpression(member.node);
+                        head_argument_frame = member.frame;
                         current_context = current_context.with_content_mode(ContentMode::Verbatim);
                         break;
                     }
                 },
                 ExprData::CallExpression(call) => {
-                    let arguments = self.source_call(call, current_context)?;
+                    let arguments = self.source_call(call, &current_context)?;
                     if arguments.call_mode == ContentMode::Verbatim {
                         current_context = current_context.with_content_mode(ContentMode::Verbatim);
                         break;
@@ -941,6 +946,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_parts,
             calls,
             groups: grouping.groups,
+            head_argument_frame,
         })
     }
 
@@ -1192,6 +1198,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 pending: None,
                 tail: None,
                 operation_head,
+                head_argument_frame: chain.head_argument_frame,
                 // Call count owns the complex-argument expansion rule. Group
                 // count only skips inspection on the shared short-chain path.
                 argument_layout: if chain.calls > 2 && chain.groups > 2 {
@@ -1211,6 +1218,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut source,
                 writer,
             )?;
+            source.head_argument_frame = MemberCalleeFrame::Inline;
             // Merging the head leaves at most two groups in a short chain. Source
             // boundaries may split those groups, but already require expansion.
             if merge_head && chain.groups <= 3 {
@@ -1243,7 +1251,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 match layout {
                     ChainLayout::Expanded => {
-                        writer.group(false, |writer| write_expanded(&groups, merge_head, writer));
+                        writer.group(false, |writer| {
+                            write_expanded(&groups, merge_head, chain.head_argument_frame, writer)
+                        });
                     }
                     ChainLayout::SourceExpanded => {
                         writer.group(true, |writer| {
@@ -1267,7 +1277,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         // Curried argument frames observe the selected candidate's
                         // mode without another group choosing its breaks.
                         let (expanded, ()) = writer.record_with_value(|writer| {
-                            write_expanded(&groups, merge_head, writer);
+                            write_expanded(&groups, merge_head, chain.head_argument_frame, writer);
                             Ok::<_, FormatError>(())
                         })?;
                         let (compact, ()) = writer.record_with_value(|writer| {
@@ -1288,7 +1298,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ChainLookupLayout::ExpressionContinuation
         };
-        self.format_chain_operations(parts, tail, continuation_layout, writer)
+        self.format_chain_operations(
+            parts,
+            tail,
+            continuation_layout,
+            MemberCalleeFrame::Inline,
+            writer,
+        )
     }
 
     fn format_local_chain(
@@ -1302,6 +1318,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             chain.parts.into_iter(),
             tail,
             ChainLookupLayout::Local,
+            chain.head_argument_frame,
             writer,
         )
     }
@@ -1341,6 +1358,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parts: IntoIter<ChainPart<'ast>>,
         mut tail: Option<ExpressionTail<'ast>>,
         layout: ChainLookupLayout,
+        mut argument_frame: MemberCalleeFrame<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         for part in parts {
@@ -1352,6 +1370,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
                 ChainPart::Member(member) => {
+                    argument_frame = MemberCalleeFrame::Inline;
                     let boundary = self.prepare_member_boundary(&member.source, tail.take())?;
                     let lookup = match layout {
                         ChainLookupLayout::InlineContinuation
@@ -1399,7 +1418,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 ChainPart::Call { arguments, .. } => {
-                    tail = self.format_source_arguments(arguments, tail.take(), writer)?;
+                    tail = argument_frame.write(writer, |writer| {
+                        self.format_source_arguments(arguments, tail.take(), writer)
+                    })?;
                 }
                 ChainPart::NonNull(source) => {
                     self.format_source_non_null(source, tail.take(), writer)?;
@@ -1449,6 +1470,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(ChainGroup<'ast>, bool), FormatError> {
         let mut facts = GroupFacts {
             has_boundary_comments: head.has_comments,
+            source_break: matches!(
+                source.head_argument_frame,
+                MemberCalleeFrame::SourceContinuation(_)
+            ),
             ..GroupFacts::default()
         };
         let mut leading = true;
@@ -1572,7 +1597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         facts: &mut GroupFacts,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        facts.has_boundary_comments |= member.boundary.has_comments;
+        facts.has_boundary_comments |= member.boundary.has_boundary_comments;
         facts.source_break |= member.source_break();
         if !boundary_outside {
             self.format_member_trailing(&member.boundary, writer)?;
@@ -1624,12 +1649,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_function: facts.arguments.has_function,
             ..ChainArgumentFacts::default()
         };
-        let output = self.format_source_arguments_with_chain_facts(
-            arguments,
-            source.tail.take(),
-            Some(&mut argument_facts),
-            writer,
-        )?;
+        let output = source.head_argument_frame.write(writer, |writer| {
+            self.format_source_arguments_with_chain_facts(
+                arguments,
+                source.tail.take(),
+                Some(&mut argument_facts),
+                writer,
+            )
+        })?;
         facts.arguments.has_function = argument_facts.has_function;
         facts.arguments.source_expanded_object |= argument_facts.source_expanded_object;
         facts.has_boundary_comments |= output.has_outside_prefix;
@@ -1685,7 +1712,12 @@ fn write_compact<'ast>(groups: &ChainGroups<'ast>, writer: &mut Writer<'ast>) {
     }
 }
 
-fn write_expanded<'ast>(groups: &ChainGroups<'ast>, merge_head: bool, writer: &mut Writer<'ast>) {
+fn write_expanded<'ast>(
+    groups: &ChainGroups<'ast>,
+    merge_head: bool,
+    frame: MemberCalleeFrame<'ast>,
+    writer: &mut Writer<'ast>,
+) {
     write_group(&groups.head, true, writer);
     let tail = if merge_head && let Some((first, remaining)) = groups.tail.split_first() {
         write_group_boundary(first, false, writer);
@@ -1694,7 +1726,7 @@ fn write_expanded<'ast>(groups: &ChainGroups<'ast>, merge_head: bool, writer: &m
     } else {
         &groups.tail
     };
-    writer.indent(|writer| {
+    frame.write_chain_tail(writer, |writer| {
         for group in tail {
             write_group(group, true, writer);
         }

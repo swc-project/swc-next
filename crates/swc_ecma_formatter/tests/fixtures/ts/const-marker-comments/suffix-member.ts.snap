@@ -8,16 +8,16 @@ const).toFixed();
 {}
 ---------- Output ----------
 (1 as const) // marker
-.toFixed();
+  .toFixed();
 
 ---------- Options ----------
 {"printWidth":24}
 ---------- Output ----------
 (1 as const) // marker
-.toFixed();
+  .toFixed();
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 ;(1 as const) // marker
-.toFixed()
+  .toFixed()
