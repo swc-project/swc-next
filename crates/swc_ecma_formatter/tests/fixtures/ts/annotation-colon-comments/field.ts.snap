@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A { x /* c */: number }
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+class A {
+  x /* c */ : number;
+}

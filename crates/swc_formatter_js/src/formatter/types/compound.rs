@@ -286,6 +286,12 @@ pub(super) struct MovableTypeHead<'ast> {
     pub(super) next_start: u32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TypeHeadGroup {
+    Type,
+    Caller,
+}
+
 /// Pending packets share one resolved frontier and one first-output rendering role.
 pub(super) struct PendingTypeHead<'ast> {
     comments: &'ast [Comment],
@@ -293,6 +299,7 @@ pub(super) struct PendingTypeHead<'ast> {
     leading: Option<MovableTypeHead<'ast>>,
     position: TypeHeadPosition,
     opening: CommentOpening,
+    group: TypeHeadGroup,
 }
 
 enum TypeHeadPosition {
@@ -315,7 +322,18 @@ impl<'ast> PendingTypeHead<'ast> {
             leading,
             position: TypeHeadPosition::Leading,
             opening: CommentOpening::Needed,
+            group: TypeHeadGroup::Type,
         }
+    }
+
+    pub(super) fn group(&self) -> TypeHeadGroup {
+        self.group
+    }
+
+    pub(super) fn with_caller_prefix(mut self) -> Self {
+        self.position = TypeHeadPosition::Emitted;
+        self.group = TypeHeadGroup::Caller;
+        self
     }
 
     pub(super) fn with_opening(mut self, opening: CommentOpening) -> Self {
@@ -1894,6 +1912,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         union: &mut PreparedUnion<'ast>,
         pending: &mut PendingTypeHead<'ast>,
     ) {
+        if pending.group == TypeHeadGroup::Caller
+            && matches!(pending.position, TypeHeadPosition::Emitted)
+        {
+            pending.position = TypeHeadPosition::Leading;
+        }
         let Some(target) = union.inline_head_target else {
             return;
         };

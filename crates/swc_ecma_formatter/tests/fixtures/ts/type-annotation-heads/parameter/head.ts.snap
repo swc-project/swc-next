@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(x:
+/* note */
+(A[])): void {}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  x: /* note */
+  A[],
+): void {}

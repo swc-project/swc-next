@@ -7,19 +7,19 @@ class DefiniteComments { value /* key marker */ ! /* marker colon */ : /* type h
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class DefiniteComments {
-  value /* key marker */! /* marker colon */: /* type head */ number;
+  value /* key marker */! /* marker colon */ : /* type head */ number;
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 class DefiniteComments {
-  value /* key marker */! /* marker colon */: /* type head */ number
+  value /* key marker */! /* marker colon */ : /* type head */ number
 }
 
 ---------- Options ----------
 {"indentStyle":"tab","lineWidth":24}
 ---------- Output ----------
 class DefiniteComments {
-	value /* key marker */! /* marker colon */: /* type head */ number;
+	value /* key marker */! /* marker colon */ : /* type head */ number;
 }
