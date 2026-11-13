@@ -18,7 +18,7 @@ use std::num::NonZeroU32;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
 pub(super) use self::context::TypeContext;
-use self::context::TypeEnclosure;
+use self::context::{TypeEnclosure, TypeFrame};
 pub(super) use self::generics::TypeArgumentOwner;
 
 use super::Formatter;
@@ -1554,14 +1554,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_prepared_type(node, TypeContext::Root, writer);
         };
         if union.alias_layout() == TypeLayout::Root {
-            self.format_type_boundary(boundary, writer)?;
-            return self.format_prepared_union(
-                union,
-                TypeContext::Root,
-                TypeLayout::Root,
-                None,
-                writer,
-            );
+            self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+            return writer.group(false, |writer| {
+                rhs_layout.write(
+                    writer,
+                    |writer| match rhs_layout {
+                        RhsLayout::NeverBreakAfterOperator => {
+                            after
+                                .gap()
+                                .write(writer, FlatSeparator::Space, Writer::space)
+                        }
+                        RhsLayout::Fluid | RhsLayout::BreakAfterOperator => {
+                            after
+                                .gap()
+                                .write(writer, FlatSeparator::Space, Writer::line)
+                        }
+                    },
+                    |writer| {
+                        self.format_prepared_union(
+                            union,
+                            TypeContext::Root,
+                            TypeLayout::Root,
+                            None,
+                            writer,
+                        )
+                    },
+                )
+            });
         }
         self.format_comment_boundary(before, writer)?;
         before
@@ -3313,6 +3332,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map(|pending| finish(pending, ExpressionRightEdge::Unreported));
         }
         if node.source_owner != Some(node.node)
+            && let TsTypeData::TsUnionType(union) = node.data
+            && union.types(self.ast).len() > 1
+        {
+            let union = self.prepare_union(node, union.types(self.ast))?;
+            return self
+                .format_prepared_union(union, context, layout, None, writer)
+                .map(|pending| finish(pending, ExpressionRightEdge::Unreported));
+        }
+        if node.source_owner != Some(node.node)
             && let TsTypeData::TsIntersectionType(intersection) = node.data
             && intersection.types(self.ast).len() > 1
         {
@@ -3347,12 +3375,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionRightEdge::SourceFenceCandidate(CopiedRawOwner::Type(node.node)),
             ));
         }
-        let parenthesize = context.needs_parentheses(node.data, self.ast);
+        let frame = context.frame(node.data, self.ast);
         self.format_type_in_context_with_enclosure(
             node.data,
             context,
             layout,
-            parenthesize,
+            frame,
             writer,
             |formatter, layout, enclosure, writer| {
                 formatter.format_type_data(node, layout, enclosure, writer)
@@ -3377,7 +3405,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             data,
             context,
             layout,
-            context.needs_parentheses(data, self.ast),
+            context.frame(data, self.ast),
             writer,
             |formatter, layout, _, writer| print(formatter, layout, writer),
         )
@@ -3388,7 +3416,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         data: TsTypeData,
         context: TypeContext,
         layout: TypeLayout,
-        parenthesize: bool,
+        frame: TypeFrame,
         writer: &mut Writer<'ast>,
         print: impl FnOnce(
             &mut Self,
@@ -3397,18 +3425,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if parenthesize {
-            // Unions and nested conditional tests own a block frame.
-            // Other types keep their own breaks inside tight parentheses.
-            let block = matches!(
-                (data, context),
-                (TsTypeData::TsUnionType(_), _)
-                    | (
-                        TsTypeData::TsConditionalType(_),
-                        TypeContext::ConditionalCheck | TypeContext::ConditionalExtends
-                    )
-            );
-            if !block {
+        if frame != TypeFrame::None {
+            if frame == TypeFrame::Tight {
                 let body_span = match data {
                     TsTypeData::TsIntersectionType(node) => Some(node.span(self.ast)),
                     TsTypeData::TsConditionalType(node) => Some(node.span(self.ast)),

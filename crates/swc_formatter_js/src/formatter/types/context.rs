@@ -30,6 +30,22 @@ pub(super) enum TypeEnclosure {
     Parentheses,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TypeFrame {
+    None,
+    Tight,
+    Block,
+}
+
+impl TypeFrame {
+    pub(super) fn tight(self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::Tight | Self::Block => Self::Tight,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum TypePrecedence {
     Conditional,
@@ -84,6 +100,20 @@ impl TypeContext {
             TypeEnclosure::Parentheses
         } else {
             TypeEnclosure::None
+        }
+    }
+
+    pub(super) fn frame(self, data: TsTypeData, ast: &Ast<'_>) -> TypeFrame {
+        if !self.needs_parentheses(data, ast) {
+            return TypeFrame::None;
+        }
+        match (data, self) {
+            (TsTypeData::TsUnionType(_), _)
+            | (
+                TsTypeData::TsConditionalType(_),
+                Self::ConditionalCheck | Self::ConditionalExtends,
+            ) => TypeFrame::Block,
+            _ => TypeFrame::Tight,
         }
     }
 
