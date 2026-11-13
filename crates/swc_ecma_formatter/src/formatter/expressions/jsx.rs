@@ -985,6 +985,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                 }
             });
+            writer.line_suffix_boundary();
             writer.text("}");
             Ok(())
         })
@@ -1216,6 +1217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                 }
             });
+            writer.line_suffix_boundary();
             writer.text("}");
             Ok(())
         })
