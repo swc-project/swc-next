@@ -25,11 +25,32 @@ export interface DiagnosticLabel {
   end: number
 }
 
+export type CommentsOptionInputWire =
+  CommentMode
+
+export type CommentsOptionOutputWire =
+  CommentMode
+
+export type JsLangInputWire =
+  Lang
+
+export type JsLangOutputWire =
+  Lang
+
+export type JsSourceTypeInputWire =
+  SourceType
+
+export type JsSourceTypeOutputWire =
+  SourceType
+
 export type Lang =  'js'|
 'ts'|
 'jsx'|
 'tsx'|
 'dts';
+
+export type OptionalParserConfigInputWire =
+  number
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {
