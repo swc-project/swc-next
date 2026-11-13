@@ -76,6 +76,24 @@ pub(super) enum CommentDirective {
 
 pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<CommentDirective> {
     let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
+    if comment.kind == CommentKind::Block {
+        let mode = value
+            .strip_prefix(" c8 ignore ")
+            .or_else(|| value.strip_prefix(" v8 ignore "));
+        // The coverage consumer's range pattern `[c|v]8` also accepts `|8`.
+        let range_mode = mode.or_else(|| value.strip_prefix(" |8 ignore "));
+        let node_mode = value.strip_prefix(" node:coverage ");
+        if mode.is_some_and(|mode| mode.starts_with("next"))
+            || range_mode.is_some_and(|mode| mode.starts_with("start") || mode.starts_with("stop"))
+            || node_mode.is_some_and(|mode| {
+                mode.starts_with("ignore next")
+                    || mode.starts_with("disable")
+                    || mode.starts_with("enable")
+            })
+        {
+            return Some(CommentDirective::Coverage);
+        }
+    }
     let mut words = value
         .split(is_source_whitespace)
         .filter(|word| !word.is_empty());
@@ -87,10 +105,6 @@ pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<Comme
             Some(CommentDirective::LintLine(LintLineDirective::NextLine))
         }
         Some("eslint-disable" | "eslint-enable") => Some(CommentDirective::LintRange),
-        Some("c8" | "v8") if words.next() == Some("ignore") => Some(CommentDirective::Coverage),
-        Some("node:coverage") if matches!(words.next(), Some("ignore" | "disable" | "enable")) => {
-            Some(CommentDirective::Coverage)
-        }
         _ => None,
     }
 }
