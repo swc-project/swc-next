@@ -294,6 +294,26 @@ fn write_struct_encoder(
         ));
     }
 
+    if name == "FormalParameter" && dispatch.is_ts {
+        let value = |name| {
+            let index = ast
+                .fields
+                .iter()
+                .position(|field| field.name == name)
+                .unwrap();
+            &fields[index].1
+        };
+        writeln!(
+            output,
+            "    if ({optional} && {annotation} === NULL && {initializer} !== NULL) {{\n      const span = {pattern} * 2;\n      // Undo the decoder's optional-marker extension without underflowing empty spans.\n      spans[span + 1] -= spans[span + 1] > spans[span];\n    }}",
+            optional = value("optional"),
+            annotation = value("type_annotation"),
+            initializer = value("initializer"),
+            pattern = value("pattern"),
+        )
+        .unwrap();
+    }
+
     if layout.extra_count != 0 {
         writeln!(
             output,

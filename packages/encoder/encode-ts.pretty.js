@@ -1122,6 +1122,11 @@ function encFormalParameter(n) {
   const v_2 = _pattern.typeAnnotation == null ? NULL : encTsTypeAnnotation(_pattern.typeAnnotation);
   const v_3 = _initializer == null ? NULL : encExpr(_initializer);
   const v_4 = _pattern.optional ? 1 : 0;
+  if (v_4 && v_2 === NULL && v_3 !== NULL) {
+    const span = v_1 * 2;
+    // Undo the decoder's optional-marker extension without underflowing empty spans.
+    spans[span + 1] -= spans[span + 1] > spans[span];
+  }
   const extraId = allocExtra(3);
   const index = allocNode(59, n.start, n.end);
   setPayloadU32(index, 12, extraId);

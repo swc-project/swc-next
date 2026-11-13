@@ -3,6 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
+import { decodeTs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
@@ -20,6 +21,60 @@ function encodedParameterKinds(source, encoder, options) {
     kind === 58 ? [parameterKinds[view.getUint8(index * 16 + 12)]] : [],
   );
 }
+
+function decodeEncoded(program, source) {
+  const [header, spans, kinds, payloads, extra, strings] = encode(program);
+  const buffer = Buffer.concat([
+    header, spans, kinds, Buffer.alloc((8 - kinds.length % 8) % 8),
+    payloads, extra, strings, Buffer.alloc((4 - strings.length % 4) % 4),
+  ]);
+  // Keep encoded strings in the pool, independently of the original source.
+  buffer.writeUInt32LE(strings.length, 8);
+  buffer.writeUInt32LE(0, 12);
+  buffer.writeUInt32LE(0, 36);
+  return decodeTs(buffer, source, new TextEncoder().encode(source)).program;
+}
+
+function assertParameterSpanRoundtrip(source, options) {
+  const { program } = parseSync(source, options);
+  const expected = structuredClone(program);
+  const decoded = decodeEncoded(program, source);
+  assert.deepEqual(decoded, expected);
+
+  const repeated = decodeEncoded(decoded, source);
+  assert.deepEqual(repeated, expected);
+  assert.deepEqual(program, expected);
+}
+
+test("encoder preserves parameter spans", () => {
+  const typescript = { lang: "ts" };
+  assertParameterSpanRoundtrip("function f(a? = 0) {}", typescript);
+
+  assertParameterSpanRoundtrip("function f(a?: number = 0) {}", typescript);
+
+  assertParameterSpanRoundtrip("function f(a = 0) {}", typescript);
+
+  assertParameterSpanRoundtrip("function f(a?) {}", typescript);
+
+  assertParameterSpanRoundtrip("class C { constructor(public a? = 0) {} }", typescript);
+
+  assertParameterSpanRoundtrip("function f({a}? = {}) {}", typescript);
+
+  assertParameterSpanRoundtrip("function f([a]? = []) {}", typescript);
+});
+
+test("encoder preserves empty parameter spans", () => {
+  const { program } = parseSync("function f(a? = 0) {}", { lang: "ts" });
+  const pattern = program.body[0].params[0].left;
+  pattern.start = pattern.end = 0;
+
+  const [, spans, kinds, payloads] = encode(program);
+  const payloadView = new DataView(payloads.buffer, payloads.byteOffset, payloads.byteLength);
+  const patternId = payloadView.getUint32(kinds.indexOf(59) * 16, true);
+  const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
+  assert.equal(spanView.getUint32(patternId * 8, true), 0);
+  assert.equal(spanView.getUint32(patternId * 8 + 4, true), 0);
+});
 
 test("encoders preserve parameter contexts", () => {
   const script = { sourceType: "script" };
