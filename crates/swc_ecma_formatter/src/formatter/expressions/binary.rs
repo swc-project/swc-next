@@ -640,6 +640,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .is_some_and(|tail| tail.operand.layout == LogicalOperandLayout::Jsx);
         let parent_indents = match context.position {
+            ExpressionPosition::ForTest
+            | ExpressionPosition::ForUpdate
+            | ExpressionPosition::ForInitializer { .. } => true,
             ExpressionPosition::AssignmentRight(_)
             | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
             | ExpressionPosition::PropertyValue => {
