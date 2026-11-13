@@ -1643,10 +1643,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    #[inline]
     fn expression_layout(&self, expression: Expr) -> ExpressionLayout {
         if self.diagnostic_lines.is_empty() {
             return ExpressionLayout::Normal;
         }
+        self.expression_layout_with_diagnostics(expression)
+    }
+
+    #[inline(never)]
+    fn expression_layout_with_diagnostics(&self, expression: Expr) -> ExpressionLayout {
         let span = expression.span(self.ast);
         if self.diagnostic_line_is_sensitive(span.start)
             && self.line_breaks(span.start, span.end) == 0
