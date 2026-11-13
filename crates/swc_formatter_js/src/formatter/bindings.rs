@@ -1002,58 +1002,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context = context.with_operand_indent(rhs_layout.operand_indent());
         }
         let write_right = |writer: &mut Writer<'ast>| {
-            self.comments.claim(boundary.moved)?;
-            self.format_comment_run(
-                boundary.moved,
-                if boundary.own_line {
-                    CommentRunLayout::Source
-                } else {
-                    CommentRunLayout::FlatLeading(boundary.layout_start)
-                },
-                writer,
-            )?;
-            if boundary.own_line
-                && let Some(last) = boundary.moved.last()
-            {
-                let next = boundary
-                    .leading
-                    .first()
-                    .map_or(boundary.layout_start, |comment| comment.span.start);
-                let breaks = self
-                    .line_breaks(last.span.end, boundary.operator_span.start)
-                    .max(self.line_breaks(boundary.operator_span.end, next));
-                match breaks {
-                    0 => writer.space(),
-                    1 => writer.hard_line(),
-                    _ => {
-                        writer.hard_line();
-                        writer.hard_line();
-                    }
-                }
-            }
-            self.comments.claim(boundary.leading)?;
-            self.comments.claim(boundary.trailing)?;
-            match content {
-                Some(content) => match boundary.resolved_right_head() {
-                    Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
-                        right, content, head, context, writer,
-                    ),
-                    None => self.format_prepared_expression_with_leading_comments_and_raw_end(
-                        right,
-                        content,
-                        boundary.right_head(),
-                        context,
-                        writer,
-                    ),
-                },
-                None => self.format_expression_with_leading_comments_and_raw_end(
-                    right,
-                    boundary.right_head(),
-                    context,
-                    None,
-                    writer,
-                ),
-            }
+            self.format_assignment_right_output(right, content, &boundary, context, writer)
         };
         if !boundary.trailing.is_empty() {
             let (right, mut tail) = writer.record_with_value(write_right)?;

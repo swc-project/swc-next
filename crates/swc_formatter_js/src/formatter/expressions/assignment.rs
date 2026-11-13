@@ -1,5 +1,7 @@
 //! Assignment layouts and borrowed operator boundaries prepared before printing.
 
+use std::ops::ControlFlow;
+
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
 use super::parentheses::{
@@ -218,6 +220,7 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     head_gap: Option<&'ast PreparedHeadGaps>,
     head_destination: Option<&'ast super::parentheses::PreparedHeadDestination>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    enclose_moved_head: bool,
     value_tail_operator_prefix: bool,
     operator_tail_destination: OperatorTailDestination,
 }
@@ -248,8 +251,9 @@ impl<'ast> AssignmentBoundary<'ast> {
     fn rhs_starts_on_own_line(&self) -> bool {
         self.own_line
             && !(self.mode == ContentMode::Formatted
-                && self.moved.is_empty()
-                && matches!(self.enclosed_head_binding, Some(CommentBinding::Unbound)))
+                && (self.enclose_moved_head
+                    || self.moved.is_empty()
+                        && matches!(self.enclosed_head_binding, Some(CommentBinding::Unbound))))
     }
 
     pub(in crate::formatter) fn resolved_right_head(&self) -> Option<ResolvedExpressionHead<'ast>> {
@@ -529,50 +533,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 right_context = right_context.with_operand_indent(operand_indent);
             }
             let write_right = |writer: &mut Writer<'ast>| {
-                self.comments.claim(boundary.moved)?;
-                self.format_comment_run(
-                    boundary.moved,
-                    if boundary.own_line {
-                        CommentRunLayout::Source
-                    } else {
-                        CommentRunLayout::FlatLeading(boundary.layout_start)
-                    },
-                    writer,
-                )?;
-                if boundary.own_line
-                    && let Some(last) = boundary.moved.last()
-                {
-                    let next = boundary
-                        .leading
-                        .first()
-                        .map_or(boundary.layout_start, |comment| comment.span.start);
-                    let before = self.line_breaks(last.span.end, boundary.operator_span.start);
-                    let after = self.line_breaks(boundary.operator_span.end, next);
-                    // The displaced operator occupied a source line, not an empty line.
-                    match before.max(after) {
-                        0 => writer.space(),
-                        1 => writer.hard_line(),
-                        _ => {
-                            writer.hard_line();
-                            writer.hard_line();
-                        }
-                    }
-                }
-                self.comments.claim(boundary.leading)?;
-                self.comments.claim(boundary.trailing)?;
-                if let Some(head) = boundary.resolved_right_head() {
-                    return self.format_prepared_expression_with_resolved_head_and_raw_end(
-                        right,
-                        content,
-                        head,
-                        right_context,
-                        writer,
-                    );
-                }
-                self.format_prepared_expression_with_leading_comments_and_raw_end(
+                self.format_assignment_right_output(
                     right,
-                    content,
-                    boundary.right_head(),
+                    Some(content),
+                    &boundary,
                     right_context,
                     writer,
                 )
@@ -646,7 +610,117 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    /// The ordinary operator packet and its complete operand share one layout decision.
+    /// Emit the prepared operator packet and complete RHS in their shared frame.
+    pub(in crate::formatter) fn format_assignment_right_output(
+        &mut self,
+        right: Expr,
+        content: Option<ExpressionContent>,
+        boundary: &AssignmentBoundary<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.comments.claim(boundary.moved)?;
+        self.comments.claim(boundary.leading)?;
+        self.comments.claim(boundary.trailing)?;
+        let content = if boundary.moved.is_empty() {
+            content
+        } else {
+            match self
+                .format_moved_assignment_head_output(right, content, boundary, &context, writer)?
+            {
+                ControlFlow::Break(output) => return Ok(output),
+                ControlFlow::Continue(content) => content,
+            }
+        };
+        match content {
+            Some(content) => match boundary.resolved_right_head() {
+                Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
+                    right, content, head, context, writer,
+                ),
+                None => self.format_prepared_expression_with_leading_comments_and_raw_end(
+                    right,
+                    content,
+                    boundary.right_head(),
+                    context,
+                    writer,
+                ),
+            },
+            None => self.format_expression_with_leading_comments_and_raw_end(
+                right,
+                boundary.right_head(),
+                context,
+                None,
+                writer,
+            ),
+        }
+    }
+
+    /// Complete an enclosing JSX frame or leave the RHS after its moved head.
+    fn format_moved_assignment_head_output(
+        &mut self,
+        right: Expr,
+        content: Option<ExpressionContent>,
+        boundary: &AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ControlFlow<ExpressionOutput<'ast>, Option<ExpressionContent>>, FormatError> {
+        let prefix = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+            formatter.format_comment_run(
+                boundary.moved,
+                if boundary.own_line {
+                    CommentRunLayout::Source
+                } else {
+                    CommentRunLayout::FlatLeading(boundary.layout_start)
+                },
+                writer,
+            )?;
+            if boundary.own_line
+                && let Some(last) = boundary.moved.last()
+            {
+                let next = boundary
+                    .leading
+                    .first()
+                    .map_or(boundary.layout_start, |comment| comment.span.start);
+                let breaks = formatter
+                    .line_breaks(last.span.end, boundary.operator_span.start)
+                    .max(formatter.line_breaks(boundary.operator_span.end, next));
+                // The displaced operator line contributes a separator, not a blank line.
+                match breaks {
+                    0 => writer.space(),
+                    1 => writer.hard_line(),
+                    _ => {
+                        writer.hard_line();
+                        writer.hard_line();
+                    }
+                }
+            }
+            Ok(())
+        };
+        if boundary.enclose_moved_head && context.content_mode == ContentMode::Formatted {
+            return self
+                .format_optional_jsx_head_frame(
+                    super::parentheses::OptionalJsxHeadFrame {
+                        span: Span::new(boundary.moved[0].span.start, right.span(self.ast).end),
+                        expression: right,
+                        content,
+                        head: boundary
+                            .resolved_right_head()
+                            .unwrap_or(ResolvedExpressionHead {
+                                head: boundary.right_head(),
+                                binding: CommentBinding::Unbound,
+                            }),
+                    },
+                    *context,
+                    None,
+                    writer,
+                    prefix,
+                )
+                .map(|tail| ControlFlow::Break(ExpressionOutput::closed(tail)));
+        }
+        prefix(self, writer)?;
+        Ok(ControlFlow::Continue(content))
+    }
+
     fn assignment_target_is_module_exports(&self, target: AssignmentTarget) -> bool {
         let ast = self.ast;
         let AssignmentTargetData::SimpleAssignmentTarget(target) =
@@ -1240,6 +1314,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head_gap: None,
             head_destination: None,
             head_scope: context.head_scope,
+            enclose_moved_head: false,
             value_tail_operator_prefix: false,
             operator_tail_destination: context.operator_tail_destination,
         };
@@ -1361,6 +1436,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let (operator_line, leading) = after.split_at(line_count);
+        let right_mode = if promoted && self.content_mode(before) == ContentMode::Verbatim {
+            ContentMode::Verbatim
+        } else {
+            self.content_mode(after)
+        };
+        let moved_head_binding = (promoted
+            && self.expression_head_has_optional_jsx_frame(
+                true,
+                || rhs.content.data,
+                CommentBinding::Unbound,
+                head_context.with_content_mode(right_mode),
+            )
+            && !self.diagnostic_head_has_frame(rhs.content, head_context))
+        .then(|| {
+            self.enclosed_expression_head_binding(content, after)
+                .unwrap_or_else(|| {
+                    content
+                        .parentheses
+                        .map_or(CommentBinding::Unbound, |removed| removed.head.binding)
+                })
+        });
         let rhs_comments = &source_comments[first + count..];
         let source_clear_right = rhs_comments
             .first()
@@ -1380,6 +1476,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let tail_preserves_packet_order =
             !promoted || head_mode == ContentMode::Formatted && operator_line.len() == 1;
         let ordinary_tail = !tail.is_empty()
+            && !matches!(moved_head_binding, Some(CommentBinding::Unbound))
             && tail_preserves_packet_order
             && leading.is_empty()
             && source_clear_right
@@ -1423,11 +1520,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // A delimiter before the head owns its inner source line breaks.
             boundary.layout_start = opening;
         }
-        boundary.mode = if promoted && self.content_mode(before) == ContentMode::Verbatim {
-            ContentMode::Verbatim
-        } else {
-            self.content_mode(after)
-        };
+        boundary.mode = right_mode;
         boundary.own_line |= promoted
             && before.iter().any(|comment| {
                 comment.kind == CommentKind::Line
@@ -1442,8 +1535,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         removed.source.outer.end
                     })
         {
-            boundary.enclosed_head_binding =
-                self.enclosed_expression_head_binding(content, leading);
+            boundary.enclosed_head_binding = moved_head_binding
+                .or_else(|| self.enclosed_expression_head_binding(content, leading));
         }
         if !leading.is_empty()
             && self.has_type_casts
@@ -1554,6 +1647,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Own-line comments are emitted directly, unlike deferred line suffixes.
             boundary.before_operator = LineConstraint::NewLine(1);
         }
+        boundary.enclose_moved_head = !boundary.moved.is_empty()
+            && boundary.operator_line.is_empty()
+            && boundary.trailing.is_empty()
+            && self.expression_head_has_optional_jsx_frame(
+                true,
+                || rhs.content.data,
+                boundary
+                    .enclosed_head_binding
+                    .unwrap_or(CommentBinding::Unbound),
+                head_context.with_content_mode(boundary.mode),
+            );
         let heads = AssignmentPreparedHeads {
             leading: leading_packet,
             released,

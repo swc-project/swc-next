@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view
+/* note */
+ = <Box>{child}</Box>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  /* note */
+  <Box>{child}</Box>
+);
