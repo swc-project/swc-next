@@ -15,6 +15,10 @@
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
+    },
+    "./transform": {
+      "types": "./transform.d.ts",
+      "import": "./transform.js"
     }
   },
   "files": [
@@ -22,7 +26,9 @@
     "index.js",
     "decode-js.js",
     "decode-ts.js",
-    "README.md"
+    "README.md",
+    "transform.js",
+    "transform.d.ts"
   ],
   "publishConfig": {
     "access": "public",

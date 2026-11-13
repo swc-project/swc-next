@@ -6,6 +6,8 @@ import type {
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
+  TransformApiOptions,
+  TransformOutput,
 } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
@@ -14,6 +16,15 @@ export type {
   ParserConfig,
   GeneratorConfig,
   GenerateOutput,
+  Assumptions,
+  JsxConfig,
+  JsxRuntime,
+  ProposalConfig,
+  ReactRefreshConfig,
+  TransformApiOptions,
+  TransformerConfig,
+  TransformOutput,
+  TypeScriptConfig,
 } from "./binding.js";
 
 export type GenerateApiOptions = GeneratorConfig;
@@ -60,3 +71,9 @@ export declare function generateSync(
   program: Program,
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;
+
+/** Transform source synchronously. Syntax errors are returned in diagnostics. */
+export declare function transformSync(
+  source: string,
+  options?: TransformApiOptions | undefined | null,
+): TransformOutput;

@@ -15,7 +15,7 @@ Install the combined package:
 npm install @swc-next/core
 ```
 
-It provides `parseSync`, `generateSync`, and `walk`:
+It provides `parseSync`, `transformSync`, `generateSync`, and `walk`:
 
 ```js
 import { parseSync, generateSync } from "@swc-next/core";
@@ -55,6 +55,7 @@ Install these separately when you only need part of the pipeline:
 | --- | --- | --- |
 | `@swc-next/parser` | Parse source in Node.js | [Parser API](/api/javascript/parser) |
 | `@swc-next/generator` | Generate source in Node.js | [Generator API](/api/javascript/generator) |
+| `@swc-next/transformer` | Transform JavaScript, TypeScript, and JSX source in Node.js | [Transformer API](/api/javascript/transformer) |
 | `@swc-next/walker` | Traverse and edit ASTs in either runtime | [Walk API](/api/javascript/walk) |
 | `@swc-next/types` | Shared TypeScript AST declarations | [AST types](/api/javascript/types) |
 

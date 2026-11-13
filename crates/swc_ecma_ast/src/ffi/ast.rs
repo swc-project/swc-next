@@ -88,27 +88,32 @@ pub fn buffer_size(tree: &AstCtx<'_>, diagnostics: &[Diagnostic]) -> usize {
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra_bytes().len())
         + tree.comments().len() * COMMENT_SIZE
-        + diagnostics
-            .iter()
-            .map(|diagnostic| {
-                let mut size = 0;
+        + diagnostics_buffer_size(diagnostics)
+}
 
-                size += size_of::<u8>(); // severity
+/// Return the size of packed diagnostic records in the JavaScript transfer format.
+pub fn diagnostics_buffer_size(diagnostics: &[Diagnostic]) -> usize {
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let mut size = 0;
+
+            size += size_of::<u8>(); // severity
+            size += SPAN_SIZE; // start, end
+            size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
+            size += size_of::<u8>(); // has_help
+            if let Some(help) = &diagnostic.help {
+                size += size_of::<u32>() + help.len(); // help_len, help
+            }
+            size += size_of::<u32>(); // label_count
+            for label in &diagnostic.labels {
                 size += SPAN_SIZE; // start, end
-                size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
-                size += size_of::<u8>(); // has_help
-                if let Some(help) = &diagnostic.help {
-                    size += size_of::<u32>() + help.len(); // help_len, help
-                }
-                size += size_of::<u32>(); // label_count
-                for label in &diagnostic.labels {
-                    size += SPAN_SIZE; // start, end
-                    size += size_of::<u32>() + label.message.len(); // message_len, message
-                }
+                size += size_of::<u32>() + label.message.len(); // message_len, message
+            }
 
-                size
-            })
-            .sum::<usize>()
+            size
+        })
+        .sum::<usize>()
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
@@ -261,29 +266,59 @@ pub fn serialize_into(
     pos += comments_len;
 
     // =================== Diagnostics ====================
-    for diagnostic in diagnostics {
-        write(buf, &mut pos, &[diagnostic.severity as u8]);
-        let start = cache.convert(diagnostic.span.start);
-        let end = cache.convert(diagnostic.span.end);
-        write_span(buf, &mut pos, start, end);
-        write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
-        write(buf, &mut pos, &[u8::from(diagnostic.help.is_some())]);
-        if let Some(help) = &diagnostic.help {
-            write_bytes_with_length(buf, &mut pos, help.as_bytes());
-        }
-        let label_count =
-            u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
-        write(buf, &mut pos, &label_count.to_le_bytes());
-        for label in &diagnostic.labels {
-            let start = cache.convert(label.span.start);
-            let end = cache.convert(label.span.end);
-            write_span(buf, &mut pos, start, end);
-            write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
-        }
-    }
+    write_diagnostics(diagnostics, buf, &mut pos, &mut cache);
 
     debug_assert_eq!(pos, required);
     required
+}
+
+/// Serialize packed diagnostics with UTF-16 spans into a caller-owned buffer.
+/// Returns the required size without writing when the buffer is too small.
+/// `source_utf16_len` must match the source's UTF-16 length.
+pub fn serialize_diagnostics(
+    source: &str,
+    diagnostics: &[Diagnostic],
+    buf: &mut [u8],
+    source_utf16_len: usize,
+) -> usize {
+    let required = diagnostics_buffer_size(diagnostics);
+    if buf.len() < required || diagnostics.is_empty() {
+        return required;
+    }
+    let (positions, _) = build_pos_map(source, source_utf16_len);
+    let mut cache = PositionCache::new(&positions, source.len() as u32);
+    let mut pos = 0;
+    write_diagnostics(diagnostics, buf, &mut pos, &mut cache);
+    debug_assert_eq!(pos, required);
+    required
+}
+
+fn write_diagnostics(
+    diagnostics: &[Diagnostic],
+    buf: &mut [u8],
+    pos: &mut usize,
+    cache: &mut PositionCache<'_>,
+) {
+    for diagnostic in diagnostics {
+        write(buf, pos, &[diagnostic.severity as u8]);
+        let start = cache.convert(diagnostic.span.start);
+        let end = cache.convert(diagnostic.span.end);
+        write_span(buf, pos, start, end);
+        write_bytes_with_length(buf, pos, diagnostic.message.as_bytes());
+        write(buf, pos, &[u8::from(diagnostic.help.is_some())]);
+        if let Some(help) = &diagnostic.help {
+            write_bytes_with_length(buf, pos, help.as_bytes());
+        }
+        let label_count =
+            u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
+        write(buf, pos, &label_count.to_le_bytes());
+        for label in &diagnostic.labels {
+            let start = cache.convert(label.span.start);
+            let end = cache.convert(label.span.end);
+            write_span(buf, pos, start, end);
+            write_bytes_with_length(buf, pos, label.message.as_bytes());
+        }
+    }
 }
 
 /// Error returned when a JavaScript-encoded AST buffer is malformed.
@@ -924,6 +959,12 @@ mod tests {
         let required = buffer_size(&ast, &diagnostics);
         assert_eq!(required, diagnostics_offset + 40);
 
+        let mut packed = vec![0; super::diagnostics_buffer_size(&diagnostics)];
+        assert_eq!(
+            super::serialize_diagnostics("éx", &diagnostics, &mut packed, 2),
+            40
+        );
+
         let mut too_small = vec![0xaa; required - 1];
         assert_eq!(
             serialize_into(&ast, &diagnostics, &mut too_small, 2),
@@ -933,6 +974,7 @@ mod tests {
 
         let mut buffer = vec![0; required];
         assert_eq!(serialize_into(&ast, &diagnostics, &mut buffer, 2), required);
+        assert_eq!(&buffer[diagnostics_offset..], &packed);
         assert_eq!(u32_at(&buffer, 24), 1); // diagnostic count
         assert_eq!(u32_at(&buffer, 36), 0); // first non-ASCII byte
         assert_eq!(u32_at(&buffer, 44), 2); // program end in UTF-16 units

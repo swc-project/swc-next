@@ -1,6 +1,8 @@
+import { createTransformSync } from "@swc-next/decoder/transform";
 import {
   parseSync as __parseSync,
   generateSync as __generateSync,
+  transformSync as __transformSync,
 } from "./binding.js";
 import {
   decode,
@@ -44,3 +46,5 @@ export function generateSync(program, options) {
   const code = __generateSync(...encode(program), generatorConfig);
   return { code };
 }
+
+export const transformSync = createTransformSync(__transformSync);
