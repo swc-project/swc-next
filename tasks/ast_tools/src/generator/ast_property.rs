@@ -282,10 +282,15 @@ fn generate_extra_data_offset(
     member: &syn::Ident,
     unit_count: usize,
 ) -> TokenStream {
+    let bounds_check = if unit_count == 1 {
+        quote!(offset < ast.extra_data.len())
+    } else {
+        quote!(offset + #unit_count <= ast.extra_data.len())
+    };
     quote! {
         let start = unsafe { ast.nodes.data_unchecked(self.0).#member.extra_data_start.index() };
         let offset = unsafe { start.unchecked_add(#field_offset) };
-        debug_assert!(offset + #unit_count <= ast.extra_data.len());
+        debug_assert!(#bounds_check);
         let offset = ExtraDataId::from_usize_unchecked(offset);
     }
 }
