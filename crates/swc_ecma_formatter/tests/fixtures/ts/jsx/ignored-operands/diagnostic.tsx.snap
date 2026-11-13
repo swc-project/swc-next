@@ -19,7 +19,7 @@ const element = (
     {
       ...{} /*
  // @ts-ignore */ /* prettier-ignore */}
-    invalidProp="invalid"/>);
+    invalidProp="invalid" />);
 
 ---------- Options ----------
 {"printWidth":20}
@@ -37,4 +37,4 @@ const element = (
     {
       ...{} /*
  // @ts-ignore */ /* prettier-ignore */}
-    invalidProp="invalid"/>);
+    invalidProp="invalid" />);
