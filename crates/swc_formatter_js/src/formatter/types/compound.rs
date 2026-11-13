@@ -18,7 +18,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{
     FormatError,
-    document::{Fragment, Writer},
+    document::{BodyOpening, Fragment, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -138,6 +138,8 @@ enum IntersectionPrefix<'ast> {
         member_start: u32,
         leading_own_line: bool,
         continuation: IntersectionContinuation,
+        // This inline prefix leaves the formatted left owner's Line queued.
+        body_opening: BodyOpening,
     },
 }
 
@@ -578,8 +580,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if types.len() == 1 {
             let single =
                 self.prepare_single_compound_head(node, current, leading, first_span, kind)?;
-            let content = self.format_single_compound_head(single, context, writer)?;
-            return self.format_prepared_type_content_body(content, context, layout, writer);
+            return self.format_type_body_after_head(
+                context,
+                layout,
+                writer,
+                |formatter, writer| formatter.format_single_compound_head(single, context, writer),
+            );
         }
         if matches!(kind, CompoundTypeKind::Union) {
             let union =
@@ -1020,6 +1026,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
+        let body_opening = match &prefix {
+            IntersectionPrefix::Member { body_opening, .. } => *body_opening,
+            _ => BodyOpening::Plain,
+        };
         let receives_head_line = match &prefix {
             IntersectionPrefix::Member {
                 continuation,
@@ -1097,6 +1107,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     member_start,
                     leading_own_line,
                     continuation,
+                    ..
                 } => {
                     if leading_own_line {
                         writer.line();
@@ -1115,6 +1126,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let context = TypeContext::IntersectionMember {
                 line_continuation: receives_head_line,
+                body_opening,
             };
             let output = match node {
                 IntersectionMember::Type(node) => {
@@ -1192,6 +1204,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 member_start: *member_start,
                 leading_own_line: true,
                 continuation,
+                body_opening: BodyOpening::Plain,
             });
         }
         let tail_has_line = tail.as_ref().is_some_and(|(tail, _)| {
@@ -1238,11 +1251,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.space();
         }
         writer.text("&");
+        // A following leading run or line owns the handoff instead of the body.
+        let body_opening = if matches!(continuation, IntersectionContinuation::Inline { .. })
+            && !leading_own_line
+            && after.is_empty()
+            && before
+                .comments()
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            BodyOpening::AfterOperatorLine
+        } else {
+            BodyOpening::Plain
+        };
         Ok(IntersectionPrefix::Member {
             boundary: after,
             member_start,
             leading_own_line,
             continuation,
+            body_opening,
         })
     }
 

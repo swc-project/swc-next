@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Subject = Left // outside
+& { firstLongProperty: number; secondLongProperty: string };
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type Subject = Left & // outside
+{
+  firstLongProperty: number;
+  secondLongProperty: string;
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Subject = Left & { firstLongProperty: number; secondLongProperty: string }; // outside
