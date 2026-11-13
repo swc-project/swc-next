@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do { foo(); } // marker
+while (aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit + anotherCondition);
+---------- Options ----------
+{}
+---------- Output ----------
+do {
+  foo();
+} while ( // marker
+  aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
+  anotherCondition
+);

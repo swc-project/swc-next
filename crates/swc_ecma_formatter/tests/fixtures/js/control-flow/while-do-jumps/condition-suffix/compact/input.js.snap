@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do /* first */
+{} // tail
+while (ready);
+---------- Options ----------
+{}
+---------- Output ----------
+do /* first */ {} while (ready); // tail
+
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+do /* first */
+{} while ( // tail
+  ready
+);

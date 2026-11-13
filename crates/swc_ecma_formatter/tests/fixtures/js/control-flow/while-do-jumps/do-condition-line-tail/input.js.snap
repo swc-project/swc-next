@@ -5,42 +5,37 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 do { foo(); } // marker
 while(a);
 ---------- Options ----------
-{"printWidth":80}
+{}
 ---------- Output ----------
 do {
   foo();
 } while (a); // marker
 
 ---------- Options ----------
-{"printWidth":20}
+{"printWidth":1}
 ---------- Output ----------
 do {
   foo();
-} while (a); // marker
+} while ( // marker
+  a
+);
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"semi":false}
 ---------- Output ----------
 do {
   foo()
 } while (a) // marker
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
----------- Output ----------
-do {
-  foo()
-} while (a) // marker
-
----------- Options ----------
-{"printWidth":20,"useTabs":true}
+{"useTabs":true}
 ---------- Output ----------
 do {
 	foo();
 } while (a); // marker
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"endOfLine":"crlf"}
 ---------- Output ----------
 do {
   foo();

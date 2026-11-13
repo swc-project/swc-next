@@ -84,7 +84,20 @@ struct ControlledBodyTail<'ast> {
     binding: CommentBinding,
 }
 
-impl ControlledBody<'_> {
+impl<'ast> ControlledBody<'ast> {
+    fn condition_suffix(&self) -> Option<ConditionLineSuffix<'ast>> {
+        if !matches!(self.shape, ControlledBodyShape::Block)
+            || !matches!(self.end, ControlledBodyEnd::LoopCondition(_))
+        {
+            return None;
+        }
+        let tail = self.annotation_tail.as_ref()?;
+        tail.binding
+            .allows_relocation(None)
+            .then(|| ConditionLineSuffix::new(tail.tail.comments))
+            .flatten()
+    }
+
     fn with_empty_block(mut self, empty: EmptyBlock) -> Self {
         self.empty_block = empty;
         self
@@ -122,6 +135,22 @@ enum ConditionHeader<'ast> {
         relocate_before_opening: bool,
     },
     Source(Span),
+}
+
+#[derive(Clone, Copy)]
+struct ConditionLineSuffix<'ast> {
+    comments: &'ast [Comment],
+}
+
+impl<'ast> ConditionLineSuffix<'ast> {
+    fn new(comments: &'ast [Comment]) -> Option<Self> {
+        let (last, prefix) = comments.split_last()?;
+        (last.kind == CommentKind::Line
+            && prefix
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block))
+        .then_some(Self { comments })
+    }
 }
 
 struct Condition<'ast> {
@@ -354,6 +383,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         condition: Condition<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_condition_with_suffix(condition, None, writer)
+    }
+
+    fn format_condition_line_suffix(
+        &mut self,
+        suffix: ConditionLineSuffix<'ast>,
+        opening: FlatSeparator,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(suffix.comments)?;
+        let Some((line, prefix)) = suffix.comments.split_last() else {
+            return Ok(());
+        };
+        if !prefix.is_empty() {
+            if matches!(opening, FlatSeparator::Space) {
+                writer.space();
+            }
+            self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
+        }
+        writer.line_suffix(|writer| {
+            writer.space();
+            writer.text(self.source(line.span).trim_end());
+            Ok(())
+        })
+    }
+
+    fn format_condition_with_suffix(
+        &mut self,
+        condition: Condition<'ast>,
+        suffix: Option<ConditionLineSuffix<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let Condition {
             header,
             expression,
@@ -409,7 +470,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.line_constraint(opening + 1, first)
             }
         };
-        writer.group(false, |writer| {
+        if let Some(suffix) = suffix {
+            self.format_condition_line_suffix(suffix, FlatSeparator::Empty, writer)?;
+        }
+        writer.group(suffix.is_some(), |writer| {
             let mut write_contents = |writer: &mut Writer<'ast>| {
                 if !inline {
                     opening_constraint.write(writer, FlatSeparator::Empty, Writer::soft_line);
@@ -657,7 +721,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             punctuation,
             source_candidate,
             end,
-            annotation_tail,
+            ref annotation_tail,
         } = body;
         let trailing_limit = end.limit();
         let first = leading
@@ -697,7 +761,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inline_head = empty
             && mode == ContentMode::Formatted
             && !matches!(constraint, LineConstraint::NewLine(_));
-        let write_body = |writer: &mut Writer<'ast>| {
+        let mut write_body = |writer: &mut Writer<'ast>| {
             let flat = if empty && leading.is_empty() {
                 FlatSeparator::Empty
             } else {
@@ -776,9 +840,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .any(|comment| comment.kind == CommentKind::Line)
                 });
                 if line_tail {
-                    // The keyword owns the packet after this body's indent,
-                    // while its pending line suffix still breaks the body group.
-                    writer.break_parent();
+                    if body.condition_suffix().is_none() {
+                        writer.break_parent();
+                    }
                 } else {
                     printed = self.flush_statement_tail(printed, writer)?.into();
                 }
