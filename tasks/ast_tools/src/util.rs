@@ -189,6 +189,25 @@ pub fn generate_u64_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
     }
 }
 
+/// Number of four-byte storage units required by an out-of-line field.
+pub fn extra_data_unit_count(field_ty: &AstType, schema: &Schema) -> usize {
+    match field_ty {
+        AstType::SubRange(_) => 2,
+        AstType::Option(option) => {
+            extra_data_unit_count(&schema.types[option.inner_type_id], schema)
+        }
+        AstType::Primitive(primitive)
+            if matches!(
+                primitive.name,
+                "AstUtf8" | "AstWtf8" | "Span" | "u64" | "f64"
+            ) =>
+        {
+            2
+        }
+        _ => 1,
+    }
+}
+
 /// Generate a typed union value for a field stored outside the node payload.
 pub fn generate_field_to_extra_data(
     field_ty: &AstType,
@@ -232,16 +251,10 @@ pub fn generate_field_to_extra_data(
             (member, value)
         }
     };
-    if matches!(field_ty, AstType::SubRange(_) | AstType::Primitive(_))
-        || matches!(field_ty, AstType::Option(option) if schema.types[option.inner_type_id].name() == "AstUtf8")
-    {
+    if extra_data_unit_count(field_ty, schema) == 2 {
         quote!(ExtraData { #member: #value })
     } else {
-        quote! {{
-            let mut data = ExtraData::ZERO;
-            data.#member = #value;
-            data
-        }}
+        quote!(ExtraDataUnit { #member: #value })
     }
 }
 

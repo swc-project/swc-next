@@ -11,8 +11,9 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstStructField, AstType, Layout, Schema},
     util::{
-        generate_extra_data_to_field, generate_field_to_extra_data, generate_field_to_u32,
-        generate_field_to_u64, generate_u32_to_field, generate_u64_to_field, safe_ident,
+        extra_data_unit_count, generate_extra_data_to_field, generate_field_to_extra_data,
+        generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
+        safe_ident,
     },
 };
 
@@ -245,13 +246,15 @@ fn generate_extra_data_property_accessors(
         let field = &ast.fields[field_index];
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
-        let read_expr = generate_extra_data_to_field(
-            &schema.types[field.type_id],
-            quote!(ast.extra_data.get_unchecked(offset)),
-            schema,
-        );
+        let unit_count = extra_data_unit_count(&schema.types[field.type_id], schema);
+        let data = if unit_count == 2 {
+            quote!(ast.read_extra_data(offset))
+        } else {
+            quote!(ast.extra_data.get_unchecked(offset))
+        };
+        let read_expr = generate_extra_data_to_field(&schema.types[field.type_id], data, schema);
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        let offset_expr = generate_extra_data_offset(offset, &member);
+        let offset_expr = generate_extra_data_offset(offset, &member, unit_count);
 
         field_getters.extend(quote! {
             #[inline]
@@ -274,11 +277,15 @@ fn generate_extra_data_property_accessors(
     }
 }
 
-fn generate_extra_data_offset(field_offset: usize, member: &syn::Ident) -> TokenStream {
+fn generate_extra_data_offset(
+    field_offset: usize,
+    member: &syn::Ident,
+    unit_count: usize,
+) -> TokenStream {
     quote! {
         let start = unsafe { ast.nodes.data_unchecked(self.0).#member.extra_data_start.index() };
         let offset = unsafe { start.unchecked_add(#field_offset) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + #unit_count <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
     }
 }
@@ -295,33 +302,52 @@ fn generate_extra_data_setter(
         generate_field_to_extra_data(&schema.types[field.type_id], quote!(#field_name), schema);
     let setter_name = format_ident!("set_{}", field_name);
     let invalidations = generate_invalidations(field);
-    let extra_offset = generate_extra_data_offset(offset, member);
+    let unit_count = extra_data_unit_count(&schema.types[field.type_id], schema);
+    let extra_offset = generate_extra_data_offset(offset, member, unit_count);
+    let read = if unit_count == 2 {
+        quote!(ast.read_extra_data(offset))
+    } else {
+        quote!(*ast.extra_data.get_unchecked(offset))
+    };
+    let write = |value: TokenStream| {
+        if unit_count == 2 {
+            quote!(ast.write_extra_data(offset, #value);)
+        } else {
+            quote!(*ast.extra_data.get_unchecked_mut(offset) = #value;)
+        }
+    };
     if invalidations.is_empty() {
+        let write = write(value);
         return quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
                 #extra_offset
-                unsafe {
-                    *ast.extra_data.get_unchecked_mut(offset) =
-                        #value;
-                };
+                unsafe { #write }
             }
         };
     }
-
+    let write = write(quote!(field_value));
+    let unchanged = if unit_count == 2 {
+        quote!(
+            unsafe { previous.units }.map(ExtraDataUnit::raw)
+                == unsafe { field_value.units }.map(ExtraDataUnit::raw)
+        )
+    } else {
+        quote!(previous.raw() == field_value.raw())
+    };
     quote! {
         #[inline]
         pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
             let field_value = #value;
             #extra_offset
             let previous = unsafe {
-                *ast.extra_data.get_unchecked(offset)
+                #read
             };
-            if previous.raw() == field_value.raw() {
+            if #unchanged {
                 return;
             }
             unsafe {
-                *ast.extra_data.get_unchecked_mut(offset) = field_value;
+                #write
             };
             #invalidations
         }

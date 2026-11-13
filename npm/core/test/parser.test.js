@@ -29,7 +29,7 @@ test("decoder reads little-endian words from unaligned buffers", () => {
   const buffer = new Uint8Array(backing, 1, 80);
   const view = new DataView(backing, 1, 80);
   view.setUint32(0, 1, true); // node count
-  view.setUint32(4, 1, true); // extra-data count
+  view.setUint32(4, 2, true); // extra-data unit count
   view.setUint32(64, 0xffffffff, true); // no hashbang
 
   const result = decode(buffer, "", new Uint8Array());

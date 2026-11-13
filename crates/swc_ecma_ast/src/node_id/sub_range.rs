@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Ast, AstNode, ExtraData, ExtraDataId, NodeId};
+use crate::{Ast, AstNode, ExtraDataId, ExtraDataUnit, NodeId};
 
 use super::sealed::SubRangeNode as SealedSubRangeNode;
 
@@ -167,7 +167,7 @@ impl<T: SubRangeNode> SubRange<T> {
         // SAFETY: A typed sub-range index identifies a slot assigned to `T`.
         unsafe {
             *ast.extra_data.get_unchecked_mut(at.inner) =
-                ExtraData::from_raw_node_id(new.into_raw_node_id());
+                ExtraDataUnit::from_raw_node_id(new.into_raw_node_id());
         };
     }
 

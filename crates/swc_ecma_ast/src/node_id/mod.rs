@@ -2,8 +2,8 @@ mod extra_data;
 mod node;
 mod sub_range;
 
-pub(crate) use extra_data::ExtraData;
 pub use extra_data::ExtraDataId;
+pub(crate) use extra_data::{ExtraData, ExtraDataUnit};
 pub use node::*;
 pub use sub_range::*;
 

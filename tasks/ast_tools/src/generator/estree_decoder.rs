@@ -177,7 +177,7 @@ fn write_node_case(
             FieldLocation::Payload { offset, .. } => {
                 (format!("payload + {offset}"), offset % 4 == 0)
             }
-            FieldLocation::Extra { index } => (format!("extra + (extraId + {index}) * 8"), true),
+            FieldLocation::Extra { index } => (format!("extra + (extraId + {index}) * 4"), true),
         };
         if skip {
             continue;
@@ -977,7 +977,7 @@ const DECODE_PREAMBLE: &str = r#"
   const kinds = spans + nodeCount * 8;
   const payloads = (kinds + nodeCount + 7) & ~7;
   const extra = payloads + nodeCount * 16;
-  const strings = extra + extraCount * 8;
+  const strings = extra + extraCount * 4;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
   const str = (start, end) => decodePool(bytes.subarray(
@@ -995,7 +995,7 @@ const DECODE_PREAMBLE: &str = r#"
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
     for (let i = start; i < end; i++) {
-      const index = _i32[(extra >> 2) + i * 2];
+      const index = _i32[(extra >> 2) + i];
       result[i - start] = holes && index === NULL ? null : node(index);
     }
     return result;
@@ -1004,10 +1004,10 @@ const DECODE_PREAMBLE: &str = r#"
     const result = new Array(firstEnd - firstStart + secondEnd - secondStart);
     let out = 0;
     for (let i = firstStart; i < firstEnd; i++) {
-      result[out++] = node(_i32[(extra >> 2) + i * 2]);
+      result[out++] = node(_i32[(extra >> 2) + i]);
     }
     for (let i = secondStart; i < secondEnd; i++) {
-      result[out++] = node(_i32[(extra >> 2) + i * 2]);
+      result[out++] = node(_i32[(extra >> 2) + i]);
     }
     return result;
   };

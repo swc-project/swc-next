@@ -21,7 +21,7 @@ mod generated {
 }
 
 use generated::ast_payload::NodePayload;
-use node_id::{ExtraData, SubRangeNode};
+use node_id::{ExtraData, ExtraDataUnit, SubRangeNode};
 use swc_next_allocator::{
     Allocator,
     hash_map::HashMap as ArenaHashMap,
@@ -84,7 +84,7 @@ pub struct Ast<'a> {
     pub(crate) nodes: NodeData<'a>,
 
     /// Flattening AST fields.
-    extra_data: ArenaIndexVec<'a, ExtraDataId, ExtraData>,
+    extra_data: ArenaIndexVec<'a, ExtraDataId, ExtraDataUnit>,
 
     /// Source-backed and decoded AST strings.
     strings: StringPool<'a>,
@@ -220,17 +220,10 @@ impl<'a> Ast<'a> {
     ) -> SubRange<N> {
         let start = self.next_extra_data_id();
         for node in iter {
-            let data = ExtraData::from_raw_node_id(node.into_raw_node_id());
+            let data = ExtraDataUnit::from_raw_node_id(node.into_raw_node_id());
             self.extra_data.push(data);
         }
         SubRange::new(start, self.next_extra_data_id())
-    }
-
-    /// Append pre-encoded extra data and return its starting index.
-    fn add_extra_data_slice(&mut self, data: &[ExtraData]) -> ExtraDataId {
-        let start = self.next_extra_data_id();
-        self.extra_data.extend_from_slice_copy(data);
-        start
     }
 
     #[inline]
@@ -357,7 +350,7 @@ impl<'a> Ast<'a> {
         self.nodes.len()
     }
 
-    /// Returns the number of entries in the out-of-line field table.
+    /// Returns the number of four-byte units in the out-of-line field table.
     #[inline]
     pub fn extra_data_count(&self) -> usize {
         self.extra_data.len()
@@ -461,9 +454,47 @@ impl<'a> Ast<'a> {
 
 #[doc(hidden)]
 impl Ast<'_> {
+    /// Reads a two-unit value whose schema determines its active union field.
+    ///
+    /// # Safety
+    /// `offset` must identify two initialized units with the expected field representation.
     #[inline]
-    fn add_extra(&mut self, value: ExtraData) -> ExtraDataId {
-        self.extra_data.push(value)
+    unsafe fn read_extra_data(&self, offset: ExtraDataId) -> ExtraData {
+        debug_assert!(offset.index() + 2 <= self.extra_data.len());
+        // SAFETY: Both types have four-byte alignment; the caller guarantees two units.
+        unsafe {
+            self.extra_data
+                .as_raw_slice()
+                .as_ptr()
+                .add(offset.index())
+                .cast::<ExtraData>()
+                .read()
+        }
+    }
+
+    /// Writes a two-unit value into an existing schema field.
+    ///
+    /// # Safety
+    /// `offset` must identify two initialized units assigned to this field.
+    #[inline]
+    unsafe fn write_extra_data(&mut self, offset: ExtraDataId, value: ExtraData) {
+        debug_assert!(offset.index() + 2 <= self.extra_data.len());
+        // SAFETY: Both types have four-byte alignment; the caller guarantees two units.
+        unsafe {
+            self.extra_data
+                .as_mut_ptr()
+                .add(offset.index())
+                .cast::<ExtraData>()
+                .write(value)
+        }
+    }
+
+    /// Append pre-encoded extra data and return its starting index.
+    #[inline]
+    fn add_extra_data_slice(&mut self, data: &[ExtraDataUnit]) -> ExtraDataId {
+        let start = self.next_extra_data_id();
+        self.extra_data.extend_from_slice_copy(data);
+        start
     }
 
     #[inline]

@@ -540,6 +540,13 @@ impl<'a, T> RawVec<'a, T> {
         self.reserve_internal_or_panic(used_cap, needed_extra_cap, strategy)
     }
 
+    /// Grows after the caller has established that additional capacity is needed.
+    #[cold]
+    #[inline(never)]
+    pub(super) fn grow_amortized(&mut self, used_cap: u32, additional: usize) {
+        self.reserve_internal_or_panic(used_cap, additional, Amortized);
+    }
+
     // The caller has already checked that the buffer is full.
     #[cold]
     #[inline(never)]
