@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (/* eslint-disable-line no-undef */; test; update) body();
+---------- Options ----------
+{}
+---------- Output ----------
+for (/* eslint-disable-line no-undef */; test; update) body();
