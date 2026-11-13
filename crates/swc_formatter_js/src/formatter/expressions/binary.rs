@@ -878,6 +878,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let first = entry.binary;
+        let jsx = matches!(first.operator, BinaryOperatorKind::Logical(_))
+            && entry.left_mode() == ContentMode::Formatted
+            && owner.scope == OperandScope::Expression
+            && matches!(
+                self.ast.expr_data(owner.expression),
+                ExprData::JsxElement(_)
+                    | ExprData::JsxFragment(_)
+                    | ExprData::ParenthesizedExpression(_)
+            )
+            && matches!(
+                owner.prepare(self).content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            )
+            && !self.diagnostic_range_is_sensitive(owner.expression.span(self.ast))
+            && self
+                .comments
+                .in_range(Span::new(
+                    owner.expression.span(self.ast).end,
+                    first.right.span(self.ast).start,
+                ))
+                .is_empty();
         writer.group(false, |writer| {
             let mut context = ExpressionContext::at(ExpressionPosition::BinaryOperand {
                 operator: first.operator,
@@ -890,6 +911,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.protected_head_start = head.protected_head_start;
             context.head_scope = head.head_scope;
             context.body_opening = head.opening;
+            if jsx {
+                if context
+                    .expression_start
+                    .needs_statement_guard(self.options.semicolons)
+                {
+                    context.expression_start.write_statement_guard(writer);
+                    context.expression_start = ExpressionStart::StatementGuarded;
+                }
+                writer.if_break("(");
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    let output = self.format_binary_owned_operand(owner, context, writer)?;
+                    self.format_expression_tail(output.pending, writer)
+                })?;
+                writer.soft_line();
+                writer.if_break(")");
+                return Ok(None);
+            }
             self.format_binary_owned_operand(owner, context, writer)
                 .map(|output| output.pending)
         })
