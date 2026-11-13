@@ -2,10 +2,12 @@
 
 use super::{CompoundBlock, CompoundGap, Formatter};
 use crate::formatter::bindings::{BindingGroup, PreparedAnnotatedBinding};
-use crate::formatter::comments::CommentRunLayout;
+use crate::formatter::comments::{CommentCursor, CommentRunLayout};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::statements::{EmptyBlock, StatementBoundary};
-use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
+};
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
     BindingPattern, CatchClause, Comment, CommentKind, GetSpan, Span, TryStatement,
@@ -84,6 +86,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<StatementBoundary, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
+        if let Some(handler) = node.handler(ast)
+            && let Some(parameter) = handler.param(ast)
+        {
+            let head = Span::new(handler.span(ast).start + 5, parameter.span(ast).start);
+            if CommentCursor::new(ast.comments())
+                .in_range(head)
+                .iter()
+                .any(|&comment| comment_directive(ast, comment).is_some())
+            {
+                self.format_verbatim(span, writer)?;
+                return Ok(StatementBoundary::SourceEnd {
+                    end: span.end,
+                    has_terminator: false,
+                });
+            }
+        }
         let mut body = CompoundBlock::new(node.block(ast), EmptyBlock::Expanded);
         let mut head = self.compound_gap(Span::new(span.start + 3, body.node.span(ast).start));
         self.prepare_block_head(head, &mut body);
@@ -269,7 +287,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .comments
                     .partition_point(|comment| comment.span.end <= opening);
                 let before_opening = &head.comments[..head_split];
-                let leading = &head.comments[head_split..];
+                let relocate = self
+                    .comment_binding(before_opening, head.span, Some(span))
+                    .allows_relocation(Some(span));
+                let leading = if relocate {
+                    head.comments
+                } else {
+                    &head.comments[head_split..]
+                };
+                let before_opening = if relocate { &[] } else { before_opening };
                 let tail_split = tail
                     .comments
                     .partition_point(|comment| comment.span.end <= closing);
