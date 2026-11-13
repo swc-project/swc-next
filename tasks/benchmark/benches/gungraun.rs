@@ -17,7 +17,8 @@ use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions,
+    Transformer, TransformerOptions, TransformerReturn,
+    es2019::ES2019Options,
     es2022::ES2022Options,
     jsx::{JsxOptions, ReactRefreshOptions},
     normalize::Normalizer,
@@ -43,6 +44,9 @@ const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
 const EFFECT_SCHEMA_AST: &str = include_str!("../files/effect-schema-ast.ts");
 const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
+const EXCALIDRAW_APP: &str = include_str!("../files/App.tsx");
+const RADIX_UI_ADOPTION: &str = include_str!("../files/RadixUIAdoptionSection.jsx");
+const KITCHEN_SINK: &str = include_str!("../files/kitchen-sink.tsx");
 
 #[library_benchmark]
 #[bench::angular(ANGULAR, Lang::Js)]
@@ -196,19 +200,23 @@ type TransformInput = (
     TransformerOptions,
 );
 
-fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
+fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
+    let lang = Lang::from_path(filename);
     let mut ast = setup_program(source, lang);
     Normalizer::normalize_runtime(&mut ast);
     let options = TransformerOptions {
-        filename: Some("benchmark.tsx".to_owned()),
-        typescript: Some(TypeScriptOptions::default()),
-        jsx: Some(JsxOptions {
+        filename: Some(filename.to_owned()),
+        typescript: lang.is_typescript().then_some(TypeScriptOptions::default()),
+        jsx: lang.is_jsx().then(|| JsxOptions {
             development: true,
             source_self: true,
             display_name: true,
             refresh: Some(ReactRefreshOptions::default()),
             ..JsxOptions::default()
         }),
+        es2019: ES2019Options {
+            optional_catch_binding: true,
+        },
         es2022: ES2022Options {
             static_blocks: true,
         },
@@ -219,28 +227,28 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
     };
     // Setup owns the leaked context so the binding can borrow it outside timing.
     let ast = Box::leak(Box::new(ast));
-    let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
-    (semantic, options)
+    let analyzed = analyze(
+        ast,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
+        },
+    );
+    assert!(analyzed.diagnostics.is_empty());
+    (analyzed.semantic, options)
 }
 
 #[library_benchmark]
-#[bench::angular(setup_transform(ANGULAR, Lang::Js))]
-#[bench::backbone(setup_transform(BACKBONE, Lang::Js))]
-#[bench::jquery(setup_transform(JQUERY, Lang::Js))]
-#[bench::jquery_mobile(setup_transform(JQUERY_MOBILE, Lang::Js))]
-#[bench::mootools(setup_transform(MOOTOOLS, Lang::Js))]
-#[bench::underscore(setup_transform(UNDERSCORE, Lang::Js))]
-#[bench::three(setup_transform(THREE, Lang::Js))]
-#[bench::yui(setup_transform(YUI, Lang::Js))]
-#[bench::typescript(setup_transform(TYPESCRIPT, Lang::Js))]
-#[bench::cal_com_tsx(setup_transform(CAL_COM_TSX, Lang::Tsx))]
-#[bench::astro_config(setup_transform(ASTRO_CONFIG, Lang::Ts))]
-#[bench::effect_schema_ast(setup_transform(EFFECT_SCHEMA_AST, Lang::Ts))]
-#[bench::hono_types(setup_transform(HONO_TYPES, Lang::Ts))]
-fn bench_transform(input: TransformInput) {
+// Class-heavy JS, real TSX, small JSX, type erasure, and broad modern syntax.
+#[bench::three(setup_transform(THREE, "three-0.138.3.js"))]
+#[bench::excalidraw_app(setup_transform(EXCALIDRAW_APP, "App.tsx"))]
+#[bench::radix_ui_adoption(setup_transform(RADIX_UI_ADOPTION, "RadixUIAdoptionSection.jsx"))]
+#[bench::hono_types(setup_transform(HONO_TYPES, "hono-types.ts"))]
+#[bench::kitchen_sink(setup_transform(KITCHEN_SINK, "kitchen-sink.tsx"))]
+fn bench_transform(input: TransformInput) -> TransformerReturn<'static> {
     let (semantic, options) = black_box(input);
     let result = Transformer::transform(semantic, options);
-    black_box(result);
+    // Keep result destruction outside the measured function.
+    black_box(result)
 }
 
 fn type_strip_options(lang: Lang) -> StripOptions {

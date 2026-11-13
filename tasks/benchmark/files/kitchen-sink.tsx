@@ -1,5 +1,5 @@
-// Source: https://cdn.jsdelivr.net/gh/oxc-project/benchmark-files@cd3bc3d431452b640f5dfcabbc22a8d8a388f393/kitchen-sink.tsx
 #!/usr/bin/env node
+// Source: https://cdn.jsdelivr.net/gh/oxc-project/benchmark-files@cd3bc3d431452b640f5dfcabbc22a8d8a388f393/kitchen-sink.tsx
 // kitchen-sink.tsx
 //
 // Single-file synthetic fixture exercising every AST node, transformer plugin,
