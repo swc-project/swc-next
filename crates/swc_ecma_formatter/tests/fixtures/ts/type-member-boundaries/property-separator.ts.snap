@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = { a: string /* c */; b: number };
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A = { a: string /* c */; b: number };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A = {
+  a: string /* c */;
+  b: number;
+};
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+type A = {
+  a: string /* c */
+  b: number
+}
