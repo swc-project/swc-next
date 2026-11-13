@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+beforeEach(fakeAsync(() => {
+  /* @ts-ignore */
+  missing();
+}));
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+beforeEach(fakeAsync(() => {
+  /* @ts-ignore */
+  missing();
+}));
