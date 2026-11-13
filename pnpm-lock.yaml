@@ -375,6 +375,9 @@ importers:
       '@swc-next/decoder':
         specifier: workspace:*
         version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'

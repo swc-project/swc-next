@@ -67,6 +67,7 @@
     "@types/node": "catalog:"
   },
   "dependencies": {
-    "@swc-next/decoder": "workspace:*"
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/encoder": "workspace:*"
   }
 }
