@@ -921,18 +921,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let first_span = first.span(ast);
                 let before = Span::new(content.start, first_span.start);
                 let after = Span::new(first_span.end, content.end);
-                if [before, after].into_iter().all(|gap| {
-                    let comments = self.comments.in_range(gap);
-                    matches!(
-                        self.comment_binding(comments, gap, Some(first_span)),
-                        CommentBinding::Unbound
-                    ) && !comments
-                        .iter()
-                        .any(|comment| comment.kind == CommentKind::Line)
-                        && comments
-                            .last()
-                            .is_none_or(|comment| !self.comment_run_ends_line(*comment, gap.end))
-                }) {
+                let before_comments = self.comments.in_range(before);
+                let after_comments = self.comments.in_range(after);
+                if [(before, before_comments), (after, after_comments)]
+                    .into_iter()
+                    .all(|(gap, comments)| {
+                        matches!(
+                            self.comment_binding(comments, gap, Some(first_span)),
+                            CommentBinding::Unbound
+                        ) && !comments
+                            .iter()
+                            .any(|comment| comment.kind == CommentKind::Line)
+                    })
+                    && after_comments
+                        .last()
+                        .is_none_or(|comment| !self.comment_run_ends_line(*comment, after.end))
+                {
+                    let leading_inline = before_comments
+                        .last()
+                        .is_none_or(|comment| !self.comment_run_ends_line(*comment, before.end));
                     if !type_query
                         && (simple
                             || matches!(
@@ -940,7 +947,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 TsTypeData::TsTypeLiteral(_) | TsTypeData::TsMappedType(_)
                             ))
                     {
-                        true
+                        leading_inline
                     } else {
                         let mut body = self.prepare_delimited_type(*prepared)?;
                         let comments = self
@@ -955,7 +962,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             }
                             _ => false,
                         };
-                        let mut head_inline = true;
+                        let mut head_inline = leading_inline;
                         if movable {
                             // Claim the complete exterior and moved head in source order.
                             // The original member span still owns its delimiter protocol.
