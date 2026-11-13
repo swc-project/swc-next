@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try { g(); } catch /* note */ (e) { h(e); }
+---------- Options ----------
+{}
+---------- Output ----------
+try {
+  g();
+} catch (/* note */ e) {
+  h(e);
+}
