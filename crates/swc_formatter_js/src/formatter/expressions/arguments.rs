@@ -700,8 +700,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 None => {
                     let constraint = self.terminal_close_constraint(closing, end);
-                    if release_terminal
-                        && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+                    // A generated optional comma owns the same terminal exterior
+                    // as a real comma on the next pass, even for a covered item.
+                    if matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
                         && matches!(constraint, LineConstraint::NewLine(_))
                     {
                         Some(LineConstraint::NewLine(1))
@@ -970,7 +971,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let layout = if bare_gap {
                 LineConstraint::Unconstrained
             } else {
-                self.source_separator_constraint(end, owner_start, Some(transition))
+                // A moved comma does not consume the gap after its queued Line.
+                let gap_start = if separator_coverage_released && inline_line {
+                    boundary_end
+                } else {
+                    end
+                };
+                self.source_separator_constraint(gap_start, owner_start, Some(transition))
             };
             transition.following_gap = Some(PreparedSeparatorGap {
                 owner_start,
@@ -1089,11 +1096,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let own_line = self.comments.between(Span::new(end, span.end))?;
             let own_line = self.comments.take(own_line.len());
             if let Some(first) = own_line.first() {
+                // The real comma separates this packet from the item's source
+                // gap, even when its optional output is owned by the call group.
+                let gap_start = comma
+                    .filter(|&comma| comma < first.span.start)
+                    .map_or(end, |comma| end.max(comma + 1));
                 if constrained {
-                    self.comment_gap(end, first.span.start, writer);
+                    self.comment_gap(gap_start, first.span.start, writer);
                 } else {
                     writer.hard_line();
-                    if self.previous_line_is_empty(end, first.span.start) {
+                    if self.previous_line_is_empty(gap_start, first.span.start) {
                         writer.hard_line();
                     }
                 }

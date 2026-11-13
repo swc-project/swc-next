@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new F(a
+// c
+
+,
+// @ts-ignore
+);
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+new F(
+  a
+  // c
+  ,
+  // @ts-ignore
+)
+
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+new F(
+  a
+  // c
+  ,
+  // @ts-ignore
+);
