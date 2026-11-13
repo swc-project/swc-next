@@ -1,6 +1,8 @@
 //! Binding and assignment patterns with source-owned defaults and delimiters.
 use super::Formatter;
-use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{
+    CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, SourceSeparatorTransition,
+};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
 use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
@@ -1253,13 +1255,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut following_mode = None;
                 while let Some(property) = properties.next() {
                     if has_previous {
-                        binding_separator(
+                        self.object_binding_separator(
                             separator,
-                            self.source_separator_constraint(
-                                end,
-                                property.span(ast).start,
-                                transition.as_ref(),
-                            ),
+                            end,
+                            property.span(ast).start,
+                            transition.as_ref(),
                             writer,
                         );
                     }
@@ -1294,13 +1294,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 if let Some(rest) = rest {
                     if has_previous {
-                        binding_separator(
+                        self.object_binding_separator(
                             separator,
-                            self.source_separator_constraint(
-                                end,
-                                rest.span(ast).start,
-                                transition.as_ref(),
-                            ),
+                            end,
+                            rest.span(ast).start,
+                            transition.as_ref(),
                             writer,
                         );
                     }
@@ -1350,6 +1348,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok(())
         };
         group.write(writer, write)
+    }
+
+    fn object_binding_separator(
+        &self,
+        separator: Separator,
+        start: u32,
+        next_start: u32,
+        transition: Option<&SourceSeparatorTransition>,
+        writer: &mut Writer<'ast>,
+    ) {
+        // The following head prints its internal gaps; this separator stops at
+        // its first unclaimed comment instead of measuring through the head.
+        let head_start = self
+            .comments
+            .first()
+            .filter(|comment| comment.span.end <= next_start)
+            .map_or(next_start, |comment| comment.span.start);
+        binding_separator(
+            separator,
+            self.source_separator_constraint(start, head_start, transition),
+            writer,
+        );
     }
 
     fn binding_brace_line(&self, content: Span, writer: &mut Writer<'ast>) {
