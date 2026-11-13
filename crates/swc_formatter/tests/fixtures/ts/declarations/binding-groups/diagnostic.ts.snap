@@ -20,4 +20,4 @@ const { alpha, beta: renamed, gamma } = readConfig("left")("right");
 {"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 // @ts-expect-error
-const { alpha, beta: renamed, gamma } = readConfig("left")("right")
+const {alpha, beta: renamed, gamma} = readConfig("left")("right")

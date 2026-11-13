@@ -9,7 +9,7 @@ use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionOutput, ExpressionPosition};
-use super::suppression::{ContentMode, SuppressionPosition};
+use super::suppression::{ContentMode, SuppressionPosition, comment_directive};
 use super::types::PreparedBindingAnnotation;
 use super::types::generics::TypeArgumentOwner;
 use crate::{FormatError, TrailingCommas, document::Writer};
@@ -1230,19 +1230,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| ast.get_node_in_sub_range(id))
             .peekable();
         let rest = object.rest(ast);
+        let comments = self.comments.in_range(content);
         if properties.peek().is_none()
             && rest.is_none()
-            && self.content_mode(self.comments.in_range(content)) == ContentMode::Verbatim
+            && self.content_mode(comments) == ContentMode::Verbatim
         {
             return self.format_verbatim(span, writer);
         }
         let write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let has_items = properties.peek().is_some() || rest.is_some();
-            let has_comments = !self.comments.in_range(content).is_empty();
+            let has_comments = !comments.is_empty();
+            let spaced = self.options.bracket_spacing
+                && (has_items
+                    || comments.iter().any(|&comment| {
+                        !self.comment_semantics(comment).is_ordinary()
+                            || comment_directive(ast, comment).is_some()
+                    }));
             let end = writer.indent(|writer| {
                 if has_items || has_comments {
-                    self.binding_brace_line(content, writer);
+                    self.binding_brace_line(content, spaced, writer);
                 }
                 let mut end = content.start;
                 let mut transition = None;
@@ -1330,9 +1337,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if has_items || has_comments {
                 self.line_constraint(end, content.end).write(
                     writer,
-                    FlatSeparator::Space,
+                    if spaced {
+                        FlatSeparator::Space
+                    } else {
+                        FlatSeparator::Empty
+                    },
                     |writer| {
-                        if self.options.bracket_spacing {
+                        if spaced {
                             writer.line();
                         } else {
                             writer.soft_line();
@@ -1368,15 +1379,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
     }
 
-    fn binding_brace_line(&self, content: Span, writer: &mut Writer<'ast>) {
-        self.opening_line_constraint(content)
-            .write(writer, FlatSeparator::Space, |writer| {
-                if self.options.bracket_spacing {
+    fn binding_brace_line(&self, content: Span, spaced: bool, writer: &mut Writer<'ast>) {
+        self.opening_line_constraint(content).write(
+            writer,
+            if spaced {
+                FlatSeparator::Space
+            } else {
+                FlatSeparator::Empty
+            },
+            |writer| {
+                if spaced {
                     writer.line();
                 } else {
                     writer.soft_line();
                 }
-            });
+            },
+        );
     }
 
     fn format_binding_property(
