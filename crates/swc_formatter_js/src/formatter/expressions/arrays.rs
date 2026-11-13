@@ -20,6 +20,12 @@ use crate::{
 };
 
 #[derive(Clone, Copy)]
+pub(super) enum ArrayLayout {
+    Normal,
+    InlineTemplateSlot,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum ArrayArgumentArity {
     Single,
     Multiple,
@@ -91,13 +97,14 @@ fn next_item(elements: &mut impl Iterator<Item = Option<Argument>>) -> Option<Ar
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(in crate::formatter) fn format_array(
+    pub(super) fn format_array(
         &mut self,
         array: ArrayExpression,
         opening: BodyOpening,
+        layout: ArrayLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let source = self.source_array(array, false)?;
+        let source = self.source_array(array, false, layout)?;
         self.format_source_array(source, opening, writer)
     }
 
@@ -105,6 +112,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         array: ArrayExpression,
         qualify: bool,
+        parent: ArrayLayout,
     ) -> Result<SourceArray<'ast>, FormatError> {
         let elements = array.elements(self.ast);
         let span = array.span(self.ast);
@@ -136,7 +144,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let comments = self.comments.between(content)?;
                 let first_end = first.span(self.ast).end;
                 let fill_line = self.array_has_inline_line_comments(comments, first_end);
-                let layout = if fill_line {
+                let layout = if fill_line || matches!(parent, ArrayLayout::InlineTemplateSlot) {
                     ArgumentLayout::Lines
                 } else {
                     ArgumentLayout::Fill
@@ -220,7 +228,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedArrayArgument<'ast>, FormatError> {
         let qualify = matches!(arity, ArrayArgumentArity::Multiple);
-        let source = self.source_array(array, qualify)?;
+        let source = self.source_array(array, qualify, ArrayLayout::Normal)?;
         let source = match source {
             SourceArray::Formatted(source) => source,
             source => {

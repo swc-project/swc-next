@@ -308,6 +308,7 @@ pub(super) struct ExpressionContext<'ast> {
     operand_indent: OperandIndent,
     /// The actual operator left a Line suffix before this lexical head.
     body_opening: BodyOpening,
+    array_layout: arrays::ArrayLayout,
     protected_head_start: Option<u32>,
     ignored_parentheses_closing: Option<Span>,
     emitted_head_binding: EmittedHeadBinding,
@@ -477,6 +478,7 @@ impl<'ast> ExpressionContext<'ast> {
             tail_boundary: TailBoundary::Separated,
             operator_tail_destination: assignment::OperatorTailDestination::Local,
             body_opening: BodyOpening::Plain,
+            array_layout: arrays::ArrayLayout::Normal,
         }
     }
 
@@ -577,6 +579,11 @@ impl<'ast> ExpressionContext<'ast> {
     pub(super) fn is_formatted_conditional_rhs(&self, data: ExprData) -> bool {
         self.content_mode == ContentMode::Formatted
             && matches!(data, ExprData::ConditionalExpression(_))
+    }
+
+    fn with_array_layout(mut self, layout: arrays::ArrayLayout) -> Self {
+        self.array_layout = layout;
+        self
     }
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
@@ -1884,7 +1891,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::ArrayExpression(array) => {
                 let _scope = self.recursion_scope(array)?;
-                self.format_array(array, context.body_opening, writer)?
+                self.format_array(array, context.body_opening, context.array_layout, writer)?
             }
             ExprData::ObjectExpression(object) => {
                 let _scope = self.recursion_scope(object)?;
@@ -2037,7 +2044,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionLayout::Flat => {
                 let (normal, ()) = writer.record_with_value(|writer| {
                     layout.write(writer, |writer| {
-                        self.format_array(array, BodyOpening::Plain, writer)
+                        self.format_array(
+                            array,
+                            BodyOpening::Plain,
+                            arrays::ArrayLayout::Normal,
+                            writer,
+                        )
                     })
                 })?;
                 Ok(RecordedArrayArgument::Selected(RecordedArray {
