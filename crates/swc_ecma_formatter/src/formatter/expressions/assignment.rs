@@ -1437,10 +1437,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .is_some_and(|comment| comment.span.start < source_right_end);
             // A clear complete RHS has no source head to rebind. The advancing
             // comment cursor and the smaller operator gap cannot establish this.
-            let projected = if has_source_packet
-                || context.content_mode != ContentMode::Formatted
-                || self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end))
-            {
+            let clear_rhs_source = !has_source_packet
+                && context.content_mode == ContentMode::Formatted
+                && !self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end));
+            let projected = if clear_rhs_source {
+                None
+            } else {
                 self.assignment_expression_head(
                     content,
                     context,
@@ -1448,8 +1450,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         || before_mode == ContentMode::Verbatim
                         || first_after_suppression.is_some(),
                 )?
-            } else {
-                None
             };
             let content = projected.as_ref().map_or(content, |head| &head.content);
             let right_start = projected
@@ -1460,7 +1460,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .start;
             let span = Span::new(left_end, right_start);
             let comments = remaining;
-            let count = if self.has_suppression && right_start == original_right_start {
+            let count = if clear_rhs_source {
+                0
+            } else if self.has_suppression && right_start == original_right_start {
                 original_count
             } else {
                 comments.partition_point(|comment| comment.span.end <= span.end)
@@ -1548,7 +1550,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let head = &head[..count];
                 boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
             }
-            let sensitive = self.diagnostic_range_is_sensitive(span);
+            let sensitive = !clear_rhs_source && self.diagnostic_range_is_sensitive(span);
             if comments.is_empty() && !sensitive {
                 // Only an actual released packet needs an emitted owner or gap.
                 // Retained heads have already contributed their own-line constraint.
@@ -1673,9 +1675,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // An operator prefix shares the RHS owner and must keep its source order.
             let tail_preserves_packet_order =
                 !promoted || head_mode == ContentMode::Formatted && operator_line.len() == 1;
+            let ordinary_tail_eligible = !tail.is_empty()
+                && !matches!(moved_head_binding, Some(CommentBinding::Unbound))
+                && tail_preserves_packet_order
+                && leading.is_empty()
+                && !matches!(
+                    content.data,
+                    ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+                )
+                && content
+                    .parentheses
+                    .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
             // A tail candidate is not a release permission. The actual source-pair
             // plan below must certify the complete normalized RHS and its own tail.
-            let release_candidate = !source_clear_right
+            let release_candidate = ordinary_tail_eligible
+                && !source_clear_right
                 && matches!(source, AssignmentSourceEnd::Expression(_))
                 && rhs.expression.span(self.ast).end == source_right_end
                 && rhs
@@ -1710,22 +1724,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             })
                     })
             };
-            let ordinary_tail_candidate = !tail.is_empty()
-                && !matches!(moved_head_binding, Some(CommentBinding::Unbound))
-                && tail_preserves_packet_order
-                && leading.is_empty()
+            let ordinary_tail_candidate = ordinary_tail_eligible
                 && (source_clear_right || release_candidate)
-                && !matches!(
-                    content.data,
-                    ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
-                )
                 && matches!(
                     self.comment_binding(tail, span, None),
                     CommentBinding::Unbound
-                )
-                && content
-                    .parentheses
-                    .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
+                );
             let source = if ordinary_tail_candidate && release_candidate {
                 self.prepare_released_rhs_pair(
                     rhs.expression,
