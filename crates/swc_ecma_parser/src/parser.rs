@@ -2414,9 +2414,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_let(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
+        let start = self.current_token.start();
         if !self.is_let_identifier()? {
-            let start = self.current_token.start();
-            self.advance()?;
             return self
                 .parse_variable_declaration(VariableKind::Let, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
@@ -2518,9 +2517,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_import_declaration_from(import.start())
     }
 
+    // A declaration keeps its first binding token so parse_let does not scan it again.
     fn is_let_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
-        let next = self.peek_ahead()?;
+        let let_end = self.current_token.end();
+        let permits_declaration = self.statement_context.permits_declaration();
+        let mut peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = let_end;
+        let next = peek.next()?;
 
         // Lexical declarations cannot be single statements. In this context,
         // `let` therefore starts an ExpressionStatement unless the
@@ -2528,11 +2532,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         //
         // This also lets ASI terminate `let` before a binding-looking token:
         // `if (false) let\nvalue = 1`.
-        if !self.statement_context.permits_declaration() && next.tag() != TokenTag::LeftBracket {
+        if !permits_declaration && next.tag() != TokenTag::LeftBracket {
             return Some(true);
         }
 
-        Some(!can_start_binding_pattern(next.tag()))
+        if !can_start_binding_pattern(next.tag()) {
+            return Some(true);
+        }
+
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        Some(false)
     }
 
     fn is_using_identifier(&mut self) -> Option<bool> {
