@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const C // comment
+= class { /**/ };
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const C = // comment
+  class {
+    /**/
+  };
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const C = // comment
+  class {
+    /**/
+  }

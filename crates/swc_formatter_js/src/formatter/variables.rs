@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use swc_next_ecma_ast::{
-    Ast, BindingPatternData, Expr, ExprData, GetSpan, Span, VariableDeclaration,
-    VariableDeclarator, VariableKind,
+    Ast, BindingPatternData, Expr, GetSpan, Span, VariableDeclaration, VariableDeclarator,
+    VariableKind,
 };
 
 use super::Formatter;
@@ -14,7 +14,6 @@ use super::bindings::{
 use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
-use super::expressions::assignment::RhsLayout;
 use super::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge,
     ForInitializerGrammar, TailBoundary,
@@ -422,23 +421,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut rhs_layout = self.ordinary_rhs_layout(&rhs, initializer_context, &boundary);
-        let fixed_left_policy = matches!(rhs_layout, RhsLayout::Fluid)
-            && boundary.mode == ContentMode::Formatted
-            && matches!(
-                content.data,
-                ExprData::TemplateLiteral(_)
-                    | ExprData::TaggedTemplateExpression(_)
-                    | ExprData::Class(_)
-            );
-        if fixed_left_policy
-            && left_mode == ContentMode::Formatted
+        if left_mode == ContentMode::Formatted
+            && let Some(fixed_layout) =
+                self.fixed_left_rhs_layout(content.data, &boundary, rhs_layout)
             && matches!(
                 ast.binding_pattern_data(left),
                 BindingPatternData::BindingIdentifier(_)
             )
-            && !matches!(content.data, ExprData::Class(class) if !class.decorators(ast).is_empty())
         {
-            rhs_layout = RhsLayout::NeverBreakAfterOperator;
+            rhs_layout = fixed_layout;
         }
         let (group, rhs_layout) = if left_mode == ContentMode::Formatted {
             self.binding_initializer_layout(
