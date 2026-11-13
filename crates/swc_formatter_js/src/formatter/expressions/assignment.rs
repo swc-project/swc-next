@@ -18,7 +18,7 @@ use crate::formatter::suppression::{
 };
 use crate::{
     FormatError,
-    document::{Fragment, Writer},
+    document::{Fragment, GroupId, GroupRequest, Writer},
 };
 use swc_next_ecma_ast::{
     ArgumentData, AssignmentExpression, AssignmentTarget, AssignmentTargetData, CallExpression,
@@ -50,12 +50,15 @@ pub(in crate::formatter) enum OperatorTailDestination {
     Local,
     Terminator,
     ForHeader,
+    ControlledBody,
 }
 
 /// A claimed suffix borrowed until its requested punctuation owner is reached.
 pub(in crate::formatter) struct DeferredOperatorTail<'ast> {
     comments: &'ast [Comment],
     destination: OperatorTailDestination,
+    flat_group: Option<GroupId>,
+    text: Fragment<'ast>,
 }
 
 impl<'ast> DeferredOperatorTail<'ast> {
@@ -65,6 +68,10 @@ impl<'ast> DeferredOperatorTail<'ast> {
 
     pub(in crate::formatter) fn destination(&self) -> OperatorTailDestination {
         self.destination
+    }
+
+    pub(in crate::formatter) fn flat_group(&self) -> Option<GroupId> {
+        self.flat_group
     }
 }
 
@@ -669,6 +676,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         })?;
+        let (suffix, ()) = writer.record_with_value(|writer| {
+            writer.text(self.source(line.span).trim_end());
+            Ok::<_, FormatError>(())
+        })?;
         if matches!(layout, RhsLayout::NeverBreakAfterOperator)
             && boundary.operator_tail_destination != OperatorTailDestination::Local
         {
@@ -678,12 +689,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(Some(self.allocator.alloc(DeferredOperatorTail {
                 comments: &boundary.trailing[boundary.trailing.len() - 1..],
                 destination: boundary.operator_tail_destination,
+                flat_group: None,
+                text: suffix,
             })));
         }
-        let (suffix, ()) = writer.record_with_value(|writer| {
-            writer.text(self.source(line.span).trim_end());
-            Ok::<_, FormatError>(())
-        })?;
         let write_suffix = |opening: CommentOpening, writer: &mut Writer<'ast>| {
             writer.group(false, |writer| {
                 writer.line_suffix_boundary();
@@ -715,17 +724,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.write_fragment(fallback);
             return Ok(None);
         };
+        let deferred =
+            boundary.operator_tail_destination == OperatorTailDestination::ControlledBody;
         let (flat, ()) = writer.record_with_value(|writer| {
             writer.space();
             writer.write_flat_fragment(prefix);
             writer.write_flat_fragment(right);
-            write_suffix(CommentOpening::Needed, writer);
+            if !deferred {
+                write_suffix(CommentOpening::Needed, writer);
+            }
             Ok::<_, FormatError>(())
         })?;
         // The operator's line comment requires an enclosing break even when
         // its value fits beside the operator. Candidate groups isolate their
         // own break requests, so this belongs to the assignment boundary.
         writer.break_parent();
+        if deferred {
+            let group = writer.next_group_id();
+            writer.write_group_with_states(GroupRequest::Auto, Some(group), flat, fallback, &[]);
+            return Ok(Some(self.allocator.alloc(DeferredOperatorTail {
+                comments: &boundary.trailing[boundary.trailing.len() - 1..],
+                destination: boundary.operator_tail_destination,
+                flat_group: Some(group),
+                text: suffix,
+            })));
+        }
         writer.write_alternatives(&[flat], fallback);
         Ok(None)
     }
@@ -736,8 +759,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedCommentAdjacency, FormatError> {
         debug_assert!(tail.destination() != OperatorTailDestination::Local);
-        self.format_inline_trailing_comments(tail.comments(), writer)?;
+        debug_assert!(tail.flat_group().is_none());
+        writer.line_suffix_boundary();
+        CommentOpening::Needed.line_suffix(writer, |writer| writer.write_fragment(tail.text));
         Ok(PreparedCommentAdjacency::after_comments(tail.comments()))
+    }
+
+    pub(in crate::formatter) fn format_deferred_operator_head(
+        &self,
+        tail: &DeferredOperatorTail<'ast>,
+        next_start: u32,
+        writer: &mut Writer<'ast>,
+    ) {
+        let comment = tail.comments[0];
+        writer.line_suffix_boundary();
+        writer.write_fragment(tail.text);
+        self.prepare_leading_comment_gap(comment.span, comment.kind, next_start, true)
+            .gap
+            .write(writer, FlatSeparator::Space, Writer::line);
     }
 
     pub(in crate::formatter) fn prepare_operator_tail_completion(
