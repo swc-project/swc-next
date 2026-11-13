@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export type { /* first */ /* second */ };
+---------- Options ----------
+{}
+---------- Output ----------
+export /* first */
+/* second */ type {};

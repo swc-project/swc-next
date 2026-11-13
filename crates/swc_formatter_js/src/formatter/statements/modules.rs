@@ -125,6 +125,7 @@ struct ModuleList<'ast> {
     expand: bool,
     named: bool,
     terminal: Option<ModuleSourceBoundary<'ast>>,
+    relocated_tail: &'ast [Comment],
 }
 
 enum ModuleSourcePrefix<'a, 'ast> {
@@ -160,6 +161,7 @@ struct ModuleSource<'ast> {
     mode: ContentMode,
     preceding: ContentMode,
     specifier_tail: Option<ModuleSourceBoundary<'ast>>,
+    relocated_tail: &'ast [Comment],
     header_head: &'ast [Comment],
     attributes: Option<ModuleAttributes<'ast>>,
     empty_header: Option<Span>,
@@ -493,6 +495,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("{}");
         } else if let Some(mut list) = list {
             list.terminal = source.specifier_tail;
+            list.relocated_tail = source.relocated_tail;
             let mut leading = None;
             if standalone.is_none() {
                 let comments = self.comments.in_range(Span::new(end, list.span.start));
@@ -579,6 +582,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .transpose()?;
         list.terminal = source.as_ref().and_then(|source| source.specifier_tail);
+        list.relocated_tail = source.as_ref().map_or(&[], |source| source.relocated_tail);
         if first.is_none()
             && source.is_none()
             && self.content_mode(
@@ -589,12 +593,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(Span::new(span.start, list.span.end), writer)?;
             return self.finish_statement(list.span.end, None, punctuation, writer);
         }
+        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
+        if first.is_none() && source.is_none() {
+            let head = Span::new(keyword_end, list.span.end - 1);
+            let comments = self.comments.in_range(head);
+            if !comments.is_empty()
+                && self
+                    .comment_binding(comments, head, None)
+                    .allows_relocation(None)
+                && comments
+                    .iter()
+                    .all(|&comment| !self.comment_is_jsdoc_binding(comment))
+            {
+                self.comments.claim(comments)?;
+                writer.text("export");
+                writer.space();
+                self.format_comment_run(comments, CommentRunLayout::CanonicalDangling, writer)?;
+                if comments
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                {
+                    writer.hard_line();
+                }
+                writer.space();
+                if type_only {
+                    writer.text("type ");
+                }
+                writer.text("{}");
+                return self.finish_statement(list.span.end, None, punctuation, writer);
+            }
+        }
         let comments = self
             .comments
             .in_range(Span::new(keyword_end, list.span.start));
         let mode = self.content_mode(comments);
         writer.text("export");
-        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
         let head_end = if type_only {
             self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
         } else {
@@ -904,6 +937,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     != 0,
             named,
             terminal: None,
+            relocated_tail: &[],
         })
     }
 
@@ -957,6 +991,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if specifier_tail.is_some() {
             mode = ContentMode::Verbatim;
         }
+        let source_relation = match (from, preceding.filter(|_| list.is_some())) {
+            (Some(from), Some(last)) => {
+                self.module_source_specifier_boundary(last, Span::new(preceding_end, from.start))
+            }
+            _ => None,
+        };
+        // An inline run crosses the closer with the last item only when it
+        // includes the complete interior suffix and retains any protected target.
+        let relocated_tail = match (&prefix, from) {
+            (
+                ModuleSourcePrefix::Braced {
+                    list,
+                    last: Some(last),
+                    ..
+                },
+                Some(from),
+            ) if specifier_tail.is_none() && !before.is_empty() => {
+                let span = Span::new(last.end, from.start);
+                let comments = self.comments.in_range(span);
+                let inner_count =
+                    comments.partition_point(|comment| comment.span.end < list.span.end);
+                let trailing = self.trailing_comment_prefix(comments, span, last.end, false);
+                let protected_target = self.content_mode(trailing) == ContentMode::Verbatim;
+                let target_matches = !protected_target
+                    || source_relation.is_some_and(|boundary| {
+                        boundary.suppression.preceding == Some(*last)
+                            && boundary.suppression.following == ContentMode::Formatted
+                    });
+                if trailing.len() > inner_count
+                    && target_matches
+                    && self
+                        .comment_binding(trailing, span, Some(*last))
+                        .allows_relocation(Some(*last))
+                    && trailing
+                        .iter()
+                        .all(|&comment| !self.comment_is_jsdoc_binding(comment))
+                {
+                    trailing
+                } else {
+                    &[]
+                }
+            }
+            _ => &[],
+        };
         if self.has_suppression
             && let ModuleSourcePrefix::Star(header) = &prefix
             && self.content_mode(self.comments.in_range(*header)) == ContentMode::Verbatim
@@ -965,10 +1043,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut preceding_mode = ContentMode::Formatted;
         if let Some(from) = from {
-            if let Some(last) = preceding.filter(|_| list.is_some()) {
-                if let Some(relation) = self
-                    .module_source_specifier_boundary(last, Span::new(preceding_end, from.start))
-                {
+            if preceding.is_some() && list.is_some() {
+                if let Some(relation) = source_relation {
                     if relation.suppression.following == ContentMode::Verbatim {
                         mode = ContentMode::Verbatim;
                     }
@@ -997,18 +1073,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             mode = ContentMode::Verbatim;
         }
-        let header_head = if matches!(prefix, ModuleSourcePrefix::Star(_))
-            && mode == ContentMode::Verbatim
-            && after.is_empty()
-            && !before.is_empty()
-            && !self.diagnostic_range_is_sensitive(Span::new(preceding_end, source_span.start))
-            && before.iter().all(|&comment| {
-                let semantics = self.comment_semantics(comment);
-                semantics.suppression || semantics.is_ordinary()
-            }) {
-            before
-        } else {
+        // Any remaining unbound packet belongs to the module source head.
+        let header_head = if before.is_empty() {
             &[]
+        } else {
+            let header = Span::new(preceding_end, source_span.start);
+            let comments = self.comments.in_range(header);
+            let moved_end = relocated_tail
+                .last()
+                .map_or(preceding_end, |comment| comment.span.end);
+            let remainder =
+                &comments[comments.partition_point(|comment| comment.span.end <= moved_end)..];
+            let movable = !remainder.is_empty()
+                && (matches!(prefix, ModuleSourcePrefix::Star(_))
+                    || matches!(prefix, ModuleSourcePrefix::Braced { last: Some(_), .. })
+                        && specifier_tail.is_none()
+                        && remainder.first().is_some_and(|comment| {
+                            from.is_some_and(|from| comment.span.end <= from.start)
+                        }))
+                && self
+                    .comment_binding(remainder, header, None)
+                    .allows_relocation(None)
+                && remainder
+                    .iter()
+                    .all(|&comment| !self.comment_is_jsdoc_binding(comment));
+            let suppressed_star = matches!(prefix, ModuleSourcePrefix::Star(_))
+                && mode == ContentMode::Verbatim
+                && after.is_empty()
+                && !self.diagnostic_range_is_sensitive(header)
+                && before.iter().all(|&comment| {
+                    let semantics = self.comment_semantics(comment);
+                    semantics.suppression || semantics.is_ordinary()
+                });
+            if movable {
+                remainder
+            } else if suppressed_star {
+                before
+            } else {
+                &[]
+            }
         };
         let empty_header = match prefix {
             ModuleSourcePrefix::Empty(keyword_end) => {
@@ -1149,6 +1252,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             preceding: preceding_mode,
             specifier_tail,
+            relocated_tail,
             header_head,
             attributes,
             empty_header,
@@ -1396,6 +1500,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(());
         };
         list.breakable |= list.comments.len() > source_head_len
+            || !list.relocated_tail.is_empty()
             || leading.is_some_and(|comments| !comments.is_empty());
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
@@ -1455,6 +1560,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         prepared.set_leading_mode(incoming);
                     }
                     self.format_module_item(span, prepared_content, prepared.mode, writer)?;
+                    if next.is_none() && !list.relocated_tail.is_empty() {
+                        self.comments.claim(list.relocated_tail)?;
+                        let line_count = usize::from(
+                            list.relocated_tail
+                                .last()
+                                .is_some_and(|comment| comment.kind == CommentKind::Line),
+                        );
+                        let (blocks, line) = list
+                            .relocated_tail
+                            .split_at(list.relocated_tail.len() - line_count);
+                        self.format_inline_trailing_comments(blocks, writer)?;
+                        if list.breakable && self.options.trailing_commas != TrailingCommas::None {
+                            writer.if_break(",");
+                        }
+                        self.format_inline_trailing_comments(line, writer)?;
+                        end = content.end;
+                        break;
+                    }
                     if next.is_none()
                         && let Some(terminal) = list.terminal
                     {

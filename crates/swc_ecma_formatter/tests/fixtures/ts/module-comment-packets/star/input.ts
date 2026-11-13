@@ -1,0 +1,2 @@
+export * // note
+from "module";
