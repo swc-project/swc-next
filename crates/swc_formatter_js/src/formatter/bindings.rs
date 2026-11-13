@@ -351,6 +351,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn empty_binding_has_line_comment(&self, pattern: BindingPattern) -> bool {
+        let ast = self.ast;
+        let empty = match ast.binding_pattern_data(pattern) {
+            BindingPatternData::ObjectPattern(object) => {
+                object.properties(ast).is_empty() && object.rest(ast).is_none()
+            }
+            BindingPatternData::ArrayPattern(array) => {
+                array.elements(ast).is_empty() && array.rest(ast).is_none()
+            }
+            _ => false,
+        };
+        if !empty {
+            return false;
+        }
+        let span = pattern.span(ast);
+        let comments = ast.comments();
+        let start = comments.partition_point(|comment| comment.span.start < span.start);
+        comments[start..]
+            .iter()
+            .take_while(|comment| comment.span.end <= span.end)
+            .any(|comment| comment.kind == CommentKind::Line)
+    }
+
     pub(super) fn format_declaration_binding(
         &mut self,
         pattern: BindingPattern,

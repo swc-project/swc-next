@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f({
+  // note
+}) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(
+  {
+    // note
+  },
+) {}
