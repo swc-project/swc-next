@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first(); /* eslint-disable-line no-undef */ ; second(); third(); /* eslint-disable-line no-undef */
+---------- Options ----------
+{}
+---------- Output ----------
+first(); /* eslint-disable-line no-undef */
+; second(); third(); /* eslint-disable-line no-undef */
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first() /* eslint-disable-line no-undef */
+; second(); third(); /* eslint-disable-line no-undef */
