@@ -40,6 +40,7 @@ impl TemplateQuasi<'_> {
 pub(super) struct TemplateSlot {
     pub(super) content: Span,
     pub(super) interior: Span,
+    pub(super) source_newline: bool,
 }
 
 /// The child or its interpolation boundaries own finite-width layout.
@@ -101,7 +102,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 format(self, layout, writer)
             });
         }
-        let source_newline = self.source(slot.interior).contains(['\r', '\n']);
+        let source_newline = slot.source_newline;
         if source_newline
             && matches!(
                 layout,
@@ -259,9 +260,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ));
             }
             indentation = current.indentation(indentation, tab_width);
+            let interior = Span::new(current.span.end + 2, next.span.start - 1);
             let geometry = TemplateSlot {
                 content: slot_span,
-                interior: Span::new(current.span.end + 2, next.span.start - 1),
+                interior,
+                source_newline: self.source(interior).contains(['\r', '\n']),
             };
             let absolute = indentation > 0 || current.raw.ends_with('\n');
             writer.text("${");

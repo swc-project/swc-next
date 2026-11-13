@@ -4,6 +4,7 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, Span, TaggedTemplateExpression, TemplateLiteral,
 };
 
+use super::arrays::ArrayLayout;
 use super::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionTypeArguments, OperandIndent,
     TailOwner,
@@ -118,7 +119,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     TemplateSlotLayout::Child => OperandIndent::Expression,
                     TemplateSlotLayout::Boundaries(_) => OperandIndent::Parent,
                 };
+                let array_layout = if slot.source_newline {
+                    ArrayLayout::Normal
+                } else {
+                    ArrayLayout::InlineTemplateSlot
+                };
                 let context = ExpressionContext::at(ExpressionPosition::TemplateInterpolation)
+                    .with_array_layout(array_layout)
                     .with_operand_indent(operand_indent)
                     .with_content_mode(mode)
                     .with_tail_owner(TailOwner::ParentOperation);
