@@ -73,7 +73,7 @@ Use `TARGET=oxc` for the Oxc pipeline. Add `--features tracy` to collect a Tracy
 ## Transformer example
 
 ```sh
-TARGET=next cargo run -p benchmark --release --example transformer
+TARGET=next cargo run -p benchmark --release --example transformer_comparison
 ```
 
 Use `TARGET=oxc` or `TARGET=swc` for the other implementations.
