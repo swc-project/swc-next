@@ -11,7 +11,7 @@ function assertTransfer(program, options, expected) {
   const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
   const nodes = view.getUint32(0, true);
   assert.deepEqual(parts.map(part => part.byteLength), [
-    40, nodes * 8, nodes, nodes * 16, view.getUint32(4, true) * 8,
+    40, nodes * 8, nodes, nodes * 16, view.getUint32(4, true) * 4,
     view.getUint32(8, true) + view.getUint32(12, true),
   ]);
   const optionBits = encodeOptions(options);

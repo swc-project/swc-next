@@ -2072,13 +2072,18 @@ impl<'bump, T: 'bump + Copy> ArenaVec<'bump, T> {
     /// Helper method to copy all of the items in `other` and append them to the end of `self`.
     ///
     /// SAFETY:
-    ///   * The caller is responsible for:
-    ///       * calling [`reserve`](Self::reserve) beforehand to guarantee that there is enough
-    ///         capacity to store `other.len()` more items.
-    ///       * guaranteeing that `self` and `other` do not overlap.
-    unsafe fn extend_from_slice_copy_unchecked(&mut self, other: &[T]) {
-        let old_len = self.len();
-        debug_assert!(old_len + other.len() <= self.capacity());
+    ///   * `old_len` must be the current length, and `new_len` must equal
+    ///     `old_len + other.len()` without exceeding the u32 capacity.
+    ///   * `self` and `other` must not overlap.
+    unsafe fn extend_from_slice_copy_unchecked(
+        &mut self,
+        other: &[T],
+        old_len: usize,
+        new_len: usize,
+    ) {
+        debug_assert_eq!(old_len, self.len());
+        debug_assert_eq!(new_len, old_len + other.len());
+        debug_assert!(new_len <= self.capacity_u32() as usize);
 
         // SAFETY:
         // * `src` is valid for reads of `other.len()` values by virtue of being a `&[T]`.
@@ -2092,7 +2097,7 @@ impl<'bump, T: 'bump + Copy> ArenaVec<'bump, T> {
             let src = other.as_ptr();
             let dst = self.as_mut_ptr().add(old_len);
             ptr::copy_nonoverlapping(src, dst, other.len());
-            self.set_len(old_len + other.len());
+            self.buf.set_len(new_len as u32);
         }
     }
 
@@ -2130,17 +2135,19 @@ impl<'bump, T: 'bump + Copy> ArenaVec<'bump, T> {
     /// [`extend_from_slice`]: #method.extend_from_slice
     /// [`extend_from_slices`]: #method.extend_from_slices
     pub fn extend_from_slice_copy(&mut self, other: &[T]) {
-        // Reserve space in the ArenaVec for the values to be added
-        self.reserve(other.len());
+        let old_len = self.len_usize();
+        let new_len = old_len.checked_add(other.len()).expect("capacity overflow");
+        if new_len > self.capacity_u32() as usize {
+            self.buf.grow_amortized(old_len as u32, other.len());
+        }
 
         // Copy values into the space that was just reserved
         // SAFETY:
-        // * `self` has enough capacity to store `other.len()` more items as `self.reserve(other.len())`
-        //   above guarantees that.
-        // * Source and destination data ranges cannot overlap as we just reserved the destination
-        //   range from the bump.
+        // * The capacity check or reservation guarantees room for the entire slice,
+        //   and new_len fits the vector's u32 length.
+        // * The source slice cannot overlap the mutably borrowed destination.
         unsafe {
-            self.extend_from_slice_copy_unchecked(other);
+            self.extend_from_slice_copy_unchecked(other, old_len, new_len);
         }
     }
 
@@ -2190,7 +2197,8 @@ impl<'bump, T: 'bump + Copy> ArenaVec<'bump, T> {
         unsafe {
             // Copy the contents of each slice onto the end of `self`
             slices.iter().for_each(|slice| {
-                self.extend_from_slice_copy_unchecked(slice);
+                let old_len = self.len_usize();
+                self.extend_from_slice_copy_unchecked(slice, old_len, old_len + slice.len());
             });
         }
     }
@@ -3460,6 +3468,44 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(calls.get(), 2);
         assert_eq!(values.as_slice(), &[12, 3]);
+    }
+
+    #[test]
+    fn extend_from_slice_copy() {
+        let allocator = Allocator::new();
+        let mut values = ArenaVec::with_capacity_in(4, &allocator);
+        let pointer = values.as_ptr();
+        values.extend_from_slice_copy(&[1_u32, 2]);
+        values.extend_from_slice_copy(&[3, 4]);
+        assert_eq!(values.as_slice(), &[1, 2, 3, 4]);
+        assert_eq!(values.as_ptr(), pointer);
+
+        values.extend_from_slice_copy(&[5, 6]);
+        assert_eq!(values.as_slice(), &[1, 2, 3, 4, 5, 6]);
+        let capacity = values.capacity();
+        values.extend_from_slice_copy(&[]);
+        assert_eq!(values.len(), 6);
+        assert_eq!(values.capacity(), capacity);
+
+        let mut zero_sized = ArenaVec::new_in(&allocator);
+        // SAFETY: Unit values need no storage or initialization, and the length fits u32.
+        unsafe { zero_sized.set_len(u32::MAX as usize - 1) };
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || zero_sized.extend_from_slice_copy(&[(), ()])
+            ))
+            .is_err()
+        );
+        assert_eq!(zero_sized.len(), u32::MAX as usize - 1);
+
+        zero_sized.extend_from_slice_copy(&[()]);
+        assert_eq!(zero_sized.len(), u32::MAX as usize);
+        zero_sized.extend_from_slice_copy(&[]);
+        assert_eq!(zero_sized.len(), u32::MAX as usize);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| zero_sized.extend_from_slice_copy(&[()]))).is_err()
+        );
+        assert_eq!(zero_sized.len(), u32::MAX as usize);
     }
 
     #[test]

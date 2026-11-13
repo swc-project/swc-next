@@ -11,7 +11,7 @@
 //! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to eight bytes;
 //! - `node_count` 16-byte `NodePayload` values;
-//! - `extra_count` 8-byte `ExtraData` values;
+//! - `extra_count` 4-byte `ExtraDataUnit` values;
 //! - the raw extra string pool, padded to four bytes;
 //! - `comment_count` 16-byte records in source order. Each record contains
 //!   UTF-16 start/end and UTF-8 byte start/end for extracting comment text.
@@ -45,7 +45,7 @@ use {
 };
 
 use crate::{
-    Ast, AstCtx, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId,
+    Ast, AstCtx, Comment, CommentKind, CommentPosition, Diagnostic, ExtraDataUnit, Lang, NodeId,
     NodeKind, NodePayload, SourceType, Span,
 };
 
@@ -53,7 +53,7 @@ const HEADER_SIZE: usize = 40;
 const SPAN_SIZE: usize = 8;
 const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
-const EXTRA_DATA_SIZE: usize = 8;
+const EXTRA_DATA_SIZE: usize = 4;
 const COMMENT_SIZE: usize = 16;
 // SourceType uses the low two bits; Lang uses the next three.
 const FLAG_LANG_SHIFT: u32 = 2;
@@ -65,9 +65,9 @@ const _: () = {
     assert!(size_of::<Span>() == SPAN_SIZE);
     assert!(size_of::<NodeKind>() == NODE_KIND_SIZE);
     assert!(size_of::<NodePayload>() == NODE_PAYLOAD_SIZE);
-    assert!(size_of::<ExtraData>() == EXTRA_DATA_SIZE);
+    assert!(size_of::<ExtraDataUnit>() == EXTRA_DATA_SIZE);
     assert!(align_of::<NodePayload>() <= 8);
-    assert!(align_of::<ExtraData>() <= 8);
+    assert!(align_of::<ExtraDataUnit>() == 4);
     assert!(size_of::<CommentKind>() == 2);
     assert!(size_of::<CommentPosition>() == 2);
     assert!(size_of::<Comment>() == COMMENT_SIZE);
@@ -504,8 +504,8 @@ pub unsafe fn deserialize_from<'a>(
 /// The sections must obey the same version, encoding, node, and metadata contracts
 /// as [`deserialize_from`]. `header` must contain 40 bytes; the other sections must
 /// contain the initialized spans, kinds, payloads, extra data, and strings described
-/// by that header, without padding. Spans must be aligned to four bytes, payloads
-/// and extra data to eight bytes. Every section must remain immutable for the
+/// by that header, without padding. Spans and extra data must be aligned to four
+/// bytes, and payloads to eight bytes. Every section must remain immutable for the
 /// returned view's lifetime. Comment and diagnostic sections must be empty.
 #[cfg(target_endian = "little")]
 #[inline]
@@ -526,7 +526,7 @@ pub unsafe fn deserialize_parts<'a>(
     let flags = read_u32(header, 32);
     debug_assert!(spans.as_ptr().addr().is_multiple_of(align_of::<Span>()));
     debug_assert!(payloads.as_ptr().addr().is_multiple_of(8));
-    debug_assert!(extra.as_ptr().addr().is_multiple_of(8));
+    debug_assert!(extra.as_ptr().addr().is_multiple_of(4));
 
     // SAFETY: The caller guarantees valid encodings, initialized tables, and
     // alignment. BorrowedAst exposes no mutable access to these pointers.
@@ -722,7 +722,7 @@ fn deserialize_extra_data(tree: &mut Ast<'_>, bytes: &[u8]) {
 
     // SAFETY: The allocation has room for `extra_count` entries. Copy through
     // its allocation pointer before creating a byte slice over initialized
-    // storage. All bit patterns are valid for `ExtraData`.
+    // storage. All bit patterns are valid for `ExtraDataUnit`.
     unsafe {
         let destination = tree.extra_data.as_mut_ptr().cast::<u8>();
         std::ptr::copy_nonoverlapping(bytes.as_ptr(), destination, bytes.len());
@@ -756,10 +756,10 @@ mod tests {
         let ast = AstCtx::from(ast);
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         assert_eq!(serialize_into(&ast, &[], &mut buffer, 0), buffer.len());
-        assert_eq!(buffer.len(), 112);
+        assert_eq!(buffer.len(), 108);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
-        assert_eq!(u32_at(&buffer, 4), 2); // extra-data count
+        assert_eq!(u32_at(&buffer, 4), 3); // extra-data unit count
         assert_eq!(u32_at(&buffer, 28), 1); // root node ID
         assert_eq!(u32_at(&buffer, 36), 0); // no non-ASCII source bytes
 
@@ -769,9 +769,32 @@ mod tests {
         assert_eq!(u32_at(&buffer, 92), 1); // out-of-line body field
 
         assert_eq!(u32_at(&buffer, 96), 0); // body element node ID
-        assert_eq!(u32_at(&buffer, 100), 0); // node ID padding
-        assert_eq!(u32_at(&buffer, 104), 0); // body range start
-        assert_eq!(u32_at(&buffer, 108), 1); // body range end
+        assert_eq!(u32_at(&buffer, 100), 0); // body range start
+        assert_eq!(u32_at(&buffer, 104), 1); // body range end
+    }
+
+    #[test]
+    fn packed_extra_data() {
+        let allocator = Allocator::new();
+        // SAFETY: All handles below are created and used within this AST.
+        let mut ast = unsafe { Ast::new("", &allocator) };
+        let statement = ast.stmt_empty_statement(Span::new(0, 0));
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(0, 0), SubRange::empty(), body, None);
+        let following = ast.add_sub_range([Some(statement), None]);
+
+        assert_eq!(ast.extra_data_count(), 5);
+        assert_eq!(program.body(&ast).len(), 1);
+        program.set_body(&mut ast, SubRange::empty());
+        assert!(program.body(&ast).is_empty());
+        assert!(
+            following
+                .get_node(&ast, 0)
+                .unwrap()
+                .unwrap()
+                .is_empty_statement(&ast)
+        );
+        assert!(following.get_node(&ast, 1).unwrap().is_none());
     }
 
     #[test]
@@ -799,7 +822,7 @@ mod tests {
         let decoded_statement = decoded_body.get_node(decoded, 0).unwrap();
 
         assert_eq!(decoded.node_count(), 2);
-        assert_eq!(decoded.extra_data_count(), 2);
+        assert_eq!(decoded.extra_data_count(), 3);
         assert_eq!(decoded_program.span(decoded), Span::new(1, 4));
         assert_eq!(decoded_statement.span(decoded), Span::new(2, 3));
         assert!(decoded_statement.is_empty_statement(decoded));

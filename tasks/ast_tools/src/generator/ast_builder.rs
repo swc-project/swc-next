@@ -7,7 +7,10 @@ use crate::{
     generator::ast_payload::{direct_payload_field, payload_member},
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Layout, LayoutMode, Schema},
-    util::{generate_field_to_u32, generate_field_to_u64, safe_ident},
+    util::{
+        extra_data_unit_count, generate_field_to_extra_data, generate_field_to_u32,
+        generate_field_to_u64, safe_ident,
+    },
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
@@ -100,7 +103,11 @@ fn generate_build_function_inline(
                 .extra_fields()
                 .map(|(field_index, _)| {
                     let field_name = safe_ident(&ast.fields[field_index].name);
-                    quote!(#field_name)
+                    let field_ty = &schema.types[ast.fields[field_index].type_id];
+                    (
+                        generate_field_to_extra_data(field_ty, quote!(#field_name), schema),
+                        extra_data_unit_count(field_ty, schema),
+                    )
                 })
                 .collect::<Vec<_>>();
 
@@ -176,23 +183,29 @@ fn generate_payload_constructor(
     }
 }
 
-fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<TokenStream>) {
-    match values {
-        [] => (TokenStream::new(), None),
-        [value] => (
-            quote! {
-                let _f0 = self.add_extra(#value);
-            },
-            Some(quote!(_f0)),
-        ),
-        values => (
-            quote! {
-                let _extra_data = [#((#values).into_extra_data()),*];
-                let _extra_data_start = self.add_extra_data_slice(&_extra_data);
-            },
-            Some(quote!(_extra_data_start)),
-        ),
+fn generate_add_extra_data(values: &[(TokenStream, usize)]) -> (TokenStream, Option<TokenStream>) {
+    if values.is_empty() {
+        return (TokenStream::new(), None);
     }
+    let mut bindings = TokenStream::new();
+    let mut units = Vec::new();
+    for (index, (value, count)) in values.iter().enumerate() {
+        if *count == 1 {
+            units.push(value.clone());
+        } else {
+            let name = format_ident!("_extra_field{index}");
+            bindings.extend(quote!(let #name = unsafe { (#value).units };));
+            units.extend([quote!(#name[0]), quote!(#name[1])]);
+        }
+    }
+    (
+        quote! {
+            #bindings
+            let _extra_data = [#(#units),*];
+            let _extra_data_start = self.add_extra_data_slice(&_extra_data);
+        },
+        Some(quote!(_extra_data_start)),
+    )
 }
 
 // TODO: Use [crate::util::flat_enum_type]

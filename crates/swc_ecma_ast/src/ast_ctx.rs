@@ -98,7 +98,7 @@ impl<'a> AstCtx<'a> {
         self.ast.node_count()
     }
 
-    /// Returns the number of out-of-line field entries.
+    /// Returns the number of four-byte out-of-line storage units.
     pub fn extra_data_count(&self) -> usize {
         self.ast.extra_data_count()
     }

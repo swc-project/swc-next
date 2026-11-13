@@ -555,10 +555,14 @@ impl Parser {
         let mut extra_count = 0;
         let fields = locations
             .into_iter()
-            .map(|location| {
+            .enumerate()
+            .map(|(field_index, location)| {
                 location.unwrap_or_else(|| {
                     let index = extra_count;
-                    extra_count += 1;
+                    extra_count += self
+                        .field_byte_size(fields[field_index].type_id)
+                        .unwrap_or(4)
+                        .div_ceil(4);
                     FieldLocation::Extra { index }
                 })
             })

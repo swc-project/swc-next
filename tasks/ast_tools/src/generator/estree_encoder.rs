@@ -413,7 +413,7 @@ fn range_length(node: &str, field: &str) -> Option<&'static str> {
 fn buffer_destination(location: FieldLocation) -> String {
     match location {
         FieldLocation::Payload { offset, .. } => format!("payload, index * 16 + {offset}"),
-        FieldLocation::Extra { index } => format!("extra, (extraId + {index}) * 8"),
+        FieldLocation::Extra { index } => format!("extra, (extraId + {index}) * 4"),
     }
 }
 
@@ -1217,7 +1217,7 @@ function createBuffers(sizeHint) {
   const extraCapacity = Math.max(512, (sizeHint / 20) | 0);
   const poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   const payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
-  const extraBuffer = new ArrayBuffer(extraCapacity * 8);
+  const extraBuffer = new ArrayBuffer(extraCapacity * 4);
   return {
     nodeCapacity, extraCapacity, poolCapacity,
     spans: new Uint32Array(nodeCapacity * 2),
@@ -1266,7 +1266,7 @@ const HELPERS: &str = r#"  function clearState() {
     extraCount += count;
     if (extraCount > extraCapacity) {
       do extraCapacity *= 2; while (extraCount > extraCapacity);
-      const next = new ArrayBuffer(extraCapacity * 8);
+      const next = new ArrayBuffer(extraCapacity * 4);
       new Uint8Array(next).set(new Uint8Array(extraBuffer));
       extraBuffer = next; extra = new DataView(extraBuffer);
     }
@@ -1279,13 +1279,13 @@ const HELPERS: &str = r#"  function clearState() {
   function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, true); }
   function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, true); }
   function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, true); }
-  function setExtraU8(i, o, v) { extra.setUint8(i * 8 + o, v); }
-  function setExtraI8(i, o, v) { extra.setInt8(i * 8 + o, v); }
-  function setExtraU16(i, o, v) { extra.setUint16(i * 8 + o, v, true); }
-  function setExtraI16(i, o, v) { extra.setInt16(i * 8 + o, v, true); }
-  function setExtraU32(i, o, v) { extra.setUint32(i * 8 + o, v, true); }
-  function setExtraI32(i, o, v) { extra.setInt32(i * 8 + o, v, true); }
-  function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, true); }
+  function setExtraU8(i, o, v) { extra.setUint8(i * 4 + o, v); }
+  function setExtraI8(i, o, v) { extra.setInt8(i * 4 + o, v); }
+  function setExtraU16(i, o, v) { extra.setUint16(i * 4 + o, v, true); }
+  function setExtraI16(i, o, v) { extra.setInt16(i * 4 + o, v, true); }
+  function setExtraU32(i, o, v) { extra.setUint32(i * 4 + o, v, true); }
+  function setExtraI32(i, o, v) { extra.setInt32(i * 4 + o, v, true); }
+  function setExtraF64(i, o, v) { extra.setFloat64(i * 4 + o, v, true); }
 
   function encArray(values, encoder, holes) {
     const length = values?.length ?? 0;
@@ -1557,7 +1557,7 @@ function _encode(program) {
 
   // Fields and padding not explicitly written by a node must remain zero.
   new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
-  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 4);
 "#;
 
 const POSTAMBLE: &str = r#"  const root = encProgram(program);
@@ -1592,7 +1592,7 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
     spanBytes,
     kinds.subarray(0, nodeCount),
     new Uint8Array(payloadBuffer, 0, nodeCount * 16),
-    new Uint8Array(extraBuffer, 0, extraCount * 8),
+    new Uint8Array(extraBuffer, 0, extraCount * 4),
     pool.subarray(0, poolLength),
   ];
   const bufferCapacityBytes = spans.byteLength + kinds.byteLength +

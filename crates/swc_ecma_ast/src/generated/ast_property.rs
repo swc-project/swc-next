@@ -27,9 +27,14 @@ impl Program {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
@@ -54,11 +59,16 @@ impl Program {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = body.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((body).start, (body).end),
+                },
+            );
+        }
     }
 }
 impl Stmt {
@@ -2384,9 +2394,9 @@ impl TemplateElement {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { (ast.read_extra_data(offset)).utf8 }
     }
     #[inline]
     pub fn set_cooked<'a>(self, ast: &mut crate::Ast<'a>, cooked: AstWtf8) {
@@ -2419,11 +2429,11 @@ impl TemplateElement {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = raw.into_extra_data();
-        };
+            ast.write_extra_data(offset, ExtraData { utf8: raw });
+        }
     }
 }
 impl IdentifierReference {
@@ -3475,9 +3485,14 @@ impl Class {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn super_class<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
@@ -3488,10 +3503,15 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn super_type_arguments<'a>(
@@ -3505,10 +3525,16 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn implements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsClassImplements> {
@@ -3519,10 +3545,15 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(3usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(4usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> ClassBody {
@@ -3533,10 +3564,10 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(4usize) };
+        let offset = unsafe { start.unchecked_add(6usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { ClassBody((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_class_type<'a>(self, ast: &mut crate::Ast<'a>, class_type: ClassType) {
@@ -3584,11 +3615,16 @@ impl Class {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = decorators.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_super_class<'a>(self, ast: &mut crate::Ast<'a>, super_class: Option<Expr>) {
@@ -3599,12 +3635,15 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = super_class.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (super_class)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_super_type_arguments<'a>(
@@ -3619,12 +3658,15 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = super_type_arguments.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (super_type_arguments)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_implements<'a>(
@@ -3639,12 +3681,17 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(3usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(4usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = implements.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((implements).start, (implements).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: ClassBody) {
@@ -3655,12 +3702,14 @@ impl Class {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(4usize) };
+        let offset = unsafe { start.unchecked_add(6usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = body.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (body).node_id(),
+            };
+        }
     }
 }
 impl ClassBody {
@@ -3733,9 +3782,14 @@ impl MethodDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Function {
@@ -3746,10 +3800,10 @@ impl MethodDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { Function((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropertyKey) {
@@ -3827,11 +3881,16 @@ impl MethodDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = decorators.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Function) {
@@ -3842,12 +3901,14 @@ impl MethodDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = value.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (value).node_id(),
+            };
+        }
     }
 }
 impl PropertyDefinition {
@@ -3946,9 +4007,14 @@ impl PropertyDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
@@ -3959,10 +4025,10 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { PropertyKey((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
@@ -3973,10 +4039,15 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
@@ -3987,10 +4058,15 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(3usize) };
+        let offset = unsafe { start.unchecked_add(4usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn set_computed<'a>(self, ast: &mut crate::Ast<'a>, computed: bool) {
@@ -4092,11 +4168,16 @@ impl PropertyDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = decorators.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropertyKey) {
@@ -4107,12 +4188,14 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = key.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (key).node_id(),
+            };
+        }
     }
     #[inline]
     pub fn set_type_annotation<'a>(
@@ -4127,12 +4210,15 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = type_annotation.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (type_annotation)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Option<Expr>) {
@@ -4143,12 +4229,14 @@ impl PropertyDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(3usize) };
+        let offset = unsafe { start.unchecked_add(4usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = value.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (value).map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
 }
 impl StaticBlock {
@@ -4198,7 +4286,12 @@ impl Function {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsThisParameter(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
@@ -4212,7 +4305,7 @@ impl Function {
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { FormalParameters((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
@@ -4226,7 +4319,12 @@ impl Function {
         let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> FunctionBody {
@@ -4240,7 +4338,7 @@ impl Function {
         let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { FunctionBody((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_function_type<'a>(self, ast: &mut crate::Ast<'a>, function_type: FunctionType) {
@@ -4294,8 +4392,11 @@ impl Function {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = this_param.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
@@ -4310,8 +4411,10 @@ impl Function {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = params.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (params).node_id(),
+            };
+        }
     }
     #[inline]
     pub fn set_return_type<'a>(
@@ -4330,8 +4433,11 @@ impl Function {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = return_type.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: FunctionBody) {
@@ -4346,8 +4452,10 @@ impl Function {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = body.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (body).node_id(),
+            };
+        }
     }
 }
 impl FunctionBody {
@@ -4516,9 +4624,14 @@ impl FormalParameter {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn initializer<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
@@ -4529,10 +4642,15 @@ impl FormalParameter {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn set_pattern<'a>(self, ast: &mut crate::Ast<'a>, pattern: FormalParameterPattern) {
@@ -4576,11 +4694,16 @@ impl FormalParameter {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = decorators.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_initializer<'a>(self, ast: &mut crate::Ast<'a>, initializer: Option<Expr>) {
@@ -4591,12 +4714,15 @@ impl FormalParameter {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = initializer.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (initializer)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
 }
 impl FormalParameterRest {
@@ -4850,7 +4976,12 @@ impl ArrowFunctionExpression {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> ArrowFunctionBody {
@@ -4864,7 +4995,7 @@ impl ArrowFunctionExpression {
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { ArrowFunctionBody((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: bool) {
@@ -4924,8 +5055,11 @@ impl ArrowFunctionExpression {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = return_type.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: ArrowFunctionBody) {
@@ -4940,8 +5074,10 @@ impl ArrowFunctionExpression {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = body.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (body).node_id(),
+            };
+        }
     }
 }
 impl SequenceExpression {
@@ -5051,9 +5187,14 @@ impl CallExpression {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn set_callee<'a>(self, ast: &mut crate::Ast<'a>, callee: Expr) {
@@ -5100,11 +5241,16 @@ impl CallExpression {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = arguments.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((arguments).start, (arguments).end),
+                },
+            );
+        }
     }
 }
 impl ChainExpression {
@@ -5326,7 +5472,12 @@ impl ImportExpression {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_import_phase as u8;
+                (raw != u8::MAX).then(|| std::mem::transmute::<u8, ImportPhase>(raw))
+            }
+        }
     }
     #[inline]
     pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: Expr) {
@@ -5366,8 +5517,10 @@ impl ImportExpression {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = phase.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_import_phase: (phase).map_or(u32::from(u8::MAX), |phase| phase as u32),
+            };
+        }
     }
 }
 impl ImportDeclaration {
@@ -5394,9 +5547,14 @@ impl ImportDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
@@ -5407,10 +5565,15 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn phase<'a>(self, ast: &crate::Ast<'a>) -> Option<ImportPhase> {
@@ -5421,10 +5584,15 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(4usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_import_phase as u8;
+                (raw != u8::MAX).then(|| std::mem::transmute::<u8, ImportPhase>(raw))
+            }
+        }
     }
     #[inline]
     pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: StringLiteral) {
@@ -5458,11 +5626,16 @@ impl ImportDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = specifiers.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((specifiers).start, (specifiers).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_attributes<'a>(
@@ -5477,12 +5650,17 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = attributes.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((attributes).start, (attributes).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_phase<'a>(self, ast: &mut crate::Ast<'a>, phase: Option<ImportPhase>) {
@@ -5493,12 +5671,14 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(4usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = phase.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_import_phase: (phase).map_or(u32::from(u8::MAX), |phase| phase as u32),
+            };
+        }
     }
 }
 impl ImportSpecifier {
@@ -5646,9 +5826,14 @@ impl ExportNamedDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
@@ -5659,10 +5844,15 @@ impl ExportNamedDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn set_declaration<'a>(self, ast: &mut crate::Ast<'a>, declaration: Option<Decl>) {
@@ -5707,11 +5897,16 @@ impl ExportNamedDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = specifiers.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((specifiers).start, (specifiers).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_attributes<'a>(
@@ -5726,12 +5921,17 @@ impl ExportNamedDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = attributes.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((attributes).start, (attributes).end),
+                },
+            );
+        }
     }
 }
 impl ExportDefaultDeclaration {
@@ -5797,9 +5997,14 @@ impl ExportAllDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn set_exported<'a>(self, ast: &mut crate::Ast<'a>, exported: Option<ModuleExportName>) {
@@ -5843,11 +6048,16 @@ impl ExportAllDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = attributes.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((attributes).start, (attributes).end),
+                },
+            );
+        }
     }
 }
 impl ExportSpecifier {
@@ -7042,7 +7252,12 @@ impl TsFunction {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsThisParameter(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
@@ -7056,7 +7271,7 @@ impl TsFunction {
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { FormalParameters((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
@@ -7070,7 +7285,12 @@ impl TsFunction {
         let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
@@ -7124,8 +7344,11 @@ impl TsFunction {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = this_param.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
@@ -7140,8 +7363,10 @@ impl TsFunction {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = params.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (params).node_id(),
+            };
+        }
     }
     #[inline]
     pub fn set_return_type<'a>(
@@ -7160,8 +7385,11 @@ impl TsFunction {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = return_type.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
 }
 impl TsMethodDefinition {
@@ -7237,9 +7465,14 @@ impl TsMethodDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> TsFunction {
@@ -7250,10 +7483,10 @@ impl TsMethodDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { TsFunction((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropertyKey) {
@@ -7337,11 +7570,16 @@ impl TsMethodDefinition {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = decorators.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: TsFunction) {
@@ -7352,12 +7590,14 @@ impl TsMethodDefinition {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = value.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (value).node_id(),
+            };
+        }
     }
 }
 impl TsTypeAnnotation {
@@ -8392,7 +8632,12 @@ impl TsMappedType {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsType> {
@@ -8406,7 +8651,12 @@ impl TsMappedType {
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: BindingIdentifier) {
@@ -8448,8 +8698,11 @@ impl TsMappedType {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = name_type.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (name_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_type_annotation<'a>(
@@ -8468,8 +8721,11 @@ impl TsMappedType {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = type_annotation.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (type_annotation)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
 }
 impl TsPropertySignature {
@@ -8614,7 +8870,12 @@ impl TsMethodSignature {
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsThisParameter(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
@@ -8628,7 +8889,7 @@ impl TsMethodSignature {
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { FormalParameters((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
@@ -8642,7 +8903,12 @@ impl TsMethodSignature {
         let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            }
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropertyKey) {
@@ -8704,8 +8970,11 @@ impl TsMethodSignature {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = this_param.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
@@ -8720,8 +8989,10 @@ impl TsMethodSignature {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = params.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (params).node_id(),
+            };
+        }
     }
     #[inline]
     pub fn set_return_type<'a>(
@@ -8740,8 +9011,11 @@ impl TsMethodSignature {
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = return_type.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
+        }
     }
 }
 impl TsCallSignatureDeclaration {
@@ -9086,9 +9360,14 @@ impl TsInterfaceDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TsInterfaceBody {
@@ -9099,10 +9378,10 @@ impl TsInterfaceDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe { TsInterfaceBody((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: BindingIdentifier) {
@@ -9146,11 +9425,16 @@ impl TsInterfaceDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = extends.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((extends).start, (extends).end),
+                },
+            );
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TsInterfaceBody) {
@@ -9161,12 +9445,14 @@ impl TsInterfaceDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = body.into_extra_data();
-        };
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (body).node_id(),
+            };
+        }
     }
 }
 impl TsInterfaceBody {
@@ -10417,9 +10703,14 @@ impl JsxOpeningElement {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe { ExtraDataValue::from_extra_data(ast.extra_data.get_unchecked(offset)) }
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: JsxElementName) {
@@ -10467,11 +10758,16 @@ impl JsxOpeningElement {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            *ast.extra_data.get_unchecked_mut(offset) = attributes.into_extra_data();
-        };
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((attributes).start, (attributes).end),
+                },
+            );
+        }
     }
 }
 impl JsxClosingElement {

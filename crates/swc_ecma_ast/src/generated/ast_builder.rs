@@ -16,7 +16,14 @@ impl<'a> Ast<'a> {
         body: SubRange<Stmt>,
         hashbang: Option<Hashbang>,
     ) -> Program {
-        let _f0 = self.add_extra(body);
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((body).start, (body).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         Program(self.add_node(
             span,
             NodeKind::Program,
@@ -24,7 +31,7 @@ impl<'a> Ast<'a> {
                 program: ProgramPayload {
                     directives,
                     hashbang: hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -4302,7 +4309,9 @@ impl<'a> Ast<'a> {
         tail: bool,
         is_cooked_undefined: bool,
     ) -> TemplateElement {
-        let _f0 = self.add_extra(raw);
+        let _extra_field0 = unsafe { (ExtraData { utf8: raw }).units };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TemplateElement(self.add_node(
             span,
             NodeKind::TemplateElement,
@@ -4312,7 +4321,7 @@ impl<'a> Ast<'a> {
                     tail,
                     is_cooked_undefined,
                     _pad0: [0; 2usize],
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -4967,12 +4976,34 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> Class {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((decorators).start, (decorators).end),
+            })
+            .units
+        };
+        let _extra_field3 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((implements).start, (implements).end),
+            })
+            .units
+        };
         let _extra_data = [
-            (decorators).into_extra_data(),
-            (super_class).into_extra_data(),
-            (super_type_arguments).into_extra_data(),
-            (implements).into_extra_data(),
-            (body).into_extra_data(),
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                optional_node_id: (super_class)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                optional_node_id: (super_type_arguments)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            _extra_field3[0],
+            _extra_field3[1],
+            ExtraDataUnit {
+                node_id: (body).node_id(),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         Class(self.add_node(
@@ -5020,7 +5051,19 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         accessibility: Accessibility,
     ) -> MethodDefinition {
-        let _extra_data = [(decorators).into_extra_data(), (value).into_extra_data()];
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((decorators).start, (decorators).end),
+            })
+            .units
+        };
+        let _extra_data = [
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                node_id: (value).node_id(),
+            },
+        ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         MethodDefinition(self.add_node(
             span,
@@ -5060,11 +5103,25 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         accessibility: Accessibility,
     ) -> PropertyDefinition {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((decorators).start, (decorators).end),
+            })
+            .units
+        };
         let _extra_data = [
-            (decorators).into_extra_data(),
-            (key).into_extra_data(),
-            (type_annotation).into_extra_data(),
-            (value).into_extra_data(),
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                node_id: (key).node_id(),
+            },
+            ExtraDataUnit {
+                optional_node_id: (type_annotation)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                optional_node_id: (value).map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         PropertyDefinition(self.add_node(
@@ -5116,10 +5173,20 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Function {
         let _extra_data = [
-            (this_param).into_extra_data(),
-            (params).into_extra_data(),
-            (return_type).into_extra_data(),
-            (body).into_extra_data(),
+            ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                node_id: (params).node_id(),
+            },
+            ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                node_id: (body).node_id(),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         Function(self.add_node(
@@ -5240,9 +5307,19 @@ impl<'a> Ast<'a> {
         initializer: Option<Expr>,
         optional: bool,
     ) -> FormalParameter {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((decorators).start, (decorators).end),
+            })
+            .units
+        };
         let _extra_data = [
-            (decorators).into_extra_data(),
-            (initializer).into_extra_data(),
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                optional_node_id: (initializer)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         FormalParameter(self.add_node(
@@ -5383,7 +5460,15 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> ArrowFunctionExpression {
-        let _extra_data = [(return_type).into_extra_data(), (body).into_extra_data()];
+        let _extra_data = [
+            ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                node_id: (body).node_id(),
+            },
+        ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ArrowFunctionExpression(self.add_node(
             span,
@@ -5451,7 +5536,14 @@ impl<'a> Ast<'a> {
         optional: bool,
         pure: bool,
     ) -> CallExpression {
-        let _f0 = self.add_extra(arguments);
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((arguments).start, (arguments).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         CallExpression(self.add_node(
             span,
             NodeKind::CallExpression,
@@ -5463,7 +5555,7 @@ impl<'a> Ast<'a> {
                     optional,
                     pure,
                     _pad0: [0; 2usize],
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -5584,7 +5676,10 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> ImportExpression {
-        let _f0 = self.add_extra(phase);
+        let _extra_data = [ExtraDataUnit {
+            optional_import_phase: (phase).map_or(u32::from(u8::MAX), |phase| phase as u32),
+        }];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ImportExpression(self.add_node(
             span,
             NodeKind::ImportExpression,
@@ -5594,7 +5689,7 @@ impl<'a> Ast<'a> {
                     options: options.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     sync,
                     _pad0: [0; 3usize],
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -5609,10 +5704,26 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         import_kind: ImportOrExportKind,
     ) -> ImportDeclaration {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((specifiers).start, (specifiers).end),
+            })
+            .units
+        };
+        let _extra_field1 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((attributes).start, (attributes).end),
+            })
+            .units
+        };
         let _extra_data = [
-            (specifiers).into_extra_data(),
-            (attributes).into_extra_data(),
-            (phase).into_extra_data(),
+            _extra_field0[0],
+            _extra_field0[1],
+            _extra_field1[0],
+            _extra_field1[1],
+            ExtraDataUnit {
+                optional_import_phase: (phase).map_or(u32::from(u8::MAX), |phase| phase as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ImportDeclaration(self.add_node(
@@ -5712,9 +5823,23 @@ impl<'a> Ast<'a> {
         attributes: SubRange<ImportAttribute>,
         export_kind: ImportOrExportKind,
     ) -> ExportNamedDeclaration {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((specifiers).start, (specifiers).end),
+            })
+            .units
+        };
+        let _extra_field1 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((attributes).start, (attributes).end),
+            })
+            .units
+        };
         let _extra_data = [
-            (specifiers).into_extra_data(),
-            (attributes).into_extra_data(),
+            _extra_field0[0],
+            _extra_field0[1],
+            _extra_field1[0],
+            _extra_field1[1],
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ExportNamedDeclaration(self.add_node(
@@ -5757,7 +5882,14 @@ impl<'a> Ast<'a> {
         attributes: SubRange<ImportAttribute>,
         export_kind: ImportOrExportKind,
     ) -> ExportAllDeclaration {
-        let _f0 = self.add_extra(attributes);
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((attributes).start, (attributes).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ExportAllDeclaration(self.add_node(
             span,
             NodeKind::ExportAllDeclaration,
@@ -5767,7 +5899,7 @@ impl<'a> Ast<'a> {
                     source,
                     export_kind,
                     _pad0: [0; 3usize],
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -6815,9 +6947,17 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> TsFunction {
         let _extra_data = [
-            (this_param).into_extra_data(),
-            (params).into_extra_data(),
-            (return_type).into_extra_data(),
+            ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                node_id: (params).node_id(),
+            },
+            ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsFunction(self.add_node(
@@ -6852,7 +6992,19 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         accessibility: Accessibility,
     ) -> TsMethodDefinition {
-        let _extra_data = [(decorators).into_extra_data(), (value).into_extra_data()];
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((decorators).start, (decorators).end),
+            })
+            .units
+        };
+        let _extra_data = [
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                node_id: (value).node_id(),
+            },
+        ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMethodDefinition(self.add_node(
             span,
@@ -7490,8 +7642,14 @@ impl<'a> Ast<'a> {
         readonly: TsMappedTypeModifier,
     ) -> TsMappedType {
         let _extra_data = [
-            (name_type).into_extra_data(),
-            (type_annotation).into_extra_data(),
+            ExtraDataUnit {
+                optional_node_id: (name_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                optional_node_id: (type_annotation)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMappedType(self.add_node(
@@ -7549,9 +7707,17 @@ impl<'a> Ast<'a> {
         optional: bool,
     ) -> TsMethodSignature {
         let _extra_data = [
-            (this_param).into_extra_data(),
-            (params).into_extra_data(),
-            (return_type).into_extra_data(),
+            ExtraDataUnit {
+                optional_node_id: (this_param)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
+            ExtraDataUnit {
+                node_id: (params).node_id(),
+            },
+            ExtraDataUnit {
+                optional_node_id: (return_type)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            },
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMethodSignature(self.add_node(
@@ -7673,7 +7839,19 @@ impl<'a> Ast<'a> {
         body: TsInterfaceBody,
         declare: bool,
     ) -> TsInterfaceDeclaration {
-        let _extra_data = [(extends).into_extra_data(), (body).into_extra_data()];
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((extends).start, (extends).end),
+            })
+            .units
+        };
+        let _extra_data = [
+            _extra_field0[0],
+            _extra_field0[1],
+            ExtraDataUnit {
+                node_id: (body).node_id(),
+            },
+        ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsInterfaceDeclaration(self.add_node(
             span,
@@ -8771,7 +8949,14 @@ impl<'a> Ast<'a> {
         attributes: SubRange<JsxAttributeItem>,
         self_closing: bool,
     ) -> JsxOpeningElement {
-        let _f0 = self.add_extra(attributes);
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((attributes).start, (attributes).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         JsxOpeningElement(self.add_node(
             span,
             NodeKind::JsxOpeningElement,
@@ -8782,7 +8967,7 @@ impl<'a> Ast<'a> {
                         type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     self_closing,
                     _pad0: [0; 3usize],
-                    extra_data_start: _f0,
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))

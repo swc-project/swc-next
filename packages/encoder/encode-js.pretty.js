@@ -90,7 +90,7 @@ function createBuffers(sizeHint) {
   const extraCapacity = Math.max(512, (sizeHint / 20) | 0);
   const poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   const payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
-  const extraBuffer = new ArrayBuffer(extraCapacity * 8);
+  const extraBuffer = new ArrayBuffer(extraCapacity * 4);
   return {
     nodeCapacity, extraCapacity, poolCapacity,
     spans: new Uint32Array(nodeCapacity * 2),
@@ -137,7 +137,7 @@ function allocExtra(count) {
   extraCount += count;
   if (extraCount > extraCapacity) {
     do extraCapacity *= 2; while (extraCount > extraCapacity);
-    const next = new ArrayBuffer(extraCapacity * 8);
+    const next = new ArrayBuffer(extraCapacity * 4);
     new Uint8Array(next).set(new Uint8Array(extraBuffer));
     extraBuffer = next; extra = new DataView(extraBuffer);
   }
@@ -150,13 +150,13 @@ function setPayloadI16(i, o, v) { payload.setInt16(i * 16 + o, v, true); }
 function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, true); }
 function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, true); }
 function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, true); }
-function setExtraU8(i, o, v) { extra.setUint8(i * 8 + o, v); }
-function setExtraI8(i, o, v) { extra.setInt8(i * 8 + o, v); }
-function setExtraU16(i, o, v) { extra.setUint16(i * 8 + o, v, true); }
-function setExtraI16(i, o, v) { extra.setInt16(i * 8 + o, v, true); }
-function setExtraU32(i, o, v) { extra.setUint32(i * 8 + o, v, true); }
-function setExtraI32(i, o, v) { extra.setInt32(i * 8 + o, v, true); }
-function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, true); }
+function setExtraU8(i, o, v) { extra.setUint8(i * 4 + o, v); }
+function setExtraI8(i, o, v) { extra.setInt8(i * 4 + o, v); }
+function setExtraU16(i, o, v) { extra.setUint16(i * 4 + o, v, true); }
+function setExtraI16(i, o, v) { extra.setInt16(i * 4 + o, v, true); }
+function setExtraU32(i, o, v) { extra.setUint32(i * 4 + o, v, true); }
+function setExtraI32(i, o, v) { extra.setInt32(i * 4 + o, v, true); }
+function setExtraF64(i, o, v) { extra.setFloat64(i * 4 + o, v, true); }
 
 function encArray(values, encoder, holes) {
   const length = values?.length ?? 0;
@@ -418,11 +418,11 @@ function encProgram(n) {
   const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
   const v_1 = encArraySlice(_body, encStmt, _directiveCount, _length);
   const v_2 = n.hashbang == null ? NULL : encHashbang(n.hashbang);
-  const extraId = allocExtra(1);
+  const extraId = allocExtra(2);
   const index = allocNode(0, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   writeRange(v_0, _directiveCount, payload, index * 16 + 0);
-  writeRange(v_1, _length - _directiveCount, extra, (extraId + 0) * 8);
+  writeRange(v_1, _length - _directiveCount, extra, (extraId + 0) * 4);
   setPayloadU32(index, 8, v_2);
   return index;
 }
@@ -514,11 +514,11 @@ function encTemplateElement(n) {
   const v_1 = templateRaw(n.value?.raw ?? "");
   const v_2 = n.tail ? 1 : 0;
   const v_3 = n.value?.cooked == null ? 1 : 0;
-  const extraId = allocExtra(1);
+  const extraId = allocExtra(2);
   const index = allocNode(10, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   encStr(v_0, payload, index * 16 + 0, true);
-  encStr(v_1, extra, (extraId + 0) * 8);
+  encStr(v_1, extra, (extraId + 0) * 4);
   setPayloadU8(index, 8, v_2);
   setPayloadU8(index, 9, v_3);
   return index;
@@ -906,17 +906,17 @@ function encClass(n) {
   const v_7 = encClassBody(n.body);
   const v_8 = 0;
   const v_9 = 0;
-  const extraId = allocExtra(5);
+  const extraId = allocExtra(7);
   const index = allocNode(47, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   setPayloadU8(index, 8, v_0);
-  writeArrayRange(v_1, n.decorators, extra, (extraId + 0) * 8);
+  writeArrayRange(v_1, n.decorators, extra, (extraId + 0) * 4);
   setPayloadU32(index, 0, v_2);
   setPayloadU32(index, 4, v_3);
-  setExtraU32(extraId + 1, 0, v_4);
-  setExtraU32(extraId + 2, 0, v_5);
-  writeArrayRange(v_6, null, extra, (extraId + 3) * 8);
-  setExtraU32(extraId + 4, 0, v_7);
+  setExtraU32(extraId + 2, 0, v_4);
+  setExtraU32(extraId + 3, 0, v_5);
+  writeArrayRange(v_6, null, extra, (extraId + 4) * 4);
+  setExtraU32(extraId + 6, 0, v_7);
   setPayloadU8(index, 9, v_8);
   setPayloadU8(index, 10, v_9);
   return index;
@@ -940,12 +940,12 @@ function encMethodDefinition(n) {
   const v_7 = 0;
   const v_8 = 0;
   const v_9 = 0;
-  const extraId = allocExtra(2);
+  const extraId = allocExtra(3);
   const index = allocNode(49, n.start, n.end);
   setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
   setPayloadU32(index, 0, v_1);
-  setExtraU32(extraId + 1, 0, v_2);
+  setExtraU32(extraId + 2, 0, v_2);
   setPayloadU8(index, 4, v_3);
   setPayloadU8(index, 5, v_4);
   setPayloadU8(index, 6, v_5);
@@ -971,13 +971,13 @@ function encPropertyDefinition(n) {
   const v_11 = 0;
   const v_12 = 0;
   const v_13 = 0;
-  const extraId = allocExtra(4);
+  const extraId = allocExtra(5);
   const index = allocNode(50, n.start, n.end);
   setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
-  setExtraU32(extraId + 1, 0, v_1);
-  setExtraU32(extraId + 2, 0, v_2);
-  setExtraU32(extraId + 3, 0, v_3);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
+  setExtraU32(extraId + 2, 0, v_1);
+  setExtraU32(extraId + 3, 0, v_2);
+  setExtraU32(extraId + 4, 0, v_3);
   setPayloadU8(index, 0, v_4);
   setPayloadU8(index, 1, v_5);
   setPayloadU8(index, 2, v_6);
@@ -1119,13 +1119,13 @@ function encFormalParameter(n) {
   const v_2 = NULL;
   const v_3 = _initializer == null ? NULL : encExpr(_initializer);
   const v_4 = 0;
-  const extraId = allocExtra(2);
+  const extraId = allocExtra(3);
   const index = allocNode(59, n.start, n.end);
   setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
   setPayloadU32(index, 0, v_1);
   setPayloadU32(index, 4, v_2);
-  setExtraU32(extraId + 1, 0, v_3);
+  setExtraU32(extraId + 2, 0, v_3);
   setPayloadU8(index, 8, v_4);
   return index;
 }
@@ -1231,12 +1231,12 @@ function encCallExpression(n) {
   const v_2 = encArray(n.arguments, encArgument, false);
   const v_3 = n.optional ? 1 : 0;
   const v_4 = 0 ? 1 : 0;
-  const extraId = allocExtra(1);
+  const extraId = allocExtra(2);
   const index = allocNode(69, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  writeArrayRange(v_2, n.arguments, extra, (extraId + 0) * 8);
+  writeArrayRange(v_2, n.arguments, extra, (extraId + 0) * 4);
   setPayloadU8(index, 8, v_3);
   setPayloadU8(index, 9, v_4);
   return index;
@@ -1317,13 +1317,13 @@ function encImportDeclaration(n) {
   const v_2 = encArray(n.attributes, encImportAttribute, false);
   const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
   const v_4 = 0;
-  const extraId = allocExtra(3);
+  const extraId = allocExtra(5);
   const index = allocNode(77, n.start, n.end);
   setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 8);
+  writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 4);
   setPayloadU32(index, 0, v_1);
-  writeArrayRange(v_2, n.attributes, extra, (extraId + 1) * 8);
-  setExtraU8(extraId + 2, 0, v_3);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 2) * 4);
+  setExtraU8(extraId + 4, 0, v_3);
   setPayloadU8(index, 4, v_4);
   return index;
 }
@@ -1368,13 +1368,13 @@ function encExportNamedDeclaration(n) {
   const v_2 = n.source == null ? NULL : encStringLiteral(n.source);
   const v_3 = encArray(n.attributes, encImportAttribute, false);
   const v_4 = 0;
-  const extraId = allocExtra(2);
+  const extraId = allocExtra(4);
   const index = allocNode(82, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   setPayloadU32(index, 0, v_0);
-  writeArrayRange(v_1, n.specifiers, extra, (extraId + 0) * 8);
+  writeArrayRange(v_1, n.specifiers, extra, (extraId + 0) * 4);
   setPayloadU32(index, 4, v_2);
-  writeArrayRange(v_3, n.attributes, extra, (extraId + 1) * 8);
+  writeArrayRange(v_3, n.attributes, extra, (extraId + 2) * 4);
   setPayloadU8(index, 8, v_4);
   return index;
 }
@@ -1391,12 +1391,12 @@ function encExportAllDeclaration(n) {
   const v_1 = encStringLiteral(n.source);
   const v_2 = encArray(n.attributes, encImportAttribute, false);
   const v_3 = 0;
-  const extraId = allocExtra(1);
+  const extraId = allocExtra(2);
   const index = allocNode(84, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 8);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 4);
   setPayloadU8(index, 8, v_3);
   return index;
 }
@@ -1435,12 +1435,12 @@ function encJsxOpeningElement(n) {
   const v_1 = NULL;
   const v_2 = encArray(n.attributes, encJsxAttributeItem, false);
   const v_3 = n.selfClosing ? 1 : 0;
-  const extraId = allocExtra(1);
+  const extraId = allocExtra(2);
   const index = allocNode(162, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 8);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 4);
   setPayloadU8(index, 8, v_3);
   return index;
 }
@@ -1935,7 +1935,7 @@ function _encodeJs(program) {
 
   // Fields and padding not explicitly written by a node must remain zero.
   new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
-  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 8);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 4);
   const root = encProgram(program);
   const header = buffers.header;
   const view = new DataView(header.buffer);
@@ -1968,7 +1968,7 @@ function _encodeJs(program) {
     spanBytes,
     kinds.subarray(0, nodeCount),
     new Uint8Array(payloadBuffer, 0, nodeCount * 16),
-    new Uint8Array(extraBuffer, 0, extraCount * 8),
+    new Uint8Array(extraBuffer, 0, extraCount * 4),
     pool.subarray(0, poolLength),
   ];
   const bufferCapacityBytes = spans.byteLength + kinds.byteLength +
