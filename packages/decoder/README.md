@@ -18,7 +18,3 @@ export function parseSync(source, options) {
 ```
 
 `decode` selects the JavaScript or TypeScript decoder from the buffer header. `decodeJs` and `decodeTs` are also exported for callers that already know the language.
-
-`@swc-next/decoder/options` exports `encodeParserOptions` for encoding parser
-configuration without loading the AST decoders. It is also available as
-`encodeOptions` from the package root.

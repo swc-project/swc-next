@@ -17,10 +17,6 @@ const parts = encode(program);
 source type from `program.sourceType`. `encodeJs` and `encodeTs` are also
 available for callers that know whether TypeScript support is needed.
 
-`@swc-next/encoder/options` exports `encodeGeneratorOptions` for encoding generator
-configuration without loading the AST encoders. It is also available as
-`encodeOptions` from the package root.
-
 Node spans use UTF-16 offsets. String literal values and cooked template values
 preserve lone surrogates through the WTF-8 pool. UTF-8 fields, including
 identifiers and raw source text, replace lone surrogates with U+FFFD.
