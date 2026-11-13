@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<X extends
+// keep
+A | B> = 1;
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    | A
+    | B,
+> = 1;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    A | B,
+> = 1;
+
+---------- Options ----------
+{"printWidth":8,"semi":false}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    | A
+    | B,
+> = 1

@@ -106,6 +106,11 @@ struct ParameterBound<'ast> {
     boundary: TypeBoundary<'ast>,
 }
 
+struct ParameterBoundOpening {
+    group: GroupId,
+    layout: TypeLayout,
+}
+
 enum BoundContinuation<'ast> {
     End,
     Syntax,
@@ -1328,18 +1333,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ..
             } => {
                 self.format_formatted_type_boundary_operator(role, &before, writer)?;
-                let (opening, layout) = if head.own_line {
-                    (LineConstraint::NewLine(1), TypeLayout::CallerIndented)
+                let gap = if head.own_line {
+                    LineConstraint::NewLine(1)
                 } else {
-                    (LineConstraint::Unconstrained, TypeLayout::Root)
+                    LineConstraint::Unconstrained
                 };
-                let group = self.format_parameter_bound_separator(
-                    None,
-                    CommentGap::Source(opening),
-                    writer,
-                )?;
-                let pending = writer.indent_if_break(group, |writer| {
-                    self.format_suppressed_type_content(bound.node, &head, context, layout, writer)
+                let opening =
+                    self.format_parameter_bound_separator(None, CommentGap::Source(gap), writer)?;
+                let pending = writer.indent_if_break(opening.group, |writer| {
+                    self.format_suppressed_type_content(
+                        bound.node,
+                        &head,
+                        context,
+                        opening.layout,
+                        writer,
+                    )
                 })?;
                 if let BoundContinuation::SyntaxWithTail(tail) = continuation {
                     self.format_expression_tail(pending, writer)?;
@@ -1453,11 +1461,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.type_movable_head(node, context)
                 };
                 if leading.is_none() {
-                    let group = self.format_parameter_bound_separator(Some(after), gap, writer)?;
-                    return writer.indent_if_break(group, |writer| {
+                    let opening =
+                        self.format_parameter_bound_separator(Some(after), gap, writer)?;
+                    return writer.indent_if_break(opening.group, |writer| {
                         if continuation {
                             let span = node.node.span(self.ast);
-                            let layout = self.continuation_type_layout(span, TypeLayout::Root);
+                            let layout = self.continuation_type_layout(span, opening.layout);
                             self.format_type_before_continuation(
                                 span,
                                 writer,
@@ -1471,7 +1480,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.format_prepared_type_with_layout(
                                 node,
                                 context,
-                                TypeLayout::Root,
+                                opening.layout,
                                 writer,
                             )
                         }
@@ -1508,9 +1517,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PreparedBoundContent::Head { .. } => None,
             PreparedBoundContent::Body { .. } => Some(after),
         };
-        let group = self.format_parameter_bound_separator(after, gap, writer)?;
+        let opening = self.format_parameter_bound_separator(after, gap, writer)?;
         let span = node.node.span(self.ast);
-        let layout = self.continuation_type_layout(span, TypeLayout::Root);
+        let layout = self.continuation_type_layout(span, opening.layout);
         if continuation && layout == TypeLayout::ContinuationRoot {
             let (content, boundary_tail) = match content {
                 PreparedBoundContent::Head { recorded, tail } => (
@@ -1524,7 +1533,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     (PreparedBoundContent::Body { body, tail: None }, tail)
                 }
             };
-            let pending = writer.indent_if_break(group, |writer| {
+            let pending = writer.indent_if_break(opening.group, |writer| {
                 self.format_type_before_continuation(span, writer, |formatter, writer| {
                     let result = match content {
                         PreparedBoundContent::Head { recorded, .. } => formatter
@@ -1546,12 +1555,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             return Ok(pending);
         }
-        writer.indent_if_break(group, |writer| match content {
+        writer.indent_if_break(opening.group, |writer| match content {
             PreparedBoundContent::Head { recorded, tail } => self
                 .format_recorded_type_head_with_boundary_tail(
                     recorded,
                     context,
-                    TypeLayout::Root,
+                    opening.layout,
                     tail,
                     writer,
                 ),
@@ -1561,12 +1570,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => self.format_prepared_delimited_type_before_boundary(
                 body,
                 context,
-                TypeLayout::Root,
+                opening.layout,
                 tail,
                 writer,
             ),
             PreparedBoundContent::Body { body, tail: None } => {
-                self.format_prepared_delimited_type(body, context, TypeLayout::Root, writer)
+                self.format_prepared_delimited_type(body, context, opening.layout, writer)
             }
         })
     }
@@ -1576,7 +1585,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         after: Option<&CommentBoundary<'ast>>,
         gap: CommentGap,
         writer: &mut Writer<'ast>,
-    ) -> Result<GroupId, FormatError> {
+    ) -> Result<ParameterBoundOpening, FormatError> {
         if let Some(after) = after
             && !after.is_empty()
         {
@@ -1587,7 +1596,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         // A preceding boundary tail cannot remain queued across this RHS head.
         writer.line_suffix_boundary();
-        Ok(group)
+        Ok(ParameterBoundOpening {
+            group,
+            layout: if gap.requires_line() {
+                TypeLayout::CallerIndented
+            } else {
+                TypeLayout::Root
+            },
+        })
     }
 
     fn format_parameter_prefix(
