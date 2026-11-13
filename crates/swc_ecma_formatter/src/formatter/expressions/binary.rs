@@ -639,23 +639,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let jsx_tail = logical_tail
             .as_ref()
             .is_some_and(|tail| tail.operand.layout == LogicalOperandLayout::Jsx);
-        let parent_indents = match context.position {
-            ExpressionPosition::ForTest
-            | ExpressionPosition::ForUpdate
-            | ExpressionPosition::ForInitializer { .. } => true,
-            ExpressionPosition::AssignmentRight(_)
-            | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
-            | ExpressionPosition::PropertyValue => {
-                let has_right_prefix = logical_tail.as_ref().is_some_and(|tail| {
-                    tail.operand.layout == LogicalOperandLayout::Jsx && !tail.steps.is_empty()
-                });
-                !inline_right
-                    || !has_right_prefix
-                        && !BinaryLike::from_data(self.expression_data(binary.left), self.ast)
-                            .is_some_and(|left| binary.operator.flattens(left.operator))
-            }
-            _ => false,
-        };
+        let parent_indents = context.operand_indent == super::OperandIndent::Auto
+            && match context.position {
+                ExpressionPosition::ForTest
+                | ExpressionPosition::ForUpdate
+                | ExpressionPosition::ForInitializer { .. } => true,
+                ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
+                | ExpressionPosition::PropertyValue => {
+                    let has_right_prefix = logical_tail.as_ref().is_some_and(|tail| {
+                        tail.operand.layout == LogicalOperandLayout::Jsx && !tail.steps.is_empty()
+                    });
+                    !inline_right
+                        || !has_right_prefix
+                            && !BinaryLike::from_data(self.expression_data(binary.left), self.ast)
+                                .is_some_and(|left| binary.operator.flattens(left.operator))
+                }
+                _ => false,
+            };
         if parent_indents && !jsx_tail {
             return writer.group(false, |writer| {
                 self.format_prepared_binary_enclosed(chain, context, logical_tail, writer)
