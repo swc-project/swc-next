@@ -7,35 +7,32 @@ import { parseSync as parseBinding, transformSync as transformBinding } from "..
 import { decode } from "@swc-next/decoder";
 import { encodeGeneratorConfig } from "@swc-next/encoder/options";
 import { encodeParserConfig } from "@swc-next/decoder/options";
-import { createTransformOptionsEncoder, decodeTransform } from "@swc-next/decoder/transform";
+import { encodeJsTransformApiOptions, decodeJsTransformOutput } from "@swc-next/decoder/transform";
 
 nodeTest("transform bridge uses packed options and binary output", () => {
-  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorConfig);
-  const config = encodeOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } });
+  const config = encodeJsTransformApiOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } }, encodeGeneratorConfig);
   const output = transformBinding(Buffer.from('const text: string = "雪😀";'), 'const text: string = "雪😀";'.length, config);
   assert.ok(output instanceof Uint8Array);
-  const result = decodeTransform(output);
+  const result = decodeJsTransformOutput(output);
   assert.equal(result.code, 'const text="雪😀";');
   assert.deepEqual(JSON.parse(result.map).sources, ["组件😀.ts"]);
 
-  const empty = encodeOptions({});
+  const empty = encodeJsTransformApiOptions({}, encodeGeneratorConfig);
   assert.equal(empty.byteLength, 16);
   assert.equal(new DataView(empty.buffer, empty.byteOffset).getUint32(0, true), 1);
 });
 
 nodeTest("transform option scratch buffers recover after growth and validation errors", () => {
-  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorConfig);
-  encodeOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true });
-  assert.throws(() => encodeOptions({ sourceMap: 1 }), TypeError);
+  encodeJsTransformApiOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true }, encodeGeneratorConfig);
+  assert.throws(() => encodeJsTransformApiOptions({ sourceMap: 1 }, encodeGeneratorConfig), TypeError);
   const source = "const x = 1;";
-  const output = transformBinding(Buffer.from(source), source.length, encodeOptions({}));
-  const result = typeof output === "string" ? { code: output, diagnostics: [] } : decodeTransform(output);
+  const output = transformBinding(Buffer.from(source), source.length, encodeJsTransformApiOptions({}, encodeGeneratorConfig));
+  const result = decodeJsTransformOutput(output);
   assert.equal(result.code, "const x = 1;\n");
   assert.deepEqual(result.diagnostics, []);
 });
 
 nodeTest("parser and transform diagnostics preserve metadata in offset buffers", () => {
-  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorConfig);
   const offsetBuffer = (buffer) => {
     const padded = new Uint8Array(buffer.length + 1);
     padded.set(buffer, 1);
@@ -45,9 +42,9 @@ nodeTest("parser and transform diagnostics preserve metadata in offset buffers",
     const sourceBytes = Buffer.from(source);
     const parser = { lang };
     const parsedBuffer = parseBinding(sourceBytes, source.length, encodeParserConfig(parser));
-    const transformedBuffer = transformBinding(sourceBytes, source.length, encodeOptions({ parser }));
+    const transformedBuffer = transformBinding(sourceBytes, source.length, encodeJsTransformApiOptions({ parser }, encodeGeneratorConfig));
     const parsed = decode(offsetBuffer(parsedBuffer), source, sourceBytes);
-    const transformed = decodeTransform(offsetBuffer(transformedBuffer));
+    const transformed = decodeJsTransformOutput(offsetBuffer(transformedBuffer));
     assert.ok(transformed.diagnostics.length > 0);
     assert.deepEqual(transformed.diagnostics, parsed.diagnostics.map(({ help, ...diagnostic }) =>
       help === undefined ? diagnostic : { ...diagnostic, help }));

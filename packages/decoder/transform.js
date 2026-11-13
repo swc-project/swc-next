@@ -34,15 +34,10 @@ function storage(length) {
     : new Uint8Array(length);
 }
 
-/** Create an options encoder with synchronous, reusable scratch storage.
- * The caller supplies generator option encoding to keep codec packages independent.
- * The encoder is not reentrant. Option getters and Proxy traps must not
- * reenter it, including via its transformSync wrapper.
- */
-export function createTransformOptionsEncoder(encodeGeneratorConfig) {
+function createJsTransformApiOptionsEncoder() {
   let buffer = empty;
   let view;
-  return function encodeOptions(options) {
+  return function encodeJsTransformApiOptions(options, encodeGeneratorConfig) {
     if (options == null) return empty;
     object(options, rootKeys, "options");
     const parser = options.parser;
@@ -68,12 +63,21 @@ export function createTransformOptionsEncoder(encodeGeneratorConfig) {
   };
 }
 
+/** Encode the complete JS transform configuration into reusable scratch storage.
+ * The caller supplies generator config encoding to keep codec packages independent.
+ * The returned buffer is valid until the next call. Option getters and Proxy traps
+ * must not reenter this encoder while it is encoding.
+ */
+export const encodeJsTransformApiOptions = createJsTransformApiOptionsEncoder();
+
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
   ? Buffer.prototype.utf8Slice
   : function(start, end) { return decoder.decode(this.subarray(start, end)); };
 const severities = ["error", "warning", "hint", "info"];
 
-export function decodeTransform(buffer) {
+/** Decode either the native code-only string or a packed native/Wasm result. */
+export function decodeJsTransformOutput(buffer) {
+  if (typeof buffer === "string") return { code: buffer, diagnostics: [] };
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const codeLength = view.getUint32(0, true);
   const mapLength = view.getUint32(4, true);
@@ -109,11 +113,11 @@ export function decodeTransform(buffer) {
  * traps must not reenter the same wrapper while it is encoding options.
  */
 export function createTransformSync(binding, encodeGeneratorConfig) {
-  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorConfig);
+  const encodeOptions = createJsTransformApiOptionsEncoder();
   let sourceBuffer = empty;
   return function transformSync(source, options) {
     if (typeof source !== "string") throw new TypeError("source must be a string");
-    const config = encodeOptions(options);
+    const config = encodeOptions(options, encodeGeneratorConfig);
     const capacity = source.length * 3;
     if (sourceBuffer.length < capacity) {
       sourceBuffer = storage(Math.max(capacity, sourceBuffer.length * 2, 4096));
@@ -121,6 +125,6 @@ export function createTransformSync(binding, encodeGeneratorConfig) {
     const { written } = encoder.encodeInto(source, sourceBuffer);
     // Synchronous Rust processing borrows these bytes only for this call.
     const result = binding(sourceBuffer.subarray(0, written), source.length, config);
-    return typeof result === "string" ? { code: result, diagnostics: [] } : decodeTransform(result);
+    return decodeJsTransformOutput(result);
   };
 }

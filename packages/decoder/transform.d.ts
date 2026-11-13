@@ -6,14 +6,17 @@ export interface TransformOutput {
   diagnostics: Diagnostic[];
 }
 
-/** Scratch storage remains valid until the next call on this encoder.
- * Encoders reuse state and are not reentrant. Option getters and Proxy traps
- * must not reenter the active encoder, including via its transformSync wrapper.
+/** Encode the complete JS transform configuration. The caller supplies generator
+ * config encoding to keep codec packages independent. The returned scratch buffer
+ * is valid until the next call. Option getters and Proxy traps must not reenter
+ * this encoder while it is encoding.
  */
-export declare function createTransformOptionsEncoder(
+export declare function encodeJsTransformApiOptions(
+  options: object | null | undefined,
   encodeGeneratorConfig: (options?: object | null) => number,
-): (options?: object | null) => Uint8Array;
-export declare function decodeTransform(buffer: Uint8Array): TransformOutput;
+): Uint8Array;
+/** Decode either the native code-only string or a packed native/Wasm result. */
+export declare function decodeJsTransformOutput(output: string | Uint8Array): TransformOutput;
 /** Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
  * traps must not reenter the same wrapper while it is encoding options.
  */
