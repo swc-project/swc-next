@@ -12,7 +12,9 @@ use super::callable::{
     AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
     SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
-use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeContext, TypeGap, TypeLayout};
+use super::{
+    Formatter, PreparedType, TypeBoundaryLayout, TypeContext, TypeGap, TypeLayout, TypeOutput,
+};
 use crate::formatter::comments::{
     CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, PreparedCommentAdjacency,
 };
@@ -247,12 +249,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.line_breaks(opening_end, first_start) != 0
     }
 
-    pub(super) fn format_type_literal(
+    pub(super) fn format_type_literal_body(
         &mut self,
         node: TsTypeLiteral,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_type_member_body_with_layout(
             node.span(self.ast),
             node.members(self.ast),
@@ -261,7 +263,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             writer,
         )?;
-        Ok(None)
+        Ok(TypeOutput::closed())
     }
 
     pub(super) fn format_type_member_body(
@@ -329,7 +331,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(first) = members.peek().copied() else {
             let comments = head_comments.unwrap_or_else(|| self.comments.in_range(content));
             if self.content_mode(comments) == ContentMode::Verbatim {
-                return self.format_verbatim(span, writer);
+                self.format_verbatim(span, writer)?;
+                return Ok(());
             }
             if comments.is_empty() {
                 writer.text("{}");

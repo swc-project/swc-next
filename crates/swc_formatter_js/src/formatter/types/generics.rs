@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
 use super::compound::PendingTypeHead;
 use super::{
     Formatter, PreparedType, TypeAttachmentHead, TypeBoundary, TypeBoundaryTail,
-    TypeBoundaryTarget, TypeContext, TypeLayout,
+    TypeBoundaryTarget, TypeContext, TypeLayout, TypeOutput,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout, ExpressionTail,
@@ -372,12 +372,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_type_reference(
+    pub(super) fn format_type_reference_body(
         &mut self,
         node: TsTypeReference,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_type_reference_with_owner(node, TypeArgumentOwner::Ordinary, writer)
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_reference_with_owner_body(node, TypeArgumentOwner::Ordinary, writer)
     }
 
     pub(super) fn format_type_reference_with_owner(
@@ -386,6 +386,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         owner: TypeArgumentOwner,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_type_reference_with_owner_completed(node, owner, writer, || None)
+    }
+
+    pub(super) fn format_type_reference_with_owner_body(
+        &mut self,
+        node: TsTypeReference,
+        owner: TypeArgumentOwner,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_reference_with_owner_completed(node, owner, writer, TypeOutput::closed)
+    }
+
+    pub(super) fn format_type_reference_with_owner_completed<R>(
+        &mut self,
+        node: TsTypeReference,
+        owner: TypeArgumentOwner,
+        writer: &mut Writer<'ast>,
+        finish: impl FnOnce() -> R,
+    ) -> Result<R, FormatError> {
         let ast = self.ast;
         let name = node.type_name(ast);
         let arguments = node.type_arguments(ast).map(|node| {
@@ -402,9 +421,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some((arguments, ref prefix)) = arguments {
             let mode = prefix.right_mode;
             self.format_type_list_prefix(prefix, writer)?;
-            self.format_type_arguments_with_owner(arguments, mode, owner, writer)?;
+            self.format_type_arguments_with_owner_body(arguments, mode, owner, writer)?;
         }
-        Ok(None)
+        Ok(finish())
     }
 
     pub(in crate::formatter) fn format_type_arguments(
@@ -423,8 +442,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         owner: TypeArgumentOwner,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_type_arguments_with_owner_body(node, mode, owner, writer)
+    }
+
+    pub(super) fn format_type_arguments_with_owner_body(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        mode: ContentMode,
+        owner: TypeArgumentOwner,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         if mode == ContentMode::Verbatim {
-            return self.format_verbatim(node.span(self.ast), writer);
+            self.format_verbatim(node.span(self.ast), writer)?;
+            return Ok(());
         }
         let ast = self.ast;
         let members = node
@@ -959,7 +989,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         mode
                     });
-                    let tail = match prepared {
+                    let pending = match prepared {
                         PreparedGenericMember::Type(mut node) => {
                             if item.mode == ContentMode::Verbatim {
                                 node.source_owner = Some(node.node);
@@ -985,7 +1015,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     };
                     let boundary =
-                        self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
+                        self.finish_delimited_item_with_closing(item, pending, closing, writer)?;
                     end = boundary.end;
                     source_end = member_span.end;
                     separator = boundary.separator;
@@ -1028,10 +1058,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok(())
         };
         if hug {
-            format(writer)
+            format(writer)?;
         } else {
-            writer.group(false, format)
+            writer.group(false, format)?;
         }
+        Ok(())
     }
 
     pub(super) fn prepare_type_parameter(
@@ -1171,6 +1202,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_type_parameter_with(parameter, continuation, writer, |output| {
+            output.pending
+        })
+    }
+
+    pub(super) fn format_prepared_type_parameter_body(
+        &mut self,
+        parameter: PreparedParameter<'ast>,
+        continuation: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_prepared_type_parameter_with(parameter, continuation, writer, |output| output)
+    }
+
+    fn format_prepared_type_parameter_with<R>(
+        &mut self,
+        parameter: PreparedParameter<'ast>,
+        continuation: bool,
+        writer: &mut Writer<'ast>,
+        finish: impl FnOnce(TypeOutput<'ast>) -> R,
+    ) -> Result<R, FormatError> {
         let ast = self.ast;
         writer.group(false, |writer| {
             self.format_parameter_prefix(parameter.prefix, writer)?;
@@ -1179,7 +1231,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 writer.text(ast.get_utf8(parameter.name.name(ast)));
             }
-            match (parameter.constraint, parameter.default) {
+            let output = match (parameter.constraint, parameter.default) {
                 (Some(constraint), Some(default)) => {
                     self.format_parameter_bounds(constraint, default, writer)
                 }
@@ -1195,8 +1247,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     BoundContinuation::from_following(continuation),
                     writer,
                 ),
-                (None, None) => Ok(None),
-            }
+                (None, None) => Ok(TypeOutput::closed()),
+            }?;
+            Ok(finish(output))
         })
     }
 
@@ -1205,7 +1258,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         constraint: ParameterBound<'ast>,
         default: ParameterBound<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let movable = constraint.node.source_owner.is_none()
             && matches!(
                 &constraint.boundary.layout,
@@ -1241,7 +1294,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     comments => (None, Some(before), after, comments),
                 };
-                let tail = self.format_parameter_bound(
+                let constraint = self.format_parameter_bound(
                     constraint,
                     TypeContext::TypeConstraint,
                     match following {
@@ -1250,7 +1303,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     writer,
                 )?;
-                self.format_expression_tail(tail, writer)?;
+                self.format_expression_tail(constraint.pending, writer)?;
                 if let Some(before) = before {
                     self.format_formatted_type_boundary_operator(role, &before, writer)?;
                 }
@@ -1264,13 +1317,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             default => {
-                let tail = self.format_parameter_bound(
+                let constraint = self.format_parameter_bound(
                     constraint,
                     TypeContext::TypeConstraint,
                     BoundContinuation::Syntax,
                     writer,
                 )?;
-                self.format_expression_tail(tail, writer)?;
+                self.format_expression_tail(constraint.pending, writer)?;
                 self.format_parameter_bound(
                     default,
                     TypeContext::Root,
@@ -1287,7 +1340,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         continuation: BoundContinuation<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let (role, before, after) = match bound.boundary {
             TypeBoundary {
                 role,
@@ -1318,14 +1371,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     );
                 }
-                let pending =
-                    self.format_source_type_operator_rhs(source, bound.node, context, writer)?;
+                let output =
+                    self.format_source_type_operator_rhs_body(source, bound.node, context, writer)?;
                 if let BoundContinuation::SyntaxWithTail(tail) = continuation {
-                    self.format_expression_tail(pending, writer)?;
+                    self.format_expression_tail(output.pending, writer)?;
                     self.format_type_boundary_tail(tail, writer)?;
-                    return Ok(None);
+                    return Ok(TypeOutput::closed());
                 }
-                return Ok(pending);
+                return Ok(output);
             }
             TypeBoundary {
                 role,
@@ -1340,8 +1393,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let opening =
                     self.format_parameter_bound_separator(None, CommentGap::Source(gap), writer)?;
-                let pending = writer.indent_if_break(opening.group, |writer| {
-                    self.format_suppressed_type_content(
+                let output = writer.indent_if_break(opening.group, |writer| {
+                    self.format_suppressed_type_content_body(
                         bound.node,
                         &head,
                         context,
@@ -1350,11 +1403,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                 })?;
                 if let BoundContinuation::SyntaxWithTail(tail) = continuation {
-                    self.format_expression_tail(pending, writer)?;
+                    self.format_expression_tail(output.pending, writer)?;
                     self.format_type_boundary_tail(tail, writer)?;
-                    return Ok(None);
+                    return Ok(TypeOutput::closed());
                 }
-                return Ok(pending);
+                return Ok(output);
             }
             TypeBoundary {
                 role,
@@ -1387,7 +1440,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: PreparedBoundaryComments<'ast>,
         continuation: BoundContinuation<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let (continuation, tail) = continuation.into_parts();
         // A retained own-line block head can become separated from its bound
         // when the enclosing union breaks. Prepare that same flexible gap on
@@ -1467,22 +1520,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         if continuation {
                             let span = node.node.span(self.ast);
                             let layout = self.continuation_type_layout(span, opening.layout);
-                            self.format_type_before_continuation(
+                            self.format_type_body_before_continuation(
                                 span,
                                 writer,
                                 |formatter, writer| {
                                     formatter
-                                        .format_prepared_type_output(node, context, layout, writer)
+                                        .format_prepared_type_body(node, context, layout, writer)
                                 },
                             )
-                            .map(|output| output.pending)
                         } else {
-                            self.format_prepared_type_with_layout(
-                                node,
-                                context,
-                                opening.layout,
-                                writer,
-                            )
+                            self.format_prepared_type_body(node, context, opening.layout, writer)
                         }
                     });
                 }
@@ -1533,31 +1580,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     (PreparedBoundContent::Body { body, tail: None }, tail)
                 }
             };
-            let pending = writer.indent_if_break(opening.group, |writer| {
-                self.format_type_before_continuation(span, writer, |formatter, writer| {
-                    let result = match content {
+            let output = writer.indent_if_break(opening.group, |writer| {
+                self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                    match content {
                         PreparedBoundContent::Head { recorded, .. } => formatter
-                            .format_recorded_type_head_with_boundary_tail(
+                            .format_recorded_type_head_with_boundary_tail_body(
                                 recorded, context, layout, None, writer,
                             ),
-                        PreparedBoundContent::Body { body, .. } => {
-                            formatter.format_prepared_delimited_type(body, context, layout, writer)
-                        }
-                    };
-                    result.map(crate::formatter::expressions::ExpressionOutput::unreported)
+                        PreparedBoundContent::Body { body, .. } => formatter
+                            .format_prepared_delimited_type_body(body, context, layout, writer),
+                    }
                 })
-                .map(|output| output.pending)
             })?;
             if let Some(tail) = boundary_tail {
-                self.format_expression_tail(pending, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
                 self.format_type_boundary_tail(tail, writer)?;
-                return Ok(None);
+                return Ok(TypeOutput::closed());
             }
-            return Ok(pending);
+            return Ok(output);
         }
         writer.indent_if_break(opening.group, |writer| match content {
             PreparedBoundContent::Head { recorded, tail } => self
-                .format_recorded_type_head_with_boundary_tail(
+                .format_recorded_type_head_with_boundary_tail_body(
                     recorded,
                     context,
                     opening.layout,
@@ -1567,7 +1611,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PreparedBoundContent::Body {
                 body,
                 tail: Some(tail),
-            } => self.format_prepared_delimited_type_before_boundary(
+            } => self.format_prepared_delimited_type_before_boundary_body(
                 body,
                 context,
                 opening.layout,
@@ -1575,7 +1619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             ),
             PreparedBoundContent::Body { body, tail: None } => {
-                self.format_prepared_delimited_type(body, context, opening.layout, writer)
+                self.format_prepared_delimited_type_body(body, context, opening.layout, writer)
             }
         })
     }
