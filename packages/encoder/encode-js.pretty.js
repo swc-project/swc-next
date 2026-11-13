@@ -182,6 +182,18 @@ function encArraySlice(values, encoder, from, end) {
   return start;
 }
 
+function encTemplateElements(values, templateStart) {
+  const length = values?.length ?? 0;
+  if (!length) return 0;
+  const start = allocExtra(length);
+  const delimited = values[0].start === templateStart;
+  for (let index = 0; index < length; index++) {
+    const id = encTemplateElement(values[index], delimited);
+    setExtraU32(start + index, 0, id);
+  }
+  return start;
+}
+
 function writeArrayRange(start, values, view, offset) {
   // Called after the parent is allocated, so view refers to the current buffer.
   view.setUint32(offset, start, true);
@@ -501,7 +513,7 @@ function encRegExpLiteral(n) {
 }
 
 function encTemplateLiteral(n) {
-  const v_0 = encArray(n.quasis, encTemplateElement, false);
+  const v_0 = encTemplateElements(n.quasis, n.start);
   const v_1 = encArray(n.expressions, encExpr, false);
   const index = allocNode(9, n.start, n.end);
   writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
@@ -509,13 +521,21 @@ function encTemplateLiteral(n) {
   return index;
 }
 
-function encTemplateElement(n) {
+function encTemplateElement(n, delimited) {
   const v_0 = n.value?.cooked ?? "";
   const v_1 = templateRaw(n.value?.raw ?? "");
   const v_2 = n.tail ? 1 : 0;
   const v_3 = n.value?.cooked == null ? 1 : 0;
   const extraId = allocExtra(2);
   const index = allocNode(10, n.start, n.end);
+  if (delimited) {
+    const span = index * 2;
+    const endOffset = 2 - v_2;
+    // TS ESTree spans include delimiters; wire spans cover only raw content.
+    const trim = spans[span + 1] - spans[span] > endOffset;
+    spans[span] += trim;
+    spans[span + 1] -= endOffset * trim;
+  }
   setPayloadU32(index, 12, extraId);
   encStr(v_0, payload, index * 16 + 0, true);
   encStr(v_1, extra, (extraId + 0) * 4);

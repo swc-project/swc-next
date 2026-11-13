@@ -246,6 +246,7 @@ fn write_struct_encoder(
     let parameters = match name.as_str() {
         "FormalParameters" => "n, from = 0, kind = \"formal\"",
         "Function" | "TsFunction" => "n, parameterKind = \"formal\"",
+        "TemplateElement" => "n, delimited",
         _ => "n",
     };
     writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
@@ -294,15 +295,15 @@ fn write_struct_encoder(
         ));
     }
 
+    let value = |name| {
+        let index = ast
+            .fields
+            .iter()
+            .position(|field| field.name == name)
+            .unwrap();
+        &fields[index].1
+    };
     if name == "FormalParameter" && dispatch.is_ts {
-        let value = |name| {
-            let index = ast
-                .fields
-                .iter()
-                .position(|field| field.name == name)
-                .unwrap();
-            &fields[index].1
-        };
         writeln!(
             output,
             "    if ({optional} && {annotation} === NULL && {initializer} !== NULL) {{\n      const span = {pattern} * 2;\n      // Undo the decoder's optional-marker extension without underflowing empty spans.\n      spans[span + 1] -= spans[span + 1] > spans[span];\n    }}",
@@ -328,6 +329,14 @@ fn write_struct_encoder(
         "    const index = allocNode({kind}, {start}, {end});"
     )
     .unwrap();
+    if name == "TemplateElement" {
+        writeln!(
+            output,
+            "    if (delimited) {{\n      const span = index * 2;\n      const endOffset = 2 - {tail};\n      // TS ESTree spans include delimiters; wire spans cover only raw content.\n      const trim = spans[span + 1] - spans[span] > endOffset;\n      spans[span] += trim;\n      spans[span + 1] -= endOffset * trim;\n    }}",
+            tail = value("tail"),
+        )
+        .unwrap();
+    }
     if let Some(offset) = layout.extra_start_offset() {
         writeln!(output, "    setPayloadU32(index, {offset}, extraId);").unwrap();
     }
@@ -529,6 +538,9 @@ fn encode_expression(
             };
             let encoder = encoder_name(inner, dispatch);
             match (node, field) {
+                ("TemplateLiteral" | "TsTemplateLiteralType", "quasis") => {
+                    format!("encTemplateElements({source}, n.start)")
+                }
                 ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => {
                     format!("encArraySlice(_body, {encoder}, 0, _directiveCount)")
                 }
@@ -1345,6 +1357,18 @@ const HELPERS: &str = r#"  function clearState() {
     for (let index = from, slot = start; index < end; index++, slot++) {
       const id = encoder(values[index]);
       setExtraU32(slot, 0, id);
+    }
+    return start;
+  }
+
+  function encTemplateElements(values, templateStart) {
+    const length = values?.length ?? 0;
+    if (!length) return 0;
+    const start = allocExtra(length);
+    const delimited = values[0].start === templateStart;
+    for (let index = 0; index < length; index++) {
+      const id = encTemplateElement(values[index], delimited);
+      setExtraU32(start + index, 0, id);
     }
     return start;
   }

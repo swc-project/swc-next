@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
-import { decodeTs } from "@swc-next/decoder";
+import { decodeJs, decodeTs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
@@ -22,8 +22,8 @@ function encodedParameterKinds(source, encoder, options) {
   );
 }
 
-function decodeEncoded(program, source) {
-  const [header, spans, kinds, payloads, extra, strings] = encode(program);
+function decodeEncoded(program, source, decoder = decodeTs, encoder = encode) {
+  const [header, spans, kinds, payloads, extra, strings] = encoder(program);
   const buffer = Buffer.concat([
     header, spans, kinds, Buffer.alloc((8 - kinds.length % 8) % 8),
     payloads, extra, strings, Buffer.alloc((4 - strings.length % 4) % 4),
@@ -32,35 +32,35 @@ function decodeEncoded(program, source) {
   buffer.writeUInt32LE(strings.length, 8);
   buffer.writeUInt32LE(0, 12);
   buffer.writeUInt32LE(0, 36);
-  return decodeTs(buffer, source, new TextEncoder().encode(source)).program;
+  return decoder(buffer, source, new TextEncoder().encode(source)).program;
 }
 
-function assertParameterSpanRoundtrip(source, options) {
+function assertEncodedRoundtrip(source, options, decoder = decodeTs, encoder = encode) {
   const { program } = parseSync(source, options);
   const expected = structuredClone(program);
-  const decoded = decodeEncoded(program, source);
+  const decoded = decodeEncoded(program, source, decoder, encoder);
   assert.deepEqual(decoded, expected);
 
-  const repeated = decodeEncoded(decoded, source);
+  const repeated = decodeEncoded(decoded, source, decoder, encoder);
   assert.deepEqual(repeated, expected);
   assert.deepEqual(program, expected);
 }
 
 test("encoder preserves parameter spans", () => {
   const typescript = { lang: "ts" };
-  assertParameterSpanRoundtrip("function f(a? = 0) {}", typescript);
+  assertEncodedRoundtrip("function f(a? = 0) {}", typescript);
 
-  assertParameterSpanRoundtrip("function f(a?: number = 0) {}", typescript);
+  assertEncodedRoundtrip("function f(a?: number = 0) {}", typescript);
 
-  assertParameterSpanRoundtrip("function f(a = 0) {}", typescript);
+  assertEncodedRoundtrip("function f(a = 0) {}", typescript);
 
-  assertParameterSpanRoundtrip("function f(a?) {}", typescript);
+  assertEncodedRoundtrip("function f(a?) {}", typescript);
 
-  assertParameterSpanRoundtrip("class C { constructor(public a? = 0) {} }", typescript);
+  assertEncodedRoundtrip("class C { constructor(public a? = 0) {} }", typescript);
 
-  assertParameterSpanRoundtrip("function f({a}? = {}) {}", typescript);
+  assertEncodedRoundtrip("function f({a}? = {}) {}", typescript);
 
-  assertParameterSpanRoundtrip("function f([a]? = []) {}", typescript);
+  assertEncodedRoundtrip("function f([a]? = []) {}", typescript);
 });
 
 test("encoder preserves empty parameter spans", () => {
@@ -74,6 +74,52 @@ test("encoder preserves empty parameter spans", () => {
   const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
   assert.equal(spanView.getUint32(patternId * 8, true), 0);
   assert.equal(spanView.getUint32(patternId * 8 + 4, true), 0);
+});
+
+test("encoders preserve JavaScript template spans", () => {
+  const javascript = { lang: "js" };
+  for (const encoder of [encodeJs, encodeTs]) {
+    assertEncodedRoundtrip("`abc`;", javascript, decodeJs, encoder);
+
+    assertEncodedRoundtrip("`a${x}b${y}c`;", javascript, decodeJs, encoder);
+
+    assertEncodedRoundtrip("`${x}`;", javascript, decodeJs, encoder);
+
+    assertEncodedRoundtrip("``;", javascript, decodeJs, encoder);
+
+    assertEncodedRoundtrip("`a\r\nb\r\nc`;", javascript, decodeJs, encoder);
+
+    assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;", javascript, decodeJs, encoder);
+  }
+});
+
+test("encoder preserves TypeScript template spans", () => {
+  const typescript = { lang: "ts" };
+  assertEncodedRoundtrip("`abc`;", typescript);
+
+  assertEncodedRoundtrip("const value: string = `a${x}b${y}c`;", typescript);
+
+  assertEncodedRoundtrip("`${x}`;", typescript);
+
+  assertEncodedRoundtrip("``;", typescript);
+
+  assertEncodedRoundtrip("`a\r\nb\r\nc`;", typescript);
+
+  assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;", typescript);
+
+  assertEncodedRoundtrip("type T = `a${string}b`;", typescript);
+});
+
+test("encoder preserves empty template spans", () => {
+  const { program } = parseSync("`abc`;", { lang: "ts" });
+  const quasi = program.body[0].expression.quasis[0];
+  quasi.start = quasi.end = 0;
+
+  const [, spans, kinds] = encode(program);
+  const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
+  const index = kinds.indexOf(10) * 8;
+  assert.equal(spanView.getUint32(index, true), 0);
+  assert.equal(spanView.getUint32(index + 4, true), 0);
 });
 
 test("encoders preserve parameter contexts", () => {
