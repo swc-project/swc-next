@@ -13,7 +13,6 @@ program.body[0].declarations[0].init.value = 2;
 console.log(generateSync(program).code);
 ```
 
-The package also exports `transformSync` for source transformations.
 Call `init()` before parsing, transforming, or printing. It loads the bundled `.wasm` file;
 subsequent calls are idempotent.
 
