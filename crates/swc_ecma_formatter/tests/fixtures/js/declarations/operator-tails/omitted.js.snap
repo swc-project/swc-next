@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value = // note
+1; // tail
+;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+let value = 1; // note
+// tail

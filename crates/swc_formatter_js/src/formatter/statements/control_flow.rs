@@ -785,6 +785,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut printed = self.format_statement(
                 statement,
                 StatementLayout {
+                    operator_tail_destination: super::OperatorTailDestination::Local,
                     start: ExpressionStart::StatementBody,
                     empty_block,
                     source_candidate: if matches!(

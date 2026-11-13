@@ -357,6 +357,19 @@ struct CommentRunStart {
     adjacency: PreparedCommentAdjacency,
 }
 
+/// Select the current packet or preserve a real next-head frontier before emission.
+enum PreparedStatementTail<'ast> {
+    Current {
+        comments: &'ast [Comment],
+        source_end: Option<u32>,
+        available: usize,
+        diagnostic_end: Option<u32>,
+    },
+    Forwarded {
+        source_end: u32,
+    },
+}
+
 /// Source statement extent and the emitted terminator's position relative to a leased tail.
 #[derive(Clone, Copy)]
 pub(super) struct StatementCommentBoundary {
@@ -2330,13 +2343,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<LineConstraint>), FormatError> {
+        self.format_trailing_comments_with_operator(
+            span,
+            boundary,
+            has_following,
+            pending,
+            None,
+            writer,
+        )
+    }
+
+    fn prepare_statement_tail(
+        &self,
+        span: Span,
+        boundary: StatementCommentBoundary,
+        has_following: bool,
+        pending: Option<ExpressionTail<'ast>>,
+    ) -> Result<PreparedStatementTail<'ast>, FormatError> {
         if has_following
             && let Some(tail) = pending.as_ref()
             && self.optimizer_only_packet(tail.comments)
         {
             // A released marker follows the same next-head owner as a source
             // post-semicolon packet. That owner also places any required ASI guard.
-            return Ok((tail.source_end, None));
+            return Ok(PreparedStatementTail::Forwarded {
+                source_end: tail.source_end,
+            });
         }
         let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
         let comments = self.comments.between(Span::new(source_end, span.end))?;
@@ -2382,7 +2414,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }),
                 );
                 if prefix.is_empty() && has_following {
-                    return Ok((tail.source_end, None));
+                    return Ok(PreparedStatementTail::Forwarded {
+                        source_end: tail.source_end,
+                    });
                 }
                 let count = prefix.len().max(tail.comments.len());
                 (&comments[..count], Some(tail.source_end))
@@ -2410,16 +2444,70 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
             )
         };
-        self.comments.claim(comments)?;
-        if let Some(last) = comments.last() {
-            if let Some(source_end) = source_end {
-                self.format_comment_run(
+        Ok(PreparedStatementTail::Current {
+            comments,
+            source_end,
+            available,
+            diagnostic_end,
+        })
+    }
+
+    pub(super) fn format_trailing_comments_with_operator(
+        &mut self,
+        span: Span,
+        boundary: StatementCommentBoundary,
+        has_following: bool,
+        pending: Option<ExpressionTail<'ast>>,
+        operator_tail: Option<&super::expressions::assignment::DeferredOperatorTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(u32, Option<LineConstraint>), FormatError> {
+        // Keep the cursor's lower-bound placement check when its range is empty.
+        if pending.is_none()
+            && self.comments.first().is_none_or(|comment| {
+                comment.span.start >= span.start && comment.span.end > span.end
+            })
+        {
+            if let Some(operator) = operator_tail {
+                self.format_operator_tail_with_pending(operator, None, writer)?;
+            }
+            return Ok((span.start, None));
+        }
+        let selected = self.prepare_statement_tail(span, boundary, has_following, pending)?;
+        let (comments, source_end, available, diagnostic_end, forwarded_end) = match selected {
+            PreparedStatementTail::Current {
+                comments,
+                source_end,
+                available,
+                diagnostic_end,
+            } => (comments, source_end, available, diagnostic_end, None),
+            PreparedStatementTail::Forwarded { source_end } => {
+                (&[][..], None, 0, None, Some(source_end))
+            }
+        };
+        if let Some(operator) = operator_tail {
+            self.format_operator_tail_with_pending(
+                operator,
+                (!comments.is_empty()).then_some(ExpressionTail {
+                    source_end: source_end.unwrap_or(span.start),
                     comments,
-                    CommentRunLayout::StatementTail(source_end),
-                    writer,
-                )?;
-            } else {
-                if self
+                }),
+                writer,
+            )?;
+        } else if forwarded_end.is_none() {
+            self.comments.claim(comments)?;
+        }
+        if let Some(end) = forwarded_end {
+            return Ok((end, None));
+        }
+        if let Some(last) = comments.last() {
+            if operator_tail.is_none() {
+                if let Some(source_end) = source_end {
+                    self.format_comment_run(
+                        comments,
+                        CommentRunLayout::StatementTail(source_end),
+                        writer,
+                    )?;
+                } else if self
                     .comment_binding(comments, Span::new(span.start, last.span.end), None)
                     .allows_relocation(None)
                 {

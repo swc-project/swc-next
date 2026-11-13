@@ -4865,6 +4865,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         annotation: Option<TsTypeAnnotation>,
         context: VariableContext,
         definition_owner: Option<VariableDeclarator>,
+        operator_tail_destination: super::expressions::assignment::OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclaratorOutput<'ast>, FormatError> {
         let ast = self.ast;
@@ -4939,7 +4940,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let mut context = self.variable_initializer_context(right, context);
+        let mut context = self
+            .variable_initializer_context(right, context)
+            .with_operator_tail_destination(operator_tail_destination);
         let is_identifier_annotation = annotation.is_some()
             && matches!(
                 ast.binding_pattern_data(pattern),
