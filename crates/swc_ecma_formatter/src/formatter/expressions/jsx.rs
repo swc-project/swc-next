@@ -1362,9 +1362,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut child = matches!(role, JsxBraceRole::Child);
         loop {
             match data {
-                ExprData::ObjectExpression(_)
-                | ExprData::ArrayExpression(_)
-                | ExprData::CallExpression(_)
+                ExprData::ObjectExpression(object) => {
+                    return !object.properties(self.ast).is_empty()
+                        || !jsx_has_source_comments(self.ast.comments(), object.span(self.ast));
+                }
+                ExprData::ArrayExpression(array) => {
+                    return !array.elements(self.ast).is_empty()
+                        || !jsx_has_source_comments(self.ast.comments(), array.span(self.ast));
+                }
+                ExprData::CallExpression(_)
                 | ExprData::Function(_)
                 | ExprData::ArrowFunctionExpression(_)
                 | ExprData::TemplateLiteral(_)
