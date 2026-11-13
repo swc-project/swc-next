@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{ToTokens, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
     Expr, FnArg, GenericArgument, ImplItem, Item, ItemEnum, ItemFn, ItemImpl, Lit, LitInt, LitStr,
     Meta, Pat, PathArguments, ReturnType, Token, Type, Visibility, parse::Parser,
@@ -49,9 +49,8 @@ fn describe_bridge_item(item: &Item, arguments: &[Meta]) -> syn::Result<Vec<Brid
         Item::Fn(function) => {
             describe_function(function, arguments).map(|descriptor| vec![descriptor])
         }
-        Item::Impl(implementation) => {
-            describe_wire_mapping(implementation, arguments).map(|descriptor| vec![descriptor])
-        }
+        Item::Impl(implementation) => describe_wire_mapping(implementation, arguments)
+            .map(|mapping| vec![BridgeDescriptor::WireMapping(mapping)]),
         Item::Struct(_) => Ok(Vec::new()),
         _ => Ok(Vec::new()),
     }
@@ -152,14 +151,17 @@ fn expand_wire_impl(
     implementation: ItemImpl,
     arguments: Vec<Meta>,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    describe_wire_mapping(&implementation, &arguments)?;
-    Ok(quote!(#implementation))
+    let mapping = describe_wire_mapping(&implementation, &arguments)?;
+    let semantic_type = syn::parse_str(&mapping.semantic_type)?;
+    let wire_type = syn::parse_str(&mapping.wire_type)?;
+    let declaration = napi::wire_type_alias(&semantic_type, &wire_type, mapping.direction)?;
+    Ok(quote!(#implementation #declaration))
 }
 
 fn describe_wire_mapping(
     implementation: &ItemImpl,
     arguments: &[Meta],
-) -> syn::Result<BridgeDescriptor> {
+) -> syn::Result<WireMapping> {
     if !arguments.is_empty() {
         return Err(syn::Error::new_spanned(
             implementation,
@@ -217,7 +219,7 @@ fn describe_wire_mapping(
     }
 
     let semantic_type = type_key(&implementation.self_ty);
-    Ok(BridgeDescriptor::WireMapping(WireMapping {
+    Ok(WireMapping {
         direction,
         semantic_type: if optional {
             format!("Option<{semantic_type}>")
@@ -225,7 +227,7 @@ fn describe_wire_mapping(
             semantic_type
         },
         wire_type: type_key(wire_type),
-    }))
+    })
 }
 
 fn expand_enum(
@@ -271,6 +273,9 @@ fn expand_enum(
         napi
     };
     let ident = &enumeration.ident;
+    let enum_type = parse_quote!(#ident);
+    let decode_declaration = napi::wire_type_alias(&enum_type, &enum_type, WireDirection::Decode)?;
+    let encode_declaration = napi::wire_type_alias(&enum_type, &enum_type, WireDirection::Encode)?;
     let variants = enumeration.variants.iter().map(|variant| &variant.ident);
     let encode_arms = variants.clone().enumerate().map(|(index, variant)| {
         let index = LitInt::new(&format!("{index}u32"), variant.span());
@@ -285,6 +290,8 @@ fn expand_enum(
         #[cfg_attr(not(target_family = "wasm"), #napi)]
         #enumeration
         #ascii_conversion
+        #decode_declaration
+        #encode_declaration
 
         impl ::swc_next_bridge::private::Sealed for #ident {}
         impl ::swc_next_bridge::BridgeWire for #ident {}
@@ -435,40 +442,19 @@ fn infer_ts_arguments(function: &ItemFn) -> syn::Result<String> {
                     "#[bridge] parameters must use identifier patterns",
                 ));
             };
-            let optional = option_inner_type(&argument.ty);
-            let ty = infer_ts_type(optional.unwrap_or(&argument.ty), TypePosition::Argument)?;
-            Ok((
-                to_lower_camel_case(&pattern.ident.to_string()),
-                ty,
-                optional.is_some(),
+            let ty = infer_ts_type(&argument.ty, TypePosition::Argument)?;
+            Ok(format!(
+                "{}: {ty}",
+                to_lower_camel_case(&pattern.ident.to_string())
             ))
         })
         .collect::<syn::Result<Vec<_>>>()?;
-    let last_required = arguments.iter().rposition(|(_, _, optional)| !optional);
-
-    Ok(arguments
-        .into_iter()
-        .enumerate()
-        .map(|(index, (name, mut ty, optional))| {
-            if optional {
-                ty.push_str(" | undefined | null");
-            }
-            let optional_marker = optional && last_required.is_none_or(|required| index > required);
-            format!("{name}{}: {ty}", if optional_marker { "?" } else { "" })
-        })
-        .collect::<Vec<_>>()
-        .join(", "))
+    Ok(arguments.join(", "))
 }
 
 fn infer_ts_return_type(output: &ReturnType) -> syn::Result<String> {
     let ty = return_type(output);
     let ty = result_value_type(&ty).unwrap_or(&ty);
-    if let Some(inner) = option_inner_type(ty) {
-        return Ok(format!(
-            "{} | undefined | null",
-            infer_ts_type(inner, TypePosition::Return)?
-        ));
-    }
     infer_ts_type(ty, TypePosition::Return)
 }
 
@@ -505,12 +491,41 @@ fn infer_ts_type(ty: &Type, position: TypePosition) -> syn::Result<String> {
                     Ok("string".into())
                 }
                 "Vec" if is_byte_vec(ty) => Ok("Buffer".into()),
-                _ if matches!(segment.arguments, PathArguments::None) => Ok(ident),
+                _ if matches!(segment.arguments, PathArguments::None) || ident == "Option" => {
+                    let direction = match position {
+                        TypePosition::Argument => WireDirection::Decode,
+                        TypePosition::Return => WireDirection::Encode,
+                    };
+                    Ok(native_wire_type_name(ty, direction)?.to_string())
+                }
                 _ => cannot_infer_ts_type(ty),
             }
         }
         _ => cannot_infer_ts_type(ty),
     }
+}
+
+fn native_wire_type_name(ty: &Type, direction: WireDirection) -> syn::Result<syn::Ident> {
+    if let Some(inner) = option_inner_type(ty) {
+        return Ok(format_ident!(
+            "Optional{}",
+            native_wire_type_name(inner, direction)?
+        ));
+    }
+    let Type::Path(path) = ty else {
+        return cannot_infer_ts_type(ty);
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return cannot_infer_ts_type(ty);
+    };
+    if path.qself.is_some() || !matches!(segment.arguments, PathArguments::None) {
+        return cannot_infer_ts_type(ty);
+    }
+    let suffix = match direction {
+        WireDirection::Decode => "InputWire",
+        WireDirection::Encode => "OutputWire",
+    };
+    Ok(format_ident!("{}{suffix}", segment.ident))
 }
 
 fn option_inner_type(ty: &Type) -> Option<&Type> {
@@ -671,4 +686,73 @@ fn to_lower_camel_case(value: &str) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wire_alias(implementation: ItemImpl) -> syn::ItemType {
+        let expanded = expand_wire_impl(implementation, Vec::new()).unwrap();
+        let file: syn::File = syn::parse2(expanded).unwrap();
+        file.items
+            .into_iter()
+            .find_map(|item| match item {
+                Item::Type(alias) => Some(alias),
+                _ => None,
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn wire_declarations() {
+        let function = parse_quote! {
+            pub fn call(source: String, bytes: &[u8], options: Option<Config>) -> Result<Output, Error> {
+                unreachable!()
+            }
+        };
+        assert_eq!(
+            infer_ts_arguments(&function).unwrap(),
+            "source: string, bytes: Buffer, options: OptionalConfigInputWire"
+        );
+        assert_eq!(
+            infer_ts_return_type(&function.sig.output).unwrap(),
+            "OutputOutputWire"
+        );
+
+        let alias = wire_alias(parse_quote! {
+            impl BridgeDecodeOptional for Config { type Wire = u32; }
+        });
+        assert_eq!(alias.ident, "OptionalConfigInputWire");
+        assert!(is_ident_type(&alias.ty, "u32"));
+
+        let alias = wire_alias(parse_quote! {
+            impl BridgeEncode for Output { type Wire = String; }
+        });
+        assert_eq!(alias.ident, "OutputOutputWire");
+        assert!(is_ident_type(&alias.ty, "String"));
+    }
+
+    #[test]
+    fn wire_buffers() {
+        let alias = wire_alias(parse_quote! {
+            impl BridgeDecode for Input { type Wire = Vec<u8>; }
+        });
+        let Type::Path(path) = *alias.ty else {
+            panic!("expected a native buffer type");
+        };
+        assert_eq!(path.path.segments.last().unwrap().ident, "Buffer");
+
+        let function = parse_quote! {
+            pub fn call(options: Option<Config>) -> Option<Output> { unreachable!() }
+        };
+        assert_eq!(
+            infer_ts_arguments(&function).unwrap(),
+            "options: OptionalConfigInputWire"
+        );
+        assert_eq!(
+            infer_ts_return_type(&function.sig.output).unwrap(),
+            "OptionalOutputOutputWire"
+        );
+    }
 }

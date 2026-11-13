@@ -1,8 +1,31 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{FnArg, ItemFn, Meta, Pat, Safety};
+use syn::{FnArg, ItemFn, Meta, Pat, Safety, Type, parse_quote};
 
-use crate::{is_byte_slice, napi_function_meta, result_value_type, return_type};
+use crate::{
+    is_byte_slice, is_byte_vec, metadata::WireDirection, napi_function_meta, native_wire_type_name,
+    result_value_type, return_type,
+};
+
+pub(super) fn wire_type_alias(
+    semantic_type: &Type,
+    wire_type: &Type,
+    direction: WireDirection,
+) -> syn::Result<TokenStream> {
+    let ident = native_wire_type_name(semantic_type, direction)?;
+    let native_type = if is_byte_vec(wire_type) {
+        parse_quote!(::swc_next_bridge::napi::bindgen_prelude::Buffer)
+    } else {
+        wire_type.clone()
+    };
+    // N-API cannot resolve associated ABI types while generating declarations.
+    // Type aliases carry the wire impl's exact type without adding runtime exports.
+    Ok(quote! {
+        #[cfg(not(target_family = "wasm"))]
+        #[::swc_next_bridge::napi_derive::napi]
+        pub type #ident = #native_type;
+    })
+}
 
 pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::Result<TokenStream> {
     let mut native_arguments = Vec::new();
