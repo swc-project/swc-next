@@ -8,7 +8,8 @@ switch(1){case 1: // suffix
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 switch (1) {
-  case 1: { // suffix
+  case 1: {
+    // suffix
     foo();
   }
 }
@@ -17,7 +18,8 @@ switch (1) {
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (1) {
-  case 1: { // suffix
+  case 1: {
+    // suffix
     foo()
   }
 }
@@ -26,7 +28,8 @@ switch (1) {
 {"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 switch (1) {
-	case 1: { // suffix
+	case 1: {
+		// suffix
 		foo();
 	}
 }
@@ -37,7 +40,8 @@ switch (1) {
 switch (
   1
 ) {
-  case 1: { // suffix
+  case 1: {
+    // suffix
     foo()
   }
 }

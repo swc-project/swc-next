@@ -1,7 +1,7 @@
 //! Case heads, statement sequences, and source packets between real case owners.
 
 use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
-use crate::formatter::comments::{CommentRunLayout, NodeHead};
+use crate::formatter::comments::{CommentCursor, CommentRunLayout, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition, TailOwner};
 use crate::formatter::statements::{
@@ -9,7 +9,7 @@ use crate::formatter::statements::{
     StatementItem, StatementSequenceKind,
 };
 use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
+    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive, is_suppression_comment,
 };
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
@@ -49,6 +49,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<StatementBoundary, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
+        let comments = CommentCursor::new(ast.comments());
+        if !comments.in_range(span).is_empty() {
+            let mut previous_end = None;
+            for id in node.cases(ast).iter() {
+                let case = ast.get_node_in_sub_range(id);
+                let case_span = case.span(ast);
+                let first = case
+                    .consequent(ast)
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id))
+                    .find(|&node| StatementItem::Statement(node).is_nonempty(ast));
+                let head_start = case
+                    .test(ast)
+                    .map_or(case_span.start + 7, |test| test.span(ast).end);
+                let head_end = first.map_or(case_span.end, |node| node.span(ast).start);
+                let head = Span::new(head_start, head_end);
+                let block_head = first.and_then(|node| {
+                    let StmtData::BlockStatement(block) = ast.stmt_data(node) else {
+                        return None;
+                    };
+                    let span = block.span(ast);
+                    let end = block
+                        .body(ast)
+                        .iter()
+                        .map(|id| ast.get_node_in_sub_range(id))
+                        .find(|&node| StatementItem::Statement(node).is_nonempty(ast))
+                        .map_or(span.end - 1, |node| node.span(ast).start);
+                    Some(Span::new(span.start + 1, end))
+                });
+                let directive = |span| {
+                    comments
+                        .in_range(span)
+                        .iter()
+                        .any(|&comment| comment_directive(ast, comment).is_some())
+                };
+                if previous_end.is_some_and(|start| directive(Span::new(start, case_span.start)))
+                    || directive(head)
+                    || block_head.is_some_and(directive)
+                {
+                    self.format_verbatim(span, writer)?;
+                    return Ok(StatementBoundary::SourceEnd {
+                        end: span.end,
+                        has_terminator: false,
+                    });
+                }
+                previous_end = Some(case_span.end);
+            }
+        }
         let mut cases = node
             .cases(ast)
             .iter()
@@ -149,15 +197,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.group(false, |writer| {
             writer.text("switch");
             if source_header {
-                self.format_compound_gap(
-                    CompoundGap {
-                        layout: GapLayout::Source,
-                        ..leading
-                    },
-                    FlatSeparator::Empty,
-                    Writer::soft_line,
+                let gap = self.format_delimited_source_gap(
+                    leading.span,
+                    DelimitedFollowing::Node,
                     writer,
                 )?;
+                let flat = if leading
+                    .comments
+                    .last()
+                    .is_some_and(|comment| comment.span.end == gap.end)
+                {
+                    FlatSeparator::Space
+                } else {
+                    FlatSeparator::Empty
+                };
+                gap.following.write(writer, flat, Writer::soft_line);
                 self.format_expression_with_leading_comments(
                     discriminant,
                     NodeHead {
@@ -303,7 +357,46 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             );
         }
+        let mut split = source.comments.len();
+        let mut next = source.span.end;
+        if following {
+            while split > 0 {
+                let comment = source.comments[split - 1];
+                if comment.kind != CommentKind::Block
+                    || self.line_breaks(comment.span.end, next) != 0
+                {
+                    break;
+                }
+                split -= 1;
+                next = comment.span.start;
+            }
+        }
+        let (prefix, packet) = source.comments.split_at(split);
+        let next_case_packet = !packet.is_empty()
+            && self
+                .comment_binding(packet, source.span, None)
+                .allows_relocation(None);
         self.comments.claim(source.comments)?;
+        if next_case_packet {
+            self.format_comment_run(
+                prefix,
+                CommentRunLayout::SourceAfter(source.span.start),
+                writer,
+            )?;
+            writer.hard_line();
+            let previous = prefix
+                .last()
+                .map_or(source.span.start, |comment| comment.span.end);
+            if self.next_line_is_empty(previous, packet[0].span.start) {
+                writer.hard_line();
+            }
+            self.format_comment_run(
+                packet,
+                CommentRunLayout::FlatLeading(source.span.end),
+                writer,
+            )?;
+            return Ok(());
+        }
         self.format_comment_run(
             source.comments,
             CommentRunLayout::SourceAfter(source.span.start),
@@ -526,18 +619,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comment.kind == CommentKind::Block && self.line_breaks(comment.span.end, next) != 0
             });
             if adjacent_block {
-                if test.is_some() {
-                    if !line && block_ends_line {
+                if test.is_some() && !line {
+                    if block_ends_line {
                         prepared.test_tail_comments = comments;
                     } else {
                         prepared.colon_comments = comments;
-                        prepared.colon_layout = if line && starts_at_colon {
-                            CommentRunLayout::SourceAfter(colon + 1)
-                        } else if line {
-                            CommentRunLayout::InlineLeading(head_end)
-                        } else {
-                            CommentRunLayout::FlatLeading(head_end)
-                        };
+                        prepared.colon_layout = CommentRunLayout::FlatLeading(head_end);
                     }
                 } else if let StmtData::BlockStatement(block) = ast.stmt_data(first) {
                     let split = comments
@@ -556,6 +643,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         prepared.body_leading = body.leading;
                     }
                 }
+            } else if test.is_some() && starts_at_colon {
+                let split = comments.partition_point(|comment| {
+                    self.line_breaks(colon + 1, comment.span.start) == 0
+                });
+                let (header, body) = comments.split_at(split);
+                let next = body.first().map_or(head_end, |comment| comment.span.start);
+                if !header.is_empty()
+                    && header
+                        .iter()
+                        .all(|comment| comment.kind == CommentKind::Block)
+                    && header
+                        .last()
+                        .is_some_and(|comment| self.line_breaks(comment.span.end, next) != 0)
+                {
+                    prepared.test_tail_comments = header;
+                    prepared.body_leading = StatementBodyLeading::new(body, Some(first));
+                } else if line {
+                    prepared.colon_comments = header;
+                    prepared.body_leading = StatementBodyLeading::new(body, Some(first));
+                } else {
+                    prepared.body_leading = StatementBodyLeading::new(comments, Some(first));
+                }
             } else if line && starts_at_colon || test.is_none() && block_ends_line {
                 let split = comments.partition_point(|comment| {
                     self.line_breaks(colon + 1, comment.span.start) == 0
@@ -564,44 +673,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 prepared.body_leading = StatementBodyLeading::new(&comments[split..], Some(first));
             } else {
                 prepared.body_leading = StatementBodyLeading::new(comments, Some(first));
-            }
-        }
-        if test.is_some()
-            && adjacent_block
-            && prepared.colon_comments.is_empty()
-            && let Some(first) = first
-            && let StmtData::BlockStatement(block) = ast.stmt_data(first)
-        {
-            let opening = block.span(ast).start + 1;
-            let limit = block
-                .body(ast)
-                .iter()
-                .map(|id| ast.get_node_in_sub_range(id))
-                .find(|&statement| StatementItem::Statement(statement).is_nonempty(ast))
-                .map_or(block.span(ast).end - 1, |statement| {
-                    statement.span(ast).start
-                });
-            let comments = self.comments.in_range(Span::new(opening, limit));
-            let split = comments
-                .partition_point(|comment| self.line_breaks(opening, comment.span.start) == 0);
-            let packet = &comments[..split];
-            if packet
-                .first()
-                .is_some_and(|comment| comment.kind == CommentKind::Line)
-                && self
-                    .comment_binding(
-                        packet,
-                        Span::new(
-                            opening,
-                            packet.last().map_or(opening, |comment| comment.span.end),
-                        ),
-                        None,
-                    )
-                    .allows_relocation(None)
-            {
-                // The case test leases an inline suffix through the real block opener.
-                prepared.colon_comments = packet;
-                prepared.colon_layout = CommentRunLayout::SourceAfter(colon + 1);
             }
         }
         Ok(prepared)
