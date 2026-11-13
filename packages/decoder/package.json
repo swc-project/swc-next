@@ -34,9 +34,7 @@
     "transform.js",
     "transform.d.ts",
     "options.js",
-    "options.d.ts",
-    "diagnostics.js",
-    "utf8.js"
+    "options.d.ts"
   ],
   "publishConfig": {
     "access": "public",

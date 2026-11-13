@@ -1,11 +1,10 @@
 import { encodeParserOptions } from "./options.js";
 import { encodeGeneratorOptions } from "@swc-next/encoder/options";
-import { decodeDiagnostics } from "./diagnostics.js";
-import { utf8Slice } from "./utf8.js";
 
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
 const encoder = new TextEncoder();
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 const empty = new Uint8Array();
 const rootKeys = ["filename", "sourceMap", "comments", "parser", "generator"];
 const parserKeys = ["sourceType", "lang", "preserveParens", "comments", "semanticErrors"];
@@ -75,6 +74,11 @@ const encodeOptions = createTransformOptionsEncoder();
  */
 export { encodeOptions as encodeTransformOptions };
 
+const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
+  ? Buffer.prototype.utf8Slice
+  : function(start, end) { return decoder.decode(this.subarray(start, end)); };
+const severities = ["error", "warning", "hint", "info"];
+
 export function decodeTransform(buffer) {
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const codeLength = view.getUint32(0, true);
@@ -84,7 +88,25 @@ export function decodeTransform(buffer) {
   let offset = 12 + codeLength;
   const map = mapLength === 0xffffffff ? undefined : utf8Slice.call(buffer, offset, offset + mapLength);
   if (map !== undefined) offset += mapLength;
-  const diagnostics = decodeDiagnostics(buffer, view, offset, count, true);
+  const diagnostics = new Array(count);
+  const readU32 = () => { const value = view.getUint32(offset, true); offset += 4; return value; };
+  const readString = () => {
+    const length = readU32();
+    const value = utf8Slice.call(buffer, offset, offset + length);
+    offset += length;
+    return value;
+  };
+  for (let i = 0; i < count; i++) {
+    const severity = severities[buffer[offset++]];
+    if (severity === undefined) throw new RangeError("Unknown diagnostic severity");
+    const start = readU32();
+    const end = readU32();
+    const message = readString();
+    const help = buffer[offset++] === 0 ? undefined : readString();
+    const labels = new Array(readU32());
+    for (let j = 0; j < labels.length; j++) labels[j] = { start: readU32(), end: readU32(), message: readString() };
+    diagnostics[i] = help === undefined ? { severity, message, start, end, labels } : { severity, message, start, end, help, labels };
+  }
   return map === undefined ? { code, diagnostics } : { code, map, diagnostics };
 }
 
