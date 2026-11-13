@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (Result | null)[];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T =
+  (Result | null)[];
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+type T = (Result | null)[];

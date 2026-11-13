@@ -1,11 +1,11 @@
 //! Source-ordered type members carry a prepared operator gap and actual ignore owner.
 
 use swc_next_ecma_ast::{
-    Comment, CommentKind, GetSpan, Span, SubRange, TsLiteralData, TsType, TsTypeData,
+    Ast, Comment, CommentKind, GetSpan, Span, SubRange, TsLiteralData, TsType, TsTypeData,
     TsTypeNameData,
 };
 
-use super::context::TypeContext;
+use super::context::{TypeContext, TypeFrame};
 use super::{
     Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
     TypeLayout,
@@ -234,6 +234,11 @@ impl<'ast> PreparedUnion<'ast> {
         self
     }
 
+    fn frame(&self, context: TypeContext, ast: &Ast<'_>) -> TypeFrame {
+        let frame = context.frame(self.data, ast);
+        if self.hug { frame.tight() } else { frame }
+    }
+
     pub(super) fn alias_layout(&self) -> TypeLayout {
         if self.hug {
             TypeLayout::Root
@@ -397,7 +402,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             union.data,
             context,
             layout,
-            context.needs_parentheses(union.data, self.ast),
+            union.frame(context, self.ast),
             writer,
             |formatter, layout, enclosure, writer| {
                 formatter.format_union_members(union, layout, enclosure, head, Some(tail), writer)
@@ -1220,6 +1225,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    fn union_layout_member(&self, mut member: PreparedType) -> Result<PreparedType, FormatError> {
+        loop {
+            member = self.normalize_type_head(member)?;
+            if member.source_owner.is_some() || member.source_head.is_some() {
+                return Ok(member);
+            }
+            let TsTypeData::TsParenthesizedType(node) = member.data else {
+                return Ok(member);
+            };
+            let parentheses =
+                self.prepare_type_parentheses(node, None, None, TypeContext::UnionMember);
+            if parentheses.retained {
+                return Ok(member);
+            }
+            member = parentheses.child;
+        }
+    }
+
     fn prepare_union_members(
         &self,
         node: PreparedType,
@@ -1286,6 +1309,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let mut hug = match &leading {
+            _ if preserve_lines => UnionHug::Unavailable,
             UnionLeading::Empty => UnionHug::NoObject,
             UnionLeading::Formatted { before, after, .. }
                 if before.is_empty() && after.boundary().is_empty() =>
@@ -1313,16 +1337,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut current,
                 &mut next,
             )?;
-            hug.include(current);
             hug.include_boundary(&boundary);
+            if !matches!(hug, UnionHug::Unavailable) {
+                hug.include(self.union_layout_member(current)?);
+            }
             links.push(UnionLink {
                 left: current,
                 boundary,
             });
             current = next;
         }
-        hug.include(current);
-        let hug = matches!(hug, UnionHug::Object) && !preserve_lines;
+        if !matches!(hug, UnionHug::Unavailable) {
+            hug.include(self.union_layout_member(current)?);
+        }
+        let hug = matches!(hug, UnionHug::Object);
         Ok(PreparedUnion {
             data: node.data,
             inline_head_target: (node.source_owner != Some(node.node)
@@ -1351,7 +1379,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             union.data,
             context,
             layout,
-            context.needs_parentheses(union.data, self.ast),
+            union.frame(context, self.ast),
             writer,
             |formatter, layout, enclosure, writer| {
                 formatter.format_union_members(union, layout, enclosure, head, None, writer)
