@@ -726,13 +726,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         context,
                         writer,
                         |formatter, context, writer| {
-                            formatter.format_target_layers(
-                                target,
-                                remaining,
-                                boundary.inner.end,
-                                context,
-                                writer,
-                            )
+                            formatter.with_recursion_scope(|formatter| {
+                                formatter.format_target_layers(
+                                    target,
+                                    remaining,
+                                    boundary.inner.end,
+                                    context,
+                                    writer,
+                                )
+                            })
                         },
                     )?;
                     break (boundary.outer.end, tail);

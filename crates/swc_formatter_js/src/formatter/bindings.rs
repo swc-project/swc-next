@@ -515,12 +515,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(None)
             }
             BindingPatternData::ArrayPattern(array) => {
+                let _scope = self.recursion_scope(array)?;
                 self.format_array_binding(array, writer).map(|()| None)
             }
-            BindingPatternData::ObjectPattern(object) => self
-                .format_object_binding_with_group(object, group, writer)
-                .map(|()| None),
+            BindingPatternData::ObjectPattern(object) => {
+                let _scope = self.recursion_scope(object)?;
+                self.format_object_binding_with_group(object, group, writer)
+                    .map(|()| None)
+            }
             BindingPatternData::AssignmentPattern(default) => {
+                let _scope = self.recursion_scope(default)?;
                 let default = self.prepare_binding_default(
                     default.left(self.ast),
                     default.right(self.ast),
@@ -529,6 +533,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_binding_default(default, writer)
             }
             BindingPatternData::BindingRestElement(rest) => {
+                let _scope = self.recursion_scope(rest)?;
                 writer.text("...");
                 let argument = rest.argument(self.ast);
                 let leading = self.comments.between(Span::new(

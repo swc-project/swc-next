@@ -1583,6 +1583,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return match decorators {
                 StatementDecorators::Class { node, sequence } => {
+                    let _scope = self.recursion_scope(node)?;
                     let prefix = sequence.with_envelope(span);
                     let prepared = self.prepare_class(node, Some(prefix))?;
                     self.format_prepared_class(prepared, true, writer)?;
@@ -1598,6 +1599,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     native,
                     default,
                 } => {
+                    let _scope = self.recursion_scope(statement)?;
                     let prefix = sequence.with_envelope(span);
                     self.format_decorated_export_class(node, prefix, native, default, writer)
                 }
@@ -1708,41 +1710,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 ),
             StmtData::LabeledStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_labeled_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::WhileStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_while_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::DoWhileStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_do_while_statement(node, punctuation, writer)
             }
             StmtData::ForStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_for_statement(node, punctuation, layout.source_candidate, writer)
             }
-            StmtData::ForInStatement(node) if mode == ContentMode::Formatted => self
-                .format_iteration_statement(
+            StmtData::ForInStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_iteration_statement(
                     control_flow::IterationStatement::In(node),
                     punctuation,
                     layout.source_candidate,
                     writer,
-                ),
-            StmtData::ForOfStatement(node) if mode == ContentMode::Formatted => self
-                .format_iteration_statement(
+                )
+            }
+            StmtData::ForOfStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_iteration_statement(
                     control_flow::IterationStatement::Of(node),
                     punctuation,
                     layout.source_candidate,
                     writer,
-                ),
+                )
+            }
             StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_if_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::WithStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_with_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::SwitchStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 Ok(self.format_switch_statement(node, writer)?.into())
             }
             StmtData::TryStatement(node) if mode == ContentMode::Formatted => {
+                let _scope = self.recursion_scope(node)?;
                 Ok(self.format_try_statement(node, writer)?.into())
             }
             StmtData::BlockStatement(block) => {
@@ -2189,6 +2203,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             });
         } else {
+            let _scope = self.anonymous_recursion_scope()?;
             let sequence = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Space, Writer::hard_line);
                 self.format_statement_sequence(items, content, kind, writer)

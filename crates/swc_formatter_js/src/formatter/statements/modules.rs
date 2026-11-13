@@ -229,6 +229,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         match data {
             DeclData::Function(function) => {
+                let _scope = self.recursion_scope(function)?;
                 self.format_function(function, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: function.span(self.ast).end,
@@ -237,6 +238,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::Class(class) => {
+                let _scope = self.recursion_scope(class)?;
                 self.format_class(class, ExpressionPosition::ExportDefault, false, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: class.span(self.ast).end,
@@ -298,9 +300,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(printed)
             }
             DeclData::TsModuleDeclaration(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_namespace_declaration(node, keyword, punctuation, writer)
             }
             DeclData::TsGlobalDeclaration(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_global_declaration(node, keyword, writer)
             }
             DeclData::TsImportEqualsDeclaration(node) => {

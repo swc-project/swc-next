@@ -418,6 +418,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let name = node.type_name(ast);
         let arguments = node.type_arguments(ast);
+        let _scope = if arguments.is_some() {
+            self.recursion_scope(node)?
+        } else {
+            None
+        };
         if owner == TypeArgumentOwner::Ordinary
             && let Some(arguments) = arguments
             && self.has_nested_type_arguments(arguments)

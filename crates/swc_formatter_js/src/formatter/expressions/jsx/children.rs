@@ -550,6 +550,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         fixed_line: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<JsxChildrenLayout, FormatError> {
+        self.with_recursion_scope(|formatter| {
+            formatter.format_jsx_children_inner(children, fixed_line, writer)
+        })
+    }
+
+    fn format_jsx_children_inner(
+        &mut self,
+        children: SubRange<JsxChild>,
+        fixed_line: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<JsxChildrenLayout, FormatError> {
         let ast = self.ast;
         let mut stream = JsxChildrenStream::default();
         stream.layout.single_quote = self.options.quote_style == QuoteStyle::Single;

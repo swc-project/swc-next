@@ -220,6 +220,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 name_mode,
                 boundary,
             } => {
+                let _scope = self.recursion_scope(node)?;
                 let nested = self.prepare_namespace_head(node, None, name_mode)?;
                 self.format_type_boundary(&boundary, writer)?;
                 self.format_namespace_head(nested, writer)
