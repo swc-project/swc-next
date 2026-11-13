@@ -1192,7 +1192,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.comments.claim(head.comments)?;
         }
         let mut parts = chain.parts.into_iter();
-        let tail = {
+        let (tail, compact) = {
             let mut source = ChainSource {
                 parts: parts.by_ref().take(chain.callee_parts).peekable(),
                 pending: None,
@@ -1238,10 +1238,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // A short chain has one shared layout even when an argument's own
             // collection group breaks. Its new source shape must not change the
             // chain's strategy on the next pass.
-            if short_chain
+            let compact = short_chain
                 && !groups.head.facts.source_break
-                && !groups.tail.iter().any(|group| group.facts.source_break)
-            {
+                && !groups.tail.iter().any(|group| group.facts.source_break);
+            if compact {
                 writer.group(false, |writer| write_compact(&groups, writer));
             } else {
                 let layout = if matches!(source.argument_layout, ChainArgumentLayout::Complex) {
@@ -1288,12 +1288,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            source.tail
+            (source.tail, compact)
         };
-        let continuation_layout = if matches!(
-            context.position,
-            ExpressionPosition::AssignmentRight(_) | ExpressionPosition::Initializer(_)
-        ) {
+        let continuation_layout = if !compact
+            && matches!(
+                context.position,
+                ExpressionPosition::AssignmentRight(_) | ExpressionPosition::Initializer(_)
+            ) {
             ChainLookupLayout::InlineContinuation
         } else {
             ChainLookupLayout::ExpressionContinuation
