@@ -1304,6 +1304,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(!matches!(
                     position,
                     ExpressionPosition::ForHead
+                        | ExpressionPosition::ForTest
                         | ExpressionPosition::ForUpdate
                         | ExpressionPosition::ForInitializer {
                             grammar: ForInitializerGrammar::Expression,

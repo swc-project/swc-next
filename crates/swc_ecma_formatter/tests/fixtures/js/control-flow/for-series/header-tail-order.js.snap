@@ -9,7 +9,7 @@ for (; (left(), right() // tail
 ---------- Output ----------
 for (
   ;
-  (left(), right()) // tail
+  left(), right() // tail
   /* after pair */;
 );
 
@@ -18,7 +18,7 @@ for (
 ---------- Output ----------
 for (
   ;
-  (left(), right()) // tail
+  left(), right() // tail
   /* after pair */;
 );
 
@@ -27,7 +27,7 @@ for (
 ---------- Output ----------
 for (
   ;
-  (left(), right()) // tail
+  left(), right() // tail
   /* after pair */;
 );
 
@@ -36,6 +36,6 @@ for (
 ---------- Output ----------
 for (
   ;
-  (left(), right()) // tail
+  left(), right() // tail
   /* after pair */;
 );
