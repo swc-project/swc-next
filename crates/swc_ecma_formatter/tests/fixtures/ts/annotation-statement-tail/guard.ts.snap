@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+before();
+// @__PURE__
+(function () { effect(); })();
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+before();
+// @__PURE__
+(function () {
+  effect()
+})()
+
+---------- Options ----------
+{}
+---------- Output ----------
+before();
+// @__PURE__
+(function () {
+  effect();
+})();
