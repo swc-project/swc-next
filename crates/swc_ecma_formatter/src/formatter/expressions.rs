@@ -1472,7 +1472,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (position, ExprData::AssignmentExpression(_)) => !matches!(
                 position,
                 ExpressionPosition::Statement
-                    | ExpressionPosition::ExportDefault
                     | ExpressionPosition::AssignmentRight(_)
                     | ExpressionPosition::TemplateInterpolation
                     | ExpressionPosition::JsxExpression
