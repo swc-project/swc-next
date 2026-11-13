@@ -848,8 +848,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             |elision| elision.before_separator,
         );
         let (trailing_count, physical_break, inline_line) = if elision.is_some() {
-            // The actual separator, not an AST trailing attachment, divides
-            // this packet. Its before side must be printed before punctuation.
+            // The source separator divides the packet; comments on its
+            // before side stay before punctuation rather than becoming suffixes.
             (0, false, false)
         } else if ordinary_attachment {
             let (trailing, leading) = self.split_separator_comments(
@@ -1172,7 +1172,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        // Both commas are source syntax. The real item consumes only its
+        // Both commas are source syntax. The real item owns only its
         // before-separator packet; the hole owns the packet after that comma.
         Some(PreparedElision {
             comma,
