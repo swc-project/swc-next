@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = tag`raw\n${a = b}`;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = tag`raw\n${(a = b)}`;
