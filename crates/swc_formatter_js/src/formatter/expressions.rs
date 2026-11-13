@@ -1554,8 +1554,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 position,
                 ExpressionPosition::Statement
                     | ExpressionPosition::AssignmentRight(_)
-                    | ExpressionPosition::TemplateInterpolation
-                    | ExpressionPosition::JsxExpression
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
