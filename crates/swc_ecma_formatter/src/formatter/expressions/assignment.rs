@@ -82,6 +82,22 @@ impl RhsLayout {
             }
         }
     }
+
+    /// A fixed operator gap cannot own conditional continuation indentation.
+    pub(in crate::formatter) fn write_with_operator_constraint<'ast, T>(
+        self,
+        writer: &mut Writer<'ast>,
+        constraint: LineConstraint,
+        separator: impl FnOnce(&mut Writer<'ast>),
+        right: impl FnOnce(&mut Writer<'ast>) -> T,
+    ) -> T {
+        if matches!(self, Self::Fluid) && constraint == LineConstraint::SameLine {
+            separator(writer);
+            right(writer)
+        } else {
+            self.write(writer, separator, right)
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -536,12 +552,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) =>
                 {
                     writer.group(false, |writer| {
-                        rhs_layout.write(writer, separator, write_right)
+                        rhs_layout.write_with_operator_constraint(
+                            writer,
+                            boundary.after_operator,
+                            separator,
+                            write_right,
+                        )
                     })
                 }
-                AssignmentLayout::Ordinary(rhs_layout) => {
-                    rhs_layout.write(writer, separator, write_right)
-                }
+                AssignmentLayout::Ordinary(rhs_layout) => rhs_layout
+                    .write_with_operator_constraint(
+                        writer,
+                        boundary.after_operator,
+                        separator,
+                        write_right,
+                    ),
                 AssignmentLayout::OperatorLine | AssignmentLayout::ChainTail => {
                     writer.indent(|writer| {
                         separator(writer);

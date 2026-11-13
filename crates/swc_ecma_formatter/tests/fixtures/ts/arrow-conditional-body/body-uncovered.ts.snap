@@ -19,9 +19,7 @@ const outsideSentinel: number = "x";
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) =>
-    foo
-      ? missingA
-      : missingB;
+  foo ? missingA : missingB;
 const outsideSentinel: number =
   "x";
 
@@ -30,9 +28,9 @@ const outsideSentinel: number =
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) =>
-    foo
-      ? missingA
-      : missingB
+  foo
+    ? missingA
+    : missingB
 const outsideSentinel: number =
   "x"
 
