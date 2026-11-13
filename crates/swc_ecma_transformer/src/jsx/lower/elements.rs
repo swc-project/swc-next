@@ -200,18 +200,17 @@ impl<'ast> JsxEmitter<'_, '_, 'ast> {
             }
         }
         let child_count = lowered_children.len();
+        let single_expression = match lowered_children.as_slice() {
+            [Some(child)] => child.as_expr(ast),
+            _ => None,
+        };
+        // A single spread child also requires an array and the `jsxs` helper.
+        let use_jsxs = child_count != 0 && single_expression.is_none();
         if child_count != 0 {
-            let single_expression = lowered_children
-                .first()
-                .and_then(|child| *child)
-                .and_then(|child| child.as_expr(ast));
-            let value = match (child_count, single_expression) {
-                (1, Some(expression)) => expression,
-                _ => {
-                    let elements = ast.add_sub_range(lowered_children);
-                    ast.expr_array_expression(span, elements)
-                }
-            };
+            let value = single_expression.unwrap_or_else(|| {
+                let elements = ast.add_sub_range(lowered_children);
+                ast.expr_array_expression(span, elements)
+            });
             properties.push(object_property(ast, "children", value, DUMMY_SP));
         }
         let properties = ast.add_sub_range(properties);
@@ -220,9 +219,7 @@ impl<'ast> JsxEmitter<'_, '_, 'ast> {
         if self.state.options.development {
             let key = key.unwrap_or_else(|| void_zero(ast));
             arguments.push(Argument::Expr(key));
-            arguments.push(Argument::Expr(
-                ast.expr_boolean_literal(DUMMY_SP, child_count > 1),
-            ));
+            arguments.push(Argument::Expr(ast.expr_boolean_literal(DUMMY_SP, use_jsxs)));
             if inject_source {
                 let source = self.state.source_object(span.start, ast);
                 arguments.push(Argument::Expr(source));
@@ -238,7 +235,7 @@ impl<'ast> JsxEmitter<'_, '_, 'ast> {
         }
         let helper = if self.state.options.development {
             RuntimeHelper::JsxDev
-        } else if child_count > 1 {
+        } else if use_jsxs {
             RuntimeHelper::Jsxs
         } else {
             RuntimeHelper::Jsx
@@ -395,11 +392,7 @@ impl<'ast> JsxEmitter<'_, '_, 'ast> {
                 }
             }
             JsxChildData::JsxSpreadChild(spread) => {
-                self.state.diagnostics.push(Diagnostic::error(
-                    "Spread children are not supported in React.",
-                    spread.span(ast),
-                ));
-                return None;
+                return Some(ast.argument_spread_element(spread.span(ast), spread.expression(ast)));
             }
             JsxChildData::JsxElement(element) => self.lower_element(element, ast),
             JsxChildData::JsxFragment(fragment) => self.lower_fragment(fragment, ast),

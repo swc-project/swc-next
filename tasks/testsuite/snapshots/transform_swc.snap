@@ -1,6 +1,6 @@
 transform * swc
 ========================
-Positive Passed: 289/2089 (13.83%)
+Positive Passed: 293/2089 (14.03%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2089 (0.00%)
 Skipped: 1409/2089 (67.45%)
@@ -114,7 +114,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/entity-d
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/entity-decoding/classic/long-numeric/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/entity-decoding/classic/surrogates/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-1933/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-2037/input/input.js - transform: Spread children are not supported in React. at 34..41
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-5099/1/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-6987/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/pure/false-pragma-comment-classic-runtime/input/input.js - transformed output differs from expected output
@@ -127,8 +126,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-au
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/handle-fragments-with-no-children/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/pragma-works-with-no-space-at-the-end/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-allow-nested-fragments/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-detect-static-jsx/input/input.js - transform: Spread children are not supported in React. at 108..114
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-disallow-spread-children/input/input.js - transform: Spread children are not supported in React. at 5..18
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-handle-attributed-elements/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/honor-custom-jsx-comment-if-jsx-pragma-option-set/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/honor-custom-jsx-comment/input/input.js - transformed output differs from expected output
@@ -137,7 +134,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/pr
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-allow-multiple-pragmas-per-line/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-allow-no-pragmafrag-if-frag-unused/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-allow-pragmafrag-and-frag/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-disallow-spread-children/input/input.js - transform: Spread children are not supported in React. at 5..18
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-handle-attributed-elements/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-support-xml-namespaces-if-flag/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/regression/pragma-frag-set-default-classic-runtime/input/input.js - transformed output differs from expected output
@@ -235,7 +231,7 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2024/es2016/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2024/no-module/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2027/case1/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2037/case1/input/index.js - transform: Spread children are not supported in React. at 34..41
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2037/case1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2056/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2063/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2150/input/index.js - transformed output differs from expected output
