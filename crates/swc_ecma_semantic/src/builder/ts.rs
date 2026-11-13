@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{FormalParameterPatternData, Lang, SourceType, TsParameterProperty};
 
 use super::*;
-use crate::binder::{TsImportAliasIssue, TsNamespaceExportAliasIssue};
+use crate::binder::TsAliasIssue;
 
 pub(super) fn check_method_definition(
     builder: &mut SemanticBuilder<'_, '_>,
@@ -232,123 +232,61 @@ fn is_ts_module_element_container(kind: NodeKind) -> bool {
 
 pub(super) fn check_ts_alias_issues(
     builder: &mut SemanticBuilder<'_, '_>,
-    export_alias_issues: impl IntoIterator<Item = TsNamespaceExportAliasIssue>,
-    import_alias_issues: impl IntoIterator<Item = TsImportAliasIssue>,
+    issues: Vec<TsAliasIssue>,
 ) {
-    for issue in export_alias_issues {
+    for issue in issues {
         match issue {
-            TsNamespaceExportAliasIssue::Missing { name, node } => {
-                check_ts_namespace_export_alias_missing(builder, name, node);
+            TsAliasIssue::MissingExport { name, node } => {
+                if builder.check_syntax.unresolved_exports() {
+                    let name = builder.ast.get_utf8(name).as_bytes();
+                    builder.report_unresolved_export(builder.ast, name, node);
+                }
             }
-            TsNamespaceExportAliasIssue::NonLocal { name, node } => {
-                check_ts_namespace_export_alias_non_local(builder, name, node);
+            TsAliasIssue::NonLocalExport { name, node } => {
+                if builder.check_syntax.ts_non_local_exports() {
+                    let name = builder.ast.get_utf8(name).as_bytes();
+                    builder.report_non_local_export(builder.ast, name, node);
+                }
             }
-            TsNamespaceExportAliasIssue::Duplicate { node, previous } => {
-                check_ts_namespace_export_alias_duplicate(builder, node, previous);
+            TsAliasIssue::ExportConflict {
+                node,
+                previous,
+                duplicate,
+            } => {
+                let enabled = if duplicate {
+                    builder.check_syntax.ts_duplicate_export_aliases()
+                } else {
+                    builder.check_syntax.ts_export_alias_conflicts()
+                };
+                if !enabled {
+                    continue;
+                }
+                if let NodeKindData::ExportSpecifier(specifier) = builder.ast.kind_data(node) {
+                    let exported = specifier.exported(builder.ast).node_id();
+                    let name = module_export_name(builder.ast, exported);
+                    builder.report_ts_namespace_export_alias_conflict(
+                        builder.ast,
+                        name,
+                        node,
+                        previous,
+                        duplicate,
+                    );
+                }
             }
-            TsNamespaceExportAliasIssue::Conflict { node, previous } => {
-                check_ts_namespace_export_alias_conflict(builder, node, previous);
+            TsAliasIssue::ImportConflict {
+                name,
+                node,
+                previous,
+                previous_flags,
+            } => {
+                let name = builder.ast.get_wtf8(name).as_bytes();
+                builder.report_redeclaration(builder.ast, name, node, previous, previous_flags);
+            }
+            TsAliasIssue::TypeOnlyExport { node, export } => {
+                builder.report_ts_import_alias_type_only_export(builder.ast, node, export);
             }
         }
     }
-    for issue in import_alias_issues {
-        match issue {
-            TsImportAliasIssue::Conflict(issue) => {
-                check_ts_import_alias_conflict(builder, issue);
-            }
-            TsImportAliasIssue::TypeOnlyExport { node, export } => {
-                check_ts_import_alias_type_only_export(builder, node, export);
-            }
-        }
-    }
-}
-
-fn check_ts_namespace_export_alias_missing(
-    builder: &mut SemanticBuilder<'_, '_>,
-    name: swc_next_ecma_ast::AstUtf8,
-    node: NodeId,
-) {
-    if !builder.check_syntax.unresolved_exports() {
-        return;
-    }
-    let name = builder.ast.get_utf8(name).as_bytes();
-    builder.report_unresolved_export(builder.ast, name, node);
-}
-
-fn check_ts_namespace_export_alias_non_local(
-    builder: &mut SemanticBuilder<'_, '_>,
-    name: swc_next_ecma_ast::AstUtf8,
-    node: NodeId,
-) {
-    if !builder.check_syntax.ts_non_local_exports() {
-        return;
-    }
-    let name = builder.ast.get_utf8(name).as_bytes();
-    builder.report_non_local_export(builder.ast, name, node);
-}
-
-fn check_ts_namespace_export_alias_duplicate(
-    builder: &mut SemanticBuilder<'_, '_>,
-    node: NodeId,
-    previous: NodeId,
-) {
-    if !builder.check_syntax.ts_duplicate_export_aliases() {
-        return;
-    }
-    check_ts_namespace_export_alias_conflict_with_kind(builder, node, previous, true);
-}
-
-fn check_ts_namespace_export_alias_conflict(
-    builder: &mut SemanticBuilder<'_, '_>,
-    node: NodeId,
-    previous: NodeId,
-) {
-    if !builder.check_syntax.ts_export_alias_conflicts() {
-        return;
-    }
-    check_ts_namespace_export_alias_conflict_with_kind(builder, node, previous, false);
-}
-
-fn check_ts_namespace_export_alias_conflict_with_kind(
-    builder: &mut SemanticBuilder<'_, '_>,
-    node: NodeId,
-    previous: NodeId,
-    duplicate: bool,
-) {
-    let NodeKindData::ExportSpecifier(specifier) = builder.ast.kind_data(node) else {
-        unreachable!("namespace export aliases are export specifiers")
-    };
-    let exported = specifier.exported(builder.ast).node_id();
-    let name = module_export_name(builder.ast, exported);
-    builder.report_ts_namespace_export_alias_conflict(builder.ast, name, node, previous, duplicate);
-}
-
-fn check_ts_import_alias_conflict(
-    builder: &mut SemanticBuilder<'_, '_>,
-    issue: crate::binder::TsImportAliasConflictIssue,
-) {
-    if !builder.check_syntax.ts_import_alias_conflicts() {
-        return;
-    }
-    let name = builder.ast.get_wtf8(issue.name).as_bytes();
-    builder.report_redeclaration(
-        builder.ast,
-        name,
-        issue.node,
-        issue.previous,
-        issue.previous_flags,
-    );
-}
-
-fn check_ts_import_alias_type_only_export(
-    builder: &mut SemanticBuilder<'_, '_>,
-    node: NodeId,
-    export: NodeId,
-) {
-    if !builder.check_syntax.ts_type_only_import_aliases() {
-        return;
-    }
-    builder.report_ts_import_alias_type_only_export(builder.ast, node, export);
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {

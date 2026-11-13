@@ -1,6 +1,9 @@
 //! Annex B companion var bindings, finalized after every lexical declaration.
 
+use hashbrown::HashMap;
+use rustc_hash::FxBuildHasher;
 use swc_next_allocator::Idx;
+use swc_next_ecma_ast::NodeKindData;
 
 use super::*;
 
@@ -151,7 +154,8 @@ impl<'a> SymbolTracker<'a> {
         // ExportValue links identify the body's value binding even when its
         // ordinary scope map holds a same-named type-only declaration.
         let existing = self
-            .ts_local_exports
+            .ts
+            .local_exports
             .get(&(target, text))
             .and_then(|local| local.exported_value())
             .or_else(|| self.own_binding(target, text))

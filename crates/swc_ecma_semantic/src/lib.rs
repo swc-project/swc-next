@@ -27,7 +27,7 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{Ast, AstCtx, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
-    binder::{Range, SymbolLinks, TsMemberIndex},
+    binder::{Range, SymbolLinks, TsBindings},
     builder::SemanticBuilder,
     scope::ScopeTree,
 };
@@ -108,7 +108,7 @@ pub struct Semantic<'a> {
     /// Each node records one binding, reference, or created scope identity.
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
 
-    ts_members: TsMemberIndex<'a>,
+    typescript: TsBindings<'a>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -217,13 +217,13 @@ impl<'a> Semantic<'a> {
     /// The TypeScript source module's symbol, or `None` outside a TypeScript module.
     /// The program node records its scope rather than this export-container symbol.
     pub fn ts_source_module_symbol(&self) -> Option<SymbolId> {
-        self.ts_members.source_module_symbol()
+        self.typescript.source_module_symbol()
     }
 
     /// The symbol shared by TypeScript default export declarations, including
     /// anonymous classes and functions. Expression exports do not create it.
     pub fn ts_default_export_symbol(&self) -> Option<SymbolId> {
-        self.ts_members.default_export_symbol()
+        self.typescript.default_export_symbol()
     }
 
     /// The binding scope of a symbol in JavaScript semantic analysis only.
@@ -243,7 +243,7 @@ impl<'a> Semantic<'a> {
     /// The target retains its declaration kind, including `CONST_ENUM`, regardless
     /// of JavaScript emit options. This does not decide runtime access or emission.
     pub fn ts_import_alias_target(&self, alias: SymbolId) -> Option<SymbolId> {
-        self.ts_members.import_alias_target(alias)
+        self.typescript.import_alias_target(alias)
     }
 
     /// The initializer's root reference in an internal `import A = N.Member`.
@@ -320,69 +320,23 @@ impl<'a> Semantic<'a> {
             .chain(self.reference_candidates.additional(id).iter().copied())
     }
 
-    /// Value bindings associated with a reference's selected bindings.
-    /// Includes the alias contributions of a selected public member and follows
-    /// local TypeScript ExportValue links without changing lexical identity.
-    /// Alias space information determines whether each target is a definite
-    /// value or only a possible one. Results are never Unresolved.
-    ///
-    /// This queries value meaning, not runtime usage: a `typeof` or explicit
-    /// type-only export can still name a value. Access flags and emit options
-    /// determine whether it is needed at runtime. Import aliases remain bindings;
-    /// this does not replace them with their final property or declaration target.
-    /// `ast` must be the tree analyzed to produce this model.
-    pub fn reference_value_targets<'s>(
-        &'s self,
-        ast: &'s Ast<'_>,
-        id: ReferenceId,
-    ) -> impl Iterator<Item = NameResolution> + 's {
-        let reference = self.reference(id);
-        let name = ast.get_utf8(reference.name).as_bytes();
-        let member_values = self.ts_members.reference_values(id);
-        let lexical_values = member_values
-            .is_none()
-            .then_some(())
-            .into_iter()
-            .flat_map(move |_| self.reference_candidates(id))
-            .filter_map(move |symbol| {
-                let resolution = if reference.flags.is_uncertain() {
-                    NameResolution::Uncertain { candidate: symbol }
-                } else {
-                    NameResolution::Resolved(symbol)
-                };
-                self.ts_members.value_target(
-                    &self.symbols,
-                    &self.declarations,
-                    &self.scope_maps,
-                    resolution,
-                    name,
-                    reference.flags.space.value_target_space(),
-                )
-            });
-        member_values
-            .into_iter()
-            .flatten()
-            .copied()
-            .chain(lexical_values)
-    }
-
     /// Members declared by any declaration merged into a TypeScript namespace.
     pub fn ts_namespace_members(&self, owner: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
-        self.ts_members.namespace_members(owner)
+        self.typescript.namespace_members(owner)
     }
 
     /// Finds a member declared by any declaration merged into a TypeScript namespace.
     /// This returns its identity; its declaration flags do not describe its
     /// resolved visibility in every reference space or member view.
     pub fn ts_namespace_member(&self, owner: SymbolId, name: &[u8]) -> Option<SymbolId> {
-        self.ts_members.namespace_member(owner, name)
+        self.typescript.namespace_member(owner, name)
     }
 
     /// Whether a namespace has export specifiers in addition to declared members.
     /// This includes type-only and unresolved exports; query their value targets
     /// with [`Self::ts_namespace_value_targets`] before using them at runtime.
     pub fn ts_namespace_has_export_aliases(&self, owner: SymbolId) -> bool {
-        self.ts_members.namespace_has_export_aliases(owner)
+        self.typescript.namespace_has_export_aliases(owner)
     }
 
     /// Value bindings exposed by a namespace or enum's public member name.
@@ -396,7 +350,7 @@ impl<'a> Semantic<'a> {
         owner: SymbolId,
         name: &'s [u8],
     ) -> impl Iterator<Item = NameResolution> + 's {
-        self.ts_members.namespace_value_targets(
+        self.typescript.namespace_value_targets(
             &self.symbols,
             &self.declarations,
             &self.scope_maps,
@@ -407,14 +361,14 @@ impl<'a> Semantic<'a> {
 
     /// Members declared by any declaration merged into a TypeScript enum.
     pub fn ts_enum_members(&self, owner: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
-        self.ts_members.enum_members(owner)
+        self.typescript.enum_members(owner)
     }
 
     /// Finds a member declared by any declaration merged into a TypeScript enum.
     /// This returns its identity; a merged symbol can also have declarations
     /// whose visibility belongs to a different member view.
     pub fn ts_enum_member(&self, owner: SymbolId, name: &[u8]) -> Option<SymbolId> {
-        self.ts_members.enum_member(owner, name)
+        self.typescript.enum_member(owner, name)
     }
 
     /// The lexical binding of `name` at `scope` alone, including a hoisting
@@ -445,7 +399,7 @@ impl<'a> Semantic<'a> {
             })
             .or_else(|| {
                 (scope_id == ScopeId::MODULE)
-                    .then(|| self.ts_members.source_binding(name))
+                    .then(|| self.typescript.source_binding(name))
                     .flatten()
             })
     }
@@ -460,7 +414,7 @@ impl<'a> Semantic<'a> {
         BindingIterator {
             inner: self.scope_maps[scope_id].values(),
             source: if scope_id == ScopeId::MODULE {
-                self.ts_members.source_bindings(&self.scope_maps[scope_id])
+                self.typescript.source_bindings(&self.scope_maps[scope_id])
             } else {
                 None
             },
@@ -479,7 +433,7 @@ impl<'a> Semantic<'a> {
     /// existence. Unknown property names permit value candidates only; they do
     /// not create type or namespace contributions. Consumers must not interpret
     /// missing member facts as absence.
-    /// This query does not distinguish definite bindings from possible candidates.
+    /// Use [`Self::resolve_name`] to distinguish definite bindings from possible candidates.
     ///
     /// ## Example
     /// ```ts
@@ -496,17 +450,6 @@ impl<'a> Semantic<'a> {
         space: ReferenceSpace,
     ) -> Option<SymbolId> {
         self.resolve_name(scope_id, name, space).candidate()
-    }
-
-    /// Looks up a name and reports whether its target is known or only possible.
-    /// Unknown contributions do not prove that an outer binding is shadowed.
-    fn resolve_name(
-        &self,
-        scope_id: ScopeId,
-        name: &[u8],
-        space: ReferenceSpace,
-    ) -> NameResolution {
-        self.ts_members.resolve_name(self, scope_id, name, space)
     }
 
     /// Iterates every `(id, scope)` pair in creation order.

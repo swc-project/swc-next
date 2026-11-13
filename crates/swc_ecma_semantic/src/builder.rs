@@ -103,12 +103,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     fn finish(&mut self) {
         let check_syntax = self.check_syntax;
         self.symbols.bind_annex_b_functions(self.ast, &self.scope);
-        let (export_alias_issues, import_alias_issues) =
-            self.symbols
-                .resolve_ts_aliases(self.ast, &self.scope, check_syntax);
-        if check_syntax.ts_aliases() {
-            ts::check_ts_alias_issues(self, export_alias_issues, import_alias_issues);
-        }
+        let issues = self
+            .symbols
+            .resolve_ts_aliases(self.ast, &self.scope, check_syntax);
+        ts::check_ts_alias_issues(self, issues);
         debug_assert!(self.path.is_empty());
     }
 
