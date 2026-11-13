@@ -2129,6 +2129,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         token
     }
 
+    /// Consumes the current token only when the next token satisfies `predicate`.
+    fn advance_if_next(&mut self, predicate: impl FnOnce(Token) -> bool) -> Option<bool> {
+        let previous_end = self.current_token.end();
+        let mut peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = previous_end;
+        let next = peek.next()?;
+        if !predicate(next) {
+            return Some(false);
+        }
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        Some(true)
+    }
+
     fn next_token_may_start_with(&self, matches_ascii: impl FnOnce(u8) -> bool) -> bool {
         let start = self.current_token.end() as usize;
         let source = self.source.as_bytes();
@@ -2483,10 +2498,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_async_function_or_expression(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Async);
-        let next = self.peek_ahead()?;
-        if next.tag() == TokenTag::Function && !next.has_line_terminator_before() {
-            let start = self.current_token.start();
-            self.advance()?;
+        let start = self.current_token.start();
+        if self.advance_if_next(|next| {
+            next.tag() == TokenTag::Function && !next.has_line_terminator_before()
+        })? {
             return self
                 .parse_function(
                     ParseFunctionOpts {
@@ -3761,11 +3776,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if static_token.tag() != TokenTag::Static || static_token.is_escaped() {
             return Some(None);
         }
-        let Some(next) = self.peek_ahead() else {
+        let Some(is_static_block) = self.advance_if_next(|next| next.tag() == TokenTag::LeftBrace)
+        else {
             // Normal modifier parsing will report the lexical error.
             return Some(None);
         };
-        if next.tag() != TokenTag::LeftBrace {
+        if !is_static_block {
             return Some(None);
         }
         if !decorators.is_empty() {
@@ -3778,7 +3794,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        self.advance_without_escape_check()?;
         self.parse_static_block(static_token.start()).map(Some)
     }
 
@@ -5180,10 +5195,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Async {
-            let next = self.peek_ahead()?;
-            if next.tag() == TokenTag::Function && !next.has_line_terminator_before() {
-                let async_start = self.current_token.start();
-                self.advance()?;
+            let async_start = self.current_token.start();
+            if self.advance_if_next(|next| {
+                next.tag() == TokenTag::Function && !next.has_line_terminator_before()
+            })? {
                 let function = self.parse_function(
                     ParseFunctionOpts {
                         is_async: true,
@@ -7676,11 +7691,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_signed_numeric_literal_type(&mut self) -> Option<TsLiteral> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Minus);
         let sign_token = self.current_token;
-        let next = self.peek_ahead()?;
-        if !next.tag().is_numeric_literal() {
+        if !self.advance_if_next(|next| next.tag().is_numeric_literal())? {
             return None;
         }
-        self.advance()?;
         let expression = self.parse_numeric_literal()?;
         Some(TsLiteral::UnaryExpression(self.ast.unary_expression(
             Span::new(sign_token.start(), expression.span(&self.ast).end),
@@ -7964,12 +7977,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let mut readonly = false;
         let start = self.current_token.start();
-        if tag == TokenTag::Readonly {
-            let next = self.peek_ahead()?;
-            if !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag()) {
-                readonly = true;
-                self.advance()?;
-            }
+        if tag == TokenTag::Readonly
+            && self.advance_if_next(|next| {
+                !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag())
+            })?
+        {
+            readonly = true;
         }
         if self.current_token.tag() == TokenTag::LeftBracket && self.is_index_signature_start()? {
             return self.parse_index_signature(start, readonly, false);
@@ -8152,14 +8165,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut kind = TsMethodSignatureKind::Method;
         let head_tag = self.current_token.tag();
         if matches!(head_tag, TokenTag::Get | TokenTag::Set)
-            && can_follow_accessor_keyword(self.peek_ahead()?.tag())
+            && self.advance_if_next(|next| can_follow_accessor_keyword(next.tag()))?
         {
             kind = if head_tag == TokenTag::Get {
                 TsMethodSignatureKind::Get
             } else {
                 TsMethodSignatureKind::Set
             };
-            self.advance()?;
         }
         let computed = self.current_token.tag() == TokenTag::LeftBracket;
         let key = self.parse_property_key(false)?;
@@ -8766,11 +8778,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.parse_for_with_declaration(start, is_for_await, kind, declaration_start)
             }
             TokenTag::Let if !self.current_token.is_escaped() => {
-                let next = self.peek_ahead()?;
-                if !can_start_binding_pattern(next.tag()) {
+                if !self.advance_if_next(|next| can_start_binding_pattern(next.tag()))? {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
-                self.advance()?;
                 self.parse_for_with_declaration(
                     start,
                     is_for_await,
