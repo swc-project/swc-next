@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* g() { yield (a + b) as T; }
+---------- Options ----------
+{}
+---------- Output ----------
+function* g() {
+  yield (a + b) as T;
+}
