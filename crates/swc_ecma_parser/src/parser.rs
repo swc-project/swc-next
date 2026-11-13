@@ -2129,6 +2129,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         token
     }
 
+    /// Consumes the current token only when the next token satisfies `predicate`.
+    fn advance_if_next(&mut self, predicate: impl FnOnce(Token) -> bool) -> Option<bool> {
+        let previous_end = self.current_token.end();
+        let mut peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = previous_end;
+        let next = peek.next()?;
+        if !predicate(next) {
+            return Some(false);
+        }
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        Some(true)
+    }
+
     fn next_token_may_start_with(&self, matches_ascii: impl FnOnce(u8) -> bool) -> bool {
         let start = self.current_token.end() as usize;
         let source = self.source.as_bytes();
@@ -2414,9 +2429,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_let(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
+        let start = self.current_token.start();
         if !self.is_let_identifier()? {
-            let start = self.current_token.start();
-            self.advance()?;
             return self
                 .parse_variable_declaration(VariableKind::Let, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
@@ -2484,10 +2498,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_async_function_or_expression(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Async);
-        let next = self.peek_ahead()?;
-        if next.tag() == TokenTag::Function && !next.has_line_terminator_before() {
-            let start = self.current_token.start();
-            self.advance()?;
+        let start = self.current_token.start();
+        if self.advance_if_next(|next| {
+            next.tag() == TokenTag::Function && !next.has_line_terminator_before()
+        })? {
             return self
                 .parse_function(
                     ParseFunctionOpts {
@@ -2518,9 +2532,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_import_declaration_from(import.start())
     }
 
+    // A declaration keeps its first binding token so parse_let does not scan it again.
     fn is_let_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
-        let next = self.peek_ahead()?;
+        let let_end = self.current_token.end();
+        let permits_declaration = self.statement_context.permits_declaration();
+        let mut peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = let_end;
+        let next = peek.next()?;
 
         // Lexical declarations cannot be single statements. In this context,
         // `let` therefore starts an ExpressionStatement unless the
@@ -2528,11 +2547,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         //
         // This also lets ASI terminate `let` before a binding-looking token:
         // `if (false) let\nvalue = 1`.
-        if !self.statement_context.permits_declaration() && next.tag() != TokenTag::LeftBracket {
+        if !permits_declaration && next.tag() != TokenTag::LeftBracket {
             return Some(true);
         }
 
-        Some(!can_start_binding_pattern(next.tag()))
+        if !can_start_binding_pattern(next.tag()) {
+            return Some(true);
+        }
+
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        Some(false)
     }
 
     fn is_using_identifier(&mut self) -> Option<bool> {
@@ -3700,9 +3726,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(ClassModifierStep::None);
         }
 
-        let Some(next) = self.peek_ahead() else {
+        // Both a modifier and a member name consume this token.
+        if !self.try_advance_fast() && !self.try_advance() {
             return Some(ClassModifierStep::None);
-        };
+        }
+        let next = self.current_token;
         let next_tag = next.tag();
         let accessor_before_star =
             next_tag == TokenTag::Star && matches!(tag, TokenTag::Get | TokenTag::Set);
@@ -3715,7 +3743,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             can_start_modifier && !(conflicting_modifier && next.has_line_terminator_before());
 
         if !consume_as_modifier {
-            self.advance_without_escape_check()?;
             let name = self.identifier_name(token);
             return Some(ClassModifierStep::Key(
                 self.ast.property_key_identifier_name(token.span(), name),
@@ -3738,7 +3765,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             modifiers.set(tag);
         }
-        self.advance_without_escape_check()?;
         Some(ClassModifierStep::Consumed)
     }
 
@@ -3750,11 +3776,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if static_token.tag() != TokenTag::Static || static_token.is_escaped() {
             return Some(None);
         }
-        let Some(next) = self.peek_ahead() else {
+        let Some(is_static_block) = self.advance_if_next(|next| next.tag() == TokenTag::LeftBrace)
+        else {
             // Normal modifier parsing will report the lexical error.
             return Some(None);
         };
-        if next.tag() != TokenTag::LeftBrace {
+        if !is_static_block {
             return Some(None);
         }
         if !decorators.is_empty() {
@@ -3767,7 +3794,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        self.advance_without_escape_check()?;
         self.parse_static_block(static_token.start()).map(Some)
     }
 
@@ -5169,10 +5195,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Async {
-            let next = self.peek_ahead()?;
-            if next.tag() == TokenTag::Function && !next.has_line_terminator_before() {
-                let async_start = self.current_token.start();
-                self.advance()?;
+            let async_start = self.current_token.start();
+            if self.advance_if_next(|next| {
+                next.tag() == TokenTag::Function && !next.has_line_terminator_before()
+            })? {
                 let function = self.parse_function(
                     ParseFunctionOpts {
                         is_async: true,
@@ -6857,10 +6883,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if !token.is_escaped() =>
             {
                 if matches!(tag, TokenTag::NullLiteral | TokenTag::Void)
-                    || !self.is_qualified_type_continuation()?
+                    || !self.next_token_may_start_with(|byte| byte == b'.')
                 {
                     return self.parse_type_keyword().map(from_type);
                 }
+                // Both a keyword type and a qualified name consume this token.
+                // Keep the old lookahead's lexical-failure recovery.
+                if !self.try_advance() {
+                    return None;
+                }
+                if self.current_token.tag() != TokenTag::Dot {
+                    return Some(from_type(self.type_keyword(token)));
+                }
+                let name = self.parse_entity_name_from_token(token)?;
+                return from_reference(self, token.start(), name);
             }
             TokenTag::This if !token.is_escaped() => {
                 return self.parse_this_type_or_predicate().map(from_type);
@@ -6923,8 +6959,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_keyword(&mut self) -> Option<TsType> {
-        let token = self.current_token;
-        let keyword = match token.tag() {
+        let keyword = self.type_keyword(self.current_token);
+        self.advance()?;
+        Some(keyword)
+    }
+
+    fn type_keyword(&mut self, token: Token) -> TsType {
+        match token.tag() {
             TokenTag::Any => self.ast.ts_type_ts_any_keyword(token.span()),
             TokenTag::Unknown => self.ast.ts_type_ts_unknown_keyword(token.span()),
             TokenTag::Never => self.ast.ts_type_ts_never_keyword(token.span()),
@@ -6938,9 +6979,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Symbol => self.ast.ts_type_ts_symbol_keyword(token.span()),
             TokenTag::Object => self.ast.ts_type_ts_object_keyword(token.span()),
             _ => unreachable!(),
-        };
-        self.advance()?;
-        Some(keyword)
+        }
     }
 
     fn is_postfix_nullable(&mut self) -> Option<bool> {
@@ -7623,14 +7662,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn is_qualified_type_continuation(&mut self) -> Option<bool> {
-        if !self.next_token_may_start_with(|byte| byte == b'.') {
-            return Some(false);
-        }
-        let next = self.peek_ahead()?;
-        Some(next.tag() == TokenTag::Dot)
-    }
-
     fn parse_literal_type(&mut self) -> Option<TsType> {
         let start = self.current_token.start();
         let literal = match self.current_token.tag() {
@@ -7665,11 +7696,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_signed_numeric_literal_type(&mut self) -> Option<TsLiteral> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Minus);
         let sign_token = self.current_token;
-        let next = self.peek_ahead()?;
-        if !next.tag().is_numeric_literal() {
+        if !self.advance_if_next(|next| next.tag().is_numeric_literal())? {
             return None;
         }
-        self.advance()?;
         let expression = self.parse_numeric_literal()?;
         Some(TsLiteral::UnaryExpression(self.ast.unary_expression(
             Span::new(sign_token.start(), expression.span(&self.ast).end),
@@ -7953,12 +7982,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let mut readonly = false;
         let start = self.current_token.start();
-        if tag == TokenTag::Readonly {
-            let next = self.peek_ahead()?;
-            if !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag()) {
-                readonly = true;
-                self.advance()?;
-            }
+        if tag == TokenTag::Readonly
+            && self.advance_if_next(|next| {
+                !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag())
+            })?
+        {
+            readonly = true;
         }
         if self.current_token.tag() == TokenTag::LeftBracket && self.is_index_signature_start()? {
             return self.parse_index_signature(start, readonly, false);
@@ -8141,14 +8170,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut kind = TsMethodSignatureKind::Method;
         let head_tag = self.current_token.tag();
         if matches!(head_tag, TokenTag::Get | TokenTag::Set)
-            && can_follow_accessor_keyword(self.peek_ahead()?.tag())
+            && self.advance_if_next(|next| can_follow_accessor_keyword(next.tag()))?
         {
             kind = if head_tag == TokenTag::Get {
                 TsMethodSignatureKind::Get
             } else {
                 TsMethodSignatureKind::Set
             };
-            self.advance()?;
         }
         let computed = self.current_token.tag() == TokenTag::LeftBracket;
         let key = self.parse_property_key(false)?;
@@ -8755,11 +8783,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.parse_for_with_declaration(start, is_for_await, kind, declaration_start)
             }
             TokenTag::Let if !self.current_token.is_escaped() => {
-                let next = self.peek_ahead()?;
-                if !can_start_binding_pattern(next.tag()) {
+                if !self.advance_if_next(|next| can_start_binding_pattern(next.tag()))? {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
-                self.advance()?;
                 self.parse_for_with_declaration(
                     start,
                     is_for_await,
