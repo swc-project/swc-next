@@ -1060,8 +1060,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         content: &ExpressionContent,
         mut context: ExpressionContext<'ast>,
+        opaque_type_head: bool,
     ) -> Result<Option<AssignmentExpressionHead<'ast>>, FormatError> {
         let mut data = content.data;
+        let mut operand_owner = None;
+        let mut legacy_projection = None;
         loop {
             if !matches!(
                 data,
@@ -1069,6 +1072,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExprData::MemberExpression(_)
                     | ExprData::CallExpression(_)
                     | ExprData::TsInstantiationExpression(_)
+                    | ExprData::TsAsExpression(_)
+                    | ExprData::TsSatisfiesExpression(_)
             ) {
                 return Ok(None);
             }
@@ -1077,7 +1082,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             else {
                 return Ok(None);
             };
-            context = operand_context;
+            let annotation = match data {
+                ExprData::TsAsExpression(node) => Some(node.type_annotation(self.ast)),
+                ExprData::TsSatisfiesExpression(node) => Some(node.type_annotation(self.ast)),
+                _ => None,
+            };
+            if annotation.is_some()
+                && (opaque_type_head || context.content_mode == ContentMode::Verbatim)
+            {
+                return Ok(legacy_projection);
+            }
+            if let Some(annotation) = annotation.filter(|_| self.has_suppression) {
+                let end = expression.span(self.ast).end;
+                let comments = self.ast.comments();
+                let first = comments.partition_point(|comment| comment.span.end <= end);
+                if comments
+                    .get(first)
+                    .is_some_and(|comment| comment.span.start < annotation.span(self.ast).start)
+                {
+                    return Ok(legacy_projection);
+                }
+            }
+            context = if annotation.is_some() {
+                operand_context
+                    .with_tail_owner(super::TailOwner::ParentOperation)
+                    .with_conditional_envelope(context.conditional_envelope.terminal_head())
+            } else {
+                operand_context
+            };
             let head = self.expression_content(expression);
             if context.content_mode == ContentMode::Verbatim
                 || head.parentheses.is_some_and(|removed| {
@@ -1085,6 +1117,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         || self.expression_has_generated_head_frame(&head, context)
                 })
             {
+                if annotation.is_some() {
+                    return Ok(legacy_projection);
+                }
                 // A packet or physical frame belongs to this operand, not the
                 // complete RHS. Keep its normalized packet for layout inspection.
                 return Ok(Some(AssignmentExpressionHead {
@@ -1093,15 +1128,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context,
                 }));
             }
+            if annotation.is_some() && operand_owner.is_none() {
+                operand_owner = Some(expression);
+            }
+            if operand_owner.is_some()
+                && head
+                    .parentheses
+                    .is_some_and(|removed| removed.head.has_comments)
+            {
+                return Ok(Some(AssignmentExpressionHead {
+                    content: head,
+                    source_owner: operand_owner,
+                    context,
+                }));
+            }
             data = match head.data {
                 data @ (ExprData::ChainExpression(_)
                 | ExprData::MemberExpression(_)
                 | ExprData::CallExpression(_)
-                | ExprData::TsInstantiationExpression(_)) => data,
+                | ExprData::TsInstantiationExpression(_)
+                | ExprData::TsAsExpression(_)
+                | ExprData::TsSatisfiesExpression(_)) => {
+                    if operand_owner.is_none()
+                        && matches!(
+                            data,
+                            ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_)
+                        )
+                    {
+                        // Keep the existing transparent-head result if the new
+                        // type edge turns out to own an opaque source frame.
+                        legacy_projection = Some(AssignmentExpressionHead {
+                            content: head,
+                            source_owner: None,
+                            context,
+                        });
+                    }
+                    data
+                }
                 _ => {
                     return Ok(Some(AssignmentExpressionHead {
                         content: head,
-                        source_owner: None,
+                        source_owner: operand_owner,
                         context,
                     }));
                 }
@@ -1337,6 +1404,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_comments = self.ast.comments();
             let first = source_comments.partition_point(|comment| comment.span.start < left_end);
             let remaining = &source_comments[first..];
+            let original_right_start = content.expression.span(self.ast).start;
+            let (original_count, original_before_count) = if self.has_suppression {
+                let count =
+                    remaining.partition_point(|comment| comment.span.end <= original_right_start);
+                let before = remaining[..count]
+                    .partition_point(|comment| comment.span.end <= operator_span.start);
+                (count, before)
+            } else {
+                (0, 0)
+            };
+            let mut before_mode = ContentMode::Formatted;
+            let mut first_after_suppression = None;
+            if self.has_suppression {
+                for (index, &comment) in remaining[..original_count].iter().enumerate() {
+                    if !is_suppression_comment(self.ast, comment) {
+                        continue;
+                    }
+                    if index < original_before_count {
+                        before_mode = ContentMode::Verbatim;
+                    } else if first_after_suppression.is_none() {
+                        first_after_suppression = Some(index);
+                    }
+                }
+            }
             let overlaps_left = first
                 .checked_sub(1)
                 .is_some_and(|index| source_comments[index].span.end > left_end);
@@ -1350,7 +1441,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || context.content_mode != ContentMode::Formatted
                 || self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end))
             {
-                self.assignment_expression_head(content, context)?
+                self.assignment_expression_head(
+                    content,
+                    context,
+                    overlaps_left
+                        || before_mode == ContentMode::Verbatim
+                        || first_after_suppression.is_some(),
+                )?
             } else {
                 None
             };
@@ -1363,8 +1460,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .start;
             let span = Span::new(left_end, right_start);
             let comments = remaining;
-            let count = comments.partition_point(|comment| comment.span.end <= span.end);
+            let count = if self.has_suppression && right_start == original_right_start {
+                original_count
+            } else {
+                comments.partition_point(|comment| comment.span.end <= span.end)
+            };
             let comments = &comments[..count];
+            let before_count = if self.has_suppression {
+                original_before_count
+            } else {
+                comments.partition_point(|comment| comment.span.end <= operator_span.start)
+            };
+            if self.has_suppression && first_after_suppression.is_none() && count > original_count {
+                first_after_suppression = comments[original_count..]
+                    .iter()
+                    .position(|&comment| is_suppression_comment(self.ast, comment))
+                    .map(|index| original_count + index);
+            }
+            let after_mode = if first_after_suppression.is_some_and(|index| index < count) {
+                ContentMode::Verbatim
+            } else {
+                ContentMode::Formatted
+            };
             let mut boundary = AssignmentBoundary {
                 before: &[],
                 moved: &[],
@@ -1459,8 +1576,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 break 'prepared boundary;
             }
             let operator_start = operator_span.start;
-            let before_count =
-                comments.partition_point(|comment| comment.span.end <= operator_start);
             let (before, after) = comments.split_at(before_count);
             let hugs_comments = matches!(
                 content.data,
@@ -1519,10 +1634,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             let (operator_line, leading) = after.split_at(line_count);
-            let right_mode = if promoted && self.content_mode(before) == ContentMode::Verbatim {
+            let right_mode = if promoted && before_mode == ContentMode::Verbatim {
                 ContentMode::Verbatim
             } else {
-                self.content_mode(after)
+                after_mode
             };
             let moved_head_binding = (promoted
                 && self.expression_head_has_optional_jsx_frame(

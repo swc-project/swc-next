@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = ((// note
+call()) as T) as U;
+---------- Options ----------
+{}
+---------- Output ----------
+const result =
+  // note
+  call() as T as U;
