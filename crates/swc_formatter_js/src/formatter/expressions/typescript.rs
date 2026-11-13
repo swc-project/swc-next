@@ -1831,7 +1831,6 @@ pub(super) fn type_expression_needs_parentheses(
             ExpressionPosition::UnaryArgument(_)
                 | ExpressionPosition::ParenthesizedUnaryArgument(_)
                 | ExpressionPosition::AwaitArgument
-                | ExpressionPosition::YieldArgument
                 | ExpressionPosition::SpreadArgument
                 | ExpressionPosition::BinaryOperand { .. }
                 | ExpressionPosition::MemberObject(_)
