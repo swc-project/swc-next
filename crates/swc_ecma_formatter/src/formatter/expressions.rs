@@ -321,6 +321,7 @@ pub(super) struct ExpressionContext<'ast> {
     member_chain_layout: MemberChainLayout,
     arrow_layout: arrows::ArrowLayout,
     jsx_callback: JsxCallbackContext,
+    jsx_field_initializer: bool,
     call_argument_owner: CallArgumentOwner,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
@@ -356,6 +357,12 @@ impl<'ast> ExpressionContext<'ast> {
             .with_arrow_layout(arrows::ArrowLayout::Assignment(
                 arrows::ArrowHeadGap::Expression,
             ))
+    }
+
+    pub(in crate::formatter) fn class_field_initializer() -> Self {
+        let mut context = Self::variable_initializer();
+        context.jsx_field_initializer = true;
+        context
     }
 
     fn with_member_layout(mut self, layout: MemberLayout) -> Self {
@@ -474,6 +481,7 @@ impl<'ast> ExpressionContext<'ast> {
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
             jsx_callback: JsxCallbackContext::Ordinary,
+            jsx_field_initializer: false,
             call_argument_owner: CallArgumentOwner::Ordinary,
             tail_boundary: TailBoundary::Separated,
             operator_tail_destination: assignment::OperatorTailDestination::Local,
@@ -1693,6 +1701,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = expression.span(self.ast);
         let source = self.source(span);
         let parenthesize = self.expression_is_parenthesized(data, context)
+            || context.jsx_field_initializer
+                && matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
             || matches!(context.expression_head, ExpressionHead::Iteration(_));
         let grammar_barrier = if matches!(
             data,
