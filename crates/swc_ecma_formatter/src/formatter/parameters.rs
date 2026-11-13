@@ -13,7 +13,9 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, DelimitedClose, FollowingItem, Separator};
 use super::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use super::types::TypeGap;
-use super::types::callable::{CallableParameter, SignatureParameterHug, SignatureParameterLayout};
+use super::types::callable::{
+    CallableParameter, PreparedParameterItem, SignatureParameterHug, SignatureParameterLayout,
+};
 use crate::{
     ArrowParentheses, FormatError, TrailingCommas,
     document::{Fragment, Writer},
@@ -538,12 +540,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             key_mode: _,
             body_target: _,
         } = parameters;
-        let hugged_parameter = hug;
-        let hug = hug.is_some();
         if let ParameterSource::PrivateEmpty = source {
             return self.format_verbatim(node.span(ast), writer);
         }
         let first = first.map(|head| RuntimeParameterEntry::from_head(ast, head));
+        let mut first_parameter = if hug.is_some()
+            && let Some(RuntimeParameterEntry {
+                node: RuntimeParameter::Callable(CallableParameter::Formal(parameter)),
+                ..
+            }) = first
+            && parameter.initializer(ast).is_some()
+        {
+            Some(self.prepare_typed_formal_parameter(
+                parameter,
+                ContentMode::Formatted,
+                parameter.type_annotation(ast),
+                parameter.optional(ast),
+            )?)
+        } else {
+            None
+        };
+        let hugged_parameter = hug.filter(|_| {
+            !first_parameter
+                .as_ref()
+                .is_some_and(PreparedParameterItem::has_binding_head)
+        });
+        let hug = hugged_parameter.is_some();
         let has_parameters = first.is_some() || rest.is_some();
         let constructor = match source {
             ParameterSource::Constructor { owner, .. } => Some(owner),
@@ -566,7 +588,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         {
             let tail =
-                self.format_runtime_parameter(entry, ContentMode::Formatted, None, writer)?;
+                self.format_runtime_parameter(entry, ContentMode::Formatted, None, None, writer)?;
             self.format_expression_tail(tail, writer)?;
             return Ok(());
         }
@@ -684,7 +706,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
                     let hug = if has_previous { None } else { hugged_parameter };
-                    let tail = self.format_runtime_parameter(parameter, item.mode, hug, writer)?;
+                    let prepared = if has_previous {
+                        None
+                    } else {
+                        first_parameter.take()
+                    };
+                    let tail =
+                        self.format_runtime_parameter(parameter, item.mode, hug, prepared, writer)?;
                     let boundary =
                         self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
                     terminal_close = boundary.terminal_close;
@@ -737,15 +765,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         entry: RuntimeParameterEntry,
         mode: ContentMode,
         signature_hug: Option<SignatureParameterHug>,
+        prepared: Option<PreparedParameterItem<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if mode == ContentMode::Verbatim {
             self.format_verbatim(entry.span, writer)?;
             return Ok(None);
         }
-        let ast = self.ast;
-        let native = entry.node.span(ast);
-        let displaced = entry.decorators.is_none() && self.source_starts_decorator(native);
+        if let Some(prepared) = prepared {
+            let prepared = match signature_hug {
+                Some(hug) => prepared.share_signature_group(hug),
+                None => prepared,
+            };
+            return writer.group(false, |writer| {
+                self.format_prepared_parameter_item(prepared, writer)
+            });
+        }
+        let displaced = entry.decorators.is_none() && self.source_starts_decorator(entry.span);
         if entry.decorators.is_none() && !displaced {
             return match entry.node {
                 RuntimeParameter::Callable(CallableParameter::Formal(node)) => {
@@ -768,6 +804,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
         }
+        let ast = self.ast;
+        let native = entry.node.span(ast);
         let (prepared, limit) = match entry.node {
             RuntimeParameter::Callable(CallableParameter::Formal(node)) => (
                 self.prepare_typed_formal_parameter(

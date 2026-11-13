@@ -48,7 +48,8 @@ pub(super) enum DefaultOwner<'ast> {
     Formatted {
         boundary: AssignmentBoundary<'ast>,
         rhs_layout: RhsLayout,
-        head: Option<NodeHead<'ast>>,
+        // The boundary already owns this packet's Leading destination.
+        head_comments: Option<&'ast [Comment]>,
     },
 }
 
@@ -698,7 +699,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self
                 .comments
                 .in_range(Span::new(left_end, boundary.binding_head_end()));
-            let head = if source_clear_left
+            let head_comments = if source_clear_left
                 && !comments.is_empty()
                 && boundary.before.is_empty()
                 && boundary.operator_line.is_empty()
@@ -715,12 +716,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     comments,
                     self.layout_position_starts_line(comments[0].span.start),
                 ) {
-                Some(NodeHead {
-                    comments,
-                    content_start: boundary.binding_head_end(),
-                    layout: CommentRunLayout::Leading(boundary.binding_head_end()),
-                    gap_end: None,
-                })
+                Some(comments)
             } else {
                 None
             };
@@ -732,7 +728,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DefaultOwner::Formatted {
                 boundary,
                 rhs_layout,
-                head,
+                head_comments,
             }
         };
         Ok(owner)
@@ -766,17 +762,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DefaultOwner::Formatted {
                 boundary,
                 rhs_layout,
-                head,
-            } => (
-                InitializerLayout::Formatted {
-                    boundary,
-                    rhs_layout,
-                },
-                ContentMode::Formatted,
-                head,
-            ),
+                head_comments,
+            } => {
+                let head = head_comments.map(|comments| NodeHead {
+                    comments,
+                    content_start: boundary.binding_head_end(),
+                    layout: CommentRunLayout::Leading(boundary.binding_head_end()),
+                    gap_end: None,
+                });
+                (
+                    InitializerLayout::Formatted {
+                        boundary,
+                        rhs_layout,
+                    },
+                    ContentMode::Formatted,
+                    head,
+                )
+            }
         };
         if let Some(head) = head {
+            writer.break_parent();
             self.comments.claim(head.comments)?;
             self.format_comment_run(head.comments, head.layout, writer)?;
         }
