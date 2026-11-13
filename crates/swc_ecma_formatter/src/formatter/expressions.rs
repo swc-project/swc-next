@@ -1670,6 +1670,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match data {
             ExprData::JsxElement(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_jsx_expression(
                         node.span(self.ast),
@@ -1682,6 +1683,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map(ExpressionOutput::closed);
             }
             ExprData::JsxFragment(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_jsx_expression(
                     node.span(self.ast),
                     context,
@@ -1691,14 +1693,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
 
             ExprData::TemplateLiteral(template) => {
+                let _scope = self.recursion_scope(template)?;
                 self.format_template_literal(template, writer)?
             }
             ExprData::TaggedTemplateExpression(template) => {
+                let _scope = self.recursion_scope(template)?;
                 return self
                     .format_tagged_template(template, context, writer)
                     .map(ExpressionOutput::closed);
             }
             ExprData::TsAsExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
@@ -1708,6 +1713,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsSatisfiesExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
@@ -1717,15 +1723,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsTypeAssertion(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_type_assertion_output(node, context, writer);
             }
             ExprData::TsNonNullExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_non_null(node, context, writer)
                     .map(ExpressionOutput::closed);
             }
 
             ExprData::TsInstantiationExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_instantiation(node, context, writer)
                     .map(ExpressionOutput::closed);
@@ -1751,10 +1760,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(self.ast.get_utf8(identifier.name(self.ast)));
             }
             ExprData::Class(class) => {
+                let _scope = self.recursion_scope(class)?;
                 self.format_class(class, context.position, has_expression_parentheses, writer)?
             }
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ChainExpression(chain) => {
+                let _scope = self.recursion_scope(chain)?;
                 let child_context = if self
                     .expression_is_parenthesized(ExprData::ChainExpression(chain), context)
                 {
@@ -1769,10 +1780,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AwaitExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_await_output(node, context, writer);
             }
-            ExprData::YieldExpression(node) => return self.format_yield_output(node, writer),
+            ExprData::YieldExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
+                return self.format_yield_output(node, writer);
+            }
             ExprData::ImportExpression(import) => {
+                let _scope = self.recursion_scope(import)?;
                 return self
                     .format_import_expression(import, writer)
                     .map(ExpressionOutput::closed);
@@ -1781,19 +1797,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_meta_property(node, writer)?;
             }
             ExprData::Function(function) => {
+                let _scope = self.recursion_scope(function)?;
                 self.format_function(function, writer)?;
             }
             ExprData::ArrowFunctionExpression(arrow) => {
+                let _scope = self.recursion_scope(arrow)?;
                 return self.format_arrow_with_raw_end(arrow, context, writer);
             }
-            ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
-            ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
+            ExprData::ArrayExpression(array) => {
+                let _scope = self.recursion_scope(array)?;
+                self.format_array(array, writer)?
+            }
+            ExprData::ObjectExpression(object) => {
+                let _scope = self.recursion_scope(object)?;
+                self.format_object(object, writer)?
+            }
             ExprData::NewExpression(constructor) => {
+                let _scope = self.recursion_scope(constructor)?;
                 return self
                     .format_new(constructor, context, writer)
                     .map(ExpressionOutput::closed);
             }
             ExprData::MemberExpression(member) => {
+                let _scope = self.recursion_scope(member)?;
                 let eligibility = if context.member_chain_layout == MemberChainLayout::Local {
                     FluentChainEligibility::Unqualified
                 } else {
@@ -1826,6 +1852,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             ExprData::CallExpression(call) => {
+                let _scope = self.recursion_scope(call)?;
                 if !matches!(context.call_argument_owner,
                     CallArgumentOwner::DecoratedFunction(owner) if owner == call)
                     && !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
@@ -1848,6 +1875,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             ExprData::BinaryExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
@@ -1859,6 +1887,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::LogicalExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
@@ -1870,13 +1899,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AssignmentExpression(assignment) => {
+                let _scope = self.recursion_scope(assignment)?;
                 return self.format_assignment_with_raw_end(assignment, context, writer);
             }
             ExprData::ConditionalExpression(conditional) => {
+                let _scope = self.recursion_scope(conditional)?;
                 return self.format_conditional_with_raw_end(conditional, context, writer);
             }
-            ExprData::UnaryExpression(unary) => return self.format_unary_output(unary, writer),
+            ExprData::UnaryExpression(unary) => {
+                let _scope = self.recursion_scope(unary)?;
+                return self.format_unary_output(unary, writer);
+            }
             ExprData::UpdateExpression(update) => {
+                let _scope = self.recursion_scope(update)?;
                 return self
                     .format_update(update, context, writer)
                     .map(ExpressionOutput::closed);

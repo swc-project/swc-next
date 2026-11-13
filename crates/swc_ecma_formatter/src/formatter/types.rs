@@ -1227,7 +1227,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeContext::Root,
             );
             if !parentheses.retained {
-                return self.format_type_alias_rhs(boundary, parentheses.child, rhs_layout, writer);
+                return self.with_recursion(parentheses.child.node, |formatter| {
+                    formatter.format_type_alias_rhs(boundary, parentheses.child, rhs_layout, writer)
+                });
             }
             if parentheses.movable {
                 self.format_comment_boundary(before, writer)?;
@@ -3307,6 +3309,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(head) = self.projected_suppressed_type(projection)
         {
             if !head.comments.is_empty() {
+                let _scope = self.recursion_scope(node.node)?;
                 let recorded = self.record_type_head(
                     PreparedTypeContent::Type(node),
                     PendingTypeHead::new(&[], node.node.span(self.ast).start, None),
@@ -3326,6 +3329,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if node.source_owner != Some(node.node)
             && let TsTypeData::TsParenthesizedType(parentheses) = node.data
         {
+            let _scope = self.recursion_scope(node.node)?;
             let parentheses = self.prepare_type_parentheses(
                 parentheses,
                 node.source_owner,
@@ -3340,6 +3344,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let TsTypeData::TsUnionType(union) = node.data
             && union.types(self.ast).len() > 1
         {
+            let _scope = self.recursion_scope(union)?;
             let union = self.prepare_union(node, union.types(self.ast))?;
             return self
                 .format_prepared_union_body(union, context, layout, None, writer)
@@ -3349,6 +3354,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let TsTypeData::TsIntersectionType(intersection) = node.data
             && intersection.types(self.ast).len() > 1
         {
+            let _scope = self.recursion_scope(intersection)?;
             let intersection = self.prepare_intersection(node, intersection.types(self.ast))?;
             return self
                 .format_prepared_intersection_body(intersection, context, layout, writer)
@@ -3367,6 +3373,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => None,
             };
             if let Some((types, kind)) = single {
+                let _scope = self.recursion_scope(node.node)?;
                 return self
                     .format_compound_type_body(node, types, kind, context, layout, writer)
                     .map(|pending| finish(pending, ExpressionRightEdge::Unreported));
@@ -3678,75 +3685,128 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("?");
                 Ok(TypeOutput::closed())
             }
-            TsTypeData::TsJsDocNullableType(owner) => self.format_jsdoc_type_body(
-                postfix::JsDocTypeOwner::Nullable(owner),
-                node.source_owner,
-                enclosure,
-                writer,
-            ),
-            TsTypeData::TsJsDocNonNullableType(owner) => self.format_jsdoc_type_body(
-                postfix::JsDocTypeOwner::NonNullable(owner),
-                node.source_owner,
-                enclosure,
-                writer,
-            ),
-            TsTypeData::TsImportType(node) => self.format_import_type_body(node, writer),
-            TsTypeData::TsMappedType(node) => self.format_mapped_type_body(node, writer),
+            TsTypeData::TsJsDocNullableType(owner) => {
+                let _scope = self.recursion_scope(owner)?;
+                self.format_jsdoc_type_body(
+                    postfix::JsDocTypeOwner::Nullable(owner),
+                    node.source_owner,
+                    enclosure,
+                    writer,
+                )
+            }
+            TsTypeData::TsJsDocNonNullableType(owner) => {
+                let _scope = self.recursion_scope(owner)?;
+                self.format_jsdoc_type_body(
+                    postfix::JsDocTypeOwner::NonNullable(owner),
+                    node.source_owner,
+                    enclosure,
+                    writer,
+                )
+            }
+            TsTypeData::TsImportType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_import_type_body(node, writer)
+            }
+            TsTypeData::TsMappedType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_mapped_type_body(node, writer)
+            }
             TsTypeData::TsInferType(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_infer_type_body(node, layout == TypeLayout::ContinuationRoot, writer)
             }
             TsTypeData::TsConditionalType(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_conditional_type_body(node, layout, writer)
             }
-            TsTypeData::TsTypeLiteral(node) => self.format_type_literal_body(node, layout, writer),
-            TsTypeData::TsFunctionType(node) => self
-                .format_callable_type(callable::CallableType::Function(node), writer)
-                .map(TypeOutput::from_pending),
-            TsTypeData::TsConstructorType(node) => self
-                .format_callable_type(callable::CallableType::Constructor(node), writer)
-                .map(TypeOutput::from_pending),
-            TsTypeData::TsTypePredicate(node) => self.format_type_predicate_body(
-                node,
-                layout == TypeLayout::ContinuationRoot,
-                writer,
-            ),
+            TsTypeData::TsTypeLiteral(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_type_literal_body(node, layout, writer)
+            }
+            TsTypeData::TsFunctionType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_callable_type(callable::CallableType::Function(node), writer)
+                    .map(TypeOutput::from_pending)
+            }
+            TsTypeData::TsConstructorType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_callable_type(callable::CallableType::Constructor(node), writer)
+                    .map(TypeOutput::from_pending)
+            }
+            TsTypeData::TsTypePredicate(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_type_predicate_body(
+                    node,
+                    layout == TypeLayout::ContinuationRoot,
+                    writer,
+                )
+            }
 
-            TsTypeData::TsTupleType(node) => self.format_tuple_type_body(node, writer),
-            TsTypeData::TsOptionalType(node) => self.format_optional_type_body(node, writer),
-            TsTypeData::TsRestType(node) => self.format_rest_type_body(node, writer),
+            TsTypeData::TsTupleType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_tuple_type_body(node, writer)
+            }
+            TsTypeData::TsOptionalType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_optional_type_body(node, writer)
+            }
+            TsTypeData::TsRestType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_rest_type_body(node, writer)
+            }
 
-            TsTypeData::TsUnionType(union) => self.format_compound_type_body(
-                node,
-                union.types(self.ast),
-                compound::CompoundTypeKind::Union,
-                if enclosure == TypeEnclosure::Parentheses {
-                    TypeContext::Parenthesized
-                } else {
-                    TypeContext::Root
-                },
-                layout,
-                writer,
-            ),
-            TsTypeData::TsIntersectionType(intersection) => self.format_compound_type_body(
-                node,
-                intersection.types(self.ast),
-                compound::CompoundTypeKind::Intersection,
-                TypeContext::Root,
-                layout,
-                writer,
-            ),
+            TsTypeData::TsUnionType(union) => {
+                let _scope = self.recursion_scope(union)?;
+                self.format_compound_type_body(
+                    node,
+                    union.types(self.ast),
+                    compound::CompoundTypeKind::Union,
+                    if enclosure == TypeEnclosure::Parentheses {
+                        TypeContext::Parenthesized
+                    } else {
+                        TypeContext::Root
+                    },
+                    layout,
+                    writer,
+                )
+            }
+            TsTypeData::TsIntersectionType(intersection) => {
+                let _scope = self.recursion_scope(intersection)?;
+                self.format_compound_type_body(
+                    node,
+                    intersection.types(self.ast),
+                    compound::CompoundTypeKind::Intersection,
+                    TypeContext::Root,
+                    layout,
+                    writer,
+                )
+            }
 
-            TsTypeData::TsArrayType(node) => self.format_array_type_body(node, writer),
-            TsTypeData::TsIndexedAccessType(node) => self.format_indexed_type_body(node, writer),
-            TsTypeData::TsTypeOperator(node) => self.format_type_operator_body(node, writer),
-            TsTypeData::TsTypeQuery(node) => self.format_type_query_body(node, writer),
+            TsTypeData::TsArrayType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_array_type_body(node, writer)
+            }
+            TsTypeData::TsIndexedAccessType(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_indexed_type_body(node, writer)
+            }
+            TsTypeData::TsTypeOperator(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_type_operator_body(node, writer)
+            }
+            TsTypeData::TsTypeQuery(node) => {
+                let _scope = self.recursion_scope(node)?;
+                self.format_type_query_body(node, writer)
+            }
 
             TsTypeData::TsTypeReference(reference) => {
                 self.format_type_reference_body(reference, writer)
             }
-            TsTypeData::TsTemplateLiteralType(template) => self
-                .format_template_literal_type_body(template, writer)
-                .map(|()| TypeOutput::closed()),
+            TsTypeData::TsTemplateLiteralType(template) => {
+                let _scope = self.recursion_scope(template)?;
+                self.format_template_literal_type_body(template, writer)
+                    .map(|()| TypeOutput::closed())
+            }
             TsTypeData::TsLiteralType(literal) => {
                 match self.ast.ts_literal_data(literal.literal(self.ast)) {
                     TsLiteralData::TemplateLiteral(template) => {
@@ -3832,6 +3892,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn format_qualified_type_name(
+        &mut self,
+        name: TsQualifiedName,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.with_recursion(name, |formatter| {
+            formatter.format_qualified_type_name_inner(name, writer)
+        })
+    }
+
+    fn format_qualified_type_name_inner(
         &mut self,
         name: TsQualifiedName,
         writer: &mut Writer<'ast>,

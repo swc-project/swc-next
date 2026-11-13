@@ -672,6 +672,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         member: JsxMemberExpression,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.with_recursion(member, |formatter| {
+            formatter.format_jsx_member_inner(member, writer)
+        })
+    }
+
+    fn format_jsx_member_inner(
+        &mut self,
+        member: JsxMemberExpression,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let object = member.object(ast);
         match ast.jsx_member_expression_object_data(object) {

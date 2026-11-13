@@ -9,6 +9,7 @@ use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionStart, Formatter,
     OperandIndent, ParenthesesOwner, SourceTailOwner, TailBoundary, TailOwner,
 };
+use crate::formatter::RecursionScope;
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
@@ -2440,25 +2441,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression_leading_prepared_with_raw_end(
         &mut self,
         expression: Expr,
-        prepared: Option<ExpressionContent>,
-        resolved: ResolvedExpressionHead<'ast>,
-        context: ExpressionContext<'ast>,
-        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_expression_head_and_content_with_raw_end(
-            expression,
-            prepared,
-            resolved,
-            context,
-            array_comments,
-            writer,
-        )
-    }
-
-    fn format_expression_head_and_content_with_raw_end(
-        &mut self,
-        expression: Expr,
         mut prepared: Option<ExpressionContent>,
         resolved: ResolvedExpressionHead<'ast>,
         context: ExpressionContext<'ast>,
@@ -2689,6 +2671,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let recursion = self.recursion;
+        let _scope = recursion
+            .enter(Some(expression.node_id()))
+            .map_err(|_| self.unsupported("nesting depth", expression))?;
         let PreparedHeadEnclosure {
             resolved,
             frame,
@@ -3114,6 +3100,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(expression, |content| content.expression);
         let data = self.ast.expr_data(expression);
         if let ExprData::SequenceExpression(sequence) = data {
+            let _scope = self.recursion_scope(sequence)?;
             return self.format_sequence_output(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
@@ -3178,6 +3165,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.expression_start = ExpressionStart::None;
         }
         if let Some(binary) = binary {
+            let _scope = self.recursion_scope(expression)?;
             if parenthesize && Self::binary_grammar_pair_owns_indent(context.position) {
                 return writer.group(false, |writer| {
                     writer.text("(");
@@ -3206,6 +3194,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && parenthesize
             && Self::conditional_grammar_pair_is_enclosed(context)
         {
+            let _scope = self.recursion_scope(conditional)?;
             return self
                 .format_conditional_enclosed(conditional, context, writer)
                 .map(ExpressionOutput::closed);
@@ -3213,6 +3202,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let ExprData::ConditionalExpression(conditional) = data
             && Self::conditional_test_pair_is_enclosed(context.position)
         {
+            let _scope = self.recursion_scope(conditional)?;
             return writer.group(false, |writer| {
                 writer.text("(");
                 writer.indent(|writer| {
@@ -3509,6 +3499,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(start)
     }
 
+    /// A renderer that consumes a prepared real pair keeps its traversal scope.
+    pub(in crate::formatter) fn source_pair_scope(
+        &self,
+        parenthesized: ParenthesizedExpression,
+    ) -> Result<Option<RecursionScope<'ast>>, FormatError> {
+        let recursion = self.recursion;
+        recursion
+            .enter(Some(parenthesized.node_id()))
+            .map_err(|_| self.unsupported("nesting depth", parenthesized))
+    }
+
     fn format_source_parentheses_with_raw_end(
         &mut self,
         parenthesized: ParenthesizedExpression,
@@ -3517,6 +3518,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let _scope = self.source_pair_scope(parenthesized)?;
         let span = parenthesized.span(self.ast);
         if let Some(plan) = self.prepare_exterior_cast(parenthesized, context) {
             return self.format_exterior_cast(&plan, context, array_comments, writer);

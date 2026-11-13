@@ -2072,6 +2072,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     /// Delay the complete head until its surviving content owner is known.
     pub(super) fn format_movable_type_head(
         &mut self,
+        current: PreparedType,
+        pending: &mut PendingTypeHead<'ast>,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedTypeContent<'ast>, FormatError> {
+        self.with_recursion(current.node, |formatter| {
+            formatter.format_movable_type_head_inner(current, pending, context, writer)
+        })
+    }
+
+    fn format_movable_type_head_inner(
+        &mut self,
         mut current: PreparedType,
         pending: &mut PendingTypeHead<'ast>,
         context: TypeContext,
@@ -2201,6 +2213,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn format_prepared_type_content_body(
+        &mut self,
+        content: PreparedTypeContent<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.with_recursion_scope(|formatter| {
+            formatter.format_prepared_type_content_inner(content, context, layout, writer)
+        })
+    }
+
+    fn format_prepared_type_content_inner(
         &mut self,
         content: PreparedTypeContent<'ast>,
         context: TypeContext,
