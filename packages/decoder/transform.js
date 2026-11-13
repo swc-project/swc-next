@@ -54,7 +54,10 @@ function storage(length) {
     : new Uint8Array(length);
 }
 
-/** Create an options encoder with synchronous, reusable scratch storage. */
+/** Create an options encoder with synchronous, reusable scratch storage.
+ * The encoder is not reentrant. Option getters and Proxy traps must not
+ * reenter it, including via its transformSync wrapper.
+ */
 export function createTransformOptionsEncoder() {
   let buffer = empty;
   let view;
@@ -162,7 +165,9 @@ export function createTransformOptionsEncoder() {
 }
 
 const encodeOptions = createTransformOptionsEncoder();
-/** The returned buffer is scratch storage, valid until the next encoding call. */
+/** The returned buffer is scratch storage, valid until the next encoding call.
+ * Option getters and Proxy traps must not reenter this shared encoder.
+ */
 export { encodeOptions as encodeTransformOptions };
 
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
@@ -201,7 +206,10 @@ export function decodeTransform(buffer) {
   return map === undefined ? { code, diagnostics } : { code, map, diagnostics };
 }
 
-/** Build a synchronous transform API around a binary native or Wasm binding. */
+/** Build a synchronous transform API around a binary native or Wasm binding.
+ * Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
+ * traps must not reenter the same wrapper while it is encoding options.
+ */
 export function createTransformSync(binding) {
   const encodeOptions = createTransformOptionsEncoder();
   let sourceBuffer = empty;
