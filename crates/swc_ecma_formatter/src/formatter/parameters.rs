@@ -422,7 +422,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && first_head.is_none_or(|head| head.decorators.is_empty())
             })
             && self.comments.in_range(span).is_empty()
-            && !self.diagnostic_range_is_sensitive(span);
+            && (!self.diagnostic_range_is_sensitive(span)
+                || self.source_line_breaks(span.start, span.end) == 0);
         let hug = if has_single_parameter {
             match first {
                 Some(RuntimeParameter::Callable(parameter)) => {

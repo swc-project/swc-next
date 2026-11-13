@@ -16,7 +16,7 @@ factory = (a) => (b) =>
 ---------- Output ----------
 factory = a => b =>
   // @ts-ignore
-  (c) => missingFirst(a) + missingSecond(b) + c;
+  c => missingFirst(a) + missingSecond(b) + c;
 
 ---------- Options ----------
 {"arrowParens":"always","printWidth":80}
@@ -30,4 +30,4 @@ factory = (a) => (b) =>
 ---------- Output ----------
 factory = a => b =>
   // @ts-ignore
-  (c) => missingFirst(a) + missingSecond(b) + c;
+  c => missingFirst(a) + missingSecond(b) + c;
