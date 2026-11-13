@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (Ctor<T>)();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new Ctor<T>();
