@@ -18,7 +18,9 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 
 use crate::formatter::literals::StringContext;
-use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
+};
 use crate::{
     FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
     document::{BodyOpening, Fragment, Writer},
@@ -102,6 +104,7 @@ pub(in crate::formatter) struct PropertySuppression {
 
 struct PreparedComputedKey<'ast> {
     transparent: bool,
+    indent_inner: bool,
     inner: Fragment<'ast>,
     opening: LineConstraint,
     closing: LineConstraint,
@@ -126,7 +129,11 @@ impl<'ast> PreparedComputedKey<'ast> {
         } else {
             writer.text("[");
             self.opening.write(writer, FlatSeparator::Empty, |_| {});
-            writer.write_fragment(self.inner);
+            if self.indent_inner {
+                writer.indent(|writer| writer.write_fragment(self.inner));
+            } else {
+                writer.write_fragment(self.inner);
+            }
             self.closing.write(writer, FlatSeparator::Empty, |_| {});
             writer.text("]");
         }
@@ -1692,6 +1699,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(content.start, |comment| comment.span.start);
         let comments = self.comments.in_range(Span::new(leading_start, closing));
         let has_comments = !comments.is_empty();
+        let expression_content = self.expression_content(expression);
+        let child_span = expression_content.expression.span(self.ast);
+        let function_owns_comments = matches!(
+            expression_content.data,
+            ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+        ) && comments
+            .first()
+            .is_some_and(|comment| child_span.start <= comment.span.start)
+            && comments
+                .last()
+                .is_some_and(|comment| comment.span.end <= child_span.end);
         let opening_constraint = self.opening_line_constraint(content);
         let closing_constraint = if self.has_suppression {
             let comments = self.comments.in_range(Span::new(key_span.end, closing));
@@ -1705,22 +1723,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        // Source packets select the bracket owner before child width decisions.
-        // Inline ordinary Blocks do not acquire a frame when their expression breaks.
+        // A function owns comments within its own span; other packets select
+        // the bracket frame before child width decisions.
         let transparent = !has_comments
             || (mode == ContentMode::Formatted
                 && opening_constraint == LineConstraint::Unconstrained
                 && !self.diagnostic_range_is_sensitive(computed)
-                && comments.iter().all(|comment| {
-                    comment.kind == CommentKind::Block
-                        && self.line_breaks(comment.span.start, comment.span.end) == 0
-                        && !self.layout_line_starts_line(comment.span.start)
-                        && self.comment_semantics(*comment).is_ordinary()
-                        && !self.comment_is_jsdoc_binding(*comment)
-                })
-                && self
-                    .comment_binding(comments, content, None)
-                    .allows_relocation(None));
+                && (function_owns_comments
+                    || (comments.iter().all(|comment| {
+                        comment.kind == CommentKind::Block
+                            && self.line_breaks(comment.span.start, comment.span.end) == 0
+                            && (!self.layout_line_starts_line(comment.span.start)
+                                || child_span.start <= comment.span.start
+                                    && comment.span.end <= child_span.end)
+                            && self.comment_semantics(*comment).is_ordinary()
+                            && !self.comment_is_jsdoc_binding(*comment)
+                            && comment_directive(self.ast, *comment).is_none()
+                    }) && self
+                        .comment_binding(comments, content, None)
+                        .allows_relocation(None))));
         let method = matches!(
             context,
             PropertyKeyContext::ObjectMethod
@@ -1731,11 +1752,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PropertyKeyContext::TypeProperty => ExpressionPosition::TypePropertyKey,
             _ => ExpressionPosition::Nested,
         };
-        let (inner, tail_constraint) = writer.record_with_value(|writer| {
+        let (inner, (tail_constraint, indent_inner)) = writer.record_with_value(|writer| {
             let leading = self
                 .comments
                 .between(Span::new(leading_start, key_span.start))?;
-            let content = self.expression_content(expression);
+            let content = expression_content;
+            let indent_inner = transparent
+                && matches!(context, PropertyKeyContext::TypeProperty)
+                && matches!(
+                    content.data,
+                    ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+                );
             let binding = self.expression_head_binding(leading, expression);
             let binding = content
                 .parentheses
@@ -1782,11 +1809,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 closing,
             );
             self.format_expression_tail(tail, writer)?;
-            Ok::<_, FormatError>(tail_constraint)
+            Ok::<_, FormatError>((tail_constraint, indent_inner))
         })?;
         let closing_constraint = closing_constraint.unwrap_or(tail_constraint);
         Ok(PreparedComputedKey {
             transparent,
+            indent_inner,
             inner,
             opening: opening_constraint,
             closing: closing_constraint,
