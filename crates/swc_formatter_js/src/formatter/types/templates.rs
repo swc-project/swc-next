@@ -4,7 +4,6 @@ use swc_next_ecma_ast::{GetSpan, Span, TsTemplateLiteralType, TsType};
 
 use super::{PreparedType, TypeContext, TypeLayout};
 use crate::formatter::Formatter;
-use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::suppression::ContentMode;
 use crate::formatter::templates::{TemplateSlot, TemplateSlotLayout};
 use crate::{FormatError, document::Writer};
@@ -60,6 +59,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             TemplateSlotLayout::Child
         };
+        let head_layout = self.template_slot_head_layout(leading, span.start);
         self.format_template_slot(
             slot,
             opening,
@@ -68,11 +68,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
             |formatter, layout, writer| {
                 formatter.comments.claim(leading)?;
-                formatter.format_comment_run(
-                    leading,
-                    CommentRunLayout::Leading(span.start),
-                    writer,
-                )?;
+                formatter.format_comment_run(leading, head_layout, writer)?;
                 let layout = match layout {
                     TemplateSlotLayout::Child => TypeLayout::Root,
                     TemplateSlotLayout::Boundaries(_) => TypeLayout::CallerIndented,

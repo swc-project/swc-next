@@ -1,9 +1,11 @@
 //! Borrowed template text and physical quasi/slot delimiter geometry.
 
-use swc_next_ecma_ast::{AstNode, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral};
+use swc_next_ecma_ast::{
+    AstNode, Comment, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral,
+};
 
 use super::Formatter;
-use super::comments::CommentGap;
+use super::comments::{CommentGap, CommentRunLayout, HeadGapPlacement};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -48,6 +50,22 @@ pub(super) enum TemplateSlotLayout {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn template_slot_head_layout(
+        &self,
+        comments: &[Comment],
+        next: u32,
+    ) -> CommentRunLayout {
+        let placement = if comments
+            .first()
+            .is_some_and(|comment| self.layout_position_starts_line(comment.span.start))
+        {
+            HeadGapPlacement::OwnLine
+        } else {
+            HeadGapPlacement::Inline
+        };
+        CommentRunLayout::SourceLeading { next, placement }
+    }
+
     fn template_quasi(&self, node: TemplateElement) -> TemplateQuasi<'ast> {
         TemplateQuasi {
             span: node.span(self.ast),

@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const t = `a${/*head*/
+/* note */
+value /*block*/}b`;
+---------- Options ----------
+{}
+---------- Output ----------
+const t = `a${
+  /*head*/
+  /* note */
+  value /*block*/
+}b`;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const t = `a${
+  /*head*/
+  /* note */
+  value /*block*/
+}b`
