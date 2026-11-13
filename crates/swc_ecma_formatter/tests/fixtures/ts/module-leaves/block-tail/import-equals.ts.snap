@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import Value = NS.Value /* comment */;
+---------- Options ----------
+{}
+---------- Output ----------
+import Value = NS.Value /* comment */;
