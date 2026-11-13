@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+enum E { /* first */ /* second */ }
+---------- Options ----------
+{}
+---------- Output ----------
+enum E {
+  /* first */
+  /* second */
+}

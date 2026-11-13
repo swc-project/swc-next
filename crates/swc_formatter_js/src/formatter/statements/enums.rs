@@ -205,18 +205,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut remaining = body.members(ast);
         let Some(first) = remaining.first().map(|id| ast.get_node_in_sub_range(id)) else {
             let comments = self.comments.between(content)?;
+            if self.content_mode(comments) == ContentMode::Verbatim {
+                return self.format_verbatim(span, writer);
+            }
             let boundary = self.prepare_comment_boundary(comments, content.start, content.end);
             self.comments.claim(comments)?;
             writer.text("{");
             if !comments.is_empty() {
-                writer.group(false, |writer| {
+                let multiline = comments.len() > 1;
+                writer.group(multiline, |writer| {
                     writer.indent(|writer| {
                         self.opening_line_constraint(content).write(
                             writer,
                             FlatSeparator::Empty,
                             Writer::soft_line,
                         );
-                        self.format_comment_run(comments, CommentRunLayout::Source, writer)
+                        self.format_comment_run(
+                            comments,
+                            if multiline {
+                                CommentRunLayout::CanonicalDangling
+                            } else {
+                                CommentRunLayout::Source
+                            },
+                            writer,
+                        )
                     })?;
                     boundary
                         .gap()
