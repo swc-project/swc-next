@@ -110,9 +110,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        let source_header = leading.has_suppression() || condition_tail.has_suppression();
+        let first_gap_relocatable = !first_gap.has_suppression()
+            && self
+                .comment_binding(first_gap.comments, first_gap.span, None)
+                .allows_relocation(None);
+        let closing = condition.closing;
+        let split = condition_tail
+            .comments
+            .partition_point(|comment| comment.span.end <= closing);
+        let mut after = CompoundGap {
+            span: Span::new(closing + 1, opening),
+            comments: &condition_tail.comments[split..],
+            layout: GapLayout::Formatted,
+        };
+        if !source_header
+            && self
+                .comment_binding(after.comments, after.span, None)
+                .allows_relocation(None)
+        {
+            condition.tail_end = opening;
+            after.comments = &[];
+            if first.is_some() && first_gap_relocatable {
+                let split = first_gap.comments.partition_point(|comment| {
+                    self.line_breaks(body.start, comment.span.start) == 0
+                });
+                if let Some(last) = first_gap.comments[..split]
+                    .last()
+                    .filter(|comment| comment.kind == CommentKind::Line)
+                {
+                    condition.tail_end = last.span.end;
+                    condition.inline = false;
+                    first_gap.comments = &first_gap.comments[split..];
+                }
+            }
+        }
+        let case_leading = first_gap_relocatable && !first_gap.comments.is_empty();
         writer.group(false, |writer| {
             writer.text("switch");
-            if leading.has_suppression() || condition_tail.has_suppression() {
+            if source_header {
                 self.format_compound_gap(
                     CompoundGap {
                         layout: GapLayout::Source,
@@ -146,47 +182,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
             } else {
-                let closing = condition.closing;
-                let split = condition_tail
-                    .comments
-                    .partition_point(|comment| comment.span.end <= closing);
-                let mut after = CompoundGap {
-                    span: Span::new(closing + 1, opening),
-                    comments: &condition_tail.comments[split..],
-                    layout: GapLayout::Formatted,
-                };
-                if self
-                    .comment_binding(after.comments, after.span, None)
-                    .allows_relocation(None)
-                {
-                    condition.tail_end = opening;
-                    after.comments = &[];
-                    if first.is_some()
-                        && self
-                            .comment_binding(first_gap.comments, first_gap.span, None)
-                            .allows_relocation(None)
-                    {
-                        let split = first_gap.comments.partition_point(|comment| {
-                            self.line_breaks(body.start, comment.span.start) == 0
-                        });
-                        if let Some(last) = first_gap.comments[..split].last() {
-                            condition.tail_end = last.span.end;
-                            condition.inline = false;
-                            first_gap.comments = &first_gap.comments[split..];
-                        }
-                    }
-                }
                 self.format_condition(condition, writer)?;
                 self.format_compound_gap(after, FlatSeparator::Space, Writer::space, writer)?;
             }
             writer.text("{");
             Ok::<_, FormatError>(())
         })?;
-        if first.is_none()
-            && !self
-                .comment_binding(first_gap.comments, first_gap.span, None)
-                .allows_relocation(None)
-        {
+        if first.is_none() && !first_gap_relocatable {
             self.format_compound_gap(first_gap, FlatSeparator::Empty, Writer::hard_line, writer)?;
         } else if first.is_none() {
             if !first_gap.comments.is_empty() {
@@ -199,12 +201,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.hard_line();
         } else {
             let trailing = writer.indent(|writer| {
-                self.format_compound_gap(
-                    first_gap,
-                    FlatSeparator::Space,
-                    Writer::hard_line,
-                    writer,
-                )?;
+                if case_leading {
+                    writer.hard_line();
+                    self.comments.claim(first_gap.comments)?;
+                    self.format_comment_run(
+                        first_gap.comments,
+                        CommentRunLayout::FlatLeading(first_gap.span.end),
+                        writer,
+                    )?;
+                } else {
+                    self.format_compound_gap(
+                        first_gap,
+                        FlatSeparator::Space,
+                        Writer::hard_line,
+                        writer,
+                    )?;
+                }
                 let mut pending = cases
                     .next()
                     .map(|node| self.prepare_case(node, cases.peek().copied(), body.end))
