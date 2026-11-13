@@ -26,7 +26,7 @@ use crate::{
 use swc_next_ecma_ast::{
     ArgumentData, AssignmentExpression, AssignmentTarget, AssignmentTargetData, CallExpression,
     Comment, CommentKind, Expr, ExprData, GetSpan, PropertyKeyData, SimpleAssignmentTargetData,
-    Span, TemplateElement,
+    Span, TemplateElement, UnaryExpression,
 };
 
 /// Layout sees the prepared packet even when its source owner stops projection.
@@ -1936,23 +1936,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// Prepare the value only after its parent has selected the final source mode.
+    #[inline]
     pub(in crate::formatter) fn prepare_assignment_rhs(
         &self,
         rhs: &AssignmentRhs<'_>,
         boundary: &mut AssignmentBoundary<'ast>,
         context: &ExpressionContext<'ast>,
     ) -> Result<(), FormatError> {
+        let ExprData::UnaryExpression(unary) = rhs.content.data else {
+            return Ok(());
+        };
         if context.content_mode == ContentMode::Formatted
             && boundary.mode == ContentMode::Formatted
             && (self.has_suppression
                 || self.has_target_annotations
                 || self.has_file_directives
                 || !self.diagnostic_lines.is_empty())
-            && let ExprData::UnaryExpression(unary) = rhs.content.data
         {
-            let context = boundary.with_head_gap(context.with_content_mode(boundary.mode));
-            boundary.prepared_unary_operand = self.prepare_unary_operand(unary, context)?;
+            self.prepare_assignment_unary_rhs(unary, boundary, context)?;
         }
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn prepare_assignment_unary_rhs(
+        &self,
+        unary: UnaryExpression,
+        boundary: &mut AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+    ) -> Result<(), FormatError> {
+        let context = boundary.with_head_gap(context.with_content_mode(boundary.mode));
+        boundary.prepared_unary_operand = self.prepare_unary_operand(unary, context)?;
         Ok(())
     }
 
