@@ -304,7 +304,6 @@ pub(super) struct TsMemberView {
 }
 
 impl TsMemberView {
-    #[inline(always)]
     pub(super) fn candidates(
         self,
         environments: &TsMemberEnvironments<'_>,
@@ -338,7 +337,7 @@ impl TsMemberView {
         Some(entry)
     }
 
-    #[inline(always)]
+    #[inline]
     pub(super) fn lookup(
         self,
         environments: &TsMemberEnvironments<'_>,
@@ -2172,7 +2171,6 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    #[inline(always)]
     pub(super) fn pending_ts_namespace_destination(
         &self,
     ) -> Option<(TsMemberEnvironmentId, Option<ScopeId>)> {
@@ -2224,7 +2222,6 @@ impl<'a> SymbolTracker<'a> {
         (public_exports && body_scope == Some(scope)).then_some(environment)
     }
 
-    #[inline(always)]
     pub(super) fn current_ts_body_member(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         if scope == ScopeId::MODULE
             && let Some(source) = &self.ts.source_exports
@@ -2247,7 +2244,6 @@ impl<'a> SymbolTracker<'a> {
             .then_some(member)
     }
 
-    #[inline(always)]
     fn prepare_ts_module_views(
         &mut self,
         tree: &Ast<'a>,
@@ -5029,7 +5025,6 @@ impl NameLookupResult {
     }
 }
 
-#[inline(always)]
 fn lookup_name_in_scopes<const INCLUDE_GLOBAL: bool, const PRECISE_IMPORT_ALIASES: bool>(
     lexical: LexicalLookup<'_, '_>,
     ts: &TsBindings<'_>,
@@ -5058,7 +5053,6 @@ fn lookup_name_in_scopes<const INCLUDE_GLOBAL: bool, const PRECISE_IMPORT_ALIASE
     )
 }
 
-#[inline(always)]
 fn lookup_name_with_ts_views<
     const INCLUDE_GLOBAL: bool,
     const PRECISE_IMPORT_ALIASES: bool,
@@ -5087,7 +5081,6 @@ fn lookup_name_with_ts_views<
     }
 }
 
-#[inline(always)]
 fn lookup_name_with_ts_views_policy<
     const INCLUDE_GLOBAL: bool,
     const PRECISE_IMPORT_ALIASES: bool,
@@ -5234,7 +5227,6 @@ fn lookup_name_with_ts_views_policy<
     state
 }
 
-#[inline(always)]
 pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool>(
     lexical: LexicalLookup<'_, '_>,
     import_alias_spaces: &TsImportAliasSpaces,

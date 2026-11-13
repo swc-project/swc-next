@@ -32,7 +32,6 @@ pub(super) struct LexicalLookup<'lookup, 'arena> {
     pub(super) scope_maps: &'lookup ScopeMaps<'arena>,
 }
 
-#[inline(always)]
 pub(super) fn lookup_lexical_name<
     const INCLUDE_GLOBAL: bool,
     const TS_LOOKUP: bool,
@@ -76,7 +75,6 @@ pub(super) fn lookup_lexical_name<
 
 // Signature queries inspect permitted declarations in a split body before
 // walking outward. Runtime parameter initializers never take this edge.
-#[inline(always)]
 pub(super) fn lookup_scope_binding<const TS_LOOKUP: bool>(
     lexical: LexicalLookup<'_, '_>,
     current: ScopeId,
@@ -124,7 +122,7 @@ pub(super) fn lookup_scope_binding<const TS_LOOKUP: bool>(
     accept_visible(internal_name).then_some(internal_name)
 }
 
-#[inline(always)]
+#[inline]
 pub(super) fn lookup_scope_name(
     scope_maps: &ScopeMaps<'_>,
     scope: ScopeId,

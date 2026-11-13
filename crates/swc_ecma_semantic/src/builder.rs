@@ -360,6 +360,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         false
     }
 
+    /// Inline this function will eliminate the overhead of the match dispatch for each node kind.
     #[inline(always)]
     fn check(&mut self, node_data: NodeKindData) {
         match node_data {
@@ -530,11 +531,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.ast
     }
 
-    #[inline(always)]
+    #[inline]
     fn enter_node(&mut self, node: NodeKindData) {
         self.enter_node(node.node_id());
     }
 
+    /// Inline this function will eliminate the overhead of the match dispatch for each node kind.
     #[inline(always)]
     fn leave_node(&mut self, node: NodeKindData) {
         if !self.check_syntax.is_empty() {
@@ -553,7 +555,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.leave_node(NodeKindData::UpdateExpression(node));
     }
 
-    #[inline]
     fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
         self.enter_node(node.node_id());
         self.symbols.record_ts_expando_assignment(
@@ -1047,7 +1048,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.leave_node(NodeKindData::ClassBody(node));
     }
 
-    #[inline]
     fn visit_property_definition(&mut self, node: PropertyDefinition) {
         self.enter_node(node.node_id());
         let decorators = node.decorators(self.ast);
@@ -1201,7 +1201,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.leave_node(NodeKindData::ExportAllDeclaration(node));
     }
 
-    #[inline]
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.enter_node(node.node_id());
         let declaration = self.parent().and_then(|parent| {
@@ -1392,7 +1391,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.exit_type_position(type_position);
     }
 
-    #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         let signature_return = self.current_node().is_some_and(|parent| {
             matches!(
@@ -1431,7 +1429,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.exit_type_position(type_position);
     }
 
-    #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
         if self.in_ts_module_name {
             self.enter_node(node.node_id());
@@ -1474,7 +1471,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.exit_type_position(type_position);
     }
 
-    #[inline]
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
         let type_position = self.enter_type_position();
         self.enter_node(node.node_id());

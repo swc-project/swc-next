@@ -1233,7 +1233,6 @@ impl<'a> SymbolTracker<'a> {
         });
     }
 
-    #[inline(always)]
     pub(crate) fn prepare_declaration(
         &self,
         tree: &Ast<'a>,
@@ -1451,7 +1450,7 @@ impl<'a> SymbolTracker<'a> {
         self.declare_ts_context_binding(tree, name, node)
     }
 
-    #[inline(always)]
+    #[inline]
     fn binding_identifier_declaration(
         &mut self,
         tree: &Ast<'a>,
@@ -1467,7 +1466,6 @@ impl<'a> SymbolTracker<'a> {
         Some((identifier.node_id(), identifier.name(tree)))
     }
 
-    #[inline(always)]
     fn finish_binding_identifier(
         &mut self,
         tree: &Ast<'a>,
@@ -1523,7 +1521,6 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    #[inline(always)]
     fn declare_prepared(&mut self, tree: &Ast<'a>, plan: PreparedDeclaration) -> DeclarationId {
         match plan.destination {
             DeclarationDestination::TsDefaultExport => {
@@ -1581,7 +1578,6 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    #[inline(always)]
     fn declare_symbol(
         &mut self,
         tree: &Ast<'a>,
@@ -1651,7 +1647,7 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn insert_scope_binding(
         &mut self,
         tree: &Ast<'a>,
@@ -1837,7 +1833,7 @@ impl<'a> SymbolTracker<'a> {
         id
     }
 
-    #[inline(always)]
+    #[inline]
     fn declaration_merges(&self, existing: SymbolId, binding: PendingBinding) -> bool {
         let existing = self.symbols[existing].flags;
         !existing.intersects(binding.excludes)
@@ -1848,7 +1844,6 @@ impl<'a> SymbolTracker<'a> {
         self.symbols[id]
     }
 
-    #[inline]
     pub(crate) fn conflict_candidate_info(
         &self,
         candidate: DeclarationConflictCandidate,

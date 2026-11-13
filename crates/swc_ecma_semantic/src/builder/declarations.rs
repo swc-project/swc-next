@@ -28,7 +28,6 @@ fn has_class_function_conflict(
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    #[inline(always)]
     pub(super) fn check_redeclaration(
         &mut self,
         node: NodeId,
@@ -104,7 +103,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
-    #[inline(always)]
     fn check_outer_parameter_conflict(
         &mut self,
         node: NodeId,
@@ -155,7 +153,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
-    #[inline(always)]
     fn check_hoisting_var_conflict(
         &mut self,
         node: NodeId,
