@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function g() { return x > 0 // c
+ && <span>y</span>; }
+---------- Options ----------
+{}
+---------- Output ----------
+function g() {
+  return (
+    x > 0 && ( // c
+      <span>y</span>
+    )
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function g() {
+  return (
+    x > 0 && ( // c
+      <span>y</span>
+    )
+  )
+}

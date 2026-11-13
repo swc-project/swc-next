@@ -1246,6 +1246,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.if_break("(");
                     writer.indent(|writer| {
                         writer.soft_line();
+                        // This pair owns suffixes queued by the operator boundary.
+                        writer.line_suffix_boundary();
                         let output = write(self, writer)?;
                         self.format_expression_tail(output.pending, writer)
                     })?;
