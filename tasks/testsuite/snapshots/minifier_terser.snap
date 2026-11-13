@@ -1,6 +1,6 @@
 minifier * terser
 ========================
-Positive Passed: 128/1577 (8.12%)
+Positive Passed: 130/1577 (8.24%)
 Negative Passed: 602/610 (98.69%)
 Panicked: 0/2187 (0.00%)
 Skipped: 353/2187 (16.14%)
@@ -75,7 +75,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_var
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_lvalues_drop_assign/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_misc1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_object/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_properties/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_regexp/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_repeated/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/collapse_vars/collapse_vars_seq/input.js - output differs from reference output
@@ -768,7 +767,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/a
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/const_prop_assign_pure/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/const_prop_assign_strict/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/dot_properties/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/dot_properties_es5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/evaluate_array_length/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/evaluate_string_length/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/terser/compress/properties/issue_2208_1/input.js - output differs from reference output

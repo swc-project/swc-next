@@ -10,8 +10,9 @@
 //! unused local declarations and computations whose values are unused and
 //! have no side effects. It
 //! rewrites `if` statements and returns as shorter expressions and shortens
-//! comparisons. It also joins adjacent expression statements and
-//! declarations, and removes empty statements and unneeded blocks.
+//! comparisons and property names. It also joins adjacent expression
+//! statements and declarations, and removes empty statements and unneeded
+//! blocks.
 //! Mangling shortens the names of local bindings. Enabled semantic
 //! optimizations and mangling share one analysis and one traversal.
 
