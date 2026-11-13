@@ -1956,7 +1956,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 InitializerLayout::Bound { gap, right_mode }
             } else {
                 let content = self.expression_content(right);
-                let rhs = self.assignment_rhs(&content);
+                let rhs = self.assignment_rhs(right, &content);
                 let source = if tail_source && semicolon.is_some() {
                     AssignmentSourceEnd::ValueWithBoundTail(right.span(ast).end)
                 } else {

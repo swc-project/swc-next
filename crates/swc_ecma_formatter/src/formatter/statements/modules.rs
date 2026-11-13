@@ -1634,7 +1634,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let boundary = if modes.left == ContentMode::Formatted {
                     let content = self.expression_content(Expr::StringLiteral(value));
-                    let rhs = self.assignment_rhs(&content);
+                    let rhs = self.assignment_rhs(Expr::StringLiteral(value), &content);
                     Some(self.assignment_boundary(
                         gap.start,
                         &rhs,

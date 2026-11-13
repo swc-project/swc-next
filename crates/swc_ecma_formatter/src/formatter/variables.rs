@@ -414,7 +414,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .variable_initializer_context(right, context)
             .with_operator_tail_destination(operator_tail_destination)
             .with_decorated_function_call(decorated_function);
-        let rhs = self.assignment_rhs(&content);
+        let rhs = self.assignment_rhs(right, &content);
         let mut boundary = self.assignment_boundary(
             left_end,
             &rhs,

@@ -7,4 +7,5 @@ f)<number>;
 ---------- Options ----------
 {}
 ---------- Output ----------
-let o = f<number>; //c
+let o = //c
+  f<number>;
