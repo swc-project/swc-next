@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = foo(a)().bbbbbbbbbb;
+---------- Options ----------
+{"printWidth":9}
+---------- Output ----------
+const x =
+  foo(
+    a,
+  )()
+    .bbbbbbbbbb;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const x =
+  foo(a)()
+    .bbbbbbbbbb;

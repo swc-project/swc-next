@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = a()().b;
+---------- Options ----------
+{"printWidth":9}
+---------- Output ----------
+x =
+  a()()
+    .b;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+x = a()().b;
