@@ -4352,13 +4352,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let Some(removed) = content.parentheses else {
                     return Ok(None);
                 };
-                if matches!(removed.head.binding, CommentBinding::SourceBound)
-                    || self.expression_needs_parentheses(
-                        content.data,
-                        context.position,
-                        context.content_mode,
-                    ) != Some(false)
-                {
+                if matches!(removed.head.binding, CommentBinding::SourceBound) {
                     return Ok(None);
                 }
                 let comments = self.comments.in_range(Span::new(
@@ -4379,6 +4373,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             removed.head.binding,
                         ),
                     }));
+                }
+                // A replacement grammar pair follows the released source head.
+                // Without a packet, that pair still stops head projection.
+                if self.expression_needs_parentheses(
+                    content.data,
+                    context.position,
+                    context.content_mode,
+                ) != Some(false)
+                {
+                    return Ok(None);
                 }
                 expression = content.expression;
                 continue;
