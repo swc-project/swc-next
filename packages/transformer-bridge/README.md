@@ -16,7 +16,7 @@ import { transformSync as nativeTransformSync } from "./binding.js";
 export const transformSync = createTransformSync(nativeTransformSync);
 ```
 
-`encodeJsTransformApiOptions(options)` and `decodeJsTransformOutput(output)` are
+`encodeJsTransformApiOptions(options)` and `decodeJsOutput(output)` are
 also available for direct configuration and result conversion. Encoded
 configuration uses reusable scratch storage and must be consumed before the next
 encoding call. Option getters and Proxy traps must not reenter the active encoder.

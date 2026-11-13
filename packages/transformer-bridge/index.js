@@ -76,7 +76,7 @@ const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8S
 const severities = ["error", "warning", "hint", "info"];
 
 /** Decode either the native code-only string or a packed native/Wasm result. */
-export function decodeJsTransformOutput(buffer) {
+export function decodeJsOutput(buffer) {
   if (typeof buffer === "string") return { code: buffer, diagnostics: [] };
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const codeLength = view.getUint32(0, true);
@@ -125,6 +125,6 @@ export function createTransformSync(binding) {
     const { written } = encoder.encodeInto(source, sourceBuffer);
     // Synchronous Rust processing borrows these bytes only for this call.
     const result = binding(sourceBuffer.subarray(0, written), source.length, config);
-    return decodeJsTransformOutput(result);
+    return decodeJsOutput(result);
   };
 }

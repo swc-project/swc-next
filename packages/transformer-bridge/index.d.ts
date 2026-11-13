@@ -14,7 +14,7 @@ export declare function encodeJsTransformApiOptions(
   options?: object | null,
 ): Uint8Array;
 /** Decode either the native code-only string or a packed native/Wasm result. */
-export declare function decodeJsTransformOutput(output: string | Uint8Array): TransformOutput;
+export declare function decodeJsOutput(output: string | Uint8Array): TransformOutput;
 /** Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
  * traps must not reenter the same wrapper while it is encoding options.
  */
