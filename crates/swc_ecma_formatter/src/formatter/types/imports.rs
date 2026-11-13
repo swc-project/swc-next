@@ -4,19 +4,18 @@ use swc_next_ecma_ast::{
     Expr, GetSpan, Span, TsImportType, TsImportTypeQualifier, TsImportTypeQualifierData,
 };
 
-use super::generics::TypeListKind;
-use super::{Formatter, TypeBoundaryTarget};
-use crate::formatter::comments::ExpressionTail;
+use super::generics::{TypeArgumentOwner, TypeListKind};
+use super::{Formatter, TypeBoundaryTarget, TypeOutput};
 use crate::formatter::expressions::imports::ImportArguments;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_import_type(
+    pub(super) fn format_import_type_body(
         &mut self,
         node: TsImportType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let source = node.source(ast);
@@ -102,9 +101,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some((node, ref prefix)) = arguments {
             let mode = prefix.right_mode;
             self.format_type_list_prefix(prefix, writer)?;
-            self.format_type_arguments(node, mode, writer)?;
+            self.format_type_arguments_with_owner_body(
+                node,
+                mode,
+                TypeArgumentOwner::Ordinary,
+                writer,
+            )?;
         }
-        Ok(None)
+        Ok(TypeOutput::closed())
     }
 
     fn format_import_type_qualifier(

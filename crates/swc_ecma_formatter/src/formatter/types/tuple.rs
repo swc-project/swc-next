@@ -6,8 +6,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::context::TypeContext;
-use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
+use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout, TypeOutput};
+use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::arguments::{
     ArgumentLayout, DelimitedClose, FollowingItem, Separator,
@@ -21,11 +21,11 @@ enum PreparedTupleElement {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_tuple_type(
+    pub(super) fn format_tuple_type_body(
         &mut self,
         node: TsTupleType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
@@ -52,11 +52,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self.comments.in_range(content);
             if comments.is_empty() {
                 writer.text("[]");
-                return Ok(None);
+                return Ok(TypeOutput::closed());
             }
             if self.content_mode(comments) == ContentMode::Verbatim {
                 self.format_verbatim(span, writer)?;
-                return Ok(None);
+                return Ok(TypeOutput::closed());
             }
             let layout = if self
                 .comment_binding(comments, content, None)
@@ -145,8 +145,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?;
                     item.set_leading_mode(leading_mode);
-                    let tail = self.format_tuple_element(element_content, item.mode, TypeContext::Root, layout, writer)?;
-                    let boundary = self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
+                    let output = self.format_tuple_element_body(element_content, item.mode, TypeContext::Root, layout, writer)?;
+                    let boundary = self.finish_delimited_item_with_closing(item, output.pending, closing, writer)?;
                     end = boundary.end;
                     source_end = element_span.end;
                     separator = boundary.separator;
@@ -181,36 +181,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Writer::soft_line,
             );
             writer.text("]");
-            Ok(None)
+            Ok(TypeOutput::closed())
         })
     }
 
-    pub(super) fn format_optional_type(
+    pub(super) fn format_optional_type_body(
         &mut self,
         node: TsOptionalType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let child = node.type_annotation(ast);
         let gap = Span::new(child.span(ast).end, node.span(ast).end - 1);
         let mode = self.content_mode(self.comments.in_range(gap));
-        let tail =
-            self.format_type_with_context(child, mode, TypeContext::JsDocPostfixOperand, writer)?;
-        self.format_expression_tail(tail, writer)?;
+        let child = self.prepare_type(child, mode);
+        let output = self.format_prepared_type_body(
+            child,
+            TypeContext::JsDocPostfixOperand,
+            TypeLayout::Root,
+            writer,
+        )?;
+        self.format_expression_tail(output.pending, writer)?;
         if mode == ContentMode::Verbatim {
             self.format_verbatim(gap, writer)?;
         } else {
             self.format_source_token_gap(gap.start, gap.end, false, writer)?;
         }
         writer.text("?");
-        Ok(None)
+        Ok(TypeOutput::closed())
     }
 
-    pub(super) fn format_rest_type(
+    pub(super) fn format_rest_type_body(
         &mut self,
         node: TsRestType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let child = node.type_annotation(ast);
         let gap = Span::new(node.span(ast).start + 3, child.span(ast).start);
@@ -223,7 +228,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.text("...");
         match child {
-            PreparedTupleElement::Type(node) => self.format_prepared_type_after_prefix(
+            PreparedTupleElement::Type(node) => self.format_prepared_type_after_prefix_body(
                 node,
                 prefix,
                 TypeContext::RestOperand,
@@ -233,7 +238,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PreparedTupleElement::Named(node) => {
                 let mode = prefix.mode;
                 self.format_type_prefix(prefix, FlatSeparator::Empty, writer)?;
-                self.format_named_tuple_member(node, mode, writer)
+                self.format_named_tuple_member_body(node, mode, writer)
             }
         }
     }
@@ -250,35 +255,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn format_tuple_element(
+    fn format_tuple_element_body(
         &mut self,
         element: PreparedTupleElement,
         mode: ContentMode,
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         match element {
             PreparedTupleElement::Type(mut node) => {
                 if mode == ContentMode::Verbatim {
                     node.source_owner = Some(node.node);
                 }
-                self.format_prepared_type_with_layout(node, context, layout, writer)
+                self.format_prepared_type_body(node, context, layout, writer)
             }
-            PreparedTupleElement::Named(node) => self.format_named_tuple_member(node, mode, writer),
+            PreparedTupleElement::Named(node) => {
+                self.format_named_tuple_member_body(node, mode, writer)
+            }
         }
     }
 
-    fn format_named_tuple_member(
+    fn format_named_tuple_member_body(
         &mut self,
         node: TsNamedTupleMember,
         mode: ContentMode,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         if mode == ContentMode::Verbatim {
             self.format_verbatim(node.span(ast), writer)?;
-            return Ok(None);
+            return Ok(TypeOutput::closed());
         }
         let label = node.label(ast);
         let annotation = node.element_type(ast);
@@ -337,7 +344,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
             }
         }
-        self.format_prepared_type_with_layout(
+        self.format_prepared_type_body(
             type_node,
             TypeContext::Root,
             TypeLayout::CallerIndented,

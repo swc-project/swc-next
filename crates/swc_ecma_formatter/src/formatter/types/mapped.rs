@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{Comment, GetSpan, Span, TsMappedType, TsMappedTypeModifi
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, SuppressedTypeHead,
     SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout, TypeOperatorSlot,
+    TypeOutput,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
@@ -109,11 +110,11 @@ enum MappedTail<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_mapped_type(
+    pub(super) fn format_mapped_type_body(
         &mut self,
         node: TsMappedType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
@@ -125,7 +126,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             // These leading runs select this real mapped node, including its body.
             self.format_verbatim(span, writer)?;
-            return Ok(None);
+            return Ok(TypeOutput::closed());
         }
         let readonly = self.prepare_mapped_modifier(prefix_span, node.readonly(ast), "readonly")?;
         let opening_start = readonly
@@ -339,7 +340,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
             writer.text("}");
-            Ok(None)
+            Ok(TypeOutput::closed())
         })
     }
 

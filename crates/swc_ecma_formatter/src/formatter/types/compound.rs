@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
 use super::context::{TypeContext, TypeFrame};
 use super::{
     Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
-    TypeLayout,
+    TypeLayout, TypeOutput,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout,
@@ -389,7 +389,7 @@ impl PreparedTypeContent<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_prepared_union_before_boundary(
+    pub(super) fn format_prepared_union_before_boundary_body(
         &mut self,
         union: PreparedUnion<'ast>,
         context: TypeContext,
@@ -397,8 +397,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         tail: TypeBoundaryTail<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context_with_enclosure(
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_body_in_context_with_enclosure(
             union.data,
             context,
             layout,
@@ -527,7 +527,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_compound_type(
+    pub(super) fn format_compound_type_body(
         &mut self,
         node: PreparedType,
         types: SubRange<TsType>,
@@ -535,7 +535,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let mut members = types.iter().map(|id| ast.get_node_in_sub_range(id));
         let Some(first) = members.next() else {
@@ -550,16 +550,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let single =
                 self.prepare_single_compound_head(node, current, leading, first_span, kind)?;
             let content = self.format_single_compound_head(single, context, writer)?;
-            return self.format_prepared_type_content(content, context, layout, writer);
+            return self.format_prepared_type_content_body(content, context, layout, writer);
         }
         if matches!(kind, CompoundTypeKind::Union) {
             let union =
                 self.prepare_union_members(node, current, leading, first_span.start, members)?;
-            return self.format_prepared_union(union, context, layout, None, writer);
+            return self.format_prepared_union_body(union, context, layout, None, writer);
         }
         let intersection =
             self.prepare_intersection_members(node, current, leading, first_span.start, members)?;
-        self.format_prepared_intersection(intersection, context, layout, writer)
+        self.format_prepared_intersection_body(intersection, context, layout, writer)
     }
 
     pub(super) fn prepare_intersection(
@@ -669,15 +669,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(intersection)
     }
 
-    pub(super) fn format_prepared_intersection(
+    pub(super) fn format_prepared_intersection_body(
         &mut self,
         intersection: PreparedIntersection<'ast>,
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let head = self.intersection_movable_head(&intersection);
-        self.format_prepared_intersection_with_head(intersection, head, context, layout, writer)
+        self.format_prepared_intersection_with_head_body(
+            intersection,
+            head,
+            context,
+            layout,
+            writer,
+        )
     }
 
     pub(super) fn format_prepared_intersection_with_head(
@@ -688,8 +694,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_intersection_with_head_body(
+            intersection,
+            head,
+            context,
+            layout,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_intersection_with_head_body(
+        &mut self,
+        intersection: PreparedIntersection<'ast>,
+        head: Option<MovableTypeHead<'ast>>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let intersection = self.format_intersection_head(intersection, head, writer)?;
-        self.format_type_in_context(
+        self.format_type_body_in_context(
             intersection.data,
             context,
             layout,
@@ -913,7 +937,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         intersection: PreparedIntersection<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         writer.group(false, |writer| {
             let mut prefix = intersection.leading;
             for link in intersection.links {
@@ -938,9 +962,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
             }
-            self.format_intersection_member(intersection.last, prefix, writer, |_, tail, _| {
-                Ok(tail)
-            })
+            let tail = self.format_intersection_member(
+                intersection.last,
+                prefix,
+                writer,
+                |_, tail, _| Ok(tail),
+            )?;
+            Ok(TypeOutput::from_pending(tail))
         })
     }
 
@@ -1039,15 +1067,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
-            let tail = match node {
+            let output = match node {
                 IntersectionMember::Type(node) => {
-                    self.format_prepared_type(node, context, writer)?
+                    self.format_prepared_type_body(node, context, TypeLayout::Root, writer)?
                 }
-                IntersectionMember::Prepared(content) => {
-                    self.format_prepared_type_content(*content, context, TypeLayout::Root, writer)?
-                }
+                IntersectionMember::Prepared(content) => self.format_prepared_type_content_body(
+                    *content,
+                    context,
+                    TypeLayout::Root,
+                    writer,
+                )?,
             };
-            finish(self, tail, writer)
+            finish(self, output.pending, writer)
         };
         if indent {
             writer.indent(content)
@@ -1375,7 +1406,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context_with_enclosure(
+        self.format_prepared_union_body(union, context, layout, head, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_union_body(
+        &mut self,
+        union: PreparedUnion<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        head: Option<Fragment<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_body_in_context_with_enclosure(
             union.data,
             context,
             layout,
@@ -1395,7 +1438,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let PreparedUnion {
             leading,
             links,
@@ -1418,14 +1461,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut prepared = None;
                 let mut links = links.into_iter().peekable();
                 while let Some(link) = links.next() {
-                    let tail =
+                    let output =
                         self.format_union_member(link.left, prefix, prepared, hug, writer)?;
-                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
+                    let adjacency =
+                        self.format_expression_tail_adjacency(output.pending, writer)?;
                     let next = links.peek().map_or(last, |link| link.left);
                     (prefix, prepared) =
                         self.format_union_separator(link.boundary, next, hug, adjacency, writer)?;
                 }
-                let tail = self.format_union_member(last, prefix, prepared, hug, writer)?;
+                let output = self.format_union_member(last, prefix, prepared, hug, writer)?;
+                let tail = output.pending;
                 let own_line = self.type_tail_closing_gap(tail.as_ref()).is_some();
                 let enclosed_line_tail = enclosure == super::TypeEnclosure::Parentheses
                     && tail.as_ref().is_some_and(|tail| {
@@ -1451,22 +1496,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let Some(trailing) = trailing {
                     let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                     self.format_comment_boundary_after(&trailing, adjacency, writer)?;
-                    Ok(None)
+                    Ok(TypeOutput::closed())
                 } else {
-                    Ok(tail)
+                    Ok(TypeOutput::from_pending(tail))
                 }
             };
-            let pending = if hug || tuple_element {
+            let output = if hug || tuple_element {
                 content(writer)?
             } else {
                 writer.group(false, content)?
             };
             if let Some(tail) = tail {
-                self.format_expression_tail(pending, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
                 self.format_type_boundary_tail(tail, writer)?;
-                Ok(None)
+                Ok(TypeOutput::closed())
             } else {
-                Ok(pending)
+                Ok(output)
             }
         };
         if hug {
@@ -1576,7 +1621,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: Option<Box<PreparedTypeContent<'ast>>>,
         hug: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let align = !hug && self.union_member_needs_alignment(node, prefix.as_ref());
         let content = |writer: &mut Writer<'ast>| {
             if let Some(prefix) = prefix {
@@ -1599,16 +1644,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let tail = match prepared {
-                Some(content) => self.format_prepared_type_content(
+            let output = match prepared {
+                Some(content) => self.format_prepared_type_content_body(
                     *content,
                     TypeContext::UnionMember,
                     TypeLayout::Root,
                     writer,
                 )?,
-                None => self.format_prepared_type(node, TypeContext::UnionMember, writer)?,
+                None => self.format_prepared_type_body(
+                    node,
+                    TypeContext::UnionMember,
+                    TypeLayout::Root,
+                    writer,
+                )?,
             };
-            Ok(tail)
+            Ok(output)
         };
         if align {
             writer.align(2, content)
@@ -2146,26 +2196,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_type_content_body(content, context, layout, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_type_content_body(
+        &mut self,
+        content: PreparedTypeContent<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         match content {
             PreparedTypeContent::Union(union) => {
-                self.format_prepared_union(union, context, layout, None, writer)
+                self.format_prepared_union_body(union, context, layout, None, writer)
             }
             PreparedTypeContent::Intersection(intersection) => {
-                self.format_prepared_intersection(intersection, context, layout, writer)
+                self.format_prepared_intersection_body(intersection, context, layout, writer)
             }
             PreparedTypeContent::Postfix(postfix) => {
-                self.format_prepared_postfix_type(postfix, context, layout, writer)
+                self.format_prepared_postfix_type_body(postfix, context, layout, writer)
             }
             PreparedTypeContent::Conditional(conditional) => {
-                self.format_prepared_conditional_type(conditional, context, layout, writer)
+                self.format_prepared_conditional_type_body(conditional, context, layout, writer)
             }
             PreparedTypeContent::Type(node) => {
-                self.format_prepared_type_with_layout(node, context, layout, writer)
+                self.format_prepared_type_body(node, context, layout, writer)
             }
             PreparedTypeContent::Parentheses(parentheses) => {
-                self.format_prepared_type_parentheses(parentheses, context, layout, writer)
+                self.format_prepared_type_parentheses_body(parentheses, context, layout, writer)
             }
-            PreparedTypeContent::Compound(single) => self.format_type_in_context(
+            PreparedTypeContent::Compound(single) => self.format_type_body_in_context(
                 single.data,
                 context,
                 layout,
@@ -2196,7 +2257,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         kind: CompoundTypeKind,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let CompoundHead {
             mut current,
@@ -2243,14 +2304,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let gap = Span::new(current.node.span(ast).end, next.node.span(ast).start);
                     let boundary =
                         self.prepare_compound_boundary(gap, kind, &mut current, &mut next)?;
-                    let tail = self.format_compound_member(current, kind, layout, writer)?;
-                    self.format_expression_tail(tail, writer)?;
+                    let output = self.format_compound_member(current, kind, layout, writer)?;
+                    self.format_expression_tail(output.pending, writer)?;
                     self.format_compound_boundary(boundary, kind, writer)?;
                     current = next;
                 }
-                let tail = self.format_compound_member(current, kind, layout, writer)?;
-                self.format_expression_tail(tail, writer)?;
-                Ok(None)
+                let output = self.format_compound_member(current, kind, layout, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
+                Ok(TypeOutput::closed())
             };
             if layout == TypeLayout::AliasRhs {
                 content(writer)
@@ -2266,15 +2327,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         kind: CompoundTypeKind,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let context = match kind {
             CompoundTypeKind::Union => TypeContext::UnionMember,
             CompoundTypeKind::Intersection => TypeContext::CompoundMember,
         };
         if layout == TypeLayout::AliasRhs && matches!(kind, CompoundTypeKind::Union) {
-            writer.align(2, |writer| self.format_prepared_type(node, context, writer))
+            writer.align(2, |writer| {
+                self.format_prepared_type_body(node, context, TypeLayout::Root, writer)
+            })
         } else {
-            self.format_prepared_type(node, context, writer)
+            self.format_prepared_type_body(node, context, TypeLayout::Root, writer)
         }
     }
 
