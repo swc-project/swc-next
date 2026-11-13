@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = c ? (
+  <div>t</div>
+  // after
+) : null;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const x = c ? (
+  <div>t</div>
+) : // after
+null;

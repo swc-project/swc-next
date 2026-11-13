@@ -160,6 +160,15 @@ pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
     pub(in crate::formatter) binding: CommentBinding,
 }
 
+/// A removed wrapper releases a complete head to its retained lexical pair.
+pub(super) struct ReleasedSourceCastHead<'ast> {
+    source: Expr,
+    expression: Expr,
+    resolved: ResolvedExpressionHead<'ast>,
+    mode: ContentMode,
+    verbatim_removable: bool,
+}
+
 /// The prepared pair owner selects its body, independently of a leased head.
 pub(super) enum PreparedPairHead<'ast> {
     /// The expression's grammar owner selects its canonical body layout.
@@ -418,6 +427,7 @@ impl HeadDestinationContext {
 struct PreparedSourcePair {
     choice: SourceParenthesesChoice,
     comments: SourcePairComments,
+    verbatim_removable: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1614,6 +1624,105 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// The lexical pair keeps its raw extent while its removed parent's head
+    /// is prepared outside the enclosing operation's layout group.
+    pub(super) fn prepare_released_source_cast_head(
+        &self,
+        expression: Expr,
+        content: &ExpressionContent,
+        context: ExpressionContext<'ast>,
+    ) -> Option<ReleasedSourceCastHead<'ast>> {
+        let removed = content.parentheses?;
+        let ExprData::ParenthesizedExpression(cast) = content.data else {
+            return None;
+        };
+        let inner = content.expression;
+        let inner_span = inner.span(self.ast);
+        let annotation = self.source_type_cast(cast.span(self.ast).start)?;
+        if !matches!(removed.head.binding, CommentBinding::BoundTo(target) if target == inner_span)
+            || context.protected_head_start.is_some()
+        {
+            return None;
+        }
+        let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression) else {
+            return None;
+        };
+        let verbatim_removable = context.content_mode == ContentMode::Verbatim
+            && self.verbatim_parentheses_are_removable(pair, context.position);
+        if context.content_mode == ContentMode::Verbatim && !verbatim_removable {
+            return None;
+        }
+        let SourceParenthesesChoice::Content {
+            mode,
+            ignored_child: None,
+        } = self.source_parentheses_choice(pair, context)
+        else {
+            return None;
+        };
+        if self.diagnostic_head_has_frame(content, context) {
+            return None;
+        }
+        let comments = self.source_parentheses_comments(removed.source).head;
+        if !comments.contains(&annotation)
+            || self
+                .comments
+                .in_range(Span::new(removed.source.outer.start, inner_span.start))
+                != comments
+        {
+            return None;
+        }
+        Some(ReleasedSourceCastHead {
+            source: expression,
+            expression: inner,
+            resolved: ResolvedExpressionHead {
+                head: NodeHead {
+                    comments,
+                    content_start: inner_span.start,
+                    layout: CommentRunLayout::Leading(inner_span.start),
+                    gap_end: None,
+                },
+                binding: removed.head.binding,
+            },
+            mode,
+            verbatim_removable,
+        })
+    }
+
+    pub(super) fn format_released_source_cast_head(
+        &mut self,
+        released: ReleasedSourceCastHead<'ast>,
+        mut context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionContext<'ast>, FormatError> {
+        self.comments.claim(released.resolved.head.comments)?;
+        context.expression_start = self.format_expression_head(
+            released.expression,
+            released.resolved.head,
+            released.resolved.binding,
+            context.with_content_mode(released.mode),
+            None,
+            writer,
+        )?;
+        // Preserve the selected source-envelope permission after claiming its
+        // head. The original printer still owns this test's raw body and tail.
+        context.head_destination = Some(self.allocator.alloc(PreparedHeadDestination {
+            expression: released.source,
+            context: HeadDestinationContext::new(context, self.for_initializer_span),
+            token_target: released.expression.span(self.ast),
+            source_pair: Some(PreparedSourcePair {
+                choice: SourceParenthesesChoice::Content {
+                    mode: released.mode,
+                    ignored_child: None,
+                },
+                comments: SourcePairComments::new(
+                    self.comments.in_range(released.source.span(self.ast)),
+                ),
+                verbatim_removable: released.verbatim_removable,
+            }),
+        }));
+        Ok(context)
+    }
+
     fn source_type_cast(&self, start: u32) -> Option<Comment> {
         if !self.has_type_casts || !self.ast.source()[start as usize..].starts_with('(') {
             return None;
@@ -2157,14 +2266,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parenthesized: ParenthesizedExpression,
         context: ExpressionContext<'ast>,
     ) -> SourceParenthesesChoice {
-        if let Some(owner) = context.head_destination
-            && owner.expression == Expr::ParenthesizedExpression(parenthesized)
-            && self.head_destination_matches(owner, context)
-            && let Some(pair) = owner.source_pair
-        {
+        if let Some(pair) = self.prepared_source_pair(parenthesized, context) {
             return pair.choice;
         }
         self.source_parentheses_choice_uncached(parenthesized, context)
+    }
+
+    fn prepared_source_pair(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        context: ExpressionContext<'ast>,
+    ) -> Option<PreparedSourcePair> {
+        let owner = context.head_destination?;
+        (owner.expression == Expr::ParenthesizedExpression(parenthesized)
+            && self.head_destination_matches(owner, context))
+        .then_some(owner.source_pair)
+        .flatten()
     }
 
     fn source_parentheses_choice_uncached(
@@ -3075,7 +3192,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(ExpressionOutput::unreported(None));
             }
             if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression)
-                && self.verbatim_parentheses_are_removable(parenthesized, context.position)
+                && (self
+                    .prepared_source_pair(parenthesized, context)
+                    .is_some_and(|pair| pair.verbatim_removable)
+                    || self.verbatim_parentheses_are_removable(parenthesized, context.position))
             {
                 return self.format_source_parentheses_with_raw_end(
                     parenthesized,
@@ -3392,6 +3512,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(PreparedSourcePair {
                 choice: self.source_parentheses_choice_uncached(pair, context),
                 comments: SourcePairComments::new(self.comments.in_range(pair.span(self.ast))),
+                verbatim_removable: false,
             })
         } else if projected
             && self
