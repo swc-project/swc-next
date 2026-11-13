@@ -6,6 +6,12 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
+export type CommentsOptionInputWire =
+  CommentMode
+
+export type CommentsOptionOutputWire =
+  CommentMode
+
 export interface Diagnostic {
   severity: "error" | "warning" | "hint" | "info"
   message: string
@@ -29,6 +35,9 @@ export interface GenerateOutput {
   code: string
 }
 
+export type GenerateOutputOutputWire =
+  string
+
 /**
  * JavaScript code generation options.
  *
@@ -45,6 +54,12 @@ export interface GeneratorConfig {
   minify?: boolean
 }
 
+export type JsLangInputWire =
+  Lang
+
+export type JsLangOutputWire =
+  Lang
+
 export interface JsOutput {
   code: string
   /** Source map as a JSON string. Absent when source maps are disabled. */
@@ -52,11 +67,26 @@ export interface JsOutput {
   diagnostics: Array<Diagnostic>
 }
 
+export type JsSourceTypeInputWire =
+  SourceType
+
+export type JsSourceTypeOutputWire =
+  SourceType
+
 export type Lang =  'js'|
 'ts'|
 'jsx'|
 'tsx'|
 'dts';
+
+export type OptionalGeneratorConfigInputWire =
+  number
+
+export type OptionalParserConfigInputWire =
+  number
+
+export type OptionalTransformApiOptionsInputWire =
+  Buffer
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {
@@ -131,7 +161,7 @@ export interface TransformApiOptions {
  * the validity, alignment, and immutability contracts of
  * `swc_next_core::js::generator::generate_from_parts`.
  */
-export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: GeneratorConfig | undefined | null): GenerateOutput
+export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: OptionalGeneratorConfigInputWire): GenerateOutputOutputWire
 
 export declare function langFromPath(path: string): Lang
 
