@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(
+  a,
+  // @ts-expect-error
+  b,
+);
+---------- Options ----------
+{"trailingComma":"all"}
+---------- Output ----------
+f(
+  a,
+  // @ts-expect-error
+  b,
+);
+
+---------- Options ----------
+{"trailingComma":"es5"}
+---------- Output ----------
+f(
+  a,
+  // @ts-expect-error
+  b
+);
