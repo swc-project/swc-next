@@ -4,8 +4,7 @@ import nodeTest from "node:test";
 import { transformSync as transformCore } from "../src-js/index.js";
 import { transformSync as transformStandalone } from "../../transformer/src-js/index.js";
 import { parseSync as parseBinding, transformSync as transformBinding } from "../src-js/binding.js";
-import { decode } from "@swc-next/decoder";
-import { encodeParserConfig } from "@swc-next/decoder/options";
+import { decode, encodeParserConfig } from "@swc-next/decoder";
 import { encodeTransformApiOptions, decodeJsOutput } from "@swc-next/transformer-bridge";
 
 nodeTest("transform bridge uses packed options and binary output", () => {

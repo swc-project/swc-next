@@ -15,10 +15,6 @@
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
-    },
-    "./options": {
-      "types": "./options.d.ts",
-      "import": "./options.js"
     }
   },
   "files": [

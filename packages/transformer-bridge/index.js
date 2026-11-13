@@ -1,5 +1,5 @@
-import { encodeParserConfig } from "@swc-next/decoder/options";
-import { encodeGeneratorConfig } from "@swc-next/encoder/options";
+import { encodeParserConfig } from "@swc-next/decoder";
+import { encodeGeneratorConfig } from "@swc-next/encoder";
 
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
