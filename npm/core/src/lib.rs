@@ -4,6 +4,3 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub mod generator;
 pub mod parser;
-
-#[cfg(feature = "test-codec")]
-pub mod test;
