@@ -269,13 +269,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ClassCaller::Ordinary
         };
         let prepared = self.prepare_class_with_caller(class, prefix, caller)?;
-        if has_expression_parentheses && prepared.prefix.is_some() && !prepared.is_verbatim() {
+        if has_expression_parentheses
+            && let Some(prefix) = prepared.prefix
+            && !prepared.is_verbatim()
+        {
+            let head = prefix.physical.start;
+            let opening = self.line_constraint(head, head);
+            let closing = self.line_constraint(prepared.span.end, prepared.span.end);
             writer.group(false, |writer| {
                 writer.indent(|writer| {
-                    writer.soft_line();
+                    opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                     self.format_prepared_class(prepared, true, writer)
                 })?;
-                writer.soft_line();
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 Ok(())
             })
         } else {
