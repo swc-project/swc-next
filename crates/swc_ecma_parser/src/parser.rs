@@ -3711,9 +3711,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(ClassModifierStep::None);
         }
 
-        let Some(next) = self.peek_ahead() else {
+        // Both a modifier and a member name consume this token.
+        if !self.try_advance_fast() && !self.try_advance() {
             return Some(ClassModifierStep::None);
-        };
+        }
+        let next = self.current_token;
         let next_tag = next.tag();
         let accessor_before_star =
             next_tag == TokenTag::Star && matches!(tag, TokenTag::Get | TokenTag::Set);
@@ -3726,7 +3728,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             can_start_modifier && !(conflicting_modifier && next.has_line_terminator_before());
 
         if !consume_as_modifier {
-            self.advance_without_escape_check()?;
             let name = self.identifier_name(token);
             return Some(ClassModifierStep::Key(
                 self.ast.property_key_identifier_name(token.span(), name),
@@ -3749,7 +3750,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             modifiers.set(tag);
         }
-        self.advance_without_escape_check()?;
         Some(ClassModifierStep::Consumed)
     }
 
