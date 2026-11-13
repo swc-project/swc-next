@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends (value as Base)! {}
+---------- Options ----------
+{}
+---------- Output ----------
+class C extends (value as Base)! {}
