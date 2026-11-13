@@ -4249,20 +4249,51 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !retained {
             return self.format_prepared_type_body(child, context, layout, writer);
         }
-        // A trailing packet keeps its delimiter fence until a compound separator
-        // supplies the next owner. Leaf pairs keep their existing compact frame;
-        // compound envelopes prepare the member packet and its closing line.
+        // A trailing packet keeps its delimiter fence until its enclosing
+        // grammar position can take ownership of it.
         let transfers_tail = matches!(
             context,
             TypeContext::UnionMember | TypeContext::IntersectionMember { .. }
         );
+        let line_tail = trailing
+            .comments()
+            .iter()
+            .any(|comment| comment.kind == CommentKind::Line);
+        let frame = context.frame(child.data, self.ast);
+        // A required compound frame remains the last member's attachment
+        // boundary when reparsed. Nested consequents supply a separate frame.
+        let compound_frame = frame != TypeFrame::None
+            && matches!(
+                child.data,
+                TsTypeData::TsUnionType(_) | TsTypeData::TsIntersectionType(_)
+            );
+        let conditional_frame = layout == TypeLayout::ConditionalConsequent
+            && matches!(child.data, TsTypeData::TsConditionalType(_));
+        let relocatable_tail = !line_tail
+            && trailing_unbound
+            && leading_comments.is_empty()
+            && child.source_owner.is_none()
+            && !compound_frame
+            && !conditional_frame
+            && (matches!(
+                context,
+                TypeContext::PostfixOperand
+                    | TypeContext::ModifierOperand
+                    | TypeContext::ModifierClosedOperand
+                    | TypeContext::ConditionalCheck
+                    | TypeContext::ConditionalExtends
+            ) || matches!(
+                layout,
+                TypeLayout::ConditionalConsequent | TypeLayout::ConditionalAlternate
+            ));
         let fenced_tail = !trailing.is_empty()
             && (!matches!(
                 context,
                 TypeContext::CompoundMember
                     | TypeContext::UnionMember
                     | TypeContext::IntersectionMember { .. }
-            ) || transfers_tail && !trailing_unbound);
+            ) || transfers_tail && !trailing_unbound)
+            && !relocatable_tail;
         let compact_tail = fenced_tail
             && !matches!(
                 child.data,
@@ -4270,7 +4301,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | TsTypeData::TsIntersectionType(_)
                     | TsTypeData::TsConditionalType(_)
             );
-        if source || compact_tail {
+        let formatted_line_tail =
+            line_tail && trailing_unbound && leading_comments.is_empty() && !source;
+        if source || compact_tail && !formatted_line_tail {
             if source && child.source_owner == Some(child.node) {
                 self.format_verbatim(span, writer)?;
                 return Ok(TypeOutput::closed());
@@ -4286,6 +4319,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
                 self.format_expression_tail(tail.pending, writer)?;
                 self.format_verbatim(Span::new(child_span.end, span.end - 1), writer)?;
+                writer.text(")");
+                Ok(TypeOutput::closed())
+            });
+        }
+        if compact_tail && formatted_line_tail {
+            let gap = trailing.gap();
+            return writer.group(false, |writer| {
+                writer.text("(");
+                self.format_type_before_trailing_comments_body(
+                    child,
+                    TypeContext::Parenthesized,
+                    TypeLayout::OpeningProvided,
+                    trailing,
+                    writer,
+                )?;
+                gap.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 writer.text(")");
                 Ok(TypeOutput::closed())
             });
@@ -4308,7 +4357,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_prepared_type_body(child, context, layout, writer);
         }
         let enclosed_head = !leading_comments.is_empty() && !movable;
-        let frame = context.frame(child.data, self.ast);
         // A removed inner pair and a retained outer pair share the grammar frame.
         if !enclosed_head && trailing_unbound && frame == TypeFrame::Tight {
             let frame =
@@ -4317,7 +4365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     TypeFrame::Tight
                 };
-            return self.format_type_body_in_context_with_enclosure(
+            let output = self.format_type_body_in_context_with_enclosure(
                 child.data,
                 context,
                 layout,
@@ -4330,9 +4378,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         layout,
                         writer,
                     )?;
-                    Ok(formatter.with_type_parentheses_tail(output, &trailing))
+                    if relocatable_tail {
+                        Ok(output)
+                    } else {
+                        Ok(formatter.with_type_parentheses_tail(output, &trailing))
+                    }
                 },
-            );
+            )?;
+            if relocatable_tail {
+                self.format_comment_boundary(&trailing, writer)?;
+            }
+            return Ok(output);
         }
         if !fenced_tail && !enclosed_head && frame == TypeFrame::None {
             self.format_comment_boundary_with_layout(
