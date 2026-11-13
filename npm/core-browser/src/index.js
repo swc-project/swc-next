@@ -6,7 +6,7 @@ import {
 } from "./swc-next-core.browser.mjs";
 import {
   decode,
-  encodeOptions as encodeParserConfig,
+  encodeParserOptions,
 } from "@swc-next/decoder";
 import {
   encode,
@@ -31,7 +31,7 @@ export function parseSync(source, options) {
   const sourceBytes = canTransferToFixedLength
     ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
     : sourceBuffer.slice(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, encodeParserConfig(options));
+  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
   const result = decode(buffer, source, sourceBytes);
   if (!options?.errorRecovery) {
     const diagnostics = result.diagnostics;

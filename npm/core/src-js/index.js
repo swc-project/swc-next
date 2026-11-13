@@ -6,7 +6,7 @@ import {
 } from "./binding.js";
 import {
   decode,
-  encodeOptions as encodeParserConfig,
+  encodeParserOptions,
 } from "@swc-next/decoder";
 import {
   encode,
@@ -20,7 +20,7 @@ export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export * from "@swc-next/walker";
 
 export function parseSync(source, options) {
-  const parserConfig = encodeParserConfig(options);
+  const parserConfig = encodeParserOptions(options);
   const capacity = source.length * 3;
   if (sourceBuffer.length < capacity) {
     const length = Math.max(capacity, sourceBuffer.length * 2, 4096);
