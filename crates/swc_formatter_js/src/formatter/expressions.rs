@@ -39,7 +39,10 @@ use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use self::conditional::{ConditionalChain, ConditionalClosing, ConditionalEnvelope};
 use self::objects::RecordedObject;
-use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
+use self::parentheses::{
+    ExpressionContent, ExpressionEntry, OrdinaryExpressionEntry, PlannedExpressionEntry,
+    PreparedExpressionPlan, ResolvedExpressionHead,
+};
 use super::Formatter;
 use super::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, PreparedHeadGaps,
@@ -759,13 +762,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_prepared_with_entry_output(
+            expression,
+            prepared,
+            context,
+            OrdinaryExpressionEntry,
+            writer,
+        )
+    }
+
+    fn format_expression_prepared_with_plan_output(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        plan: &PreparedExpressionPlan<'_, 'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_prepared_with_entry_output(
+            expression,
+            prepared,
+            context,
+            PlannedExpressionEntry(plan),
+            writer,
+        )
+    }
+
+    fn format_expression_prepared_with_entry_output<P: ExpressionEntry<'ast>>(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        entry: P,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let binding = prepared
             .as_ref()
             .and_then(|content| content.parentheses)
             .map_or(super::comments::CommentBinding::Unbound, |removed| {
                 removed.head.binding
             });
-        self.format_expression_leading_prepared_with_raw_end(
+        self.format_expression_leading_with_entry(
             expression,
             prepared,
             ResolvedExpressionHead {
@@ -779,6 +816,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             context,
             None,
+            entry,
             writer,
         )
     }
@@ -1703,12 +1741,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|_| ())
     }
 
-    fn format_expression_data(
+    fn format_expression_data<P: ExpressionEntry<'ast>>(
         &mut self,
         expression: Expr,
         data: ExprData,
         context: ExpressionContext<'ast>,
         has_expression_parentheses: bool,
+        entry: P,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match data {
@@ -1951,7 +1990,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::UnaryExpression(unary) => {
                 let _scope = self.recursion_scope(unary)?;
-                return self.format_unary_output(unary, writer);
+                let prepared = entry.plan().and_then(|plan| match plan {
+                    PreparedExpressionPlan::Unary(unary) => Some(*unary),
+                    _ => None,
+                });
+                return self.format_unary_output(unary, context, prepared, writer);
             }
             ExprData::UpdateExpression(update) => {
                 let _scope = self.recursion_scope(update)?;

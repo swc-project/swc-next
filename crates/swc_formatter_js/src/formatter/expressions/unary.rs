@@ -5,9 +5,12 @@ use swc_next_ecma_ast::{
 };
 
 use super::binary::BinaryLike;
+use super::parentheses::{
+    ExpressionContent, PreparedAnnotationParentheses, PreparedExpressionPlan,
+};
 use super::{
-    ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, OperandIndent,
-    ParenthesesOwner,
+    EmittedHeadBinding, ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter,
+    OperandIndent, ParenthesesOwner, ResolvedExpressionHead,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
@@ -19,55 +22,109 @@ struct UnaryOperandTail<'ast> {
     tail: ExpressionTail<'ast>,
 }
 
-impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_unary_output(
-        &mut self,
-        unary: UnaryExpression,
-        writer: &mut Writer<'ast>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let operator = unary.operator(self.ast);
-        writer.text(operator.as_str());
-        let word_operator = matches!(
-            operator,
-            UnaryOperator::Typeof | UnaryOperator::Void | UnaryOperator::Delete
-        );
-        if word_operator {
-            writer.space();
+struct PreparedUnaryOperandHead<'ast> {
+    resolved: ResolvedExpressionHead<'ast>,
+    released: Option<ResolvedExpressionHead<'ast>>,
+}
+
+struct UnaryOperandSource<'ast> {
+    content: super::parentheses::ExpressionContent,
+    context: ExpressionContext<'ast>,
+    argument_span: Span,
+    leading: &'ast [Comment],
+    trailing: &'ast [Comment],
+    leading_end: u32,
+}
+
+impl UnaryOperandSource<'_> {
+    fn content(&self) -> super::parentheses::ExpressionContent {
+        // Reuse the prepared view without selecting source parentheses again.
+        super::parentheses::ExpressionContent {
+            expression: self.content.expression,
+            data: self.content.data,
+            parentheses: self.content.parentheses,
         }
-        let position = ExpressionPosition::UnaryArgument(operator);
+    }
+}
+
+/// One actual unary owner shares its immutable operand plan with its RHS boundary.
+pub(super) struct PreparedUnaryOperand<'ast> {
+    owner: UnaryExpression,
+    mode: ContentMode,
+    head_scope: Option<super::parentheses::HeadScopeOwner>,
+    source: UnaryOperandSource<'ast>,
+    head: Option<PreparedUnaryOperandHead<'ast>>,
+    tail: Option<UnaryOperandTail<'ast>>,
+    annotation: Option<PreparedAnnotationParentheses>,
+}
+
+impl PreparedUnaryOperand<'_> {
+    pub(super) fn matches_owner(
+        &self,
+        unary: UnaryExpression,
+        context: ExpressionContext<'_>,
+    ) -> bool {
+        self.owner == unary
+            && self.mode == context.content_mode
+            && self.head_scope == context.head_scope
+    }
+
+    pub(super) fn formatted_layout_body(&self) -> Option<&ExpressionContent> {
+        if self.source.context.content_mode != ContentMode::Formatted {
+            return None;
+        }
+        if let Some(frame) = &self.annotation {
+            return Some(frame.layout_body());
+        }
+        (self.head.is_some()
+            && !matches!(
+                self.source.content.data,
+                ExprData::ParenthesizedExpression(_)
+            ))
+        .then_some(&self.source.content)
+    }
+}
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn prepare_unary_operand(
+        &self,
+        unary: UnaryExpression,
+        context: ExpressionContext<'ast>,
+    ) -> Result<Option<&'ast PreparedUnaryOperand<'ast>>, FormatError> {
+        let span = unary.span(self.ast);
+        // Sensitive diagnostics keep source enclosure preparation with the renderer.
+        if context.content_mode != ContentMode::Formatted
+            || self.diagnostic_range_is_sensitive(span)
+        {
+            return Ok(None);
+        }
+        let operator_end = span.start + unary.operator(self.ast).as_str().len() as u32;
+        let packet = self.comments.in_range(Span::new(operator_end, span.end));
+        if packet.is_empty() {
+            return Ok(None);
+        }
+        let source = self.prepare_unary_operand_source(unary);
+        let head = self.prepare_unary_operand_head(&source)?;
+        let prepared = self.prepare_unary_operand_frame(unary, context, source, head);
+        Ok(Some(self.allocator.alloc(prepared)))
+    }
+
+    fn prepare_unary_operand_source(&self, unary: UnaryExpression) -> UnaryOperandSource<'ast> {
+        let operator = unary.operator(self.ast);
         let source_argument = unary.argument(self.ast);
         let content = self.expression_content(source_argument);
         let span = unary.span(self.ast);
-        let argument = content.expression;
-        let mut argument_span = argument.span(self.ast);
-        let mut leading = self.comments.between(Span::new(
+        let argument_span = content.expression.span(self.ast);
+        let leading = self.comments.in_range(Span::new(
             span.start + operator.as_str().len() as u32,
             argument_span.start,
-        ))?;
+        ));
         let mode = self.content_mode(leading);
-        let argument_context = self.with_head_scope(
-            ExpressionContext::at(position).with_content_mode(mode),
+        let context = self.with_head_scope(
+            ExpressionContext::at(ExpressionPosition::UnaryArgument(operator))
+                .with_content_mode(mode),
             &content,
         );
-        let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
-        if diagnostic_sensitive
-            && let Some(enclosure) =
-                self.prepare_unary_enclosure(unary, &content, leading, argument_context)
-        {
-            return self
-                .format_prepared_unary_enclosure(content, enclosure, writer)
-                .map(ExpressionOutput::closed);
-        }
-        let source_pair = if diagnostic_sensitive {
-            self.protected_grammar_parentheses(&content, argument_context)
-        } else {
-            None
-        };
-        if let Some(boundary) = source_pair {
-            argument_span = boundary.outer;
-            let count = leading.partition_point(|comment| comment.span.end <= boundary.outer.start);
-            leading = &leading[..count];
-        }
         let trailing = self
             .comments
             .in_range(Span::new(argument_span.end, span.end));
@@ -82,116 +139,294 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => argument_span.start,
         };
+        UnaryOperandSource {
+            content,
+            context,
+            argument_span,
+            leading,
+            trailing,
+            leading_end,
+        }
+    }
+
+    fn prepare_unary_operand_frame(
+        &self,
+        unary: UnaryExpression,
+        context: ExpressionContext<'ast>,
+        source: UnaryOperandSource<'ast>,
+        head: Option<PreparedUnaryOperandHead<'ast>>,
+    ) -> PreparedUnaryOperand<'ast> {
+        let annotation =
+            if let ExprData::ParenthesizedExpression(parenthesized) = source.content.data {
+                let body_context = self.unary_operand_body_context(unary, &source, head.is_some());
+                self.prepare_annotation_parentheses(parenthesized, &source.content, body_context)
+            } else {
+                None
+            };
+        let tail = if head.is_some()
+            && source.leading.is_empty()
+            && source.context.content_mode == ContentMode::Formatted
+        {
+            self.prepare_unary_operand_tail(
+                source.content.data,
+                source.argument_span,
+                unary.span(self.ast).end,
+                source.trailing,
+            )
+        } else {
+            None
+        };
+        PreparedUnaryOperand {
+            owner: unary,
+            mode: context.content_mode,
+            head_scope: context.head_scope,
+            source,
+            head,
+            tail,
+            annotation,
+        }
+    }
+
+    fn unary_operand_body_context(
+        &self,
+        unary: UnaryExpression,
+        source: &UnaryOperandSource<'ast>,
+        framed: bool,
+    ) -> ExpressionContext<'ast> {
+        let context = if framed {
+            let position = ExpressionPosition::ParenthesizedUnaryArgument(unary.operator(self.ast));
+            let mut context = ExpressionContext::at(position)
+                .with_content_mode(source.context.content_mode)
+                .inside_parentheses();
+            if self.expression_needs_parentheses(
+                source.content.data,
+                position,
+                ContentMode::Formatted,
+            ) == Some(true)
+            {
+                context.parentheses_owner = ParenthesesOwner::Expression;
+            }
+            context
+        } else {
+            source.context
+        };
+        self.with_head_scope(context, &source.content)
+    }
+
+    pub(super) fn format_unary_output(
+        &mut self,
+        unary: UnaryExpression,
+        context: ExpressionContext<'ast>,
+        prepared_cache: Option<&PreparedUnaryOperand<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let operator = unary.operator(self.ast);
+        writer.text(operator.as_str());
+        let word_operator = matches!(
+            operator,
+            UnaryOperator::Typeof | UnaryOperator::Void | UnaryOperator::Delete
+        );
+        if word_operator {
+            writer.space();
+        }
+        if let Some(prepared) =
+            prepared_cache.filter(|prepared| prepared.matches_owner(unary, context))
+        {
+            return self.format_prepared_unary_operand(prepared, writer);
+        }
+        let mut source = self.prepare_unary_operand_source(unary);
+        let span = unary.span(self.ast);
+        let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
+        if diagnostic_sensitive
+            && let Some(enclosure) =
+                self.prepare_unary_enclosure(unary, &source.content, source.leading, source.context)
+        {
+            return self
+                .format_prepared_unary_enclosure(source.content, enclosure, writer)
+                .map(ExpressionOutput::closed);
+        }
+        let source_pair = if diagnostic_sensitive {
+            self.protected_grammar_parentheses(&source.content, source.context)
+        } else {
+            None
+        };
+        if let Some(boundary) = source_pair {
+            source.argument_span = boundary.outer;
+            let count = source
+                .leading
+                .partition_point(|comment| comment.span.end <= boundary.outer.start);
+            source.leading = &source.leading[..count];
+            source.trailing = self
+                .comments
+                .in_range(Span::new(source.argument_span.end, span.end));
+        }
         // Required frames keep their prepared packet. Otherwise an interior
         // reset belongs to the operator's ordinary optional comment frame.
         let diagnostic_sensitive = diagnostic_sensitive
             && (source_pair.is_some()
-                || !self.expression_head_resets_diagnostic_boundary(&content, leading, span.start));
+                || !self.expression_head_resets_diagnostic_boundary(
+                    &source.content,
+                    source.leading,
+                    span.start,
+                ));
         if diagnostic_sensitive {
             let operator_end = span.start + operator.as_str().len() as u32;
-            self.comments.claim(leading)?;
+            self.comments.claim(source.leading)?;
             let layout = CommentRunLayout::SourceAfter(operator_end);
             if word_operator {
-                self.format_comment_run_after_separator(leading, layout, writer)?;
+                self.format_comment_run_after_separator(source.leading, layout, writer)?;
             } else {
-                self.format_comment_run(leading, layout, writer)?;
+                self.format_comment_run(source.leading, layout, writer)?;
             }
-            let flat = if leading.is_empty() {
+            let flat = if source.leading.is_empty() {
                 FlatSeparator::Empty
             } else {
                 FlatSeparator::Space
             };
-            self.line_constraint_after_comments(leading, operator_end, argument_span.start)
-                .write(writer, flat, |_| {});
-            let operand_indent = match content.data {
+            self.line_constraint_after_comments(
+                source.leading,
+                operator_end,
+                source.argument_span.start,
+            )
+            .write(writer, flat, |_| {});
+            let operand_indent = match source.content.data {
                 ExprData::BinaryExpression(_)
                 | ExprData::LogicalExpression(_)
                 | ExprData::ParenthesizedExpression(_) => OperandIndent::Parent,
                 _ => OperandIndent::Expression,
             };
-            let context = argument_context.with_operand_indent(operand_indent);
+            let context = source.context.with_operand_indent(operand_indent);
             let mut output = match source_pair {
                 Some(boundary) => self
-                    .format_protected_grammar_parentheses(boundary, content, context, None, writer)
+                    .format_protected_grammar_parentheses(
+                        boundary,
+                        source.content,
+                        context,
+                        None,
+                        writer,
+                    )
                     .map(ExpressionOutput::closed)?,
                 None => self.format_expression_prepared_output(
-                    argument,
-                    Some(content),
+                    source.content.expression,
+                    Some(source.content),
                     context,
                     writer,
                 )?,
             };
-            output.pending = self
-                .capture_expression_tail(Span::new(argument_span.end, span.end), output.pending)?;
+            output.pending = self.capture_expression_tail(
+                Span::new(source.argument_span.end, span.end),
+                output.pending,
+            )?;
             return Ok(output);
         }
-        let exposed_head = if leading.is_empty() && trailing.is_empty() {
-            self.exposed_expression_head(argument, argument_context)?
-        } else {
-            None
+        let Some(head) = self.prepare_unary_operand_head(&source)? else {
+            // The operand's own renderer keeps any retained source frame.
+            return self.format_expression_prepared_output(
+                source.content.expression,
+                Some(source.content),
+                source.context,
+                writer,
+            );
         };
-        if leading.is_empty() && trailing.is_empty() && exposed_head.is_none() {
+        let prepared = self.prepare_unary_operand_frame(unary, context, source, Some(head));
+        self.format_prepared_unary_operand(&prepared, writer)
+    }
+
+    fn format_prepared_unary_operand(
+        &mut self,
+        prepared: &PreparedUnaryOperand<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let source = &prepared.source;
+        let content = source.content();
+        let argument = content.expression;
+        let mut body_context =
+            self.unary_operand_body_context(prepared.owner, source, prepared.head.is_some());
+        let Some(head) = &prepared.head else {
+            if let Some(frame) = &prepared.annotation {
+                let plan = PreparedExpressionPlan::Annotation(frame);
+                return self.format_expression_prepared_with_plan_output(
+                    argument,
+                    Some(content),
+                    body_context,
+                    &plan,
+                    writer,
+                );
+            }
             return self.format_expression_prepared_output(
                 argument,
                 Some(content),
-                argument_context,
+                body_context,
                 writer,
             );
-        }
-        let operand_tail = if leading.is_empty() && mode == ContentMode::Formatted {
-            self.prepare_unary_operand_tail(content.data, argument_span, span.end, trailing)
-        } else {
-            None
         };
         // The operator owns one group around boundary comments and its operand.
         writer.group(false, |writer| {
             writer.text("(");
             writer.indent(|writer| {
                 writer.soft_line();
-                self.comments.claim(leading)?;
-                if let Some(owner) = operand_tail {
+                self.comments.claim(head.resolved.head.comments)?;
+                if let Some(owner) = &prepared.tail {
                     // A last operand's tail stays in the binary continuation group,
                     // even after its source parentheses have been removed.
                     let tail = self.format_binary_enclosed(owner.binary, writer)?;
                     self.format_expression_tail(tail, writer)?;
-                    self.format_expression_tail(Some(owner.tail), writer)
-                } else {
-                    let position = ExpressionPosition::ParenthesizedUnaryArgument(operator);
-                    let mut context = ExpressionContext::at(position)
-                        .with_content_mode(mode)
-                        .inside_parentheses();
-                    // A distinct operand pair remains owned by that expression;
-                    // otherwise this physical unary pair supplies its frame.
-                    if self.expression_needs_parentheses(
-                        content.data,
-                        position,
-                        ContentMode::Formatted,
-                    ) == Some(true)
-                    {
-                        context.parentheses_owner = ParenthesesOwner::Expression;
-                    }
-                    let tail = self.format_expression_with_leading_comments(
-                        argument,
-                        NodeHead {
-                            comments: leading,
-                            content_start: argument_span.start,
-                            layout: CommentRunLayout::GroupedLeading(leading_end),
-                            gap_end: None,
-                        },
-                        context,
-                        None,
+                    self.format_expression_tail(
+                        Some(ExpressionTail {
+                            source_end: owner.tail.source_end,
+                            comments: owner.tail.comments,
+                        }),
                         writer,
-                    )?;
+                    )
+                } else {
+                    if let Some(released) = &head.released
+                        && let Some(first) = released.head.comments.first()
+                        && let Some(last) = released.head.comments.last()
+                    {
+                        body_context.emitted_head_binding = EmittedHeadBinding::Resolved {
+                            packet: Span::new(first.span.start, last.span.end),
+                            binding: released.binding,
+                        };
+                    }
+                    let resolved = ResolvedExpressionHead {
+                        head: NodeHead {
+                            ..head.resolved.head
+                        },
+                        binding: head.resolved.binding,
+                    };
+                    let tail = if let Some(frame) = &prepared.annotation {
+                        let plan = PreparedExpressionPlan::Annotation(frame);
+                        self.format_expression_leading_with_plan(
+                            argument,
+                            Some(content),
+                            resolved,
+                            body_context,
+                            None,
+                            &plan,
+                            writer,
+                        )?
+                        .pending
+                    } else {
+                        self.format_expression_leading_prepared(
+                            argument,
+                            Some(content),
+                            resolved,
+                            body_context,
+                            None,
+                            writer,
+                        )?
+                    };
                     self.format_expression_tail(tail, writer)?;
-                    self.comments.claim(trailing)?;
+                    self.comments.claim(source.trailing)?;
                     self.format_comment_run(
-                        trailing,
-                        CommentRunLayout::SourceAfter(argument_span.end),
+                        source.trailing,
+                        CommentRunLayout::SourceAfter(source.argument_span.end),
                         writer,
                     )
                 }
             })?;
-            if trailing
+            if source
+                .trailing
                 .last()
                 .is_some_and(|comment| comment.kind == CommentKind::Line)
             {
@@ -202,6 +437,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(ExpressionOutput::closed(None))
         })
+    }
+
+    fn prepare_unary_operand_head(
+        &self,
+        source: &UnaryOperandSource<'ast>,
+    ) -> Result<Option<PreparedUnaryOperandHead<'ast>>, FormatError> {
+        let argument = source.content.expression;
+        let exposed = if source.trailing.is_empty()
+            && !matches!(source.content.data, ExprData::ParenthesizedExpression(_))
+        {
+            self.exposed_expression_head(argument, source.context)?
+        } else {
+            None
+        };
+        if source.leading.is_empty() && source.trailing.is_empty() && exposed.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(PreparedUnaryOperandHead {
+            resolved: ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: source.leading,
+                    content_start: argument.span(self.ast).start,
+                    layout: CommentRunLayout::GroupedLeading(source.leading_end),
+                    gap_end: None,
+                },
+                binding: self.expression_head_binding(source.leading, argument),
+            },
+            released: exposed,
+        }))
     }
 
     fn prepare_unary_operand_tail(

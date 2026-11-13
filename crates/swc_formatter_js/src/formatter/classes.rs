@@ -1962,19 +1962,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     AssignmentSourceEnd::Expression(right.span(ast).end)
                 };
+                let initializer_context = ExpressionContext::variable_initializer()
+                    .with_tail_owner(TailOwner::ParentOperation)
+                    .with_content_mode(right_mode);
                 let mut boundary = self.assignment_boundary_with_source(
                     left_end,
                     &rhs,
                     Span::new(operator, operator + 1),
                     source,
-                    ExpressionContext::variable_initializer()
-                        .with_tail_owner(TailOwner::ParentOperation)
-                        .with_content_mode(right_mode),
+                    initializer_context,
                 )?;
                 value_tail_operator_prefix = boundary.has_value_tail_operator_prefix();
                 if right_mode == ContentMode::Verbatim {
                     boundary.mode = right_mode;
                 }
+                self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
                 let rhs_layout = self.ordinary_rhs_layout(
                     &rhs,
                     ExpressionContext::variable_initializer()

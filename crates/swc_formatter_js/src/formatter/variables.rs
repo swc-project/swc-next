@@ -439,6 +439,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
         let mut rhs_layout = self.ordinary_rhs_layout(&rhs, initializer_context, &boundary);
         if left_mode == ContentMode::Formatted
             && let Some(fixed_layout) =

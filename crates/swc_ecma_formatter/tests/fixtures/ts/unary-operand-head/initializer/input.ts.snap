@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const y = typeof (/*#__PURE__*/ a).b();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const y =
+  typeof (
+    /*#__PURE__*/ a.b()
+  );

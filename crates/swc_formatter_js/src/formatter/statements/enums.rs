@@ -373,12 +373,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .ok_or_else(|| self.unsupported("enum initializer boundary", member.node))?;
         let content = self.expression_content(right);
         let rhs = self.assignment_rhs(&content);
+        let initializer_context = ExpressionContext::at(ExpressionPosition::EnumInitializer);
         let mut boundary = self.assignment_boundary(
             key_end,
             &rhs,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
-            ExpressionContext::at(ExpressionPosition::EnumInitializer),
+            initializer_context,
         )?;
         let mut left_mode = ContentMode::Formatted;
         if self.has_suppression {
@@ -397,6 +398,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
         let rhs_layout = if boundary.own_line || !boundary.operator_line.is_empty() {
             RhsLayout::BreakAfterOperator
         } else {

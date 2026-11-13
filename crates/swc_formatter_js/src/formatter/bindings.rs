@@ -685,13 +685,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })
                 .map_or(right_end, |comment| comment.span.end);
             let rhs = self.assignment_rhs(&content);
+            let initializer_context = ExpressionContext::binding_initializer();
             let mut boundary = self.assignment_boundary(
                 left_end,
                 &rhs,
                 operator,
                 source_end,
-                ExpressionContext::binding_initializer(),
+                initializer_context,
             )?;
+            self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
             let first = source_comments.partition_point(|comment| comment.span.start < left.start);
             let source_clear_left = source_comments
                 .get(first)
