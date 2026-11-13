@@ -16,7 +16,9 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{DiagnosticCoverage, FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
 use crate::formatter::source::is_source_whitespace;
-use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
+use crate::formatter::suppression::{
+    ContentMode, SuppressionPosition, TrailingSuppression, comment_directive,
+};
 use crate::{
     FormatError, Semicolons,
     document::{BodyOpening, Writer},
@@ -3832,7 +3834,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.expression_start = ExpressionStart::StatementGuarded;
             head.comments = protected;
         }
-        let head = self.canonical_head_gap(expression, head, binding, context);
+        let mut join_function_head = context.content_mode == ContentMode::Formatted
+            && matches!(self.ast.expr_data(expression), ExprData::Function(_))
+            && matches!(head.layout, CommentRunLayout::Source)
+            && head.gap_end == Some(expression.span(self.ast).start)
+            && head.comments.last().is_some_and(|comment| {
+                self.line_breaks(comment.span.start, comment.span.end) == 0
+                    && self.line_breaks(comment.span.end, expression.span(self.ast).start) == 1
+                    && self.line_constraint(comment.span.end, expression.span(self.ast).start)
+                        == LineConstraint::Unconstrained
+            });
+        let mut has_directive = false;
+        if join_function_head
+            || context.content_mode == ContentMode::Formatted && context.head_gap.is_some()
+        {
+            for &comment in head.comments {
+                has_directive |= comment_directive(self.ast, comment).is_some();
+                if join_function_head {
+                    join_function_head = !has_directive
+                        && comment.kind == CommentKind::Block
+                        && self.comment_semantics(comment).is_ordinary()
+                        && !self.comment_is_jsdoc_binding(comment);
+                }
+                if has_directive && !join_function_head {
+                    break;
+                }
+            }
+        }
+        let mut head = self.canonical_head_gap_with_directive(
+            expression,
+            head,
+            binding,
+            context,
+            has_directive,
+        );
+        if join_function_head
+            && matches!(head.layout, CommentRunLayout::Source)
+            && head.gap_end == Some(expression.span(self.ast).start)
+        {
+            // The function owns its final head gap, while the packet keeps its
+            // original internal layout and any protected annotation binding.
+            head.gap_end = None;
+            let start =
+                self.format_node_head(head, context.expression_start, array_comments, writer)?;
+            writer.space();
+            return Ok(start);
+        }
         self.format_node_head(head, context.expression_start, array_comments, writer)
     }
 
@@ -3905,8 +3952,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         binding: CommentBinding,
         context: ExpressionContext<'ast>,
     ) -> NodeHead<'ast> {
+        let has_directive = context.content_mode == ContentMode::Formatted
+            && context.head_gap.is_some()
+            && head
+                .comments
+                .iter()
+                .any(|comment| comment_directive(self.ast, *comment).is_some());
+        self.canonical_head_gap_with_directive(expression, head, binding, context, has_directive)
+    }
+
+    fn canonical_head_gap_with_directive(
+        &self,
+        expression: Expr,
+        head: NodeHead<'ast>,
+        binding: CommentBinding,
+        context: ExpressionContext<'ast>,
+        has_directive: bool,
+    ) -> NodeHead<'ast> {
         if context.content_mode == ContentMode::Formatted
             && let Some(gap) = context.head_gap
+            && !has_directive
         {
             let source_adjacent = context.head_destination.is_some_and(|owner| {
                 owner.keeps_source_token()
