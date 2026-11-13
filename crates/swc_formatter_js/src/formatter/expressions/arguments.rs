@@ -2134,26 +2134,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return false;
         }
-        let content = Span::new(list.callee_span.end, list.delimiters.end - 1);
-        if self.diagnostic_range_is_sensitive(content) {
-            return false;
-        }
-        let mut previous = content.start;
+        let boundary_is_clear = |gap| {
+            !self.diagnostic_range_is_sensitive(gap) && self.comments.in_range(gap).is_empty()
+        };
+        let mut previous = list.callee_span.end;
         for id in list.arguments.iter() {
             let argument: Argument = self.ast.get_node_in_sub_range(id);
             let span = argument.span(self.ast);
-            if !self
-                .comments
-                .in_range(Span::new(previous, span.start))
-                .is_empty()
-            {
+            if !boundary_is_clear(Span::new(previous, span.start)) {
                 return false;
             }
             previous = span.end;
         }
-        self.comments
-            .in_range(Span::new(previous, content.end))
-            .is_empty()
+        boundary_is_clear(Span::new(previous, list.delimiters.end - 1))
     }
 
     /// The module frame owns delimiters; each argument retains its document

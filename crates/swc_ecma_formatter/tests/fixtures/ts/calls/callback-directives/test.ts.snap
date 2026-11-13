@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function o() {
+  it("should handle array literal without type parameter to infer result type", () => {
+    // @ts-ignore
+    missing();
+  });
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function o() {
+  it("should handle array literal without type parameter to infer result type", () => {
+    // @ts-ignore
+    missing();
+  });
+}

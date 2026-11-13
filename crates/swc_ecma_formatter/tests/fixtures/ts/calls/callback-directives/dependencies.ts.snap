@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function C() {
+  useEffect(() => {
+    // @ts-ignore
+    missing();
+  }, [alpha, beta, gamma, delta, epsilon, zeta, eta, theta]);
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function C() {
+  useEffect(() => {
+    // @ts-ignore
+    missing();
+  }, [alpha, beta, gamma, delta, epsilon, zeta, eta, theta]);
+}
