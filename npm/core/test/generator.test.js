@@ -10,6 +10,57 @@ function generateEncoded(program, encoder) {
   return generateNative(...encoder(program), encodeOptions());
 }
 
+function encodedParameterKinds(source, encoder, options) {
+  const { program } = parseSync(source, options);
+  const [, , kinds, payloads] = encoder(program);
+  const view = new DataView(payloads.buffer, payloads.byteOffset, payloads.byteLength);
+  const parameterKinds = ["formal", "unique", "arrow", "signature"];
+  // FormalParameters has wire tag 58; its kind follows items and rest at byte 12.
+  return Array.from(kinds).flatMap((kind, index) =>
+    kind === 58 ? [parameterKinds[view.getUint8(index * 16 + 12)]] : [],
+  );
+}
+
+test("encoders preserve parameter contexts", () => {
+  const script = { sourceType: "script" };
+  for (const encoder of [encodeJs, encodeTs]) {
+    assert.deepEqual(encodedParameterKinds("function f(a) {}", encoder, script), ["formal"]);
+
+    assert.deepEqual(encodedParameterKinds("(a) => a;", encoder, script), ["arrow"]);
+
+    assert.deepEqual(encodedParameterKinds("({ m(a) {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("({ m: function(a) {} });", encoder, script), ["formal"]);
+
+    assert.deepEqual(encodedParameterKinds("({ get value() {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("({ set value(a) {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("class C { m(a) {} }", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("class C { constructor(a) {} }", encoder, script), ["unique"]);
+  }
+});
+
+test("encoder preserves TypeScript parameter contexts", () => {
+  const typescript = { lang: "ts" };
+  assert.deepEqual(encodedParameterKinds("declare function f(a: number): void;", encode, typescript), ["formal"]);
+
+  assert.deepEqual(encodedParameterKinds("declare class C { m(a: number): void; }", encode, typescript), ["unique"]);
+
+  assert.deepEqual(encodedParameterKinds("abstract class C { abstract m(a: number): void; }", encode, typescript), ["unique"]);
+
+  assert.deepEqual(encodedParameterKinds("type F = (a: number) => void;", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("type F = new (a: number) => object;", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { m(this: I, a: number): void; }", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { (a: number): void; }", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { new (a: number): object; }", encode, typescript), ["signature"]);
+});
+
 test("encoders recover from errors", () => {
   for (const encoder of [encodeJs, encodeTs]) {
     const broken = parseSync('const value = "雪";').program;

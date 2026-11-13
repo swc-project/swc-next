@@ -932,7 +932,7 @@ function encClassBody(n) {
 function encMethodDefinition(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encFunction(n.value);
+  const v_2 = encFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -998,12 +998,12 @@ function encStaticBlock(n) {
   return index;
 }
 
-function encFunction(n) {
+function encFunction(n, parameterKind = "formal") {
   const v_0 = enumValue(10, n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
   const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_2 = NULL;
   const v_3 = NULL;
-  const v_4 = encFormalParameters(n.params, 0);
+  const v_4 = encFormalParameters(n.params, 0, parameterKind);
   const v_5 = NULL;
   const v_6 = encFunctionBody(n.body);
   const v_7 = n.generator ? 1 : 0;
@@ -1077,7 +1077,7 @@ function encWithStatement(n) {
   return index;
 }
 
-function encFormalParameters(n, from = 0) {
+function encFormalParameters(n, from = 0, kind = "formal") {
   const _values = n;
   const _length = _values?.length ?? 0;
   let _itemCount = _length - from;
@@ -1102,7 +1102,7 @@ function encFormalParameters(n, from = 0) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
-  const v_2 = enumValue(11, 0);
+  const v_2 = enumValue(11, kind);
   const index = allocNode(58, _start, _end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
@@ -1164,7 +1164,7 @@ function encSpreadElement(n) {
 
 function encObjectProperty(n) {
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_1 = encExpr(n.value);
+  const v_1 = n.value.type === "FunctionExpression" && (n.method || n.kind === "get" || n.kind === "set") ? encFunction(n.value, "unique") : encExpr(n.value);
   const v_2 = enumValue(12, n.kind);
   const v_3 = n.method ? 1 : 0;
   const v_4 = n.shorthand ? 1 : 0;
@@ -1190,7 +1190,7 @@ function encArrowFunctionExpression(n) {
   const v_0 = n.expression ? 1 : 0;
   const v_1 = n.async ? 1 : 0;
   const v_2 = NULL;
-  const v_3 = encFormalParameters(n.params);
+  const v_3 = encFormalParameters(n.params, 0, "arrow");
   const v_4 = NULL;
   const v_5 = encArrowFunctionBody(n.body);
   const extraId = allocExtra(2);

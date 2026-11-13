@@ -243,10 +243,10 @@ fn write_struct_encoder(
     dispatch: &EncoderDispatch,
 ) {
     let name = &ast.name;
-    let parameters = if name == "FormalParameters" {
-        "n, from = 0"
-    } else {
-        "n"
+    let parameters = match name.as_str() {
+        "FormalParameters" => "n, from = 0, kind = \"formal\"",
+        "Function" | "TsFunction" => "n, parameterKind = \"formal\"",
+        _ => "n",
     };
     writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
     if name.starts_with("Ts") {
@@ -479,11 +479,23 @@ fn encode_expression(
     source: &str,
 ) -> String {
     match ty {
-        AstType::Struct(ast) if ast.name == "FormalParameters" && has_this_param(node) => {
-            format!(
-                "encFormalParameters(n.params, {})",
-                if dispatch.is_ts { "_paramStart" } else { "0" }
-            )
+        AstType::Struct(ast) if ast.name == "FormalParameters" => {
+            let from = if dispatch.is_ts && has_this_param(node) {
+                "_paramStart"
+            } else {
+                "0"
+            };
+            let kind = match node {
+                "Function" | "TsFunction" => "parameterKind",
+                "ArrowFunctionExpression" => "\"arrow\"",
+                "TsFunctionType"
+                | "TsConstructorType"
+                | "TsMethodSignature"
+                | "TsCallSignatureDeclaration"
+                | "TsConstructSignatureDeclaration" => "\"signature\"",
+                _ => unreachable!("unsupported formal parameter owner: {node}"),
+            };
+            format!("encFormalParameters({source}, {from}, {kind})")
         }
         AstType::Struct(ast) => child_expression(node, field, &format!("enc{}", ast.name), source),
         AstType::Enum(ast) => {
@@ -580,6 +592,12 @@ fn encoder_name(ty: &AstType, dispatch: &EncoderDispatch) -> String {
 fn child_expression(node: &str, field: &str, encoder: &str, source: &str) -> String {
     let default = || format!("{encoder}({source})");
     match (node, field) {
+        ("MethodDefinition" | "TsMethodDefinition", "value") => {
+            format!("{encoder}({source}, \"unique\")")
+        }
+        ("ObjectProperty", "value") => format!(
+            "{source}.type === \"FunctionExpression\" && (n.method || n.kind === \"get\" || n.kind === \"set\") ? encFunction({source}, \"unique\") : {encoder}({source})"
+        ),
         ("MemberExpression", "property") => {
             format!("n.computed ? encExpr({source}) : {encoder}({source})")
         }
@@ -634,7 +652,7 @@ fn field_source(node: &str, field: &str) -> String {
         ) => "n.params".into(),
         ("FormalParameters", "items") => "_values".into(),
         ("FormalParameters", "rest") => "_rest".into(),
-        ("FormalParameters", "kind") => "0".into(),
+        ("FormalParameters", "kind") => "kind".into(),
         ("ArrayPattern", "elements") => "_values".into(),
         ("ArrayPattern", "rest") => "_rest".into(),
         ("ObjectPattern", "properties") => "_values".into(),

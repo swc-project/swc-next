@@ -932,7 +932,7 @@ function encClassBody(n) {
 function encMethodDefinition(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encFunction(n.value);
+  const v_2 = encFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -998,7 +998,7 @@ function encStaticBlock(n) {
   return index;
 }
 
-function encFunction(n) {
+function encFunction(n, parameterKind = "formal") {
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
@@ -1006,7 +1006,7 @@ function encFunction(n) {
   const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_3 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_4 = encFormalParameters(n.params, _paramStart);
+  const v_4 = encFormalParameters(n.params, _paramStart, parameterKind);
   const v_5 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_6 = encFunctionBody(n.body);
   const v_7 = n.generator ? 1 : 0;
@@ -1080,7 +1080,7 @@ function encWithStatement(n) {
   return index;
 }
 
-function encFormalParameters(n, from = 0) {
+function encFormalParameters(n, from = 0, kind = "formal") {
   const _values = n;
   const _length = _values?.length ?? 0;
   let _itemCount = _length - from;
@@ -1105,7 +1105,7 @@ function encFormalParameters(n, from = 0) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
-  const v_2 = enumValue(11, 0);
+  const v_2 = enumValue(11, kind);
   const index = allocNode(58, _start, _end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
@@ -1167,7 +1167,7 @@ function encSpreadElement(n) {
 
 function encObjectProperty(n) {
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_1 = encExpr(n.value);
+  const v_1 = n.value.type === "FunctionExpression" && (n.method || n.kind === "get" || n.kind === "set") ? encFunction(n.value, "unique") : encExpr(n.value);
   const v_2 = enumValue(12, n.kind);
   const v_3 = n.method ? 1 : 0;
   const v_4 = n.shorthand ? 1 : 0;
@@ -1193,7 +1193,7 @@ function encArrowFunctionExpression(n) {
   const v_0 = n.expression ? 1 : 0;
   const v_1 = n.async ? 1 : 0;
   const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_3 = encFormalParameters(n.params);
+  const v_3 = encFormalParameters(n.params, 0, "arrow");
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = encArrowFunctionBody(n.body);
   const extraId = allocExtra(2);
@@ -1422,7 +1422,7 @@ function encHashbang(n) {
   return index;
 }
 
-function encTsFunction(n) {
+function encTsFunction(n, parameterKind = "formal") {
   isTs = true;
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
@@ -1430,7 +1430,7 @@ function encTsFunction(n) {
   const v_0 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_3 = encFormalParameters(n.params, _paramStart);
+  const v_3 = encFormalParameters(n.params, _paramStart, parameterKind);
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = n.generator ? 1 : 0;
   const v_6 = n.async ? 1 : 0;
@@ -1453,7 +1453,7 @@ function encTsMethodDefinition(n) {
   isTs = true;
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encTsFunction(n.value);
+  const v_2 = encTsFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -1808,7 +1808,7 @@ function encTsFunctionType(n) {
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_2 = encFormalParameters(n.params, _paramStart);
+  const v_2 = encFormalParameters(n.params, _paramStart, "signature");
   const v_3 = encTsTypeAnnotation(n.returnType);
   const index = allocNode(128, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1821,7 +1821,7 @@ function encTsFunctionType(n) {
 function encTsConstructorType(n) {
   isTs = true;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_1 = encFormalParameters(n.params);
+  const v_1 = encFormalParameters(n.params, 0, "signature");
   const v_2 = encTsTypeAnnotation(n.returnType);
   const v_3 = n.abstract ? 1 : 0;
   const index = allocNode(129, n.start, n.end);
@@ -1896,7 +1896,7 @@ function encTsMethodSignature(n) {
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_3 = encFormalParameters(n.params, _paramStart);
+  const v_3 = encFormalParameters(n.params, _paramStart, "signature");
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = enumValue(17, n.kind);
   const v_6 = n.computed ? 1 : 0;
@@ -1922,7 +1922,7 @@ function encTsCallSignatureDeclaration(n) {
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_2 = encFormalParameters(n.params, _paramStart);
+  const v_2 = encFormalParameters(n.params, _paramStart, "signature");
   const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const index = allocNode(135, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1935,7 +1935,7 @@ function encTsCallSignatureDeclaration(n) {
 function encTsConstructSignatureDeclaration(n) {
   isTs = true;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_1 = encFormalParameters(n.params);
+  const v_1 = encFormalParameters(n.params, 0, "signature");
   const v_2 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const index = allocNode(136, n.start, n.end);
   setPayloadU32(index, 0, v_0);
