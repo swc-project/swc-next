@@ -584,6 +584,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return None;
                 }
                 let pattern = node.pattern(ast);
+                if self.empty_binding_has_line_comment(self.parameter_binding(pattern)) {
+                    return None;
+                }
                 let initializer = node.initializer(ast);
                 if initializer.is_some_and(|expression| match self.expression_data(expression) {
                     swc_next_ecma_ast::ExprData::IdentifierReference(_) => false,
