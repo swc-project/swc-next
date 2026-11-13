@@ -301,6 +301,9 @@ importers:
       '@swc-next/encoder':
         specifier: workspace:*
         version: link:../../packages/encoder
+      '@swc-next/transformer-bridge':
+        specifier: workspace:*
+        version: link:../../packages/transformer-bridge
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -350,6 +353,9 @@ importers:
       '@swc-next/encoder':
         specifier: workspace:*
         version: link:../../packages/encoder
+      '@swc-next/transformer-bridge':
+        specifier: workspace:*
+        version: link:../../packages/transformer-bridge
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -372,12 +378,9 @@ importers:
 
   npm/transformer:
     dependencies:
-      '@swc-next/decoder':
+      '@swc-next/transformer-bridge':
         specifier: workspace:*
-        version: link:../../packages/decoder
-      '@swc-next/encoder':
-        specifier: workspace:*
-        version: link:../../packages/encoder
+        version: link:../../packages/transformer-bridge
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
@@ -397,6 +400,15 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
+
+  packages/transformer-bridge:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../encoder
 
   packages/types: {}
 

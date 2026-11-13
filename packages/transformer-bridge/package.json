@@ -1,0 +1,34 @@
+{
+  "name": "@swc-next/transformer-bridge",
+  "version": "0.6.1",
+  "description": "JavaScript glue for SWC Next source transformation bindings",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/transformer-bridge"
+  },
+  "main": "index.js",
+  "type": "module",
+  "sideEffects": false,
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/encoder": "workspace:*"
+  }
+}

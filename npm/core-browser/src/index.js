@@ -1,4 +1,4 @@
-import { createTransformSync } from "@swc-next/decoder/transform";
+import { createTransformSync } from "@swc-next/transformer-bridge";
 import {
   parseSync as __parseSync,
   generateSync as __generateSync,
@@ -45,4 +45,4 @@ export function generateSync(program, options) {
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync, encodeGeneratorConfig);
+export const transformSync = createTransformSync(__transformSync);

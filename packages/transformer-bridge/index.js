@@ -1,4 +1,5 @@
-import { encodeParserConfig } from "./options.js";
+import { encodeParserConfig } from "@swc-next/decoder/options";
+import { encodeGeneratorConfig } from "@swc-next/encoder/options";
 
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
@@ -37,7 +38,7 @@ function storage(length) {
 function createJsTransformApiOptionsEncoder() {
   let buffer = empty;
   let view;
-  return function encodeJsTransformApiOptions(options, encodeGeneratorConfig) {
+  return function encodeJsTransformApiOptions(options) {
     if (options == null) return empty;
     object(options, rootKeys, "options");
     const parser = options.parser;
@@ -64,7 +65,6 @@ function createJsTransformApiOptionsEncoder() {
 }
 
 /** Encode the complete JS transform configuration into reusable scratch storage.
- * The caller supplies generator config encoding to keep codec packages independent.
  * The returned buffer is valid until the next call. Option getters and Proxy traps
  * must not reenter this encoder while it is encoding.
  */
@@ -112,12 +112,12 @@ export function decodeJsTransformOutput(buffer) {
  * Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
  * traps must not reenter the same wrapper while it is encoding options.
  */
-export function createTransformSync(binding, encodeGeneratorConfig) {
+export function createTransformSync(binding) {
   const encodeOptions = createJsTransformApiOptionsEncoder();
   let sourceBuffer = empty;
   return function transformSync(source, options) {
     if (typeof source !== "string") throw new TypeError("source must be a string");
-    const config = encodeOptions(options, encodeGeneratorConfig);
+    const config = encodeOptions(options);
     const capacity = source.length * 3;
     if (sourceBuffer.length < capacity) {
       sourceBuffer = storage(Math.max(capacity, sourceBuffer.length * 2, 4096));
