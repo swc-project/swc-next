@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (let a = 1, b = // operator
+2 // value
+; false;) {}
+---------- Options ----------
+{}
+---------- Output ----------
+for (
+  let a = 1, b = 2; // operator
+  // value
+  false;
+) {}
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+for (
+	let a = 1, b = 2; // operator
+	// value
+	false;
+) {}

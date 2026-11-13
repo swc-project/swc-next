@@ -127,23 +127,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn format_variable_declaration_with_context(
-        &mut self,
-        declaration: VariableDeclaration,
-        context: VariableContext,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
-        self.format_variable_declaration_parts(
-            declaration,
-            context,
-            None,
-            false,
-            OperatorTailDestination::Local,
-            writer,
-        )
-        .map(|output| (output.end, output.tail))
-    }
-
     pub(super) fn format_variable_declaration_parts(
         &mut self,
         declaration: VariableDeclaration,

@@ -2,6 +2,7 @@
 
 use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, GetSpan, SequenceExpression, Span};
 
+use super::assignment::OperatorTailDestination;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParentheses};
 use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, HeadComments, TailOwner,
@@ -266,6 +267,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if parenthesize {
             writer.text("(");
             context.head_scope = None;
+            context = context.with_operator_tail_destination(OperatorTailDestination::Local);
             context = self.with_head_scope(
                 context,
                 &ExpressionContent {
@@ -347,7 +349,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             ),
                         },
                         following.as_ref(),
-                        ExpressionContext::at(item_position).with_tail_owner(context.tail_owner),
+                        ExpressionContext::at(item_position)
+                            .with_tail_owner(context.tail_owner)
+                            .with_operator_tail_destination(if following.is_none() {
+                                context.operator_tail_destination()
+                            } else {
+                                OperatorTailDestination::Local
+                            }),
                         writer,
                     )?;
                     let Some(mut following) = following else {

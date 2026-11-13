@@ -49,6 +49,7 @@ pub(in crate::formatter) enum AssignmentParent {
 pub(in crate::formatter) enum OperatorTailDestination {
     Local,
     Terminator,
+    ForHeader,
 }
 
 /// A claimed suffix borrowed until its requested punctuation owner is reached.
@@ -65,6 +66,12 @@ impl<'ast> DeferredOperatorTail<'ast> {
     pub(in crate::formatter) fn destination(&self) -> OperatorTailDestination {
         self.destination
     }
+}
+
+#[derive(Default)]
+pub(in crate::formatter) struct PreparedOperatorTailCompletion<'ast> {
+    pub(in crate::formatter) prefix: Option<ExpressionTail<'ast>>,
+    pub(in crate::formatter) following: Option<ExpressionTail<'ast>>,
 }
 
 #[derive(Clone, Copy)]
@@ -733,15 +740,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedCommentAdjacency::after_comments(tail.comments()))
     }
 
-    /// Value-owned inline blocks precede the displaced line suffix; later
-    /// comments follow its completed adjacency at this punctuation boundary.
-    pub(in crate::formatter) fn format_operator_tail_with_pending(
-        &mut self,
-        operator: &DeferredOperatorTail<'ast>,
+    pub(in crate::formatter) fn prepare_operator_tail_completion(
+        &self,
         pending: Option<ExpressionTail<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<PreparedCommentAdjacency, FormatError> {
-        let pending = if let Some(tail) = pending {
+    ) -> PreparedOperatorTailCompletion<'ast> {
+        if let Some(tail) = pending {
             let mut end = tail.source_end;
             let count = tail
                 .comments
@@ -755,22 +758,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     inline
                 })
                 .count();
-            if count != 0 {
-                self.format_expression_tail(
-                    Some(ExpressionTail {
-                        source_end: tail.source_end,
-                        comments: &tail.comments[..count],
-                    }),
-                    writer,
-                )?;
+            PreparedOperatorTailCompletion {
+                prefix: (count != 0).then_some(ExpressionTail {
+                    source_end: tail.source_end,
+                    comments: &tail.comments[..count],
+                }),
+                following: (count != tail.comments.len()).then_some(ExpressionTail {
+                    source_end: end,
+                    comments: &tail.comments[count..],
+                }),
             }
-            (count != tail.comments.len()).then_some(ExpressionTail {
-                source_end: end,
-                comments: &tail.comments[count..],
-            })
         } else {
-            None
-        };
+            PreparedOperatorTailCompletion::default()
+        }
+    }
+
+    /// Value-owned inline blocks precede the displaced line suffix; later
+    /// comments follow its completed adjacency at this punctuation boundary.
+    pub(in crate::formatter) fn format_operator_tail_with_pending(
+        &mut self,
+        operator: &DeferredOperatorTail<'ast>,
+        pending: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        let completion = self.prepare_operator_tail_completion(pending);
+        self.format_expression_tail(completion.prefix, writer)?;
+        let pending = completion.following;
         let adjacency = self.format_deferred_operator_tail(operator, writer)?;
         let following = pending
             .as_ref()
