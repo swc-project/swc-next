@@ -6883,10 +6883,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if !token.is_escaped() =>
             {
                 if matches!(tag, TokenTag::NullLiteral | TokenTag::Void)
-                    || !self.is_qualified_type_continuation()?
+                    || !self.next_token_may_start_with(|byte| byte == b'.')
                 {
                     return self.parse_type_keyword().map(from_type);
                 }
+                // Both a keyword type and a qualified name consume this token.
+                // Keep the old lookahead's lexical-failure recovery.
+                if !self.try_advance() {
+                    return None;
+                }
+                if self.current_token.tag() != TokenTag::Dot {
+                    return Some(from_type(self.type_keyword(token)));
+                }
+                let name = self.parse_entity_name_from_token(token)?;
+                return from_reference(self, token.start(), name);
             }
             TokenTag::This if !token.is_escaped() => {
                 return self.parse_this_type_or_predicate().map(from_type);
@@ -6949,8 +6959,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_keyword(&mut self) -> Option<TsType> {
-        let token = self.current_token;
-        let keyword = match token.tag() {
+        let keyword = self.type_keyword(self.current_token);
+        self.advance()?;
+        Some(keyword)
+    }
+
+    fn type_keyword(&mut self, token: Token) -> TsType {
+        match token.tag() {
             TokenTag::Any => self.ast.ts_type_ts_any_keyword(token.span()),
             TokenTag::Unknown => self.ast.ts_type_ts_unknown_keyword(token.span()),
             TokenTag::Never => self.ast.ts_type_ts_never_keyword(token.span()),
@@ -6964,9 +6979,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Symbol => self.ast.ts_type_ts_symbol_keyword(token.span()),
             TokenTag::Object => self.ast.ts_type_ts_object_keyword(token.span()),
             _ => unreachable!(),
-        };
-        self.advance()?;
-        Some(keyword)
+        }
     }
 
     fn is_postfix_nullable(&mut self) -> Option<bool> {
@@ -7647,14 +7660,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.ast.ts_js_doc_non_nullable_type(span, inner, postfix),
             ),
         }
-    }
-
-    fn is_qualified_type_continuation(&mut self) -> Option<bool> {
-        if !self.next_token_may_start_with(|byte| byte == b'.') {
-            return Some(false);
-        }
-        let next = self.peek_ahead()?;
-        Some(next.tag() == TokenTag::Dot)
     }
 
     fn parse_literal_type(&mut self) -> Option<TsType> {
