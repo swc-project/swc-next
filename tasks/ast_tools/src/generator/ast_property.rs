@@ -11,8 +11,8 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstStructField, AstType, Layout, Schema},
     util::{
-        generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
-        safe_ident,
+        generate_extra_data_to_field, generate_field_to_extra_data, generate_field_to_u32,
+        generate_field_to_u64, generate_u32_to_field, generate_u64_to_field, safe_ident,
     },
 };
 
@@ -245,6 +245,11 @@ fn generate_extra_data_property_accessors(
         let field = &ast.fields[field_index];
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
+        let read_expr = generate_extra_data_to_field(
+            &schema.types[field.type_id],
+            quote!(ast.extra_data.get_unchecked(offset)),
+            schema,
+        );
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         let offset_expr = generate_extra_data_offset(offset, &member);
 
@@ -253,9 +258,7 @@ fn generate_extra_data_property_accessors(
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
                 #offset_expr
                 unsafe {
-                    ExtraDataValue::from_extra_data(
-                        ast.extra_data.get_unchecked(offset),
-                    )
+                    #read_expr
                 }
             }
         });
@@ -266,6 +269,7 @@ fn generate_extra_data_property_accessors(
             field_ty,
             offset,
             &member,
+            schema,
         ));
     }
 }
@@ -285,7 +289,10 @@ fn generate_extra_data_setter(
     field_ty: &TokenStream,
     offset: usize,
     member: &syn::Ident,
+    schema: &Schema,
 ) -> TokenStream {
+    let value =
+        generate_field_to_extra_data(&schema.types[field.type_id], quote!(#field_name), schema);
     let setter_name = format_ident!("set_{}", field_name);
     let invalidations = generate_invalidations(field);
     let extra_offset = generate_extra_data_offset(offset, member);
@@ -296,7 +303,7 @@ fn generate_extra_data_setter(
                 #extra_offset
                 unsafe {
                     *ast.extra_data.get_unchecked_mut(offset) =
-                        #field_name.into_extra_data();
+                        #value;
                 };
             }
         };
@@ -305,7 +312,7 @@ fn generate_extra_data_setter(
     quote! {
         #[inline]
         pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-            let field_value = #field_name.into_extra_data();
+            let field_value = #value;
             #extra_offset
             let previous = unsafe {
                 *ast.extra_data.get_unchecked(offset)

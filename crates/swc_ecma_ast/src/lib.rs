@@ -21,7 +21,7 @@ mod generated {
 }
 
 use generated::ast_payload::NodePayload;
-use node_id::ExtraData;
+use node_id::{ExtraData, SubRangeNode};
 use swc_next_allocator::{
     Allocator,
     hash_map::HashMap as ArenaHashMap,
@@ -35,7 +35,7 @@ pub use derive::*;
 pub use diagnostic::*;
 pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
-pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
+pub use node_id::{AstNode, ExtraDataId, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstUtf8, AstWtf8};
 pub use syntax::*;
@@ -214,13 +214,13 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_sub_range<N: ExtraDataValue, I: IntoIterator<Item = N>>(
+    pub fn add_sub_range<N: SubRangeNode, I: IntoIterator<Item = N>>(
         &mut self,
         iter: I,
     ) -> SubRange<N> {
         let start = self.next_extra_data_id();
         for node in iter {
-            let data = node.into_extra_data();
+            let data = ExtraData::from_raw_node_id(node.into_raw_node_id());
             self.extra_data.push(data);
         }
         SubRange::new(start, self.next_extra_data_id())
@@ -462,8 +462,8 @@ impl<'a> Ast<'a> {
 #[doc(hidden)]
 impl Ast<'_> {
     #[inline]
-    fn add_extra<T: ExtraDataValue>(&mut self, value: T) -> ExtraDataId {
-        self.extra_data.push(value.into_extra_data())
+    fn add_extra(&mut self, value: ExtraData) -> ExtraDataId {
+        self.extra_data.push(value)
     }
 
     #[inline]

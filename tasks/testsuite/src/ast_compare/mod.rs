@@ -113,17 +113,22 @@ impl<T: Compare> Compare for Option<T> {
     }
 }
 
-impl<T: Compare + ExtraDataValue> Compare for SubRange<T> {
-    fn compare(self, other: Self, asts: &AstPair<'_, '_>) -> Result<(), String> {
-        if self.len() != other.len() {
-            return Err("list length changed".into());
+macro_rules! compare_sub_range {
+    ($ty:ty) => {
+        impl Compare for SubRange<$ty> {
+            fn compare(self, other: Self, asts: &AstPair<'_, '_>) -> Result<(), String> {
+                if self.len() != other.len() {
+                    return Err("list length changed".into());
+                }
+                for (index, (left, right)) in self.iter().zip(other.iter()).enumerate() {
+                    let left = asts.left.get_node_in_sub_range(left);
+                    let right = asts.right.get_node_in_sub_range(right);
+                    left.compare(right, asts)
+                        .map_err(|error| format!("[{index}].{error}"))?;
+                }
+                Ok(())
+            }
         }
-        for (index, (left, right)) in self.iter().zip(other.iter()).enumerate() {
-            let left = asts.left.get_node_in_sub_range(left);
-            let right = asts.right.get_node_in_sub_range(right);
-            left.compare(right, asts)
-                .map_err(|error| format!("[{index}].{error}"))?;
-        }
-        Ok(())
-    }
+    };
 }
+use compare_sub_range;

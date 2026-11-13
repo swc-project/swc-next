@@ -7,7 +7,9 @@ use crate::{
     generator::ast_payload::{direct_payload_field, payload_member},
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Layout, LayoutMode, Schema},
-    util::{generate_field_to_u32, generate_field_to_u64, safe_ident},
+    util::{
+        generate_field_to_extra_data, generate_field_to_u32, generate_field_to_u64, safe_ident,
+    },
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
@@ -100,7 +102,11 @@ fn generate_build_function_inline(
                 .extra_fields()
                 .map(|(field_index, _)| {
                     let field_name = safe_ident(&ast.fields[field_index].name);
-                    quote!(#field_name)
+                    generate_field_to_extra_data(
+                        &schema.types[ast.fields[field_index].type_id],
+                        quote!(#field_name),
+                        schema,
+                    )
                 })
                 .collect::<Vec<_>>();
 
@@ -187,7 +193,7 @@ fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<Token
         ),
         values => (
             quote! {
-                let _extra_data = [#((#values).into_extra_data()),*];
+                let _extra_data = [#(#values),*];
                 let _extra_data_start = self.add_extra_data_slice(&_extra_data);
             },
             Some(quote!(_extra_data_start)),

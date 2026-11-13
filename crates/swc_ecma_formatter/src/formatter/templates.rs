@@ -1,8 +1,6 @@
 //! Borrowed template text and physical quasi/slot delimiter geometry.
 
-use swc_next_ecma_ast::{
-    ExtraDataValue, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral,
-};
+use swc_next_ecma_ast::{AstNode, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral};
 
 use super::Formatter;
 use super::comments::CommentGap;
@@ -192,7 +190,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError>
     where
-        S: GetSpan + ExtraDataValue,
+        S: GetSpan + AstNode,
     {
         if slots.is_empty() {
             return self.format_template_without_slots(span, quasis, writer);

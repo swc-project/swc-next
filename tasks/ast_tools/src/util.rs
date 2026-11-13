@@ -79,19 +79,30 @@ pub fn generate_field_to_u64(
     field_name: &syn::Ident,
     schema: &Schema,
 ) -> TokenStream {
-    debug_assert!(matches!(
-        field_ty,
-        AstType::Enum(_) | AstType::SubRange(_) | AstType::Option(_) | AstType::Primitive(_)
-    ));
-
-    if let AstType::Option(option) = field_ty
-        && schema.types[option.inner_type_id].name() == "AstUtf8"
-    {
-        return quote!(#field_name.map_or(u64::from(u32::MAX), AstUtf8::raw));
+    match field_ty {
+        AstType::Struct(_) | AstType::Enum(_) => quote!(#field_name.node_id().index() as u64),
+        AstType::SubRange(_) => quote! {
+            (#field_name.start.index() as u64) | ((#field_name.end.index() as u64) << 32)
+        },
+        AstType::Option(option) => match &schema.types[option.inner_type_id] {
+            AstType::Struct(_) | AstType::Enum(_) => quote! {
+                #field_name.map_or(u64::from(u32::MAX), |node| node.node_id().index() as u64)
+            },
+            AstType::Primitive(primitive) => match primitive.name {
+                "AstUtf8" => quote!(#field_name.map_or(u64::from(u32::MAX), AstUtf8::raw)),
+                "ImportPhase" => {
+                    quote!(#field_name.map_or(u64::from(u8::MAX), |phase| phase as u64))
+                }
+                _ => unreachable!("Unexpected option in u64 conversion"),
+            },
+            _ => unreachable!("Unexpected option in u64 conversion"),
+        },
+        AstType::Primitive(primitive) => match primitive.name {
+            "AstUtf8" => quote!(#field_name.raw()),
+            "f64" => quote!(#field_name.to_bits()),
+            _ => quote!(#field_name as u64),
+        },
     }
-
-    // Other encoded eight-byte representations share the extra-data format.
-    quote!(#field_name.into_extra_data().raw())
 }
 
 /// Generate expression to convert u32 to a field type (for inline storage)
@@ -150,8 +161,7 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
                         _ => unreachable!("Unsupported repr size: {}", size),
                     }
                 } else {
-                    // Fallback to from_extra_data for unrecognized types
-                    quote! { #prim_ty::from_extra_data(raw as u64) }
+                    unreachable!("Unexpected primitive in u32 conversion: {}", prim.name)
                 }
             }
         },
@@ -161,14 +171,119 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
 
 /// Generate an expression that reconstructs an eight-byte field from inline data.
 pub fn generate_u64_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
-    if let AstType::Option(option) = field_ty
-        && schema.types[option.inner_type_id].name() == "AstUtf8"
-    {
-        return quote! {
-            (raw != u64::from(u32::MAX)).then(|| AstUtf8::from_raw(raw))
-        };
+    match field_ty {
+        AstType::SubRange(_) => quote! {
+            SubRange::new(ExtraDataId::from_raw(raw as u32), ExtraDataId::from_raw((raw >> 32) as u32))
+        },
+        AstType::Option(option) if schema.types[option.inner_type_id].name() == "AstUtf8" => {
+            quote! {
+                (raw != u64::from(u32::MAX)).then(|| AstUtf8::from_raw(raw))
+            }
+        }
+        AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
+            let ty = field_ty.repr_ident(schema);
+            quote!(#ty::from_raw(raw))
+        }
+        AstType::Primitive(primitive) if primitive.name == "f64" => quote!(f64::from_bits(raw)),
+        _ => unreachable!("Unexpected type in u64 conversion: {}", field_ty.name()),
     }
-    quote! {
-        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
+}
+
+/// Generate a typed union value for a field stored outside the node payload.
+pub fn generate_field_to_extra_data(
+    field_ty: &AstType,
+    value: TokenStream,
+    schema: &Schema,
+) -> TokenStream {
+    let (member, value) = match field_ty {
+        AstType::Struct(_) | AstType::Enum(_) => {
+            (format_ident!("node_id"), quote!((#value).node_id()))
+        }
+        AstType::SubRange(_) => (
+            format_ident!("sub_range"),
+            quote!(SubRange::new((#value).start, (#value).end)),
+        ),
+        AstType::Option(option) => match &schema.types[option.inner_type_id] {
+            AstType::Struct(_) | AstType::Enum(_) => (
+                format_ident!("optional_node_id"),
+                quote! {
+                    (#value).map_or(u32::MAX, |node| node.node_id().index() as u32)
+                },
+            ),
+            AstType::Primitive(primitive) if primitive.name == "AstUtf8" => (
+                format_ident!("utf8"),
+                quote! {
+                    (#value).unwrap_or(AstUtf8 { start: u32::MAX, end: 0 })
+                },
+            ),
+            AstType::Primitive(primitive) if primitive.name == "ImportPhase" => (
+                format_ident!("optional_import_phase"),
+                quote! {
+                    (#value).map_or(u32::from(u8::MAX), |phase| phase as u32)
+                },
+            ),
+            _ => unreachable!("Unexpected extra-data option"),
+        },
+        AstType::Primitive(primitive) => {
+            let member = match primitive.name {
+                "AstUtf8" => format_ident!("utf8"),
+                name => unreachable!("Unexpected extra-data primitive: {name}"),
+            };
+            (member, value)
+        }
+    };
+    if matches!(field_ty, AstType::SubRange(_) | AstType::Primitive(_))
+        || matches!(field_ty, AstType::Option(option) if schema.types[option.inner_type_id].name() == "AstUtf8")
+    {
+        quote!(ExtraData { #member: #value })
+    } else {
+        quote! {{
+            let mut data = ExtraData::ZERO;
+            data.#member = #value;
+            data
+        }}
+    }
+}
+
+/// Generate a typed read from an extra-data union slot.
+pub fn generate_extra_data_to_field(
+    field_ty: &AstType,
+    data: TokenStream,
+    schema: &Schema,
+) -> TokenStream {
+    match field_ty {
+        AstType::Struct(_) | AstType::Enum(_) => {
+            let ty = field_ty.repr_ident(schema);
+            quote!(#ty((#data).node_id))
+        }
+        AstType::SubRange(_) => quote! {{
+            let range = (#data).sub_range;
+            SubRange::new(range.start, range.end)
+        }},
+        AstType::Option(option) => match &schema.types[option.inner_type_id] {
+            AstType::Struct(_) | AstType::Enum(_) => {
+                let ty = schema.types[option.inner_type_id].repr_ident(schema);
+                quote! {{
+                    let raw = (#data).optional_node_id;
+                    (raw != u32::MAX).then(|| #ty(NodeId::from_raw_unchecked(raw)))
+                }}
+            }
+            AstType::Primitive(primitive) if primitive.name == "AstUtf8" => quote! {{
+                let value = (#data).utf8;
+                (value.start != u32::MAX || value.end != 0).then_some(value)
+            }},
+            AstType::Primitive(primitive) if primitive.name == "ImportPhase" => quote! {{
+                let raw = (#data).optional_import_phase as u8;
+                (raw != u8::MAX).then(|| std::mem::transmute::<u8, ImportPhase>(raw))
+            }},
+            _ => unreachable!("Unexpected extra-data option"),
+        },
+        AstType::Primitive(primitive) => {
+            let member = match primitive.name {
+                "AstUtf8" => format_ident!("utf8"),
+                name => unreachable!("Unexpected extra-data primitive: {name}"),
+            };
+            quote!((#data).#member)
+        }
     }
 }

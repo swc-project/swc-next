@@ -1,30 +1,4 @@
-use std::mem;
-
 use swc_next_ast_macros::{ast, estree};
-
-use crate::{
-    ExtraData,
-    node_id::{ExtraDataValue, sealed::ExtraDataValue as SealedExtraDataValue},
-};
-
-macro_rules! impl_extra_data_value {
-    ($($ty:ty),+ $(,)?) => {
-        $(
-            impl SealedExtraDataValue for $ty {}
-            impl ExtraDataValue for $ty {
-                #[inline]
-                fn into_extra_data(self) -> ExtraData {
-                    ExtraData::from_raw(self as u64)
-                }
-
-                #[inline]
-                unsafe fn from_extra_data(data: &ExtraData) -> Self {
-                    unsafe { mem::transmute(data.raw() as u8) }
-                }
-            }
-        )+
-    };
-}
 
 /// The prefix operator used by `ts_type_operator`.
 ///
@@ -87,13 +61,6 @@ pub enum TsMappedTypeModifier {
     #[estree(rename = "-")]
     Minus,
 }
-
-impl_extra_data_value!(
-    TsTypeOperatorKind,
-    TsMethodSignatureKind,
-    TsModuleDeclarationKind,
-    TsMappedTypeModifier,
-);
 
 #[ast(repr)]
 pub enum TsType {
