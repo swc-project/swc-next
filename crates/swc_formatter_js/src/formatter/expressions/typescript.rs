@@ -10,8 +10,8 @@ use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{
-    AccessKind, ExpressionContext, ExpressionOutput, ExpressionPosition, ParenthesesOwner,
-    TailOwner,
+    AccessKind, ExpressionContext, ExpressionLayout, ExpressionOutput, ExpressionPosition,
+    ParenthesesOwner, TailOwner,
 };
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
@@ -28,7 +28,7 @@ use crate::formatter::types::{
 };
 use crate::{
     FormatError,
-    document::{GroupRequest, Writer, WriterExt},
+    document::{Fragment, GroupRequest, Writer, WriterExt},
 };
 
 #[derive(Clone, Copy)]
@@ -202,6 +202,24 @@ struct BinaryTypeBoundary<'ast> {
     operator: TypeBinaryOperator,
     left_mode: ContentMode,
     layout: BinaryTypeLayout<'ast>,
+}
+
+pub(super) struct PreparedBinaryTypeExpression<'ast> {
+    boundary: BinaryTypeBoundary<'ast>,
+    annotation: PreparedType,
+    tail_owner: TailOwner,
+}
+
+impl PreparedBinaryTypeExpression<'_> {
+    pub(super) fn operand_mode(&self) -> ContentMode {
+        self.boundary.left_mode
+    }
+}
+
+pub(super) struct RecordedTypeWrappedArgument<'ast> {
+    pub(super) normal: Fragment<'ast>,
+    pub(super) forced: Option<Fragment<'ast>>,
+    pub(super) tail: Option<ExpressionTail<'ast>>,
 }
 
 enum BinaryTypeLayout<'ast> {
@@ -551,10 +569,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
-        let boundary = self.prepare_binary_type_boundary(
+        let source = self.prepare_binary_type_expression(
             expression,
-            &mut type_node,
+            annotation,
             operator,
             context.tail_owner,
         )?;
@@ -565,19 +582,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context
                         .type_operand(
                             ExpressionPosition::TypeBinaryOperand,
-                            boundary.left_mode,
+                            source.operand_mode(),
                             TailOwner::ParentOperation,
                         )
                         .with_conditional_envelope(context.conditional_envelope.terminal_head()),
                     writer,
                 )?;
-                self.format_expression_tail(tail, writer)?;
-                self.format_binary_type_right_output(
-                    boundary,
-                    type_node,
-                    context.tail_owner == TailOwner::ParentOperation,
-                    writer,
-                )
+                self.format_binary_type_expression_suffix(source, tail, writer)
             };
             let receiver = context.is_call_or_member_receiver()
                 || matches!(context.position, ExpressionPosition::NewCallee);
@@ -591,6 +602,76 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 write(writer)
             }
+        })
+    }
+
+    pub(super) fn prepare_binary_type_expression(
+        &self,
+        expression: Expr,
+        annotation: TsType,
+        operator: TypeBinaryOperator,
+        tail_owner: TailOwner,
+    ) -> Result<PreparedBinaryTypeExpression<'ast>, FormatError> {
+        let mut annotation = self.prepare_type(annotation, ContentMode::Formatted);
+        let boundary =
+            self.prepare_binary_type_boundary(expression, &mut annotation, operator, tail_owner)?;
+        Ok(PreparedBinaryTypeExpression {
+            boundary,
+            annotation,
+            tail_owner,
+        })
+    }
+
+    fn format_binary_type_expression_suffix(
+        &mut self,
+        source: PreparedBinaryTypeExpression<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_tail(tail, writer)?;
+        self.format_binary_type_right_output(
+            source.boundary,
+            source.annotation,
+            source.tail_owner == TailOwner::ParentOperation,
+            writer,
+        )
+    }
+
+    pub(super) fn record_type_wrapped_argument(
+        &mut self,
+        mut normal: Fragment<'ast>,
+        mut forced: Option<Fragment<'ast>>,
+        wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
+        layout: ExpressionLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedTypeWrappedArgument<'ast>, FormatError> {
+        let mut tail = None;
+        if !wrappers.is_empty() {
+            for source in wrappers.into_iter().rev() {
+                let (suffix, output) = writer.record_with_value(|writer| {
+                    self.format_binary_type_expression_suffix(source, tail.take(), writer)
+                })?;
+                tail = output.pending;
+                normal = writer.join_fragments(normal, false, suffix);
+                normal = writer.group_fragment(false, normal);
+                forced = forced.map(|value| {
+                    let value = writer.join_fragments(value, false, suffix);
+                    writer.group_fragment(false, value)
+                });
+            }
+            if layout == ExpressionLayout::Flat {
+                let (value, ()) = writer.record_with_value(|writer| {
+                    layout.write(writer, |writer| writer.write_fragment(normal));
+                    Ok::<_, FormatError>(())
+                })?;
+                normal = value;
+                forced = None;
+            }
+        }
+        Ok(RecordedTypeWrappedArgument {
+            normal,
+            forced,
+            tail,
         })
     }
 

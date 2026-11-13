@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function outer() {
+	let [vtContext, setVtContext] = React.useState<ViewTransitionContextObject>({ isTransitioning: false });
+}
+---------- Options ----------
+{"printWidth":80,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function outer() {
+	let [vtContext, setVtContext] = React.useState<ViewTransitionContextObject>(
+		{ isTransitioning: false },
+	);
+}

@@ -15,8 +15,11 @@ use super::arguments::{
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
+use super::parentheses::ExpressionContent;
+use super::typescript::{PreparedBinaryTypeExpression, TypeBinaryOperator};
 use super::{
     ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
+    TailOwner,
 };
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
@@ -59,23 +62,25 @@ pub(super) struct SelectedCallback {
     prepared_body: Option<PreparedArrowBody>,
 }
 
-pub(super) struct SelectedObject {
+pub(super) struct SelectedObject<'ast> {
     argument: Argument,
     expression: Expr,
     object: ObjectExpression,
+    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) struct SelectedArray {
+pub(super) struct SelectedArray<'ast> {
     argument: Argument,
     expression: Expr,
     array: ArrayExpression,
     arity: ArrayArgumentArity,
+    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) enum SelectedArgument {
+pub(super) enum SelectedArgument<'ast> {
     Callback(SelectedCallback),
-    FinalObject(SelectedObject),
-    FinalArray(SelectedArray),
+    FinalObject(SelectedObject<'ast>),
+    FinalArray(SelectedArray<'ast>),
 }
 
 enum SelectionOutcome {
@@ -409,6 +414,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         };
         let content = self.expression_content(expression);
+        self.callback_content(&content)
+    }
+
+    fn callback_content(&self, content: &ExpressionContent) -> Option<Callback> {
         if let Some(boundary) = content.parentheses.map(|removed| removed.source)
             && (!self
                 .comments
@@ -484,8 +493,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn select_argument_layout(
         &self,
         arguments: SubRange<Argument>,
-        allow_final_collection: bool,
-    ) -> Option<SelectedArgument> {
+    ) -> Option<SelectedArgument<'ast>> {
         let ast = self.ast;
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let first = items.next()?;
@@ -509,15 +517,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ArgumentData::Expr(expression) = data else {
             return None;
         };
-        let content = self.expression_content(expression);
-        let allow_final_collection = allow_final_collection
-            && content
+        let mut content = self.expression_content(expression);
+        let mut wrappers = Vec::new();
+        let mut context = ExpressionContext::at(ExpressionPosition::Nested);
+        let mut allow_final_collection = content
+            .parentheses
+            .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
+        while arguments.len() > 1 && allow_final_collection {
+            let (operand, annotation, operator) = match content.data {
+                ExprData::TsAsExpression(assertion) => (
+                    assertion.expression(ast),
+                    assertion.type_annotation(ast),
+                    TypeBinaryOperator::As,
+                ),
+                ExprData::TsSatisfiesExpression(assertion) => (
+                    assertion.expression(ast),
+                    assertion.type_annotation(ast),
+                    TypeBinaryOperator::Satisfies,
+                ),
+                _ => break,
+            };
+            let source = self
+                .prepare_binary_type_expression(operand, annotation, operator, context.tail_owner)
+                .ok()?;
+            if source.operand_mode() != ContentMode::Formatted {
+                return None;
+            }
+            wrappers.push(source);
+            content = self.expression_content(operand);
+            allow_final_collection = content
                 .parentheses
                 .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
+            context = context.type_operand(
+                ExpressionPosition::TypeBinaryOperand,
+                ContentMode::Formatted,
+                TailOwner::ParentOperation,
+            );
+        }
         let callback = match content.data {
             ExprData::ArrowFunctionExpression(_)
             | ExprData::Function(_)
-            | ExprData::ParenthesizedExpression(_) => self.callback_data(data)?,
+            | ExprData::ParenthesizedExpression(_) => {
+                if wrappers.is_empty() {
+                    self.callback_content(&content)?
+                } else {
+                    self.callback_data(data)?
+                }
+            }
             ExprData::ObjectExpression(object) if allow_final_collection => {
                 if let Some(previous) = items.next_back()
                     && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
@@ -526,7 +572,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return None;
                 }
                 let span = object.span(ast);
-                if object.properties(ast).is_empty()
+                if arguments.len() > 1
+                    && object.properties(ast).is_empty()
                     && self
                         .comments
                         .in_range(Span::new(span.start + 1, span.end - 1))
@@ -538,6 +585,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     argument,
                     expression,
                     object,
+                    wrappers,
                 }));
             }
             ExprData::ArrayExpression(array) if allow_final_collection => {
@@ -553,7 +601,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 let span = array.span(ast);
-                if array.elements(ast).is_empty()
+                if arguments.len() > 1
+                    && array.elements(ast).is_empty()
                     && self
                         .comments
                         .in_range(Span::new(span.start + 1, span.end - 1))
@@ -570,6 +619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         ArrayArgumentArity::Multiple
                     },
+                    wrappers,
                 }));
             }
             _ => return None,
@@ -959,7 +1009,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         arguments: SubRange<Argument>,
         content: Span,
         head: ArgumentHead,
-        mut selected: SelectedArgument,
+        mut selected: SelectedArgument<'ast>,
         chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -1056,10 +1106,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     let object =
                         self.record_object_argument(selected.expression, selected.object, writer)?;
+                    let object = self.record_type_wrapped_argument(
+                        object.normal,
+                        object.forced,
+                        std::mem::take(&mut selected.wrappers),
+                        self.expression_layout(selected.expression),
+                        writer,
+                    )?;
                     outcome = SelectionOutcome::FinalObject {
                         has_forced: object.forced.is_some(),
                     };
-                    (RecordedValue::FinalObject(object), None)
+                    (
+                        RecordedValue::FinalObject(RecordedObject {
+                            normal: object.normal,
+                            forced: object.forced,
+                        }),
+                        object.tail,
+                    )
                 }
                 SelectedArgument::FinalArray(selected)
                     if argument == selected.argument
@@ -1073,14 +1136,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )? {
                         RecordedArrayArgument::Selected(array) => {
+                            let array = self.record_type_wrapped_argument(
+                                array.normal,
+                                array.forced,
+                                std::mem::take(&mut selected.wrappers),
+                                self.expression_layout(selected.expression),
+                                writer,
+                            )?;
                             outcome = SelectionOutcome::FinalArray {
                                 has_forced: array.forced.is_some(),
                             };
-                            (RecordedValue::FinalArray(array), None)
+                            (
+                                RecordedValue::FinalArray(RecordedArray {
+                                    normal: array.normal,
+                                    forced: array.forced,
+                                }),
+                                array.tail,
+                            )
                         }
                         RecordedArrayArgument::Ordinary(value) => {
+                            let value = self.record_type_wrapped_argument(
+                                value,
+                                None,
+                                std::mem::take(&mut selected.wrappers),
+                                self.expression_layout(selected.expression),
+                                writer,
+                            )?;
                             outcome = SelectionOutcome::Ordinary;
-                            (RecordedValue::Ordinary(value), None)
+                            (RecordedValue::Ordinary(value.normal), value.tail)
                         }
                     }
                 }
