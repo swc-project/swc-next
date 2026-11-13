@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = <div><span /></div> || fallback;
+const flat = <div /> || fallback;
+---------- Options ----------
+{}
+---------- Output ----------
+const value =
+  (
+    <div>
+      <span />
+    </div>
+  ) || fallback;
+const flat = <div /> || fallback;
