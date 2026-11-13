@@ -4085,7 +4085,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let after = self
             .comments
             .in_range(Span::new(child_span.end, span.end - 1));
-        let sensitive = self.diagnostic_range_is_sensitive(span);
+        // Interior directives belong to the child, unless a covered delimiter
+        // or an ignored/commented boundary needs the original outer frame.
+        let sensitive = self.diagnostic_line_is_sensitive(span.start)
+            || self.diagnostic_line_is_covered(span.end - 1)
+            || (source_owner.is_some() || !before.is_empty() || !after.is_empty())
+                && self.diagnostic_range_is_sensitive(span);
         // Retained attachment pairs keep their source-envelope spine. A retained
         // singleton operator keeps its leading comment carrier because attachment
         // projects through that operator. Raw content ownership stays separate.

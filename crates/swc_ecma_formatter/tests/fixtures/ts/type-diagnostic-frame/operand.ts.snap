@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = keyof ({ /* @ts-ignore */ a: string });
+const value: Missing = 0;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = keyof { /* @ts-ignore */ a: string };
+const value: Missing = 0;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = keyof {
+  /* @ts-ignore */ a: string; };
+const value: Missing = 0;
