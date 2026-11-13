@@ -20,3 +20,12 @@ available for callers that know whether TypeScript support is needed.
 Node spans use UTF-16 offsets. String literal values and cooked template values
 preserve lone surrogates through the WTF-8 pool. UTF-8 fields, including
 identifiers and raw source text, replace lone surrogates with U+FFFD.
+
+`@swc-next/encoder/transform` provides source transformation codecs:
+`encodeSource`, `encodeTransformApiOptions`, and `decodeJsOutput`. Pass
+`encodeParserConfig` and `encodeGeneratorConfig` to `encodeTransformApiOptions`;
+the caller supplies these functions so encoder and decoder stay independent.
+
+Source and configuration encoders each reuse scratch storage. Consume the returned
+buffers synchronously before calling the same encoder again. Configuration
+encoding is not reentrant, including through another `transformSync` entry point.

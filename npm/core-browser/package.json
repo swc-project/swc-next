@@ -37,7 +37,6 @@
   "dependencies": {
     "@swc-next/decoder": "workspace:*",
     "@swc-next/encoder": "workspace:*",
-    "@swc-next/transformer-bridge": "workspace:*",
     "@swc-next/types": "workspace:*"
   },
   "keywords": [

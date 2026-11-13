@@ -2,7 +2,7 @@ import {
   encodeSource,
   encodeTransformApiOptions,
   decodeJsOutput,
-} from "@swc-next/transformer-bridge";
+} from "@swc-next/encoder/transform";
 import {
   parseSync as __parseSync,
   generateSync as __generateSync,
@@ -50,7 +50,7 @@ export function generateSync(program, options) {
 }
 
 export function transformSync(source, options) {
-  const config = encodeTransformApiOptions(options);
+  const config = encodeTransformApiOptions(options, encodeParserConfig, encodeGeneratorConfig);
   const output = __transformSync(encodeSource(source), source.length, config);
   return decodeJsOutput(output);
 }

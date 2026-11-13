@@ -5,7 +5,8 @@ import { transformSync as transformCore } from "../src-js/index.js";
 import { transformSync as transformStandalone } from "../../transformer/src-js/index.js";
 import { parseSync as parseBinding, transformSync as transformBinding } from "../src-js/binding.js";
 import { decode, encodeParserConfig } from "@swc-next/decoder";
-import { encodeSource, encodeTransformApiOptions, decodeJsOutput } from "@swc-next/transformer-bridge";
+import { encodeGeneratorConfig } from "@swc-next/encoder";
+import { encodeSource, encodeTransformApiOptions, decodeJsOutput } from "@swc-next/encoder/transform";
 
 nodeTest("transform bridge encodes source as UTF-8 across buffer reuse", () => {
   assert.equal(encodeSource("").byteLength, 0);
@@ -19,23 +20,23 @@ nodeTest("transform bridge encodes source as UTF-8 across buffer reuse", () => {
 });
 
 nodeTest("transform bridge uses packed options and binary output", () => {
-  const config = encodeTransformApiOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } });
+  const config = encodeTransformApiOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } }, encodeParserConfig, encodeGeneratorConfig);
   const output = transformBinding(encodeSource('const text: string = "雪😀";'), 'const text: string = "雪😀";'.length, config);
   assert.ok(output instanceof Uint8Array);
   const result = decodeJsOutput(output);
   assert.equal(result.code, 'const text="雪😀";');
   assert.deepEqual(JSON.parse(result.map).sources, ["组件😀.ts"]);
 
-  const empty = encodeTransformApiOptions({});
+  const empty = encodeTransformApiOptions({}, encodeParserConfig, encodeGeneratorConfig);
   assert.equal(empty.byteLength, 16);
   assert.equal(new DataView(empty.buffer, empty.byteOffset).getUint32(0, true), 1);
 });
 
 nodeTest("transform option scratch buffers recover after growth and validation errors", () => {
-  encodeTransformApiOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true });
-  assert.throws(() => encodeTransformApiOptions({ sourceMap: 1 }), TypeError);
+  encodeTransformApiOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true }, encodeParserConfig, encodeGeneratorConfig);
+  assert.throws(() => encodeTransformApiOptions({ sourceMap: 1 }, encodeParserConfig, encodeGeneratorConfig), TypeError);
   const source = "const x = 1;";
-  const output = transformBinding(Buffer.from(source), source.length, encodeTransformApiOptions({}));
+  const output = transformBinding(Buffer.from(source), source.length, encodeTransformApiOptions({}, encodeParserConfig, encodeGeneratorConfig));
   const result = decodeJsOutput(output);
   assert.equal(result.code, "const x = 1;\n");
   assert.deepEqual(result.diagnostics, []);
@@ -51,7 +52,7 @@ nodeTest("parser and transform diagnostics preserve metadata in offset buffers",
     const sourceBytes = Buffer.from(source);
     const parser = { lang };
     const parsedBuffer = parseBinding(sourceBytes, source.length, encodeParserConfig(parser));
-    const transformedBuffer = transformBinding(sourceBytes, source.length, encodeTransformApiOptions({ parser }));
+    const transformedBuffer = transformBinding(sourceBytes, source.length, encodeTransformApiOptions({ parser }, encodeParserConfig, encodeGeneratorConfig));
     const parsed = decode(offsetBuffer(parsedBuffer), source, sourceBytes);
     const transformed = decodeJsOutput(offsetBuffer(transformedBuffer));
     assert.ok(transformed.diagnostics.length > 0);

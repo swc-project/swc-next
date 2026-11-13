@@ -1,6 +1,3 @@
-import { encodeParserConfig } from "@swc-next/decoder";
-import { encodeGeneratorConfig } from "@swc-next/encoder";
-
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
 const encoder = new TextEncoder();
@@ -57,7 +54,7 @@ let view;
  * The returned buffer is valid until the next call. Option getters and Proxy traps
  * must not reenter this encoder, including via any transformSync entry point.
  */
-export function encodeTransformApiOptions(options) {
+export function encodeTransformApiOptions(options, encodeParserConfig, encodeGeneratorConfig) {
   if (options == null) return empty;
   object(options, rootKeys, "options");
   const parser = options.parser;
