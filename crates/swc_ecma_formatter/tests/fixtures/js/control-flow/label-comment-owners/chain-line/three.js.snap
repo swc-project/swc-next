@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a:
+b:
+c: // x
+while (ready) step();
+---------- Options ----------
+{}
+---------- Output ----------
+// x
+a: b: c: while (ready) step();
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+// x
+a: b: c: while (
+  ready
+)
+  step();
