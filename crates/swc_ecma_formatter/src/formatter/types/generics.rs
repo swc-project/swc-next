@@ -2,9 +2,9 @@
 
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, ClassBody, Comment, CommentKind, FunctionBody, GetSpan,
-    ObjectExpression, Span, TemplateElement, TsLiteralData, TsMappedType, TsType, TsTypeData,
-    TsTypeLiteral, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    TsTypeReference, UnaryOperator, Visit, VisitWith,
+    ObjectExpression, Span, SubRange, TemplateElement, TsLiteralData, TsMappedType, TsType,
+    TsTypeData, TsTypeLiteral, TsTypeParameter, TsTypeParameterDeclaration,
+    TsTypeParameterInstantiation, TsTypeReference, UnaryOperator, Visit, VisitWith,
 };
 
 use super::compound::PendingTypeHead;
@@ -18,13 +18,14 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{
-    ArgumentLayout, DelimitedClose, FollowingItem, Separator, TrailingCommaPolicy,
+    ArgumentLayout, DelimitedClose, FollowingItem, ItemBoundary, PreparedItem, Separator,
+    TrailingCommaPolicy,
 };
 use crate::formatter::source::is_source_horizontal_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{
     FormatError, TrailingCommas,
-    document::{ConditionTarget, GroupId, Writer},
+    document::{ConditionTarget, GroupId, GroupRequest, GroupScope, IndentScope, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -81,6 +82,15 @@ impl GenericMember {
 enum PreparedGenericMember {
     Type(PreparedType),
     Parameter(TsTypeParameter, TypeParameterContext),
+}
+
+struct TypeReferenceFrame {
+    content: Span,
+    remaining: SubRange<TsType>,
+    group: GroupScope,
+    indent: IndentScope,
+    boundary: Option<ItemBoundary>,
+    pending: Option<PreparedItem>,
 }
 
 enum TypeListPrefixLayout<'ast> {
@@ -407,7 +417,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<R, FormatError> {
         let ast = self.ast;
         let name = node.type_name(ast);
-        let arguments = node.type_arguments(ast).map(|node| {
+        let arguments = node.type_arguments(ast);
+        if owner == TypeArgumentOwner::Ordinary
+            && let Some(arguments) = arguments
+            && self.has_nested_type_arguments(arguments)
+            && {
+                let span = node.span(ast);
+                let comments = ast.comments();
+                let next = comments.partition_point(|comment| comment.span.end <= span.start);
+                comments
+                    .get(next)
+                    .is_none_or(|comment| comment.span.start >= span.end)
+            }
+            && !self.diagnostic_range_is_sensitive(node.span(ast))
+        {
+            self.format_type_reference_tree(node, arguments, writer)?;
+            return Ok(finish());
+        }
+        let arguments = arguments.map(|node| {
             let prefix = self.prepare_type_list_prefix(
                 Span::new(name.span(ast).end, node.span(ast).start),
                 TypeListKind::Arguments,
@@ -424,6 +451,143 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_type_arguments_with_owner_body(arguments, mode, owner, writer)?;
         }
         Ok(finish())
+    }
+
+    fn has_nested_type_arguments(&self, arguments: TsTypeParameterInstantiation) -> bool {
+        arguments.params(self.ast).iter().any(|argument| {
+            let argument = self.ast.get_node_in_sub_range(argument);
+            matches!(self.ast.ts_type_data(argument), TsTypeData::TsTypeReference(reference)
+                if reference.type_arguments(self.ast).is_some())
+        })
+    }
+
+    fn begin_type_reference_frame(
+        &mut self,
+        reference: TsTypeReference,
+        arguments: TsTypeParameterInstantiation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeReferenceFrame, FormatError> {
+        let ast = self.ast;
+        let name = reference.type_name(ast);
+        let prefix = self.prepare_type_list_prefix(
+            Span::new(name.span(ast).end, arguments.span(ast).start),
+            TypeListKind::Arguments,
+        );
+        self.format_type_name(name, ContentMode::Formatted, writer)?;
+        self.format_type_list_prefix(&prefix, writer)?;
+        let group = writer.begin_group(GroupRequest::Auto, None);
+        writer.text("<");
+        let indent = writer.begin_indent();
+        writer.soft_line();
+        let span = arguments.span(ast);
+        Ok(TypeReferenceFrame {
+            content: Span::new(span.start + 1, span.end - 1),
+            remaining: arguments.params(ast),
+            group,
+            indent,
+            boundary: None,
+            pending: None,
+        })
+    }
+
+    /// Source-clear lists containing another generic reference cannot hug their
+    /// only member. Resume their ordinary item/comma protocol on an explicit
+    /// stack while writing group and indent scopes directly into the same Doc.
+    fn format_type_reference_tree(
+        &mut self,
+        reference: TsTypeReference,
+        arguments: TsTypeParameterInstantiation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let ast = self.ast;
+        let mut frames = vec![self.begin_type_reference_frame(reference, arguments, writer)?];
+        while let Some(frame) = frames.last_mut() {
+            if let Some(item) = frame.pending.take() {
+                frame.boundary = Some(self.finish_delimited_item_with_closing(
+                    item,
+                    None,
+                    DelimitedClose::Source,
+                    writer,
+                )?);
+            }
+            if frame.remaining.is_empty() {
+                let Some(frame) = frames.pop() else {
+                    unreachable!("the current reference retains its continuation frame");
+                };
+                writer.end_indent(frame.indent);
+                let (end, closing) = frame
+                    .boundary
+                    .map_or((frame.content.start, None), |boundary| {
+                        (boundary.end, boundary.terminal_close)
+                    });
+                closing
+                    .unwrap_or_else(|| {
+                        DelimitedClose::Source.constraint(self, end, frame.content.end)
+                    })
+                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                writer.text(">");
+                writer.end_group(frame.group);
+                continue;
+            }
+            let argument = ast.get_node_in_sub_range(frame.remaining.remove_first());
+            let member_span = argument.span(ast);
+            let (end, transition) = if let Some(boundary) = frame.boundary.take() {
+                ArgumentLayout::Lines.separator(
+                    boundary.separator,
+                    self.source_separator_constraint(
+                        boundary.end,
+                        member_span.start,
+                        boundary.transition.as_ref(),
+                    ),
+                    writer,
+                );
+                (boundary.end, boundary.transition)
+            } else {
+                (frame.content.start, None)
+            };
+            let following = frame.remaining.first().map_or(FollowingItem::End, |next| {
+                let next: TsType = ast.get_node_in_sub_range(next);
+                FollowingItem::Node(next.span(ast))
+            });
+            let mut item = self.prepare_delimited_item(
+                member_span,
+                following,
+                Span::new(end, frame.content.end),
+                false,
+                transition,
+                writer,
+            )?;
+            item.set_canonical_separator_spacing();
+            item.set_trailing_comma(TrailingCommaPolicy::Forbidden);
+            item.set_leading_mode(ContentMode::Formatted);
+            let mut node = self.prepare_type(argument, ContentMode::Formatted);
+            if item.mode == ContentMode::Verbatim {
+                node.source_owner = Some(node.node);
+            }
+            if node.source_owner.is_none()
+                && node.source_head.is_none()
+                && let TsTypeData::TsTypeReference(reference) = node.data
+                && let Some(arguments) = reference.type_arguments(ast)
+                && self.has_nested_type_arguments(arguments)
+            {
+                frame.pending = Some(item);
+                frames.push(self.begin_type_reference_frame(reference, arguments, writer)?);
+                continue;
+            }
+            let pending = self.format_prepared_type_with_layout(
+                node,
+                TypeContext::Root,
+                TypeLayout::CallerIndented,
+                writer,
+            )?;
+            frame.boundary = Some(self.finish_delimited_item_with_closing(
+                item,
+                pending,
+                DelimitedClose::Source,
+                writer,
+            )?);
+        }
+        Ok(())
     }
 
     pub(in crate::formatter) fn format_type_arguments(

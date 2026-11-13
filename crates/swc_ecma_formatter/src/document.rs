@@ -5,8 +5,8 @@ use std::convert::Infallible;
 use swc_next_formatter_core::FillSeparatorPolicy;
 
 pub(crate) use swc_next_formatter_core::{
-    ConditionTarget, FillEntry, FlatFragment, Fragment, GroupId, GroupRequest, NeutralFragment,
-    RecordedGroup, Writer,
+    ConditionTarget, FillEntry, FlatFragment, Fragment, GroupId, GroupRequest, GroupScope,
+    IndentScope, NeutralFragment, RecordedGroup, Writer,
 };
 
 pub(crate) trait WriterExt<'a> {
