@@ -1209,7 +1209,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         TypeContext::Root,
                         writer,
                     )?;
-                    return self.format_type_alias_head(recorded.head, recorded.content, writer);
+                    return self.format_type_alias_head(
+                        recorded.head,
+                        recorded.content,
+                        rhs_layout,
+                        writer,
+                    );
                 }
                 return writer.group(false, |writer| {
                     rhs_layout.write(
@@ -1277,7 +1282,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )
                 })?;
-                return self.format_type_alias_head(head, content, writer);
+                return self.format_type_alias_head(head, content, rhs_layout, writer);
             }
             self.format_type_boundary(boundary, writer)?;
             return self.format_prepared_type_parentheses(
@@ -1323,7 +1328,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     self.format_single_compound_head(single, TypeContext::Root, writer)
                 })?;
-                return self.format_type_alias_head(head, content, writer);
+                return self.format_type_alias_head(head, content, rhs_layout, writer);
             }
             if matches!(node.data, TsTypeData::TsUnionType(_)) {
                 self.format_comment_boundary(before, writer)?;
@@ -1394,7 +1399,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )
             })?;
-            return self.format_type_alias_head(head, content, writer);
+            return self.format_type_alias_head(head, content, rhs_layout, writer);
         }
         let mut union = match node.data {
             TsTypeData::TsUnionType(union) => {
@@ -1414,6 +1419,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let intersection_head = intersection
             .as_ref()
             .and_then(|intersection| self.intersection_movable_head(intersection));
+        if node.source_owner.is_none()
+            && let Some(prepared) = union.as_mut()
+            && let Some(prefix) = self.prepare_union_inline_packet(prepared, after)
+            && let Some(prepared) = union.take()
+        {
+            self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+            let (head, ()) = writer.record_with_value(|writer| {
+                self.format_comment_boundary_with_layout(
+                    &prefix.boundary,
+                    CommentRunLayout::GroupedLeading(prefix.next_start),
+                    writer,
+                )
+            })?;
+            return self.format_type_alias_head_with_opening(
+                head,
+                PreparedTypeContent::Union(prepared),
+                prefix.opening,
+                rhs_layout,
+                writer,
+            );
+        }
         if node.source_owner.is_none()
             && (!after.is_empty() || intersection_head.is_some())
             && matches!(
@@ -1472,14 +1498,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 Ok::<_, FormatError>(content)
             })?;
-            return self.format_type_alias_head(head, content, writer);
+            return self.format_type_alias_head(head, content, rhs_layout, writer);
         }
         if let Some(intersection) = intersection {
-            if before.is_empty()
-                && after.is_empty()
-                && !before.gap().requires_line()
-                && !after.gap().requires_line()
-            {
+            if after.is_empty() && !after.gap().requires_line() {
                 self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
                 return writer.group(false, |writer| {
                     rhs_layout.write(
@@ -1518,11 +1540,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         let Some(union) = union else {
-            if before.is_empty()
-                && after.is_empty()
-                && !before.gap().requires_line()
-                && !after.gap().requires_line()
-            {
+            if after.is_empty() && !after.gap().requires_line() {
                 let rhs_layout = match node.data {
                     TsTypeData::TsConditionalType(conditional) => self
                         .conditional_type_rhs_layout(conditional)
@@ -1607,6 +1625,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         head: Fragment<'ast>,
         content: compound::PreparedTypeContent<'ast>,
+        rhs_layout: RhsLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_type_alias_head_with_opening(
+            head,
+            content,
+            LineConstraint::Unconstrained,
+            rhs_layout,
+            writer,
+        )
+    }
+
+    fn format_type_alias_head_with_opening(
+        &mut self,
+        head: Fragment<'ast>,
+        content: compound::PreparedTypeContent<'ast>,
+        opening: LineConstraint,
+        rhs_layout: RhsLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let layout = content.alias_layout();
@@ -1614,15 +1650,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if expand || layout == TypeLayout::AliasRhs {
             writer.group(false, |writer| {
                 writer.indent(|writer| {
-                    writer.line();
+                    opening.write(writer, FlatSeparator::Space, Writer::line);
                     writer.write_fragment(head);
                     self.format_prepared_type_content(content, TypeContext::Root, layout, writer)
                 })
             })
         } else {
-            writer.space();
-            writer.group(false, |writer| writer.write_fragment(head));
-            self.format_prepared_type_content(content, TypeContext::Root, layout, writer)
+            let rhs_layout = match &content {
+                PreparedTypeContent::Conditional(conditional) => self
+                    .conditional_type_rhs_layout(conditional.node())
+                    .unwrap_or(rhs_layout),
+                _ => rhs_layout,
+            };
+            writer.group(false, |writer| {
+                rhs_layout.write(
+                    writer,
+                    |writer| match rhs_layout {
+                        RhsLayout::NeverBreakAfterOperator => {
+                            opening.write(writer, FlatSeparator::Space, Writer::space)
+                        }
+                        RhsLayout::Fluid | RhsLayout::BreakAfterOperator => {
+                            opening.write(writer, FlatSeparator::Space, Writer::line)
+                        }
+                    },
+                    |writer| {
+                        writer.group(false, |writer| writer.write_fragment(head));
+                        self.format_prepared_type_content(
+                            content,
+                            TypeContext::Root,
+                            layout,
+                            writer,
+                        )
+                    },
+                )
+            })
         }
     }
 

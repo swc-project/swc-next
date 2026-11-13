@@ -160,6 +160,12 @@ enum UnionMemberPrefix<'ast> {
     },
 }
 
+pub(super) struct PreparedUnionHeadPrefix<'ast> {
+    pub(super) boundary: CommentBoundary<'ast>,
+    pub(super) next_start: u32,
+    pub(super) opening: LineConstraint,
+}
+
 impl UnionMemberPrefix<'_> {
     fn boundary(&self) -> &CommentBoundary<'_> {
         match self {
@@ -2089,6 +2095,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .iter()
                 .all(|comment| comment.kind == CommentKind::Block)
                 && self.line_breaks(first.span.start, next_start) == 0
+        })
+    }
+
+    /// Keep the exterior prefix while returning an adjacent run to the member owner.
+    pub(super) fn prepare_union_inline_packet(
+        &self,
+        union: &mut PreparedUnion<'ast>,
+        boundary: &CommentBoundary<'ast>,
+    ) -> Option<PreparedUnionHeadPrefix<'ast>> {
+        let comments = boundary.comments();
+        if comments.is_empty() {
+            return None;
+        }
+        if !union.accepts_inline_head() {
+            return None;
+        }
+        let target = union.inline_head_target?;
+        let mut split = comments.len();
+        let mut next = target.start;
+        while split != 0 {
+            let comment = comments[split - 1];
+            if comment.kind != CommentKind::Block || self.line_breaks(comment.span.end, next) != 0 {
+                break;
+            }
+            if self.line_breaks(comment.span.start, comment.span.end) != 0 {
+                return None;
+            }
+            next = comment.span.start;
+            split -= 1;
+        }
+        let (prefix, member) = comments.split_at(split);
+        let first = member.first()?;
+        if !matches!(
+            self.comment_binding(
+                member,
+                Span::new(first.span.start, target.start),
+                Some(target),
+            ),
+            CommentBinding::Unbound
+        ) {
+            return None;
+        }
+        let prefix = self.prepare_comment_boundary(prefix, boundary.source_end(), first.span.start);
+        let opening = self.line_constraint(boundary.source_end(), comments[0].span.start);
+        let next_start = first.span.start;
+        let member = self.prepare_comment_boundary(member, first.span.start, target.start);
+        union.set_inline_head(member, target.start);
+        Some(PreparedUnionHeadPrefix {
+            boundary: prefix,
+            next_start,
+            opening,
         })
     }
 
