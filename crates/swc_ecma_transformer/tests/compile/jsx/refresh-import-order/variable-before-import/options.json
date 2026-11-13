@@ -1,0 +1,12 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "refresh": {}
+    },
+    "typescript": false
+  }
+}

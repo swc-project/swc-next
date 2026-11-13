@@ -1,0 +1,1 @@
+const enum E { X = 0 } E.X = 1;

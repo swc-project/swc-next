@@ -1,0 +1,1 @@
+import h = require('ui'); const node = <div />;

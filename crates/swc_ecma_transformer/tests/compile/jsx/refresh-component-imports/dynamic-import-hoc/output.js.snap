@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const App = memo(_c = () => import("dep"));
+_c2 = App;
+var _c, _c2;
+$RefreshReg$(_c, "App$memo");
+$RefreshReg$(_c2, "App");

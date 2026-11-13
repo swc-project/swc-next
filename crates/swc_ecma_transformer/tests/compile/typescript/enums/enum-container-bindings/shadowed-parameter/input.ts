@@ -1,0 +1,1 @@
+namespace N { export enum E { A = 1, B = ((E: number) => A)(42) } }

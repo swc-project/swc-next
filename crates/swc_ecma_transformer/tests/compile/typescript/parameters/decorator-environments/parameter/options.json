@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "lang": "ts",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": false,
+    "typescript": {
+      "preserveConstEnums": false,
+      "verbatimModuleSyntax": false
+    }
+  }
+}

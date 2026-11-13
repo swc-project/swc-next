@@ -1,7 +1,7 @@
 # SWC Next Playground
 
 An interactive playground for SWC Next's parser, semantic analysis,
-TypeScript transforms, and code generator. Edit JavaScript, TypeScript, JSX,
+TypeScript transformer, and code generator. Edit JavaScript, TypeScript, JSX,
 or TSX and inspect the generated code, ESTree AST, and diagnostics.
 
 Try it at [play.next.swc.rs](https://play.next.swc.rs). Compilation runs locally

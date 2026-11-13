@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var Original;
+(function(Original) {
+  Original.x = 1;
+})(Original || (Original = {}));
+export {};

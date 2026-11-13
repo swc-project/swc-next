@@ -1,0 +1,1 @@
+const node: unknown = <Comp>{...items}</Comp>;

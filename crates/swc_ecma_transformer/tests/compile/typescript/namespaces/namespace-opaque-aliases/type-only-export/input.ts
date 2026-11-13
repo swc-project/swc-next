@@ -1,0 +1,1 @@
+import * as remote from 'pkg'; const x=42; declare namespace N { import value=remote.value; export type {value as x}; } namespace N { export function f(){return x;} }

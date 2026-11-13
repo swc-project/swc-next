@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var E;
+(function(E2) {
+  E2[E2["A"] = 1] = "A";
+  E2[E2["B"] = (() => {
+    const E = { A: 42 };
+    return E2.A;
+  })()] = "B";
+})(E || (E = {}));
+export {};

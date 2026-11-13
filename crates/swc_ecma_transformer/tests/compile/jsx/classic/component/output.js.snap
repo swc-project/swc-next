@@ -1,0 +1,4 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const node = /* #__PURE__ */ React.createElement(Foo, { disabled: true }, "hello");

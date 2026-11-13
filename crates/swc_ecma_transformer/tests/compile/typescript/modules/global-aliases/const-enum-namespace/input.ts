@@ -1,0 +1,1 @@
+namespace N { const enum E { A = 1 } } import Alias = N;

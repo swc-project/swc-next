@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "preact/jsx-runtime";
+var _s = $RefreshSig$();
+/** @jsxImportSource preact */
+function App() {
+  _s();
+  useState();
+  return _jsx("i", {});
+}
+_s(App, "useState{}");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

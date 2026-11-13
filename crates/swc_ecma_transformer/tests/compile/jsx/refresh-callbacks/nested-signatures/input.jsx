@@ -1,0 +1,1 @@
+function Outer() { function Inner() { useState(0); } useEffect(() => {}); }

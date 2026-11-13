@@ -12,7 +12,7 @@ Use `walk` to visit AST nodes and edit them in place. It is exported by `@swc-ne
 Hooks are named after node types. A function runs when the walker enters that node:
 
 ```js
-import { parseSync, printSync, walk } from "@swc-next/core";
+import { parseSync, generateSync, walk } from "@swc-next/core";
 
 const { program } = parseSync("debugger; const answer = 42;");
 walk(program, {
@@ -20,7 +20,7 @@ walk(program, {
     context.remove();
   },
 });
-console.log(printSync(program).code); // const answer = 42;
+console.log(generateSync(program).code); // const answer = 42;
 ```
 
 Use context methods for structural edits. Simple values, such as an identifier's `name`, can be edited directly. Hooks must be synchronous.
@@ -44,6 +44,6 @@ console.log(dependencies); // ["example"]
 
 ## Next steps
 
-[Generate code](/guide/codegen) from the edited AST.
+[Generate code](/guide/generator) from the edited AST.
 
 See the [Walk API](/api/javascript/walk) for inputs and return values, enter/leave hooks, context methods, and reusable walkers.

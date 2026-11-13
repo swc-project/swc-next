@@ -1,0 +1,1 @@
+namespace N { export const React = factory; class C { [<div /> as any](React: any) { return <span />; } } }

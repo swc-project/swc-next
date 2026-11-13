@@ -1,0 +1,1 @@
+const node = <Trans /* before */ a="1" /** between */ b="2" /* after */ />;

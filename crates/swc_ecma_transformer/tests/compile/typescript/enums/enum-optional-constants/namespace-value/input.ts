@@ -1,0 +1,1 @@
+namespace N { export const x=42; } enum E { A=N?.x, B }

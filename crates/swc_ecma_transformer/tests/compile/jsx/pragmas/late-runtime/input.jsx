@@ -1,0 +1,1 @@
+const before = 1; /** @jsxRuntime classic */ const node = <div />;

@@ -1,0 +1,1 @@
+namespace N { export interface T {} } export namespace Use { export import A = N.T; }

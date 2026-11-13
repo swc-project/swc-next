@@ -1,4 +1,4 @@
-//! Structural comparison for parse/print round trips, independent of codegen.
+//! Structural comparison for parse/print round trips, independent of the generator.
 //!
 //! Compare reachable nodes and decoded strings, never arena IDs or source spans.
 //! Compare the parsed structure directly, including parenthesis nodes when

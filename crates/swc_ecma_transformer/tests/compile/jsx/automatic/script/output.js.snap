@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _reactJsxRuntime = require("react/jsx-runtime");
+var node = /* #__PURE__ */ _reactJsxRuntime.jsx("div", {});

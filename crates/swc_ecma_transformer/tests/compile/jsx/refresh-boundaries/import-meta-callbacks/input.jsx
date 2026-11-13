@@ -1,0 +1,1 @@
+export default function App() { useContext(X); return <Foo />; }

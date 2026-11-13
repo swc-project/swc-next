@@ -1,0 +1,1 @@
+import { use } from 'react'; function App() { use(promise); }

@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+class C {
+  static x = 1;
+}
+export var A = C.x;

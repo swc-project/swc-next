@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+function f(React) {
+  return <div />;
+}
+export {};

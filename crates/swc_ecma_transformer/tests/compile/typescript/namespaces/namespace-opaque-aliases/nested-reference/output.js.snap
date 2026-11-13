@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import * as remote from "pkg";
+var N;
+(function(N) {
+  N.value = remote.value;
+  let M;
+  (function(M) {
+    M.result = N.value;
+  })(M = N.M || (N.M = {}));
+})(N || (N = {}));

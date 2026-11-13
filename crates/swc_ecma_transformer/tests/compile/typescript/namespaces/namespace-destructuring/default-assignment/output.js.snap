@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  N.x = 1;
+  ({ x: N.x = 3 } = {});
+})(N || (N = {}));
+export {};

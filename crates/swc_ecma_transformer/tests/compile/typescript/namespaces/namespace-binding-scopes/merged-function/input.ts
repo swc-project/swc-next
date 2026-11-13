@@ -1,0 +1,1 @@
+namespace N { export function F() {} } namespace N { export namespace F { export const x = 2; } }

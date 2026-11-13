@@ -16,8 +16,8 @@ export const defaultState: PlaygroundState = {
       preserveParens: true,
       semanticErrors: true,
     },
-    transform: { ts: true, es2022: { classStaticBlock: true } },
-    codegen: { minify: false, asciiOnly: false, inlineScript: false },
+    transformer: { ts: true, es2022: { classStaticBlock: true } },
+    generator: { minify: false, asciiOnly: false, inlineScript: false },
   },
 };
 
@@ -27,15 +27,15 @@ export function loadState(): PlaygroundState {
       localStorage.getItem("swc-next-playground") ?? "null",
     );
     if (saved && typeof saved.source === "string" && saved.options) {
-      const { parser, transform, codegen } = saved.options;
+      const { parser, transformer, generator } = saved.options;
       const validBooleans = [
         parser?.preserveParens,
         parser?.semanticErrors,
-        transform?.ts,
-        transform?.es2022?.classStaticBlock,
-        codegen?.minify,
-        codegen?.asciiOnly,
-        codegen?.inlineScript,
+        transformer?.ts,
+        transformer?.es2022?.classStaticBlock,
+        generator?.minify,
+        generator?.asciiOnly,
+        generator?.inlineScript,
       ].every((value) => typeof value === "boolean");
       if (
         validBooleans &&

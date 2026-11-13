@@ -1,0 +1,1 @@
+function App() { const state = useState(() => { useCustom(); return 0; }); }

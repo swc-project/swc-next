@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+class B {
+}
+class C extends B {
+  x;
+  constructor(x) {
+    const _initProperties = () => (this.x = x);
+    class Inner {
+      @dec((super(), _initProperties(), this)) field = 0;
+    }
+  }
+}
+export {};

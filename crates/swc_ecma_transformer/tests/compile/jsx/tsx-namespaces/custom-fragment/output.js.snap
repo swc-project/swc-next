@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  N.h = factory;
+  N.Frag = fragment;
+  N.node = N.h(N.Frag, null, N.h("div", null));
+})(N || (N = {}));
+export {};

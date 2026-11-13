@@ -1,0 +1,16 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "development": false,
+      "displayName": false,
+      "runtime": "automatic",
+      "sourceSelf": false,
+      "throwIfNamespace": true
+    },
+    "typescript": false
+  }
+}

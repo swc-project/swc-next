@@ -13,3 +13,8 @@ pub trait SimdPartialOrd: SimdPartialEq {
     fn simd_gt(self, other: Self) -> Self::Mask;
     fn simd_ge(self, other: Self) -> Self::Mask;
 }
+
+/// The part of `std::simd::cmp::SimdOrd` that scanning needs.
+pub trait SimdOrd {
+    fn simd_min(self, other: Self) -> Self;
+}

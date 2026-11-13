@@ -1,0 +1,1 @@
+<Comp {...{ get value() { sideEffect(); return 1; } }} />;

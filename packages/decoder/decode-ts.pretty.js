@@ -171,9 +171,8 @@ export function decodeTs(buffer, source, sourceBuffer) {
       const offset = comments + index * 16;
       const start = _i32[offset >> 2];
       const end = _i32[(offset >> 2) + 1];
-      const byteStart = _i32[(offset >> 2) + 2];
-      const first = sourceBuffer[byteStart];
-      const kind = sourceBuffer[byteStart + 1] === 0x2a ? 1 : 0;
+      const first = source.charCodeAt(start);
+      const kind = source.charCodeAt(start + 1) === 0x2a ? 1 : 0;
       const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
       const valueEnd = end - (kind === 1 ? 2 : 0);
       result[index] = {
@@ -1940,7 +1939,6 @@ export function decodeTs(buffer, source, sourceBuffer) {
 
   let _program, _comments, _diagnostics;
   return {
-    meta: { lang: enumValue(0, (flags >> 2) & 7), sourceType },
     get program() {
       if (_program !== undefined) return _program;
       try {

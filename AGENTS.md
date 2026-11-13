@@ -52,6 +52,16 @@ and representative option sets. Review generated snapshots; see
 - File issues found in bulk by static analysis of source code, or by similar methods, in
   [swc-project/swc-next-issues](https://github.com/swc-project/swc-next-issues). Do not file them
   in this repository.
+- Set the `Priority` and `Effort` GitHub issue fields on each issue in swc-next-issues. Do not use
+  labels for them. Set them with the `setIssueFieldValue` GraphQL mutation; get the field and
+  option IDs from the `issueFields` of the `swc-project` organization.
+- Choose `Priority` by how much the bug is likely to affect real users:
+  - `Urgent`: common code crashes, is rejected, or produces output with broken runtime behavior.
+  - `High`: incorrect output or diagnostics for code that users commonly write.
+  - `Medium`: incorrect behavior for less common but realistic code.
+  - `Low`: rare or contrived input, or a problem that users are unlikely to notice.
+- Choose `Effort` by the estimated size of the fix: `Low` for a local change, `Medium` for a change
+  across several functions or modules, and `High` for a design change or a large rewrite.
 
 ## Code Review
 

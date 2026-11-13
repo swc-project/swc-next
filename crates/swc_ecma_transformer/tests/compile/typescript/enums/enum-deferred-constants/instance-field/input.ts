@@ -1,0 +1,1 @@
+class C { value=(()=>{ enum E { A=x, B } return E.B; })(); } const x=42;

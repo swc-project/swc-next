@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx2 } from "react/jsx-runtime";
+/* #__PURE__ */ _jsx2("div", {});
+export var _jsx;
+(function(_jsx3) {
+  _jsx3._jsx = 0;
+})(_jsx || (_jsx = {}));

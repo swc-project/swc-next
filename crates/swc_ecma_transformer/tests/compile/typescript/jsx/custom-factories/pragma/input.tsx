@@ -1,0 +1,1 @@
+/** @jsx h @jsxFrag Frag */ import { h, Frag } from 'react'; export const x = <></>;

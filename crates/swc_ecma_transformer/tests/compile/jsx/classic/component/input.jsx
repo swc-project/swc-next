@@ -1,0 +1,1 @@
+const node = <Foo disabled>hello</Foo>;

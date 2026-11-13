@@ -1,0 +1,1 @@
+class B {} class C extends B { constructor(public x: number) { @dec(super()) class Inner extends B { constructor() { super(); } field = () => this; static { const value = this; } } } }

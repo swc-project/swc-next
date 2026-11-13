@@ -1,0 +1,1 @@
+declare namespace N { enum E { A } } enum F { X = N.E.A }

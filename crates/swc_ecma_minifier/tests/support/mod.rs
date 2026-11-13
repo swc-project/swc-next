@@ -6,7 +6,7 @@ use std::{
 use serde::Deserialize;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::{Options as PrintOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
@@ -142,12 +142,12 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
     drop(analysis);
 
     Minifier::minify(&mut ast, options.minify.clone());
-    Ok(print(
+    Ok(generate(
         &ast,
-        PrintOptions {
+        GeneratorOptions {
             minify: true,
             comments: false,
-            ..PrintOptions::default()
+            ..GeneratorOptions::default()
         },
     )
     .code)

@@ -834,7 +834,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
 mod tests {
     use swc_next_allocator::Allocator;
     use swc_next_ecma_ast::{Lang, ScopeId, SourceType};
-    use swc_next_ecma_codegen::{Options as PrintOptions, print};
+    use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
     use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
     use swc_next_ecma_semantic::{AnalyzeOptions, ReferenceSpace, SyntaxChecks, analyze};
 
@@ -867,11 +867,11 @@ mod tests {
         );
         assert!(result.diagnostics.is_empty());
         let diagnostics = transform(result.semantic);
-        let code = print(
+        let code = generate(
             &ast,
-            PrintOptions {
+            GeneratorOptions {
                 comments: false,
-                ..PrintOptions::default()
+                ..GeneratorOptions::default()
             },
         )
         .code;

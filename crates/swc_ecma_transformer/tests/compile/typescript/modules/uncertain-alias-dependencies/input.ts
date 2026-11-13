@@ -1,0 +1,1 @@
+namespace Original { export const value = 1; } import Alias = Original; namespace Unknown { export interface Marker {} } namespace Use { import Alias = Unknown.Member; import Child = Alias.value; export const result = Child; }

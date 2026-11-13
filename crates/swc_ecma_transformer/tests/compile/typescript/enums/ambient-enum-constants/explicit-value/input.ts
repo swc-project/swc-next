@@ -1,0 +1,1 @@
+declare enum E { A = 3, B } enum F { X = E.A, Y = E.B }

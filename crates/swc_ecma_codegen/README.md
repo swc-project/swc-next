@@ -3,11 +3,11 @@
 JavaScript and TypeScript code generation for SWC Next's flat AST, including
 JSX and TSX.
 
-The printer supports readable or compact output, ASCII-only escaping, and
+The generator supports readable or compact output, ASCII-only escaping, and
 inline-script escaping. Compact output controls formatting; AST optimizations
 are provided separately by [the minifier](../swc_ecma_minifier).
 
-See the [printer API and options](src/printer.rs).
+See the [generator API and options](src/printer.rs).
 
 ## Usage
 

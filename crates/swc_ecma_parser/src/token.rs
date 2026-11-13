@@ -1,3 +1,5 @@
+use std::num::NonZeroU128;
+
 use bitflags::bitflags;
 use swc_next_ecma_ast::{Precedence, Span};
 
@@ -14,6 +16,7 @@ bitflags! {
         const IS_STRICT_MODE_RESERVED = 1 << 20;
         const IS_KEYWORD = 1 << 21;
         const CAN_HAVE_TRAILING_COMMENT = 1 << 22;
+        const IS_IDENTIFIER_CANDIDATE = 1 << 23;
 
         const IS_BIN_OP = Self::IS_BINARY_OP.bits() | Self::IS_LOGICAL_OP.bits();
     }
@@ -21,8 +24,19 @@ bitflags! {
 
 macro_rules! flags {
     ($first:ident $(| $rest:ident)*) => {
-        TokenFlags::$first.bits() $(| TokenFlags::$rest.bits())*
+        tag_flags(TokenFlags::$first.bits() $(| TokenFlags::$rest.bits())*)
     };
+}
+
+// Cache the context-free identifier predicate when discriminants are evaluated.
+const fn tag_flags(bits: u32) -> u32 {
+    if bits & TokenFlags::IS_IDENTIFIER_LIKE.bits() != 0
+        && bits & TokenFlags::IS_UNCONDITIONALLY_RESERVED.bits() == 0
+    {
+        bits | TokenFlags::IS_IDENTIFIER_CANDIDATE.bits()
+    } else {
+        bits
+    }
 }
 
 const PREC_SHIFT: u32 = 8;
@@ -311,7 +325,7 @@ impl TokenTag {
     /// here may nevertheless be consumed as names during parser recovery.
     #[inline]
     pub fn is_identifier_candidate(self) -> bool {
-        self.is_identifier_like() && !self.is_unconditionally_reserved()
+        self.has_flag(TokenFlags::IS_IDENTIFIER_CANDIDATE)
     }
 
     #[inline]
@@ -516,11 +530,11 @@ const END_SHIFT: u32 = 96;
 const FLAGS_SHIFT: u32 = 32;
 
 // Bits 0..32: tag, 32..40: flags, 64..96: start, 96..128: end.
-// The tag needs no shift, and the high word has the layout of a span.
-// The remaining bits are always zero.
+// Every tag is nonzero, so the packed value is nonzero even for an empty span.
+// The transparent scalar representation preserves u128 alignment and value passing.
 #[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct Token(u128);
+pub struct Token(NonZeroU128);
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -535,22 +549,23 @@ impl std::fmt::Debug for Token {
 impl Token {
     #[inline]
     pub const fn new(start: u32, end: u32, tag: TokenTag, flags: u8) -> Self {
-        Self(
-            ((start as u128) << START_SHIFT)
-                | ((end as u128) << END_SHIFT)
-                | (tag as u128)
-                | ((flags as u128) << FLAGS_SHIFT),
-        )
+        let data = ((start as u128) << START_SHIFT)
+            | ((end as u128) << END_SHIFT)
+            | (tag as u128)
+            | ((flags as u128) << FLAGS_SHIFT);
+        // SAFETY: Every TokenTag has a nonzero discriminant. The other fields
+        // occupy separate bits and cannot clear the tag.
+        Self(unsafe { NonZeroU128::new_unchecked(data) })
     }
 
     #[inline]
     pub const fn start(self) -> u32 {
-        (self.0 >> START_SHIFT) as u32
+        (self.0.get() >> START_SHIFT) as u32
     }
 
     #[inline]
     pub const fn end(self) -> u32 {
-        (self.0 >> END_SHIFT) as u32
+        (self.0.get() >> END_SHIFT) as u32
     }
 
     #[inline]
@@ -563,19 +578,20 @@ impl Token {
 
     #[inline]
     pub const fn tag(self) -> TokenTag {
-        // SAFETY: TokenTag has repr(u32), and only `new` writes these bits,
-        // using the discriminant of a valid TokenTag.
-        unsafe { std::mem::transmute::<u32, TokenTag>(self.0 as u32) }
+        // SAFETY: Only `new` writes the low 32 bits, using a valid TokenTag.
+        unsafe { std::mem::transmute::<u32, TokenTag>(self.0.get() as u32) }
     }
 
     #[inline]
     pub const fn flags(self) -> u8 {
-        (self.0 >> FLAGS_SHIFT) as u8
+        (self.0.get() >> FLAGS_SHIFT) as u8
     }
 
     #[inline]
     pub fn set_flags(&mut self, flags: u8) {
-        self.0 = (self.0 & !(0xff_u128 << FLAGS_SHIFT)) | ((flags as u128) << FLAGS_SHIFT);
+        let data = (self.0.get() & !(0xff_u128 << FLAGS_SHIFT)) | ((flags as u128) << FLAGS_SHIFT);
+        // SAFETY: Updating flags preserves the nonzero tag in the low 32 bits.
+        self.0 = unsafe { NonZeroU128::new_unchecked(data) };
     }
 
     #[inline]

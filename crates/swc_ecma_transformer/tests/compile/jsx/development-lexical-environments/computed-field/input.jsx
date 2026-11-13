@@ -1,0 +1,1 @@
+class D extends B { constructor() { class X { [<div />] = 1; } super(); } }

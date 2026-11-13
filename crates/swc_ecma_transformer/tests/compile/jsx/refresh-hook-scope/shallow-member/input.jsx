@@ -1,0 +1,1 @@
+export function Shallow() { A.B.C.useHook(); }

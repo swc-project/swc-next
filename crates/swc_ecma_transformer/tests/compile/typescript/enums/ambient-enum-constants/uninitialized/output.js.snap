@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var F;
+(function(F) {
+  F[F["X"] = E.A] = "X";
+})(F || (F = {}));
+export {};

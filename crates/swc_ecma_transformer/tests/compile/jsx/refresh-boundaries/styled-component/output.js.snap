@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "react/jsx-runtime";
+const Header = styled.div``;
+_c = Header;
+/* #__PURE__ */ _jsx(Header, {});
+var _c;
+$RefreshReg$(_c, "Header");

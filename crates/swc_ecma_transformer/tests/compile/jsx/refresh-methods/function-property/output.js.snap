@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const o = { value: _s(function() {
+  _s();
+  useState();
+}, "useState{}") };

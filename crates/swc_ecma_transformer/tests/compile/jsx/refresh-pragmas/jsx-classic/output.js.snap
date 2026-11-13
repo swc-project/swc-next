@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+/** @jsxRuntime classic
+ * @jsx h
+ * @jsxFrag Frag */
+function App() {
+  _s();
+  useState(0);
+  return h(Frag, null);
+}
+_s(App, "useState{(0)}");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

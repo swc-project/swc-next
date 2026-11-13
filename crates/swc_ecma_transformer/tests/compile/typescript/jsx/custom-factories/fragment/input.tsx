@@ -1,0 +1,1 @@
+import { h, Frag } from 'react'; export const x = <div><></></div>;

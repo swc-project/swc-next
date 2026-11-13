@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+[
+    Diagnostic {
+        severity: Error,
+        message: "Spread children are not supported in React.",
+        span: 2..12,
+        help: None,
+        labels: [],
+    },
+]

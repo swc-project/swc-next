@@ -11,7 +11,7 @@ use swc_next_ecma_ast::{
     LabelIdentifier, Lang, PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith,
     TsTypeAnnotation, Visit, VisitMut, VisitMutWith, VisitWith,
 };
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_formatter::{FormatOptions, format_ast};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
@@ -151,8 +151,8 @@ fn bench_syntax_check(ast: AstCtx<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_codegen(ast: AstCtx<'static>) {
-    black_box(print(&ast, CodegenOptions::default()));
+fn bench_generate(ast: AstCtx<'static>) {
+    black_box(generate(&ast, GeneratorOptions::default()));
 }
 
 fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static AstCtx<'static> {
@@ -432,7 +432,7 @@ library_benchmark_group!(
     benchmarks = [bench_analyze, bench_syntax_check]
 );
 
-library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
+library_benchmark_group!(name = generator, benchmarks = bench_generate);
 
 library_benchmark_group!(
     name = formatter,
@@ -458,6 +458,6 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, codegen, formatter, minifier, transform, type_strip, visit
+        parser, semantic, generator, formatter, minifier, transform, type_strip, visit
     ]
 );

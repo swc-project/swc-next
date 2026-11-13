@@ -1,0 +1,330 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { execFileSync } from "node:child_process";
+
+import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
+import { parseSync, generateSync } from "../src-js/index.js";
+import { generateSync as generateNative } from "../src-js/binding.js";
+
+function generateEncoded(program, encoder) {
+  return generateNative(...encoder(program), encodeOptions());
+}
+
+test("encoders recover from errors", () => {
+  for (const encoder of [encodeJs, encodeTs]) {
+    const broken = parseSync('const value = "雪";').program;
+    broken.body.push({ type: "Unsupported" });
+    assert.throws(() => encoder(broken), TypeError);
+
+    const valid = parseSync('const value = "valid";').program;
+    assert.equal(generateEncoded(valid, encoder), 'const value = "valid";\n');
+  }
+});
+
+test("encode writes spans in canonical little-endian order", () => {
+  const [, spans] = encode({
+    type: "Program",
+    start: 0x01020304,
+    end: 0x05060708,
+    sourceType: "module",
+    body: [],
+  });
+
+  assert.deepEqual(
+    [...spans.subarray(0, 8)],
+    [0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05],
+  );
+});
+
+test("generateSync prints modified parser-produced ESTree", () => {
+  const { program } = parseSync("const answer = 1;");
+  program.body[0].declarations[0].id.name = "changed";
+  program.body[0].declarations[0].init.value = 42;
+
+  assert.equal(generateSync(program).code, "const changed = 42;\n");
+});
+
+test("encoder preserves modified module attribute types", () => {
+  for (const lang of ["ts", "dts"]) {
+    const { program } = parseSync("declare module '*.txt' with { type: 'text' } {}", { lang });
+    const module = program.body[0];
+    assert.equal(module.attributes.type, "TSTypeLiteral");
+    const value = module.attributes.members[0].typeAnnotation.typeAnnotation.literal;
+    assert.equal(value.value, "text");
+    value.value = "文本";
+
+    const generated = generateSync(program).code;
+    const roundtrip = parseSync(generated, { lang }).program.body[0];
+    assert.equal(roundtrip.attributes.members[0].typeAnnotation.typeAnnotation.literal.value, "文本");
+    assert.equal(roundtrip.id.value, "*.txt");
+    assert.equal(roundtrip.body.type, "TSModuleBlock");
+    assert.equal(roundtrip.declare, true);
+    assert.equal(roundtrip.kind, "module");
+  }
+});
+
+test("encoder normalizes template raw line endings", () => {
+  for (const encoder of [encodeJs, encodeTs]) {
+    const { program } = parseSync("tag`placeholder`;");
+    const value = program.body[0].expression.quasi.quasis[0].value;
+
+    value.raw = "a\rb\r\nc";
+    assert.equal(generateEncoded(program, encoder), "tag`a\nb\nc`;\n");
+
+    value.raw = "a\\\r\nb";
+    assert.equal(generateEncoded(program, encoder), "tag`a\\\nb`;\n");
+
+    value.raw = "a\\rb";
+    assert.equal(generateEncoded(program, encoder), "tag`a\\rb`;\n");
+
+    value.raw = "\\xZ\r";
+    value.cooked = null;
+    assert.equal(generateEncoded(program, encoder), "tag`\\xZ\n`;\n");
+  }
+});
+
+test("encoder preserves array rests", () => {
+  const generate = (source, encoder) => generateEncoded(parseSync(source, { errorRecovery: true }).program, encoder);
+
+  for (const encoder of [encodeJs, encodeTs]) {
+    assert.equal(generate("const [...a, b] = v;", encoder), "const [...a, b] = v;\n");
+
+    assert.equal(generate("const [...a, b, ...c] = v;", encoder), "const [...a, b, ...c] = v;\n");
+  }
+});
+
+test("generateSync accepts surrogate pairs in UTF-8 fields", () => {
+  const { program } = parseSync("const value = 1;");
+  program.body[0].declarations[0].id.name = "\u{10400}";
+
+  assert.equal(generateSync(program).code, "const 𐐀 = 1;\n");
+});
+
+test("encoders preserve lone surrogates in string values", () => {
+  for (const encoder of [encodeJs, encodeTs]) {
+    const { program } = parseSync('const text = "";');
+    const value = "\uD800é😀\0\uDC00";
+    program.body[0].declarations[0].init.value = value;
+
+    const [buffer] = encoder(program);
+    const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    assert.ok(header.getUint32(8, true) > 0);
+    assert.equal(header.getUint32(12, true), 0);
+    const generated = generateEncoded(program, encoder);
+    assert.equal(parseSync(generated).program.body[0].declarations[0].init.value, value);
+
+    const escaped = parseSync('const text = "\\uD800";').program;
+    const roundtrip = parseSync(generateEncoded(escaped, encoder)).program;
+    assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
+  }
+});
+
+test("generateSync preserves special numeric values across FFI", () => {
+  const { program } = parseSync("const value = 1;");
+  program.body[0].declarations[0].init.value = -0;
+
+  assert.equal(generateSync(program).code, "const value = -0;\n");
+
+  program.body[0].declarations[0].init.value = -Infinity;
+  assert.equal(generateSync(program).code, "const value = -1 / 0;\n");
+});
+
+test("encoder rebuilds the directive prologue after reordering", () => {
+  const { program } = parseSync('"use strict"; work();');
+  program.body.reverse();
+
+  assert.equal(generateSync(program).code, 'work();\n"use strict";\n');
+});
+
+test("encoder invalidates stale directive raw text", () => {
+  const { program } = parseSync('"use client";');
+  program.body[0].expression.value = "use server";
+
+  assert.equal(generateSync(program).code, '"use server";\n');
+
+  const updated = parseSync('"use client";').program;
+  updated.body[0].expression.value = "use server";
+  updated.body[0].directive = "use server";
+
+  assert.equal(generateSync(updated).code, '"use server";\n');
+
+  const escaped = parseSync('"use\\x20client";').program;
+  assert.equal(generateSync(escaped).code, '"use\\x20client";\n');
+
+  escaped.body[0].expression.value = "use server";
+  assert.equal(generateSync(escaped).code, '"use server";\n');
+});
+
+test("encoder preserves expressions with stale directive metadata", () => {
+  const script = parseSync("1;").program;
+  script.body[0].directive = "foo";
+  assert.equal(generateSync(script).code, "1;\n");
+
+  const modified = parseSync('"use strict";', { lang: "ts" }).program;
+  modified.body[0].expression.value = 1;
+  assert.equal(generateSync(modified).code, "1;\n");
+
+  const functionBody = parseSync("function f() { 1; }").program;
+  functionBody.body[0].body.body[0].directive = "foo";
+  assert.equal(generateSync(functionBody).code, "function f() {\n  1;\n}\n");
+
+  const namespace = parseSync("namespace N { 1; }", { lang: "ts" }).program;
+  namespace.body[0].body.body[0].directive = "foo";
+  assert.equal(generateSync(namespace).code, "namespace N {\n  1;\n}\n");
+});
+
+test("encoder preserves method bodies and signatures", () => {
+  const typescript = { lang: "ts" };
+
+  const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
+  assert.equal(generateSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+  assert.equal((new DataView(encode(body)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
+
+  const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
+  assert.equal(generateSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
+
+  const signature = parseSync("class C { m(): number; }", typescript).program;
+  assert.equal(generateSync(signature).code, "class C {\n  m(): number;\n}\n");
+
+  const modified = parseSync("class C { m() { return 1; } }").program;
+  modified.body[0].body.body[0].type = "TSAbstractMethodDefinition";
+  assert.equal(generateSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+});
+
+test("encoder accepts directive raw escapes with leading zeros", () => {
+  const { program } = parseSync('"use\\u{0000020}strict";', {
+    sourceType: "script",
+  });
+
+  assert.equal(generateSync(program).code, '"use\\u{0000020}strict";\n');
+});
+
+test("encoder preserves BigInt raw radix", () => {
+  const { program } = parseSync("0x1_2_3n;");
+
+  assert.equal(generateSync(program).code, "0x123n;\n");
+});
+
+test("encoder validates legacy octal raw text", () => {
+  const { program } = parseSync("077;", { sourceType: "script" });
+
+  assert.equal(generateSync(program).code, "077;\n");
+
+  program.body[0].expression.value = 64;
+  assert.equal(generateSync(program).code, "64;\n");
+});
+
+test("encoder normalizes negative BigInts and property keys", () => {
+  const { program } = parseSync("1n;");
+  program.body[0].expression.value = -1n;
+  assert.equal(generateSync(program).code, "-1n;\n");
+
+  const property = parseSync("({ 1n: 0 });").program;
+  property.body[0].expression.expression.properties[0].key.value = -1n;
+  assert.equal(generateSync(property).code, '({ "-1": 0 });\n');
+});
+
+test("encoder uses modified RegExp metadata", () => {
+  const { program } = parseSync("/old/;");
+  program.body[0].expression.regex.pattern = "new";
+  program.body[0].expression.regex.flags = "g";
+
+  assert.equal(generateSync(program).code, "/new/g;\n");
+});
+
+test("generateSync forwards generator options", () => {
+  const { program } = parseSync("const emoji = '😀';");
+
+  assert.equal(
+    generateSync(program, { asciiOnly: true, minify: true }).code,
+    'const emoji="\\u{1F600}";',
+  );
+
+  const script = parseSync('const text = "</ScRiPt>";').program;
+  assert.equal(
+    generateSync(script, { inlineScript: false }).code,
+    'const text = "</ScRiPt>";\n',
+  );
+  assert.equal(
+    generateSync(script, { inlineScript: true }).code,
+    'const text = "<\\/ScRiPt>";\n',
+  );
+});
+
+test("encoder invalidates stale JSX attribute raw text", () => {
+  const { program } = parseSync(
+    'const element = <div title="old" />;',
+    { lang: "tsx" },
+  );
+  const value = program.body[0].declarations[0].init.openingElement.attributes[0].value;
+
+  value.value = "new";
+  assert.equal(generateSync(program).code, 'const element = <div title="new" />;\n');
+});
+
+test("generateSync rejects unsupported ESTree nodes", () => {
+  assert.throws(
+    () =>
+      generateSync({
+        type: "Program",
+        sourceType: "script",
+        body: [{ type: "Unsupported" }],
+      }),
+    /Unsupported ESTree node type Unsupported/,
+  );
+});
+
+test("encoders infer language and preserve source type from ESTree", () => {
+  const { program } = parseSync("const value = (a) => a;");
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.deepEqual(encode(program), encodeTs(program));
+
+  for (const lang of ["ts", "tsx"]) {
+    const typed = parseSync("const value: string = 'ok';", { lang }).program;
+    assert.deepEqual(encode(typed), encodeTs(typed));
+    const [header] = encode(typed);
+    assert.equal((new DataView(header.buffer).getUint32(32, true) >> 2) & 7, 1);
+  }
+
+  program.sourceType = "commonjs";
+  const [updatedHeader] = encode(program);
+  assert.equal(new DataView(updatedHeader.buffer).getUint32(32, true) & 3, 2);
+});
+
+
+function encodeWithBufferMode(program, mode) {
+  const script = `
+    import { Buffer as NodeBuffer } from "node:buffer";
+    import { readFileSync } from "node:fs";
+    const { program, mode } = JSON.parse(readFileSync(0, "utf8"));
+    if (mode === "absent") delete String.prototype.isWellFormed;
+    globalThis.Buffer = mode === "absent" ? undefined
+      : mode === "missing" ? { prototype: {} }
+      : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
+    const { encodeJs, encodeTs } = await import(${JSON.stringify(new URL("../../../packages/encoder/index.js", import.meta.url).href)});
+    console.log(JSON.stringify([encodeJs(program), encodeTs(program)].map(parts =>
+      parts.map(bytes => NodeBuffer.from(bytes).toString("base64")))));
+  `;
+  const output = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+    input: JSON.stringify({ program, mode }), encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
+  });
+  return JSON.parse(output).map(parts => parts.map(value => Uint8Array.from(Buffer.from(value, "base64"))));
+}
+
+test("encoder string fallbacks match Node", () => {
+  const { program } = parseSync('"prefix"; "value"; "tail";');
+  program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF";
+  program.body[1].expression.raw = null;
+  const expected = encodeJs(program);
+  for (const mode of ["absent", "missing", "incompatible"]) {
+    const [js, ts] = encodeWithBufferMode(program, mode);
+    assert.deepEqual(js, expected);
+    assert.deepEqual(ts, expected);
+  }
+
+  program.body[1].expression.value = "ab雪🌍";
+  const utf8 = encodeJs(program);
+  const [js, ts] = encodeWithBufferMode(program, "absent");
+  assert.deepEqual(js, utf8);
+  assert.deepEqual(ts, utf8);
+});

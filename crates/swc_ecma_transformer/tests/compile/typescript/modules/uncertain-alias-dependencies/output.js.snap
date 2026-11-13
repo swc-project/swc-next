@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var Original;
+(function(Original) {
+  Original.value = 1;
+})(Original || (Original = {}));
+var Alias = Original;
+var Use;
+(function(Use) {
+  var Alias = Unknown.Member;
+  var Child = Alias.value;
+  Use.result = Child;
+})(Use || (Use = {}));
+export {};

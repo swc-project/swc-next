@@ -3,8 +3,15 @@ use std::{
     sync::Arc,
 };
 
+use swc_next_core::{
+    BoolOr,
+    js::{
+        JsTransformApiOptions,
+        parser::JsParserConfig,
+        transformer::{JsTransformerConfig, JsTypeScriptConfig},
+    },
+};
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_transformer::{TransformerOptions, typescript::TypeScriptOptions};
 
 use super::{lang_from_path, read_test_content, typescript_case_paths};
 use crate::cases::{Case, TransformCase, fixtures};
@@ -126,11 +133,20 @@ impl TransformCase for TypeScriptTransformCase {
         Some(self.mode.name())
     }
 
-    fn transformer_options(&self) -> TransformerOptions {
-        TransformerOptions {
-            typescript: Some(TypeScriptOptions {
-                verbatim_module_syntax: self.mode.verbatim_module_syntax,
-                preserve_const_enums: self.mode.preserve_const_enums,
+    fn options(&self) -> JsTransformApiOptions {
+        JsTransformApiOptions {
+            parser: Some(JsParserConfig {
+                source_type: Some(self.source_type.into()),
+                lang: Some(self.lang.into()),
+                ..Default::default()
+            }),
+            transformer: Some(JsTransformerConfig {
+                typescript: Some(BoolOr::Options(JsTypeScriptConfig {
+                    verbatim_module_syntax: Some(self.mode.verbatim_module_syntax),
+                    preserve_const_enums: Some(self.mode.preserve_const_enums),
+                    ..Default::default()
+                })),
+                jsx: Some(BoolOr::Bool(false)),
                 ..Default::default()
             }),
             ..Default::default()

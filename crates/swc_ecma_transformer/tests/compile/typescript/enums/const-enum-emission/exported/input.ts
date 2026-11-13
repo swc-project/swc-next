@@ -1,0 +1,1 @@
+export const enum E { X = 1 } export const x = E.X;

@@ -1,0 +1,10 @@
+{
+  "parser": {
+    "lang": "tsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {},
+    "typescript": {}
+  }
+}

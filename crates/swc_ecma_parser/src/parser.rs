@@ -6250,8 +6250,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let body = body?;
         let end = if let Some(body) = body {
             body.span(&self.ast).end
-        } else {
+        } else if id.is_string_literal(&self.ast) {
             self.eat_semicolon(self.lexer.state.prev_token_end)?
+        } else {
+            // Only `module "name"` may omit its body. Like TypeScript, keep the
+            // declaration and continue at the current token.
+            self.report_expected(
+                self.current_token.span(),
+                "Expected '{' to start a module body",
+                ReportOptions {
+                    help: Some(Cow::Borrowed("A module body is written '{ <statements> }'")),
+                    ..ReportOptions::default()
+                },
+            );
+            self.lexer.state.prev_token_end
         };
         let declaration = self.ast.ts_module_declaration(
             Span::new(start, end),
@@ -10564,15 +10576,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
         let mut peek = self.begin_peek();
         let next = peek.next()?;
-        if !next.tag().is_identifier_like() && next.tag() != TokenTag::Const {
+        // Like TypeScript, `<in T>` does not start an arrow because `in` is reserved.
+        if next.tag() == TokenTag::In
+            || !next.tag().is_identifier_like() && next.tag() != TokenTag::Const
+        {
             return Some(None);
         }
         // A parameter name must be followed by a constraint, default, comma,
         // or closing angle. Modifiers and escaped names retain the full parser.
         // Reject JSX names/attributes before allocating a speculative AST.
-        if !next.is_escaped()
-            && !matches!(next.tag(), TokenTag::Const | TokenTag::In | TokenTag::Out)
-        {
+        if !next.is_escaped() && !matches!(next.tag(), TokenTag::Const | TokenTag::Out) {
             let Some(after_name) = peek.next() else {
                 return Some(None);
             };
@@ -16624,6 +16637,41 @@ mod tests {
     }
 
     #[test]
+    fn module_bodies() {
+        fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
+            spans
+                .map(|span| &source[span.start as usize..span.end as usize])
+                .collect()
+        }
+
+        fn parse(source: &str) -> (Vec<&str>, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = read_ast(&parsed.ast);
+            let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
+            let body = ast.root_program().body(ast);
+            let statements = body
+                .iter()
+                .map(|id| ast.node_kind(ast.get_node_in_sub_range(id).node_id()));
+            (texts(source, errors), statements.collect())
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], statements: [$($statement:expr),*]) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($statement),*]))
+            };
+        }
+
+        use NodeKind::{EmptyStatement, TsModuleDeclaration, VariableDeclaration};
+
+        check!("namespace A;\nlet b = 2;", errors: [";"], statements: [TsModuleDeclaration, EmptyStatement, VariableDeclaration]);
+
+        check!("declare namespace A.B;", errors: [";"], statements: [TsModuleDeclaration, EmptyStatement]);
+
+        check!("declare module \"x\";", errors: [], statements: [TsModuleDeclaration]);
+    }
+
+    #[test]
     fn module_attributes() {
         fn parse<'a>(
             allocator: &'a Allocator,
@@ -18573,6 +18621,26 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn generic_arrow_in_modifier() {
+        let ts = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let tsx = Options {
+            lang: Lang::Tsx,
+            ..Options::default()
+        };
+
+        assert!(has_errors("const f = <in T>(x: T) => x;", ts));
+
+        assert!(has_errors("const f = async <in T>(x: T) => x;", ts));
+
+        assert!(has_errors("const f = <in T>(x: T) => x;", tsx));
+
+        assert!(!has_errors("const f = <out T>(x: T) => x;", ts));
     }
 
     #[test]

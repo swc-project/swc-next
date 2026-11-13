@@ -74,6 +74,3 @@ impl MultiPassTransformer<'_, '_> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

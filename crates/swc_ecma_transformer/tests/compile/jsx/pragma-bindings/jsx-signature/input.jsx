@@ -1,0 +1,1 @@
+function App() { useState(0); return <div />; }

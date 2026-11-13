@@ -1,0 +1,10 @@
+{
+  "parser": {
+    "lang": "dts",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": false,
+    "typescript": {}
+  }
+}

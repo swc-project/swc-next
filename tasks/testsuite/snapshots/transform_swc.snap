@@ -1,9 +1,9 @@
 transform * swc
 ========================
-Positive Passed: 274/2089 (13.12%)
+Positive Passed: 289/2089 (13.83%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2089 (0.00%)
-Skipped: 1415/2089 (67.74%)
+Skipped: 1409/2089 (67.45%)
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/codegen/comment-1/es5/input/index.tsx - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/codegen/inline-regressions/codegen-1/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/codegen/inline-regressions/deno-10282-1/input/input.js - transformed output differs from expected output
@@ -63,6 +63,7 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions/issues-6xxx/6309/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions/issues-7xxx/7819/input/1.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions/issues-8xxx/8148/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions/issues-9xxx/9020/input/1.js - transform: Shorthand property cannot have a default value in object expression at 39..47
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/module/regressions/issues-10xxx/10488/babel-17271-es5/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/module/regressions/issues-10xxx/10488/babel-17271/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/module/regressions/issues-11xxx/11040/es2017/input/input.js - transformed output differs from expected output
@@ -78,6 +79,7 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/new-target/input/c
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/optimizer/inline-regressions/issue-409-2/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/optimizer/inline-regressions/issue-602/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/options/react/input/index.tsx - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/inline-regressions/shopify-2/input/src/App/App.tsx - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/inline-regressions/shopify-3/input/src/App/App.tsx - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/inline-regressions/shopify-4/input/src/App/App.tsx - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/inline-regressions/tsx-escape/input/es2020/input.js - transformed output differs from expected output
@@ -98,7 +100,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transfor
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transform/classic/react-should-preserve-final-line-leading-entity-whitespace-before-entity-char/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transform/classic/react-should-preserve-intermediate-line-trailing-entity-whitespace/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transform/classic/react-should-preserve-non-first-line-entity-leading-whitespace/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transform/classic/react-should-properly-handle-comments-between-props/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx-transform/classic/react-should-support-xml-namespaces-if-flag/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/3/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/autoImport/complicated-scope-module/input/input.js - transformed output differs from expected output
@@ -114,7 +115,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/entity-d
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/entity-decoding/classic/surrogates/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-1933/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-2037/input/input.js - transform: Spread children are not supported in React. at 34..41
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-4070/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-5099/1/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/issue-6987/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/pure/false-pragma-comment-classic-runtime/input/input.js - transformed output differs from expected output
@@ -130,7 +130,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-au
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-detect-static-jsx/input/input.js - transform: Spread children are not supported in React. at 108..114
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-disallow-spread-children/input/input.js - transform: Spread children are not supported in React. at 5..18
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-handle-attributed-elements/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react-automatic/should-properly-handle-comments-between-props/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/honor-custom-jsx-comment-if-jsx-pragma-option-set/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/honor-custom-jsx-comment/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/honor-custom-jsx-pragma-option/input/input.js - transformed output differs from expected output
@@ -140,7 +139,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/sh
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-allow-pragmafrag-and-frag/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-disallow-spread-children/input/input.js - transform: Spread children are not supported in React. at 5..18
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-handle-attributed-elements/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-properly-handle-comments-between-props/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/react/should-support-xml-namespaces-if-flag/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/regression/pragma-frag-set-default-classic-runtime/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/jsx/vercel/1/input/input.js - transformed output differs from expected output
@@ -220,7 +218,6 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1660/case3/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1660/es3/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1660/es5/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1661/case1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1681/es3/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1681/es5/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-1xxx/1694/case1/input/index.js - transformed output differs from expected output
@@ -242,12 +239,7 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2056/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2063/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2150/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case1/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case2/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case3/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case4/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case5/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2162/case6/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2164/es2015/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2164/es2016/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2164/es5/input/index.js - transformed output differs from expected output
@@ -264,14 +256,13 @@ Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2476/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2493/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2758/1/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2793/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-2xxx/2822/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-3xxx/3266/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-3xxx/3381/1/input/index.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-3xxx/3609/1/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-4xxx/4224/2/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-4xxx/4224/3/input/index.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-4xxx/4314/1/input/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-4xxx/4314/2/input/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5102/input/index.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5752/input/index.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-5xxx/5859/input/index.js - transformed output differs from expected output

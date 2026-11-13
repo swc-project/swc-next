@@ -1,0 +1,1 @@
+init(); import x from 'x'; export function App() { useState(); return <div />; }

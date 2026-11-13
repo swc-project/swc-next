@@ -1,0 +1,1 @@
+import React from 'react'; function App() { React.use(promise); }

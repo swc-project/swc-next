@@ -1,0 +1,1 @@
+function App() { (useState as any)(0); }

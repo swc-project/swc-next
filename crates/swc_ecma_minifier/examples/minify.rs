@@ -15,7 +15,7 @@ use std::{
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::{Options as PrintOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
@@ -63,12 +63,12 @@ fn minify(source: &str) -> Result<String, String> {
     check_diagnostics(&result.diagnostics)?;
     let mut ast = result.ast;
     Minifier::minify(&mut ast, MinifierOptions::default());
-    let options = PrintOptions {
+    let options = GeneratorOptions {
         minify: true,
         comments: false,
-        ..PrintOptions::default()
+        ..GeneratorOptions::default()
     };
-    Ok(print(&ast, options).code)
+    Ok(generate(&ast, options).code)
 }
 
 fn check(code: &str) -> Result<(), String> {

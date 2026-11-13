@@ -1,0 +1,1 @@
+const App = memo({ render: () => useState(0) });

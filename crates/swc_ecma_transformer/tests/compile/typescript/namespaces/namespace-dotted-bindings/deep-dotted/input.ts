@@ -1,0 +1,1 @@
+namespace N.M.P { export const original=M; Object.defineProperty(N, 'M', {value:{}, configurable:true}); export const seen=M===original; }

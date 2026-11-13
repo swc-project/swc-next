@@ -1,0 +1,1 @@
+namespace N { export const React = factory; function render(React: any) { return <div />; } }

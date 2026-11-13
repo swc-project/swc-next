@@ -24,7 +24,7 @@ interface TestResult {
 
 // Fail before dispatching fixtures if a production binding was used by mistake.
 const binding = await import("./binding/index.js");
-if (typeof binding.nativeParsePrintSync !== "function") {
+if (typeof binding.nativeParseGenerateSync !== "function") {
   throw new Error("Build core with --features test-codec (or run pnpm test:codec)");
 }
 

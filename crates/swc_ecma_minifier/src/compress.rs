@@ -14,7 +14,7 @@ use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
 };
 
-use crate::{CompressOptions, mangle::Renames};
+use crate::{CompressOptions, dynamic::DynamicScopes, mangle::Renames};
 
 mod conditionals;
 mod dead_code;
@@ -68,21 +68,18 @@ impl Candidates {
         // SAFETY: Candidates only use handles from this AST and its fresh model.
         let ast = unsafe { ast.ast_mut() };
         // Dynamic lookup can observe declarations absent from the static use index.
-        if semantic
-            .iter_scopes()
-            .any(|entry| entry.scope.kind == ScopeKind::With)
-            || semantic
-                .iter_references()
-                .any(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"eval")
-        {
-            return candidates;
-        }
+        let dynamic = DynamicScopes::build(ast, &semantic);
         if mangle {
-            candidates.renames = Renames::build(ast, &semantic);
+            candidates.renames = Renames::build(ast, &semantic, &dynamic);
         }
         let mut local_vars = FxHashMap::default();
         let mut in_function = FxHashSet::default();
         for entry in semantic.iter_symbols() {
+            // Dynamic lookup can read or write these bindings at any time.
+            // Leaving them out of `in_function` also keeps reductions away.
+            if dynamic.contains(&semantic, entry.id) {
+                continue;
+            }
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
                 continue;
@@ -124,7 +121,9 @@ impl Candidates {
             let reference = entry.reference;
             match reference.resolution() {
                 NameResolution::Unresolved
-                    if options.global_defs && reference.flags.is_read_only() =>
+                    if options.global_defs
+                        && reference.flags.is_read_only()
+                        && !dynamic.shadows(reference.scope) =>
                 {
                     let global = match ast.get_utf8(reference.name).as_bytes() {
                         b"undefined" => Value::Undefined,
@@ -173,6 +172,7 @@ impl Candidates {
                 .filter(|entry| {
                     is_initialized(entry.symbol.flags)
                         && !reduction.removable.contains(&entry.id)
+                        && !dynamic.contains(&semantic, entry.id)
                         && !semantic.declarations(entry.id).any(|declaration| {
                             is_global_var(semantic.scope(declaration.scope).kind, declaration.flags)
                         })

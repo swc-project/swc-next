@@ -1,0 +1,1 @@
+namespace N { export namespace Inner { export interface T {} } } export import A = N.Inner.T;
