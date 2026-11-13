@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends // comment
+Base {}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C // comment
+  extends Base {}

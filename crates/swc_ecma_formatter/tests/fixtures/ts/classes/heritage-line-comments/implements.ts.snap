@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C implements // comment
+Interface {}
+---------- Options ----------
+{}
+---------- Output ----------
+class C // comment
+  implements Interface {}

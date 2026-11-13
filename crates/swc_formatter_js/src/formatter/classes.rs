@@ -604,6 +604,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let extends = self
                 .find_token(gap, comments, "extends")
                 .ok_or_else(|| self.unsupported("class extends boundary", class))?;
+            let after_keyword = comments.partition_point(|comment| comment.span.end <= extends);
+            if self.heritage_has_directive(&comments[after_keyword..]) {
+                return Ok(PreparedClassHead::Verbatim);
+            }
             let prepared = self.prepare_heritage_prefix(
                 gap,
                 Span::new(extends, extends + 7),
@@ -658,11 +662,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(caller, ClassCaller::Ordinary)
                     && arguments.is_none()
                     && self.heritage_expression_is_member(expression);
+            let prefix = if name.is_some() {
+                prepared.prefix.with_class_preceding_line()
+            } else {
+                prepared.prefix
+            };
             Some(SourceClassHeritage {
                 caller,
                 expression,
                 mode,
-                prefix: prepared.prefix,
+                prefix,
                 arguments,
             })
         } else {
@@ -676,6 +685,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let keyword = self
                 .find_token(gap, comments, "implements")
                 .ok_or_else(|| self.unsupported("class implements boundary", class))?;
+            let after_keyword = comments.partition_point(|comment| comment.span.end <= keyword);
+            if self.heritage_has_directive(&comments[after_keyword..]) {
+                return Ok(PreparedClassHead::Verbatim);
+            }
             let prepared = self.prepare_heritage_prefix(
                 gap,
                 Span::new(keyword, keyword + 10),
@@ -761,6 +774,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .as_ref()
                     .is_some_and(|heritage| heritage.arguments.is_some())
             {
+                if name.is_some() {
+                    prefix = prefix.with_class_preceding_line();
+                }
                 prefix = prefix.with_preceding_owner();
             }
             Some(SourceClassImplements {

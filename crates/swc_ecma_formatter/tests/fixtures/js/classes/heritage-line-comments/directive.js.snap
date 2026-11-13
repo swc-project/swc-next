@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends // eslint-disable-next-line no-undef
+Missing(aaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbb) {}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C extends // eslint-disable-next-line no-undef
+Missing(aaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbb) {}
