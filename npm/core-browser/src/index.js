@@ -1,4 +1,8 @@
-import { createTransformSync } from "@swc-next/transformer-bridge";
+import {
+  encodeSource,
+  encodeTransformApiOptions,
+  decodeJsOutput,
+} from "@swc-next/transformer-bridge";
 import {
   parseSync as __parseSync,
   generateSync as __generateSync,
@@ -45,4 +49,8 @@ export function generateSync(program, options) {
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync);
+export function transformSync(source, options) {
+  const config = encodeTransformApiOptions(options);
+  const output = __transformSync(encodeSource(source), source.length, config);
+  return decodeJsOutput(output);
+}

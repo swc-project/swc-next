@@ -73,8 +73,9 @@ export declare function langFromPath(path: string): Lang;
 export declare function sourceTypeFromPath(path: string): SourceType;
 
 /** Transform source synchronously. Syntax errors are returned in diagnostics.
- * Options encoding reuses state and is not reentrant. Option getters and Proxy
- * traps must not reenter this transformSync function while it is encoding options.
+ * Options encoding shares state across entry points and is not reentrant. Option
+ * getters and Proxy traps must not call any transformSync or encodeTransformApiOptions
+ * while it is encoding options.
  */
 export declare function transformSync(
   source: string,

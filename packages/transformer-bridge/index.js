@@ -35,40 +35,52 @@ function storage(length) {
     : new Uint8Array(length);
 }
 
-function createTransformApiOptionsEncoder() {
-  let buffer = empty;
-  let view;
-  return function encodeTransformApiOptions(options) {
-    if (options == null) return empty;
-    object(options, rootKeys, "options");
-    const parser = options.parser;
-    const generator = options.generator;
-    object(parser, parserKeys, "parser");
-    object(generator, generatorKeys, "generator");
-    const filename = options.filename;
-    if (filename != null && typeof filename !== "string") throw new TypeError("filename must be a string");
-    const capacity = filename == null ? 16 : 20 + filename.length * 3;
-    if (buffer.length < capacity) {
-      buffer = storage(Math.max(capacity, buffer.length * 2, 256));
-      view = new DataView(buffer.buffer);
-    }
-    view.setUint32(0, 1, true);
-    view.setUint32(4, encodeParserConfig(parser), true);
-    view.setUint32(8, encodeGeneratorConfig(generator), true);
-    view.setUint32(12, boolean(options.sourceMap, "sourceMap")
-      | enumeration(options.comments, comments, "comments") << 2, true);
-    if (filename == null) return buffer.subarray(0, 16);
-    const { written } = encoder.encodeInto(filename, buffer.subarray(20));
-    view.setUint32(16, written, true);
-    return buffer.subarray(0, 20 + written);
-  };
+let sourceBuffer = empty;
+
+/** Encode source as UTF-8 into reusable scratch storage. Consume the returned
+ * bytes synchronously before the next call; do not retain or modify them.
+ */
+export function encodeSource(source) {
+  if (typeof source !== "string") throw new TypeError("source must be a string");
+  const capacity = source.length * 3;
+  if (sourceBuffer.length < capacity) {
+    sourceBuffer = storage(Math.max(capacity, sourceBuffer.length * 2, 4096));
+  }
+  const { written } = encoder.encodeInto(source, sourceBuffer);
+  return sourceBuffer.subarray(0, written);
 }
+
+let buffer = empty;
+let view;
 
 /** Encode the complete JS transform configuration into reusable scratch storage.
  * The returned buffer is valid until the next call. Option getters and Proxy traps
- * must not reenter this encoder while it is encoding.
+ * must not reenter this encoder, including via any transformSync entry point.
  */
-export const encodeTransformApiOptions = createTransformApiOptionsEncoder();
+export function encodeTransformApiOptions(options) {
+  if (options == null) return empty;
+  object(options, rootKeys, "options");
+  const parser = options.parser;
+  const generator = options.generator;
+  object(parser, parserKeys, "parser");
+  object(generator, generatorKeys, "generator");
+  const filename = options.filename;
+  if (filename != null && typeof filename !== "string") throw new TypeError("filename must be a string");
+  const capacity = filename == null ? 16 : 20 + filename.length * 3;
+  if (buffer.length < capacity) {
+    buffer = storage(Math.max(capacity, buffer.length * 2, 256));
+    view = new DataView(buffer.buffer);
+  }
+  view.setUint32(0, 1, true);
+  view.setUint32(4, encodeParserConfig(parser), true);
+  view.setUint32(8, encodeGeneratorConfig(generator), true);
+  view.setUint32(12, boolean(options.sourceMap, "sourceMap")
+    | enumeration(options.comments, comments, "comments") << 2, true);
+  if (filename == null) return buffer.subarray(0, 16);
+  const { written } = encoder.encodeInto(filename, buffer.subarray(20));
+  view.setUint32(16, written, true);
+  return buffer.subarray(0, 20 + written);
+}
 
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
   ? Buffer.prototype.utf8Slice
@@ -106,25 +118,4 @@ export function decodeJsOutput(buffer) {
     diagnostics[i] = help === undefined ? { severity, message, start, end, labels } : { severity, message, start, end, help, labels };
   }
   return map === undefined ? { code, diagnostics } : { code, map, diagnostics };
-}
-
-/** Build a synchronous transform API around a binary native or Wasm binding.
- * Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
- * traps must not reenter the same wrapper while it is encoding options.
- */
-export function createTransformSync(binding) {
-  const encodeOptions = createTransformApiOptionsEncoder();
-  let sourceBuffer = empty;
-  return function transformSync(source, options) {
-    if (typeof source !== "string") throw new TypeError("source must be a string");
-    const config = encodeOptions(options);
-    const capacity = source.length * 3;
-    if (sourceBuffer.length < capacity) {
-      sourceBuffer = storage(Math.max(capacity, sourceBuffer.length * 2, 4096));
-    }
-    const { written } = encoder.encodeInto(source, sourceBuffer);
-    // Synchronous Rust processing borrows these bytes only for this call.
-    const result = binding(sourceBuffer.subarray(0, written), source.length, config);
-    return decodeJsOutput(result);
-  };
 }

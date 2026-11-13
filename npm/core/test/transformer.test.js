@@ -5,11 +5,22 @@ import { transformSync as transformCore } from "../src-js/index.js";
 import { transformSync as transformStandalone } from "../../transformer/src-js/index.js";
 import { parseSync as parseBinding, transformSync as transformBinding } from "../src-js/binding.js";
 import { decode, encodeParserConfig } from "@swc-next/decoder";
-import { encodeTransformApiOptions, decodeJsOutput } from "@swc-next/transformer-bridge";
+import { encodeSource, encodeTransformApiOptions, decodeJsOutput } from "@swc-next/transformer-bridge";
+
+nodeTest("transform bridge encodes source as UTF-8 across buffer reuse", () => {
+  assert.equal(encodeSource("").byteLength, 0);
+  assert.deepEqual(encodeSource("雪😀\0\uD800"), new Uint8Array(Buffer.from("雪😀\0\uD800")));
+
+  const largeSource = "雪😀".repeat(4096);
+  assert.deepEqual(encodeSource(largeSource), new Uint8Array(Buffer.from(largeSource)));
+  assert.deepEqual(encodeSource("x"), new Uint8Array([120]));
+  assert.equal(encodeSource("").byteLength, 0);
+  assert.throws(() => encodeSource(42), TypeError);
+});
 
 nodeTest("transform bridge uses packed options and binary output", () => {
   const config = encodeTransformApiOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } });
-  const output = transformBinding(Buffer.from('const text: string = "雪😀";'), 'const text: string = "雪😀";'.length, config);
+  const output = transformBinding(encodeSource('const text: string = "雪😀";'), 'const text: string = "雪😀";'.length, config);
   assert.ok(output instanceof Uint8Array);
   const result = decodeJsOutput(output);
   assert.equal(result.code, 'const text="雪😀";');
