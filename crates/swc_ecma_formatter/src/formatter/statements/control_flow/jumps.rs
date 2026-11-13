@@ -1,15 +1,15 @@
 //! Restricted jump labels and the real owner of a labeled statement's header.
 
 use swc_next_ecma_ast::{
-    BreakStatement, Comment, ContinueStatement, DeclData, Expr, ExprData, GetSpan, LabelIdentifier,
-    LabeledStatement, Span, Stmt, StmtData,
+    BreakStatement, Comment, CommentKind, ContinueStatement, DeclData, Expr, ExprData, GetSpan,
+    LabelIdentifier, LabeledStatement, Span, Stmt, StmtData,
 };
 
 use super::super::{
     Formatter, PrintedStatement, StatementContent, StatementItem, StatementPunctuation,
 };
 use super::{ControlledBodyEnd, ControlledBodyRole};
-use crate::formatter::comments::{CommentBinding, CommentRunLayout};
+use crate::formatter::comments::{CommentBinding, CommentCursor, CommentRunLayout};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -84,13 +84,129 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let span = node.span(self.ast);
+        let prepared = self
+            .label_chain_head
+            .is_some_and(|head| head.start <= span.start && span.start < head.end);
+        if prepared
+            || !matches!(
+                self.ast.stmt_data(node.body(self.ast)),
+                StmtData::LabeledStatement(_)
+            )
+            || self
+                .comments
+                .first()
+                .is_none_or(|comment| comment.span.start >= span.end)
+        {
+            return self.format_labeled_contents(node, punctuation, source_candidate, writer);
+        }
+        let (head, prefix) = self.prepare_label_chain_head(node)?;
+        let outer = self.label_chain_head.replace(head);
+        let result = (|| {
+            self.comments.claim(prefix)?;
+            if !prefix.is_empty() {
+                self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
+                writer.hard_line();
+            }
+            self.format_labeled_contents(node, punctuation, source_candidate, writer)
+        })();
+        self.label_chain_head = outer;
+        result
+    }
+
+    fn prepare_label_chain_head(
+        &self,
+        node: LabeledStatement,
+    ) -> Result<(Span, &'ast [Comment]), FormatError> {
+        let ast = self.ast;
+        let start = node.span(ast).start;
+        let mut current = node;
+        let mut prefix_end = start;
+        let end = loop {
+            let label = current.label(ast);
+            let statement = current.body(ast);
+            let head = Span::new(label.span(ast).end, statement.span(ast).start);
+            let comments = self.comments.in_range(head);
+            let colon = self
+                .find_token(head, comments, ":")
+                .ok_or_else(|| self.unsupported("label colon boundary", current))?;
+            let split = comments.partition_point(|comment| comment.span.end <= colon);
+            let (before, after) = comments.split_at(split);
+            let (expression, declaration) = match ast.stmt_data(statement) {
+                StmtData::ExpressionStatement(node) => (Some(node.expression(ast)), false),
+                StmtData::Declaration(node) => {
+                    (None, matches!(ast.decl_data(node), DeclData::Function(_)))
+                }
+                _ => (None, false),
+            };
+            if !self
+                .control_flow_comment_binding(before, Span::new(head.start, colon), None, false)?
+                .allows_relocation(None)
+            {
+                break head.end;
+            }
+            let move_before = self.label_comments_lead_statement(before, colon);
+            if !before.is_empty() && !move_before {
+                break head.end;
+            }
+            if move_before
+                && before
+                    .iter()
+                    .any(|comment| comment.kind == CommentKind::Line)
+            {
+                prefix_end = before.last().map_or(prefix_end, |comment| comment.span.end);
+            }
+            if !self
+                .control_flow_comment_binding(
+                    after,
+                    Span::new(colon + 1, head.end),
+                    expression,
+                    declaration,
+                )?
+                .allows_relocation(None)
+            {
+                break head.end;
+            }
+            if (before.is_empty() || move_before)
+                && self.label_comments_lead_statement(after, head.end)
+                && after
+                    .iter()
+                    .any(|comment| comment.kind == CommentKind::Line)
+            {
+                prefix_end = after.last().map_or(prefix_end, |comment| comment.span.end);
+            }
+            let StmtData::LabeledStatement(next) = ast.stmt_data(statement) else {
+                break head.end;
+            };
+            current = next;
+        };
+        Ok((
+            Span::new(start, end),
+            self.comments.in_range(Span::new(start, prefix_end)),
+        ))
+    }
+
+    fn format_labeled_contents(
+        &mut self,
+        node: LabeledStatement,
+        punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
         let label = node.label(ast);
         let statement = node.body(ast);
         let head = Span::new(label.span(ast).end, statement.span(ast).start);
         let comments = self.comments.in_range(head);
+        let token_comments = if self.label_chain_head.is_some_and(|chain| {
+            chain.start <= node.span(ast).start && node.span(ast).start < chain.end
+        }) {
+            CommentCursor::new(ast.comments()).in_range(head)
+        } else {
+            comments
+        };
         let colon = self
-            .find_token(head, comments, ":")
+            .find_token(head, token_comments, ":")
             .ok_or_else(|| self.unsupported("label colon boundary", node))?;
         let mut label_mode = ContentMode::Formatted;
         let mut body_mode = ContentMode::Formatted;

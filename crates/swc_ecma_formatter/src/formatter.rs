@@ -38,6 +38,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     has_file_directives: bool,
     enclosing_await: Option<AwaitExpression>,
     for_initializer_span: Option<Span>,
+    label_chain_head: Option<Span>,
     terminal_close_owner: diagnostics::TerminalCloseOwner,
     source_object_layout: SourceObjectLayout,
 }
@@ -72,6 +73,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_file_directives: false,
             enclosing_await: None,
             for_initializer_span: None,
+            label_chain_head: None,
             terminal_close_owner: diagnostics::TerminalCloseOwner::Source,
             source_object_layout: SourceObjectLayout::default(),
         };
