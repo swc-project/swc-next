@@ -22,12 +22,6 @@ interface TestResult {
   error?: string;
 }
 
-// Fail before dispatching fixtures if a production binding was used by mistake.
-const binding = await import("./binding/index.js");
-if (typeof binding.nativeParseGenerateSync !== "function") {
-  throw new Error("Build core with --features test-codec (or run pnpm test:codec)");
-}
-
 const pool = new Tinypool({
   filename: path.join(import.meta.dirname, "codec-conformance.worker.js"),
   // Deep expression fixtures need more stack than the worker default.

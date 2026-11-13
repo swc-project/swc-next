@@ -56,34 +56,13 @@ const ENUMS = Object.freeze([
 ]);
 
 
-export function encodeOptions(options) {
-  if (options === undefined || options === null) return 0;
-  if (typeof options !== "object" || Array.isArray(options)) {
-    throw new TypeError("options must be an object");
-  }
-
-  let value = 1;
-  value |= encodeOptionBoolean(options.asciiOnly, "asciiOnly") << 1;
-  value |= encodeOptionBoolean(options.minify, "minify") << 3;
-  value |= encodeOptionBoolean(options.inlineScript, "inlineScript") << 5;
-  return value >>> 0;
-}
-
-function encodeOptionBoolean(value, name) {
-  if (value === undefined || value === null) return 0;
-  if (typeof value !== "boolean") {
-    throw new TypeError(`${name} must be a boolean`);
-  }
-  return value ? 2 : 1;
-}
-
 // Maximum combined capacity of the reusable data buffers.
 const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
 let reusableBuffers;
 let nodeCapacity, spans, kinds, payloadBuffer, payload;
 let extraCapacity, extraBuffer, extra, poolCapacity, pool;
 let nodeCount = 0, extraCount = 0, poolLength = 0;
-let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = 0;
 
 function createBuffers(sizeHint) {
   const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
@@ -178,6 +157,18 @@ function encArraySlice(values, encoder, from, end) {
   for (let index = from, slot = start; index < end; index++, slot++) {
     const id = encoder(values[index]);
     setExtraU32(slot, 0, id);
+  }
+  return start;
+}
+
+function encTemplateElements(values, templateStart) {
+  const length = values?.length ?? 0;
+  if (!length) return 0;
+  const start = allocExtra(length);
+  const delimited = values[0].start === templateStart;
+  for (let index = 0; index < length; index++) {
+    const id = encTemplateElement(values[index], delimited);
+    setExtraU32(start + index, 0, id);
   }
   return start;
 }
@@ -501,7 +492,7 @@ function encRegExpLiteral(n) {
 }
 
 function encTemplateLiteral(n) {
-  const v_0 = encArray(n.quasis, encTemplateElement, false);
+  const v_0 = encTemplateElements(n.quasis, n.start);
   const v_1 = encArray(n.expressions, encExpr, false);
   const index = allocNode(9, n.start, n.end);
   writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
@@ -509,13 +500,21 @@ function encTemplateLiteral(n) {
   return index;
 }
 
-function encTemplateElement(n) {
+function encTemplateElement(n, delimited) {
   const v_0 = n.value?.cooked ?? "";
   const v_1 = templateRaw(n.value?.raw ?? "");
   const v_2 = n.tail ? 1 : 0;
   const v_3 = n.value?.cooked == null ? 1 : 0;
   const extraId = allocExtra(2);
   const index = allocNode(10, n.start, n.end);
+  if (delimited) {
+    const span = index * 2;
+    const endOffset = 2 - v_2;
+    // TS ESTree spans include delimiters; wire spans cover only raw content.
+    const trim = spans[span + 1] - spans[span] > endOffset;
+    spans[span] += trim;
+    spans[span + 1] -= endOffset * trim;
+  }
   setPayloadU32(index, 12, extraId);
   encStr(v_0, payload, index * 16 + 0, true);
   encStr(v_1, extra, (extraId + 0) * 4);
@@ -705,6 +704,7 @@ function encVariableDeclaration(n) {
   const v_0 = enumValue(9, n.kind);
   const v_1 = encArray(n.declarations, encVariableDeclarator, false);
   const v_2 = n.declare ? 1 : 0;
+  isTs |= v_2;
   const index = allocNode(27, n.start, n.end);
   setPayloadU8(index, 8, v_0);
   writeArrayRange(v_1, n.declarations, payload, index * 16 + 0);
@@ -717,6 +717,7 @@ function encVariableDeclarator(n) {
   const v_1 = n.id?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.id?.typeAnnotation);
   const v_2 = n.init == null ? NULL : encExpr(n.init);
   const v_3 = n.definite ? 1 : 0;
+  isTs |= v_3;
   const index = allocNode(28, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
@@ -906,6 +907,7 @@ function encClass(n) {
   const v_7 = encClassBody(n.body);
   const v_8 = n.abstract ? 1 : 0;
   const v_9 = n.declare ? 1 : 0;
+  isTs |= v_8 | v_9;
   const extraId = allocExtra(7);
   const index = allocNode(47, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -932,7 +934,7 @@ function encClassBody(n) {
 function encMethodDefinition(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encFunction(n.value);
+  const v_2 = encFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -940,6 +942,7 @@ function encMethodDefinition(n) {
   const v_7 = n.optional ? 1 : 0;
   const v_8 = n.type.startsWith("TSAbstract") ? 1 : 0;
   const v_9 = enumValue(14, n.accessibility);
+  isTs |= v_6 | v_7 | v_8 | v_9;
   const extraId = allocExtra(3);
   const index = allocNode(49, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -971,6 +974,7 @@ function encPropertyDefinition(n) {
   const v_11 = n.readonly ? 1 : 0;
   const v_12 = n.type.startsWith("TSAbstract") ? 1 : 0;
   const v_13 = enumValue(14, n.accessibility);
+  isTs |= v_7 | v_8 | v_9 | v_10 | v_11 | v_12 | v_13;
   const extraId = allocExtra(5);
   const index = allocNode(50, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -998,7 +1002,7 @@ function encStaticBlock(n) {
   return index;
 }
 
-function encFunction(n) {
+function encFunction(n, parameterKind = "formal") {
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
@@ -1006,7 +1010,7 @@ function encFunction(n) {
   const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_3 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_4 = encFormalParameters(n.params, _paramStart);
+  const v_4 = encFormalParameters(n.params, _paramStart, parameterKind);
   const v_5 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_6 = encFunctionBody(n.body);
   const v_7 = n.generator ? 1 : 0;
@@ -1080,7 +1084,7 @@ function encWithStatement(n) {
   return index;
 }
 
-function encFormalParameters(n, from = 0) {
+function encFormalParameters(n, from = 0, kind = "formal") {
   const _values = n;
   const _length = _values?.length ?? 0;
   let _itemCount = _length - from;
@@ -1105,7 +1109,7 @@ function encFormalParameters(n, from = 0) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
-  const v_2 = enumValue(11, 0);
+  const v_2 = enumValue(11, kind);
   const index = allocNode(58, _start, _end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
@@ -1122,6 +1126,12 @@ function encFormalParameter(n) {
   const v_2 = _pattern.typeAnnotation == null ? NULL : encTsTypeAnnotation(_pattern.typeAnnotation);
   const v_3 = _initializer == null ? NULL : encExpr(_initializer);
   const v_4 = _pattern.optional ? 1 : 0;
+  isTs |= (n.decorators?.length ?? 0) | v_4;
+  if (v_4 && v_2 === NULL && v_3 !== NULL) {
+    const span = v_1 * 2;
+    // Undo the decoder's optional-marker extension without underflowing empty spans.
+    spans[span + 1] -= spans[span + 1] > spans[span];
+  }
   const extraId = allocExtra(3);
   const index = allocNode(59, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1137,6 +1147,7 @@ function encFormalParameterRest(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = encFormalParameterPattern(n.argument);
   const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
+  isTs |= (n.decorators?.length ?? 0);
   const index = allocNode(60, n.start, n.end);
   writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
@@ -1167,7 +1178,7 @@ function encSpreadElement(n) {
 
 function encObjectProperty(n) {
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_1 = encExpr(n.value);
+  const v_1 = n.value.type === "FunctionExpression" && (n.method || n.kind === "get" || n.kind === "set") ? encFunction(n.value, "unique") : encExpr(n.value);
   const v_2 = enumValue(12, n.kind);
   const v_3 = n.method ? 1 : 0;
   const v_4 = n.shorthand ? 1 : 0;
@@ -1193,7 +1204,7 @@ function encArrowFunctionExpression(n) {
   const v_0 = n.expression ? 1 : 0;
   const v_1 = n.async ? 1 : 0;
   const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_3 = encFormalParameters(n.params);
+  const v_3 = encFormalParameters(n.params, 0, "arrow");
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = encArrowFunctionBody(n.body);
   const extraId = allocExtra(2);
@@ -1320,6 +1331,7 @@ function encImportDeclaration(n) {
   const v_2 = encArray(n.attributes, encImportAttribute, false);
   const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
   const v_4 = enumValue(15, n.importKind);
+  isTs |= v_4;
   const extraId = allocExtra(5);
   const index = allocNode(77, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1335,6 +1347,7 @@ function encImportSpecifier(n) {
   const v_0 = encModuleExportName(n.imported);
   const v_1 = encBindingIdentifier(n.local);
   const v_2 = enumValue(15, n.importKind);
+  isTs |= v_2;
   const index = allocNode(78, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
@@ -1371,6 +1384,7 @@ function encExportNamedDeclaration(n) {
   const v_2 = n.source == null ? NULL : encStringLiteral(n.source);
   const v_3 = encArray(n.attributes, encImportAttribute, false);
   const v_4 = enumValue(15, n.exportKind);
+  isTs |= v_4;
   const extraId = allocExtra(4);
   const index = allocNode(82, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1394,6 +1408,7 @@ function encExportAllDeclaration(n) {
   const v_1 = encStringLiteral(n.source);
   const v_2 = encArray(n.attributes, encImportAttribute, false);
   const v_3 = enumValue(15, n.exportKind);
+  isTs |= v_3;
   const extraId = allocExtra(2);
   const index = allocNode(84, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1408,6 +1423,7 @@ function encExportSpecifier(n) {
   const v_0 = encModuleExportName(n.local);
   const v_1 = encModuleExportName(n.exported);
   const v_2 = enumValue(15, n.exportKind);
+  isTs |= v_2;
   const index = allocNode(85, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
@@ -1422,15 +1438,15 @@ function encHashbang(n) {
   return index;
 }
 
-function encTsFunction(n) {
-  isTs = true;
+function encTsFunction(n, parameterKind = "formal") {
+  isTs = 1;
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_3 = encFormalParameters(n.params, _paramStart);
+  const v_3 = encFormalParameters(n.params, _paramStart, parameterKind);
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = n.generator ? 1 : 0;
   const v_6 = n.async ? 1 : 0;
@@ -1450,10 +1466,10 @@ function encTsFunction(n) {
 }
 
 function encTsMethodDefinition(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encTsFunction(n.value);
+  const v_2 = encTsFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -1478,7 +1494,7 @@ function encTsMethodDefinition(n) {
 }
 
 function encTsTypeAnnotation(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const index = allocNode(89, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1486,91 +1502,91 @@ function encTsTypeAnnotation(n) {
 }
 
 function encTsAnyKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(90, n.start, n.end);
   return index;
 }
 
 function encTsUnknownKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(91, n.start, n.end);
   return index;
 }
 
 function encTsNeverKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(92, n.start, n.end);
   return index;
 }
 
 function encTsVoidKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(93, n.start, n.end);
   return index;
 }
 
 function encTsNullKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(94, n.start, n.end);
   return index;
 }
 
 function encTsUndefinedKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(95, n.start, n.end);
   return index;
 }
 
 function encTsStringKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(96, n.start, n.end);
   return index;
 }
 
 function encTsNumberKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(97, n.start, n.end);
   return index;
 }
 
 function encTsBigIntKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(98, n.start, n.end);
   return index;
 }
 
 function encTsBooleanKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(99, n.start, n.end);
   return index;
 }
 
 function encTsSymbolKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(100, n.start, n.end);
   return index;
 }
 
 function encTsObjectKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(101, n.start, n.end);
   return index;
 }
 
 function encTsIntrinsicKeyword(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(102, n.start, n.end);
   return index;
 }
 
 function encTsThisType(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(103, n.start, n.end);
   return index;
 }
 
 function encTsTypeReference(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsTypeName(n.typeName);
   const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
   const index = allocNode(104, n.start, n.end);
@@ -1580,7 +1596,7 @@ function encTsTypeReference(n) {
 }
 
 function encTsQualifiedName(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsQualifiedNameLeft(n.left);
   const v_1 = encIdentifierName(n.right);
   const index = allocNode(105, n.start, n.end);
@@ -1590,7 +1606,7 @@ function encTsQualifiedName(n) {
 }
 
 function encTsTypeQuery(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsTypeQueryExprName(n.exprName);
   const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
   const index = allocNode(106, n.start, n.end);
@@ -1600,7 +1616,7 @@ function encTsTypeQuery(n) {
 }
 
 function encTsImportType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encStringLiteral(n.source);
   const v_1 = n.options == null ? NULL : encExpr(n.options);
   const v_2 = n.qualifier == null ? NULL : encTsImportTypeQualifier(n.qualifier);
@@ -1614,7 +1630,7 @@ function encTsImportType(n) {
 }
 
 function encTsTypeParameter(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.name);
   const v_1 = n.constraint == null ? NULL : encTsType(n.constraint);
   const v_2 = n.default == null ? NULL : encTsType(n.default);
@@ -1632,7 +1648,7 @@ function encTsTypeParameter(n) {
 }
 
 function encTsTypeParameterDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.params, encTsTypeParameter, false);
   const index = allocNode(109, n.start, n.end);
   writeArrayRange(v_0, n.params, payload, index * 16 + 0);
@@ -1640,7 +1656,7 @@ function encTsTypeParameterDeclaration(n) {
 }
 
 function encTsTypeParameterInstantiation(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.params, encTsType, false);
   const index = allocNode(110, n.start, n.end);
   writeArrayRange(v_0, n.params, payload, index * 16 + 0);
@@ -1648,7 +1664,7 @@ function encTsTypeParameterInstantiation(n) {
 }
 
 function encTsLiteralType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsLiteral(n.literal);
   const index = allocNode(111, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1656,8 +1672,8 @@ function encTsLiteralType(n) {
 }
 
 function encTsTemplateLiteralType(n) {
-  isTs = true;
-  const v_0 = encArray(n.quasis, encTemplateElement, false);
+  isTs = 1;
+  const v_0 = encTemplateElements(n.quasis, n.start);
   const v_1 = encArray(n.types, encTsType, false);
   const index = allocNode(112, n.start, n.end);
   writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
@@ -1666,7 +1682,7 @@ function encTsTemplateLiteralType(n) {
 }
 
 function encTsArrayType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.elementType);
   const index = allocNode(113, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1674,7 +1690,7 @@ function encTsArrayType(n) {
 }
 
 function encTsIndexedAccessType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.objectType);
   const v_1 = encTsType(n.indexType);
   const index = allocNode(114, n.start, n.end);
@@ -1684,7 +1700,7 @@ function encTsIndexedAccessType(n) {
 }
 
 function encTsTupleType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.elementTypes, encTsTupleElement, false);
   const index = allocNode(115, n.start, n.end);
   writeArrayRange(v_0, n.elementTypes, payload, index * 16 + 0);
@@ -1692,7 +1708,7 @@ function encTsTupleType(n) {
 }
 
 function encTsNamedTupleMember(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encIdentifierName(n.label);
   const v_1 = encTsType(n.elementType);
   const v_2 = n.optional ? 1 : 0;
@@ -1704,7 +1720,7 @@ function encTsNamedTupleMember(n) {
 }
 
 function encTsOptionalType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const index = allocNode(117, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1712,7 +1728,7 @@ function encTsOptionalType(n) {
 }
 
 function encTsRestType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsTupleElement(n.typeAnnotation);
   const index = allocNode(118, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1720,7 +1736,7 @@ function encTsRestType(n) {
 }
 
 function encTsJsDocNullableType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const v_1 = n.postfix ? 1 : 0;
   const index = allocNode(119, n.start, n.end);
@@ -1730,7 +1746,7 @@ function encTsJsDocNullableType(n) {
 }
 
 function encTsJsDocNonNullableType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const v_1 = n.postfix ? 1 : 0;
   const index = allocNode(120, n.start, n.end);
@@ -1740,13 +1756,13 @@ function encTsJsDocNonNullableType(n) {
 }
 
 function encTsJsDocUnknownType(n) {
-  isTs = true;
+  isTs = 1;
   const index = allocNode(121, n.start, n.end);
   return index;
 }
 
 function encTsUnionType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.types, encTsType, false);
   const index = allocNode(122, n.start, n.end);
   writeArrayRange(v_0, n.types, payload, index * 16 + 0);
@@ -1754,7 +1770,7 @@ function encTsUnionType(n) {
 }
 
 function encTsIntersectionType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.types, encTsType, false);
   const index = allocNode(123, n.start, n.end);
   writeArrayRange(v_0, n.types, payload, index * 16 + 0);
@@ -1762,7 +1778,7 @@ function encTsIntersectionType(n) {
 }
 
 function encTsConditionalType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.checkType);
   const v_1 = encTsType(n.extendsType);
   const v_2 = encTsType(n.trueType);
@@ -1776,7 +1792,7 @@ function encTsConditionalType(n) {
 }
 
 function encTsInferType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsTypeParameter(n.typeParameter);
   const index = allocNode(125, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1784,7 +1800,7 @@ function encTsInferType(n) {
 }
 
 function encTsTypeOperator(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = enumValue(16, n.operator);
   const v_1 = encTsType(n.typeAnnotation);
   const index = allocNode(126, n.start, n.end);
@@ -1794,7 +1810,7 @@ function encTsTypeOperator(n) {
 }
 
 function encTsParenthesizedType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const index = allocNode(127, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1802,13 +1818,13 @@ function encTsParenthesizedType(n) {
 }
 
 function encTsFunctionType(n) {
-  isTs = true;
+  isTs = 1;
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_2 = encFormalParameters(n.params, _paramStart);
+  const v_2 = encFormalParameters(n.params, _paramStart, "signature");
   const v_3 = encTsTypeAnnotation(n.returnType);
   const index = allocNode(128, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1819,9 +1835,9 @@ function encTsFunctionType(n) {
 }
 
 function encTsConstructorType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_1 = encFormalParameters(n.params);
+  const v_1 = encFormalParameters(n.params, 0, "signature");
   const v_2 = encTsTypeAnnotation(n.returnType);
   const v_3 = n.abstract ? 1 : 0;
   const index = allocNode(129, n.start, n.end);
@@ -1833,7 +1849,7 @@ function encTsConstructorType(n) {
 }
 
 function encTsTypePredicate(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsTypePredicateName(n.parameterName);
   const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const v_2 = n.asserts ? 1 : 0;
@@ -1845,7 +1861,7 @@ function encTsTypePredicate(n) {
 }
 
 function encTsTypeLiteral(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.members, encTsTypeElement, false);
   const index = allocNode(131, n.start, n.end);
   writeArrayRange(v_0, n.members, payload, index * 16 + 0);
@@ -1853,7 +1869,7 @@ function encTsTypeLiteral(n) {
 }
 
 function encTsMappedType(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.key);
   const v_1 = encTsType(n.constraint);
   const v_2 = n.nameType == null ? NULL : encTsType(n.nameType);
@@ -1873,7 +1889,7 @@ function encTsMappedType(n) {
 }
 
 function encTsPropertySignature(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
   const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const v_2 = n.computed ? 1 : 0;
@@ -1889,14 +1905,14 @@ function encTsPropertySignature(n) {
 }
 
 function encTsMethodSignature(n) {
-  isTs = true;
+  isTs = 1;
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_3 = encFormalParameters(n.params, _paramStart);
+  const v_3 = encFormalParameters(n.params, _paramStart, "signature");
   const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const v_5 = enumValue(17, n.kind);
   const v_6 = n.computed ? 1 : 0;
@@ -1916,13 +1932,13 @@ function encTsMethodSignature(n) {
 }
 
 function encTsCallSignatureDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const _first = n.params?.[0];
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
-  const v_2 = encFormalParameters(n.params, _paramStart);
+  const v_2 = encFormalParameters(n.params, _paramStart, "signature");
   const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const index = allocNode(135, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1933,9 +1949,9 @@ function encTsCallSignatureDeclaration(n) {
 }
 
 function encTsConstructSignatureDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-  const v_1 = encFormalParameters(n.params);
+  const v_1 = encFormalParameters(n.params, 0, "signature");
   const v_2 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
   const index = allocNode(136, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -1945,7 +1961,7 @@ function encTsConstructSignatureDeclaration(n) {
 }
 
 function encTsIndexSignature(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.parameters, encTsIndexSignatureParameter, false);
   const v_1 = encTsTypeAnnotation(n.typeAnnotation);
   const v_2 = n.readonly ? 1 : 0;
@@ -1959,7 +1975,7 @@ function encTsIndexSignature(n) {
 }
 
 function encTsTypeAliasDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.id);
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = encTsType(n.typeAnnotation);
@@ -1973,7 +1989,7 @@ function encTsTypeAliasDeclaration(n) {
 }
 
 function encTsInterfaceDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.id);
   const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
   const v_2 = encArray(n.extends, encTsInterfaceHeritage, false);
@@ -1991,7 +2007,7 @@ function encTsInterfaceDeclaration(n) {
 }
 
 function encTsInterfaceBody(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.body, encTsTypeElement, false);
   const index = allocNode(140, n.start, n.end);
   writeArrayRange(v_0, n.body, payload, index * 16 + 0);
@@ -1999,7 +2015,7 @@ function encTsInterfaceBody(n) {
 }
 
 function encTsInterfaceHeritage(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
   const index = allocNode(141, n.start, n.end);
@@ -2009,7 +2025,7 @@ function encTsInterfaceHeritage(n) {
 }
 
 function encTsClassImplements(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
   const index = allocNode(142, n.start, n.end);
@@ -2019,7 +2035,7 @@ function encTsClassImplements(n) {
 }
 
 function encTsEnumDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.id);
   const v_1 = encTsEnumBody(n.body);
   const v_2 = n.const ? 1 : 0;
@@ -2033,7 +2049,7 @@ function encTsEnumDeclaration(n) {
 }
 
 function encTsEnumBody(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.members, encTsEnumMember, false);
   const index = allocNode(144, n.start, n.end);
   writeArrayRange(v_0, n.members, payload, index * 16 + 0);
@@ -2041,7 +2057,7 @@ function encTsEnumBody(n) {
 }
 
 function encTsEnumMember(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsEnumMemberName(n.id);
   const v_1 = n.initializer == null ? NULL : encExpr(n.initializer);
   const v_2 = n.computed ? 1 : 0;
@@ -2053,7 +2069,7 @@ function encTsEnumMember(n) {
 }
 
 function encTsModuleDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsModuleName(n.id);
   const v_1 = n.attributes == null ? NULL : encTsTypeLiteral(n.attributes);
   const v_2 = n.body == null ? NULL : encTsModuleBody(n.body);
@@ -2069,7 +2085,7 @@ function encTsModuleDeclaration(n) {
 }
 
 function encTsModuleBlock(n) {
-  isTs = true;
+  isTs = 1;
   const _body = n.body;
   const _length = _body?.length ?? 0;
   let _directiveCount = 0;
@@ -2090,7 +2106,7 @@ function encTsModuleBlock(n) {
 }
 
 function encTsGlobalDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encIdentifierName(n.id);
   const v_1 = encTsModuleBlock(n.body);
   const v_2 = n.declare ? 1 : 0;
@@ -2102,7 +2118,7 @@ function encTsGlobalDeclaration(n) {
 }
 
 function encTsParameterProperty(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = encFormalParameter(n.parameter);
   const v_2 = n.override ? 1 : 0;
@@ -2118,7 +2134,7 @@ function encTsParameterProperty(n) {
 }
 
 function encTsThisParameter(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(150, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -2126,7 +2142,7 @@ function encTsThisParameter(n) {
 }
 
 function encTsAsExpression(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const v_1 = encTsType(n.typeAnnotation);
   const index = allocNode(151, n.start, n.end);
@@ -2136,7 +2152,7 @@ function encTsAsExpression(n) {
 }
 
 function encTsSatisfiesExpression(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const v_1 = encTsType(n.typeAnnotation);
   const index = allocNode(152, n.start, n.end);
@@ -2146,7 +2162,7 @@ function encTsSatisfiesExpression(n) {
 }
 
 function encTsTypeAssertion(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encTsType(n.typeAnnotation);
   const v_1 = encExpr(n.expression);
   const index = allocNode(153, n.start, n.end);
@@ -2156,7 +2172,7 @@ function encTsTypeAssertion(n) {
 }
 
 function encTsNonNullExpression(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const index = allocNode(154, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -2164,7 +2180,7 @@ function encTsNonNullExpression(n) {
 }
 
 function encTsInstantiationExpression(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const v_1 = encTsTypeParameterInstantiation(n.typeArguments);
   const index = allocNode(155, n.start, n.end);
@@ -2174,7 +2190,7 @@ function encTsInstantiationExpression(n) {
 }
 
 function encTsExportAssignment(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encExpr(n.expression);
   const index = allocNode(156, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -2182,7 +2198,7 @@ function encTsExportAssignment(n) {
 }
 
 function encTsNamespaceExportDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encIdentifierName(n.id);
   const index = allocNode(157, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -2190,7 +2206,7 @@ function encTsNamespaceExportDeclaration(n) {
 }
 
 function encTsImportEqualsDeclaration(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n.id);
   const v_1 = encTsModuleReference(n.moduleReference);
   const v_2 = enumValue(15, n.importKind);
@@ -2202,7 +2218,7 @@ function encTsImportEqualsDeclaration(n) {
 }
 
 function encTsExternalModuleReference(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encStringLiteral(n.expression);
   const index = allocNode(159, n.start, n.end);
   setPayloadU32(index, 0, v_0);
@@ -2210,7 +2226,7 @@ function encTsExternalModuleReference(n) {
 }
 
 function encTsIndexSignatureParameter(n) {
-  isTs = true;
+  isTs = 1;
   const v_0 = encBindingIdentifier(n);
   const v_1 = encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(160, n.start, n.end);
@@ -2642,7 +2658,7 @@ function encClassElement(n) {
     case "TSIndexSignature":
       return encTsIndexSignature(n);
     case "TSAbstractMethodDefinition":
-      isTs = true;
+      isTs = 1;
       if (n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
       return encMethodDefinition(n);
     case "TSAbstractPropertyDefinition":
@@ -2998,7 +3014,8 @@ function _encodeTs(program) {
     extraCapacity, extraBuffer, extra, poolCapacity, pool,
   } = buffers);
   nodeCount = extraCount = poolLength = 0;
-  hasWtf8 = isTs = false;
+  hasWtf8 = false;
+  isTs = 0;
   firstNonAsciiPos = NULL;
 
   // Fields and padding not explicitly written by a node must remain zero.
@@ -3019,8 +3036,7 @@ function _encodeTs(program) {
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
   const sourceType = enumValue(1, program.sourceType);
-  const lang = isTs ? "ts" : "js";
-  view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
+  view.setUint32(32, sourceType | ((isTs !== 0) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);

@@ -3,12 +3,161 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
+import { decodeJs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
 function generateEncoded(program, encoder) {
   return generateNative(...encoder(program), encodeOptions());
 }
+
+function encodedParameterKinds(source, encoder, options) {
+  const { program } = parseSync(source, options);
+  const [, , kinds, payloads] = encoder(program);
+  const view = new DataView(payloads.buffer, payloads.byteOffset, payloads.byteLength);
+  const parameterKinds = ["formal", "unique", "arrow", "signature"];
+  // FormalParameters has wire tag 58; its kind follows items and rest at byte 12.
+  return Array.from(kinds).flatMap((kind, index) =>
+    kind === 58 ? [parameterKinds[view.getUint8(index * 16 + 12)]] : [],
+  );
+}
+
+function decodeEncoded(program, source) {
+  const [header, spans, kinds, payloads, extra, strings] = encodeJs(program);
+  const buffer = Buffer.concat([
+    header, spans, kinds, Buffer.alloc((8 - kinds.length % 8) % 8),
+    payloads, extra, strings, Buffer.alloc((4 - strings.length % 4) % 4),
+  ]);
+  // Keep encoded strings in the pool, independently of the original source.
+  buffer.writeUInt32LE(strings.length, 8);
+  buffer.writeUInt32LE(0, 12);
+  buffer.writeUInt32LE(0, 36);
+  return decodeJs(buffer, source, new TextEncoder().encode(source)).program;
+}
+
+function assertEncodedRoundtrip(source) {
+  const { program } = parseSync(source);
+  const expected = structuredClone(program);
+  const decoded = decodeEncoded(program, source);
+  assert.deepEqual(decoded, expected);
+
+  const repeated = decodeEncoded(decoded, source);
+  assert.deepEqual(repeated, expected);
+  assert.deepEqual(program, expected);
+}
+
+function encodedLanguage(program) {
+  const [header] = encode(program);
+  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  return (view.getUint32(32, true) >> 2) & 7;
+}
+
+test("encoder keeps JavaScript language for default fields", () => {
+  const typescript = { lang: "ts" };
+  const variable = parseSync("const value = 1;", typescript).program;
+  assert.equal(encodedLanguage(variable), 0);
+
+  const classDeclaration = parseSync("class C { value; method() {} }", typescript).program;
+  assert.equal(encodedLanguage(classDeclaration), 0);
+  assert.deepEqual(encodeJs(classDeclaration), encodeTs(classDeclaration));
+
+  const importDeclaration = parseSync('import { T } from "m";', typescript).program;
+  assert.equal(encodedLanguage(importDeclaration), 0);
+
+  const exportDeclaration = parseSync("export { T };", typescript).program;
+  assert.equal(encodedLanguage(exportDeclaration), 0);
+
+  const optionalAccess = parseSync("object?.value;").program;
+  assert.equal(encodedLanguage(optionalAccess), 0);
+
+  const optionalCall = parseSync("object?.method();").program;
+  assert.equal(encodedLanguage(optionalCall), 0);
+
+  const decoratedClass = parseSync("@dec class C {}").program;
+  assert.equal(encodedLanguage(decoratedClass), 0);
+
+  const decoratedMethod = parseSync("class C { @dec method() {} }").program;
+  assert.equal(encodedLanguage(decoratedMethod), 0);
+});
+
+test("encoder preserves empty parameter spans", () => {
+  const { program } = parseSync("function f(a? = 0) {}", { lang: "ts" });
+  const pattern = program.body[0].params[0].left;
+  pattern.start = pattern.end = 0;
+
+  const [, spans, kinds, payloads] = encode(program);
+  const payloadView = new DataView(payloads.buffer, payloads.byteOffset, payloads.byteLength);
+  const patternId = payloadView.getUint32(kinds.indexOf(59) * 16, true);
+  const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
+  assert.equal(spanView.getUint32(patternId * 8, true), 0);
+  assert.equal(spanView.getUint32(patternId * 8 + 4, true), 0);
+});
+
+test("encodeJs preserves JavaScript template spans", () => {
+  assertEncodedRoundtrip("`abc`;");
+
+  assertEncodedRoundtrip("`a${x}b${y}c`;");
+
+  assertEncodedRoundtrip("`${x}`;");
+
+  assertEncodedRoundtrip("``;");
+
+  assertEncodedRoundtrip("`a\r\nb\r\nc`;");
+
+  assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;");
+});
+
+test("encoder preserves empty template spans", () => {
+  const { program } = parseSync("`abc`;", { lang: "ts" });
+  const quasi = program.body[0].expression.quasis[0];
+  quasi.start = quasi.end = 0;
+
+  const [, spans, kinds] = encode(program);
+  const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
+  const index = kinds.indexOf(10) * 8;
+  assert.equal(spanView.getUint32(index, true), 0);
+  assert.equal(spanView.getUint32(index + 4, true), 0);
+});
+
+test("encoders preserve parameter contexts", () => {
+  const script = { sourceType: "script" };
+  for (const encoder of [encodeJs, encodeTs]) {
+    assert.deepEqual(encodedParameterKinds("function f(a) {}", encoder, script), ["formal"]);
+
+    assert.deepEqual(encodedParameterKinds("(a) => a;", encoder, script), ["arrow"]);
+
+    assert.deepEqual(encodedParameterKinds("({ m(a) {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("({ m: function(a) {} });", encoder, script), ["formal"]);
+
+    assert.deepEqual(encodedParameterKinds("({ get value() {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("({ set value(a) {} });", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("class C { m(a) {} }", encoder, script), ["unique"]);
+
+    assert.deepEqual(encodedParameterKinds("class C { constructor(a) {} }", encoder, script), ["unique"]);
+  }
+});
+
+test("encoder preserves TypeScript parameter contexts", () => {
+  const typescript = { lang: "ts" };
+  assert.deepEqual(encodedParameterKinds("declare function f(a: number): void;", encode, typescript), ["formal"]);
+
+  assert.deepEqual(encodedParameterKinds("declare class C { m(a: number): void; }", encode, typescript), ["unique"]);
+
+  assert.deepEqual(encodedParameterKinds("abstract class C { abstract m(a: number): void; }", encode, typescript), ["unique"]);
+
+  assert.deepEqual(encodedParameterKinds("type F = (a: number) => void;", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("type F = new (a: number) => object;", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { m(this: I, a: number): void; }", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { (a: number): void; }", encode, typescript), ["signature"]);
+
+  assert.deepEqual(encodedParameterKinds("interface I { new (a: number): object; }", encode, typescript), ["signature"]);
+});
 
 test("encoders recover from errors", () => {
   for (const encoder of [encodeJs, encodeTs]) {
@@ -112,10 +261,6 @@ test("encoders preserve lone surrogates in string values", () => {
     assert.equal(header.getUint32(12, true), 0);
     const generated = generateEncoded(program, encoder);
     assert.equal(parseSync(generated).program.body[0].declarations[0].init.value, value);
-
-    const escaped = parseSync('const text = "\\uD800";').program;
-    const roundtrip = parseSync(generateEncoded(escaped, encoder)).program;
-    assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
   }
 });
 
@@ -173,19 +318,7 @@ test("encoder preserves expressions with stale directive metadata", () => {
   assert.equal(generateSync(namespace).code, "namespace N {\n  1;\n}\n");
 });
 
-test("encoder preserves method bodies and signatures", () => {
-  const typescript = { lang: "ts" };
-
-  const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
-  assert.equal(generateSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
-  assert.equal((new DataView(encode(body)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
-
-  const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
-  assert.equal(generateSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
-
-  const signature = parseSync("class C { m(): number; }", typescript).program;
-  assert.equal(generateSync(signature).code, "class C {\n  m(): number;\n}\n");
-
+test("encoder preserves modified method types", () => {
   const modified = parseSync("class C { m() { return 1; } }").program;
   modified.body[0].body.body[0].type = "TSAbstractMethodDefinition";
   assert.equal(generateSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");

@@ -56,34 +56,13 @@ const ENUMS = Object.freeze([
 ]);
 
 
-export function encodeOptions(options) {
-  if (options === undefined || options === null) return 0;
-  if (typeof options !== "object" || Array.isArray(options)) {
-    throw new TypeError("options must be an object");
-  }
-
-  let value = 1;
-  value |= encodeOptionBoolean(options.asciiOnly, "asciiOnly") << 1;
-  value |= encodeOptionBoolean(options.minify, "minify") << 3;
-  value |= encodeOptionBoolean(options.inlineScript, "inlineScript") << 5;
-  return value >>> 0;
-}
-
-function encodeOptionBoolean(value, name) {
-  if (value === undefined || value === null) return 0;
-  if (typeof value !== "boolean") {
-    throw new TypeError(`${name} must be a boolean`);
-  }
-  return value ? 2 : 1;
-}
-
 // Maximum combined capacity of the reusable data buffers.
 const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
 let reusableBuffers;
 let nodeCapacity, spans, kinds, payloadBuffer, payload;
 let extraCapacity, extraBuffer, extra, poolCapacity, pool;
 let nodeCount = 0, extraCount = 0, poolLength = 0;
-let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = 0;
 
 function createBuffers(sizeHint) {
   const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
@@ -178,6 +157,18 @@ function encArraySlice(values, encoder, from, end) {
   for (let index = from, slot = start; index < end; index++, slot++) {
     const id = encoder(values[index]);
     setExtraU32(slot, 0, id);
+  }
+  return start;
+}
+
+function encTemplateElements(values, templateStart) {
+  const length = values?.length ?? 0;
+  if (!length) return 0;
+  const start = allocExtra(length);
+  const delimited = values[0].start === templateStart;
+  for (let index = 0; index < length; index++) {
+    const id = encTemplateElement(values[index], delimited);
+    setExtraU32(start + index, 0, id);
   }
   return start;
 }
@@ -501,7 +492,7 @@ function encRegExpLiteral(n) {
 }
 
 function encTemplateLiteral(n) {
-  const v_0 = encArray(n.quasis, encTemplateElement, false);
+  const v_0 = encTemplateElements(n.quasis, n.start);
   const v_1 = encArray(n.expressions, encExpr, false);
   const index = allocNode(9, n.start, n.end);
   writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
@@ -509,13 +500,21 @@ function encTemplateLiteral(n) {
   return index;
 }
 
-function encTemplateElement(n) {
+function encTemplateElement(n, delimited) {
   const v_0 = n.value?.cooked ?? "";
   const v_1 = templateRaw(n.value?.raw ?? "");
   const v_2 = n.tail ? 1 : 0;
   const v_3 = n.value?.cooked == null ? 1 : 0;
   const extraId = allocExtra(2);
   const index = allocNode(10, n.start, n.end);
+  if (delimited) {
+    const span = index * 2;
+    const endOffset = 2 - v_2;
+    // TS ESTree spans include delimiters; wire spans cover only raw content.
+    const trim = spans[span + 1] - spans[span] > endOffset;
+    spans[span] += trim;
+    spans[span + 1] -= endOffset * trim;
+  }
   setPayloadU32(index, 12, extraId);
   encStr(v_0, payload, index * 16 + 0, true);
   encStr(v_1, extra, (extraId + 0) * 4);
@@ -932,7 +931,7 @@ function encClassBody(n) {
 function encMethodDefinition(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_2 = encFunction(n.value);
+  const v_2 = encFunction(n.value, "unique");
   const v_3 = enumValue(2, n.kind);
   const v_4 = n.computed ? 1 : 0;
   const v_5 = n.static ? 1 : 0;
@@ -998,12 +997,12 @@ function encStaticBlock(n) {
   return index;
 }
 
-function encFunction(n) {
+function encFunction(n, parameterKind = "formal") {
   const v_0 = enumValue(10, n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
   const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
   const v_2 = NULL;
   const v_3 = NULL;
-  const v_4 = encFormalParameters(n.params, 0);
+  const v_4 = encFormalParameters(n.params, 0, parameterKind);
   const v_5 = NULL;
   const v_6 = encFunctionBody(n.body);
   const v_7 = n.generator ? 1 : 0;
@@ -1077,7 +1076,7 @@ function encWithStatement(n) {
   return index;
 }
 
-function encFormalParameters(n, from = 0) {
+function encFormalParameters(n, from = 0, kind = "formal") {
   const _values = n;
   const _length = _values?.length ?? 0;
   let _itemCount = _length - from;
@@ -1102,7 +1101,7 @@ function encFormalParameters(n, from = 0) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
-  const v_2 = enumValue(11, 0);
+  const v_2 = enumValue(11, kind);
   const index = allocNode(58, _start, _end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
@@ -1164,7 +1163,7 @@ function encSpreadElement(n) {
 
 function encObjectProperty(n) {
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
-  const v_1 = encExpr(n.value);
+  const v_1 = n.value.type === "FunctionExpression" && (n.method || n.kind === "get" || n.kind === "set") ? encFunction(n.value, "unique") : encExpr(n.value);
   const v_2 = enumValue(12, n.kind);
   const v_3 = n.method ? 1 : 0;
   const v_4 = n.shorthand ? 1 : 0;
@@ -1190,7 +1189,7 @@ function encArrowFunctionExpression(n) {
   const v_0 = n.expression ? 1 : 0;
   const v_1 = n.async ? 1 : 0;
   const v_2 = NULL;
-  const v_3 = encFormalParameters(n.params);
+  const v_3 = encFormalParameters(n.params, 0, "arrow");
   const v_4 = NULL;
   const v_5 = encArrowFunctionBody(n.body);
   const extraId = allocExtra(2);
@@ -1930,7 +1929,8 @@ function _encodeJs(program) {
     extraCapacity, extraBuffer, extra, poolCapacity, pool,
   } = buffers);
   nodeCount = extraCount = poolLength = 0;
-  hasWtf8 = isTs = false;
+  hasWtf8 = false;
+  isTs = 0;
   firstNonAsciiPos = NULL;
 
   // Fields and padding not explicitly written by a node must remain zero.
@@ -1951,8 +1951,7 @@ function _encodeJs(program) {
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
   const sourceType = enumValue(1, program.sourceType);
-  const lang = isTs ? "ts" : "js";
-  view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
+  view.setUint32(32, sourceType | ((isTs !== 0) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);
