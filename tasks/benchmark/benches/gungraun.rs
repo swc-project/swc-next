@@ -204,10 +204,11 @@ fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
     let lang = Lang::from_path(filename);
     let mut ast = setup_program(source, lang);
     Normalizer::normalize_runtime(&mut ast);
+    // Exercise the complete pipeline for every workload, including plain JavaScript.
     let options = TransformerOptions {
         filename: Some(filename.to_owned()),
-        typescript: lang.is_typescript().then_some(TypeScriptOptions::default()),
-        jsx: lang.is_jsx().then(|| JsxOptions {
+        typescript: Some(TypeScriptOptions::default()),
+        jsx: Some(JsxOptions {
             development: true,
             source_self: true,
             display_name: true,
