@@ -21,7 +21,7 @@ use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
     FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
-    document::{Fragment, Writer},
+    document::{BodyOpening, Fragment, Writer},
 };
 
 /// A whole key group resolves `consistent` once before formatting any member.
@@ -245,14 +245,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_object(
         &mut self,
         object: ObjectExpression,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match self.source_object(object)? {
             SourceObject::Verbatim(span) => self.format_verbatim(span, writer),
             SourceObject::Formatted(source) => {
+                let opening = if matches!(&source.contents, ObjectContents::Empty { comments, .. }
+                    if comments.is_empty())
+                {
+                    BodyOpening::Plain
+                } else {
+                    opening
+                };
                 if self.source_object_layout.observing && source.expand {
                     let ((), intrinsic_lines) = writer.write_with_intrinsic_lines(|writer| {
-                        writer.group(true, |writer| {
+                        opening.group(writer, true.into(), None, |writer| {
                             self.format_object_contents(source.contents, writer)
                         })
                     })?;
@@ -261,7 +269,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     return Ok(());
                 }
-                writer.group(source.expand, |writer| {
+                opening.group(writer, source.expand.into(), None, |writer| {
                     self.format_object_contents(source.contents, writer)
                 })
             }

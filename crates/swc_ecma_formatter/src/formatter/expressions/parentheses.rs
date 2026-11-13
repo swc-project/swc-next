@@ -16,7 +16,10 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{DiagnosticCoverage, FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, Writer},
+};
 
 #[derive(Clone, Copy)]
 pub(in crate::formatter) struct SourceParentheses {
@@ -3104,6 +3107,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_sequence_output(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
+        if parenthesize {
+            context = context.with_body_opening(BodyOpening::Plain);
+        }
         if parenthesize
             && (Self::for_head_grammar_pair_is_enclosed(data, context.position)
                 || matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
