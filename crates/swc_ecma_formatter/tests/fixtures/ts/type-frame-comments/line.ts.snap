@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = A extends (B // comment
+        ) ? C : D;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = A extends (B // comment
+)
+  ? C
+  : D;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T =
+  A extends (B // comment
+  )
+    ? C
+    : D;

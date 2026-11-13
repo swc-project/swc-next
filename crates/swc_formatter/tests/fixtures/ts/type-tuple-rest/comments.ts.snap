@@ -21,7 +21,7 @@ type Tail<T extends unknown[]> = T extends [
   ? R
   : never;
 
-type ArrayTail<T extends unknown[]> = T extends [...(infer R /* element */)[]]
+type ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]]
   ? R
   : never;
 
@@ -47,7 +47,7 @@ type Tail<T extends unknown[]> =
 type ArrayTail<
   T extends unknown[],
 > = T extends [
-  ...(infer R /* element */)[],
+  ...(infer R) /* element */[],
 ]
   ? R
   : never;
@@ -66,7 +66,7 @@ type Tail<T extends unknown[]> =
 ---------- Output ----------
 type Tail<T extends unknown[]> = T extends [unknown, .../* rest */ (/* infer */ infer R /* result */)] ? R : never
 
-type ArrayTail<T extends unknown[]> = T extends [...(infer R /* element */)[]] ? R : never
+type ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]] ? R : never
 
 type Tail<T extends unknown[]> = T extends [
   unknown,
@@ -89,7 +89,7 @@ type Tail<T extends unknown[]> =
 
 type ArrayTail<T extends unknown[]> =
 	T extends [
-		...(infer R /* element */)[]
+		...(infer R) /* element */[]
 	]
 		? R
 		: never;
