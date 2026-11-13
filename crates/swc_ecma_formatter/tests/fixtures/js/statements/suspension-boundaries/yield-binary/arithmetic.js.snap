@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* f(){ yield a + b; }
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+function* f() {
+  yield a +
+    b;
+}
+
+---------- Options ----------
+{}
+---------- Output ----------
+function* f() {
+  yield a + b;
+}
