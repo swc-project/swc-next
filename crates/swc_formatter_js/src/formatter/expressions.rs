@@ -96,6 +96,7 @@ pub(super) enum ExpressionPosition {
     ControlCondition,
     ForHead,
     ForTest,
+    ForUpdate,
     ForInitializer {
         grammar: ForInitializerGrammar,
         parentheses: bool,
@@ -1303,6 +1304,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(!matches!(
                     position,
                     ExpressionPosition::ForHead
+                        | ExpressionPosition::ForUpdate
                         | ExpressionPosition::ForInitializer {
                             grammar: ForInitializerGrammar::Expression,
                             parentheses: false,
@@ -1476,6 +1478,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
+                    | ExpressionPosition::ForUpdate
                     | ExpressionPosition::ForSequenceMember
                     | ExpressionPosition::ForInitializer { .. }
             ),

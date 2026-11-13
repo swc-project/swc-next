@@ -174,6 +174,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 grammar: super::ForInitializerGrammar::Expression,
                 ..
             } | ExpressionPosition::ForHead
+                | ExpressionPosition::ForUpdate
         ) {
             ExpressionPosition::ForSequenceMember
         } else {
@@ -359,6 +360,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context.position,
                     ExpressionPosition::Statement
                         | ExpressionPosition::ForHead
+                        | ExpressionPosition::ForUpdate
                         | ExpressionPosition::ForInitializer {
                             grammar: super::ForInitializerGrammar::Expression,
                             ..

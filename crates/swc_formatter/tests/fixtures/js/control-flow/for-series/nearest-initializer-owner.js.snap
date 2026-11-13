@@ -19,7 +19,7 @@ for (
       for (
         ;
         "x" in
-          owner;
+        owner;
         step =
           "x" in
           owner
@@ -29,7 +29,7 @@ for (
       for (
         let seen =
           ("x" in
-            owner);
+          owner);
         ;
       ) {
         break;
@@ -91,7 +91,7 @@ for (
       for (
         ;
         "x" in
-          owner;
+        owner;
         step =
           "x" in
           owner
@@ -101,7 +101,7 @@ for (
       for (
         let seen =
           ("x" in
-            owner);
+          owner);
         ;
       ) {
         break

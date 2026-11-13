@@ -187,7 +187,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|node| self.for_expression_node(node, ExpressionPosition::ForTest));
         let update = node
             .update(ast)
-            .map(|node| self.for_expression_node(node, ExpressionPosition::ForHead));
+            .map(|node| self.for_expression_node(node, ExpressionPosition::ForUpdate));
         let keyword_end = node.span(ast).start + 3;
         let comments =
             CommentCursor::new(self.comments.in_range(Span::new(keyword_end, body_start)));

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (let value = firstLongConditionName + secondLongConditionName;;) {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+for (
+  let value =
+    firstLongConditionName +
+    secondLongConditionName;
+  ;
+) {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for (let value = firstLongConditionName + secondLongConditionName; ;) {}
+
+---------- Options ----------
+{"printWidth":40,"useTabs":true}
+---------- Output ----------
+for (
+	let value =
+		firstLongConditionName +
+		secondLongConditionName;
+	;
+) {}
