@@ -313,6 +313,7 @@ pub(super) struct RecordedTypeHead<'ast> {
     head: Fragment<'ast>,
     content: PreparedTypeContent<'ast>,
     riding: bool,
+    group: compound::TypeHeadGroup,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -538,9 +539,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             TypeBoundaryLayout::Formatted { before, after } => {
-                self.format_comment_boundary(&before, writer)?;
-                before.gap().write(writer, FlatSeparator::Empty, |_| {});
-                writer.text(":");
+                self.format_annotation_colon(&before, writer)?;
                 if let AnnotationContent::Formatted(node) = content.content {
                     if continuation
                         && (after.is_empty()
@@ -596,6 +595,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn format_annotation_colon(
+        &mut self,
+        before: &CommentBoundary<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_comment_boundary(before, writer)?;
+        if before.is_empty() {
+            before.gap().write(writer, FlatSeparator::Empty, |_| {});
+        } else {
+            before.gap().write_separator(writer);
+        }
+        writer.text(":");
+        Ok(())
+    }
+
     fn format_prepared_parentheses_after_comments_body(
         &mut self,
         parentheses: PreparedTypeParentheses<'ast>,
@@ -615,7 +629,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let start = parentheses.span.start;
             let recorded = self.record_type_head(
                 compound::PreparedTypeContent::Parentheses(parentheses),
-                PendingTypeHead::new(after.comments(), start, None),
+                PendingTypeHead::new(after.comments(), start, None).with_caller_prefix(),
                 context,
                 writer,
             )?;
@@ -791,10 +805,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(&recorded.content, compound::PreparedTypeContent::Type(node)
             if node.source_owner.is_none() && matches!(node.data, TsTypeData::TsTypeReference(_)))
         {
-            return writer.group(false, |writer| {
+            let write = |writer: &mut Writer<'ast>| {
                 writer.write_fragment(recorded.head);
                 self.format_binding_annotation_root(recorded.content, owner, layout, writer)
-            });
+            };
+            return match recorded.group {
+                compound::TypeHeadGroup::Caller => write(writer),
+                compound::TypeHeadGroup::Type => writer.group(false, write),
+            };
         }
         self.format_recorded_type_head(recorded, TypeContext::Root, layout, writer)
     }
@@ -4279,6 +4297,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedTypeHead<'ast>, FormatError> {
+        let group = pending.group();
         let (head, content) = writer.record_with_value(|writer| {
             self.format_prepared_type_content_head(content, &mut pending, context, writer)
         })?;
@@ -4286,6 +4305,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head,
             content,
             riding: pending.has_riding_prefix(),
+            group,
         })
     }
 
@@ -4318,14 +4338,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
-        let RecordedTypeHead { head, content, .. } = recorded;
+        let RecordedTypeHead {
+            head,
+            content,
+            group,
+            ..
+        } = recorded;
         if let compound::PreparedTypeContent::Union(union) = content {
             return self.format_prepared_union_body(union, context, layout, Some(head), writer);
         }
-        writer.group(false, |writer| {
+        let write = |writer: &mut Writer<'ast>| {
             writer.write_fragment(head);
             self.format_prepared_type_content_body(content, context, layout, writer)
-        })
+        };
+        match group {
+            compound::TypeHeadGroup::Caller => write(writer),
+            compound::TypeHeadGroup::Type => writer.group(false, write),
+        }
     }
 
     fn format_prepared_type_with_caller_head(
@@ -4368,7 +4397,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 after.comments(),
                 node.node.span(self.ast).start,
                 leading_head,
-            ),
+            )
+            .with_caller_prefix(),
             context,
             writer,
         )?;
@@ -4564,7 +4594,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                     boundary.comments(),
                                     node.node.span(self.ast).start,
                                     leading_head,
-                                ),
+                                )
+                                .with_caller_prefix(),
                                 TypeContext::Root,
                                 writer,
                             )?;

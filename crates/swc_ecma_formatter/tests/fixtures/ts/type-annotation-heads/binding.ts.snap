@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x:
+/* note */
+number[] = [];
+---------- Options ----------
+{}
+---------- Output ----------
+const x: /* note */ number[] = [];

@@ -1029,9 +1029,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     );
                 }
-                return writer.group(false, |writer| {
-                    self.format_prepared_parameter_item(prepared, writer)
-                });
+                return self.format_prepared_parameter_item(prepared, writer);
             }
         }
         let pattern = parameter.pattern(self.ast);

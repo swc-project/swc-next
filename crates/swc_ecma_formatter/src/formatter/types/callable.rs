@@ -187,13 +187,6 @@ impl SignatureReturnDelimiter {
             Self::Colon => ":",
         }
     }
-
-    fn preceding_space(self) -> FlatSeparator {
-        match self {
-            Self::Arrow => FlatSeparator::Space,
-            Self::Colon => FlatSeparator::Empty,
-        }
-    }
 }
 
 enum CallableHead<'ast> {
@@ -1128,15 +1121,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeLayout::OpeningProvided
             }
             TypeBoundaryLayout::Formatted { before, after } => {
-                self.format_comment_boundary(&before, writer)?;
-                before
-                    .gap()
-                    .write(writer, result.delimiter.preceding_space(), |writer| {
-                        if matches!(result.delimiter, SignatureReturnDelimiter::Arrow) {
-                            writer.space();
-                        }
-                    });
-                writer.text(result.delimiter.token());
+                match result.delimiter {
+                    SignatureReturnDelimiter::Colon => {
+                        self.format_annotation_colon(&before, writer)?;
+                    }
+                    SignatureReturnDelimiter::Arrow => {
+                        self.format_comment_boundary(&before, writer)?;
+                        before
+                            .gap()
+                            .write(writer, FlatSeparator::Space, Writer::space);
+                        writer.text("=>");
+                    }
+                }
                 if let FunctionReturnContent::Annotation(AnnotationContent::Type(node)) =
                     &result.content
                 {
