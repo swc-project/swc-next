@@ -488,25 +488,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator: BinaryOperatorKind,
         mut mode: ContentMode,
     ) -> bool {
-        if !matches!(
-            operator,
-            BinaryOperatorKind::Binary(
-                BinaryOperator::Add
-                    | BinaryOperator::Subtract
-                    | BinaryOperator::Modulo
-                    | BinaryOperator::LessThan
-                    | BinaryOperator::GreaterThan
-                    | BinaryOperator::GreaterThanOrEqual
-                    | BinaryOperator::RightShift
-                    | BinaryOperator::UnsignedRightShift,
-            )
-        ) {
+        if !instantiation_tail_conflicts(operator) {
             return false;
         }
-        // Expression-start tokens (`+`, `-`, and Babel's `%`) can turn the suffix
-        // into relational syntax. Single angles and right-angle operators also
-        // conflict with parsing the type-argument close. Follow only the printed
-        // right spine, stopping at a grammar pair that already closes it.
+        // Expression-start tokens and single angles can turn the suffix into
+        // relational syntax. Follow only the printed right spine, stopping at
+        // a grammar pair that already closes it.
         loop {
             let (expression, position) = match data {
                 ExprData::TsInstantiationExpression(_) => return true,
@@ -1879,25 +1866,33 @@ pub(super) fn type_expression_needs_parentheses(
                     side: OperandSide::Left,
                 }
         )),
-        ExprData::TsInstantiationExpression(_)
-            if matches!(
-                position,
-                ExpressionPosition::MemberObject(_)
-                    | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::TemplateTag
-                    | ExpressionPosition::NewCallee
-                    | ExpressionPosition::Superclass
-                    | ExpressionPosition::NonNullOperand
-                    | ExpressionPosition::InstantiationOperand
-                    | ExpressionPosition::BinaryOperand {
-                        operator: BinaryOperatorKind::Binary(_),
-                        side: OperandSide::Left,
-                    }
-            ) =>
-        {
-            Some(true)
-        }
+        ExprData::TsInstantiationExpression(_) => Some(match position {
+            ExpressionPosition::MemberObject(_)
+            | ExpressionPosition::MemberAssignmentObject
+            | ExpressionPosition::TemplateTag
+            | ExpressionPosition::NonNullOperand
+            | ExpressionPosition::InstantiationOperand => true,
+            ExpressionPosition::BinaryOperand {
+                operator,
+                side: OperandSide::Left,
+            } => instantiation_tail_conflicts(operator),
+            _ => false,
+        }),
         _ => None,
     }
+}
+
+fn instantiation_tail_conflicts(operator: BinaryOperatorKind) -> bool {
+    matches!(
+        operator,
+        BinaryOperatorKind::Binary(
+            BinaryOperator::Add
+                | BinaryOperator::Subtract
+                | BinaryOperator::LessThan
+                | BinaryOperator::GreaterThan
+                | BinaryOperator::GreaterThanOrEqual
+                | BinaryOperator::RightShift
+                | BinaryOperator::UnsignedRightShift,
+        )
+    )
 }

@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (fn<T>)();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value = fn<T>();
