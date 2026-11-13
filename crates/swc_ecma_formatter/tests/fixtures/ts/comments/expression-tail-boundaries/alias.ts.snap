@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type X = A | (B
+// c
+)/*d*/;
+---------- Options ----------
+{}
+---------- Output ----------
+type X = A | B;
+// c
+/*d*/
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type X = A | B
+// c
+/*d*/

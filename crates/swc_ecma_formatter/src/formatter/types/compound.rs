@@ -12,6 +12,7 @@ use super::{
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout,
+    PreparedCommentAdjacency,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -1391,10 +1392,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 while let Some(link) = links.next() {
                     let tail =
                         self.format_union_member(link.left, prefix, prepared, hug, writer)?;
-                    self.format_expression_tail(tail, writer)?;
+                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                     let next = links.peek().map_or(last, |link| link.left);
                     (prefix, prepared) =
-                        self.format_union_separator(link.boundary, next, hug, writer)?;
+                        self.format_union_separator(link.boundary, next, hug, adjacency, writer)?;
                 }
                 let tail = self.format_union_member(last, prefix, prepared, hug, writer)?;
                 let own_line = self.type_tail_closing_gap(tail.as_ref()).is_some();
@@ -1420,8 +1421,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     tail
                 };
                 if let Some(trailing) = trailing {
-                    self.format_expression_tail(tail, writer)?;
-                    self.format_comment_boundary(&trailing, writer)?;
+                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
+                    self.format_comment_boundary_after(&trailing, adjacency, writer)?;
                     Ok(None)
                 } else {
                     Ok(tail)
@@ -1639,6 +1640,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: TypeBoundaryLayout<'ast>,
         next: PreparedType,
         hug: bool,
+        adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<
         (
@@ -1664,7 +1666,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        self.format_comment_boundary(&before, writer)?;
+        self.format_comment_boundary_after(&before, adjacency, writer)?;
         before.gap().write(writer, FlatSeparator::Space, |writer| {
             if hug {
                 writer.space();

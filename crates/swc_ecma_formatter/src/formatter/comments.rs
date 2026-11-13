@@ -321,6 +321,26 @@ pub(super) struct ExpressionTail<'ast> {
     pub(super) comments: &'ast [Comment],
 }
 
+/// The completed tail remains adjacent when a following owner claims its run.
+#[derive(Clone, Copy, Default)]
+pub(super) struct PreparedCommentAdjacency {
+    previous: Option<Comment>,
+}
+
+impl PreparedCommentAdjacency {
+    pub(super) fn after_tail(tail: Option<&ExpressionTail<'_>>) -> Self {
+        Self {
+            previous: tail.and_then(|tail| tail.comments.last().copied()),
+        }
+    }
+}
+
+/// The first gap belongs to the run's separator and preceding comment together.
+struct CommentRunStart {
+    opening: CommentOpening,
+    adjacency: PreparedCommentAdjacency,
+}
+
 /// Source statement extent and the emitted terminator's position relative to a leased tail.
 #[derive(Clone, Copy)]
 pub(super) struct StatementCommentBoundary {
@@ -815,9 +835,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &CommentBoundary<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        self.format_comment_boundary_with_layout(
-            boundary,
+        self.format_comment_boundary_after(boundary, PreparedCommentAdjacency::default(), writer)
+    }
+
+    pub(super) fn format_comment_boundary_after(
+        &mut self,
+        boundary: &CommentBoundary<'ast>,
+        adjacency: PreparedCommentAdjacency,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if boundary.is_empty() {
+            return Ok(());
+        }
+        self.comments.claim(boundary.comments)?;
+        self.format_comment_run_with_adjacency(
+            boundary.comments,
             CommentRunLayout::SourceAfter(boundary.source_end),
+            CommentRunStart {
+                opening: CommentOpening::Needed,
+                adjacency,
+            },
+            None,
+            None,
             writer,
         )
     }
@@ -1908,11 +1947,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: CommentRunLayout,
         opening: CommentOpening,
         packet: Option<&SourceSeparatorPacket<'ast>>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_comment_run_with_adjacency(
+            comments,
+            layout,
+            CommentRunStart {
+                opening,
+                adjacency: PreparedCommentAdjacency::default(),
+            },
+            packet,
+            array_comments,
+            writer,
+        )
+    }
+
+    fn format_comment_run_with_adjacency(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        start: CommentRunStart,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        let CommentRunStart { opening, adjacency } = start;
         let comments = packet.map_or(comments, |packet| packet.comments);
-        let mut previous: Option<PreparedComment<'ast>> = None;
+        let mut previous = adjacency
+            .previous
+            .map(|comment| self.prepare_comment(comment))
+            .transpose()?;
         let mut source_run = None;
         let mut ordinary_prefix = true;
         for &comment in comments {
@@ -1948,8 +2013,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let nestled = previous.span.end == prepared.span.start
                     && previous.is_alignable()
                     && prepared.is_alignable();
-                if matches!(layout, CommentRunLayout::StatementTail(_))
-                    && previous.kind == CommentKind::Line
+                if previous.kind == CommentKind::Line
+                    && (matches!(layout, CommentRunLayout::StatementTail(_))
+                        || adjacency
+                            .previous
+                            .is_some_and(|comment| comment.span == previous.span))
                 {
                     // Flush the suffix and preserve the remaining source gap.
                     writer.hard_line();
@@ -2082,6 +2150,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.format_expression_tail_with_array_comments(tail, None, writer)
+    }
+
+    pub(super) fn format_expression_tail_adjacency(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        let adjacency = PreparedCommentAdjacency::after_tail(tail.as_ref());
+        self.format_expression_tail(tail, writer)?;
+        Ok(adjacency)
     }
 
     /// `SourceAfter` defers inline line comments, but prints own-line comments directly.
@@ -2262,6 +2340,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.format_inline_trailing_comments_with_array_comments(comments, None, writer)
+    }
+
+    pub(super) fn format_inline_trailing_comments_after(
+        &self,
+        comments: &[Comment],
+        adjacency: PreparedCommentAdjacency,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_trailing_comment_run(comments, adjacency.previous, None, writer)
     }
 
     pub(super) fn format_inline_trailing_comments_with_opening(

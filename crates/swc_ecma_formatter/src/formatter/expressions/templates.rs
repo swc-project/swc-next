@@ -129,8 +129,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         expression, head, context, None, writer,
                     ),
                 }?;
-                formatter.format_expression_tail(tail, writer)?;
-                formatter.format_comment_boundary(&after, writer)
+                let adjacency = formatter.format_expression_tail_adjacency(tail, writer)?;
+                formatter.format_comment_boundary_after(&after, adjacency, writer)
             },
         )
     }
