@@ -1213,15 +1213,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(leading, Span::new(trailing.end(), gap.end), Some(target)),
                 CommentBinding::Unbound
             );
+            let own_line = leading
+                .first()
+                .is_some_and(|comment| self.layout_position_starts_line(comment.span.start))
+                && leading
+                    .last()
+                    .is_some_and(|comment| self.line_breaks(comment.span.end, target.start) != 0);
+            let source_layout = source_bound || own_line;
             NodeHead {
                 comments: leading,
                 content_start: target.start,
-                layout: if source_bound {
+                layout: if source_layout {
                     CommentRunLayout::Source
                 } else {
                     CommentRunLayout::Leading(target.start)
                 },
-                gap_end: source_bound.then_some(target.start),
+                gap_end: source_layout.then_some(target.start),
             }
         });
         ClassMemberGap {
