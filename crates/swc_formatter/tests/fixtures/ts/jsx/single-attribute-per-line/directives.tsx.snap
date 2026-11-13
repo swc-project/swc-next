@@ -18,12 +18,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel first second>
     {/* @ts-expect-error */ missingValue}</panel>);
@@ -37,12 +37,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel
     first
@@ -63,12 +63,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel first second>
     {
@@ -87,12 +87,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel
     first
@@ -110,12 +110,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel
     first
@@ -135,12 +135,12 @@ declare namespace JSX {
   }
 }
 // @ts-expect-error
-const sameLine = <panel invalid first/>;
+const sameLine = <panel invalid first />;
 const attribute = (
   <panel
     first
     // @ts-expect-error
-    invalid second/>);
+    invalid second />);
 const child = (
   <panel
     first

@@ -594,7 +594,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.indent(format_attributes)
         }?;
-        closing_gap.write(writer, FlatSeparator::Empty, |writer| {
+        let closing_flat = if node.self_closing(ast) {
+            FlatSeparator::Space
+        } else {
+            FlatSeparator::Empty
+        };
+        closing_gap.write(writer, closing_flat, |writer| {
             if single_string {
                 if node.self_closing(ast) {
                     writer.space();
@@ -640,7 +645,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.hard_line();
             }
         } else {
-            if !comments.is_empty() {
+            if closing && !comments.is_empty() {
                 writer.space();
             }
             write(writer)?;
