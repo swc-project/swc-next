@@ -23,7 +23,10 @@ use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuot
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, GroupRequest, Writer},
+};
 
 struct MemberKey<'ast> {
     node: PropertyKey,
@@ -209,6 +212,7 @@ pub(super) struct IncomingTypeMember {
 pub(super) struct TypeMemberBodyIncoming<'ast> {
     pub(super) member: Option<IncomingTypeMember>,
     pub(super) comments: Option<&'ast [Comment]>,
+    pub(super) opening: BodyOpening,
 }
 
 #[derive(Clone, Copy)]
@@ -261,13 +265,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: TsTypeLiteral,
         layout: TypeLayout,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_type_member_body_with_layout(
             node.span(self.ast),
             node.members(self.ast),
             TypeMemberBodyKind::Literal,
-            TypeMemberBodyIncoming::default(),
+            TypeMemberBodyIncoming {
+                opening,
+                ..TypeMemberBodyIncoming::default()
+            },
             layout,
             writer,
         )?;
@@ -305,6 +313,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let TypeMemberBodyIncoming {
             member: incoming,
             comments: head_comments,
+            opening,
         } = incoming;
         let content = Span::new(span.start + 1, span.end - 1);
         let quoting = self.property_key_quoting(|| {
@@ -389,7 +398,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return if layout == TypeLayout::SignatureParameter {
                 write(writer)
             } else {
-                writer.group(expanded, write)
+                opening.group(writer, GroupRequest::from(expanded), None, write)
             };
         };
         let first_start = first.span(ast).start;
@@ -544,7 +553,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if layout == TypeLayout::SignatureParameter {
             write(writer)
         } else {
-            writer.group(expanded, write)
+            opening.group(writer, GroupRequest::from(expanded), None, write)
         }
     }
 

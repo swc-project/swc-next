@@ -12,7 +12,10 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, GroupRequest, Writer},
+};
 
 struct MappedToken<'ast> {
     span: Span,
@@ -113,6 +116,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_mapped_type_body(
         &mut self,
         node: TsMappedType,
+        body_opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
@@ -189,7 +193,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|(node, boundary)| boundary.map(|boundary| MappedBound { node, boundary }))
             .transpose()?;
         let (suffix, tail) = suffix?;
-        writer.group(expand, |writer| {
+        let request = GroupRequest::from(expand);
+        body_opening.group(writer, request, None, |writer| {
             writer.text("{");
             let closing_gap = writer.indent(|writer| {
                 if let Some(head) = head {

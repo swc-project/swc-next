@@ -42,7 +42,7 @@ use super::suppression::{
 use super::variables::{VariableContext, VariableDeclaratorOutput};
 use crate::{
     FormatError,
-    document::{Fragment, Writer},
+    document::{BodyOpening, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan,
@@ -3486,7 +3486,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if matches!(context, TypeContext::TypeExpressionRhs) && node.source_owner == Some(node.node)
         {
-            let pending = self.format_type_data_body(node, layout, TypeEnclosure::None, writer)?;
+            let pending = self.format_type_data_body(
+                node,
+                layout,
+                TypeEnclosure::None,
+                BodyOpening::Plain,
+                writer,
+            )?;
             return Ok(finish(
                 pending,
                 ExpressionRightEdge::SourceFenceCandidate(CopiedRawOwner::Type(node.node)),
@@ -3511,7 +3517,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             frame,
             writer,
             |formatter, layout, enclosure, writer| {
-                formatter.format_type_data_body(node, layout, enclosure, writer)
+                let opening = if enclosure == TypeEnclosure::None {
+                    context.body_opening()
+                } else {
+                    BodyOpening::Plain
+                };
+                formatter.format_type_data_body(node, layout, enclosure, opening, writer)
             },
         )
         .map(|pending| finish(pending, ExpressionRightEdge::Unreported))
@@ -3758,6 +3769,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: PreparedType,
         layout: TypeLayout,
         enclosure: TypeEnclosure,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         if node.source_owner == Some(node.node) {
@@ -3814,7 +3826,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TsTypeData::TsMappedType(node) => {
                 let _scope = self.recursion_scope(node)?;
-                self.format_mapped_type_body(node, writer)
+                self.format_mapped_type_body(node, opening, writer)
             }
             TsTypeData::TsInferType(node) => {
                 let _scope = self.recursion_scope(node)?;
@@ -3826,7 +3838,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TsTypeData::TsTypeLiteral(node) => {
                 let _scope = self.recursion_scope(node)?;
-                self.format_type_literal_body(node, layout, writer)
+                self.format_type_literal_body(node, layout, opening, writer)
             }
             TsTypeData::TsFunctionType(node) => {
                 let _scope = self.recursion_scope(node)?;
@@ -4219,17 +4231,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source,
         } = parentheses;
         if movable && !context.preserves_union_head(child.node, self.ast) {
-            let content = self.format_movable_type_head(
-                child,
-                &mut PendingTypeHead::new(
-                    leading_comments,
-                    child_span.start,
-                    self.type_movable_head(child, context),
-                ),
+            return self.format_type_body_after_head(
                 context,
+                layout,
                 writer,
-            )?;
-            return self.format_prepared_type_content_body(content, context, layout, writer);
+                |formatter, writer| {
+                    formatter.format_movable_type_head(
+                        child,
+                        &mut PendingTypeHead::new(
+                            leading_comments,
+                            child_span.start,
+                            formatter.type_movable_head(child, context),
+                        ),
+                        context,
+                        writer,
+                    )
+                },
+            );
         }
         if !retained {
             return self.format_prepared_type_body(child, context, layout, writer);
@@ -4354,6 +4372,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(TypeOutput::closed())
         })
+    }
+
+    fn format_type_body_after_head(
+        &mut self,
+        mut context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+        head: impl FnOnce(
+            &mut Self,
+            &mut Writer<'ast>,
+        ) -> Result<PreparedTypeContent<'ast>, FormatError>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        let content = if matches!(context.body_opening(), BodyOpening::AfterOperatorLine) {
+            let (head, content) = writer.record_with_value(|writer| head(self, writer))?;
+            // Only a mode-independent head leaves this queued packet untouched.
+            if head.try_neutral().is_none() {
+                context = context.without_body_opening();
+            }
+            writer.write_fragment(head);
+            content
+        } else {
+            head(self, writer)?
+        };
+        self.format_prepared_type_content_body(content, context, layout, writer)
     }
 
     fn with_type_parentheses_tail(

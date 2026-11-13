@@ -116,6 +116,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeMemberBodyIncoming {
                     member: incoming,
                     comments: body_leading,
+                    ..TypeMemberBodyIncoming::default()
                 },
                 writer,
             )
