@@ -1,0 +1,2 @@
+void [call(), // hole
+, call()];
