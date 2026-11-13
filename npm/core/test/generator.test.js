@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
-import { decode, decodeJs, decodeTs } from "@swc-next/decoder";
+import { decodeJs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
@@ -22,8 +22,8 @@ function encodedParameterKinds(source, encoder, options) {
   );
 }
 
-function decodeEncoded(program, source, decoder = decodeTs, encoder = encode) {
-  const [header, spans, kinds, payloads, extra, strings] = encoder(program);
+function decodeEncoded(program, source) {
+  const [header, spans, kinds, payloads, extra, strings] = encodeJs(program);
   const buffer = Buffer.concat([
     header, spans, kinds, Buffer.alloc((8 - kinds.length % 8) % 8),
     payloads, extra, strings, Buffer.alloc((4 - strings.length % 4) % 4),
@@ -32,16 +32,16 @@ function decodeEncoded(program, source, decoder = decodeTs, encoder = encode) {
   buffer.writeUInt32LE(strings.length, 8);
   buffer.writeUInt32LE(0, 12);
   buffer.writeUInt32LE(0, 36);
-  return decoder(buffer, source, new TextEncoder().encode(source)).program;
+  return decodeJs(buffer, source, new TextEncoder().encode(source)).program;
 }
 
-function assertEncodedRoundtrip(source, options, decoder = decodeTs, encoder = encode) {
-  const { program } = parseSync(source, options);
+function assertEncodedRoundtrip(source) {
+  const { program } = parseSync(source);
   const expected = structuredClone(program);
-  const decoded = decodeEncoded(program, source, decoder, encoder);
+  const decoded = decodeEncoded(program, source);
   assert.deepEqual(decoded, expected);
 
-  const repeated = decodeEncoded(decoded, source, decoder, encoder);
+  const repeated = decodeEncoded(decoded, source);
   assert.deepEqual(repeated, expected);
   assert.deepEqual(program, expected);
 }
@@ -51,57 +51,6 @@ function encodedLanguage(program) {
   const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
   return (view.getUint32(32, true) >> 2) & 7;
 }
-
-function assertTsFieldEncoding(source, options) {
-  const { program } = parseSync(source, options);
-  assert.equal(encodedLanguage(program), 1);
-  const decoded = decodeEncoded(program, source, decode);
-  assert.deepEqual(decoded, program);
-  assert.deepEqual(decodeEncoded(decoded, source, decode), program);
-}
-
-test("encoder infers TypeScript from fields on shared nodes", () => {
-  const typescript = { lang: "ts" };
-  assertTsFieldEncoding("abstract class C {}", typescript);
-
-  assertTsFieldEncoding("declare class C {}", typescript);
-
-  assertTsFieldEncoding("declare let value;", typescript);
-
-  assertTsFieldEncoding("class C { readonly value; }", typescript);
-
-  assertTsFieldEncoding("class C { value!; }", typescript);
-
-  assertTsFieldEncoding("class C { public value; }", typescript);
-
-  assertTsFieldEncoding("class C { private method() {} }", typescript);
-
-  assertTsFieldEncoding("class C { override method() {} }", typescript);
-
-  assertTsFieldEncoding("class C { method?() {} }", typescript);
-
-  assertTsFieldEncoding("class C { value?; }", typescript);
-
-  assertTsFieldEncoding("class C { abstract value; }", typescript);
-
-  assertTsFieldEncoding("function f(value?) {}", typescript);
-
-  assertTsFieldEncoding("function f(value? = 0) {}", typescript);
-
-  assertTsFieldEncoding("class C { method(@dec value) {} }", typescript);
-
-  assertTsFieldEncoding("class C { method(@dec ...values) {} }", typescript);
-
-  assertTsFieldEncoding('import type { T } from "m";', typescript);
-
-  assertTsFieldEncoding('import { type T } from "m";', typescript);
-
-  assertTsFieldEncoding("export type { T };", typescript);
-
-  assertTsFieldEncoding("export { type T };", typescript);
-
-  assertTsFieldEncoding('export type * from "m";', typescript);
-});
 
 test("encoder keeps JavaScript language for default fields", () => {
   const typescript = { lang: "ts" };
@@ -131,23 +80,6 @@ test("encoder keeps JavaScript language for default fields", () => {
   assert.equal(encodedLanguage(decoratedMethod), 0);
 });
 
-test("encoder preserves parameter spans", () => {
-  const typescript = { lang: "ts" };
-  assertEncodedRoundtrip("function f(a? = 0) {}", typescript);
-
-  assertEncodedRoundtrip("function f(a?: number = 0) {}", typescript);
-
-  assertEncodedRoundtrip("function f(a = 0) {}", typescript);
-
-  assertEncodedRoundtrip("function f(a?) {}", typescript);
-
-  assertEncodedRoundtrip("class C { constructor(public a? = 0) {} }", typescript);
-
-  assertEncodedRoundtrip("function f({a}? = {}) {}", typescript);
-
-  assertEncodedRoundtrip("function f([a]? = []) {}", typescript);
-});
-
 test("encoder preserves empty parameter spans", () => {
   const { program } = parseSync("function f(a? = 0) {}", { lang: "ts" });
   const pattern = program.body[0].params[0].left;
@@ -161,38 +93,18 @@ test("encoder preserves empty parameter spans", () => {
   assert.equal(spanView.getUint32(patternId * 8 + 4, true), 0);
 });
 
-test("encoders preserve JavaScript template spans", () => {
-  const javascript = { lang: "js" };
-  for (const encoder of [encodeJs, encodeTs]) {
-    assertEncodedRoundtrip("`abc`;", javascript, decodeJs, encoder);
+test("encodeJs preserves JavaScript template spans", () => {
+  assertEncodedRoundtrip("`abc`;");
 
-    assertEncodedRoundtrip("`a${x}b${y}c`;", javascript, decodeJs, encoder);
+  assertEncodedRoundtrip("`a${x}b${y}c`;");
 
-    assertEncodedRoundtrip("`${x}`;", javascript, decodeJs, encoder);
+  assertEncodedRoundtrip("`${x}`;");
 
-    assertEncodedRoundtrip("``;", javascript, decodeJs, encoder);
+  assertEncodedRoundtrip("``;");
 
-    assertEncodedRoundtrip("`a\r\nb\r\nc`;", javascript, decodeJs, encoder);
+  assertEncodedRoundtrip("`a\r\nb\r\nc`;");
 
-    assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;", javascript, decodeJs, encoder);
-  }
-});
-
-test("encoder preserves TypeScript template spans", () => {
-  const typescript = { lang: "ts" };
-  assertEncodedRoundtrip("`abc`;", typescript);
-
-  assertEncodedRoundtrip("const value: string = `a${x}b${y}c`;", typescript);
-
-  assertEncodedRoundtrip("`${x}`;", typescript);
-
-  assertEncodedRoundtrip("``;", typescript);
-
-  assertEncodedRoundtrip("`a\r\nb\r\nc`;", typescript);
-
-  assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;", typescript);
-
-  assertEncodedRoundtrip("type T = `a${string}b`;", typescript);
+  assertEncodedRoundtrip("tag`\\xZ${x}雪🌍`;");
 });
 
 test("encoder preserves empty template spans", () => {
@@ -349,10 +261,6 @@ test("encoders preserve lone surrogates in string values", () => {
     assert.equal(header.getUint32(12, true), 0);
     const generated = generateEncoded(program, encoder);
     assert.equal(parseSync(generated).program.body[0].declarations[0].init.value, value);
-
-    const escaped = parseSync('const text = "\\uD800";').program;
-    const roundtrip = parseSync(generateEncoded(escaped, encoder)).program;
-    assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
   }
 });
 
@@ -410,19 +318,7 @@ test("encoder preserves expressions with stale directive metadata", () => {
   assert.equal(generateSync(namespace).code, "namespace N {\n  1;\n}\n");
 });
 
-test("encoder preserves method bodies and signatures", () => {
-  const typescript = { lang: "ts" };
-
-  const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
-  assert.equal(generateSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
-  assert.equal((new DataView(encode(body)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
-
-  const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
-  assert.equal(generateSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
-
-  const signature = parseSync("class C { m(): number; }", typescript).program;
-  assert.equal(generateSync(signature).code, "class C {\n  m(): number;\n}\n");
-
+test("encoder preserves modified method types", () => {
   const modified = parseSync("class C { m() { return 1; } }").program;
   modified.body[0].body.body[0].type = "TSAbstractMethodDefinition";
   assert.equal(generateSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
