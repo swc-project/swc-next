@@ -956,6 +956,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 rhs_layout,
             } => (boundary, rhs_layout),
         };
+        let boundary = boundary.with_operator_tail_destination(context.operator_tail_destination());
         self.comments.claim(boundary.before)?;
         self.format_comment_run(
             boundary.before,
@@ -1055,8 +1056,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         if !boundary.trailing.is_empty() {
-            let (right, tail) = writer.record_with_value(write_right)?;
-            self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
+            let (right, mut tail) = writer.record_with_value(write_right)?;
+            tail.operator_tail =
+                self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
             return Ok(tail);
         }
         let tail = if matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) {

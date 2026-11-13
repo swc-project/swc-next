@@ -21,6 +21,9 @@ impl<'ast> TypeOutput<'ast> {
     }
 
     pub(in crate::formatter) fn from_expression(output: ExpressionOutput<'ast>) -> Self {
+        // Continuation callbacks print types or annotated bindings through local
+        // contexts. Their JavaScript initializers have separate expression output.
+        debug_assert!(output.operator_tail.is_none());
         Self {
             pending: output.pending,
             right_edge: output.right_edge,
@@ -28,9 +31,6 @@ impl<'ast> TypeOutput<'ast> {
     }
 
     pub(in crate::formatter) fn into_expression(self) -> ExpressionOutput<'ast> {
-        ExpressionOutput {
-            pending: self.pending,
-            right_edge: self.right_edge,
-        }
+        ExpressionOutput::local(self.pending, self.right_edge)
     }
 }

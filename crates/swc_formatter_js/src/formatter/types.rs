@@ -3395,10 +3395,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.format_prepared_type_completed(node, context, layout, writer, |output, right_edge| {
-            ExpressionOutput {
-                pending: output.pending,
-                right_edge,
-            }
+            ExpressionOutput::local(output.pending, right_edge)
         })
     }
 

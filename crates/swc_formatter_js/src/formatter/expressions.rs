@@ -322,6 +322,7 @@ pub(super) struct ExpressionContext<'ast> {
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
     tail_boundary: TailBoundary,
+    operator_tail_destination: assignment::OperatorTailDestination,
 }
 
 impl<'ast> ExpressionContext<'ast> {
@@ -472,6 +473,7 @@ impl<'ast> ExpressionContext<'ast> {
             jsx_callback: JsxCallbackContext::Ordinary,
             call_argument_owner: CallArgumentOwner::Ordinary,
             tail_boundary: TailBoundary::Separated,
+            operator_tail_destination: assignment::OperatorTailDestination::Local,
             body_opening: BodyOpening::Plain,
         }
     }
@@ -534,6 +536,7 @@ impl<'ast> ExpressionContext<'ast> {
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
         self.emitted_head_binding = EmittedHeadBinding::Pending;
+        self.operator_tail_destination = assignment::OperatorTailDestination::Local;
         self
     }
 
@@ -555,6 +558,18 @@ impl<'ast> ExpressionContext<'ast> {
     pub(super) fn with_tail_owner(mut self, owner: TailOwner) -> Self {
         self.tail_owner = owner;
         self
+    }
+
+    pub(super) fn with_operator_tail_destination(
+        mut self,
+        destination: assignment::OperatorTailDestination,
+    ) -> Self {
+        self.operator_tail_destination = destination;
+        self
+    }
+
+    pub(super) fn operator_tail_destination(self) -> assignment::OperatorTailDestination {
+        self.operator_tail_destination
     }
 
     pub(super) fn is_formatted_conditional_rhs(&self, data: ExprData) -> bool {
@@ -651,13 +666,27 @@ pub(super) enum ExpressionRightEdge {
 pub(super) struct ExpressionOutput<'ast> {
     pub(super) pending: Option<ExpressionTail<'ast>>,
     pub(super) right_edge: ExpressionRightEdge,
+    pub(super) operator_tail: Option<&'ast assignment::DeferredOperatorTail<'ast>>,
 }
 
 impl<'ast> ExpressionOutput<'ast> {
+    /// A type-only bridge has no JavaScript operator-suffix destination.
+    pub(super) fn local(
+        pending: Option<ExpressionTail<'ast>>,
+        right_edge: ExpressionRightEdge,
+    ) -> Self {
+        Self {
+            pending,
+            right_edge,
+            operator_tail: None,
+        }
+    }
+
     pub(super) fn unreported(pending: Option<ExpressionTail<'ast>>) -> Self {
         Self {
             pending,
             right_edge: ExpressionRightEdge::Unreported,
+            operator_tail: None,
         }
     }
 
@@ -670,6 +699,7 @@ impl<'ast> ExpressionOutput<'ast> {
             right_edge: raw.map_or(ExpressionRightEdge::Closed, |raw| {
                 ExpressionRightEdge::SourceFenceCandidate(CopiedRawOwner::Expression(raw))
             }),
+            operator_tail: None,
         }
     }
 
@@ -677,6 +707,7 @@ impl<'ast> ExpressionOutput<'ast> {
         Self {
             pending,
             right_edge: ExpressionRightEdge::Closed,
+            operator_tail: None,
         }
     }
 }

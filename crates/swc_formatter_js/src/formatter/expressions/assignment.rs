@@ -8,8 +8,8 @@ use super::parentheses::{
 use super::{ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{
-    CommentBinding, CommentOpening, CommentRunLayout, HeadGapPlacement, NodeHead, PreparedHeadGap,
-    PreparedHeadGaps,
+    CommentBinding, CommentOpening, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead,
+    PreparedCommentAdjacency, PreparedHeadGap, PreparedHeadGaps,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
@@ -42,6 +42,29 @@ pub(in crate::formatter) struct AssignmentRhs<'content> {
 pub(in crate::formatter) enum AssignmentParent {
     Statement,
     Nested,
+}
+
+/// The real parent boundary that will print a claimed ordinary operator suffix.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(in crate::formatter) enum OperatorTailDestination {
+    Local,
+    Terminator,
+}
+
+/// A claimed suffix borrowed until its requested punctuation owner is reached.
+pub(in crate::formatter) struct DeferredOperatorTail<'ast> {
+    comments: &'ast [Comment],
+    destination: OperatorTailDestination,
+}
+
+impl<'ast> DeferredOperatorTail<'ast> {
+    pub(in crate::formatter) fn comments(&self) -> &'ast [Comment] {
+        self.comments
+    }
+
+    pub(in crate::formatter) fn destination(&self) -> OperatorTailDestination {
+        self.destination
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -181,9 +204,18 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     head_gap: Option<&'ast PreparedHeadGaps>,
     head_destination: Option<&'ast super::parentheses::PreparedHeadDestination>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    operator_tail_destination: OperatorTailDestination,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
+    pub(in crate::formatter) fn with_operator_tail_destination(
+        mut self,
+        destination: OperatorTailDestination,
+    ) -> Self {
+        self.operator_tail_destination = destination;
+        self
+    }
+
     pub(in crate::formatter) fn rhs_requires_line(&self) -> bool {
         self.rhs_starts_on_own_line()
             || !self.operator_line.is_empty()
@@ -371,6 +403,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_tail_owner(context.tail_owner)
             .with_tail_boundary(context.tail_boundary)
+            .with_operator_tail_destination(context.operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(&content);
         let boundary = self.assignment_boundary(
@@ -535,7 +568,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     });
             };
             if !boundary.trailing.is_empty() {
-                let (right, tail) = writer.record_with_value(write_right)?;
+                let (right, mut tail) = writer.record_with_value(write_right)?;
                 let rhs_layout = match layout {
                     AssignmentLayout::Ordinary(rhs_layout) => rhs_layout,
                     AssignmentLayout::OperatorLine | AssignmentLayout::ChainTail => {
@@ -543,7 +576,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     AssignmentLayout::Chain => RhsLayout::Fluid,
                 };
-                self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
+                tail.operator_tail =
+                    self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
                 return Ok(tail);
             }
             let tail = match layout {
@@ -616,10 +650,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: RhsLayout,
         right: Fragment<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<&'ast DeferredOperatorTail<'ast>>, FormatError> {
         let Some((line, prefix)) = boundary.trailing.split_last() else {
             writer.write_fragment(right);
-            return Ok(());
+            return Ok(None);
         };
         let (prefix, ()) = writer.record_with_value(|writer| {
             self.format_comment_run(
@@ -628,6 +662,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         })?;
+        if matches!(layout, RhsLayout::NeverBreakAfterOperator)
+            && boundary.operator_tail_destination != OperatorTailDestination::Local
+        {
+            writer.space();
+            writer.write_fragment(prefix);
+            writer.write_fragment(right);
+            return Ok(Some(self.allocator.alloc(DeferredOperatorTail {
+                comments: &boundary.trailing[boundary.trailing.len() - 1..],
+                destination: boundary.operator_tail_destination,
+            })));
+        }
         let (suffix, ()) = writer.record_with_value(|writer| {
             writer.text(self.source(line.span).trim_end());
             Ok::<_, FormatError>(())
@@ -643,7 +688,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.write_fragment(prefix);
             writer.write_fragment(right);
             write_suffix(CommentOpening::Needed, writer);
-            return Ok(());
+            return Ok(None);
         }
         let (fallback, ()) = writer.record_with_value(|writer| {
             writer.space();
@@ -657,11 +702,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         if matches!(layout, RhsLayout::Fluid) {
             writer.write_fragment(fallback);
-            return Ok(());
+            return Ok(None);
         }
         let (Some(prefix), Some(right)) = (prefix.try_flat(), right.try_flat()) else {
             writer.write_fragment(fallback);
-            return Ok(());
+            return Ok(None);
         };
         let (flat, ()) = writer.record_with_value(|writer| {
             writer.space();
@@ -675,7 +720,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // own break requests, so this belongs to the assignment boundary.
         writer.break_parent();
         writer.write_alternatives(&[flat], fallback);
-        Ok(())
+        Ok(None)
+    }
+
+    pub(in crate::formatter) fn format_deferred_operator_tail(
+        &self,
+        tail: &DeferredOperatorTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        debug_assert!(tail.destination() != OperatorTailDestination::Local);
+        self.format_inline_trailing_comments(tail.comments(), writer)?;
+        Ok(PreparedCommentAdjacency::after_comments(tail.comments()))
+    }
+
+    /// Value-owned inline blocks precede the displaced line suffix; later
+    /// comments follow its completed adjacency at this punctuation boundary.
+    pub(in crate::formatter) fn format_operator_tail_with_pending(
+        &mut self,
+        operator: &DeferredOperatorTail<'ast>,
+        pending: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        let pending = if let Some(tail) = pending {
+            let mut end = tail.source_end;
+            let count = tail
+                .comments
+                .iter()
+                .take_while(|comment| {
+                    let inline = comment.kind == CommentKind::Block
+                        && self.line_breaks(end, comment.span.start) == 0;
+                    if inline {
+                        end = comment.span.end;
+                    }
+                    inline
+                })
+                .count();
+            if count != 0 {
+                self.format_expression_tail(
+                    Some(ExpressionTail {
+                        source_end: tail.source_end,
+                        comments: &tail.comments[..count],
+                    }),
+                    writer,
+                )?;
+            }
+            (count != tail.comments.len()).then_some(ExpressionTail {
+                source_end: end,
+                comments: &tail.comments[count..],
+            })
+        } else {
+            None
+        };
+        let adjacency = self.format_deferred_operator_tail(operator, writer)?;
+        let following = pending
+            .as_ref()
+            .map(|tail| PreparedCommentAdjacency::after_comments(tail.comments));
+        self.format_expression_tail_after(pending, adjacency, writer)?;
+        Ok(following.unwrap_or(adjacency))
     }
 
     fn prepare_assignment_suppression(
@@ -1051,6 +1152,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head_gap: None,
             head_destination: None,
             head_scope: context.head_scope,
+            operator_tail_destination: context.operator_tail_destination,
         };
         let head_context = projected.as_ref().map_or(context, |head| head.context);
         let head_mode = head_context.content_mode;

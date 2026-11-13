@@ -3228,7 +3228,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
         if parenthesize {
-            context = context.with_body_opening(BodyOpening::Plain);
+            context = context
+                .with_operator_tail_destination(super::assignment::OperatorTailDestination::Local)
+                .with_body_opening(BodyOpening::Plain);
         }
         if parenthesize
             && (Self::for_head_grammar_pair_is_enclosed(data, context.position)
@@ -3370,6 +3372,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok(ExpressionOutput {
                 pending: tail,
                 right_edge: output.right_edge,
+                operator_tail: output.operator_tail,
             })
         }
     }

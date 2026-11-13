@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a // note
+= 1 // @ts-ignore
+; b: string = 2;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  a = 1; // note
+  // @ts-ignore
+  b: string = 2;
+}
