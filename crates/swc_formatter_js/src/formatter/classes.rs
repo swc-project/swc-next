@@ -20,7 +20,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
-    ExpressionTypeArguments, TailOwner,
+    ExpressionTypeArguments, OperandIndent, TailOwner,
 };
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
@@ -2095,7 +2095,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 right,
                 layout,
                 ExpressionContext::variable_initializer()
-                    .with_tail_owner(TailOwner::ParentOperation),
+                    .with_tail_owner(TailOwner::ParentOperation)
+                    .with_operand_indent(if accessor.is_some() {
+                        OperandIndent::Expression
+                    } else {
+                        OperandIndent::Auto
+                    }),
                 writer,
             )?;
             if boundary.following

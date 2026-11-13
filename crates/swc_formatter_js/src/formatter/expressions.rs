@@ -232,6 +232,7 @@ pub(super) enum TailBoundary {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OperandIndent {
+    Auto,
     Expression,
     Parent,
 }
@@ -431,7 +432,7 @@ impl<'ast> ExpressionContext<'ast> {
             head_destination: None,
             head_scope: None,
             tail_owner: TailOwner::Expression,
-            operand_indent: OperandIndent::Expression,
+            operand_indent: OperandIndent::Auto,
             protected_head_start: None,
             ignored_parentheses_closing: None,
             emitted_head_binding: EmittedHeadBinding::Pending,
