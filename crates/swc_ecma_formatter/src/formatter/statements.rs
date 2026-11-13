@@ -1444,6 +1444,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
 
+        if !previous_ignore
+            && let StatementItem::Statement(statement) = following
+            && let StmtData::ExpressionStatement(statement) = self.ast.stmt_data(statement)
+            && let Some(cast) = self.source_cast_head_owner(statement.expression(self.ast))
+            && comments.contains(&cast.annotation)
+        {
+            // The complete following cast head owns its annotation packet.
+            return None;
+        }
+
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.suppression || semantics.has_target_annotation() {

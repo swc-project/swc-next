@@ -196,10 +196,11 @@ pub(super) struct PreparedGeneratedEnclosure {
     pub(super) content: ExpressionContent,
 }
 
+/// The real cast pair and the annotation selected from its source head.
 #[derive(Clone, Copy)]
-struct ResolvedSourceCast {
-    pair: ParenthesizedExpression,
-    annotation: Comment,
+pub(in crate::formatter) struct ResolvedSourceCast {
+    pub(in crate::formatter) pair: ParenthesizedExpression,
+    pub(in crate::formatter) annotation: Comment,
 }
 
 /// The real cast retains its pair; only a redundant exterior envelope is released.
@@ -1575,15 +1576,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn source_cast_head(&self, mut expression: Expr) -> Option<ParenthesizedExpression> {
+    pub(super) fn source_cast_head(&self, expression: Expr) -> Option<ParenthesizedExpression> {
+        self.source_cast_head_owner(expression)
+            .map(|owner| owner.pair)
+    }
+
+    pub(in crate::formatter) fn source_cast_head_owner(
+        &self,
+        mut expression: Expr,
+    ) -> Option<ResolvedSourceCast> {
         if !self.has_type_casts {
             return None;
         }
         loop {
             expression = match self.ast.expr_data(expression) {
                 ExprData::ParenthesizedExpression(parenthesized) => {
-                    if self.parenthesis_has_type_cast(parenthesized.span(self.ast).start) {
-                        return Some(parenthesized);
+                    if let Some(annotation) =
+                        self.source_type_cast(parenthesized.span(self.ast).start)
+                    {
+                        return Some(ResolvedSourceCast {
+                            pair: parenthesized,
+                            annotation,
+                        });
                     }
                     parenthesized.expression(self.ast)
                 }
