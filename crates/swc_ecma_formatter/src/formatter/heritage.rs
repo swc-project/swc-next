@@ -9,7 +9,7 @@ use super::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLay
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, ItemBoundary};
 use super::expressions::{AccessKind, ExpressionContext, ExpressionPosition, TailOwner};
-use super::suppression::{ContentMode, SuppressionPosition};
+use super::suppression::{ContentMode, SuppressionPosition, comment_directive};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -69,6 +69,24 @@ enum HeritageLeading {
 }
 
 impl HeritagePrefix<'_> {
+    pub(super) fn with_class_preceding_line(mut self) -> Self {
+        if let HeritagePrefixLayout::Formatted {
+            leading: leading @ HeritageLeading::None,
+            after,
+            inline_target: false,
+            ..
+        } = &mut self.layout
+            && !after.is_empty()
+            && after
+                .comments()
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Line)
+        {
+            *leading = HeritageLeading::Preceding;
+        }
+        self
+    }
+
     pub(super) fn with_preceding_owner(mut self) -> Self {
         if !self.has_comments {
             return self;
@@ -94,6 +112,12 @@ impl HeritagePrefix<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn heritage_has_directive(&self, comments: &[Comment]) -> bool {
+        comments
+            .iter()
+            .any(|&comment| comment_directive(self.ast, comment).is_some())
+    }
+
     /// Source parentheses and chain wrappers do not change the header's operand shape.
     pub(super) fn heritage_expression_is_member(&self, mut expression: Expr) -> bool {
         loop {
