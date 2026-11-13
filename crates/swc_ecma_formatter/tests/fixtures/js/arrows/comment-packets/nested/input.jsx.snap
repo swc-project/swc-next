@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = () => /* a */ (/* b */ (
+/* c */
+<><Panel /></>));
+---------- Options ----------
+{}
+---------- Output ----------
+const f = () => (
+  /* a */ /* b */ /* c */
+  <>
+    <Panel />
+  </>
+);
