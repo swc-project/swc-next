@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function unpack({ a, b } =
+/* note */
+user) {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function unpack(
+  /* note */
+  { a, b } = user,
+) {}

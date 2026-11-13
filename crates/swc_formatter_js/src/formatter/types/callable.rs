@@ -251,6 +251,7 @@ enum ParameterBinding<'ast> {
 
 struct PreparedParameterDefault<'ast> {
     left: Span,
+    pattern: BindingPattern,
     right: Expr,
     left_mode: ContentMode,
     layout: InitializerLayout<'ast>,
@@ -265,16 +266,22 @@ struct ParameterLeft<'ast> {
     end: u32,
 }
 
-enum PreparedParameterLeft<'ast> {
+// Defaults have formal patterns; rest and `this` bindings belong to other items.
+enum PreparedDefaultParameterLeft<'ast> {
     Source(Span),
-    Formatted(ParameterLeft<'ast>),
+    Formatted {
+        pattern: BindingPattern,
+        optional: bool,
+        annotation: Option<PreparedAnnotation<'ast>>,
+        end: u32,
+    },
 }
 
-impl PreparedParameterLeft<'_> {
+impl PreparedDefaultParameterLeft<'_> {
     fn end(&self) -> u32 {
         match self {
             Self::Source(span) => span.end,
-            Self::Formatted(left) => left.end,
+            Self::Formatted { end, .. } => *end,
         }
     }
 }
@@ -298,7 +305,7 @@ enum ParameterItemState<'ast> {
     Source(ParameterItemSource),
     Formatted(ParameterLeft<'ast>),
     Default {
-        left: PreparedParameterLeft<'ast>,
+        left: PreparedDefaultParameterLeft<'ast>,
         right: Expr,
         layout: InitializerLayout<'ast>,
         head: Option<&'ast NodeHead<'ast>>,
@@ -310,6 +317,10 @@ pub(in crate::formatter) struct PreparedParameterItem<'ast>(ParameterItemState<'
 impl PreparedParameterItem<'_> {
     pub(in crate::formatter) fn is_source(&self) -> bool {
         matches!(self.0, ParameterItemState::Source(_))
+    }
+
+    pub(in crate::formatter) fn has_binding_head(&self) -> bool {
+        matches!(self.0, ParameterItemState::Default { head: Some(_), .. })
     }
 
     pub(in crate::formatter) fn share_signature_group(
@@ -1474,18 +1485,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         DefaultOwner::Formatted {
                             boundary,
                             rhs_layout,
-                            head,
-                        } => (
-                            ContentMode::Formatted,
-                            InitializerLayout::Formatted {
-                                boundary,
-                                rhs_layout,
-                            },
-                            head,
-                        ),
+                            head_comments,
+                        } => {
+                            let head = head_comments.map(|comments| NodeHead {
+                                comments,
+                                content_start: boundary.binding_head_end(),
+                                layout: CommentRunLayout::Leading(boundary.binding_head_end()),
+                                gap_end: None,
+                            });
+                            (
+                                ContentMode::Formatted,
+                                InitializerLayout::Formatted {
+                                    boundary,
+                                    rhs_layout,
+                                },
+                                head,
+                            )
+                        }
                     };
                     Some(PreparedParameterDefault {
                         left,
+                        pattern,
                         right,
                         left_mode,
                         layout,
@@ -1547,27 +1567,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map(|annotation| self.prepare_annotation_content(end, annotation))
                 .transpose()?
         };
-        let left = ParameterLeft {
-            binding,
-            optional,
-            annotation,
-            annotation_layout: TypeLayout::Root,
-            end: initializer
-                .as_ref()
-                .map_or(node.span(ast).end, |initializer| initializer.left.end),
-        };
+        let end = initializer
+            .as_ref()
+            .map_or(node.span(ast).end, |initializer| initializer.left.end);
         let parameter = match initializer {
             Some(initializer) => ParameterItemState::Default {
                 left: if initializer.left_mode == ContentMode::Verbatim {
-                    PreparedParameterLeft::Source(initializer.left)
+                    PreparedDefaultParameterLeft::Source(initializer.left)
                 } else {
-                    PreparedParameterLeft::Formatted(left)
+                    PreparedDefaultParameterLeft::Formatted {
+                        pattern: initializer.pattern,
+                        optional,
+                        annotation,
+                        end,
+                    }
                 },
                 right: initializer.right,
                 layout: initializer.layout,
                 head: initializer.head.map(|head| &*self.allocator.alloc(head)),
             },
-            None => ParameterItemState::Formatted(left),
+            None => ParameterItemState::Formatted(ParameterLeft {
+                binding,
+                optional,
+                annotation,
+                annotation_layout: TypeLayout::Root,
+                end,
+            }),
         };
         Ok(PreparedParameterItem(parameter))
     }
@@ -1582,9 +1607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_verbatim(node.span(self.ast), writer)?;
                 Ok(None)
             }
-            ParameterItemState::Formatted(left) => {
-                self.format_parameter_left(PreparedParameterLeft::Formatted(left), writer)
-            }
+            ParameterItemState::Formatted(left) => self.format_parameter_left(left, writer),
             ParameterItemState::Default {
                 left,
                 right,
@@ -1592,11 +1615,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head,
             } => {
                 if let Some(head) = head {
+                    writer.break_parent();
                     self.comments.claim(head.comments)?;
                     self.format_comment_run(head.comments, head.layout, writer)?;
                 }
                 let end = left.end();
-                let tail = self.format_parameter_left(left, writer)?;
+                let tail = match left {
+                    PreparedDefaultParameterLeft::Source(span) => {
+                        self.format_verbatim(span, writer)?;
+                        None
+                    }
+                    PreparedDefaultParameterLeft::Formatted {
+                        pattern,
+                        optional,
+                        annotation,
+                        end,
+                    } => self.format_parameter_left(
+                        ParameterLeft {
+                            binding: ParameterBinding::Pattern {
+                                node: pattern,
+                                mode: ContentMode::Formatted,
+                            },
+                            optional,
+                            annotation,
+                            annotation_layout: TypeLayout::Root,
+                            end,
+                        },
+                        writer,
+                    )?,
+                };
                 self.format_expression_tail(tail, writer)?;
                 self.format_initializer_right(
                     end,
@@ -1611,16 +1658,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_parameter_left(
         &mut self,
-        left: PreparedParameterLeft<'ast>,
+        left: ParameterLeft<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let left = match left {
-            PreparedParameterLeft::Source(span) => {
-                self.format_verbatim(span, writer)?;
-                return Ok(None);
-            }
-            PreparedParameterLeft::Formatted(left) => left,
-        };
         let shared_annotation = left.annotation.is_some()
             && matches!(&left.binding, ParameterBinding::Pattern {
                 node, mode: ContentMode::Formatted,
