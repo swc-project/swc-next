@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f([1, 2, 3]);
+---------- Options ----------
+{"printWidth":2}
+---------- Output ----------
+f(
+  [
+    1,
+    2,
+    3,
+  ],
+);
+
+---------- Options ----------
+{"printWidth":3}
+---------- Output ----------
+f([
+  1,
+  2,
+  3,
+]);
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+f([
+  1, 2, 3,
+]);

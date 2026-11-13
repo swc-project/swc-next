@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a, [key1xxxxxxx, key2xxxxxxx, key3xxxxxxx] satisfies T);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+f(a, [
+  key1xxxxxxx,
+  key2xxxxxxx,
+  key3xxxxxxx,
+] satisfies T);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+f(a, [key1xxxxxxx, key2xxxxxxx, key3xxxxxxx] satisfies T);

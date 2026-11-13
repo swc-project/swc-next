@@ -1,6 +1,6 @@
 //! Shared source-ordered argument slots and comma/comment boundaries.
 
-use super::callbacks::TestCallback;
+use super::callbacks::{SelectedArgument, TestCallback};
 use super::calls::CallCallee;
 use super::typescript::ExpressionTypeArguments;
 use super::{
@@ -2410,15 +2410,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let fixed_frame = frame.is_fixed();
-        let hugged = fixed_frame
-            || source_opening.is_none()
-                && arguments.len() == 1
-                && self.comments.in_range(content).is_empty()
-                && !self.diagnostic_range_is_sensitive(content)
-                && first.is_some_and(|argument| match ast.argument_data(argument.node) {
-                    ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
-                    ArgumentData::SpreadElement(_) => false,
-                });
         // An emitted empty separator expands the actual call group below.
         let expand =
             !fixed_frame && allow_composition && self.arguments_are_function_composition(arguments);
@@ -2428,11 +2419,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 DelimitedClose::Terminal(closing)
             };
-        if !fixed_frame
-            && !expand
-            && let Some(selected) = self.select_argument_layout(arguments, !hugged)
-        {
-            let tail = self.format_selected_arguments(
+        let format_selected = |formatter: &mut Self,
+                               selected: SelectedArgument<'ast>,
+                               chain_facts: Option<&mut ChainArgumentFacts>,
+                               writer: &mut Writer<'ast>| {
+            let tail = formatter.format_selected_arguments(
                 arguments,
                 content,
                 ArgumentHead {
@@ -2448,10 +2439,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 chain_facts,
                 writer,
             )?;
-            return Ok(FormattedArguments {
+            Ok(FormattedArguments {
                 tail,
                 has_outside_prefix,
-            });
+            })
+        };
+        let formatted_selection = !fixed_frame
+            && !expand
+            && first_mode == ContentMode::Formatted
+            && callee_mode == ContentMode::Formatted
+            && prefix_mode == ContentMode::Formatted;
+        if formatted_selection && let Some(selected) = self.select_argument_layout(arguments) {
+            return format_selected(self, selected, chain_facts, writer);
+        }
+        let hugged = fixed_frame
+            || source_opening.is_none()
+                && arguments.len() == 1
+                && self.comments.in_range(content).is_empty()
+                && !self.diagnostic_range_is_sensitive(content)
+                && first.is_some_and(|argument| match ast.argument_data(argument.node) {
+                    ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
+                    ArgumentData::SpreadElement(_) => false,
+                });
+        if !fixed_frame
+            && !expand
+            && !formatted_selection
+            && !hugged
+            && let Some(selected) = self.select_argument_layout(arguments)
+        {
+            return format_selected(self, selected, chain_facts, writer);
         }
         let tail = group.write(expand, writer, |writer| {
             if let Some(opening) = source_opening {
@@ -2544,7 +2560,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(None)
         })?;
-        if fixed_frame && let Some(facts) = chain_facts {
+        // A fixed or structurally expanded argument frame already owns its
+        // collection preferences; they must not expand the enclosing chain.
+        if (fixed_frame || expand)
+            && let Some(facts) = chain_facts
+        {
             facts.source_expanded_object = false;
         }
         Ok(FormattedArguments {
