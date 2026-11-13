@@ -334,21 +334,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(ast.get_utf8(label.name(ast)));
         }
         match layout {
-            TypeBoundaryLayout::Source(gap) => self.format_verbatim(gap, writer)?,
+            TypeBoundaryLayout::Source(gap) => {
+                self.format_verbatim(gap, writer)?;
+                self.format_prepared_type_body(
+                    type_node,
+                    TypeContext::Root,
+                    TypeLayout::CallerIndented,
+                    writer,
+                )
+            }
             TypeBoundaryLayout::Formatted { before, after } => {
                 if node.optional(ast) {
                     writer.text("?");
                 }
                 self.format_type_comment_gap(&before, FlatSeparator::Empty, writer)?;
                 writer.text(":");
-                self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
+                self.format_prepared_type_after_comments_body(
+                    type_node,
+                    TypeContext::Root,
+                    &after,
+                    TypeLayout::Root,
+                    writer,
+                )
             }
         }
-        self.format_prepared_type_body(
-            type_node,
-            TypeContext::Root,
-            TypeLayout::CallerIndented,
-            writer,
-        )
     }
 }
