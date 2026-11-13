@@ -242,15 +242,17 @@ fn write_struct_encoder(
     };
     writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
     if name.starts_with("Ts") {
-        output.push_str("    isTs = true;\n");
+        output.push_str("    isTs = 1;\n");
     }
     write_special_prelude(output, name, dispatch.is_ts);
 
     let layout = &ast.layout;
     let mut fields = Vec::with_capacity(ast.fields.len());
+    let mut ts_flags = Vec::new();
 
     for (field_index, field) in ast.fields.iter().enumerate() {
         let ty = &schema.types[field.type_id];
+        let ts_field = is_ts_field(name, &field.name, ty, schema);
         let source = field_source(name, &field.name);
         let source = if !dispatch.is_ts && name == "PropertyDefinition" && field.name == "accessor"
         {
@@ -260,7 +262,7 @@ fn write_struct_encoder(
         } else {
             source
         };
-        let value = if !dispatch.is_ts && is_ts_field(name, &field.name, ty, schema) {
+        let value = if !dispatch.is_ts && ts_field {
             match ty {
                 AstType::Option(_) => "NULL".into(),
                 AstType::SubRange(_) => "0".into(),
@@ -272,7 +274,18 @@ fn write_struct_encoder(
         let local = format!("v_{field_index}");
         writeln!(output, "    const {local} = {value};").unwrap();
 
-        let source = if !dispatch.is_ts && is_ts_field(name, &field.name, ty, schema) {
+        if dispatch.is_ts && !name.starts_with("Ts") {
+            // TS child encoders set the flag themselves; shared scalar fields do not.
+            if ts_field && matches!(ty, AstType::Primitive(_)) {
+                ts_flags.push(local.clone());
+            } else if field.name == "decorators"
+                && matches!(name.as_str(), "FormalParameter" | "FormalParameterRest")
+            {
+                ts_flags.push(format!("({source}?.length ?? 0)"));
+            }
+        }
+
+        let source = if !dispatch.is_ts && ts_field {
             "null".into()
         } else {
             source
@@ -284,6 +297,10 @@ fn write_struct_encoder(
             range_length(name, &field.name),
             layout.fields[field_index],
         ));
+    }
+
+    if !ts_flags.is_empty() {
+        writeln!(output, "    isTs |= {};", ts_flags.join(" | ")).unwrap();
     }
 
     let value = |name| {
@@ -1091,7 +1108,7 @@ fn write_dispatch(output: &mut String, estree: &str, candidates: &[String]) {
             .any(|candidate| candidate == "TsMethodDefinition")
     {
         if estree == "TSAbstractMethodDefinition" {
-            output.push_str("        isTs = true;\n");
+            output.push_str("        isTs = 1;\n");
         }
         output.push_str(
             "        if (n.value?.type === \"TSEmptyBodyFunctionExpression\") return encTsMethodDefinition(n);\n",
@@ -1230,7 +1247,7 @@ let reusableBuffers;
 let nodeCapacity, spans, kinds, payloadBuffer, payload;
 let extraCapacity, extraBuffer, extra, poolCapacity, pool;
 let nodeCount = 0, extraCount = 0, poolLength = 0;
-let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = 0;
 
 function createBuffers(sizeHint) {
   const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
@@ -1584,7 +1601,8 @@ function _encode(program) {
     extraCapacity, extraBuffer, extra, poolCapacity, pool,
   } = buffers);
   nodeCount = extraCount = poolLength = 0;
-  hasWtf8 = isTs = false;
+  hasWtf8 = false;
+  isTs = 0;
   firstNonAsciiPos = NULL;
 
   // Fields and padding not explicitly written by a node must remain zero.
@@ -1607,8 +1625,7 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
   const sourceType = enumValue("SourceType", program.sourceType);
-  const lang = isTs ? "ts" : "js";
-  view.setUint32(32, sourceType | (enumValue("Lang", lang) << 2), true);
+  view.setUint32(32, sourceType | ((isTs !== 0) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);

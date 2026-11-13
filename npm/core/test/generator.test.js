@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
-import { decodeJs, decodeTs } from "@swc-next/decoder";
+import { decode, decodeJs, decodeTs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
@@ -45,6 +45,91 @@ function assertEncodedRoundtrip(source, options, decoder = decodeTs, encoder = e
   assert.deepEqual(repeated, expected);
   assert.deepEqual(program, expected);
 }
+
+function encodedLanguage(program) {
+  const [header] = encode(program);
+  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  return (view.getUint32(32, true) >> 2) & 7;
+}
+
+function assertTsFieldEncoding(source, options) {
+  const { program } = parseSync(source, options);
+  assert.equal(encodedLanguage(program), 1);
+  const decoded = decodeEncoded(program, source, decode);
+  assert.deepEqual(decoded, program);
+  assert.deepEqual(decodeEncoded(decoded, source, decode), program);
+}
+
+test("encoder infers TypeScript from fields on shared nodes", () => {
+  const typescript = { lang: "ts" };
+  assertTsFieldEncoding("abstract class C {}", typescript);
+
+  assertTsFieldEncoding("declare class C {}", typescript);
+
+  assertTsFieldEncoding("declare let value;", typescript);
+
+  assertTsFieldEncoding("class C { readonly value; }", typescript);
+
+  assertTsFieldEncoding("class C { value!; }", typescript);
+
+  assertTsFieldEncoding("class C { public value; }", typescript);
+
+  assertTsFieldEncoding("class C { private method() {} }", typescript);
+
+  assertTsFieldEncoding("class C { override method() {} }", typescript);
+
+  assertTsFieldEncoding("class C { method?() {} }", typescript);
+
+  assertTsFieldEncoding("class C { value?; }", typescript);
+
+  assertTsFieldEncoding("class C { abstract value; }", typescript);
+
+  assertTsFieldEncoding("function f(value?) {}", typescript);
+
+  assertTsFieldEncoding("function f(value? = 0) {}", typescript);
+
+  assertTsFieldEncoding("class C { method(@dec value) {} }", typescript);
+
+  assertTsFieldEncoding("class C { method(@dec ...values) {} }", typescript);
+
+  assertTsFieldEncoding('import type { T } from "m";', typescript);
+
+  assertTsFieldEncoding('import { type T } from "m";', typescript);
+
+  assertTsFieldEncoding("export type { T };", typescript);
+
+  assertTsFieldEncoding("export { type T };", typescript);
+
+  assertTsFieldEncoding('export type * from "m";', typescript);
+});
+
+test("encoder keeps JavaScript language for default fields", () => {
+  const typescript = { lang: "ts" };
+  const variable = parseSync("const value = 1;", typescript).program;
+  assert.equal(encodedLanguage(variable), 0);
+
+  const classDeclaration = parseSync("class C { value; method() {} }", typescript).program;
+  assert.equal(encodedLanguage(classDeclaration), 0);
+  assert.deepEqual(encodeJs(classDeclaration), encodeTs(classDeclaration));
+
+  const importDeclaration = parseSync('import { T } from "m";', typescript).program;
+  assert.equal(encodedLanguage(importDeclaration), 0);
+
+  const exportDeclaration = parseSync("export { T };", typescript).program;
+  assert.equal(encodedLanguage(exportDeclaration), 0);
+
+  const optionalAccess = parseSync("object?.value;").program;
+  assert.equal(encodedLanguage(optionalAccess), 0);
+
+  const optionalCall = parseSync("object?.method();").program;
+  assert.equal(encodedLanguage(optionalCall), 0);
+
+  const decoratedClass = parseSync("@dec class C {}").program;
+  assert.equal(encodedLanguage(decoratedClass), 0);
+
+  const decoratedMethod = parseSync("class C { @dec method() {} }").program;
+  assert.equal(encodedLanguage(decoratedMethod), 0);
+});
 
 test("encoder preserves parameter spans", () => {
   const typescript = { lang: "ts" };

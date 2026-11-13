@@ -62,7 +62,7 @@ let reusableBuffers;
 let nodeCapacity, spans, kinds, payloadBuffer, payload;
 let extraCapacity, extraBuffer, extra, poolCapacity, pool;
 let nodeCount = 0, extraCount = 0, poolLength = 0;
-let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = false;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = 0;
 
 function createBuffers(sizeHint) {
   const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
@@ -1929,7 +1929,8 @@ function _encodeJs(program) {
     extraCapacity, extraBuffer, extra, poolCapacity, pool,
   } = buffers);
   nodeCount = extraCount = poolLength = 0;
-  hasWtf8 = isTs = false;
+  hasWtf8 = false;
+  isTs = 0;
   firstNonAsciiPos = NULL;
 
   // Fields and padding not explicitly written by a node must remain zero.
@@ -1950,8 +1951,7 @@ function _encodeJs(program) {
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
   const sourceType = enumValue(1, program.sourceType);
-  const lang = isTs ? "ts" : "js";
-  view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
+  view.setUint32(32, sourceType | ((isTs !== 0) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);
