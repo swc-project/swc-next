@@ -2,9 +2,9 @@
 
 use swc_next_ecma_ast::{
     BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment, CommentKind,
-    Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, PropertyKeyData, Span,
-    StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature,
-    TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
+    Expr, ExprData, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey,
+    PropertyKeyData, Span, StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction,
+    TsIndexSignature, TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -18,7 +18,7 @@ use super::comments::{
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::{
-    AssignmentSourceEnd, DeferredOperatorTail, OperatorTailDestination,
+    AssignmentSourceEnd, DeferredOperatorTail, OperatorTailDestination, RhsLayout,
 };
 use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
@@ -185,6 +185,8 @@ enum ClassFieldAccessor {
 struct FieldInitializer<'ast> {
     right: Expr,
     layout: InitializerLayout<'ast>,
+    literal_continuation: bool,
+    decorated: bool,
 }
 
 struct SourceFieldSuffix {
@@ -1968,8 +1970,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let layout = if let Some(gap) = bound_gap {
-                InitializerLayout::Bound { gap, right_mode }
+            let (layout, literal_continuation) = if let Some(gap) = bound_gap {
+                (InitializerLayout::Bound { gap, right_mode }, false)
             } else {
                 let content = self.expression_content(right);
                 let rhs = self.assignment_rhs(right, &content);
@@ -1999,12 +2001,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .with_tail_owner(TailOwner::ParentOperation),
                     &boundary,
                 );
-                InitializerLayout::Formatted {
-                    boundary,
-                    rhs_layout,
-                }
+                let literal_continuation = boundary.mode == ContentMode::Formatted
+                    && matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator)
+                    && matches!(
+                        content.data,
+                        ExprData::BooleanLiteral(_) | ExprData::NumericLiteral(_)
+                    );
+                (
+                    InitializerLayout::Formatted {
+                        boundary,
+                        rhs_layout,
+                    },
+                    literal_continuation,
+                )
             };
-            Some(FieldInitializer { right, layout })
+            Some(FieldInitializer {
+                right,
+                layout,
+                literal_continuation,
+                decorated: !node.decorators(ast).is_empty(),
+            })
         } else {
             None
         };
@@ -2190,7 +2206,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             Ok::<_, FormatError>(())
         })?;
-        let tail = if let Some(FieldInitializer { right, mut layout }) = initializer {
+        let tail = if let Some(FieldInitializer {
+            right,
+            mut layout,
+            literal_continuation,
+            decorated,
+        }) = initializer
+        {
+            // Structured and decorated heads have separate layout scopes, so
+            // their literal continuations must participate in line fitting.
+            if (clean_width.is_none() || decorated)
+                && literal_continuation
+                && let InitializerLayout::Formatted { rhs_layout, .. } = &mut layout
+            {
+                *rhs_layout = RhsLayout::Fluid;
+            }
             if clean_width.is_some()
                 && computed.is_none()
                 && key_mode == ContentMode::Formatted
