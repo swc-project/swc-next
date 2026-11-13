@@ -1265,14 +1265,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let data = if matches!(position, ExpressionPosition::Superclass) {
             let mut operand = data;
+            let mut non_null = None;
             loop {
                 let expression = match operand {
                     ExprData::ChainExpression(node) => node.expression(self.ast),
-                    ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                    ExprData::TsNonNullExpression(node) => {
+                        non_null = Some(node);
+                        node.expression(self.ast)
+                    }
                     ExprData::ParenthesizedExpression(node) if mode == ContentMode::Formatted => {
                         node.expression(self.ast)
                     }
-                    _ => break operand,
+                    _ => {
+                        // A postfix assertion already frames its type-operator operand.
+                        // Keep classifying the underlying runtime expression otherwise.
+                        break if mode == ContentMode::Formatted
+                            && matches!(
+                                operand,
+                                ExprData::TsAsExpression(_)
+                                    | ExprData::TsSatisfiesExpression(_)
+                                    | ExprData::TsTypeAssertion(_)
+                            ) {
+                            non_null.map_or(operand, ExprData::TsNonNullExpression)
+                        } else {
+                            operand
+                        };
+                    }
                 };
                 operand = self.ast.expr_data(expression);
             }
