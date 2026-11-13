@@ -9,9 +9,10 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ({
   a = (first(),
   second()),
-  [key()]: value = /** @type {number} */ (
-    first()
-  ),
+  [key()]:
+    value = /** @type {number} */ (
+      first()
+    ),
   ...rest
 }) => [a, value, rest];
 
@@ -21,9 +22,10 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ;({
   a = (first(),
   second()),
-  [key()]: value = /** @type {number} */ (
-    first()
-  ),
+  [key()]:
+    value = /** @type {number} */ (
+      first()
+    ),
   ...rest
 }) => [a, value, rest]
 

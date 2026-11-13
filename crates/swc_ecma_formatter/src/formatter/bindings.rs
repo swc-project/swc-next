@@ -1421,27 +1421,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let computed = property
             .computed(ast)
             .then_some(Span::new(property.span(ast).start, key_end));
-        self.format_property_key(key, computed, suppression.key, quoting, writer)?;
-        self.comments.claim(before)?;
-        self.format_comment_run(before, CommentRunLayout::SourceAfter(key_end), writer)?;
-        let end = before.last().map_or(key_end, |comment| comment.span.end);
-        if before
-            .last()
-            .is_some_and(|comment| comment.kind == CommentKind::Line)
-        {
-            writer.hard_line();
-        } else {
-            self.line_constraint(end, colon)
-                .write(writer, FlatSeparator::Empty, |_| {});
-        }
-        writer.text(":");
-        value_prefix.write(writer, FlatSeparator::Space, Writer::space);
-        self.comments.claim(after)?;
-        self.format_comment_run(
-            after,
-            CommentRunLayout::FlatLeading(value_span.start),
-            writer,
-        )?;
-        self.format_declaration_binding(value, mode, writer)
+        writer.group(false, |writer| {
+            let clean_width = writer.write_with_clean_text_width(|writer| {
+                self.format_property_key(key, computed, suppression.key, quoting, writer)?;
+                self.comments.claim(before)?;
+                self.format_comment_run(before, CommentRunLayout::SourceAfter(key_end), writer)?;
+                let end = before.last().map_or(key_end, |comment| comment.span.end);
+                if before
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                {
+                    writer.hard_line();
+                } else {
+                    self.line_constraint(end, colon)
+                        .write(writer, FlatSeparator::Empty, |_| {});
+                }
+                Ok::<_, FormatError>(())
+            })?;
+            let overlap = usize::from(self.options.indent_width.value()) + 3;
+            let layout = if clean_width.is_some_and(|width| width >= overlap)
+                && after.is_empty()
+                && suppression.key == ContentMode::Formatted
+                && mode == ContentMode::Formatted
+            {
+                RhsLayout::Fluid
+            } else {
+                RhsLayout::NeverBreakAfterOperator
+            };
+            writer.text(":");
+            layout.write(
+                writer,
+                |writer| {
+                    value_prefix.write(writer, FlatSeparator::Space, |writer| {
+                        if matches!(layout, RhsLayout::NeverBreakAfterOperator) {
+                            writer.space();
+                        } else {
+                            writer.line();
+                        }
+                    });
+                },
+                |writer| {
+                    self.comments.claim(after)?;
+                    self.format_comment_run(
+                        after,
+                        CommentRunLayout::FlatLeading(value_span.start),
+                        writer,
+                    )?;
+                    self.format_declaration_binding(value, mode, writer)
+                },
+            )
+        })
     }
 }
