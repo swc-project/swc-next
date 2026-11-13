@@ -2,14 +2,15 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use swc_next_ecma_ast::{
     Ast, BindingPatternData, Expr, MemberExpression, NodeId, NodeKindData, SymbolId,
-    TsEnumDeclaration, UnaryOperator, VariableDeclaration, VariableKind,
+    TsEnumDeclaration, TsEnumMember, UnaryOperator, VariableDeclarator,
 };
 use swc_next_ecma_semantic::{Semantic, SymbolFlags};
 
 use super::super::TypeScriptOptions;
+use super::availability::AvailabilityBuilder;
 use super::constants::{
-    ConstBinding, ConstBindings, EnumDeclaration, EnumMemberValue, TsEnumConstantValue, evaluate,
-    resolve_constant_member,
+    ConstBinding, ConstBindings, EnumDeclaration, EnumMemberDeclaration, EnumMemberValue,
+    TsEnumConstantValue, evaluate, resolve_constant_member,
 };
 
 pub(super) struct EnumCollector {
@@ -17,6 +18,8 @@ pub(super) struct EnumCollector {
     remove_const_enums: bool,
     assignment_target: Option<NodeId>,
     enum_declarations: Vec<EnumDeclaration>,
+    member_declarations: FxHashMap<SymbolId, EnumMemberDeclaration>,
+    pub(super) availability: AvailabilityBuilder,
     removal_candidates: Vec<ConstEnumRemovalCandidate>,
     const_bindings: ConstBindings,
     collect_const_bindings: bool,
@@ -50,6 +53,8 @@ impl EnumCollector {
             remove_const_enums,
             assignment_target: None,
             enum_declarations: Vec::new(),
+            member_declarations: FxHashMap::default(),
+            availability: AvailabilityBuilder::default(),
             removal_candidates: Vec::new(),
             const_bindings: FxHashMap::default(),
             collect_const_bindings,
@@ -85,23 +90,20 @@ impl EnumCollector {
         &mut self,
         declaration: TsEnumDeclaration,
         ambient: bool,
-        deferred: Option<NodeId>,
         ast: &Ast<'_>,
         semantic: &Semantic<'_>,
-    ) {
+    ) -> Option<usize> {
         let binding = declaration.id(ast);
-        let Some(symbol) = semantic.symbol_of(binding.node_id()) else {
-            return;
-        };
+        let symbol = semantic.symbol_of(binding.node_id())?;
         let owner = semantic.symbol(symbol);
         let flags = owner.flags;
         if !flags.intersects(SymbolFlags::REGULAR_ENUM | SymbolFlags::CONST_ENUM) {
-            return;
+            return None;
         }
+        let index = self.enum_declarations.len();
         self.enum_declarations.push(EnumDeclaration {
-            syntax: declaration,
-            deferred,
             auto_increment: declaration.is_const(ast) || !(ambient || declaration.declare(ast)),
+            members: Vec::with_capacity(declaration.body(ast).members(ast).len()),
         });
         if self.remove_const_enums
             && flags.contains(SymbolFlags::CONST_ENUM)
@@ -115,43 +117,59 @@ impl EnumCollector {
                 primary: semantic.declaration(owner.declaration).node == binding.node_id(),
             });
         }
+        Some(index)
     }
 
-    pub(super) fn record_variable_declaration(
+    pub(super) fn record_member_declaration(
         &mut self,
-        declaration: VariableDeclaration,
-        deferred: Option<NodeId>,
+        member: TsEnumMember,
+        owner: Option<usize>,
+        semantic: &Semantic<'_>,
+    ) {
+        let initialization = self.availability.initialization();
+        let Some(owner) = owner else {
+            return;
+        };
+        let declaration = EnumMemberDeclaration {
+            syntax: member,
+            owner,
+            initialization,
+        };
+        self.enum_declarations[owner].members.push(declaration);
+        if let Some(symbol) = semantic.symbol_of(member.node_id()) {
+            self.member_declarations.insert(symbol, declaration);
+        }
+    }
+
+    pub(super) fn record_variable_declarator(
+        &mut self,
+        declarator: VariableDeclarator,
+        constant: bool,
         ast: &Ast<'_>,
         semantic: &Semantic<'_>,
     ) {
-        if !self.collect_const_bindings || declaration.kind(ast) != VariableKind::Const {
+        let initialization = self.availability.initialization();
+        if !self.collect_const_bindings || !constant {
             return;
         }
-
-        for declarator_id in declaration.declarators(ast).iter() {
-            let declarator = ast.get_node_in_sub_range(declarator_id);
-            let BindingPatternData::BindingIdentifier(identifier) =
-                ast.binding_pattern_data(declarator.id(ast))
-            else {
-                continue;
-            };
-            if declarator.type_annotation(ast).is_some() {
-                continue;
-            }
-            if declarator.init(ast).is_none() {
-                continue;
-            }
-            let Some(symbol) = semantic.symbol_of(identifier.node_id()) else {
-                continue;
-            };
-            if semantic.symbol(symbol).flags.contains(SymbolFlags::AMBIENT) {
-                continue;
-            }
-            self.const_bindings.entry(symbol).or_insert(ConstBinding {
-                syntax: declarator,
-                deferred,
-            });
+        let BindingPatternData::BindingIdentifier(identifier) =
+            ast.binding_pattern_data(declarator.id(ast))
+        else {
+            return;
+        };
+        if declarator.type_annotation(ast).is_some() || declarator.init(ast).is_none() {
+            return;
         }
+        let Some(symbol) = semantic.symbol_of(identifier.node_id()) else {
+            return;
+        };
+        if semantic.symbol(symbol).flags.contains(SymbolFlags::AMBIENT) {
+            return;
+        }
+        self.const_bindings.entry(symbol).or_insert(ConstBinding {
+            syntax: declarator,
+            initialization,
+        });
     }
 
     pub(super) fn record_member_expression(
@@ -218,12 +236,15 @@ impl<'ast> EnumAnalysis<'ast> {
     pub(super) fn finish(
         ast: &Ast<'ast>,
         semantic: &Semantic<'ast>,
-        collector: &EnumCollector,
+        collector: EnumCollector,
     ) -> (Self, FxHashSet<NodeId>) {
+        let availability = collector.availability.finish();
         let member_values = evaluate(
             ast,
             &collector.enum_declarations,
+            &collector.member_declarations,
             &collector.const_bindings,
+            &availability,
             semantic,
         );
         if !collector.collect_const_enum_uses {

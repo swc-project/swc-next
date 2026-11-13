@@ -3,9 +3,9 @@ use super::{enums::EnumCollector, modules::ModuleCollector, namespaces::Namespac
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, CallExpression, ExprData, Function, Lang, MemberExpression,
     MethodDefinition, NodeId, ObjectProperty, PropertyDefinition, PropertyKind,
-    SimpleAssignmentTarget, Stmt, TsEnumDeclaration, TsGlobalDeclaration,
+    SimpleAssignmentTarget, Stmt, TsEnumDeclaration, TsEnumMember, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsInterfaceDeclaration, TsModuleDeclaration, TsType,
-    UnaryExpression, VariableDeclaration, Visit, VisitWith,
+    UnaryExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -14,7 +14,8 @@ pub(super) struct AnalysisCollector<'visit, 'ast> {
     semantic: &'visit Semantic<'ast>,
     pub(super) enums: EnumCollector,
     ambient: bool,
-    deferred: Option<NodeId>,
+    current_enum: Option<usize>,
+    constant: bool,
     immediately_invoked: Option<NodeId>,
     pub(super) modules: ModuleCollector,
     pub(super) namespaces: NamespaceCollector,
@@ -31,7 +32,8 @@ impl<'visit, 'ast> AnalysisCollector<'visit, 'ast> {
             semantic,
             enums: EnumCollector::new(ast, semantic, options),
             ambient: ast.lang() == Lang::Dts,
-            deferred: None,
+            current_enum: None,
+            constant: false,
             immediately_invoked: None,
             modules: ModuleCollector::new(options),
             namespaces: NamespaceCollector::default(),
@@ -62,21 +64,21 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
     }
 
     fn visit_function(&mut self, function: Function) {
-        let previous = self.deferred;
-        if self.immediately_invoked != Some(function.node_id()) {
-            self.deferred = Some(function.node_id());
-        }
+        let region = (self.immediately_invoked != Some(function.node_id()))
+            .then(|| self.enums.availability.enter_deferred());
         function.visit_children_with(self);
-        self.deferred = previous;
+        if let Some(region) = region {
+            self.enums.availability.exit_deferred(region);
+        }
     }
 
     fn visit_arrow_function_expression(&mut self, function: ArrowFunctionExpression) {
-        let previous = self.deferred;
-        if self.immediately_invoked != Some(function.node_id()) {
-            self.deferred = Some(function.node_id());
-        }
+        let region = (self.immediately_invoked != Some(function.node_id()))
+            .then(|| self.enums.availability.enter_deferred());
         function.visit_children_with(self);
-        self.deferred = previous;
+        if let Some(region) = region {
+            self.enums.availability.exit_deferred(region);
+        }
     }
 
     fn visit_method_definition(&mut self, method: MethodDefinition) {
@@ -84,20 +86,19 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
         // TypeScript's function-like boundary includes a method's computed name,
         // which is outside the Function node in our AST. This is only a constant
         // evaluation rule; computed names still execute when the class is created.
-        let previous = self.deferred;
-        self.deferred = Some(method.node_id());
+        let region = self.enums.availability.enter_deferred();
         method.key(self.ast).visit_with(self);
         method.value(self.ast).visit_with(self);
-        self.deferred = previous;
+        self.enums.availability.exit_deferred(region);
     }
 
     fn visit_object_property(&mut self, property: ObjectProperty) {
-        let previous = self.deferred;
-        if property.method(self.ast) || property.kind(self.ast) != PropertyKind::Init {
-            self.deferred = Some(property.node_id());
-        }
+        let region = (property.method(self.ast) || property.kind(self.ast) != PropertyKind::Init)
+            .then(|| self.enums.availability.enter_deferred());
         property.visit_children_with(self);
-        self.deferred = previous;
+        if let Some(region) = region {
+            self.enums.availability.exit_deferred(region);
+        }
     }
 
     fn visit_property_definition(&mut self, property: PropertyDefinition) {
@@ -105,12 +106,12 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
         property.key(self.ast).visit_with(self);
         property.type_annotation(self.ast).visit_with(self);
         if let Some(initializer) = property.value(self.ast) {
-            let previous = self.deferred;
-            if !property.r#static(self.ast) {
-                self.deferred = Some(initializer.node_id());
-            }
+            let region =
+                (!property.r#static(self.ast)).then(|| self.enums.availability.enter_deferred());
             initializer.visit_with(self);
-            self.deferred = previous;
+            if let Some(region) = region {
+                self.enums.availability.exit_deferred(region);
+            }
         }
     }
 
@@ -128,14 +129,18 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
     }
 
     fn visit_ts_enum_declaration(&mut self, declaration: TsEnumDeclaration) {
-        self.enums.record_enum_declaration(
-            declaration,
-            self.ambient,
-            self.deferred,
-            self.ast,
-            self.semantic,
-        );
+        let owner =
+            self.enums
+                .record_enum_declaration(declaration, self.ambient, self.ast, self.semantic);
+        let previous = std::mem::replace(&mut self.current_enum, owner);
         declaration.visit_children_with(self);
+        self.current_enum = previous;
+    }
+
+    fn visit_ts_enum_member(&mut self, member: TsEnumMember) {
+        self.enums
+            .record_member_declaration(member, self.current_enum, self.semantic);
+        member.visit_children_with(self);
     }
 
     fn visit_ts_import_equals_declaration(&mut self, declaration: TsImportEqualsDeclaration) {
@@ -168,9 +173,16 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
     }
 
     fn visit_variable_declaration(&mut self, declaration: VariableDeclaration) {
-        self.enums
-            .record_variable_declaration(declaration, self.deferred, self.ast, self.semantic);
+        let constant = declaration.kind(self.ast) == VariableKind::Const;
+        let previous = std::mem::replace(&mut self.constant, constant);
         declaration.visit_children_with(self);
+        self.constant = previous;
+    }
+
+    fn visit_variable_declarator(&mut self, declarator: VariableDeclarator) {
+        self.enums
+            .record_variable_declarator(declarator, self.constant, self.ast, self.semantic);
+        declarator.visit_children_with(self);
     }
 
     fn visit_member_expression(&mut self, member: MemberExpression) {

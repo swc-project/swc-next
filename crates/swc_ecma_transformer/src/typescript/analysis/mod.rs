@@ -12,6 +12,7 @@ use self::{
     namespaces::NamespaceAnalysis,
 };
 use super::TypeScriptOptions;
+mod availability;
 mod collector;
 mod constants;
 mod enums;
@@ -72,7 +73,7 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         let mut collector = AnalysisCollector::new(ast, semantic, options);
         program.visit_with(&mut collector);
 
-        let (enums, inlined_references) = EnumAnalysis::finish(ast, semantic, &collector.enums);
+        let (enums, inlined_references) = EnumAnalysis::finish(ast, semantic, collector.enums);
         collector.modules.apply_enum_policy(semantic, &enums);
         let modules = ModuleAnalysis::finish(
             collector.modules,
