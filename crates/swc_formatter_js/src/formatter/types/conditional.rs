@@ -57,6 +57,12 @@ pub(super) struct PreparedConditionalType<'ast> {
     body: ConditionalBody<'ast>,
 }
 
+impl PreparedConditionalType<'_> {
+    pub(super) fn node(&self) -> TsConditionalType {
+        self.body.node
+    }
+}
+
 struct ConditionalBody<'ast> {
     node: TsConditionalType,
     extends: PreparedType,

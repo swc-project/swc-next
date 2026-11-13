@@ -60,9 +60,10 @@ type LongAliasName = string | number | boolean;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-type Ordinary = /* inline */ {
-  key: string;
-};
+type Ordinary =
+  /* inline */ {
+    key: string;
+  };
 type OwnLine =
   /* head */
   "value";
@@ -102,9 +103,10 @@ type LongAliasName =
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
-type Ordinary = /* inline */ {
-  key: string
-}
+type Ordinary =
+  /* inline */ {
+    key: string
+  }
 type OwnLine =
   /* head */
   "value"
@@ -146,9 +148,10 @@ type LongAliasName =
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
-type Ordinary = /* inline */ {
-	key: string;
-};
+type Ordinary =
+	/* inline */ {
+		key: string;
+	};
 type OwnLine =
 	/* head */
 	"value";
