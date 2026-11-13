@@ -1,7 +1,7 @@
 //! Shared parameter items retain real bindings and annotation wrappers.
 
 use swc_next_ecma_ast::{
-    Ast, BindingPattern, Expr, FormalParameter, FormalParameterItemData,
+    Ast, BindingPattern, CommentKind, Expr, FormalParameter, FormalParameterItemData,
     FormalParameterPatternData, FormalParameterRest, FormalParameters, GetSpan, Span,
     TsConstructorType, TsFunctionType, TsThisParameter, TsType, TsTypeAnnotation, TsTypeData,
     TsTypeParameterDeclaration, TsTypePredicate, TsTypePredicateNameData,
@@ -449,7 +449,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                 }
-                Ok((generic, self.prepare_type_gap(gap, source)))
+                let following = if matches!(head, CallableHead::Function) {
+                    self.prepare_bodyless_parameter_gap(&mut parameters, gap, source)?
+                } else {
+                    self.prepare_type_gap(gap, source)
+                };
+                Ok((generic, following))
             })
             .transpose()?;
         let source_return = match incoming {
@@ -665,6 +670,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             parameters.node.rest(ast).map(CallableParameter::Rest)
         };
         Ok(first)
+    }
+
+    pub(in crate::formatter) fn prepare_bodyless_parameter_gap(
+        &self,
+        parameters: &mut CallableParameters,
+        gap: Span,
+        source: bool,
+    ) -> Result<TypeGap<'ast>, FormatError> {
+        let comments = self.comments.in_range(gap);
+        let relocated = !source
+            && !comments.is_empty()
+            && comments
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block)
+            && self.line_breaks(gap.start, gap.end) == 0
+            && self.prepare_incoming_parameter_head(parameters, gap)?;
+        Ok(self.prepare_type_gap(
+            if relocated {
+                Span::new(gap.end, gap.end)
+            } else {
+                gap
+            },
+            source,
+        ))
     }
 
     /// The real first parameter owns an ordinary packet immediately before its opener.

@@ -1182,7 +1182,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             prefix_gap = Span::new(head_gap.end, head_gap.end);
         }
-        let prefix = self.prepare_type_gap(prefix_gap, head_source);
+        let prefix = if !construct && head_end == parameter_span.start {
+            self.prepare_bodyless_parameter_gap(&mut parameters, prefix_gap, head_source)?
+        } else {
+            self.prepare_type_gap(prefix_gap, head_source)
+        };
         let mut generics = parts
             .generics
             .map(|generic| {
@@ -1211,7 +1215,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                 }
-                Ok((generic, generic_mode, self.prepare_type_gap(gap, source)))
+                let following = if construct {
+                    self.prepare_type_gap(gap, source)
+                } else {
+                    self.prepare_bodyless_parameter_gap(&mut parameters, gap, source)?
+                };
+                Ok((generic, generic_mode, following))
             })
             .transpose()?;
         let result = parts.result.map(|annotation| {
