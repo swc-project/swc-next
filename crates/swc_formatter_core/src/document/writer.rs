@@ -18,6 +18,22 @@ pub struct Writer<'a> {
     group_count: u32,
 }
 
+/// An open group belonging to the writer that created it.
+///
+/// Close scopes in reverse opening order with [`Writer::end_group`].
+#[must_use]
+pub struct GroupScope {
+    start: usize,
+    request: GroupRequest,
+    outer_effect: BreakEffect,
+}
+
+/// An open indentation scope belonging to the writer that created it.
+///
+/// Close scopes in reverse opening order with [`Writer::end_indent`].
+#[must_use]
+pub struct IndentScope(());
+
 /// A completed entry can retain a suffix while it is still the final scope.
 pub struct FillEntry {
     start: usize,
@@ -335,6 +351,16 @@ impl<'a> Writer<'a> {
         id: Option<GroupId>,
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
+        let scope = self.begin_group(request, id);
+        let result = write(self);
+        self.end_group(scope);
+        result
+    }
+
+    /// Opens a group for an iterative producer. Close all inner scopes before
+    /// passing its handle back to this writer's [`Self::end_group`].
+    #[inline]
+    pub fn begin_group(&mut self, request: GroupRequest, id: Option<GroupId>) -> GroupScope {
         let start = self.elements.len();
         let outer_effect = self.facts.begin_group();
         self.elements.push(Instruction::StartGroup {
@@ -343,7 +369,21 @@ impl<'a> Writer<'a> {
             id,
             end_offset: 0,
         });
-        let result = write(self);
+        GroupScope {
+            start,
+            request,
+            outer_effect,
+        }
+    }
+
+    /// Closes the innermost open group and completes its cached break effect.
+    #[inline]
+    pub fn end_group(&mut self, scope: GroupScope) {
+        let GroupScope {
+            start,
+            request,
+            outer_effect,
+        } = scope;
         let effect = self.facts.end_group(request, outer_effect);
         let distance = instruction_offset(self.elements.len() - start);
         let Instruction::StartGroup {
@@ -357,7 +397,6 @@ impl<'a> Writer<'a> {
         *group_effect = effect;
         *end_offset = distance;
         self.elements.push(Instruction::EndGroup);
-        result
     }
 
     /// Removes optional layout breaks in one complete scope. Required source
@@ -381,10 +420,24 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        self.elements.push(Instruction::StartIndent);
+        let scope = self.begin_indent();
         let result = write(self);
-        self.elements.push(Instruction::EndIndent);
+        self.end_indent(scope);
         result
+    }
+
+    /// Opens an indentation scope for an iterative producer. Close all inner
+    /// scopes before passing its handle to this writer's [`Self::end_indent`].
+    #[inline]
+    pub fn begin_indent(&mut self) -> IndentScope {
+        self.elements.push(Instruction::StartIndent);
+        IndentScope(())
+    }
+
+    /// Closes the innermost open indentation scope.
+    #[inline]
+    pub fn end_indent(&mut self, _scope: IndentScope) {
+        self.elements.push(Instruction::EndIndent);
     }
 
     /// Gives a complete scope its own root-relative indentation.

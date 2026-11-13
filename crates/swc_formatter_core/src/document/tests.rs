@@ -39,6 +39,44 @@ fn line_document(options: PrintOptions) -> String {
     writer.finish().print(options)
 }
 
+fn resumed_scope_document(request: GroupRequest, options: PrintOptions) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.next_group_id();
+    let outer = writer.begin_group(GroupRequest::Auto, Some(id));
+    writer.text("A(");
+    let indent = writer.begin_indent();
+    writer.soft_line();
+    let inner = writer.begin_group(request, None);
+    writer.text("x");
+    writer.line();
+    writer.text("y");
+    writer.end_group(inner);
+    writer.end_indent(indent);
+    writer.soft_line();
+    writer.text(")");
+    writer.end_group(outer);
+    writer.if_break_for(ConditionTarget::Group(id), "!");
+    writer.finish().print(options)
+}
+
+#[test]
+fn resumed_scopes() {
+    let options = PrintOptions::default();
+    let flat = resumed_scope_document(GroupRequest::Auto, options);
+    assert_eq!(flat, "A(x y)");
+
+    let narrow = PrintOptions {
+        line_width: 4,
+        ..options
+    };
+    let broken = resumed_scope_document(GroupRequest::Auto, narrow);
+    assert_eq!(broken, "A(\n  x\n  y\n)!");
+
+    let expanded = resumed_scope_document(GroupRequest::Expanded, options);
+    assert_eq!(expanded, "A(\n  x\n  y\n)!");
+}
+
 fn line_request_document<'a>(
     allocator: &'a Allocator,
     line: impl FnOnce(&mut Writer<'a>),
