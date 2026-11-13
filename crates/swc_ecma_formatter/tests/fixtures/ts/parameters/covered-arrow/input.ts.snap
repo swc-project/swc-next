@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+const f = (x) => x;
+---------- Options ----------
+{"arrowParens":"avoid"}
+---------- Output ----------
+// @ts-expect-error
+const f = x => x;
+
+---------- Options ----------
+{"arrowParens":"always"}
+---------- Output ----------
+// @ts-expect-error
+const f = (x) => x;
