@@ -61,6 +61,47 @@ pub(super) fn is_suppression_comment(ast: &Ast<'_>, comment: Comment) -> bool {
         == "prettier-ignore"
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum LintLineDirective {
+    SameLine,
+    NextLine,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CommentDirective {
+    LintLine(LintLineDirective),
+    LintRange,
+    Coverage,
+}
+
+pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<CommentDirective> {
+    let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
+    let mut words = value
+        .split(is_source_whitespace)
+        .filter(|word| !word.is_empty());
+    match words.next() {
+        Some("eslint-disable-line") => {
+            Some(CommentDirective::LintLine(LintLineDirective::SameLine))
+        }
+        Some("eslint-disable-next-line") => {
+            Some(CommentDirective::LintLine(LintLineDirective::NextLine))
+        }
+        Some("eslint-disable" | "eslint-enable") => Some(CommentDirective::LintRange),
+        Some("c8" | "v8") if words.next() == Some("ignore") => Some(CommentDirective::Coverage),
+        Some("node:coverage") if matches!(words.next(), Some("ignore" | "disable" | "enable")) => {
+            Some(CommentDirective::Coverage)
+        }
+        _ => None,
+    }
+}
+
+pub(super) fn lint_line_directive(ast: &Ast<'_>, comment: Comment) -> Option<LintLineDirective> {
+    match comment_directive(ast, comment) {
+        Some(CommentDirective::LintLine(line)) => Some(line),
+        _ => None,
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     #[inline]
     pub(super) fn suppression_position(

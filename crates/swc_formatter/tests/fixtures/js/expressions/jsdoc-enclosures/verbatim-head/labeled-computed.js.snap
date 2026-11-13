@@ -9,6 +9,7 @@ label: /* note */
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-/* note */ label: (/** @type {any} */ a
+/* note */
+label: (/** @type {any} */ a
 // prettier-ignore
 )[b];

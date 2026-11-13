@@ -1757,7 +1757,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ),
             StmtData::LabeledStatement(node) if mode == ContentMode::Formatted => {
                 let _scope = self.recursion_scope(node)?;
-                self.format_labeled_statement(node, punctuation, layout.source_candidate, writer)
+                self.format_labeled_statement(
+                    node,
+                    punctuation,
+                    layout.source_candidate,
+                    matches!(layout.start, ExpressionStart::StatementBody),
+                    writer,
+                )
             }
             StmtData::WhileStatement(node) if mode == ContentMode::Formatted => {
                 let _scope = self.recursion_scope(node)?;

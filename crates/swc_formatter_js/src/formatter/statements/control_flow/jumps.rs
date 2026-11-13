@@ -1,8 +1,8 @@
 //! Restricted jump labels and the real owner of a labeled statement's header.
 
 use swc_next_ecma_ast::{
-    BreakStatement, Comment, CommentKind, ContinueStatement, DeclData, Expr, ExprData, GetSpan,
-    LabelIdentifier, LabeledStatement, Span, Stmt, StmtData,
+    BreakStatement, Comment, ContinueStatement, DeclData, Expr, ExprData, GetSpan, LabelIdentifier,
+    LabeledStatement, Span, Stmt, StmtData,
 };
 
 use super::super::{
@@ -12,7 +12,10 @@ use super::{ControlledBodyEnd, ControlledBodyRole};
 use crate::formatter::comments::{CommentBinding, CommentCursor, CommentRunLayout};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
-use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::suppression::{
+    CommentDirective, ContentMode, LintLineDirective, SuppressionPosition, comment_directive,
+    lint_line_directive,
+};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -82,6 +85,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: LabeledStatement,
         punctuation: StatementPunctuation,
         source_candidate: crate::formatter::statements::ContinuationBoundary,
+        controlled: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let span = node.span(self.ast);
@@ -98,17 +102,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .first()
                 .is_none_or(|comment| comment.span.start >= span.end)
         {
-            return self.format_labeled_contents(node, punctuation, source_candidate, writer);
+            return self.format_labeled_contents(
+                node,
+                punctuation,
+                source_candidate,
+                controlled,
+                writer,
+            );
         }
         let (head, prefix) = self.prepare_label_chain_head(node)?;
         let outer = self.label_chain_head.replace(head);
         let result = (|| {
             self.comments.claim(prefix)?;
             if !prefix.is_empty() {
-                self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
-                writer.hard_line();
+                if controlled
+                    || prefix.iter().any(|&comment| {
+                        matches!(
+                            lint_line_directive(self.ast, comment),
+                            Some(LintLineDirective::SameLine)
+                        )
+                    })
+                {
+                    self.format_comment_run(prefix, CommentRunLayout::Leading(head.end), writer)?;
+                } else {
+                    self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
+                    writer.hard_line();
+                }
             }
-            self.format_labeled_contents(node, punctuation, source_candidate, writer)
+            self.format_labeled_contents(node, punctuation, source_candidate, controlled, writer)
         })();
         self.label_chain_head = outer;
         result
@@ -149,11 +170,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if !before.is_empty() && !move_before {
                 break head.end;
             }
-            if move_before
-                && before
-                    .iter()
-                    .any(|comment| comment.kind == CommentKind::Line)
-            {
+            if move_before {
                 prefix_end = before.last().map_or(prefix_end, |comment| comment.span.end);
             }
             if !self
@@ -169,9 +186,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             if (before.is_empty() || move_before)
                 && self.label_comments_lead_statement(after, head.end)
-                && after
-                    .iter()
-                    .any(|comment| comment.kind == CommentKind::Line)
             {
                 prefix_end = after.last().map_or(prefix_end, |comment| comment.span.end);
             }
@@ -191,6 +205,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: LabeledStatement,
         punctuation: StatementPunctuation,
         source_candidate: crate::formatter::statements::ContinuationBoundary,
+        controlled: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -284,7 +299,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_comment_run(before, CommentRunLayout::Leading(colon), writer)?;
         }
         if move_after {
-            self.format_comment_run(after, CommentRunLayout::Leading(head.end), writer)?;
+            if controlled
+                || after.iter().any(|&comment| {
+                    matches!(
+                        lint_line_directive(ast, comment),
+                        Some(LintLineDirective::SameLine)
+                    )
+                })
+            {
+                self.format_comment_run(after, CommentRunLayout::Leading(head.end), writer)?;
+            } else {
+                self.format_comment_run(after, CommentRunLayout::Source, writer)?;
+                if after
+                    .last()
+                    .is_some_and(|comment| self.comment_run_ends_line(*comment, head.end))
+                {
+                    writer.hard_line();
+                } else if !after.is_empty() {
+                    writer.space();
+                }
+            }
         }
         self.format_jump_label(label, label_mode, writer)?;
         if !move_before {
@@ -320,7 +354,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Option<Expr>,
         declaration: bool,
     ) -> Result<CommentBinding, FormatError> {
-        if self.diagnostic_range_is_sensitive(span) {
+        if self.diagnostic_range_is_sensitive(span)
+            || comments.iter().any(|&comment| {
+                matches!(
+                    comment_directive(self.ast, comment),
+                    Some(CommentDirective::LintRange | CommentDirective::Coverage)
+                )
+            })
+        {
             return Ok(CommentBinding::SourceBound);
         }
         let cast = expression
