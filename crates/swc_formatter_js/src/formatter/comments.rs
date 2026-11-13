@@ -2697,14 +2697,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> &'ast [Comment] {
         let mut end = span.start;
         let mut count = 0;
+        let line = if has_following && !comments.is_empty() {
+            statement_end
+                .checked_sub(1)
+                .and_then(|offset| self.lint_line_at(offset))
+        } else {
+            None
+        };
+        let mut same_line_marker = false;
         for (index, comment) in comments.iter().enumerate() {
             if has_following
                 && self.has_target_annotations
                 && self.comment_has_target_annotation(*comment)
             {
+                if same_line_marker {
+                    count = index;
+                }
                 break;
             }
             if self.line_breaks(end, comment.span.start) != 0 {
+                break;
+            }
+            if same_line_marker
+                && line.is_some_and(|line| comment.span.end > line.end)
+                && (self.is_next_line_directive(comment.span)
+                    || self.has_suppression_in(comment.span))
+            {
+                // A following command keeps its target after its closing line.
+                count = index;
                 break;
             }
             let following = comments
@@ -2713,7 +2733,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let gap_start = released_closer
                 .filter(|gap| gap.tail_end == comment.span.end && gap.source_end <= following)
                 .map_or(comment.span.end, |gap| gap.source_end);
-            if comment.kind == CommentKind::Line || self.line_breaks(gap_start, following) != 0 {
+            // The directive belongs to this statement only when both occupy
+            // the same semantic source line. Its packet ends at that line.
+            same_line_marker |= line.is_some_and(|line| {
+                line.start <= comment.span.start
+                    && comment.span.end <= line.end
+                    && self.has_line_directive_in(comment.span)
+                    && !self.is_next_line_directive(comment.span)
+            });
+            if comment.kind == CommentKind::Line
+                || self.line_breaks(gap_start, following) != 0
+                || same_line_marker
+                    && (line.is_some_and(|line| comment.span.end > line.end)
+                        || self.source_line_breaks(gap_start, following) != 0)
+            {
                 count = index + 1;
                 break;
             }
