@@ -8,22 +8,22 @@ const x=1+2 /* prettier-ignore */,
 {"indentStyle":"space","lineWidth":1}
 ---------- Output ----------
 const x=1+2 /* prettier-ignore */,
-/* prettier-ignore */ y=3+4;
+  /* prettier-ignore */ y=3+4;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const x=1+2 /* prettier-ignore */,
-/* prettier-ignore */ y=3+4
+  /* prettier-ignore */ y=3+4
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const x=1+2 /* prettier-ignore */,
-/* prettier-ignore */ y=3+4;
+  /* prettier-ignore */ y=3+4;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const x=1+2 /* prettier-ignore */,
-/* prettier-ignore */ y=3+4
+  /* prettier-ignore */ y=3+4
