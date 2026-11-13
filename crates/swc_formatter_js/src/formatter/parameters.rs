@@ -700,6 +700,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         transition,
                         writer,
                     )?;
+                    if self.options.trailing_commas != TrailingCommas::All {
+                        item.omit_source_terminal_comma();
+                    }
                     if let Some(mode) = following_mode {
                         item.set_leading_mode(mode);
                     }

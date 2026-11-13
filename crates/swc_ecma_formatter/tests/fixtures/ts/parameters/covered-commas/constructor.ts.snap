@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(
+  // @ts-ignore
+  public x: Missing,
+) {} }
+---------- Options ----------
+{"trailingComma":"all"}
+---------- Output ----------
+class C {
+  constructor(
+    // @ts-ignore
+    public x: Missing,
+  ) {}
+}
+
+---------- Options ----------
+{"trailingComma":"es5"}
+---------- Output ----------
+class C {
+  constructor(
+    // @ts-ignore
+    public x: Missing
+  ) {}
+}

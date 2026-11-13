@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(
+  // prettier-ignore
+  x :  Missing,
+) {}
+---------- Options ----------
+{"trailingComma":"all"}
+---------- Output ----------
+function f(
+  // prettier-ignore
+  x :  Missing,
+) {}
+
+---------- Options ----------
+{"trailingComma":"es5"}
+---------- Output ----------
+function f(
+  // prettier-ignore
+  x :  Missing
+) {}
