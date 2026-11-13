@@ -45,4 +45,4 @@ export function generateSync(program, options) {
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync);
+export const transformSync = createTransformSync(__transformSync, encodeGeneratorConfig);

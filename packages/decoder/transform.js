@@ -1,5 +1,4 @@
 import { encodeParserOptions } from "./options.js";
-import { encodeGeneratorOptions } from "@swc-next/encoder/options";
 
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
@@ -36,10 +35,11 @@ function storage(length) {
 }
 
 /** Create an options encoder with synchronous, reusable scratch storage.
+ * The caller supplies generator option encoding to keep codec packages independent.
  * The encoder is not reentrant. Option getters and Proxy traps must not
  * reenter it, including via its transformSync wrapper.
  */
-export function createTransformOptionsEncoder() {
+export function createTransformOptionsEncoder(encodeGeneratorOptions) {
   let buffer = empty;
   let view;
   return function encodeOptions(options) {
@@ -67,12 +67,6 @@ export function createTransformOptionsEncoder() {
     return buffer.subarray(0, 20 + written);
   };
 }
-
-const encodeOptions = createTransformOptionsEncoder();
-/** The returned buffer is scratch storage, valid until the next encoding call.
- * Option getters and Proxy traps must not reenter this shared encoder.
- */
-export { encodeOptions as encodeTransformOptions };
 
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
   ? Buffer.prototype.utf8Slice
@@ -114,8 +108,8 @@ export function decodeTransform(buffer) {
  * Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
  * traps must not reenter the same wrapper while it is encoding options.
  */
-export function createTransformSync(binding) {
-  const encodeOptions = createTransformOptionsEncoder();
+export function createTransformSync(binding, encodeGeneratorOptions) {
+  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorOptions);
   let sourceBuffer = empty;
   return function transformSync(source, options) {
     if (typeof source !== "string") throw new TypeError("source must be a string");

@@ -1,4 +1,5 @@
 import { transformSync as __transformSync } from "./binding.js";
+import { encodeGeneratorOptions } from "@swc-next/encoder/options";
 import { createTransformSync } from "@swc-next/decoder/transform";
 
-export const transformSync = createTransformSync(__transformSync);
+export const transformSync = createTransformSync(__transformSync, encodeGeneratorOptions);

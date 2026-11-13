@@ -5,11 +5,12 @@ import { transformSync as transformCore } from "../src-js/index.js";
 import { transformSync as transformStandalone } from "../../transformer/src-js/index.js";
 import { parseSync as parseBinding, transformSync as transformBinding } from "../src-js/binding.js";
 import { decode } from "@swc-next/decoder";
+import { encodeGeneratorOptions } from "@swc-next/encoder/options";
 import { encodeParserOptions } from "@swc-next/decoder/options";
 import { createTransformOptionsEncoder, decodeTransform } from "@swc-next/decoder/transform";
 
 nodeTest("transform bridge uses packed options and binary output", () => {
-  const encodeOptions = createTransformOptionsEncoder();
+  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorOptions);
   const config = encodeOptions({ filename: "组件😀.ts", sourceMap: true, generator: { minify: true } });
   const output = transformBinding(Buffer.from('const text: string = "雪😀";'), 'const text: string = "雪😀";'.length, config);
   assert.ok(output instanceof Uint8Array);
@@ -23,7 +24,7 @@ nodeTest("transform bridge uses packed options and binary output", () => {
 });
 
 nodeTest("transform option scratch buffers recover after growth and validation errors", () => {
-  const encodeOptions = createTransformOptionsEncoder();
+  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorOptions);
   encodeOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true });
   assert.throws(() => encodeOptions({ sourceMap: 1 }), TypeError);
   const source = "const x = 1;";
@@ -34,7 +35,7 @@ nodeTest("transform option scratch buffers recover after growth and validation e
 });
 
 nodeTest("parser and transform diagnostics preserve metadata in offset buffers", () => {
-  const encodeOptions = createTransformOptionsEncoder();
+  const encodeOptions = createTransformOptionsEncoder(encodeGeneratorOptions);
   const offsetBuffer = (buffer) => {
     const padded = new Uint8Array(buffer.length + 1);
     padded.set(buffer, 1);
