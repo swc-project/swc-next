@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = // prettier-ignore
+B  |  C<D  , E>;
+---------- Options ----------
+{}
+---------- Output ----------
+type A = // prettier-ignore
+  B  |  C<D  , E>;

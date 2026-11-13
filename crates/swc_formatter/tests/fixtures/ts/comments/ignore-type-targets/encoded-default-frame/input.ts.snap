@@ -8,6 +8,6 @@ type T<\u004b =
 ---------- Output ----------
 type T<
   K =
-/* c */ /* prettier-ignore */ ( | \u0041
+    /* c */ /* prettier-ignore */ ( | \u0041
       | B ),
 > = K;

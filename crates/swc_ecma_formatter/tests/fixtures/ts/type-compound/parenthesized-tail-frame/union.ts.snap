@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A | (B /* first
+ second */))[];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = (
+  | A
+  | B /* first
+ second */
+)[];
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+type T = (
+	| A
+	| B /* first
+ second */
+)[];

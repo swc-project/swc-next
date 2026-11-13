@@ -7,8 +7,8 @@ use swc_next_ecma_ast::{
 
 use super::context::{TypeContext, TypeFrame};
 use super::{
-    Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
-    TypeLayout, TypeOutput,
+    Formatter, PreparedType, PreparedTypeParentheses, SourceTypeOperator, TypeBoundaryLayout,
+    TypeBoundaryTail, TypeLayout, TypeOutput, TypeSuppressionTarget,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout,
@@ -103,7 +103,7 @@ enum IntersectionContinuation {
 }
 
 enum IntersectionBoundary<'ast> {
-    Source(Span),
+    Source(SourceTypeOperator),
     Bound {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
@@ -120,6 +120,11 @@ enum IntersectionBoundary<'ast> {
 enum IntersectionPrefix<'ast> {
     Empty,
     Source(Span),
+    /// A later member keeps its source packet inside the continuation scope.
+    SourceMember {
+        after: Span,
+        continuation: IntersectionContinuation,
+    },
     Leading {
         boundary: CommentBoundary<'ast>,
         member_start: u32,
@@ -845,9 +850,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
-        if self.select_compound_boundary_suppression::<false>(operator, before, after, left, right)
+        if self
+            .select_compound_boundary_suppression::<false>(operator, before, after, left, right)
+            .is_some()
         {
-            return Ok(IntersectionBoundary::Source(gap));
+            return Ok(IntersectionBoundary::Source(SourceTypeOperator::new(
+                gap,
+                Span::new(operator, operator + 1),
+            )));
         }
         if !matches!(
             self.comment_binding(comments, gap, Some(right.node.span(self.ast))),
@@ -866,7 +876,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.intersection_comment_attachments(comments, gap.start, operator, gap.end)
         else {
             // Relocating interleaved owners would change comment identity order.
-            return Ok(IntersectionBoundary::Source(gap));
+            return Ok(IntersectionBoundary::Source(SourceTypeOperator::new(
+                gap,
+                Span::new(operator, operator + 1),
+            )));
         };
         let (trailing, leading) = comments.split_at(trailing_count);
         Ok(IntersectionBoundary::Formatted {
@@ -1025,10 +1038,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             IntersectionPrefix::Empty
             | IntersectionPrefix::Source(_)
+            | IntersectionPrefix::SourceMember { .. }
             | IntersectionPrefix::Leading { .. } => false,
-        };
-        let context = TypeContext::IntersectionMember {
-            line_continuation: receives_head_line,
         };
         let indent = matches!(
             &prefix,
@@ -1040,12 +1051,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 continuation: IntersectionContinuation::Line
                     | IntersectionContinuation::Inline { indent: true },
                 ..
+            } | IntersectionPrefix::SourceMember {
+                continuation: IntersectionContinuation::Line
+                    | IntersectionContinuation::Inline { indent: true },
+                ..
             }
         );
         let content = |writer: &mut Writer<'ast>| {
+            let mut receives_head_line = receives_head_line;
             match prefix {
                 IntersectionPrefix::Empty => {}
                 IntersectionPrefix::Source(span) => self.format_verbatim(span, writer)?,
+                IntersectionPrefix::SourceMember { after, .. } => {
+                    receives_head_line = matches!(
+                        self.format_type_source_head_gap(after, writer)?,
+                        LineConstraint::NewLine(_)
+                    );
+                }
                 IntersectionPrefix::Leading {
                     boundary,
                     member_start,
@@ -1091,6 +1113,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
+            let context = TypeContext::IntersectionMember {
+                line_continuation: receives_head_line,
+            };
             let output = match node {
                 IntersectionMember::Type(node) => {
                     self.format_prepared_type_body(node, context, TypeLayout::Root, writer)?
@@ -1179,7 +1204,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.hard_line();
         }
         let (before, after, member_start, leading_own_line) = match boundary {
-            IntersectionBoundary::Source(span) => return Ok(IntersectionPrefix::Source(span)),
+            IntersectionBoundary::Source(source) => {
+                self.format_source_gap(source.prefix, writer)?;
+                return Ok(IntersectionPrefix::SourceMember {
+                    after: source.after,
+                    continuation,
+                });
+            }
             IntersectionBoundary::Bound { before, after, .. } => {
                 self.format_intersection_before(&before, tail_has_line, writer)?;
                 before
@@ -1502,7 +1533,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .last()
                             .is_some_and(|comment| comment.kind == CommentKind::Line)
                     });
+                // Physical tails participate in this body group even after their
+                // original enclosing pair has been removed.
+                let enclosed_packet_tail = enclosure == super::TypeEnclosure::Parentheses
+                    && self
+                        .type_tail_continuation_gap(tail.as_ref(), false)
+                        .is_some();
                 if enclosed_line_tail
+                    || enclosed_packet_tail
                     || layout == TypeLayout::ContinuationRoot
                         && self
                             .type_tail_continuation_gap(tail.as_ref(), true)
@@ -1511,7 +1549,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     writer.break_parent();
                 }
-                let tail = if enclosure == super::TypeEnclosure::Parentheses && own_line {
+                let tail = if enclosed_packet_tail {
                     self.format_expression_tail(tail, writer)?;
                     None
                 } else {
@@ -2472,7 +2510,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         operator, before, after, left, right,
                     ),
             };
-            if source {
+            if let Some(target) = source {
+                let right_span = right.node.span(self.ast);
+                if matches!(kind, CompoundTypeKind::Union)
+                    && matches!(target, TypeSuppressionTarget::Following)
+                    && right.source_owner == Some(right.node)
+                    && comments.first().is_some_and(|comment| {
+                        let previous_end = if comment.span.start < operator {
+                            gap.start
+                        } else {
+                            operator + 1
+                        };
+                        self.line_breaks(previous_end, comment.span.start) != 0
+                    })
+                    && self
+                        .comment_binding(comments, gap, Some(right_span))
+                        .allows_relocation(Some(right_span))
+                {
+                    return Ok(TypeBoundaryLayout::Formatted {
+                        before: self.prepare_comment_boundary(comments, gap.start, gap.end),
+                        after: CommentBoundary::adjacent(gap.end),
+                    });
+                }
                 return Ok(TypeBoundaryLayout::Source(gap));
             }
         }
@@ -2547,14 +2606,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         after: &[Comment],
         left: &mut PreparedType,
         right: &mut PreparedType,
-    ) -> bool {
+    ) -> Option<TypeSuppressionTarget> {
         if !self.has_suppression {
-            return false;
+            return None;
         }
-        let mut source = false;
+        let mut target: Option<TypeSuppressionTarget> = None;
         let mut attachment = None;
         for (_, position) in self.suppressed_comment_runs(before, operator) {
-            source = true;
+            let selected = if matches!(position, SuppressionPosition::OwnLine) {
+                TypeSuppressionTarget::Following
+            } else {
+                TypeSuppressionTarget::Preceding
+            };
+            target = Some(target.map_or(selected, |target| target.combine(selected)));
             if matches!(position, SuppressionPosition::OwnLine) {
                 if UNION {
                     right.source_owner = Some(right.node);
@@ -2568,7 +2632,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         for (_, position) in self.suppressed_comment_runs(after, right.node.span(self.ast).start) {
-            source = true;
+            let selected = if matches!(position, SuppressionPosition::EndOfLine) {
+                TypeSuppressionTarget::Preceding
+            } else {
+                TypeSuppressionTarget::Following
+            };
+            target = Some(target.map_or(selected, |target| target.combine(selected)));
             if matches!(position, SuppressionPosition::EndOfLine) {
                 left.source_owner = Some(left.node);
             } else {
@@ -2593,7 +2662,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self.comments.in_range(Span::new(start, end));
             self.finalize_type_head(right, &attachment, comments);
         }
-        source
+        target
     }
 
     fn format_compound_boundary(

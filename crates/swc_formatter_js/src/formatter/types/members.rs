@@ -12,11 +12,10 @@ use super::callable::{
     AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
     SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
-use super::{
-    Formatter, PreparedType, TypeBoundaryLayout, TypeContext, TypeGap, TypeLayout, TypeOutput,
-};
+use super::{Formatter, PreparedType, TypeContext, TypeGap, TypeLayout, TypeOutput};
 use crate::formatter::comments::{
     CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, PreparedCommentAdjacency,
+    SourceCommentText,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
@@ -47,9 +46,18 @@ struct PropertyMember<'ast> {
     key: MemberKey<'ast>,
     optional: bool,
     optional_before: Option<TypeGap<'ast>>,
-    annotation: Option<(PreparedType, TypeBoundaryLayout<'ast>)>,
+    annotation: Option<(PreparedType, PropertyAnnotationPrefix<'ast>)>,
     ending: Option<TypeGap<'ast>>,
     riding: Option<ExpressionTail<'ast>>,
+}
+
+enum PropertyAnnotationPrefix<'ast> {
+    SourceKey(Span),
+    SourceType(super::SourceTypeOperator),
+    Formatted {
+        before: CommentBoundary<'ast>,
+        after: CommentBoundary<'ast>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -1019,10 +1027,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     after
                 };
-                let prefix = if key.mode == ContentMode::Verbatim
-                    || type_node.source_owner.is_some()
-                {
-                    TypeBoundaryLayout::Source(gap)
+                let prefix = if key.mode == ContentMode::Verbatim {
+                    PropertyAnnotationPrefix::SourceKey(gap)
+                } else if type_node.source_owner.is_some() {
+                    PropertyAnnotationPrefix::SourceType(super::SourceTypeOperator::new(
+                        gap,
+                        Span::new(colon, colon + 1),
+                    ))
                 } else {
                     let (before, start) = if node.optional(ast) && !before.is_empty() {
                         let marker_gap = Span::new(gap.start, colon);
@@ -1036,7 +1047,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         (before, gap.start)
                     };
-                    TypeBoundaryLayout::Formatted {
+                    PropertyAnnotationPrefix::Formatted {
                         before: self.prepare_comment_boundary(before, start, colon),
                         after: self.prepare_comment_boundary(after, colon + 1, gap.end),
                     }
@@ -1584,10 +1595,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_type_member_leading(property.key.leading.take(), writer)?;
-        let source_prefix = property
-            .annotation
-            .as_ref()
-            .is_some_and(|(_, prefix)| matches!(prefix, TypeBoundaryLayout::Source(_)));
+        let source_prefix = property.annotation.as_ref().is_some_and(|(_, prefix)| {
+            matches!(
+                prefix,
+                PropertyAnnotationPrefix::SourceKey(_) | PropertyAnnotationPrefix::SourceType(_)
+            )
+        });
         self.format_type_member_key(
             property.key,
             PropertyKeyContext::TypeProperty,
@@ -1602,25 +1615,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("?");
             }
             match prefix {
-                TypeBoundaryLayout::Source(span) => self.format_verbatim(span, writer)?,
-                TypeBoundaryLayout::Formatted { before, after } => {
+                PropertyAnnotationPrefix::SourceKey(span) => {
+                    self.format_verbatim(span, writer)?;
+                    self.format_prepared_type_with_layout(
+                        node,
+                        TypeContext::Root,
+                        TypeLayout::OpeningProvided,
+                        writer,
+                    )
+                }
+                PropertyAnnotationPrefix::SourceType(source) => {
+                    self.format_verbatim(source.prefix, writer)?;
+                    let head = self.prepare_type_source_head_gap(source.after);
+                    let own_line = head.leading_line;
+                    let mut write = |writer: &mut Writer<'ast>| {
+                        self.format_prepared_type_source_head_gap(
+                            head,
+                            SourceCommentText::Literal,
+                            writer,
+                        )?;
+                        self.format_prepared_type_with_layout(
+                            node,
+                            TypeContext::Root,
+                            if own_line {
+                                TypeLayout::CallerIndented
+                            } else {
+                                TypeLayout::OpeningProvided
+                            },
+                            writer,
+                        )
+                    };
+                    if own_line {
+                        writer.indent(write)
+                    } else {
+                        write(writer)
+                    }
+                }
+                PropertyAnnotationPrefix::Formatted { before, after } => {
                     self.format_type_comment_gap(&before, FlatSeparator::Empty, writer)?;
                     writer.text(":");
-                    return self.format_prepared_type_after_comments(
+                    self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
                         &after,
                         TypeLayout::Root,
                         writer,
-                    );
+                    )
                 }
             }
-            self.format_prepared_type_with_layout(
-                node,
-                TypeContext::Root,
-                TypeLayout::OpeningProvided,
-                writer,
-            )
         } else {
             if let Some(ending) = property.ending {
                 self.format_type_gap(ending, FlatSeparator::Empty, writer)?;

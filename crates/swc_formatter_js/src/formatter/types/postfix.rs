@@ -9,7 +9,9 @@ use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::{TypeContext, TypeEnclosure};
 use super::generics::TypeArgumentOwner;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout, TypeOutput};
-use crate::formatter::comments::{CommentBinding, CommentBoundary, CommentRunLayout};
+use crate::formatter::comments::{
+    CommentBinding, CommentBoundary, CommentRunLayout, HeadGapPlacement,
+};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
@@ -247,7 +249,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     self.format_comment_boundary_with_layout(
                         &after,
-                        CommentRunLayout::FlatLeading(index.node.span(self.ast).start),
+                        CommentRunLayout::SourceLeading {
+                            next: index.node.span(self.ast).start,
+                            placement: HeadGapPlacement::Inline,
+                        },
                         writer,
                     )?;
                 } else {

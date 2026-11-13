@@ -9,27 +9,27 @@ Record < string , number >;
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >;
+  // prettier-ignore
+  Record < string , number >;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen =
   input as
-// prettier-ignore
-Record < string , number >
+    // prettier-ignore
+    Record < string , number >
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >;
+	// prettier-ignore
+	Record < string , number >;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":100,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >
+  // prettier-ignore
+  Record < string , number >

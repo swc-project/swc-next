@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = C & (
+// prettier-ignore
+{ x  :  1 } | A);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = C &
+  // prettier-ignore
+  ({ x  :  1 } | A);
+
+---------- Options ----------
+<<<<<<<< HEAD:crates/swc_formatter/tests/fixtures/ts/union-suppression-owners/head-member.ts.snap
+{"indentStyle":"space","lineWidth":40}
+========
+{"printWidth":16}
+>>>>>>>> e0eaa03e (fix(formatter): preserve source type head frames):crates/swc_ecma_formatter/tests/fixtures/ts/union-suppression-owners/head-member/input.ts.snap
+---------- Output ----------
+type T = C &
+  // prettier-ignore
+  (
+    | { x  :  1 }
+    | A
+  );
+
+---------- Options ----------
+<<<<<<<< HEAD:crates/swc_formatter/tests/fixtures/ts/union-suppression-owners/head-member.ts.snap
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+========
+{"printWidth":16,"useTabs":true}
+---------- Output ----------
+type T = C &
+	// prettier-ignore
+	(
+		| { x  :  1 }
+		| A
+	);
+
+---------- Options ----------
+{"semi":false}
+>>>>>>>> e0eaa03e (fix(formatter): preserve source type head frames):crates/swc_ecma_formatter/tests/fixtures/ts/union-suppression-owners/head-member/input.ts.snap
+---------- Output ----------
+type T = C &
+  // prettier-ignore
+  ({ x  :  1 } | A)

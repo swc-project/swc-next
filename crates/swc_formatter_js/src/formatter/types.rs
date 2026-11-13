@@ -27,7 +27,7 @@ use super::Formatter;
 use super::bindings::{BindingGroup, BindingInitializerOwner, DefiniteMarker, InitializerLayout};
 use super::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout, ExpressionTail,
-    PreparedTrailingRun,
+    PreparedTrailingRun, SourceCommentText,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::RhsLayout;
@@ -35,7 +35,10 @@ use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge, 
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
 use super::statements::DeclarationKeyword;
-use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
+use super::suppression::{
+    ContentMode, DelimitedFollowing, DelimitedSourceGap, SuppressionPosition,
+    is_suppression_comment,
+};
 use super::variables::{VariableContext, VariableDeclaratorOutput};
 use crate::{
     FormatError,
@@ -156,6 +159,15 @@ pub(super) enum TypeSuppressionTarget {
 }
 
 impl TypeSuppressionTarget {
+    fn combine(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Neither, target) | (target, Self::Neither) => target,
+            (Self::Preceding, Self::Preceding) => Self::Preceding,
+            (Self::Following, Self::Following) => Self::Following,
+            _ => Self::Both,
+        }
+    }
+
     pub(super) fn preceding(self) -> bool {
         matches!(self, Self::Preceding | Self::Both)
     }
@@ -708,6 +720,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// A source-bound operator head keeps its lines in the caller's indent scope.
+    fn format_type_source_head_gap(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<LineConstraint, FormatError> {
+        let gap = self.prepare_type_source_head_gap(span);
+        self.format_prepared_type_source_head_gap(gap, SourceCommentText::Literal, writer)
+    }
+
+    fn prepare_type_source_head_gap(&self, span: Span) -> DelimitedSourceGap {
+        let mut source = self.prepare_delimited_source_gap(span, DelimitedFollowing::Node);
+        source.following = self.source_line_constraint(source.end, span.end);
+        source
+    }
+
+    fn format_prepared_type_source_head_gap(
+        &mut self,
+        gap: DelimitedSourceGap,
+        comments: SourceCommentText,
+        writer: &mut Writer<'ast>,
+    ) -> Result<LineConstraint, FormatError> {
+        self.format_prepared_delimited_source_gap_with_comments(gap, comments, writer)?;
+        gap.following
+            .write(writer, FlatSeparator::Space, Writer::space);
+        Ok(gap.following)
+    }
+
     pub(super) fn prepare_type_gap(&self, gap: Span, source: bool) -> TypeGap<'ast> {
         if source {
             return TypeGap::Source(gap);
@@ -1187,13 +1227,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let packet_before;
         let (before, after) = match &boundary.layout {
             TypeOperatorLayout::Source(source) => {
-                self.format_source_gap(source.span(), writer)?;
-                return self.format_prepared_type_with_layout(
-                    node,
-                    TypeContext::Root,
-                    TypeLayout::OpeningProvided,
-                    writer,
-                );
+                return self
+                    .format_source_type_operator_rhs_body(*source, node, TypeContext::Root, writer)
+                    .map(|output| output.pending);
             }
             TypeOperatorLayout::Preceding { packet, after } => {
                 self.format_preceding_type_packet(packet, writer)?;
@@ -2553,7 +2589,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         .then_some(after)
     }
 
-    /// A source head has its own entry scope, separate from the opaque RHS body.
+    /// The inline opening stays with its operator; own-line trivia and the raw
+    /// body share the RHS continuation scope.
     pub(super) fn format_source_type_operator_rhs_output(
         &mut self,
         source: SourceTypeOperator,
@@ -2574,35 +2611,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_source_gap(source.prefix, writer)?;
         let body = self.prepare_operator_rhs_type(node, context)?;
-        let entry = self
-            .comments
-            .in_range(source.after)
-            .first()
-            .map_or(source.after.end, |comment| comment.span.start);
-        let head_entry = self.line_constraint(source.after.start, entry);
-        let (head, ()) =
-            writer.record_with_value(|writer| self.format_source_gap(source.after, writer))?;
-        if matches!(head_entry, LineConstraint::NewLine(_)) {
-            writer.indent(|writer| {
-                writer.write_fragment(head);
-                self.format_prepared_delimited_type_body(
-                    body,
-                    context,
-                    TypeLayout::CallerIndented,
-                    writer,
-                )
-            })
-        } else {
-            writer.write_fragment(head);
-            writer.indent(|writer| {
-                self.format_prepared_delimited_type_body(
-                    body,
-                    context,
-                    TypeLayout::CallerIndented,
-                    writer,
-                )
-            })
+        let mut opening_end = source.after.start;
+        for comment in self.comments.in_range(source.after) {
+            if self.line_breaks(opening_end, comment.span.start) != 0 {
+                break;
+            }
+            opening_end = comment.span.end;
         }
+        self.format_source_gap(Span::new(source.after.start, opening_end), writer)?;
+        let head = self.prepare_type_source_head_gap(Span::new(opening_end, source.after.end));
+        writer.indent(|writer| {
+            self.format_prepared_type_source_head_gap(head, SourceCommentText::Alignable, writer)?;
+            self.format_prepared_delimited_type_body(
+                body,
+                context,
+                TypeLayout::CallerIndented,
+                writer,
+            )
+        })
     }
 
     pub(super) fn format_preceding_type_packet(
@@ -4267,7 +4293,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_prepared_type_body(child, context, layout, writer);
         }
         let enclosed_head = !leading_comments.is_empty() && !movable;
-        if !fenced_tail && !enclosed_head && !context.needs_parentheses(child.data, self.ast) {
+        let frame = context.frame(child.data, self.ast);
+        // A removed inner pair and a retained outer pair share the grammar frame.
+        if !enclosed_head && trailing_unbound && frame == TypeFrame::Tight {
+            let frame =
+                if self.comment_run_has_own_line_tail(trailing.comments(), trailing.source_end()) {
+                    TypeFrame::Block
+                } else {
+                    TypeFrame::Tight
+                };
+            return self.format_type_body_in_context_with_enclosure(
+                child.data,
+                context,
+                layout,
+                frame,
+                writer,
+                |formatter, layout, _, writer| {
+                    let output = formatter.format_prepared_type_body(
+                        child,
+                        TypeContext::Parenthesized,
+                        layout,
+                        writer,
+                    )?;
+                    Ok(formatter.with_type_parentheses_tail(output, &trailing))
+                },
+            );
+        }
+        if !fenced_tail && !enclosed_head && frame == TypeFrame::None {
             self.format_comment_boundary_with_layout(
                 &leading,
                 CommentRunLayout::GroupedLeading(child_span.start),
@@ -4275,24 +4327,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             if transfers_tail && !trailing.is_empty() {
                 let output = self.format_prepared_type_body(child, context, layout, writer)?;
-                let pending = output.pending;
-                let source_end = pending
-                    .as_ref()
-                    .map_or(trailing.source_end(), |tail| tail.source_end);
-                let comments = if let Some(pending) = pending {
-                    let comments = self
-                        .comments
-                        .in_range(Span::new(source_end, trailing.end()));
-                    debug_assert!(comments.starts_with(pending.comments));
-                    debug_assert!(comments.ends_with(trailing.comments()));
-                    comments
-                } else {
-                    trailing.comments()
-                };
-                return Ok(TypeOutput::from_pending(Some(ExpressionTail {
-                    source_end,
-                    comments,
-                })));
+                return Ok(self.with_type_parentheses_tail(output, &trailing));
             }
             return self.format_type_before_trailing_comments_body(
                 child, context, layout, trailing, writer,
@@ -4319,6 +4354,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(TypeOutput::closed())
         })
+    }
+
+    fn with_type_parentheses_tail(
+        &self,
+        mut output: TypeOutput<'ast>,
+        trailing: &CommentBoundary<'ast>,
+    ) -> TypeOutput<'ast> {
+        if trailing.is_empty() {
+            return output;
+        }
+        let source_end = output
+            .pending
+            .as_ref()
+            .map_or(trailing.source_end(), |tail| tail.source_end);
+        let comments = if let Some(pending) = output.pending {
+            let comments = self
+                .comments
+                .in_range(Span::new(source_end, trailing.end()));
+            debug_assert!(comments.starts_with(pending.comments));
+            debug_assert!(comments.ends_with(trailing.comments()));
+            comments
+        } else {
+            trailing.comments()
+        };
+        output.pending = Some(ExpressionTail {
+            source_end,
+            comments,
+        });
+        output
     }
 
     fn format_type_before_trailing_comments_body(
