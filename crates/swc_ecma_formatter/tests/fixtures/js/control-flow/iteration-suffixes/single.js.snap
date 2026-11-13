@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (var value = // note
+(name in object) in source) consume(value);
+---------- Options ----------
+{}
+---------- Output ----------
+for (var value = (name in object) in source)
+  // note
+  consume(value);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+for (var value = // note
+  (name in
+    object) in source)
+  consume(value);

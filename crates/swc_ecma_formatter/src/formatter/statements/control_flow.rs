@@ -25,7 +25,10 @@ use crate::formatter::expressions::{
 };
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{ConditionTarget, Writer},
+};
 
 #[derive(Clone, Copy)]
 enum ControlledBodyRole {
@@ -76,6 +79,7 @@ struct ControlledBody<'ast> {
     source_candidate: ContinuationBoundary,
     end: ControlledBodyEnd,
     annotation_tail: Option<ControlledBodyTail<'ast>>,
+    operator_tail: Option<&'ast super::DeferredOperatorTail<'ast>>,
 }
 
 /// The statement may consume a prefix while preserving an ignored source terminator.
@@ -96,6 +100,11 @@ impl<'ast> ControlledBody<'ast> {
             .allows_relocation(None)
             .then(|| ConditionLineSuffix::new(tail.tail.comments))
             .flatten()
+    }
+
+    fn with_operator_tail(mut self, tail: Option<&'ast super::DeferredOperatorTail<'ast>>) -> Self {
+        self.operator_tail = tail;
+        self
     }
 
     fn with_empty_block(mut self, empty: EmptyBlock) -> Self {
@@ -588,6 +597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_candidate: ContinuationBoundary::End,
             end,
             annotation_tail,
+            operator_tail: None,
         }
     }
 
@@ -722,6 +732,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_candidate,
             end,
             ref annotation_tail,
+            operator_tail,
         } = body;
         let trailing_limit = end.limit();
         let first = leading
@@ -738,10 +749,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ControlledBodyShape::Block | ControlledBodyShape::ElseIf | ControlledBodyShape::Label
         );
         let empty = matches!(shape, ControlledBodyShape::Empty);
-        let compact_head = matches!(
-            (shape, empty_block),
-            (ControlledBodyShape::Block, EmptyBlock::Compact)
-        ) && mode == ContentMode::Formatted
+        let compact_head = operator_tail.is_none()
+            && matches!(
+                (shape, empty_block),
+                (ControlledBodyShape::Block, EmptyBlock::Compact)
+            )
+            && mode == ContentMode::Formatted
             && leading.first().is_some_and(|comment| {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(head_end, comment.span.start) == 0
@@ -761,15 +774,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inline_head = empty
             && mode == ContentMode::Formatted
             && !matches!(constraint, LineConstraint::NewLine(_));
-        let mut write_body = |writer: &mut Writer<'ast>| {
-            let flat = if empty && leading.is_empty() {
+        let write_gap = |constraint: LineConstraint,
+                         leading_line: bool,
+                         has_operator_head: bool,
+                         writer: &mut Writer<'ast>| {
+            let flat = if empty && leading.is_empty() && !has_operator_head {
                 FlatSeparator::Empty
             } else {
                 FlatSeparator::Space
             };
             constraint.write(writer, flat, |writer| {
                 if empty && mode == ContentMode::Formatted {
-                    if !leading.is_empty() {
+                    if !leading.is_empty() || has_operator_head {
                         writer.space();
                     }
                 } else if leading_line {
@@ -781,6 +797,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.line();
                 }
             });
+        };
+        let mut write_body = |writer: &mut Writer<'ast>| {
+            if let Some(tail) = operator_tail {
+                debug_assert!(tail.destination() == super::OperatorTailDestination::ControlledBody);
+                let (headed, ()) = writer.record_with_value(|writer| {
+                    write_gap(LineConstraint::Unconstrained, false, true, writer);
+                    self.format_deferred_operator_head(tail, first, writer);
+                    Ok::<_, FormatError>(())
+                })?;
+                if let Some(group) = tail.flat_group() {
+                    let (ordinary, ()) = writer.record_with_value(|writer| {
+                        write_gap(constraint, leading_line, false, writer);
+                        Ok::<_, FormatError>(())
+                    })?;
+                    writer.if_break_doc(ConditionTarget::Group(group), ordinary, headed);
+                } else {
+                    writer.write_fragment(headed);
+                }
+            } else {
+                write_gap(constraint, leading_line, false, writer);
+            }
             self.comments.claim(leading)?;
             let mut printed = self.format_statement(
                 statement,
