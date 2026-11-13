@@ -21,11 +21,7 @@ pub unsafe fn parse_sync(
 }
 
 #[cfg(not(target_family = "wasm"))]
-#[napi(
-    js_name = "parseSync",
-    ts_args_type = "source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null",
-    ts_return_type = "Buffer"
-)]
+#[napi(js_name = "parseSync")]
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
