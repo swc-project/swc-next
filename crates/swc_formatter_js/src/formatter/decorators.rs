@@ -11,7 +11,7 @@ use super::comments::{CommentBinding, CommentRunLayout, NodeHead};
 use super::diagnostics::FlatSeparator;
 use super::expressions::{ExpressionContext, ExpressionPosition};
 use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
-use super::suppression::ContentMode;
+use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -335,6 +335,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &'ast [Comment],
         previous: Span,
         next: Span,
+        allow_suppression_relocation: bool,
     ) -> Option<(&'ast [Comment], &'ast [Comment])> {
         if comments.is_empty()
             || previous.start >= previous.end
@@ -364,10 +365,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .get(end as usize..next.start as usize)?
             .chars()
             .all(is_source_whitespace)
-            || !matches!(
-                self.comment_binding(comments, Span::new(previous.end, next.start), None),
-                CommentBinding::Unbound
-            )
+            || !self
+                .comment_binding(
+                    comments,
+                    Span::new(previous.end, next.start),
+                    allow_suppression_relocation.then_some(next),
+                )
+                .allows_relocation(Some(next))
         {
             return None;
         }
@@ -402,6 +406,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.group(source_break, |writer| {
             let mut current = prefix.first;
             let mut remaining = prefix.remaining;
+            let mut incoming_mode = ContentMode::Formatted;
             loop {
                 let next = remaining.first().map(|id| ast.get_node_in_sub_range(id));
                 let span = current.span(ast);
@@ -413,6 +418,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         prefix.envelope,
                     ));
                 }
+                let (preceding_is_suppressed, following_mode, allow_suppression_relocation) =
+                    if self.has_suppression {
+                        let comments = self.comments.in_range(Span::new(span.end, following));
+                        let mut following_is_suppressed = false;
+                        let mut preceding_is_suppressed = false;
+                        for position in self.suppression_positions(comments, following) {
+                            if next.is_none() {
+                                preceding_is_suppressed |= match layout {
+                                    DecoratorLayout::Class | DecoratorLayout::ParameterProperty => {
+                                        true
+                                    }
+                                    DecoratorLayout::Member => {
+                                        !matches!(position, SuppressionPosition::Inline)
+                                    }
+                                    DecoratorLayout::Parameter => {
+                                        !matches!(position, SuppressionPosition::OwnLine)
+                                    }
+                                };
+                            } else {
+                                match position {
+                                    SuppressionPosition::EndOfLine => {
+                                        preceding_is_suppressed = true
+                                    }
+                                    SuppressionPosition::OwnLine
+                                        if matches!(
+                                            layout,
+                                            DecoratorLayout::Member
+                                                | DecoratorLayout::ParameterProperty
+                                        ) =>
+                                    {
+                                        preceding_is_suppressed = true;
+                                    }
+                                    SuppressionPosition::OwnLine | SuppressionPosition::Inline => {
+                                        following_is_suppressed = true;
+                                    }
+                                }
+                            }
+                        }
+                        (
+                            preceding_is_suppressed,
+                            if following_is_suppressed {
+                                ContentMode::Verbatim
+                            } else {
+                                ContentMode::Formatted
+                            },
+                            following_is_suppressed && !preceding_is_suppressed,
+                        )
+                    } else {
+                        (false, ContentMode::Formatted, false)
+                    };
+                let keep_inline_suppression = allow_suppression_relocation
+                    && matches!(
+                        layout,
+                        DecoratorLayout::Member | DecoratorLayout::ParameterProperty
+                    )
+                    && self.source_line_breaks(span.end, following) == 0;
                 let expression = current.expression(ast);
                 let marker_end = span.start + u32::from(self.source(span).starts_with('@'));
                 let expression_span = expression.span(ast);
@@ -435,7 +496,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let expression_start = physical_head.end;
                 let content = self.expression_content(expression);
-                let mode = if self.has_suppression {
+                let mode = if incoming_mode == ContentMode::Verbatim || preceding_is_suppressed {
+                    ContentMode::Verbatim
+                } else if self.has_suppression {
                     self.content_mode(comments)
                 } else {
                     ContentMode::Formatted
@@ -457,7 +520,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_expression_tail(tail, writer)?;
                 let comments = self.comments.between(Span::new(span.end, following))?;
                 let (trailing, leading) = next
-                    .and_then(|node| self.split_decorator_comments(comments, span, node.span(ast)))
+                    .and_then(|node| {
+                        self.split_decorator_comments(
+                            comments,
+                            span,
+                            node.span(ast),
+                            allow_suppression_relocation,
+                        )
+                    })
                     .unwrap_or((comments, &[]));
                 let leading_start = leading
                     .first()
@@ -467,7 +537,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary
                     .gap()
                     .write(writer, FlatSeparator::Space, |writer| {
-                        if matches!(layout, DecoratorLayout::Class) {
+                        if keep_inline_suppression {
+                            writer.space();
+                        } else if matches!(layout, DecoratorLayout::Class) {
                             writer.hard_line();
                         } else {
                             writer.line();
@@ -482,7 +554,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                         self.prepare_comment_boundary(leading, leading_start, following)
                             .gap()
-                            .write(writer, FlatSeparator::Space, Writer::line);
+                            .write(writer, FlatSeparator::Space, |writer| {
+                                if keep_inline_suppression {
+                                    writer.space();
+                                } else {
+                                    writer.line();
+                                }
+                            });
                     } else {
                         self.format_comment_run(
                             leading,
@@ -494,6 +572,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let Some(node) = next else { break };
                 current = node;
                 remaining = remaining.split_off(1);
+                incoming_mode = following_mode;
             }
             Ok(())
         })
