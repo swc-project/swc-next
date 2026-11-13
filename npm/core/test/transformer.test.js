@@ -3,7 +3,9 @@ import nodeTest from "node:test";
 
 import { transformSync as transformCore } from "../src-js/index.js";
 import { transformSync as transformStandalone } from "../../transformer/src-js/index.js";
-import { transformSync as transformBinding } from "../src-js/binding.js";
+import { parseSync as parseBinding, transformSync as transformBinding } from "../src-js/binding.js";
+import { decode } from "@swc-next/decoder";
+import { encodeParserOptions } from "@swc-next/decoder/options";
 import { createTransformOptionsEncoder, decodeTransform } from "@swc-next/decoder/transform";
 
 nodeTest("transform bridge uses packed options and binary output", () => {
@@ -31,6 +33,44 @@ nodeTest("transform option scratch buffers recover after growth and validation e
   assert.deepEqual(result.diagnostics, []);
 });
 
+nodeTest("parser and transform diagnostics preserve metadata in offset buffers", () => {
+  const encodeOptions = createTransformOptionsEncoder();
+  const offsetBuffer = (buffer) => {
+    const padded = new Uint8Array(buffer.length + 1);
+    padded.set(buffer, 1);
+    return padded.subarray(1);
+  };
+  const compareDiagnostics = (source, lang) => {
+    const sourceBytes = Buffer.from(source);
+    const parser = { lang };
+    const parsedBuffer = parseBinding(sourceBytes, source.length, encodeParserOptions(parser));
+    const transformedBuffer = transformBinding(sourceBytes, source.length, encodeOptions({ parser }));
+    const parsed = decode(offsetBuffer(parsedBuffer), source, sourceBytes);
+    const transformed = decodeTransform(offsetBuffer(transformedBuffer));
+    assert.ok(transformed.diagnostics.length > 0);
+    assert.deepEqual(transformed.diagnostics, parsed.diagnostics.map(({ help, ...diagnostic }) =>
+      help === undefined ? diagnostic : { ...diagnostic, help }));
+    assert.equal(parsed.diagnostics, parsed.diagnostics);
+    return { parsed: parsed.diagnostics, transformed: transformed.diagnostics };
+  };
+
+  for (const lang of ["js", "ts"]) {
+    const { transformed } = compareDiagnostics('"雪😀"; const a; const b;', lang);
+    assert.equal(transformed.length, 2);
+  }
+
+  const ambient = compareDiagnostics("declare function f() {}", "dts");
+  assert.equal(Object.hasOwn(ambient.parsed[0], "help"), true);
+  assert.equal(Object.hasOwn(ambient.transformed[0], "help"), false);
+
+  for (const lang of ["jsx", "tsx"]) {
+    const { transformed } = compareDiagnostics("/* 😀 */ <开始></结束>", lang);
+    assert.ok(transformed[0].help.length > 0);
+    assert.equal(transformed[0].labels.length, 1);
+    assert.ok(transformed[0].message.includes("结束"));
+  }
+});
+
 for (const [name, transformSync] of [["core", transformCore], ["transformer", transformStandalone]]) {
   const test = (title, run) => nodeTest(`${name}: ${title}`, run);
 
@@ -49,6 +89,8 @@ for (const [name, transformSync] of [["core", transformCore], ["transformer", tr
     assert.throws(() => transformSync("", { filename: 1 }), TypeError);
     assert.throws(() => transformSync("", { sourceMap: 1 }), TypeError);
     assert.throws(() => transformSync("", { generator: { minify: 1 } }), TypeError);
+    assert.throws(() => transformSync("", { parser: { errorRecovery: true } }), TypeError);
+    assert.throws(() => transformSync("", { generator: { unknown: true } }), TypeError);
   });
 
   test("transformSync rejects Rust transformation options", () => {

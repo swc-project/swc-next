@@ -15,6 +15,10 @@
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
+    },
+    "./options": {
+      "types": "./options.d.ts",
+      "import": "./options.js"
     }
   },
   "files": [
@@ -22,7 +26,9 @@
     "index.js",
     "encode-js.js",
     "encode-ts.js",
-    "README.md"
+    "README.md",
+    "options.js",
+    "options.d.ts"
   ],
   "publishConfig": {
     "access": "public",

@@ -1,3 +1,4 @@
+export { encodeParserOptions as encodeOptions } from "./options.js";
 import type { Program } from "@swc-next/types";
 
 export interface Comment {

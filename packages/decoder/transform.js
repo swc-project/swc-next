@@ -1,13 +1,15 @@
+import { encodeParserOptions } from "./options.js";
+import { encodeGeneratorOptions } from "@swc-next/encoder/options";
+import { decodeDiagnostics } from "./diagnostics.js";
+import { utf8Slice } from "./utf8.js";
+
 // Binary transform transport. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
 const encoder = new TextEncoder();
-const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 const empty = new Uint8Array();
 const rootKeys = ["filename", "sourceMap", "comments", "parser", "generator"];
 const parserKeys = ["sourceType", "lang", "preserveParens", "comments", "semanticErrors"];
 const generatorKeys = ["asciiOnly", "minify", "inlineScript"];
-const languages = ["js", "ts", "jsx", "tsx", "dts"];
-const sourceTypes = ["module", "script", "commonjs", "unambiguous"];
 const comments = ["all", "none"];
 
 function object(value, keys, name) {
@@ -56,16 +58,8 @@ export function createTransformOptionsEncoder() {
       view = new DataView(buffer.buffer);
     }
     view.setUint32(0, 1, true);
-    view.setUint32(4, parser == null ? 0 : 1
-      | enumeration(parser.sourceType, sourceTypes, "sourceType") << 1
-      | enumeration(parser.lang, languages, "lang") << 4
-      | boolean(parser.preserveParens, "preserveParens") << 7
-      | enumeration(parser.comments, comments, "parser.comments") << 9
-      | boolean(parser.semanticErrors, "semanticErrors") << 11, true);
-    view.setUint32(8, generator == null ? 0 : 1
-      | boolean(generator.asciiOnly, "asciiOnly") << 1
-      | boolean(generator.minify, "minify") << 3
-      | boolean(generator.inlineScript, "inlineScript") << 5, true);
+    view.setUint32(4, encodeParserOptions(parser), true);
+    view.setUint32(8, encodeGeneratorOptions(generator), true);
     view.setUint32(12, boolean(options.sourceMap, "sourceMap")
       | enumeration(options.comments, comments, "comments") << 2, true);
     if (filename == null) return buffer.subarray(0, 16);
@@ -81,11 +75,6 @@ const encodeOptions = createTransformOptionsEncoder();
  */
 export { encodeOptions as encodeTransformOptions };
 
-const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
-  ? Buffer.prototype.utf8Slice
-  : function(start, end) { return decoder.decode(this.subarray(start, end)); };
-const severities = ["error", "warning", "hint", "info"];
-
 export function decodeTransform(buffer) {
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const codeLength = view.getUint32(0, true);
@@ -95,25 +84,7 @@ export function decodeTransform(buffer) {
   let offset = 12 + codeLength;
   const map = mapLength === 0xffffffff ? undefined : utf8Slice.call(buffer, offset, offset + mapLength);
   if (map !== undefined) offset += mapLength;
-  const diagnostics = new Array(count);
-  const readU32 = () => { const value = view.getUint32(offset, true); offset += 4; return value; };
-  const readString = () => {
-    const length = readU32();
-    const value = utf8Slice.call(buffer, offset, offset + length);
-    offset += length;
-    return value;
-  };
-  for (let i = 0; i < count; i++) {
-    const severity = severities[buffer[offset++]];
-    if (severity === undefined) throw new RangeError("Unknown diagnostic severity");
-    const start = readU32();
-    const end = readU32();
-    const message = readString();
-    const help = buffer[offset++] === 0 ? undefined : readString();
-    const labels = new Array(readU32());
-    for (let j = 0; j < labels.length; j++) labels[j] = { start: readU32(), end: readU32(), message: readString() };
-    diagnostics[i] = help === undefined ? { severity, message, start, end, labels } : { severity, message, start, end, help, labels };
-  }
+  const diagnostics = decodeDiagnostics(buffer, view, offset, count, true);
   return map === undefined ? { code, diagnostics } : { code, map, diagnostics };
 }
 

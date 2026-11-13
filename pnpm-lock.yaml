@@ -385,6 +385,9 @@ importers:
 
   packages/decoder:
     dependencies:
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../encoder
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
