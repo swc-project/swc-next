@@ -1065,6 +1065,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         alias: TsTypeAliasDeclaration,
         keyword: Option<DeclarationKeyword>,
+        trailing: Option<CommentBoundary<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         let ast = self.ast;
@@ -1152,25 +1153,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
         }
-        let trailing_comments = self
-            .comments
-            .in_range(Span::new(annotation_span.end, span.end));
-        let compound_tail = match type_node.data {
-            TsTypeData::TsUnionType(node) => node.types(ast).len() > 1,
-            TsTypeData::TsIntersectionType(node) => node.types(ast).len() > 1,
-            _ => false,
-        };
-        let trailing = (compound_tail
-            && !trailing_comments.is_empty()
-            && trailing_comments.iter().all(|comment| {
-                comment.kind == CommentKind::Block
-                    && self.line_breaks(annotation_span.end, comment.span.start) == 0
-            })
-            && matches!(
-                self.comment_binding(trailing_comments, span, Some(annotation_span)),
-                CommentBinding::Unbound
-            ))
-        .then(|| self.prepare_comment_boundary(trailing_comments, annotation_span.end, span.end));
         let tail = self.format_type_alias_rhs(&boundary, type_node, rhs_layout, writer)?;
         if let Some(trailing) = trailing.filter(|_| tail.is_none()) {
             self.format_comment_boundary(&trailing, writer)?;

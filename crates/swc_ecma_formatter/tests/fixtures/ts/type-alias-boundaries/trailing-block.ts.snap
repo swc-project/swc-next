@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = B /* c */;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A = B /* c */;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+type A = B /* c */

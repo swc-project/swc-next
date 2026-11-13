@@ -25,6 +25,20 @@ use crate::formatter::suppression::{ContentMode, DelimitedSuppression, Suppressi
 use crate::{FormatError, TrailingCommas, document::Writer};
 
 #[derive(Clone, Copy)]
+pub(super) enum DeclarationOwner {
+    Statement(Decl),
+    Export(Decl),
+}
+
+impl DeclarationOwner {
+    fn declaration(self) -> Decl {
+        match self {
+            Self::Statement(declaration) | Self::Export(declaration) => declaration,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 enum ModuleName {
     Export(ModuleExportName),
     Binding(BindingIdentifier),
@@ -154,12 +168,13 @@ struct ModuleSource<'ast> {
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_declaration(
         &mut self,
-        declaration: Decl,
+        owner: DeclarationOwner,
         mode: ContentMode,
         punctuation: StatementPunctuation,
         declaration_source: super::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let declaration = owner.declaration();
         let data = self.ast.decl_data(declaration);
         if mode == ContentMode::Verbatim {
             let span = declaration.span(self.ast);
@@ -270,7 +285,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::TsTypeAliasDeclaration(alias) => {
-                let (end, tail) = self.format_type_alias(alias, keyword, writer)?;
+                let trailing = match owner {
+                    DeclarationOwner::Statement(_) => self.prepare_declaration_type_tail(
+                        alias.span(self.ast),
+                        alias.type_annotation(self.ast).span(self.ast),
+                    ),
+                    DeclarationOwner::Export(_) => None,
+                };
+                let (end, tail) = self.format_type_alias(alias, keyword, trailing, writer)?;
                 let mut printed = self.finish_statement(end, tail, punctuation, writer)?;
                 printed.boundary = printed.boundary.type_declaration();
                 Ok(printed)
@@ -508,7 +530,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("export");
             self.format_module_gap(keyword_end, declaration.span(ast).start, true, writer)?;
             return self.format_declaration(
-                declaration,
+                DeclarationOwner::Export(declaration),
                 mode,
                 punctuation,
                 declaration_source,
@@ -780,7 +802,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_module_gap(operator.end, span.start, true, writer)?;
                 }
                 self.format_declaration(
-                    declaration,
+                    DeclarationOwner::Export(declaration),
                     mode,
                     punctuation,
                     super::ContinuationBoundary::End,
