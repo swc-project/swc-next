@@ -76,4 +76,4 @@ Use `TARGET=oxc` for the Oxc pipeline. Add `--features tracy` to collect a Tracy
 TARGET=next cargo run -p benchmark --release --example transformer
 ```
 
-Use `TARGET=oxc` or `TARGET=swc` for the other implementations. This example parses
+Use `TARGET=oxc` or `TARGET=swc` for the other implementations.
