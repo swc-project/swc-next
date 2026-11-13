@@ -13,7 +13,7 @@ use super::{
     TypeContext, TypeGap, TypeLayout, TypeOutput,
 };
 use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
 use crate::formatter::expressions::arguments::{
@@ -1139,8 +1139,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let FunctionReturnContent::Annotation(AnnotationContent::Type(node)) =
                     &result.content
                 {
+                    let span = node.node.span(self.ast);
+                    let inline_line_comment =
+                        matches!(result.delimiter, SignatureReturnDelimiter::Colon)
+                            && after
+                                .comments()
+                                .first()
+                                .is_some_and(|comment| comment.kind == CommentKind::Line)
+                            && after.comments().iter().all(|&comment| {
+                                comment.kind == CommentKind::Line
+                                    && self.comment_semantics(comment).is_ordinary()
+                            })
+                            && matches!(
+                                self.comment_boundary_binding(&after, span),
+                                CommentBinding::Unbound
+                            )
+                            && !self.diagnostic_range_is_sensitive(Span::new(
+                                after.source_end(),
+                                span.end,
+                            ))
+                            && !self.type_uses_comment_head(*node);
+                    if inline_line_comment {
+                        self.comments.claim(after.comments())?;
+                        let (content, output) = writer.record_with_value(|writer| {
+                            self.format_prepared_type_body(*node, context, TypeLayout::Root, writer)
+                        })?;
+                        // A neutral type has no layout-dependent breaks; moving an
+                        // unbound line packet cannot change its break ownership.
+                        if content.try_neutral().is_some() {
+                            writer.space();
+                            self.format_comment_run(
+                                after.comments(),
+                                CommentRunLayout::FlatLeading(span.start),
+                                writer,
+                            )?;
+                        } else {
+                            self.format_comment_run(
+                                after.comments(),
+                                CommentRunLayout::SourceAfter(after.source_end()),
+                                writer,
+                            )?;
+                            after
+                                .gap()
+                                .write(writer, FlatSeparator::Space, Writer::space);
+                        }
+                        writer.write_fragment(content);
+                        return Ok(output);
+                    }
                     if continuation != ReturnContinuation::None {
-                        let span = node.node.span(self.ast);
                         let body_follows = continuation == ReturnContinuation::Body;
                         let layout =
                             self.type_layout_at_continuation(span, TypeLayout::Root, body_follows);

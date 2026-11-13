@@ -663,6 +663,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|output| output.pending)
     }
 
+    pub(super) fn type_uses_comment_head(&self, node: PreparedType) -> bool {
+        matches!(
+            node.data,
+            TsTypeData::TsParenthesizedType(_)
+                | TsTypeData::TsUnionType(_)
+                | TsTypeData::TsIntersectionType(_)
+                | TsTypeData::TsArrayType(_)
+                | TsTypeData::TsIndexedAccessType(_)
+        )
+    }
+
     pub(super) fn format_prepared_type_after_comments_body(
         &mut self,
         node: PreparedType,
@@ -671,14 +682,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
-        let compound_head = matches!(
-            node.data,
-            TsTypeData::TsParenthesizedType(_)
-                | TsTypeData::TsUnionType(_)
-                | TsTypeData::TsIntersectionType(_)
-                | TsTypeData::TsArrayType(_)
-                | TsTypeData::TsIndexedAccessType(_)
-        );
+        let compound_head = self.type_uses_comment_head(node);
         let leading_head = if compound_head {
             self.type_movable_head(node, context)
         } else {
