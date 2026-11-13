@@ -1,4 +1,4 @@
 ---
 source: crates/swc_ecma_transformer/tests/compile.rs
 ---
-/* #__PURE__ */ React.createElement(Comp, null);
+/* #__PURE__ */ React.createElement(Comp, null, before(), ...items(), after());

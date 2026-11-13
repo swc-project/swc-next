@@ -1,1 +1,1 @@
-<Comp>{...items}</Comp>;
+<Comp>{before()}{...items()}{after()}</Comp>;
