@@ -46,7 +46,10 @@ use super::comments::{
 };
 use super::literals::StringContext;
 use super::suppression::ContentMode;
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, Writer},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum AccessKind {
@@ -301,6 +304,8 @@ pub(super) struct ExpressionContext<'ast> {
     head_scope: Option<parentheses::HeadScopeOwner>,
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
+    /// The actual operator left a Line suffix before this lexical head.
+    body_opening: BodyOpening,
     protected_head_start: Option<u32>,
     ignored_parentheses_closing: Option<Span>,
     emitted_head_binding: EmittedHeadBinding,
@@ -467,6 +472,7 @@ impl<'ast> ExpressionContext<'ast> {
             jsx_callback: JsxCallbackContext::Ordinary,
             call_argument_owner: CallArgumentOwner::Ordinary,
             tail_boundary: TailBoundary::Separated,
+            body_opening: BodyOpening::Plain,
         }
     }
 
@@ -519,6 +525,7 @@ impl<'ast> ExpressionContext<'ast> {
     }
 
     pub(super) fn inside_parentheses(mut self) -> Self {
+        self.body_opening = BodyOpening::Plain;
         self.parentheses_owner = ParenthesesOwner::Parent;
         self.head_gap = None;
         self.head_destination = None;
@@ -527,6 +534,11 @@ impl<'ast> ExpressionContext<'ast> {
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
         self.emitted_head_binding = EmittedHeadBinding::Pending;
+        self
+    }
+
+    fn with_body_opening(mut self, opening: BodyOpening) -> Self {
+        self.body_opening = opening;
         self
     }
 
@@ -1806,11 +1818,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::ArrayExpression(array) => {
                 let _scope = self.recursion_scope(array)?;
-                self.format_array(array, writer)?
+                self.format_array(array, context.body_opening, writer)?
             }
             ExprData::ObjectExpression(object) => {
                 let _scope = self.recursion_scope(object)?;
-                self.format_object(object, writer)?
+                self.format_object(object, context.body_opening, writer)?
             }
             ExprData::NewExpression(constructor) => {
                 let _scope = self.recursion_scope(constructor)?;
@@ -1930,7 +1942,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match layout {
             ExpressionLayout::Flat => {
                 let (normal, ()) = writer.record_with_value(|writer| {
-                    layout.write(writer, |writer| self.format_object(object, writer))
+                    layout.write(writer, |writer| {
+                        self.format_object(object, BodyOpening::Plain, writer)
+                    })
                 })?;
                 Ok(RecordedObject {
                     normal,
@@ -1952,7 +1966,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match layout {
             ExpressionLayout::Flat => {
                 let (normal, ()) = writer.record_with_value(|writer| {
-                    layout.write(writer, |writer| self.format_array(array, writer))
+                    layout.write(writer, |writer| {
+                        self.format_array(array, BodyOpening::Plain, writer)
+                    })
                 })?;
                 Ok(RecordedArrayArgument::Selected(RecordedArray {
                     normal,

@@ -15,7 +15,10 @@ use super::{
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, document::Writer};
+use crate::{
+    FormatError,
+    document::{BodyOpening, Writer},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum BinaryOperatorKind {
@@ -163,6 +166,7 @@ struct BinaryHead {
     expression_head: ExpressionHead,
     protected_head_start: Option<u32>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    opening: BodyOpening,
 }
 
 impl BinaryHead {
@@ -172,6 +176,7 @@ impl BinaryHead {
             expression_head: context.expression_head,
             protected_head_start: context.protected_head_start,
             head_scope: context.head_scope,
+            opening: context.body_opening,
         }
     }
 }
@@ -290,10 +295,18 @@ enum OperandBoundary<'ast> {
         right_start: u32,
         layout: OperandLayout,
         mode: ContentMode,
+        opening: BodyOpening,
     },
 }
 
 impl OperandBoundary<'_> {
+    fn opening(&self) -> BodyOpening {
+        match self {
+            Self::Comments { opening, .. } => *opening,
+            _ => BodyOpening::Plain,
+        }
+    }
+
     fn mode(&self) -> ContentMode {
         match self {
             Self::Constrained { mode, .. } | Self::Comments { mode, .. } => *mode,
@@ -876,6 +889,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.head_comments = HeadComments::Claimed;
             context.protected_head_start = head.protected_head_start;
             context.head_scope = head.head_scope;
+            context.body_opening = head.opening;
             self.format_binary_owned_operand(owner, context, writer)
                 .map(|output| output.pending)
         })
@@ -1069,6 +1083,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             next.left_scope = owner.scope;
+            let opening = boundary.opening();
             let mode = self.format_binary_operand_boundary(boundary, writer)?;
             if owner.scope == OperandScope::Expression
                 && next.left_mode() != ContentMode::Verbatim
@@ -1082,7 +1097,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionContext::at(ExpressionPosition::BinaryOperand {
                         operator: left.operator,
                         side: OperandSide::Left,
-                    }),
+                    })
+                    .with_body_opening(opening),
                     &owner.prepare(self).content,
                 );
                 let head_context = self.format_binary_head_comments(
@@ -1130,6 +1146,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     side: OperandSide::Left,
                 })
                 .with_content_mode(mode)
+                .with_body_opening(opening)
                 .with_tail_owner(TailOwner::ParentOperation);
                 tail = self
                     .format_binary_owned_operand(&mut owner, context, writer)?
@@ -1231,6 +1248,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::JsxElement(_) | ExprData::JsxFragment(_)
             );
         let write_argument = |writer: &mut Writer<'ast>| {
+            let opening = boundary.opening();
             Self::format_binary_operand_separator(&boundary, writer);
             let write = |formatter: &mut Self, writer: &mut Writer<'ast>| {
                 let mode = formatter.format_binary_operand_comments(boundary, writer)?;
@@ -1239,6 +1257,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     side: OperandSide::Right,
                 })
                 .with_content_mode(mode)
+                .with_body_opening(opening)
                 .with_tail_owner(tail_owner);
                 formatter.format_binary_owned_operand(owner, context, writer)
             };
@@ -1473,6 +1492,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             right_start,
             layout,
             mode,
+            opening: if matches!(layout, OperandLayout::Inline)
+                && trailing
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                && leading
+                    .iter()
+                    .all(|comment| self.line_breaks(comment.span.start, comment.span.end) == 0)
+            {
+                BodyOpening::AfterOperatorLine
+            } else {
+                BodyOpening::Plain
+            },
         })
     }
 

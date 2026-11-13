@@ -16,7 +16,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalClose
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, TrailingCommas,
-    document::{ConditionTarget, Fragment, GroupId, Writer},
+    document::{BodyOpening, ConditionTarget, Fragment, GroupId, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -94,10 +94,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_array(
         &mut self,
         array: ArrayExpression,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let source = self.source_array(array, false)?;
-        self.format_source_array(source, writer)
+        self.format_source_array(source, opening, writer)
     }
 
     fn source_array(
@@ -193,6 +194,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_source_array(
         &mut self,
         source: SourceArray<'ast>,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match source {
@@ -203,7 +205,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             SourceArray::Formatted(source) => {
                 let group = self.array_trailing_comma_group(source.layout, writer);
-                writer.group_with_id(source.expand.into(), group, |writer| {
+                opening.group(writer, source.expand.into(), group, |writer| {
                     self.format_array_contents(source, group, writer)
                         .map(|_| ())
                 })
@@ -222,8 +224,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source = match source {
             SourceArray::Formatted(source) => source,
             source => {
-                let (value, ()) =
-                    writer.record_with_value(|writer| self.format_source_array(source, writer))?;
+                let (value, ()) = writer.record_with_value(|writer| {
+                    self.format_source_array(source, BodyOpening::Plain, writer)
+                })?;
                 return Ok(RecordedArrayArgument::Ordinary(value));
             }
         };
