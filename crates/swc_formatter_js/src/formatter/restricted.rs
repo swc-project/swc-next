@@ -127,7 +127,6 @@ struct RestrictedArgument<'ast> {
     keyword_end: u32,
     mode: ContentMode,
     envelope: ArgumentEnvelope,
-    closing: LineConstraint,
     grammar: RestrictedGrammar,
 }
 
@@ -201,11 +200,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if leading_requires_envelope || lexical_head.requires_envelope {
                 ArgumentEnvelope::Required
             } else {
-                match content.data {
-                    ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) => {
-                        ArgumentEnvelope::Breakable
-                    }
-                    ExprData::ParenthesizedExpression(_) => ArgumentEnvelope::Source,
+                match (grammar, content.data) {
+                    (
+                        RestrictedGrammar::ReturnOrThrow,
+                        ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_),
+                    ) => ArgumentEnvelope::Breakable,
+                    (_, ExprData::ParenthesizedExpression(_)) => ArgumentEnvelope::Source,
                     _ => ArgumentEnvelope::Inline,
                 }
             }
@@ -216,7 +216,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             keyword_end,
             mode,
             envelope,
-            closing: self.line_constraint(span.end, span.end),
             grammar,
         };
         if !protected_opening
@@ -340,17 +339,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head,
             keyword_end,
             envelope,
-            closing,
             ..
         } = prepared;
         let content_start = head.expression.span(self.ast).start;
-        let first = match envelope {
-            ArgumentEnvelope::Inline | ArgumentEnvelope::Source => head
-                .comments
-                .first()
-                .map_or(content_start, |comment| comment.span.start),
+        let (first, closing) = match envelope {
+            ArgumentEnvelope::Inline | ArgumentEnvelope::Source => (
+                head.comments
+                    .first()
+                    .map_or(content_start, |comment| comment.span.start),
+                LineConstraint::Unconstrained,
+            ),
             ArgumentEnvelope::Breakable | ArgumentEnvelope::Required => {
-                argument.span(self.ast).start
+                let span = argument.span(self.ast);
+                (span.start, self.line_constraint(span.end, span.end))
             }
         };
         self.line_constraint(*keyword_end, first).write(
