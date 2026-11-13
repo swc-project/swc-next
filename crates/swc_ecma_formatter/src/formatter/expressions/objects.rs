@@ -51,6 +51,12 @@ pub(in crate::formatter) enum PropertyKeyContext {
     ClassMethod(ConstructorKeyGrammar),
 }
 
+/// The real brackets and their borrowed leading packet form one source frame.
+pub(in crate::formatter) struct ComputedKeySource<'ast> {
+    pub(in crate::formatter) span: Span,
+    pub(in crate::formatter) leading: &'ast [Comment],
+}
+
 enum SourceObject<'ast> {
     Verbatim(Span),
     Formatted(FormattedObject<'ast>),
@@ -1553,14 +1559,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quoting: PropertyKeyQuoting,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_property_key_context_with_leading(
+            key,
+            computed.map(|span| ComputedKeySource { span, leading: &[] }),
+            mode,
+            context,
+            quoting,
+            writer,
+        )
+    }
+
+    pub(in crate::formatter) fn format_property_key_context_with_leading(
+        &mut self,
+        key: PropertyKey,
+        computed: Option<ComputedKeySource<'ast>>,
+        mode: ContentMode,
+        context: PropertyKeyContext,
+        quoting: PropertyKeyQuoting,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let key_span = key.span(ast);
-        if let Some(computed) = computed {
+        if let Some(ComputedKeySource {
+            span: computed,
+            leading,
+        }) = computed
+        {
             let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
                 return Err(self.unsupported("computed object key", key));
             };
-            self.prepare_computed_property_key(expression, computed, mode, context, writer)?
-                .write(writer);
+            self.prepare_computed_property_key(
+                expression, computed, leading, mode, context, writer,
+            )?
+            .write(writer);
             return Ok(());
         }
         if mode == ContentMode::Verbatim {
@@ -1614,6 +1645,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         computed: Span,
+        prefix: &'ast [Comment],
         mode: ContentMode,
         context: PropertyKeyContext,
         writer: &mut Writer<'ast>,
@@ -1621,7 +1653,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let key_span = expression.span(self.ast);
         let closing = computed.end - 1;
         let content = Span::new(computed.start + 1, closing);
-        let comments = self.comments.in_range(content);
+        let leading_start = prefix
+            .first()
+            .map_or(content.start, |comment| comment.span.start);
+        let comments = self.comments.in_range(Span::new(leading_start, closing));
         let has_comments = !comments.is_empty();
         let opening_constraint = self.opening_line_constraint(content);
         let closing_constraint = if self.has_suppression {
@@ -1665,7 +1700,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (inner, tail_constraint) = writer.record_with_value(|writer| {
             let leading = self
                 .comments
-                .between(Span::new(computed.start + 1, key_span.start))?;
+                .between(Span::new(leading_start, key_span.start))?;
             let content = self.expression_content(expression);
             let binding = self.expression_head_binding(leading, expression);
             let binding = content
