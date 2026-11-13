@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (a) { case 1: { // note
+  b();
+} }
+---------- Options ----------
+{}
+---------- Output ----------
+switch (a) {
+  case 1: {
+    // note
+    b();
+  }
+}
