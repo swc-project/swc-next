@@ -1058,22 +1058,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let line_before_colon = before
             .last()
             .is_some_and(|comment| comment.kind == CommentKind::Line);
-        let mut count = 0;
-        let mut previous = colon.end;
-        for (index, comment) in after.iter().enumerate() {
-            if promoted || self.line_breaks(previous, comment.span.start) != 0 {
-                break;
-            }
-            if comment.kind == CommentKind::Line {
-                count = index + 1;
-                break;
-            }
-            previous = comment.span.end;
-        }
+        let count = if promoted {
+            0
+        } else {
+            self.property_operator_line_count(after, colon.end)
+        };
         let (operator_line, leading) = after.split_at(count);
         let (before, operator_line, operator_line_start, leading) =
             if relocatable_before && line_before_colon {
-                (&[][..], before, key_end, after)
+                // Only the key's inline packet follows the emitted colon.
+                // Later own-line comments already belong to the indented value.
+                let inline_count = self.property_operator_line_count(before, key_end);
+                (
+                    &[][..],
+                    &before[..inline_count],
+                    key_end,
+                    &comments[inline_count..],
+                )
             } else {
                 (before, operator_line, colon.end, leading)
             };
@@ -1107,24 +1108,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let after_colon = operator_line
             .last()
             .map_or(colon.end, |comment| comment.span.end);
-        let moved_join = moved.last().map_or(LineConstraint::SameLine, |last| {
-            let before = self.line_breaks(last.span.end, colon.start);
+        let moved_gap = |end| {
+            let before = self.line_breaks(end, colon.start);
             let after = self.line_breaks(colon.end, prefix_start);
             match before.max(after) {
                 0 => LineConstraint::SameLine,
                 count => LineConstraint::NewLine(count),
             }
-        });
+        };
+        let moved_join = moved
+            .last()
+            .map_or(LineConstraint::SameLine, |last| moved_gap(last.span.end));
         boundary.value = PropertyValueHead {
             operator_line,
             operator_line_start,
             leading,
             moved_join: CommentGap::Source(moved_join),
-            separator: self.line_constraint(after_colon, prefix_start),
+            separator: if after_colon < colon.start && colon.end <= prefix_start {
+                // The moved colon occupied this source gap. Its line is not an
+                // empty line in the packet's final exit boundary.
+                moved_gap(after_colon)
+            } else if operator_line.is_empty() {
+                self.line_constraint(after_colon, prefix_start)
+            } else {
+                self.source_line_constraint(after_colon, prefix_start)
+            },
             layout: PropertyHeadLayout::required(line_after_colon),
         };
         boundary.line_before_colon = line_before_colon;
         Ok(boundary)
+    }
+
+    fn property_operator_line_count(&self, comments: &[Comment], start: u32) -> usize {
+        let mut previous = start;
+        for (index, comment) in comments.iter().enumerate() {
+            if self.line_breaks(previous, comment.span.start) != 0 {
+                return index;
+            }
+            if comment.kind == CommentKind::Line {
+                return index + 1;
+            }
+            previous = comment.span.end;
+        }
+        0
     }
 
     fn property_packet(

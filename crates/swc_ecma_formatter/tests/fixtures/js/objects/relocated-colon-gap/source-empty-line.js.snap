@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+result = { key /* first */ // second
+:
+
+// prettier-ignore
+foo(  1,2 ) };
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-ignore
+result = { key
+  : /* first */ // second
+
+    // prettier-ignore
+    foo(  1,2 ),
+}
+
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+// @ts-ignore
+result = { key
+  : /* first */ // second
+
+    // prettier-ignore
+    foo(  1,2 ),
+};

@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+// @ts-ignore
+k /* a */ // l
+
+// B
+: 1 });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  // @ts-ignore
+  k
+
+  : /* a */ // l
+
+    // B
+    1,
+});
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+({
+	// @ts-ignore
+	k
+
+	: /* a */ // l
+
+		// B
+		1,
+});

@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object: { known: number } = {
+// @ts-expect-error
+extra /* a */
+// B
+: missingValue };
+---------- Options ----------
+{}
+---------- Output ----------
+const object: { known: number } = {
+  // @ts-expect-error
+  extra
+
+  : /* a */
+    // B
+    missingValue,
+};
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+const object: { known: number } = {
+	// @ts-expect-error
+	extra
+
+	: /* a */
+		// B
+		missingValue,
+};
