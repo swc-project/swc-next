@@ -507,9 +507,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             if comma_before_tail {
                                 write_comma(writer);
                             }
-                            self.format_expression_tail(tail, writer)?;
+                            let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                             self.comments.claim(boundary.inline)?;
-                            self.format_inline_trailing_comments(boundary.inline, writer)?;
+                            self.format_inline_trailing_comments_after(
+                                boundary.inline,
+                                adjacency,
+                                writer,
+                            )?;
                             if !comma_before_tail {
                                 write_comma(writer);
                             }

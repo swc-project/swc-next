@@ -13,7 +13,9 @@ use super::callable::{
     SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeContext, TypeGap, TypeLayout};
-use crate::formatter::comments::{CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail};
+use crate::formatter::comments::{
+    CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, PreparedCommentAdjacency,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
@@ -434,6 +436,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 == LineConstraint::SameLine);
                     let after_separator = prepared.after_separator.take();
                     let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let adjacency = PreparedCommentAdjacency::after_tail(
+                        after_separator
+                            .as_ref()
+                            .filter(|tail| !tail.comments.is_empty())
+                            .or(tail.as_ref()),
+                    );
                     let emit_tail_after_separator = !source
                         && !source_gap
                         && self.type_tail_closing_gap(tail.as_ref()).is_some();
@@ -457,12 +465,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return match gap {
                             MemberGap::Source(span) => Ok(MemberClosing::Source(span)),
                             MemberGap::Formatted { trailing, .. } => {
-                                self.format_comment_boundary(&trailing, writer)?;
+                                self.format_comment_boundary_after(&trailing, adjacency, writer)?;
                                 Ok(MemberClosing::Formatted(trailing.gap()))
                             }
                         };
                     }
-                    self.format_member_gap(gap, role, kind, writer)?;
+                    self.format_member_gap(gap, role, kind, adjacency, writer)?;
                     mode = suppression.map_or(ContentMode::Formatted, |source| source.following);
                 }
                 unreachable!("a nonempty type body retains its final member")
@@ -565,6 +573,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: MemberGap<'ast>,
         role: MemberGapRole,
         kind: TypeMemberBodyKind,
+        adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let spaced = self.options.bracket_spacing || matches!(role, MemberGapRole::Between(_));
@@ -589,7 +598,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading,
                 next_start,
             } => {
-                self.format_comment_boundary(&trailing, writer)?;
+                self.format_comment_boundary_after(&trailing, adjacency, writer)?;
                 let leading_start = leading
                     .first()
                     .map_or(next_start, |comment| comment.span.start);

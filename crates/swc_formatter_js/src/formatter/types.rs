@@ -1172,8 +1172,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ))
         .then(|| self.prepare_comment_boundary(trailing_comments, annotation_span.end, span.end));
         let tail = self.format_type_alias_rhs(&boundary, type_node, rhs_layout, writer)?;
-        if let Some(trailing) = trailing {
-            self.format_expression_tail(tail, writer)?;
+        if let Some(trailing) = trailing.filter(|_| tail.is_none()) {
             self.format_comment_boundary(&trailing, writer)?;
             Ok((trailing.end(), None))
         } else {

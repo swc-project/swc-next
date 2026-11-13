@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = `a${(B
+// c
+) /* c3 */}b`;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = `a${
+  B
+  // c
+  /* c3 */
+}b`;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const x = `a${
+  B
+  // c
+  /* c3 */
+}b`
