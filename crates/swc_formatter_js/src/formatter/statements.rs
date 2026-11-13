@@ -1661,7 +1661,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             StmtData::Declaration(declaration) if mode == ContentMode::Formatted => self
                 .format_declaration(
-                    declaration,
+                    modules::DeclarationOwner::Statement(declaration),
                     mode,
                     punctuation,
                     layout.source_candidate,
