@@ -9,7 +9,7 @@ use super::arrows::ArrowLayout;
 use super::objects::RecordedObject;
 use super::parentheses::ExpressionContent;
 use super::{ExpressionContext, ExpressionPosition, Formatter};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{CommentBoundary, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
 use crate::{
@@ -130,6 +130,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         arguments: ImportArguments,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_import_arguments_with_trailing(arguments, None, writer)
+    }
+
+    pub(in crate::formatter) fn format_import_arguments_with_trailing(
+        &mut self,
+        arguments: ImportArguments,
+        trailing: Option<&CommentBoundary<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ImportArguments {
             source,
             options,
@@ -166,12 +175,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         let options = match (selected, options) {
             (Some(object), Some(option)) => {
-                return self
-                    .format_selected_import_arguments(source, option, object, content, writer);
+                return self.format_selected_import_arguments(
+                    source, option, object, content, trailing, writer,
+                );
             }
             (_, options) => options,
         };
         let hugged = options.is_none()
+            && trailing.is_none()
             && (matches!(source.content.data, ExprData::StringLiteral(_))
                 && self.comments.in_range(content).is_empty()
                 && !self.diagnostic_range_is_sensitive(content)
@@ -228,7 +239,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     previous = Some(self.finish_delimited_item(item, tail, writer)?);
                 }
                 let end = previous.map_or(content.start, |boundary| boundary.end);
-                self.format_argument_dangling(Span::new(end, content.end), writer)
+                let end = self.format_argument_dangling(Span::new(end, content.end), writer)?;
+                if let Some(trailing) = trailing {
+                    self.format_comment_boundary(trailing, writer)?;
+                }
+                Ok(end)
             };
             let end = if hugged {
                 write_items(writer)?
@@ -286,6 +301,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         options: ImportSlot,
         object: ObjectExpression,
         content: Span,
+        trailing: Option<&CommentBoundary<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (prefix, item) = writer.record_with_value(|writer| {
@@ -346,6 +362,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(|writer| self.finish_delimited_item(item, tail, writer))?;
             let end =
                 self.format_argument_dangling(Span::new(boundary.end, content.end), writer)?;
+            if let Some(trailing) = trailing {
+                writer.indent(|writer| self.format_comment_boundary(trailing, writer))?;
+            }
             self.line_constraint(end, content.end).write(
                 writer,
                 FlatSeparator::Empty,

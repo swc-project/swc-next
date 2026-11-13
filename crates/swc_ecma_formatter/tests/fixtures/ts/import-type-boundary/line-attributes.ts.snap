@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = import("x", { with: { "resolution-mode": "import" } }) // comment
+.A;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = import(
+  "x",
+  { with: { "resolution-mode": "import" } } // comment
+).A;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = import(
+  "x",
+  {
+    with: {
+      "resolution-mode":
+        "import",
+    },
+  } // comment
+).A;

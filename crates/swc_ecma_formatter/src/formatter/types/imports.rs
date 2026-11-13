@@ -5,7 +5,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::generics::{TypeArgumentOwner, TypeListKind};
-use super::{Formatter, TypeBoundaryTarget, TypeOutput};
+use super::{Formatter, TypeBoundaryTarget, TypeOperatorLayout, TypeOutput};
+use crate::formatter::comments::{CommentBinding, CommentBoundary};
 use crate::formatter::expressions::imports::ImportArguments;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -53,17 +54,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         let qualifier = qualifier
             .map(|node| {
-                let boundary = self.prepare_type_boundary(
-                    Span::new(closing + 1, node.span(ast).start),
-                    TypeBoundaryTarget::Qualified,
-                )?;
-                Ok::<_, FormatError>((node, boundary))
+                let gap = Span::new(closing + 1, node.span(ast).start);
+                let mut boundary =
+                    self.prepare_type_boundary(gap, TypeBoundaryTarget::Qualified)?;
+                // Only an unbound packet before the qualifier dot can follow
+                // the last import argument across the closing delimiter.
+                let trailing = if let TypeOperatorLayout::Formatted { before, after } =
+                    &mut boundary.layout
+                {
+                    let movable = !before.is_empty()
+                        && matches!(
+                            self.comment_binding(before.comments(), gap, None),
+                            CommentBinding::Unbound
+                        )
+                        && matches!(
+                            self.comment_binding(after.comments(), gap, None),
+                            CommentBinding::Unbound
+                        )
+                        && !before
+                            .comments()
+                            .iter()
+                            .chain(after.comments())
+                            .any(|&comment| self.comment_is_jsdoc_binding(comment));
+                    movable.then(|| std::mem::replace(before, CommentBoundary::adjacent(gap.start)))
+                } else {
+                    None
+                };
+                Ok::<_, FormatError>((node, boundary, trailing))
             })
             .transpose()?;
         let arguments = arguments.map(|node| {
             let head_end = qualifier
                 .as_ref()
-                .map_or(closing + 1, |(node, _)| node.span(ast).end);
+                .map_or(closing + 1, |(node, _, _)| node.span(ast).end);
             let prefix = self.prepare_type_list_prefix(
                 Span::new(head_end, node.span(ast).start),
                 TypeListKind::Arguments,
@@ -72,7 +95,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         let last_mode = qualifier
             .as_ref()
-            .map_or(ContentMode::Formatted, |(_, boundary)| boundary.left_mode);
+            .map_or(ContentMode::Formatted, |(_, boundary, _)| {
+                boundary.left_mode
+            });
         let qualifier_mode = arguments
             .as_ref()
             .map_or(ContentMode::Formatted, |(_, prefix)| prefix.left_mode);
@@ -80,16 +105,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !move_prefix {
             self.format_source_token_gap(keyword_end, opening, false, writer)?;
         }
-        self.format_import_arguments(
+        self.format_import_arguments_with_trailing(
             ImportArguments {
                 source: Expr::StringLiteral(source),
                 options,
                 content,
                 last_mode,
             },
+            qualifier
+                .as_ref()
+                .and_then(|(_, _, trailing)| trailing.as_ref()),
             writer,
         )?;
-        if let Some((node, boundary)) = qualifier {
+        if let Some((node, boundary, _)) = qualifier {
             let mode = if boundary.right_mode == ContentMode::Verbatim {
                 ContentMode::Verbatim
             } else {
