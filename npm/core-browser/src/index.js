@@ -6,11 +6,11 @@ import {
 } from "./swc-next-core.browser.mjs";
 import {
   decode,
-  encodeParserOptions,
+  encodeParserConfig,
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeGeneratorOptions,
+  encodeGeneratorConfig,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
@@ -31,7 +31,7 @@ export function parseSync(source, options) {
   const sourceBytes = canTransferToFixedLength
     ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
     : sourceBuffer.slice(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
+  const buffer = __parseSync(sourceBytes, source.length, encodeParserConfig(options));
   const result = decode(buffer, source, sourceBytes);
   if (!options?.errorRecovery) {
     const diagnostics = result.diagnostics;
@@ -41,8 +41,8 @@ export function parseSync(source, options) {
 }
 
 export function generateSync(program, options) {
-  const code = __generateSync(...encode(program), encodeGeneratorOptions(options));
+  const code = __generateSync(...encode(program), encodeGeneratorConfig(options));
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync, encodeGeneratorOptions);
+export const transformSync = createTransformSync(__transformSync, encodeGeneratorConfig);

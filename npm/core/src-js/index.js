@@ -6,11 +6,11 @@ import {
 } from "./binding.js";
 import {
   decode,
-  encodeParserOptions,
+  encodeParserConfig,
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeGeneratorOptions,
+  encodeGeneratorConfig,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
@@ -20,7 +20,7 @@ export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export * from "@swc-next/walker";
 
 export function parseSync(source, options) {
-  const parserConfig = encodeParserOptions(options);
+  const parserConfig = encodeParserConfig(options);
   const capacity = source.length * 3;
   if (sourceBuffer.length < capacity) {
     const length = Math.max(capacity, sourceBuffer.length * 2, 4096);
@@ -42,9 +42,9 @@ export function parseSync(source, options) {
 }
 
 export function generateSync(program, options) {
-  const generatorConfig = encodeGeneratorOptions(options);
+  const generatorConfig = encodeGeneratorConfig(options);
   const code = __generateSync(...encode(program), generatorConfig);
   return { code };
 }
 
-export const transformSync = createTransformSync(__transformSync, encodeGeneratorOptions);
+export const transformSync = createTransformSync(__transformSync, encodeGeneratorConfig);

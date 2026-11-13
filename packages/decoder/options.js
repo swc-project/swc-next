@@ -2,7 +2,7 @@ const OPTION_SOURCE_TYPES = ["module", "script", "commonjs", "unambiguous"];
 const OPTION_LANGS = ["js", "ts", "jsx", "tsx", "dts"];
 const OPTION_COMMENT_MODES = ["all", "none"];
 
-export function encodeParserOptions(options) {
+export function encodeParserConfig(options) {
   if (options === undefined || options === null) return 0;
   if (typeof options !== "object" || Array.isArray(options)) {
     throw new TypeError("options must be an object");

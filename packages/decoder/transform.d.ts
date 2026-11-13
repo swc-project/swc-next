@@ -11,7 +11,7 @@ export interface TransformOutput {
  * must not reenter the active encoder, including via its transformSync wrapper.
  */
 export declare function createTransformOptionsEncoder(
-  encodeGeneratorOptions: (options?: object | null) => number,
+  encodeGeneratorConfig: (options?: object | null) => number,
 ): (options?: object | null) => Uint8Array;
 export declare function decodeTransform(buffer: Uint8Array): TransformOutput;
 /** Each wrapper owns a non-reentrant options encoder. Option getters and Proxy
@@ -19,5 +19,5 @@ export declare function decodeTransform(buffer: Uint8Array): TransformOutput;
  */
 export declare function createTransformSync(
   binding: (source: Uint8Array, sourceUtf16Len: number, options: Uint8Array) => string | Uint8Array,
-  encodeGeneratorOptions: (options?: object | null) => number,
+  encodeGeneratorConfig: (options?: object | null) => number,
 ): (source: string, options?: object | null) => TransformOutput;

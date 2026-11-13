@@ -1,4 +1,4 @@
-export { encodeParserOptions } from "./options.js";
+export { encodeParserConfig } from "./options.js";
 import { decodeJs } from "./decode-js.js";
 import { decodeTs } from "./decode-ts.js";
 

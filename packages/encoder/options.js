@@ -1,4 +1,4 @@
-export function encodeGeneratorOptions(options) {
+export function encodeGeneratorConfig(options) {
   if (options === undefined || options === null) return 0;
   if (typeof options !== "object" || Array.isArray(options)) {
     throw new TypeError("options must be an object");
