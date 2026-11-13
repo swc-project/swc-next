@@ -172,6 +172,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         punctuation: StatementPunctuation,
         declaration_source: super::ContinuationBoundary,
+        operator_tail_destination: super::OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let declaration = owner.declaration();
@@ -252,6 +253,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     keyword,
                     punctuation.tail_boundary(),
                     declaration_source.is_following(),
+                    operator_tail_destination,
                     writer,
                 )?;
                 let punctuation = if matches!(
@@ -275,7 +277,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     punctuation
                 };
-                self.finish_statement(output.end, output.tail, punctuation, writer)
+                self.finish_statement_with_operator_tail(
+                    output.end,
+                    output.tail,
+                    output.operator_tail,
+                    punctuation,
+                    writer,
+                )
             }
             DeclData::TsInterfaceDeclaration(interface) => {
                 self.format_interface(interface, keyword, writer)?;
@@ -521,6 +529,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: ExportNamedDeclaration,
         punctuation: StatementPunctuation,
         declaration_source: super::ContinuationBoundary,
+        operator_tail_destination: super::OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -538,6 +547,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode,
                 punctuation,
                 declaration_source,
+                operator_tail_destination,
                 writer,
             );
         }
@@ -810,6 +820,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     mode,
                     punctuation,
                     super::ContinuationBoundary::End,
+                    super::OperatorTailDestination::Local,
                     writer,
                 )
             }

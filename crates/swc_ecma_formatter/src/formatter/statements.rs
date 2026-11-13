@@ -25,6 +25,7 @@ use super::comments::{
 };
 use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
+use super::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
 use super::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
     TailBoundary,
@@ -190,6 +191,7 @@ struct StatementLayout {
     start: ExpressionStart,
     empty_block: EmptyBlock,
     source_candidate: ContinuationBoundary,
+    operator_tail_destination: OperatorTailDestination,
 }
 
 pub(super) struct StatementSequence {
@@ -433,6 +435,13 @@ enum StatementPunctuation {
 }
 
 impl StatementPunctuation {
+    fn operator_tail_destination(self) -> OperatorTailDestination {
+        match self {
+            Self::Canonical(_) => OperatorTailDestination::Terminator,
+            Self::Source(_) | Self::SourcePacket => OperatorTailDestination::Local,
+        }
+    }
+
     fn tail_boundary(self) -> TailBoundary {
         match self {
             Self::Canonical(Semicolons::Always) => TailBoundary::Separated,
@@ -472,6 +481,7 @@ enum StatementBoundary {
 struct PrintedStatement<'ast> {
     boundary: StatementBoundary,
     pending: Option<ExpressionTail<'ast>>,
+    operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
 }
 
 impl From<StatementBoundary> for PrintedStatement<'_> {
@@ -479,6 +489,7 @@ impl From<StatementBoundary> for PrintedStatement<'_> {
         Self {
             boundary,
             pending: None,
+            operator_tail: None,
         }
     }
 }
@@ -817,8 +828,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContinuationBoundary::End
             };
-            if statement.empty(ast).is_some()
-                && mode == ContentMode::Verbatim
+            if mode == ContentMode::Verbatim
+                && statement.empty(ast).is_some()
                 && let Some(next) = pending.as_mut()
             {
                 // Ignore targets skip empty owners even when an annotation retains one.
@@ -991,25 +1002,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.finish_statement(expression.span(ast).end, None, punctuation, writer)?
                 }
                 StatementItem::Statement(statement) => {
-                    let case_block = match (kind, ast.stmt_data(statement)) {
-                        (
-                            StatementSequenceKind::Case { incoming, .. },
-                            StmtData::BlockStatement(block),
-                        ) if first_statement && mode == ContentMode::Formatted => {
-                            let incoming = match incoming {
-                                Some(CaseIncoming::Block {
-                                    block: target,
-                                    incoming,
-                                }) if target == block => Some(incoming),
-                                _ => None,
-                            };
-                            if incoming.is_some() || !body_leading.comments().is_empty() {
-                                Some((block, incoming))
-                            } else {
-                                None
-                            }
+                    let case_block = if let StatementSequenceKind::Case { incoming, .. } = kind
+                        && first_statement
+                        && mode == ContentMode::Formatted
+                        && let StmtData::BlockStatement(block) = ast.stmt_data(statement)
+                    {
+                        let incoming = match incoming {
+                            Some(CaseIncoming::Block {
+                                block: target,
+                                incoming,
+                            }) if target == block => Some(incoming),
+                            _ => None,
+                        };
+                        if incoming.is_some() || !body_leading.comments().is_empty() {
+                            Some((block, incoming))
+                        } else {
+                            None
                         }
-                        _ => None,
+                    } else {
+                        None
                     };
                     if let Some((block, incoming)) = case_block {
                         self.format_node_head(head, expression_start, None, writer)?;
@@ -1054,6 +1065,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 start: expression_start,
                                 empty_block: EmptyBlock::Expanded,
                                 source_candidate,
+                                operator_tail_destination: if source_packet.is_none()
+                                    && annotation_tail.is_none()
+                                {
+                                    punctuation.operator_tail_destination()
+                                } else {
+                                    OperatorTailDestination::Local
+                                },
                             },
                             content,
                             head,
@@ -1063,6 +1081,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             };
+            let operator_tail = printed.operator_tail;
             let (mut boundary, pending_tail) =
                 if source_packet.is_some() || annotation_tail.is_some() {
                     (self.flush_statement_tail(printed, writer)?, None)
@@ -1107,10 +1126,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     trailing_start,
                     pending_tail,
                     following.is_some(),
+                    operator_tail,
                     writer,
                 )?
             } else {
-                self.format_trailing_comments(
+                self.format_trailing_comments_with_operator(
                     Span::new(trailing_start, following.unwrap_or(span.end)),
                     StatementCommentBoundary {
                         source_end: statement_span.end,
@@ -1118,6 +1138,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     following.is_some(),
                     pending_tail,
+                    operator_tail,
                     writer,
                 )?
             };
@@ -1260,6 +1281,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         start: u32,
         pending: Option<ExpressionTail<'ast>>,
         has_following: bool,
+        operator_tail: Option<&DeferredOperatorTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<LineConstraint>), FormatError> {
         let source_end = pending.as_ref().map_or(start, |pending| pending.source_end);
@@ -1272,7 +1294,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .and_then(|pending| pending.comments.last())
             .map_or(end, |comment| end.max(comment.span.end));
         let comments = self.comments.between(Span::new(source_end, end))?;
-        self.comments.claim(comments)?;
+        if operator_tail.is_none() {
+            self.comments.claim(comments)?;
+        }
         let following_gap = comments.last().and_then(|comment| {
             (pending.is_some()
                 && (!has_following || tail.has_following_comments)
@@ -1282,7 +1306,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let binding =
             tail.binding
                 .combine(self.comment_binding(comments, Span::new(source_end, end), None));
-        if pending.is_some() {
+        if let Some(operator) = operator_tail {
+            self.format_operator_tail_with_pending(
+                operator,
+                (!comments.is_empty()).then_some(ExpressionTail {
+                    source_end,
+                    comments,
+                }),
+                writer,
+            )?;
+        } else if pending.is_some() {
             self.format_comment_run(
                 comments,
                 CommentRunLayout::StatementTail(source_end),
@@ -1313,7 +1346,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let gap_start = *prepared_end;
         *prepared_end = span.end;
-        let empty_binding = if item.empty(self.ast).is_some() {
+        let empty = item.empty(self.ast);
+        let empty_binding = if empty.is_some() {
             // Only direct statement gaps can contain this owner's leading packet.
             // Descendant comments belong to the preceding child's own sequence.
             let leading = self.comments.in_range(Span::new(gap_start, span.start));
@@ -1321,13 +1355,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             CommentBinding::Unbound
         };
-        let annotation_tail = if (self.has_target_annotations || self.has_suppression)
-            && item.is_nonempty(self.ast)
-        {
-            self.prepare_statement_annotation_tail(item, span, following)
-        } else {
-            None
-        };
+        let annotation_tail =
+            if (self.has_target_annotations || self.has_suppression) && empty.is_none() {
+                self.prepare_statement_annotation_tail(item, span, following)
+            } else {
+                None
+            };
         PreparedStatement {
             item,
             span,
@@ -1554,6 +1587,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionContext::at(ExpressionPosition::Statement)
                     .with_expression_start(layout.start)
                     .with_tail_boundary(punctuation.tail_boundary())
+                    .with_operator_tail_destination(layout.operator_tail_destination)
                     .with_content_mode(mode),
                 None,
                 writer,
@@ -1575,7 +1609,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_expression_tail(Some(suffix), writer)?;
                 tail = None;
             }
-            return self.finish_statement(content_end, tail, punctuation, writer);
+            return self.finish_statement_with_operator_tail(
+                content_end,
+                tail,
+                output.operator_tail,
+                punctuation,
+                writer,
+            );
         }
         self.format_node_head(head, layout.start, None, writer)?;
         if mode == ContentMode::Formatted
@@ -1677,14 +1717,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     mode,
                     punctuation,
                     layout.source_candidate,
+                    layout.operator_tail_destination,
                     writer,
                 ),
             StmtData::ImportDeclaration(node) if mode == ContentMode::Formatted => {
                 self.format_import_declaration(node, punctuation, writer)
             }
-            StmtData::ExportNamedDeclaration(node) if mode == ContentMode::Formatted => {
-                self.format_export_named(node, punctuation, layout.source_candidate, writer)
-            }
+            StmtData::ExportNamedDeclaration(node) if mode == ContentMode::Formatted => self
+                .format_export_named(
+                    node,
+                    punctuation,
+                    layout.source_candidate,
+                    layout.operator_tail_destination,
+                    writer,
+                ),
             StmtData::TsExportAssignment(node) if mode == ContentMode::Formatted => {
                 self.format_ts_export_assignment(node, punctuation, layout.source_candidate, writer)
             }
@@ -1957,17 +2003,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
+        self.finish_statement_with_operator_tail(content_end, tail, None, punctuation, writer)
+    }
+
+    fn finish_statement_with_operator_tail(
+        &mut self,
+        content_end: u32,
+        tail: Option<ExpressionTail<'ast>>,
+        operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
+        punctuation: StatementPunctuation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
         if matches!(punctuation, StatementPunctuation::SourcePacket) {
             let end = tail
                 .as_ref()
                 .and_then(|tail| tail.comments.last())
                 .map_or(content_end, |comment| comment.span.end);
             self.format_expression_tail(tail, writer)?;
-            return Ok(StatementBoundary::SourceEnd {
-                end,
-                has_terminator: false,
-            }
-            .into());
+            return Ok(PrintedStatement {
+                boundary: StatementBoundary::SourceEnd {
+                    end,
+                    has_terminator: false,
+                },
+                pending: None,
+                operator_tail,
+            });
         }
         if let StatementPunctuation::Source(terminator) = punctuation {
             let source_end = terminator.start + 1;
@@ -2006,7 +2066,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     has_terminator: true,
                 }
             };
-            return Ok(boundary.into());
+            return Ok(PrintedStatement {
+                boundary,
+                pending: None,
+                operator_tail,
+            });
         }
         if matches!(
             punctuation,
@@ -2023,6 +2087,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ),
             },
             pending: tail,
+            operator_tail,
         })
     }
 
@@ -2031,6 +2096,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         printed: PrintedStatement<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<StatementBoundary, FormatError> {
+        debug_assert!(printed.operator_tail.is_none());
         let end = printed
             .pending
             .as_ref()

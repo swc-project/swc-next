@@ -14,6 +14,7 @@ use super::bindings::{
 use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use super::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
 use super::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge,
     ForInitializerGrammar, TailBoundary,
@@ -39,12 +40,19 @@ pub(super) struct VariableDeclarationOutput<'ast> {
     pub(super) end: u32,
     pub(super) tail: Option<ExpressionTail<'ast>>,
     pub(super) fence_request: Option<RawFenceRequest>,
+    pub(super) operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
 }
 
 pub(super) struct VariableDeclaratorOutput<'ast> {
     tail: Option<ExpressionTail<'ast>>,
     fence_request: Option<RawFenceRequest>,
     expression_edge: Option<ExpressionRightEdge>,
+    operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
+}
+
+struct PreparedVariableDeclarator {
+    node: VariableDeclarator,
+    mode: ContentMode,
 }
 
 impl<'ast> VariableDeclaratorOutput<'ast> {
@@ -53,6 +61,7 @@ impl<'ast> VariableDeclaratorOutput<'ast> {
             tail,
             fence_request: None,
             expression_edge: None,
+            operator_tail: None,
         }
     }
 
@@ -61,6 +70,7 @@ impl<'ast> VariableDeclaratorOutput<'ast> {
             tail: output.pending,
             fence_request: None,
             expression_edge: Some(output.right_edge),
+            operator_tail: output.operator_tail,
         }
     }
 }
@@ -104,6 +114,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         keyword: Option<DeclarationKeyword>,
         tail_boundary: TailBoundary,
         source_candidate: bool,
+        operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
         self.format_variable_declaration_parts(
@@ -111,6 +122,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             VariableContext::Statement(tail_boundary),
             keyword,
             source_candidate,
+            operator_tail_destination,
             writer,
         )
     }
@@ -121,16 +133,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
-        self.format_variable_declaration_parts(declaration, context, None, false, writer)
-            .map(|output| (output.end, output.tail))
+        self.format_variable_declaration_parts(
+            declaration,
+            context,
+            None,
+            false,
+            OperatorTailDestination::Local,
+            writer,
+        )
+        .map(|output| (output.end, output.tail))
     }
 
-    fn format_variable_declaration_parts(
+    pub(super) fn format_variable_declaration_parts(
         &mut self,
         declaration: VariableDeclaration,
         context: VariableContext,
         keyword: Option<DeclarationKeyword>,
         source_candidate: bool,
+        operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
         let ast = self.ast;
@@ -273,11 +293,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
                     let output = self.format_variable_declarator(
-                        declarator,
-                        item.mode,
+                        PreparedVariableDeclarator {
+                            node: declarator,
+                            mode: item.mode,
+                        },
                         context,
                         definition_owner,
                         source_candidate && matches!(following, FollowingItem::End),
+                        if matches!(following, FollowingItem::End) {
+                            operator_tail_destination
+                        } else {
+                            OperatorTailDestination::Local
+                        },
                         writer,
                     )?;
                     if matches!(following, FollowingItem::End) {
@@ -319,6 +346,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             end,
                             tail: output.tail,
                             fence_request,
+                            operator_tail: output.operator_tail,
                         });
                     }
                     ControlFlow::Continue(boundary) => boundary,
@@ -333,19 +361,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 end,
                 tail: None,
                 fence_request: None,
+                operator_tail: None,
             })
         })
     }
 
     fn format_variable_declarator(
         &mut self,
-        declarator: VariableDeclarator,
-        mode: ContentMode,
+        prepared: PreparedVariableDeclarator,
         context: VariableContext,
         definition_owner: Option<VariableDeclarator>,
         source_candidate: bool,
+        operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclaratorOutput<'ast>, FormatError> {
+        let PreparedVariableDeclarator {
+            node: declarator,
+            mode,
+        } = prepared;
         let ast = self.ast;
         if mode == ContentMode::Verbatim {
             let span = declarator.span(ast);
@@ -361,6 +394,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 tail: None,
                 fence_request,
                 expression_edge: None,
+                operator_tail: None,
             });
         }
         let annotation = declarator.type_annotation(ast);
@@ -370,6 +404,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 annotation,
                 context,
                 definition_owner,
+                operator_tail_destination,
                 writer,
             );
         }
@@ -394,6 +429,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let initializer_context = self
             .variable_initializer_context(right, context)
+            .with_operator_tail_destination(operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(&content);
         let mut boundary = self.assignment_boundary(
