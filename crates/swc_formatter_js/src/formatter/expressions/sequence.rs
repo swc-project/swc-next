@@ -360,6 +360,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context.position,
                     ExpressionPosition::Statement
                         | ExpressionPosition::ForHead
+                        | ExpressionPosition::ForTest
                         | ExpressionPosition::ForUpdate
                         | ExpressionPosition::ForInitializer {
                             grammar: super::ForInitializerGrammar::Expression,
