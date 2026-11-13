@@ -129,14 +129,14 @@ const value0 = <>{coveredFirst}{coveredSecond}</>
 
 // @ts-ignore
 const value1 = (<>
-			{
-				uncoveredFirst
-			}
-			{
-				uncoveredSecond
-			}
-		</>
-	)
+		{
+			uncoveredFirst
+		}
+		{
+			uncoveredSecond
+		}
+	</>
+)
 
 // @ts-ignore
 const value2 = <MissingPanel><>{coveredFirst}{coveredSecond}</></MissingPanel>

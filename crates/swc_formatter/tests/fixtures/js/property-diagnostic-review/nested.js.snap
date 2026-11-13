@@ -21,7 +21,7 @@ second = third)) });
   k:
     // @ts-ignore
     (first = (// @ts-expect-error
-          second = third)), });
+        second = third)), });
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}

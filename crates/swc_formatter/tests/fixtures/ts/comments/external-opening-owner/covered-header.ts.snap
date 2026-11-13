@@ -10,13 +10,13 @@ const first: number = "wrong", second: string = (
 ---------- Output ----------
 // @ts-expect-error
 const first: number = "wrong", second: string = (
-      1
-    );
+    1
+  );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 const first: number = "wrong", second: string = (
-      1
-    )
+    1
+  )

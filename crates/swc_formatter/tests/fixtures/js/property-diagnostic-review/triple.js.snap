@@ -23,8 +23,8 @@ c = d))) });
   k:
     // @ts-ignore
     (a = (// @ts-expect-error
-          b = (// @ts-ignore
-              c = d))), });
+        b = (// @ts-ignore
+          c = d))), });
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}

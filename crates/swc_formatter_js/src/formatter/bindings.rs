@@ -1061,10 +1061,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let tail = if matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) {
             writer.group(false, |writer| {
-                rhs_layout.write(writer, separator, write_right)
+                rhs_layout.write_with_operator_constraint(
+                    writer,
+                    boundary.after_operator,
+                    separator,
+                    write_right,
+                )
             })
         } else {
-            rhs_layout.write(writer, separator, write_right)
+            rhs_layout.write_with_operator_constraint(
+                writer,
+                boundary.after_operator,
+                separator,
+                write_right,
+            )
         }?;
         Ok(tail)
     }

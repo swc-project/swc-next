@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  // @ts-expect-error
+  requestOptions.once = (event: string, handler: (reason: unknown) => void) => {
+    return result;
+  };
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  // @ts-expect-error
+  requestOptions.once = (event: string, handler: (reason: unknown) => void) => {
+    return result;
+  };
+}
