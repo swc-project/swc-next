@@ -817,7 +817,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             Ok::<_, FormatError>(())
         };
-        if block {
+        if block || first.is_none() {
             write_body(writer)
         } else {
             writer.indent(write_body)
