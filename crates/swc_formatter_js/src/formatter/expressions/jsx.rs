@@ -111,8 +111,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         content: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
+        let required = context.jsx_field_initializer;
         if !Self::jsx_expression_has_optional_frame(context)
-            || self.line_constraint(span.start, span.end) == LineConstraint::SameLine
+            || !required && self.line_constraint(span.start, span.end) == LineConstraint::SameLine
         {
             return content(self, writer);
         }
@@ -120,13 +121,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let opening = self.line_constraint(span.start, span.start);
         let closing = self.line_constraint(span.end, span.end);
         writer.group(callback_body, |writer| {
-            writer.if_break("(");
+            if required {
+                writer.text("(");
+            } else {
+                writer.if_break("(");
+            }
             let result = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 content(self, writer)
             })?;
             closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
-            writer.if_break(")");
+            if required {
+                writer.text(")");
+            } else {
+                writer.if_break(")");
+            }
             Ok(result)
         })
     }

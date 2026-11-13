@@ -1980,7 +1980,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     AssignmentSourceEnd::Expression(right.span(ast).end)
                 };
-                let initializer_context = ExpressionContext::variable_initializer()
+                let initializer_context = ExpressionContext::class_field_initializer()
                     .with_tail_owner(TailOwner::ParentOperation)
                     .with_content_mode(right_mode);
                 let mut boundary = self.assignment_boundary_with_source(
@@ -1997,7 +1997,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
                 let rhs_layout = self.ordinary_rhs_layout(
                     &rhs,
-                    ExpressionContext::variable_initializer()
+                    ExpressionContext::class_field_initializer()
                         .with_tail_owner(TailOwner::ParentOperation),
                     &boundary,
                 );
@@ -2250,7 +2250,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 left_end,
                 right,
                 layout,
-                ExpressionContext::variable_initializer()
+                ExpressionContext::class_field_initializer()
                     .with_tail_owner(TailOwner::ParentOperation)
                     .with_operator_tail_destination(
                         if matches!(terminal, ClassMemberTerminal::Canonical { .. })
