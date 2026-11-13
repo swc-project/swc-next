@@ -753,7 +753,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
-            let source_terminator = if annotation_tail.is_some() {
+            // A guard after the packet becomes a distinct empty statement on
+            // the next parse, so keep its separator before the packet instead.
+            let following_needs_guard = if annotation_tail.is_some()
+                && self.options.semicolons == Semicolons::AsNeeded
+            {
+                match pending.as_ref().map(|next| next.item) {
+                    Some(StatementItem::Statement(next)) => match ast.stmt_data(next) {
+                        StmtData::ExpressionStatement(next) => self.expression_needs_asi_guard(
+                            next.expression(ast),
+                            ExpressionContext::at(ExpressionPosition::Statement),
+                        )?,
+                        _ => false,
+                    },
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            let source_terminator = if annotation_tail.as_ref().is_some_and(|tail| {
+                tail.suppression.current == ContentMode::Verbatim
+                    || following_needs_guard
+                    || tail.comments.iter().any(|&comment| {
+                        comment.kind == CommentKind::Block
+                            && self.comment_has_target_annotation(comment)
+                    })
+                    || tail.comments.first().is_some_and(|comment| {
+                        self.source_line_breaks(statement_span.end, comment.span.start) == 0
+                    })
+            }) {
                 self.statement_source_terminator(statement_span)
             } else {
                 suppression_tail.as_ref().and_then(|tail| tail.terminator)
