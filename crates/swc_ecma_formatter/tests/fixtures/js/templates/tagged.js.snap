@@ -13,7 +13,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 (a, b)`x`;
 ((value) => value)`x`;
 (function () {})`x`;
-export default (class {})`x`;
+export default (class {}`x`);
 before();
 `x`;
 before();
@@ -28,7 +28,7 @@ before();
 ;((value) =>
   value)`x`
 ;(function () {})`x`
-export default (class {})`x`
+export default (class {}`x`)
 before()
 ;`x`
 before()
@@ -42,7 +42,7 @@ before()
 (a, b)`x`;
 ((value) => value)`x`;
 (function () {})`x`;
-export default (class {})`x`;
+export default (class {}`x`);
 before();
 `x`;
 before();

@@ -1310,7 +1310,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(
                 data,
                 ExprData::Function(_)
-                    | ExprData::Class(_)
                     | ExprData::ArrowFunctionExpression(_)
                     | ExprData::AssignmentExpression(_)
                     | ExprData::ConditionalExpression(_)
