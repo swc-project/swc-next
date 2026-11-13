@@ -684,7 +684,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_breaks(right_end, comment.span.start) == 0 && matches!(gap, "" | ",")
                 })
                 .map_or(right_end, |comment| comment.span.end);
-            let rhs = self.assignment_rhs(&content);
+            let rhs = self.assignment_rhs(right, &content);
             let initializer_context = ExpressionContext::binding_initializer();
             let mut boundary = self.assignment_boundary(
                 left_end,

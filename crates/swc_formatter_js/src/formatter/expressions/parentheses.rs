@@ -77,6 +77,10 @@ pub(in crate::formatter) struct ExpressionContent {
 
 /// A rare prepared entry borrows its owners only for the current call.
 pub(super) enum PreparedExpressionPlan<'plan, 'ast> {
+    Released {
+        pair: &'plan PreparedReleasedRhsPair,
+        following_unary: Option<&'plan super::unary::PreparedUnaryOperand<'ast>>,
+    },
     Unary(&'plan super::unary::PreparedUnaryOperand<'ast>),
     Annotation(&'plan PreparedAnnotationParentheses),
 }
@@ -102,6 +106,25 @@ impl ExpressionEntry<'_> for OrdinaryExpressionEntry {}
 impl<'ast> ExpressionEntry<'ast> for PlannedExpressionEntry<'_, 'ast> {
     fn plan(&self) -> Option<&PreparedExpressionPlan<'_, 'ast>> {
         Some(self.0)
+    }
+}
+
+/// Only the selected contextual source plan can release this complete RHS tail.
+pub(in crate::formatter) struct PreparedReleasedRhsPair {
+    pair: ParenthesizedExpression,
+    value: Expr,
+    context: HeadDestinationContext,
+    source_tail_owner: SourceTailOwner,
+    choice: SourceParenthesesChoice,
+    tail: SourceParenthesesTail,
+}
+
+impl PreparedReleasedRhsPair {
+    pub(in crate::formatter) fn source_end(&self) -> u32 {
+        self.tail.span.end
+    }
+    pub(in crate::formatter) fn value_end(&self) -> u32 {
+        self.tail.span.start
     }
 }
 
@@ -2332,6 +2355,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.expression_is_parenthesized(content.data, context)
     }
 
+    pub(in crate::formatter) fn prepare_released_rhs_pair(
+        &self,
+        expression: Expr,
+        content: &ExpressionContent,
+        context: ExpressionContext<'ast>,
+    ) -> Option<&'ast PreparedReleasedRhsPair> {
+        let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression) else {
+            return None;
+        };
+        let removed = content.parentheses?;
+        let tail = removed.tail?;
+        if removed.source.outer != expression.span(self.ast)
+            || removed.source.inner != content.expression.span(self.ast)
+            || context.content_mode != ContentMode::Formatted
+            || context.protected_head_start.is_some()
+            || context.head_destination.is_some()
+            || !matches!(removed.head.binding, CommentBinding::Unbound)
+            || !matches!(removed.head.lexical_binding, CommentBinding::Unbound)
+            || self.diagnostic_range_is_sensitive(removed.source.outer)
+            || self.expression_has_generated_head_frame(content, context)
+            || self.source_exterior_cast_owner(pair).is_some()
+            || self
+                .type_binary_operand_parentheses(content, context)
+                .is_some()
+            || self
+                .protected_grammar_parentheses(content, context)
+                .is_some()
+            || self.sequence_member_parentheses(content, context).is_some()
+        {
+            return None;
+        }
+        let choice = self.source_parentheses_choice_uncached(pair, context);
+        if !matches!(
+            choice,
+            SourceParenthesesChoice::Content {
+                mode: ContentMode::Formatted,
+                ignored_child: None,
+            }
+        ) {
+            return None;
+        }
+        Some(self.allocator.alloc(PreparedReleasedRhsPair {
+            pair,
+            value: content.expression,
+            context: HeadDestinationContext::new(context, self.for_initializer_span),
+            source_tail_owner: context.source_tail_owner,
+            choice,
+            tail,
+        }))
+    }
+
     fn source_parentheses_choice(
         &self,
         parenthesized: ParenthesizedExpression,
@@ -3801,6 +3875,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let _scope = self.source_pair_scope(parenthesized)?;
         let span = parenthesized.span(self.ast);
+        let source_pair = entry.plan().and_then(|plan| match plan {
+            PreparedExpressionPlan::Released { pair, .. } => Some(*pair),
+            _ => None,
+        });
         if let Some(frame) = entry.plan().and_then(|plan| match plan {
             PreparedExpressionPlan::Annotation(frame)
                 if frame.matches_owner(parenthesized, context, self.for_initializer_span) =>
@@ -3809,14 +3887,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => None,
         }) {
+            debug_assert!(source_pair.is_none());
             return self
                 .format_prepared_annotation_parentheses(frame, context, array_comments, writer)
                 .map(ExpressionOutput::closed);
         }
         if let Some(plan) = self.prepare_exterior_cast(parenthesized, context) {
+            debug_assert!(source_pair.is_none());
             return self.format_exterior_cast(&plan, context, array_comments, entry, writer);
         }
-        let choice = self.source_parentheses_choice(parenthesized, context);
+        let choice = if let Some(plan) = source_pair {
+            debug_assert!(plan.pair == parenthesized);
+            debug_assert!(
+                plan.context == HeadDestinationContext::new(context, self.for_initializer_span)
+                    && plan.source_tail_owner == context.source_tail_owner
+            );
+            plan.choice
+        } else {
+            self.source_parentheses_choice(parenthesized, context)
+        };
         let ignored_child = match choice {
             SourceParenthesesChoice::Verbatim => {
                 let copied_raw_end = self.format_verbatim_expression_with_raw_end(
@@ -3848,6 +3937,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = prepared.unwrap_or_else(|| {
             self.expression_content(Expr::ParenthesizedExpression(parenthesized))
         });
+        if let Some(plan) = source_pair {
+            debug_assert!(plan.value == content.expression);
+        }
         if ignored_child.is_none()
             && let Some(boundary) = self
                 .type_binary_operand_parentheses(&content, context)
@@ -3974,7 +4066,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match entry.plan() {
-            None => self.format_expression_leading_prepared_with_raw_end(
+            Some(PreparedExpressionPlan::Released {
+                following_unary: Some(unary),
+                ..
+            }) => {
+                let following = PreparedExpressionPlan::Unary(unary);
+                self.format_expression_leading_with_plan(
+                    expression,
+                    None,
+                    resolved,
+                    context,
+                    array_comments,
+                    &following,
+                    writer,
+                )
+            }
+            Some(PreparedExpressionPlan::Released {
+                following_unary: None,
+                ..
+            })
+            | None => self.format_expression_leading_prepared_with_raw_end(
                 expression,
                 None,
                 resolved,

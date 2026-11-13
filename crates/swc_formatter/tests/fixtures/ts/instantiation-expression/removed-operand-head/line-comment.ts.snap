@@ -7,4 +7,5 @@ f)<number>;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-let o = f<number>; //c
+let o = //c
+  f<number>;
