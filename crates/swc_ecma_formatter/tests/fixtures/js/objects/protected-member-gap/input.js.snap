@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object = {
+	first: 1,
+	// @ts-ignore
+	second: 2,
+};
+---------- Options ----------
+{}
+---------- Output ----------
+const object = {
+  first: 1,
+  // @ts-ignore
+  second: 2,
+};
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+const object = {
+	first: 1,
+	// @ts-ignore
+	second: 2,
+};

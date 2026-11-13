@@ -2,7 +2,12 @@
 
 use swc_next_ecma_ast::{Ast, Comment, CommentKind, Span};
 
-use super::{Formatter, diagnostics::LineConstraint, source::is_source_whitespace};
+use super::{
+    Formatter,
+    comments::SourceCommentText,
+    diagnostics::LineConstraint,
+    source::{is_source_horizontal_whitespace, is_source_whitespace},
+};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -273,10 +278,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: DelimitedSourceGap,
         writer: &mut Writer<'ast>,
     ) -> Result<DelimitedSourceGap, FormatError> {
+        self.format_prepared_delimited_source_gap_with_comments(
+            gap,
+            SourceCommentText::Literal,
+            writer,
+        )
+    }
+
+    pub(super) fn format_prepared_delimited_source_gap_with_comments(
+        &mut self,
+        gap: DelimitedSourceGap,
+        policy: SourceCommentText,
+        writer: &mut Writer<'ast>,
+    ) -> Result<DelimitedSourceGap, FormatError> {
         if gap.break_parent {
             writer.break_parent();
         }
-        self.format_verbatim(gap.source, writer)?;
+        let comments = self.comments.between(gap.source)?;
+        self.comments.claim(comments)?;
+        let mut start = gap.source.start;
+        for &comment in comments {
+            let prefix = self.source(Span::new(start, comment.span.start));
+            let trimmed = prefix.trim_end_matches(is_source_horizontal_whitespace);
+            let before_line = trimmed
+                .strip_suffix("\r\n")
+                .or_else(|| trimmed.strip_suffix(['\r', '\n', '\u{2028}', '\u{2029}']));
+            if let Some(before_line) = before_line {
+                // The gap retains its physical lines and punctuation, while
+                // an own-line comment belongs to the enclosing syntax indent.
+                writer.literal_text(before_line);
+                writer.hard_line();
+            } else if !trimmed.is_empty() || !self.source_position_starts_line(start) {
+                writer.literal_text(prefix);
+            }
+            self.format_source_comment_text(comment, policy, writer)?;
+            start = comment.span.end;
+        }
+        writer.literal_text(self.source(Span::new(start, gap.source.end)));
         Ok(gap)
     }
 

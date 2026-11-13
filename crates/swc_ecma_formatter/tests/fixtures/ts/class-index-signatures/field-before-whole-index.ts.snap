@@ -11,7 +11,7 @@ class C { value = 1;
 ---------- Output ----------
 class C {
   value = 1;
-// prettier-ignore
+  // prettier-ignore
   [key:   string]:   number;
 }
 
@@ -20,7 +20,7 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-// prettier-ignore
+  // prettier-ignore
   [key:   string]:   number;
 }
 
@@ -29,7 +29,7 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-// prettier-ignore
+  // prettier-ignore
   [key:   string]:   number;
 }
 
@@ -38,6 +38,6 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-// prettier-ignore
+  // prettier-ignore
   [key:   string]:   number;
 }

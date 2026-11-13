@@ -125,6 +125,13 @@ impl CommentRunLayout {
     }
 }
 
+/// Comment text is independent of source-gap placement and protected node text.
+#[derive(Clone, Copy)]
+pub(super) enum SourceCommentText {
+    Literal,
+    Alignable,
+}
+
 /// A caller's separator covers only the first horizontal comment gap.
 #[derive(Clone, Copy)]
 pub(super) enum CommentOpening {
@@ -775,15 +782,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comments.claim(comments)?;
         let mut start = span.start;
         for &comment in comments {
-            let prepared = self.prepare_comment(comment)?;
-            if !prepared.is_alignable() {
+            let Some(text) =
+                self.prepare_source_comment_text(comment, SourceCommentText::Alignable)?
+            else {
                 continue;
-            }
+            };
             writer.literal_text(self.source(Span::new(start, comment.span.start)));
-            prepared.text.write(writer);
+            text.write(writer);
             start = comment.span.end;
         }
         writer.literal_text(self.source(Span::new(start, span.end)));
+        Ok(())
+    }
+
+    fn prepare_source_comment_text(
+        &self,
+        comment: Comment,
+        policy: SourceCommentText,
+    ) -> Result<Option<CommentText<'ast>>, FormatError> {
+        match policy {
+            SourceCommentText::Literal => Ok(None),
+            SourceCommentText::Alignable => {
+                let prepared = self.prepare_comment(comment)?;
+                Ok(prepared.is_alignable().then_some(prepared.text))
+            }
+        }
+    }
+
+    /// Write one already-owned comment without changing its surrounding gap.
+    pub(super) fn format_source_comment_text(
+        &self,
+        comment: Comment,
+        policy: SourceCommentText,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if let Some(text) = self.prepare_source_comment_text(comment, policy)? {
+            text.write(writer);
+        } else {
+            writer.literal_text(self.source(comment.span));
+        }
         Ok(())
     }
 

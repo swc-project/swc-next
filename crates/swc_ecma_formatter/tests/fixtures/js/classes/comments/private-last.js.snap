@@ -11,7 +11,7 @@ class C {#m(a=1+2
 class C {
   #m(
     a = 1 + 2
-/* prettier-ignore */
+    /* prettier-ignore */
   ) {return 3+4;}
 }
 
@@ -21,7 +21,7 @@ class C {
 class C {
   #m(
     a = 1 + 2
-/* prettier-ignore */
+    /* prettier-ignore */
   ) {return 3+4;}
 }
 
@@ -31,7 +31,7 @@ class C {
 class C {
   #m(
     a = 1 + 2
-/* prettier-ignore */
+    /* prettier-ignore */
   ) {return 3+4;}
 }
 
@@ -41,7 +41,7 @@ class C {
 class C {
   #m(
     a = 1 + 2
-/* prettier-ignore */
+    /* prettier-ignore */
   ) {return 3+4;}
 }
 
@@ -51,7 +51,7 @@ class C {
 class C {
 	#m(
 		a = 1 + 2
-/* prettier-ignore */
+		/* prettier-ignore */
 	) {return 3+4;}
 }
 
@@ -61,6 +61,6 @@ class C {
 class C {
   #m(
     a = 1 + 2
-/* prettier-ignore */
+    /* prettier-ignore */
   ) {return 3+4;}
 }
