@@ -491,6 +491,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         Ok(ExpressionOutput {
                             pending: None,
                             right_edge: tail.right_edge,
+                            operator_tail: None,
                         })
                     } else {
                         Ok(tail)

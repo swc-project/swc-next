@@ -336,9 +336,18 @@ pub(super) struct PreparedCommentAdjacency {
 
 impl PreparedCommentAdjacency {
     pub(super) fn after_tail(tail: Option<&ExpressionTail<'_>>) -> Self {
+        Self::after_comments(tail.map_or(&[], |tail| tail.comments))
+    }
+
+    pub(super) fn after_comments(comments: &[Comment]) -> Self {
         Self {
-            previous: tail.and_then(|tail| tail.comments.last().copied()),
+            previous: comments.last().copied(),
         }
+    }
+
+    pub(super) fn ends_in_line_comment(self) -> bool {
+        self.previous
+            .is_some_and(|comment| comment.kind == CommentKind::Line)
     }
 }
 
@@ -2251,6 +2260,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let adjacency = PreparedCommentAdjacency::after_tail(tail.as_ref());
         self.format_expression_tail(tail, writer)?;
         Ok(adjacency)
+    }
+
+    pub(super) fn format_expression_tail_after(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        adjacency: PreparedCommentAdjacency,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if let Some(tail) = tail {
+            self.comments.claim(tail.comments)?;
+            self.format_comment_run_with_adjacency(
+                tail.comments,
+                CommentRunLayout::SourceAfter(tail.source_end),
+                CommentRunStart {
+                    opening: CommentOpening::Needed,
+                    adjacency,
+                },
+                None,
+                None,
+                writer,
+            )?;
+        }
+        Ok(())
     }
 
     /// `SourceAfter` defers inline line comments, but prints own-line comments directly.

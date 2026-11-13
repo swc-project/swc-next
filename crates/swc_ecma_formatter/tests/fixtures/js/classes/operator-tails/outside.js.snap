@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { value = // note
+1 /* tail */
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  value = 1; /* tail */ // note
+}
