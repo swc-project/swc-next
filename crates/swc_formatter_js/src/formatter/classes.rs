@@ -17,7 +17,9 @@ use super::comments::{
 };
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
+use super::expressions::assignment::{
+    AssignmentSourceEnd, DeferredOperatorTail, OperatorTailDestination,
+};
 use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
@@ -1806,6 +1808,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut right_mode = ContentMode::Formatted;
         let mut annotation_mode = ContentMode::Formatted;
         let mut tail_source = false;
+        let mut tail_requires_source_terminal = false;
         let computed = if node.computed(ast) {
             let before = Span::new(prefix_end, key_span.start);
             let opening = match opening {
@@ -1883,6 +1886,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if matches!(position, SuppressionPosition::Inline) {
                         return Ok(None);
                     }
+                    tail_requires_source_terminal |=
+                        matches!(position, SuppressionPosition::OwnLine);
                     if value.is_some() {
                         right_mode = ContentMode::Verbatim;
                     } else {
@@ -1918,6 +1923,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let has_suffix = suffix.is_some();
+        let mut value_tail_operator_prefix = false;
         let initializer = if let Some(right) = value {
             let right_start = right.span(ast).start;
             let gap = Span::new(left_end, right_start);
@@ -1951,15 +1957,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 let content = self.expression_content(right);
                 let rhs = self.assignment_rhs(&content);
-                let mut boundary = self.assignment_boundary(
+                let source = if tail_source && semicolon.is_some() {
+                    AssignmentSourceEnd::ValueWithBoundTail(right.span(ast).end)
+                } else {
+                    AssignmentSourceEnd::Expression(right.span(ast).end)
+                };
+                let mut boundary = self.assignment_boundary_with_source(
                     left_end,
                     &rhs,
                     Span::new(operator, operator + 1),
-                    right.span(ast).end,
+                    source,
                     ExpressionContext::variable_initializer()
                         .with_tail_owner(TailOwner::ParentOperation)
                         .with_content_mode(right_mode),
                 )?;
+                value_tail_operator_prefix = boundary.has_value_tail_operator_prefix();
                 if right_mode == ContentMode::Verbatim {
                     boundary.mode = right_mode;
                 }
@@ -1984,7 +1996,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if accessor.is_some() {
             key_mode = self.unquoted_key_mode(key, computed, key_context, key_mode, quoting);
         }
-        let terminal = if tail_source || source_sibling.is_some() && semicolon.is_some() {
+        let canonical_value_terminal = value_tail_operator_prefix && !tail_requires_source_terminal;
+        let terminal = if tail_source && !canonical_value_terminal
+            || source_sibling.is_some() && semicolon.is_some()
+        {
             ClassMemberTerminal::Source(internal)
         } else {
             ClassMemberTerminal::Canonical {

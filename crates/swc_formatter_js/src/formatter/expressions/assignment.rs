@@ -218,10 +218,15 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     head_gap: Option<&'ast PreparedHeadGaps>,
     head_destination: Option<&'ast super::parentheses::PreparedHeadDestination>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    value_tail_operator_prefix: bool,
     operator_tail_destination: OperatorTailDestination,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
+    pub(in crate::formatter) fn has_value_tail_operator_prefix(&self) -> bool {
+        self.value_tail_operator_prefix
+    }
+
     pub(in crate::formatter) fn with_operator_tail_destination(
         mut self,
         destination: OperatorTailDestination,
@@ -323,6 +328,13 @@ impl<'ast> AssignmentBoundary<'ast> {
             gap_end: source_gap.then_some(self.layout_start),
         }
     }
+}
+
+/// The original RHS endpoint stays separate from its parent's prepared tail owner.
+pub(in crate::formatter) enum AssignmentSourceEnd {
+    Expression(u32),
+    /// The real parent keeps an already prepared trailing packet bound to this value.
+    ValueWithBoundTail(u32),
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -1146,6 +1158,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_right_end: u32,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
+        self.assignment_boundary_with_source(
+            left_end,
+            rhs,
+            operator_span,
+            AssignmentSourceEnd::Expression(source_right_end),
+            context,
+        )
+    }
+
+    pub(in crate::formatter) fn assignment_boundary_with_source(
+        &self,
+        left_end: u32,
+        rhs: &AssignmentRhs<'_>,
+        operator_span: Span,
+        source: AssignmentSourceEnd,
+        context: ExpressionContext<'ast>,
+    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
+        let (source_right_end, value_tail_bound) = match source {
+            AssignmentSourceEnd::Expression(end) => (end, false),
+            AssignmentSourceEnd::ValueWithBoundTail(end) => {
+                debug_assert!(context.content_mode == ContentMode::Verbatim);
+                (end, true)
+            }
+        };
         let content = rhs.content;
         let context = self.with_head_scope(context, content);
         let enclosing = content.expression;
@@ -1204,6 +1240,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head_gap: None,
             head_destination: None,
             head_scope: context.head_scope,
+            value_tail_operator_prefix: false,
             operator_tail_destination: context.operator_tail_destination,
         };
         let head_context = projected.as_ref().map_or(context, |head| head.context);
@@ -1357,6 +1394,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && content
                 .parentheses
                 .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
+        // This value already owns a source packet at its trailing edge.
+        // Keep the ordinary operator run before that value and its packet.
+        boundary.value_tail_operator_prefix = ordinary_tail && value_tail_bound;
+        let ordinary_tail = ordinary_tail && !value_tail_bound;
         let leading = if ordinary_tail {
             if left_tail {
                 boundary.before = &[];
@@ -1599,7 +1640,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &AssignmentBoundary<'ast>,
     ) -> RhsLayout {
         let data = rhs.content.data;
-        if boundary.head_gap_requires_group()
+        if boundary.value_tail_operator_prefix
+            || boundary.head_gap_requires_group()
             || boundary.rhs_starts_on_own_line()
             || !boundary.operator_line.is_empty()
             || matches!(boundary.cast_leading, Some(CastLeadingLayout::Break))

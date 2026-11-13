@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a // note
+= 0XfF // prettier-ignore
+; b = 2; }
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  a = // note
+    0XfF; // prettier-ignore
+  b = 2;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  a = // note
+    0XfF // prettier-ignore
+  b = 2
+}
