@@ -410,12 +410,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         };
         let left = if matches!(layout, AssignmentLayout::Ordinary(RhsLayout::Fluid))
-            && boundary.mode == ContentMode::Formatted
-            && (matches!(
-                data,
-                ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
-            ) || matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty()))
-        {
+            && matches!(
+                self.fixed_left_rhs_layout(data, &boundary, RhsLayout::Fluid),
+                Some(RhsLayout::NeverBreakAfterOperator)
+            ) {
             let (left, ()) = writer.record_with_value(|writer| write_left(self, writer))?;
             if !left.has_line_breaks() {
                 layout = AssignmentLayout::Ordinary(RhsLayout::NeverBreakAfterOperator);
@@ -1471,6 +1469,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return RhsLayout::BreakAfterOperator;
         }
         RhsLayout::Fluid
+    }
+
+    /// Select a fixed-left replacement only when the prepared boundary cannot
+    /// force a physical RHS continuation.
+    pub(in crate::formatter) fn fixed_left_rhs_layout(
+        &self,
+        data: ExprData,
+        boundary: &AssignmentBoundary<'ast>,
+        layout: RhsLayout,
+    ) -> Option<RhsLayout> {
+        if matches!(layout, RhsLayout::Fluid)
+            && boundary.mode == ContentMode::Formatted
+            && !boundary.rhs_requires_line()
+            && boundary.trailing.is_empty()
+            && !matches!(boundary.after_operator, LineConstraint::NewLine(_))
+            && (matches!(
+                data,
+                ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
+            ) || matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty()))
+        {
+            Some(RhsLayout::NeverBreakAfterOperator)
+        } else {
+            None
+        }
     }
 
     /// Return the inspected operand unless the existing RHS rule requires an outer break.

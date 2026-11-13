@@ -2,9 +2,9 @@
 
 use swc_next_ecma_ast::{
     BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment, CommentKind,
-    Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span, StaticBlock,
-    StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature, TsMethodDefinition,
-    TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
+    Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, PropertyKeyData, Span,
+    StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature,
+    TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -2011,35 +2011,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mut terminal,
             source_terminal,
         } = field;
-        self.format_class_member_prefix(&prefix, writer)?;
-        let prefix_end = if let Some(ClassFieldAccessor::Token(accessor)) = accessor {
-            if !prefix.is_formatted() && (prefix.has_modifiers() || prefix.is_source()) {
-                self.format_source_token_gap(
-                    prefix.end(),
-                    accessor.start,
-                    prefix.has_modifiers() || prefix.source_span().is_some(),
-                    writer,
-                )?;
+        let mut tail = None;
+        let clean_width = writer.write_with_clean_text_width(|writer| {
+            self.format_class_member_prefix(&prefix, writer)?;
+            let prefix_end = if let Some(ClassFieldAccessor::Token(accessor)) = accessor {
+                if !prefix.is_formatted() && (prefix.has_modifiers() || prefix.is_source()) {
+                    self.format_source_token_gap(
+                        prefix.end(),
+                        accessor.start,
+                        prefix.has_modifiers() || prefix.source_span().is_some(),
+                        writer,
+                    )?;
+                }
+                writer.text("accessor");
+                accessor.end
+            } else {
+                prefix.end()
+            };
+            self.format_class_member_key_gap(
+                &prefix,
+                prefix_end,
+                key_start,
+                accessor.is_some() || prefix.has_modifiers() && !prefix.is_formatted(),
+                writer,
+            )?;
+            self.format_property_key_context(
+                key,
+                computed,
+                key_mode,
+                key_context,
+                quoting,
+                writer,
+            )?;
+            tail = if let Some(suffix) = suffix {
+                self.format_field_suffix(suffix, initializer.is_some(), writer)?
+            } else {
+                None
+            };
+            Ok::<_, FormatError>(())
+        })?;
+        let tail = if let Some(FieldInitializer { right, mut layout }) = initializer {
+            if clean_width.is_some()
+                && computed.is_none()
+                && key_mode == ContentMode::Formatted
+                && matches!(
+                    self.ast.property_key_data(key),
+                    PropertyKeyData::IdentifierName(_)
+                )
+                && let InitializerLayout::Formatted {
+                    boundary,
+                    rhs_layout,
+                } = &mut layout
+            {
+                *rhs_layout = self
+                    .fixed_left_rhs_layout(
+                        self.expression_content(right).data,
+                        boundary,
+                        *rhs_layout,
+                    )
+                    .unwrap_or(*rhs_layout);
             }
-            writer.text("accessor");
-            accessor.end
-        } else {
-            prefix.end()
-        };
-        self.format_class_member_key_gap(
-            &prefix,
-            prefix_end,
-            key_start,
-            accessor.is_some() || prefix.has_modifiers() && !prefix.is_formatted(),
-            writer,
-        )?;
-        self.format_property_key_context(key, computed, key_mode, key_context, quoting, writer)?;
-        let tail = if let Some(suffix) = suffix {
-            self.format_field_suffix(suffix, initializer.is_some(), writer)?
-        } else {
-            None
-        };
-        let tail = if let Some(FieldInitializer { right, layout }) = initializer {
             self.format_expression_tail(tail, writer)?;
             let left_end = match &layout {
                 InitializerLayout::Bound { gap, .. } => gap.start,

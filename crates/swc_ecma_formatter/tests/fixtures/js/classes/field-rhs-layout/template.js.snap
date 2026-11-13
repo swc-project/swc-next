@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class X { aaaaaaaaaaaaaaaa = `a${bbbbbbbbbbbbbbbb}b`; }
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+class X {
+  aaaaaaaaaaaaaaaa = `a${bbbbbbbbbbbbbbbb}b`;
+}
