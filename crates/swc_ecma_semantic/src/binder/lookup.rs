@@ -2,6 +2,7 @@
 
 use std::hash::BuildHasher;
 
+use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{ScopeId, SymbolId};
 
 use super::{
@@ -350,6 +351,34 @@ pub(super) fn lookup_lexical_name<
         }
         child_kind = scopes[current].kind;
         ancestor = scopes[current].parent;
+    }
+    NameResolution::Unresolved
+}
+
+#[inline(always)]
+pub(super) fn lookup_javascript_name(
+    lexical: LexicalLookup<'_, '_>,
+    query: NameLookupQuery<'_>,
+    binding_ancestors: &[Option<ScopeId>],
+) -> NameResolution {
+    // An otherwise empty function scope can still stop `arguments` lookup.
+    if query.name == b"arguments" {
+        return lookup_lexical_name::<true, false, false>(lexical, query);
+    }
+    let hash = lexical.scope_maps[ScopeId::ROOT]
+        .hasher()
+        .hash_one(query.name);
+    // Only the starting scope may be empty; every later step lands on a scope
+    // with bindings through one read of the compact ancestor table.
+    let mut ancestor = Some(query.scope);
+    while let Some(current) = ancestor {
+        if let Some((_, &symbol)) = lexical.scope_maps[current]
+            .raw_entry()
+            .from_hash(hash, |name| *name == query.name)
+        {
+            return NameResolution::Resolved(symbol);
+        }
+        ancestor = binding_ancestors[current.index()];
     }
     NameResolution::Unresolved
 }
