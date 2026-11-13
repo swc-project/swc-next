@@ -128,6 +128,7 @@ struct RestrictedArgument<'ast> {
     mode: ContentMode,
     envelope: ArgumentEnvelope,
     grammar: RestrictedGrammar,
+    enclosed_tail: bool,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -174,6 +175,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mode = self.content_mode(leading);
         let protected_opening = self.diagnostic_line_is_sensitive(span.start);
         let content = self.expression_content(argument);
+        // A line-bearing operator tail needs the replacement restricted frame.
+        // Inline block tails retain the statement owner on both formatting passes.
+        let tail_start = content.expression.span(self.ast).end;
+        let enclosed_tail = matches!(grammar, RestrictedGrammar::ReturnOrThrow)
+            && content.expression != argument
+            && matches!(
+                content.data,
+                ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+            )
+            && self
+                .comments
+                .in_range(Span::new(tail_start, span.end))
+                .iter()
+                .any(|comment| {
+                    comment.kind == CommentKind::Line
+                        || self.source_line_breaks(tail_start, comment.span.end) != 0
+                });
         let mut head = RestrictedHead {
             expression: argument,
             comments: leading,
@@ -217,6 +235,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             envelope,
             grammar,
+            enclosed_tail: enclosed_tail && !protected_opening && mode == ContentMode::Formatted,
         };
         if !protected_opening
             && mode == ContentMode::Formatted
@@ -377,7 +396,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer.soft_line();
                         }
                         let tail = write_argument(self, content_start, writer)?;
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if matches!(envelope, ArgumentEnvelope::Required) || prepared.enclosed_tail
+                        {
                             self.format_expression_tail(tail.pending, writer)?;
                             Ok(ExpressionOutput::closed(None))
                         } else {
