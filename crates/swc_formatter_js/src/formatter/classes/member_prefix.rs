@@ -1,7 +1,7 @@
 //! Class modifiers belong to the member, before its real key and function.
 
 use swc_next_ecma_ast::{
-    Accessibility, Ast, CommentKind, GetSpan, MethodDefinition, MethodDefinitionKind,
+    Accessibility, Ast, Comment, CommentKind, GetSpan, MethodDefinition, MethodDefinitionKind,
     PropertyDefinition, PropertyKey, PropertyKeyData, Span, TsMethodDefinition,
 };
 
@@ -424,25 +424,60 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    /// An ordinary computed-key head remains borrowed until the key owner claims it.
     pub(in crate::formatter) fn format_class_member_key_gap(
         &mut self,
         prefix: &ClassMemberPrefix,
         source_end: u32,
         key_start: u32,
+        computed: bool,
         space: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        if !prefix.is_formatted() {
-            return self.format_source_token_gap(source_end, key_start, space, writer);
+    ) -> Result<&'ast [Comment], FormatError> {
+        if prefix.is_source() {
+            self.format_source_token_gap(source_end, key_start, space, writer)?;
+            return Ok(&[]);
+        }
+        let relocation_start = if prefix.is_formatted() {
+            prefix.start()
+        } else {
+            source_end
+        };
+        let move_to_key = computed
+            && source_end > prefix.start()
+            && self.line_breaks(relocation_start, key_start) == 0
+            && {
+                let boundary = Span::new(relocation_start, key_start);
+                let leading = self.comments.in_range(boundary);
+                !leading.is_empty()
+                    && leading.iter().all(|&comment| {
+                        comment.kind == CommentKind::Block
+                            && self.comment_semantics(comment).is_ordinary()
+                            && !self.comment_is_jsdoc_binding(comment)
+                    })
+                    && self
+                        .comment_binding(leading, boundary, None)
+                        .allows_relocation(None)
+            };
+        if !prefix.is_formatted() && !move_to_key {
+            self.format_source_token_gap(source_end, key_start, space, writer)?;
+            return Ok(&[]);
         }
         let comments = self
             .comments
             .between(Span::new(prefix.start(), key_start))?;
+        let split = comments.partition_point(|comment| comment.span.end <= relocation_start);
+        let (comments, leading) = if move_to_key {
+            comments.split_at(split)
+        } else {
+            (comments, &[][..])
+        };
         self.comments.claim(comments)?;
         if space {
             writer.space();
         }
-        self.format_comment_run(comments, CommentRunLayout::FlatLeading(key_start), writer)
+        self.format_comment_run(comments, CommentRunLayout::FlatLeading(key_start), writer)?;
+        Ok(leading)
     }
 
     pub(in crate::formatter) fn source_class_member_needs_field_separator(

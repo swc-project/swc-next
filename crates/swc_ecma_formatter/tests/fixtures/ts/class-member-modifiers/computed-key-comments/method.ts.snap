@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { public /* prefix */ static /* key */ [value]() {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  public static [/* prefix */ /* key */ value]() {}
+}

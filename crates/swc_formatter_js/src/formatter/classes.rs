@@ -17,7 +17,7 @@ use super::comments::{
 };
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
+use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
     ExpressionTypeArguments, TailOwner,
@@ -2028,16 +2028,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 prefix.end()
             };
-            self.format_class_member_key_gap(
+            let leading = self.format_class_member_key_gap(
                 &prefix,
                 prefix_end,
                 key_start,
+                computed.is_some(),
                 accessor.is_some() || prefix.has_modifiers() && !prefix.is_formatted(),
                 writer,
             )?;
-            self.format_property_key_context(
+            self.format_property_key_context_with_leading(
                 key,
-                computed,
+                computed.map(|span| ComputedKeySource { span, leading }),
                 key_mode,
                 key_context,
                 quoting,
