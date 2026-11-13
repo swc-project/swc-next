@@ -44,7 +44,7 @@ impl<'a> EnumMemberValue<'a> {
     }
 }
 
-type EnumMemberValues<'a> = FxHashMap<SymbolId, EnumMemberValue<'a>>;
+type EnumMemberValues<'a> = FxHashMap<TsEnumMember, EnumMemberValue<'a>>;
 
 #[derive(Clone, Copy)]
 pub(super) struct ConstBinding {
@@ -137,12 +137,8 @@ impl<'a> EnumValueComputer<'_, 'a> {
             } else {
                 EnumMemberValue::Unknown
             };
-            if let Some(symbol) = self.semantic.symbol_of(member.node_id()) {
-                if matches!(value, EnumMemberValue::Unknown) {
-                    self.enum_values.remove(&symbol);
-                } else {
-                    self.enum_values.insert(symbol, value);
-                }
+            if !matches!(value, EnumMemberValue::Unknown) {
+                self.enum_values.insert(member, value);
             }
             next = value.constant().and_then(increment);
         }
@@ -248,7 +244,11 @@ impl<'a> EnumValueComputer<'_, 'a> {
                 return EnumMemberValue::Unknown;
             }
             self.compute_declaration(declaration.owner);
-            return self.enum_values.get(&symbol).copied().unwrap_or_default();
+            return self
+                .enum_values
+                .get(&declaration.syntax)
+                .copied()
+                .unwrap_or_default();
         }
 
         let Some(binding) = self.const_bindings.get(&symbol).copied() else {

@@ -4,7 +4,7 @@
 //! remaining runtime reads, and namespace instantiation consumes both results.
 
 use rustc_hash::FxHashSet;
-use swc_next_ecma_ast::{Ast, NodeId, Program, SymbolId, VisitWith};
+use swc_next_ecma_ast::{Ast, NodeId, Program, SymbolId, TsEnumMember, VisitWith};
 use swc_next_ecma_semantic::{Semantic, SymbolFlags};
 
 use self::{
@@ -113,7 +113,7 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         self.enums.inline_use(node)
     }
 
-    pub(super) fn enum_member_value(&self, member: SymbolId) -> EnumMemberValue<'ast> {
+    pub(super) fn enum_member_value(&self, member: TsEnumMember) -> EnumMemberValue<'ast> {
         self.enums.member_value(member)
     }
 
