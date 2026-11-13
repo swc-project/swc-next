@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a.b(1) /* receiver */ [c](2);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+a.b(1) /* receiver */
+  [c](2);

@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = bbbb.cccc // c
+  .dddd();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const a = bbbb.cccc // c
+  .dddd();
