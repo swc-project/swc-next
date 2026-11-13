@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = import("x") /* comment */.A;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = import("x" /* comment */).A;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = import(
+  "x" /* comment */
+).A;
