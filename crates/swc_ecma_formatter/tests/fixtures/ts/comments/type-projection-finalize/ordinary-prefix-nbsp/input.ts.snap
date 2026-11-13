@@ -9,6 +9,6 @@ type T<A extends
 ---------- Output ----------
 type T<
   A extends
-// prettier-ignore
-( /* ordinary */ B | C ),
+    // prettier-ignore
+    ( /* ordinary */ B | C ),
 > = A;

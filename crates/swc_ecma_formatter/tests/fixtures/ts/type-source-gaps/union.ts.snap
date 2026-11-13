@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = Left |
+// prettier-ignore
+Box<A  , B> | Right;
+---------- Options ----------
+{}
+---------- Output ----------
+type T =
+  | Left
+  // prettier-ignore
+  | Box<A  , B>
+  | Right;

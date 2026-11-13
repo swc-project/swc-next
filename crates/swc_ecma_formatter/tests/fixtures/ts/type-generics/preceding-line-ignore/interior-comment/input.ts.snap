@@ -9,5 +9,5 @@ type T<A extends // prettier-ignore
 ---------- Output ----------
 type T<
   A extends // prettier-ignore
-(/* frame */ (B | C)),
+    (/* frame */ (B | C)),
 > = A;

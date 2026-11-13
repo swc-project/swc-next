@@ -13,14 +13,27 @@ type T = C &
   ({ x  :  1 } | A);
 
 ---------- Options ----------
-{"printWidth":40}
+{"printWidth":16}
 ---------- Output ----------
 type T = C &
   // prettier-ignore
-  ({ x  :  1 } | A);
+  (
+    | { x  :  1 }
+    | A
+  );
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"printWidth":16,"useTabs":true}
+---------- Output ----------
+type T = C &
+	// prettier-ignore
+	(
+		| { x  :  1 }
+		| A
+	);
+
+---------- Options ----------
+{"semi":false}
 ---------- Output ----------
 type T = C &
   // prettier-ignore

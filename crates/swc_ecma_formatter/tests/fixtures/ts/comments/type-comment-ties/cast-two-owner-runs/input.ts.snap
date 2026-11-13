@@ -8,5 +8,5 @@ const x = \u0076alue as /* prettier-ignore */
 {"printWidth":80,"semi":true}
 ---------- Output ----------
 const x = \u0076alue as /* prettier-ignore */
-/* c */
-/* prettier-ignore */ \u0041;
+  /* c */
+  /* prettier-ignore */ \u0041;

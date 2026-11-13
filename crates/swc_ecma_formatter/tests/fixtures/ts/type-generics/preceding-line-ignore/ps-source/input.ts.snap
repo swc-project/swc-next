@@ -6,4 +6,7 @@ type T<\u004b = // prettier-ignore \u0041> = K;
 ---------- Options ----------
 {}
 ---------- Output ----------
-type T<\u004b = // prettier-ignore A> = K;
+type T<
+  \u004b = // prettier-ignore
+    A,
+> = K;

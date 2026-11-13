@@ -13,8 +13,8 @@ type T =
 {}
 ---------- Output ----------
 type T =
-// prettier-ignore
-(A | B)
+  // prettier-ignore
+  (A | B)
 & (
 	// prettier-ignore
   { x  :  1 } | C
@@ -24,8 +24,8 @@ type T =
 {"printWidth":40}
 ---------- Output ----------
 type T =
-// prettier-ignore
-(A | B)
+  // prettier-ignore
+  (A | B)
 & (
 	// prettier-ignore
   { x  :  1 } | C
@@ -35,8 +35,8 @@ type T =
 {"printWidth":40,"semi":false}
 ---------- Output ----------
 type T =
-// prettier-ignore
-(A | B)
+  // prettier-ignore
+  (A | B)
 & (
 	// prettier-ignore
   { x  :  1 } | C

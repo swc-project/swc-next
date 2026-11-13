@@ -8,25 +8,25 @@ result = (f( 1 ) as // prettier-ignore
 {"printWidth":80}
 ---------- Output ----------
 result = f( 1 ) as // prettier-ignore
- number;
+  number;
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 result =
   f( 1 ) as // prettier-ignore
- number;
+    number;
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
 ---------- Output ----------
 result =
   f( 1 ) as // prettier-ignore
- number
+    number
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
 ---------- Output ----------
 result =
 	f( 1 ) as // prettier-ignore
- number;
+		number;
