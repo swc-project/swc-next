@@ -139,6 +139,7 @@ pub(in crate::formatter) struct PreparedItem {
     pub(in crate::formatter) mode: ContentMode,
     has_leading_comments: bool,
     trailing_comma: TrailingCommaPolicy,
+    omit_source_terminal_comma: bool,
     suppression: Option<DelimitedSuppression>,
     separator_spacing: SeparatorSpacing,
 }
@@ -150,6 +151,10 @@ impl PreparedItem {
 
     pub(in crate::formatter) fn set_trailing_comma(&mut self, policy: TrailingCommaPolicy) {
         self.trailing_comma = policy;
+    }
+
+    pub(in crate::formatter) fn omit_source_terminal_comma(&mut self) {
+        self.omit_source_terminal_comma = true;
     }
 
     pub(in crate::formatter) fn set_leading_mode(&mut self, mode: ContentMode) {
@@ -425,6 +430,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             span,
             mode,
             has_leading_comments,
+            omit_source_terminal_comma: false,
             trailing_comma: if trailing_comma {
                 TrailingCommaPolicy::IfBreak(ConditionTarget::Current)
             } else {
@@ -573,6 +579,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             span,
             mode,
             trailing_comma,
+            omit_source_terminal_comma,
             suppression,
             separator_spacing,
             ..
@@ -788,9 +795,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let preserve_comma =
             constrained || matches!(following, FollowingItem::Elision { .. }) && elision.is_none();
-        // A directive-covered separator owns the comments on its source side.
-        let protected_comma =
-            comma.filter(|&position| constrained && self.diagnostic_line_is_sensitive(position));
+        // An option that forbids call or parameter commas also owns a covered
+        // terminal comma; other diagnostic boundaries retain their source token.
+        let protected_comma = comma.filter(|&position| {
+            constrained
+                && self.diagnostic_line_is_sensitive(position)
+                && (has_more
+                    || !omit_source_terminal_comma
+                    || mode != ContentMode::Formatted
+                    || suppression.is_some())
+        });
         let trailing_limit = if let Some(elision) = &elision {
             elision.comma
         } else if matches!(following, FollowingItem::Elision { .. }) {
@@ -2678,6 +2692,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )?;
         item.separator_spacing = separator_spacing;
+        if self.options.trailing_commas != TrailingCommas::All {
+            item.omit_source_terminal_comma();
+        }
         if let Some(previous) = previous {
             item.set_leading_mode(previous.following_mode);
         }
