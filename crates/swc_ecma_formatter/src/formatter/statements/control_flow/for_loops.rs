@@ -20,7 +20,9 @@ use crate::formatter::expressions::targets::SourceTarget;
 use crate::formatter::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ForInitializerGrammar, TailOwner,
 };
-use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
+};
 use crate::formatter::variables::VariableContext;
 use crate::{FormatError, document::Writer};
 
@@ -193,6 +195,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .update(ast)
             .map(|node| self.for_expression_node(node, ExpressionPosition::ForUpdate));
         let keyword_end = node.span(ast).start + 3;
+        if init.is_none() {
+            let end = test
+                .as_ref()
+                .or(update.as_ref())
+                .map_or(body_start, |node| node.span.start);
+            let comments = CommentCursor::new(ast.comments()).in_range(Span::new(keyword_end, end));
+            if comments
+                .iter()
+                .any(|&comment| comment_directive(ast, comment).is_some())
+            {
+                let statement = super::super::StatementItem::Statement(Stmt::ForStatement(node));
+                let content = self.statement_content(statement);
+                return self.format_verbatim_statement_with_source_fence(
+                    node.span(ast),
+                    content.into(),
+                    punctuation,
+                    Some((statement, source_candidate)),
+                    writer,
+                );
+            }
+        }
         let comments =
             CommentCursor::new(self.comments.in_range(Span::new(keyword_end, body_start)));
         let token = |span: Span, text: &'static str| {
@@ -558,6 +581,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         nodes: &'header [Option<HeaderNode<'ast>>; 3],
         body: Stmt,
     ) -> PreparedHeader<'ast, 'header> {
+        let empty_init = syntax.classic && nodes[0].is_none();
         let mut nodes = nodes
             .iter()
             .enumerate()
@@ -587,7 +611,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .partition_point(|comment| comment.span.end <= syntax.opening.start);
         let before_opening = &before.comments[..count];
-        let relocate = !before_opening.is_empty()
+        let relocate = (!before_opening.is_empty() || empty_init && !before.comments.is_empty())
             && self
                 .for_prefix_binding(before.comments, before.span, syntax.opening, target)
                 .allows_relocation(Some(target));

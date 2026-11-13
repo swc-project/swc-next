@@ -6,27 +6,27 @@ for(/* first */;/* second */;/* third */) {call();}
 ---------- Options ----------
 {"printWidth":20,"semi":true}
 ---------- Output ----------
-for ( /* first */; /* second */; /* third */) {
+for (;;) /* first */ /* second */ /* third */ {
   call();
 }
 
 ---------- Options ----------
 {"printWidth":80,"semi":true}
 ---------- Output ----------
-for ( /* first */; /* second */; /* third */) {
+for (;;) /* first */ /* second */ /* third */ {
   call();
 }
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-for ( /* first */; /* second */; /* third */) {
+for (;;) /* first */ /* second */ /* third */ {
   call()
 }
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
-for ( /* first */; /* second */; /* third */) {
+for (;;) /* first */ /* second */ /* third */ {
   call()
 }
