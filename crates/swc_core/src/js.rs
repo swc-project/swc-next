@@ -35,15 +35,6 @@ pub mod parser;
 pub mod transformer;
 
 /// Options for transforming JavaScript and TypeScript source.
-#[cfg_attr(
-    all(feature = "bridge", feature = "js_transformer"),
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "TransformApiOptions"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",

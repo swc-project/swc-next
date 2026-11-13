@@ -19,22 +19,7 @@ use crate::{
     js::{CommentsOption, JsOutput, JsTransformApiOptions, serialize_source_map},
 };
 
-#[cfg(feature = "bridge")]
-use swc_next_bridge::bridge;
-
-#[cfg(all(feature = "bridge", not(target_family = "wasm")))]
-use swc_next_bridge::napi;
-
 /// JavaScript and TypeScript transform options.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "TransformerConfig"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -48,38 +33,16 @@ pub struct JsTransformerConfig {
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
     /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(ts_type = "boolean | TypeScriptConfig")
-    )]
     pub typescript: Option<BoolOr<JsTypeScriptConfig>>,
     /// JSX transform. `false` keeps JSX syntax in the output.
     ///
     /// @default enabled with the automatic runtime when `lang` is `"jsx"` or `"tsx"`
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(ts_type = "boolean | JsxConfig")
-    )]
     pub jsx: Option<BoolOr<JsxConfig>>,
     /// Per-feature overrides. `true` enables a transform; `false` disables it.
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(
-            ts_type = "Partial<Record<\"class-static-block\" | \"optional-catch-binding\", boolean>>"
-        )
-    )]
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(ts_type = "Assumptions")
-    )]
     pub assumptions: Option<JsAssumptions>,
     /// Proposal transform options.
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(ts_type = "ProposalConfig")
-    )]
     pub proposal: Option<JsProposalConfig>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
@@ -115,15 +78,6 @@ impl JsTransformerConfig {
 }
 
 /// Proposal transform options.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "ProposalConfig"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -161,15 +115,6 @@ pub enum JsFeature {
 }
 
 /// TypeScript transform options.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "TypeScriptConfig"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -223,7 +168,6 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
     }
 }
 
-#[cfg_attr(feature = "bridge", bridge(string_enum = "lowercase"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -243,15 +187,6 @@ impl From<JsxRuntime> for TransformJsxRuntime {
 }
 
 /// JSX options targeting Babel 8. `useSpread` and `useBuiltIns` are not supported.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "JsxConfig"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -290,10 +225,6 @@ pub struct JsxConfig {
     /// React Refresh. `true` uses default options.
     ///
     /// @default false
-    #[cfg_attr(
-        all(feature = "bridge", not(target_family = "wasm")),
-        napi(ts_type = "boolean | ReactRefreshConfig")
-    )]
     pub refresh: Option<BoolOr<JsReactRefreshConfig>>,
 }
 
@@ -318,15 +249,6 @@ impl From<JsxConfig> for JsxOptions {
 }
 
 /// React Refresh options.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "ReactRefreshConfig"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -379,15 +301,6 @@ fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Optio
 // }
 
 /// Babel assumptions. All default to false.
-#[cfg_attr(
-    feature = "bridge",
-    bridge(
-        object,
-        object_from_js = false,
-        object_to_js = false,
-        js_name = "Assumptions"
-    )
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -611,8 +524,8 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
 
 #[cfg(feature = "bridge")]
 pub mod bridge {
-    //! Binary source transformation bridge. Options use a 48-byte little-endian
-    //! header, optionally followed by nine length-prefixed UTF-8 strings. Empty options
+    //! Binary source transformation bridge. Options use a 16-byte little-endian
+    //! header, optionally followed by a length-prefixed UTF-8 filename. Empty options
     //! select defaults. Output starts with code length, optional map length
     //! (`u32::MAX` means absent), and diagnostic count, followed by UTF-8 code/map
     //! and the parser bridge's packed diagnostic records.
@@ -620,16 +533,10 @@ pub mod bridge {
     use swc_next_bridge::{BridgeDecode, BridgeDecodeOptional, bridge};
     use swc_next_ecma_ast::ffi::ast::{diagnostics_buffer_size, serialize_diagnostics};
 
-    use super::{
-        JsAssumptions, JsFeature, JsProposalConfig, JsReactRefreshConfig, JsTransformerConfig,
-        JsTypeScriptConfig, JsxConfig, JsxRuntime, transform_js,
-    };
-    use crate::{
-        BoolOr,
-        js::{
-            CommentsOption, JsOutput, JsTransformApiOptions, generator::JsGeneratorConfig,
-            parser::JsParserConfig,
-        },
+    use super::transform_js;
+    use crate::js::{
+        CommentsOption, JsOutput, JsTransformApiOptions, generator::JsGeneratorConfig,
+        parser::JsParserConfig,
     };
 
     #[cfg(not(target_family = "wasm"))]
@@ -668,7 +575,36 @@ pub mod bridge {
         pub labels: Vec<DiagnosticLabel>,
     }
 
-    use crate::js::JsTransformApiOptions as TransformApiOptions;
+    /// Options for transforming JavaScript and TypeScript source.
+    #[bridge(object, object_from_js = false, object_to_js = false)]
+    #[derive(Default)]
+    pub struct TransformApiOptions {
+        /// Used to infer the language and source type, and for diagnostics and source maps.
+        pub filename: Option<String>,
+        /// Source map generation.
+        ///
+        /// @default false
+        pub source_map: Option<bool>,
+        /// Comment policy.
+        pub comments: Option<CommentsOption>,
+        /// Parser configuration.
+        pub parser: Option<JsParserConfig>,
+        /// Generator configuration.
+        pub generator: Option<JsGeneratorConfig>,
+    }
+
+    impl From<TransformApiOptions> for JsTransformApiOptions {
+        fn from(options: TransformApiOptions) -> Self {
+            Self {
+                filename: options.filename,
+                source_map: options.source_map,
+                comments: options.comments,
+                parser: options.parser,
+                generator: options.generator,
+                transformer: None,
+            }
+        }
+    }
 
     #[bridge]
     impl BridgeDecodeOptional for TransformApiOptions {
@@ -680,195 +616,47 @@ pub mod bridge {
     }
 
     /// Decode the packed transform configuration without copying the input buffer.
-    pub fn decode_options(bytes: &[u8]) -> Option<Option<JsTransformApiOptions>> {
+    pub fn decode_options(bytes: &[u8]) -> Option<Option<TransformApiOptions>> {
         if bytes.is_empty() {
             return Some(None);
         }
-        let header = bytes.get(..48)?;
+        let header = bytes.get(..16)?;
         let word =
             |index: usize| u32::from_le_bytes(header[index * 4..index * 4 + 4].try_into().unwrap());
-        if word(0) != 1
-            || word(3) & !0xf != 0
-            || word(4) & !0x1f != 0
-            || word(5) & !0x7 != 0
-            || word(6) & !0xf != 0
-            || word(8) & !0xfff != 0
-            || word(9) & !0x7e != 0
-            || word(10) & !0x3fff != 0
-            || word(11) & !0x6 != 0
-        {
+        if word(0) != 1 || word(3) & !0xf != 0 {
             return None;
         }
         let parser = <Option<JsParserConfig> as BridgeDecode>::decode(word(1))?;
         let generator = <Option<JsGeneratorConfig> as BridgeDecode>::decode(word(2))?;
-        let mut cursor = 48;
-        let mut string = || -> Option<Option<String>> {
-            if bytes.len() == 48 {
-                return Some(None);
+        let filename = if bytes.len() == 16 {
+            None
+        } else {
+            let length = u32::from_le_bytes(bytes.get(16..20)?.try_into().ok()?) as usize;
+            let value = bytes.get(20..)?;
+            if value.len() != length {
+                return None;
             }
-            let length = u32::from_le_bytes(bytes.get(cursor..cursor + 4)?.try_into().ok()?);
-            cursor += 4;
-            if length == u32::MAX {
-                return Some(None);
-            }
-            let end = cursor.checked_add(length as usize)?;
-            let value = std::str::from_utf8(bytes.get(cursor..end)?)
-                .ok()?
-                .to_owned();
-            cursor = end;
-            Some(Some(value))
+            Some(std::str::from_utf8(value).ok()?.to_owned())
         };
-        let filename = string()?;
-        let transform_filename = string()?;
-        let jsx_pragma = string()?;
-        let jsx_pragma_frag = string()?;
-        let import_source = string()?;
-        let pragma = string()?;
-        let pragma_frag = string()?;
-        let refresh_reg = string()?;
-        let refresh_sig = string()?;
-        if cursor != bytes.len() {
-            return None;
-        }
-        let source_map = boolean(word(3), 0)?;
+        let source_map = match word(3) & 3 {
+            0 => None,
+            1 => Some(false),
+            2 => Some(true),
+            _ => return None,
+        };
         let comments = match (word(3) >> 2) & 3 {
             0 => None,
             1 => Some(CommentsOption::All),
             2 => Some(CommentsOption::None),
             _ => return None,
         };
-        if word(4) & 1 == 0 {
-            if (4..12).any(|index| word(index) != 0)
-                || transform_filename.is_some()
-                || jsx_pragma.is_some()
-                || jsx_pragma_frag.is_some()
-                || import_source.is_some()
-                || pragma.is_some()
-                || pragma_frag.is_some()
-                || refresh_reg.is_some()
-                || refresh_sig.is_some()
-            {
-                return None;
-            }
-            return Some(Some(JsTransformApiOptions {
-                filename,
-                source_map,
-                comments,
-                parser,
-                generator,
-                transformer: None,
-            }));
-        }
-        let typescript = stage(word(4), 1, || -> Option<JsTypeScriptConfig> {
-            Some(JsTypeScriptConfig {
-                verbatim_module_syntax: boolean(word(9), 1)?,
-                preserve_const_enums: boolean(word(9), 3)?,
-                jsx_runtime: runtime(word(9), 5)?,
-                jsx_pragma,
-                jsx_pragma_frag,
-            })
-        })?;
-        let jsx = stage(word(4), 3, || -> Option<JsxConfig> {
-            Some(JsxConfig {
-                runtime: runtime(word(10), 0)?,
-                development: boolean(word(10), 2)?,
-                source_self: boolean(word(10), 4)?,
-                throw_if_namespace: boolean(word(10), 6)?,
-                pure: boolean(word(10), 8)?,
-                display_name: boolean(word(10), 10)?,
-                import_source,
-                pragma,
-                pragma_frag,
-                refresh: stage(word(10), 12, || -> Option<JsReactRefreshConfig> {
-                    Some(JsReactRefreshConfig {
-                        refresh_reg,
-                        refresh_sig,
-                        emit_full_signatures: boolean(word(11), 1)?,
-                    })
-                })?,
-            })
-        })?;
-        let mut features = std::collections::BTreeMap::new();
-        if let Some(value) = boolean(word(6), 0)? {
-            features.insert(JsFeature::ClassStaticBlock, value);
-        }
-        if let Some(value) = boolean(word(6), 2)? {
-            features.insert(JsFeature::OptionalCatchBinding, value);
-        }
-        let assumptions = JsAssumptions {
-            array_like_is_iterable: boolean(word(7), 0)?,
-            constant_reexports: boolean(word(7), 2)?,
-            constant_super: boolean(word(7), 4)?,
-            enumerable_module_meta: boolean(word(7), 6)?,
-            ignore_function_length: boolean(word(7), 8)?,
-            ignore_function_name: boolean(word(7), 10)?,
-            ignore_to_primitive_hint: boolean(word(7), 12)?,
-            iterable_is_array: boolean(word(7), 14)?,
-            mutable_template_object: boolean(word(7), 16)?,
-            no_class_calls: boolean(word(7), 18)?,
-            no_document_all: boolean(word(7), 20)?,
-            no_incomplete_ns_import_detection: boolean(word(7), 22)?,
-            no_new_arrows: boolean(word(7), 24)?,
-            object_rest_no_symbols: boolean(word(7), 26)?,
-            private_fields_as_properties: boolean(word(7), 28)?,
-            pure_getters: boolean(word(7), 30)?,
-            set_class_methods: boolean(word(8), 0)?,
-            set_computed_properties: boolean(word(8), 2)?,
-            set_public_class_fields: boolean(word(8), 4)?,
-            set_spread_properties: boolean(word(8), 6)?,
-            skip_for_of_iterator_closing: boolean(word(8), 8)?,
-            super_is_callable_constructor: boolean(word(8), 10)?,
-        };
-        let proposal = JsProposalConfig {
-            prevent_extensions: boolean(word(5), 1)?,
-        };
-        Some(Some(JsTransformApiOptions {
+        Some(Some(TransformApiOptions {
             filename,
             source_map,
             comments,
             parser,
             generator,
-            transformer: (word(4) & 1 != 0).then_some(JsTransformerConfig {
-                filename: transform_filename,
-                typescript,
-                jsx,
-                features: (!features.is_empty()).then_some(features),
-                assumptions: (word(7) != 0 || word(8) != 0).then_some(assumptions),
-                proposal: (word(5) & 1 != 0).then_some(proposal),
-            }),
         }))
-    }
-
-    fn boolean(value: u32, shift: u32) -> Option<Option<bool>> {
-        match (value >> shift) & 3 {
-            0 => Some(None),
-            1 => Some(Some(false)),
-            2 => Some(Some(true)),
-            _ => None,
-        }
-    }
-
-    fn runtime(value: u32, shift: u32) -> Option<Option<JsxRuntime>> {
-        match (value >> shift) & 3 {
-            0 => Some(None),
-            1 => Some(Some(JsxRuntime::Classic)),
-            2 => Some(Some(JsxRuntime::Automatic)),
-            _ => None,
-        }
-    }
-
-    fn stage<T>(
-        value: u32,
-        shift: u32,
-        options: impl FnOnce() -> Option<T>,
-    ) -> Option<Option<BoolOr<T>>> {
-        match (value >> shift) & 3 {
-            0 => Some(None),
-            1 => Some(Some(BoolOr::Bool(false))),
-            2 => Some(Some(BoolOr::Bool(true))),
-            3 => Some(Some(BoolOr::Options(options()?))),
-            _ => unreachable!(),
-        }
     }
 
     /// Transform and serialize into a buffer allocated after its exact size is known.
@@ -912,10 +700,10 @@ pub mod bridge {
     pub unsafe fn transform_to_buffer(
         source: &[u8],
         source_utf16_len: u32,
-        options: Option<JsTransformApiOptions>,
+        options: Option<TransformApiOptions>,
     ) -> Vec<u8> {
         let source = unsafe { std::str::from_utf8_unchecked(source) };
-        let output = transform_js(source, options.unwrap_or_default());
+        let output = transform_js(source, options.unwrap_or_default().into());
         let Ok(buffer) = {
             output_to_buffer(source, source_utf16_len, output, |size| {
                 Ok::<_, std::convert::Infallible>(vec![0; size])
@@ -948,7 +736,7 @@ pub mod bridge {
             )
         })?;
         let source = unsafe { std::str::from_utf8_unchecked(source) };
-        let output = transform_js(source, options.unwrap_or_default());
+        let output = transform_js(source, options.unwrap_or_default().into());
         if output.map.is_none() && output.diagnostics.is_empty() {
             return Ok(napi::bindgen_prelude::Either::A(
                 <String as swc_next_bridge::NativeAbi>::into_native(output.code),

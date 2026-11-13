@@ -14,15 +14,8 @@ export type {
   ParserConfig,
   GeneratorConfig,
   GenerateOutput,
-  Assumptions,
-  JsxConfig,
-  JsxRuntime,
-  ProposalConfig,
-  ReactRefreshConfig,
   TransformApiOptions,
-  TransformerConfig,
   TransformOutput,
-  TypeScriptConfig,
 } from "./binding.js";
 
 export type GenerateApiOptions = GeneratorConfig;

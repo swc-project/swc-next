@@ -3,9 +3,7 @@ use swc_next_bridge::bridge;
 #[cfg(not(target_family = "wasm"))]
 use swc_next_bridge::{napi, napi_derive::napi};
 #[cfg(target_family = "wasm")]
-use swc_next_core::js::{
-    JsTransformApiOptions as TransformApiOptions, transformer::bridge::transform_to_buffer,
-};
+use swc_next_core::js::transformer::bridge::{TransformApiOptions, transform_to_buffer};
 
 #[cfg(target_family = "wasm")]
 #[bridge]

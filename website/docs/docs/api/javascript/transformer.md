@@ -6,8 +6,8 @@ description: Transform JavaScript, TypeScript, and JSX source synchronously.
 # Transformer
 
 `@swc-next/transformer` transforms source text and returns generated code,
-diagnostics, and an optional source map. It supports TypeScript lowering, JSX,
-class static blocks, and optional catch bindings.
+diagnostics, and an optional source map. It lowers TypeScript and JSX using
+the default transformation settings.
 
 ```ts
 import { transformSync, type TransformApiOptions } from "@swc-next/transformer";
@@ -15,9 +15,6 @@ import { transformSync, type TransformApiOptions } from "@swc-next/transformer";
 const options = {
   filename: "view.tsx",
   sourceMap: true,
-  transformer: {
-    jsx: { runtime: "automatic" },
-  },
 } satisfies TransformApiOptions;
 
 const result = transformSync("export const view = <div />;", options);
@@ -60,7 +57,6 @@ original source. The fields match the [parser diagnostic shape](/api/javascript/
 | `sourceMap` | Generate a source map; defaults to `false` |
 | `comments` | `"all"` (default) or `"none"` |
 | `parser` | [Parser options](/api/javascript/parser#parseapioptions), including explicit `lang` and `sourceType` overrides |
-| `transformer` | Transform configuration described below |
 | `generator` | [Generator options](/api/javascript/generator#generateapioptions) |
 
 The language defaults to `"js"`. A filename such as `input.ts`, `view.tsx`, or
@@ -68,32 +64,9 @@ The language defaults to `"js"`. A filename such as `input.ts`, `view.tsx`, or
 options take precedence. `parser.comments` controls comment collection and
 `comments` controls printing.
 
-### Transformer configuration
-
-| Option | Description |
-| --- | --- |
-| `filename` | Override the shared filename for transforms |
-| `typescript` | Boolean or `TypeScriptConfig`; enabled by default for `ts`, `tsx`, and `dts` |
-| `jsx` | Boolean or `JsxConfig`; enabled by default for `jsx` and `tsx` |
-| `features` | Boolean overrides for `"class-static-block"` and `"optional-catch-binding"` |
-| `assumptions` | Babel-compatible assumptions; all default to `false` |
-| `proposal` | Proposal options, including `preventExtensions` for static block lowering |
-
-Both JavaScript feature transforms are disabled by default. Enable them through
-`features` when needed.
-
-`false` preserves the corresponding syntax. `true` enables defaults, and an
-object enables the transform with its options.
-
-`TypeScriptConfig` supports `verbatimModuleSyntax`, `preserveConstEnums`,
-`jsxRuntime`, `jsxPragma`, and `jsxPragmaFrag`. The JSX settings determine which
-factory imports to retain when JSX syntax is preserved.
-
-`JsxConfig` supports `runtime` (`"automatic"` by default or `"classic"`),
-`development`, `sourceSelf`, `importSource`, `pragma`, `pragmaFrag`,
-`throwIfNamespace`, `pure`, `displayName`, and `refresh`. React Refresh accepts a
-boolean or options for `refreshReg`, `refreshSig`, and `emitFullSignatures`.
-`useSpread` and `useBuiltIns` are unsupported.
+TypeScript lowering is enabled for `ts`, `tsx`, and `dts`. JSX lowering is enabled
+for `jsx` and `tsx` and uses the automatic runtime by default. Transformation
+settings are not configurable through the JavaScript API.
 
 ## Limitations
 

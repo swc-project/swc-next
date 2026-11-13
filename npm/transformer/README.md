@@ -1,7 +1,7 @@
 # @swc-next/transformer
 
-A JavaScript and TypeScript source transformer written in Rust. Lower TypeScript,
-JSX, class static blocks, and optional catch bindings with SWC Next.
+A JavaScript and TypeScript source transformer written in Rust. Lower TypeScript
+and JSX with SWC Next.
 
 ```js
 import { transformSync } from "@swc-next/transformer";
@@ -14,8 +14,9 @@ console.log(code); // const answer = 42;
 
 The filename determines the language and source type unless `parser` overrides
 them. TypeScript and JSX transforms are enabled for their respective languages.
-Other JavaScript syntax and module formats are preserved unless a supported
-feature transform applies. Syntax errors are returned in `diagnostics`; their
+Transformation settings are not configurable through the JavaScript API.
+Other JavaScript syntax and module formats are preserved. Syntax errors are
+returned in `diagnostics`; their
 positions use UTF-16 offsets in the original source.
 
 Set `sourceMap: true` to receive a JSON source map in `map`. Comments are preserved

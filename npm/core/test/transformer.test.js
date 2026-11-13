@@ -16,15 +16,17 @@ nodeTest("transform bridge uses packed options and binary output", () => {
   assert.deepEqual(JSON.parse(result.map).sources, ["组件😀.ts"]);
 
   const empty = encodeOptions({});
-  assert.equal(empty.byteLength, 48);
+  assert.equal(empty.byteLength, 16);
   assert.equal(new DataView(empty.buffer, empty.byteOffset).getUint32(0, true), 1);
 });
 
 nodeTest("transform option scratch buffers recover after growth and validation errors", () => {
   const encodeOptions = createTransformOptionsEncoder();
-  encodeOptions({ filename: "路径😀".repeat(4096) + ".tsx", transformer: { jsx: { importSource: "preact" } } });
-  assert.throws(() => encodeOptions({ transformer: { jsx: { development: 1 } } }), TypeError);
-  const result = transformCore("const x = 1;", {});
+  encodeOptions({ filename: "路径😀".repeat(4096) + ".tsx", sourceMap: true });
+  assert.throws(() => encodeOptions({ sourceMap: 1 }), TypeError);
+  const source = "const x = 1;";
+  const output = transformBinding(Buffer.from(source), source.length, encodeOptions({}));
+  const result = typeof output === "string" ? { code: output, diagnostics: [] } : decodeTransform(output);
   assert.equal(result.code, "const x = 1;\n");
   assert.deepEqual(result.diagnostics, []);
 });
@@ -44,77 +46,33 @@ for (const [name, transformSync] of [["core", transformCore], ["transformer", tr
     assert.throws(() => transformSync("", []), TypeError);
     assert.throws(() => transformSync("", { unknown: true }), Error);
     assert.throws(() => transformSync("", { parser: { lang: "unknown" } }), Error);
-    assert.throws(() => transformSync("", { transformer: { jsx: 1 } }), Error);
-    assert.throws(() => transformSync("", { transformer: { features: { unknown: true } } }), Error);
+    assert.throws(() => transformSync("", { filename: 1 }), TypeError);
+    assert.throws(() => transformSync("", { sourceMap: 1 }), TypeError);
+    assert.throws(() => transformSync("", { generator: { minify: 1 } }), TypeError);
+  });
+
+  test("transformSync rejects Rust transformation options", () => {
+    assert.throws(() => transformSync("", { transformer: {} }), TypeError);
+    assert.throws(() => transformSync("", { transformer: { typescript: false } }), TypeError);
+    assert.throws(() => transformSync("", { jsx: { runtime: "classic" } }), TypeError);
   });
 
   test("transformSync forwards filename and parser language overrides", () => {
     const source = "const answer: number = 42;";
     assert.equal(transformSync(source, { filename: "answer.ts" }).code, "const answer = 42;\n");
     assert.equal(transformSync(source, { filename: "answer.js", parser: { lang: "ts" } }).code, "const answer = 42;\n");
-    assert.equal(transformSync(source, { filename: "answer.ts", transformer: { typescript: false } }).code, "const answer: number = 42;\n");
 
     const commonjs = "return 42;";
     assert.equal(transformSync(commonjs, { filename: "answer.cjs" }).diagnostics.length, 0);
     assert.ok(transformSync(commonjs, { filename: "answer.cjs", parser: { sourceType: "module" } }).diagnostics.length > 0);
   });
 
-  test("transformSync forwards JSX runtime and boolean options", () => {
-    const source = "const element = <div />;";
-    const automatic = transformSync(source, { filename: "view.jsx", transformer: { jsx: true } });
+  test("transformSync enables JSX defaults from the language", () => {
+    const source = "export const element = <div />;";
+    const automatic = transformSync(source, { filename: "view.jsx" });
     assert.equal(automatic.diagnostics.length, 0);
     assert.ok(automatic.code.includes("react/jsx-runtime"));
-
-    const classic = transformSync(source, {
-      filename: "view.jsx",
-      transformer: { jsx: { runtime: "classic", pragma: "h", pure: false } },
-    });
-    assert.ok(classic.code.includes('h("div", null)'));
-    assert.ok(!classic.code.includes("react/jsx-runtime"));
-
-    assert.equal(transformSync(source, { filename: "view.jsx", transformer: { jsx: false } }).code, "const element = <div />;\n");
-  });
-
-  test("transformSync forwards TypeScript options", () => {
-    const source = 'import { value } from "module";';
-    assert.equal(transformSync(source, { filename: "input.ts", transformer: { typescript: true } }).code, "export {};\n");
-    assert.equal(transformSync(source, { filename: "input.ts", transformer: { typescript: { verbatimModuleSyntax: true } } }).code, source + "\n");
-  });
-
-  test("transformSync forwards feature overrides", () => {
-    const source = "try {} catch {}";
-    const lowered = transformSync(source, { transformer: { features: { "optional-catch-binding": true } } });
-    assert.match(lowered.code, /catch\s*\(/);
-
-    const preserved = transformSync(source, { transformer: { features: { "optional-catch-binding": false } } });
-    assert.ok(!preserved.code.includes("catch ("));
-
-    const staticBlock = transformSync("class C { static { Object.freeze(this); } }", {
-      transformer: {
-        features: { "class-static-block": true },
-        proposal: { preventExtensions: true },
-        assumptions: { noDocumentAll: true },
-      },
-    });
-    assert.equal(staticBlock.diagnostics.length, 0);
-    assert.ok(staticBlock.code.includes("_staticBlock()"));
-    assert.ok(!staticBlock.code.includes("static {"));
-  });
-
-  test("transformSync forwards JSX import source and React Refresh options", () => {
-    const result = transformSync("export function App() { return <div />; }", {
-      filename: "view.jsx",
-      transformer: {
-        jsx: {
-          importSource: "preact",
-          development: true,
-          refresh: { refreshReg: "register", refreshSig: "signature", emitFullSignatures: true },
-        },
-      },
-    });
-    assert.equal(result.diagnostics.length, 0);
-    assert.ok(result.code.includes("preact/jsx-dev-runtime"));
-    assert.ok(result.code.includes('register(_c, "App")'));
+    assert.deepEqual(transformSync(source, { parser: { lang: "jsx" } }), automatic);
   });
 
   test("transformSync forwards comment and generator options", () => {
