@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div a="1" // note
+
+b="2" />;
+---------- Options ----------
+{}
+---------- Output ----------
+<div
+  a="1" // note
+
+  b="2"
+/>;
