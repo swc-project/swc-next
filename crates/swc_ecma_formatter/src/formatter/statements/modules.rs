@@ -1776,6 +1776,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let gap = Span::new(left_span.end, right_span.start);
         let comments = self.comments.in_range(gap);
         let promoted = (!comments.is_empty()
+            && !self.diagnostic_range_is_sensitive(gap)
             && comments
                 .iter()
                 .all(|&comment| self.comment_semantics(comment).is_ordinary())
