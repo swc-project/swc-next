@@ -90,7 +90,9 @@ pub(super) enum DecoratorLayout {
     Class,
     Member,
     Parameter,
+    ParameterShared,
     ParameterProperty,
+    ParameterPropertyShared,
 }
 
 pub(super) struct RemovedDecoratorHead<'ast> {
@@ -403,7 +405,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         // Class separators supply their actual hard lines. A covered same-line
         // separator must not expand the complete decorated-class frame.
-        writer.group(source_break, |writer| {
+        let mut write_sequence = |writer: &mut Writer<'ast>| {
             let mut current = prefix.first;
             let mut remaining = prefix.remaining;
             let mut incoming_mode = ContentMode::Formatted;
@@ -426,13 +428,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         for position in self.suppression_positions(comments, following) {
                             if next.is_none() {
                                 preceding_is_suppressed |= match layout {
-                                    DecoratorLayout::Class | DecoratorLayout::ParameterProperty => {
-                                        true
-                                    }
+                                    DecoratorLayout::Class
+                                    | DecoratorLayout::ParameterProperty
+                                    | DecoratorLayout::ParameterPropertyShared => true,
                                     DecoratorLayout::Member => {
                                         !matches!(position, SuppressionPosition::Inline)
                                     }
-                                    DecoratorLayout::Parameter => {
+                                    DecoratorLayout::Parameter
+                                    | DecoratorLayout::ParameterShared => {
                                         !matches!(position, SuppressionPosition::OwnLine)
                                     }
                                 };
@@ -446,6 +449,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                             layout,
                                             DecoratorLayout::Member
                                                 | DecoratorLayout::ParameterProperty
+                                                | DecoratorLayout::ParameterPropertyShared
                                         ) =>
                                     {
                                         preceding_is_suppressed = true;
@@ -471,7 +475,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let keep_inline_suppression = allow_suppression_relocation
                     && matches!(
                         layout,
-                        DecoratorLayout::Member | DecoratorLayout::ParameterProperty
+                        DecoratorLayout::Member
+                            | DecoratorLayout::ParameterProperty
+                            | DecoratorLayout::ParameterPropertyShared
                     )
                     && self.source_line_breaks(span.end, following) == 0;
                 let expression = current.expression(ast);
@@ -549,7 +555,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comments.claim(leading)?;
                     if matches!(
                         layout,
-                        DecoratorLayout::Member | DecoratorLayout::ParameterProperty
+                        DecoratorLayout::Member
+                            | DecoratorLayout::ParameterProperty
+                            | DecoratorLayout::ParameterPropertyShared
                     ) {
                         self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                         self.prepare_comment_boundary(leading, leading_start, following)
@@ -575,7 +583,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 incoming_mode = following_mode;
             }
             Ok(())
-        })
+        };
+        if matches!(
+            layout,
+            DecoratorLayout::ParameterShared | DecoratorLayout::ParameterPropertyShared
+        ) {
+            if source_break {
+                writer.break_parent();
+            }
+            write_sequence(writer)
+        } else {
+            writer.group(source_break, write_sequence)
+        }
     }
 
     pub(super) fn decorator_expression_is_unparenthesized(&self, mut data: ExprData) -> bool {

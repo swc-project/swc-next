@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(@a /* eslint-disable-line no-undef */ @b private x?: string | null) {} }
+---------- Options ----------
+{"printWidth":60}
+---------- Output ----------
+class C { constructor(@a /* eslint-disable-line no-undef */ @b private x?: string | null) {} }
