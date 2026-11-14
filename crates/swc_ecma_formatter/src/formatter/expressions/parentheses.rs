@@ -3399,6 +3399,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn format_expression_content_with_raw_end(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_content_with_entry(
+            expression,
+            prepared,
+            context,
+            array_comments,
+            OrdinaryExpressionEntry,
+            writer,
+        )
+    }
+
     fn format_expression_content_with_entry<P: ExpressionEntry<'ast>>(
         &mut self,
         expression: Expr,
@@ -5348,6 +5366,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if grammar_body && context.content_mode == ContentMode::Formatted {
             let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            // The assignment owns its operator group and continuation indent.
+            // Reuse its normal grammar pair when this frame has no inner head.
+            if head.comments.is_empty()
+                && content.expression == expression
+                && matches!(content.data, ExprData::AssignmentExpression(_))
+                && self.expression_is_parenthesized(content.data, context)
+                && !Self::for_head_grammar_pair_is_enclosed(content.data, context.position)
+            {
+                return self.format_expression_content_with_raw_end(
+                    expression,
+                    prepared,
+                    context,
+                    array_comments,
+                    writer,
+                );
+            }
             // The real grammar owner keeps the sequence's canonical body.
             // A lexical cast pair instead uses the retained-cast body below.
             if let ExprData::SequenceExpression(sequence) = content.data {
