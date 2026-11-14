@@ -2122,6 +2122,14 @@ fn cached_text_columns() {
     );
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
+    assert_eq!(pair_document("a\u{2028}b", "c", 9), "[a\u{2028}b, c];");
+    assert_eq!(
+        pair_document("a\u{2028}b", "c", 8),
+        "[\n  a\u{2028}b,\n  c,\n];"
+    );
+
+    assert_eq!(pair_document("a\u{2029}b", "c", 9), "[a\u{2029}b, c];");
+
     let tab = super::text::Text::new("a\u{7f}\té");
     assert_eq!(tab.clean_width(), Some(4));
     assert_eq!(tab.advance_column(0), 4);
@@ -2952,9 +2960,9 @@ fn fragment_capabilities() {
     });
     assert!(flat_lines.has_intrinsic_lines());
 
-    let multiline = record(&mut writer, |writer| writer.text("first\u{2028}last"));
-    assert!(multiline.try_neutral().is_none());
-    assert!(multiline.try_flat().is_none());
+    let separators = record(&mut writer, |writer| writer.text("first\u{2028}last"));
+    assert!(separators.try_neutral().is_some());
+    assert!(separators.try_flat().is_some());
 
     let choices = record(&mut writer, |writer| {
         writer.write_alternatives(&[atom], expanded);
@@ -3611,10 +3619,10 @@ fn retained_flat_scopes() {
     assert!(carriage_return.try_flat().is_none());
 
     let line_separator = record(&mut writer, |writer| writer.text("a\u{2028}b"));
-    assert!(line_separator.try_flat().is_none());
+    assert!(line_separator.try_flat().is_some());
 
     let paragraph_separator = record(&mut writer, |writer| writer.text("a\u{2029}b"));
-    assert!(paragraph_separator.try_flat().is_none());
+    assert!(paragraph_separator.try_flat().is_some());
 
     let unicode = record(&mut writer, |writer| writer.text("宽文字"));
     assert!(unicode.try_flat().is_some());
