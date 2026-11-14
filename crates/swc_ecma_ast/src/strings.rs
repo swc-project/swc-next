@@ -55,10 +55,12 @@ impl From<AstUtf8> for AstWtf8 {
 }
 
 pub(crate) struct StringPool<'a> {
+    #[cfg(target_endian = "little")]
     allocator: &'a Allocator,
     pub(crate) source: &'a str,
     extra: ArenaVec<'a, u8>,
-    dedup: ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>,
+    /// Keys borrow appended bytes from `extra`; see `get_bytes` for why they stay valid.
+    dedup: ArenaHashMap<'a, &'a [u8], (u32, u32)>,
 }
 
 impl<'a> StringPool<'a> {
@@ -66,6 +68,7 @@ impl<'a> StringPool<'a> {
         assert!(source.len() <= u32::MAX as usize);
         Self {
             source,
+            #[cfg(target_endian = "little")]
             allocator,
             extra: ArenaVec::new_in(allocator),
             dedup: ArenaHashMap::new_in(allocator),
@@ -179,8 +182,7 @@ impl<'a> StringPool<'a> {
         self.extra.extend_from_slice(text);
 
         let id = (start as u32, end as u32);
-        let mut key = ArenaVec::with_capacity_in(text.len(), self.allocator);
-        key.extend_from_slice(text);
+        let key = self.get_bytes(id.0, id.1);
         self.dedup.insert(key, id);
         id
     }
