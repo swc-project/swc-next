@@ -23,8 +23,8 @@ use swc_next_ecma_ast::{
 
 use super::Formatter;
 use super::comments::{
-    CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, StatementCommentBoundary,
-    StatementTerminatorPlacement,
+    CommentBinding, CommentCursor, CommentRunLayout, ExpressionTail, NodeHead,
+    StatementCommentBoundary, StatementTerminatorPlacement,
 };
 use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
@@ -190,6 +190,7 @@ impl ContinuationBoundary {
 }
 
 /// Layout supplied by the real parent without bypassing statement ownership.
+#[derive(Clone, Copy)]
 struct StatementLayout {
     start: ExpressionStart,
     empty_block: EmptyBlock,
@@ -249,11 +250,12 @@ struct OmittedStatementTail<'ast> {
 struct StatementSourceLine {
     incoming: bool,
     outgoing: Option<Span>,
+    whole: bool,
 }
 
 impl StatementSourceLine {
     fn owns(self) -> bool {
-        self.incoming || self.outgoing.is_some()
+        self.incoming || self.outgoing.is_some() || self.whole
     }
 }
 
@@ -753,21 +755,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 next.mode = ContentMode::Verbatim;
                 next.source_gap = tail.following_gap;
             }
-            let mode = if source_line.owns()
-                || source_mode == ContentMode::Verbatim
+            let protected = source_mode == ContentMode::Verbatim
                 || leading_mode == ContentMode::Verbatim
                 || annotation_tail
                     .as_ref()
                     .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
-            {
-                ContentMode::Verbatim
-            } else if !self.has_suppression {
-                ContentMode::Formatted
-            } else {
-                suppression_tail
+                || suppression_tail
                     .as_ref()
-                    .map_or(ContentMode::Formatted, |tail| tail.modes.current)
+                    .is_some_and(|tail| tail.modes.current == ContentMode::Verbatim);
+            let mode = if source_line.owns() || protected {
+                ContentMode::Verbatim
+            } else {
+                ContentMode::Formatted
             };
+            let prologue_string = directive_prologue == DirectivePrologue::Open
+                && matches!(statement, StatementItem::Statement(node)
+                    if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
+                        if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))));
+            let flat_source = source_line.whole && !protected && !prologue_string;
             let following_syntax = if pending.is_some() {
                 Some(FollowingSyntax::Statement)
             } else if matches!(
@@ -837,7 +842,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .as_ref()
                         .and_then(|tail| tail.source_packet)
                 });
-            let punctuation = if source_line.owns() {
+            let punctuation = if source_line.owns()
+                && (!flat_source || source_line.incoming || source_line.outgoing.is_some())
+            {
                 self.statement_source_terminator(statement_span).map_or(
                     StatementPunctuation::Canonical(Semicolons::AsNeeded),
                     StatementPunctuation::Source,
@@ -1053,12 +1060,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 gap_end: leading.last().map(|_| statement_span.start),
             };
-            if directive_prologue == DirectivePrologue::Open
-                && mode == ContentMode::Verbatim
-                && matches!(statement, StatementItem::Statement(node)
-                    if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
-                        if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))))
-            {
+            if prologue_string && mode == ContentMode::Verbatim {
                 // Omitted empty statements no longer protect this verbatim string.
                 expression_start = ExpressionStart::StatementBarrier {
                     terminate_previous: !prior_statement_terminated,
@@ -1142,27 +1144,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             StatementMode::Formatted
                         };
-                        self.format_prepared_statement(
-                            statement,
-                            statement_span,
-                            decorators,
-                            StatementLayout {
-                                start: expression_start,
-                                empty_block: EmptyBlock::Expanded,
-                                source_candidate,
-                                operator_tail_destination: if source_packet.is_none()
-                                    && annotation_tail.is_none()
-                                {
-                                    punctuation.operator_tail_destination()
-                                } else {
-                                    OperatorTailDestination::Local
-                                },
+                        let layout = StatementLayout {
+                            start: expression_start,
+                            empty_block: EmptyBlock::Expanded,
+                            source_candidate,
+                            operator_tail_destination: if source_packet.is_none()
+                                && annotation_tail.is_none()
+                            {
+                                punctuation.operator_tail_destination()
+                            } else {
+                                OperatorTailDestination::Local
                             },
-                            content,
-                            head,
-                            punctuation,
-                            writer,
-                        )?
+                        };
+                        if flat_source {
+                            self.format_flat_source_statement(
+                                statement,
+                                statement_span,
+                                decorators,
+                                layout,
+                                head,
+                                punctuation,
+                                writer,
+                            )?
+                        } else {
+                            self.format_prepared_statement(
+                                statement,
+                                statement_span,
+                                decorators,
+                                layout,
+                                content,
+                                head,
+                                punctuation,
+                                writer,
+                            )?
+                        }
                     }
                 }
             };
@@ -1449,6 +1464,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_line = StatementSourceLine {
             incoming: preparation.incoming_source_line,
             outgoing,
+            whole: self.lint_line_contains(span),
         };
         preparation.incoming_source_line = outgoing.is_some();
         let empty = item.empty(self.ast);
@@ -1664,6 +1680,84 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             content,
             head,
+            punctuation,
+            writer,
+        )
+    }
+
+    /// Prefer a flat canonical statement while its covered source line remains intact.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "Keep the prepared statement envelope and its real head together."
+    )]
+    fn format_flat_source_statement(
+        &mut self,
+        statement: Stmt,
+        span: Span,
+        decorators: Option<StatementDecorators>,
+        mut layout: StatementLayout,
+        head: NodeHead<'ast>,
+        punctuation: StatementPunctuation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        // Expressions own their head together with parentheses and ASI.
+        // Other statements emit the already-claimed head independently.
+        let head = if matches!(
+            self.ast.stmt_data(statement),
+            StmtData::ExpressionStatement(_)
+        ) {
+            head
+        } else {
+            layout.start = self.format_node_head(head, layout.start, None, writer)?;
+            NodeHead {
+                comments: &[],
+                content_start: span.start,
+                layout: CommentRunLayout::Source,
+                gap_end: None,
+            }
+        };
+        let fallback_head = NodeHead {
+            comments: head.comments,
+            content_start: head.content_start,
+            layout: head.layout,
+            gap_end: head.gap_end,
+        };
+        let comments = self.ast.comments();
+        let checkpoint = self.comments.first().map_or(comments.len(), |next| {
+            comments.partition_point(|comment| comment.span.start < next.span.start)
+        });
+        let generation = self.source_object_layout.generation;
+        let formatted = writer.record_with_value(|writer| {
+            self.format_prepared_statement(
+                statement,
+                span,
+                decorators,
+                layout,
+                StatementMode::Formatted,
+                head,
+                punctuation,
+                writer,
+            )
+        });
+        if let Ok((fragment, printed)) = formatted
+            && printed.pending.is_none()
+            && printed.operator_tail.is_none()
+            && let Some(flat) = fragment.try_flat()
+        {
+            writer.write_flat_fragment(flat);
+            return Ok(printed);
+        }
+        // Discarded documents may have claimed internal or trailing comments.
+        // Restore the immutable source frontier before emitting the raw owner.
+        self.comments = CommentCursor::new(&comments[checkpoint..]);
+        self.source_object_layout.generation = generation;
+        self.format_prepared_statement(
+            statement,
+            span,
+            decorators,
+            layout,
+            StatementMode::SourceLine,
+            fallback_head,
             punctuation,
             writer,
         )
