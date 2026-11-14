@@ -7,11 +7,11 @@ second);
 ---------- Options ----------
 {}
 ---------- Output ----------
-(/* @ts-expect-error */ first +
-  second);
+/* @ts-expect-error */ first +
+  second;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;(/* @ts-expect-error */ first +
-  second)
+/* @ts-expect-error */ first +
+  second
