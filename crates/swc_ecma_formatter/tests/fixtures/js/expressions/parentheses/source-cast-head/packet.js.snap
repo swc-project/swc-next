@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+preceding();
+(/*#__PURE__*/
+// note
+/** @type {number} */ (first));
+---------- Options ----------
+{}
+---------- Output ----------
+preceding();
+/*#__PURE__*/
+// note
+/** @type {number} */ (first);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+preceding()
+; /*#__PURE__*/
+// note
+/** @type {number} */ (first)

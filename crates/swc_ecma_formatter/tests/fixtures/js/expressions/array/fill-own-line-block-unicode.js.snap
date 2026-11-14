@@ -6,19 +6,14 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
-[
-  1,
-  /* own */
-  2,
-];
+[1, /* own */ 2];
 
 ---------- Options ----------
 {"printWidth":14}
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];
 
 ---------- Options ----------
@@ -26,8 +21,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];
 
 ---------- Options ----------
@@ -35,8 +29,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];
 
 ---------- Options ----------
@@ -44,26 +37,20 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;[
-  1,
-  /* own */
-  2,
-]
+;[1, /* own */ 2]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 [
   1,
-  /* own */
-  2
+  /* own */ 2
 ];
 
 ---------- Options ----------
@@ -71,8 +58,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];
 
 ---------- Options ----------
@@ -80,8 +66,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
 	1,
-	/* own */
-	2,
+	/* own */ 2,
 ];
 
 ---------- Options ----------
@@ -89,6 +74,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   1,
-  /* own */
-  2,
+  /* own */ 2,
 ];

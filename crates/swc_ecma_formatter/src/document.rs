@@ -5,9 +5,43 @@ use std::convert::Infallible;
 use swc_next_formatter_core::FillSeparatorPolicy;
 
 pub(crate) use swc_next_formatter_core::{
-    ConditionTarget, FillEntry, FlatFragment, Fragment, GroupId, GroupRequest, NeutralFragment,
-    RecordedGroup, Writer,
+    ConditionTarget, FillEntry, FlatFragment, Fragment, GroupId, GroupRequest, GroupScope,
+    IndentScope, NeutralFragment, RecordedGroup, Writer,
 };
+
+/// A prepared operator Line packet belongs before a broken body.
+#[derive(Clone, Copy, Default)]
+pub(crate) enum BodyOpening {
+    #[default]
+    Plain,
+    AfterOperatorLine,
+}
+
+impl BodyOpening {
+    pub(crate) fn group<'a, T>(
+        self,
+        writer: &mut Writer<'a>,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        write: impl FnOnce(&mut Writer<'a>) -> T,
+    ) -> T {
+        if matches!(self, Self::Plain) {
+            return writer.group_with_id(request, id, write);
+        }
+        let id = id.unwrap_or_else(|| writer.next_group_id());
+        writer.group_with_id(request, Some(id), |writer| {
+            let broken = record(writer, |writer| {
+                // The suffix carries its own separating space.
+                writer.trim();
+                writer.line_suffix_boundary();
+            });
+            let flat = record(writer, |_| {});
+            // The body has entered this group before the binding is read.
+            writer.if_break_doc(ConditionTarget::Group(id), broken, flat);
+            write(writer)
+        })
+    }
+}
 
 pub(crate) trait WriterExt<'a> {
     fn join_fragments(

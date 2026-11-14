@@ -1,23 +1,24 @@
 //! Source-ordered type members carry a prepared operator gap and actual ignore owner.
 
 use swc_next_ecma_ast::{
-    Comment, CommentKind, GetSpan, Span, SubRange, TsLiteralData, TsType, TsTypeData,
+    Ast, Comment, CommentKind, GetSpan, Span, SubRange, TsLiteralData, TsType, TsTypeData,
     TsTypeNameData,
 };
 
-use super::context::TypeContext;
+use super::context::{TypeContext, TypeFrame};
 use super::{
-    Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
-    TypeLayout,
+    Formatter, PreparedType, PreparedTypeParentheses, SourceTypeOperator, TypeBoundaryLayout,
+    TypeBoundaryTail, TypeLayout, TypeOutput, TypeSuppressionTarget,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout,
+    PreparedCommentAdjacency,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{
     FormatError,
-    document::{Fragment, Writer},
+    document::{BodyOpening, Fragment, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -102,7 +103,7 @@ enum IntersectionContinuation {
 }
 
 enum IntersectionBoundary<'ast> {
-    Source(Span),
+    Source(SourceTypeOperator),
     Bound {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
@@ -119,6 +120,11 @@ enum IntersectionBoundary<'ast> {
 enum IntersectionPrefix<'ast> {
     Empty,
     Source(Span),
+    /// A later member keeps its source packet inside the continuation scope.
+    SourceMember {
+        after: Span,
+        continuation: IntersectionContinuation,
+    },
     Leading {
         boundary: CommentBoundary<'ast>,
         member_start: u32,
@@ -132,6 +138,8 @@ enum IntersectionPrefix<'ast> {
         member_start: u32,
         leading_own_line: bool,
         continuation: IntersectionContinuation,
+        // This inline prefix leaves the formatted left owner's Line queued.
+        body_opening: BodyOpening,
     },
 }
 
@@ -157,6 +165,12 @@ enum UnionMemberPrefix<'ast> {
         boundary: CommentBoundary<'ast>,
         member_start: u32,
     },
+}
+
+pub(super) struct PreparedUnionHeadPrefix<'ast> {
+    pub(super) boundary: CommentBoundary<'ast>,
+    pub(super) next_start: u32,
+    pub(super) opening: LineConstraint,
 }
 
 impl UnionMemberPrefix<'_> {
@@ -233,6 +247,11 @@ impl<'ast> PreparedUnion<'ast> {
         self
     }
 
+    fn frame(&self, context: TypeContext, ast: &Ast<'_>) -> TypeFrame {
+        let frame = context.frame(self.data, ast);
+        if self.hug { frame.tight() } else { frame }
+    }
+
     pub(super) fn alias_layout(&self) -> TypeLayout {
         if self.hug {
             TypeLayout::Root
@@ -280,6 +299,12 @@ pub(super) struct MovableTypeHead<'ast> {
     pub(super) next_start: u32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TypeHeadGroup {
+    Type,
+    Caller,
+}
+
 /// Pending packets share one resolved frontier and one first-output rendering role.
 pub(super) struct PendingTypeHead<'ast> {
     comments: &'ast [Comment],
@@ -287,6 +312,7 @@ pub(super) struct PendingTypeHead<'ast> {
     leading: Option<MovableTypeHead<'ast>>,
     position: TypeHeadPosition,
     opening: CommentOpening,
+    group: TypeHeadGroup,
 }
 
 enum TypeHeadPosition {
@@ -309,7 +335,18 @@ impl<'ast> PendingTypeHead<'ast> {
             leading,
             position: TypeHeadPosition::Leading,
             opening: CommentOpening::Needed,
+            group: TypeHeadGroup::Type,
         }
+    }
+
+    pub(super) fn group(&self) -> TypeHeadGroup {
+        self.group
+    }
+
+    pub(super) fn with_caller_prefix(mut self) -> Self {
+        self.position = TypeHeadPosition::Emitted;
+        self.group = TypeHeadGroup::Caller;
+        self
     }
 
     pub(super) fn with_opening(mut self, opening: CommentOpening) -> Self {
@@ -383,7 +420,7 @@ impl PreparedTypeContent<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_prepared_union_before_boundary(
+    pub(super) fn format_prepared_union_before_boundary_body(
         &mut self,
         union: PreparedUnion<'ast>,
         context: TypeContext,
@@ -391,12 +428,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         tail: TypeBoundaryTail<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context_with_enclosure(
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_body_in_context_with_enclosure(
             union.data,
             context,
             layout,
-            context.needs_parentheses(union.data, self.ast),
+            union.frame(context, self.ast),
             writer,
             |formatter, layout, enclosure, writer| {
                 formatter.format_union_members(union, layout, enclosure, head, Some(tail), writer)
@@ -521,7 +558,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_compound_type(
+    pub(super) fn format_compound_type_body(
         &mut self,
         node: PreparedType,
         types: SubRange<TsType>,
@@ -529,7 +566,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let mut members = types.iter().map(|id| ast.get_node_in_sub_range(id));
         let Some(first) = members.next() else {
@@ -543,17 +580,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if types.len() == 1 {
             let single =
                 self.prepare_single_compound_head(node, current, leading, first_span, kind)?;
-            let content = self.format_single_compound_head(single, context, writer)?;
-            return self.format_prepared_type_content(content, context, layout, writer);
+            return self.format_type_body_after_head(
+                context,
+                layout,
+                writer,
+                |formatter, writer| formatter.format_single_compound_head(single, context, writer),
+            );
         }
         if matches!(kind, CompoundTypeKind::Union) {
             let union =
                 self.prepare_union_members(node, current, leading, first_span.start, members)?;
-            return self.format_prepared_union(union, context, layout, None, writer);
+            return self.format_prepared_union_body(union, context, layout, None, writer);
         }
         let intersection =
             self.prepare_intersection_members(node, current, leading, first_span.start, members)?;
-        self.format_prepared_intersection(intersection, context, layout, writer)
+        self.format_prepared_intersection_body(intersection, context, layout, writer)
     }
 
     pub(super) fn prepare_intersection(
@@ -663,15 +704,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(intersection)
     }
 
-    pub(super) fn format_prepared_intersection(
+    pub(super) fn format_prepared_intersection_body(
         &mut self,
         intersection: PreparedIntersection<'ast>,
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let head = self.intersection_movable_head(&intersection);
-        self.format_prepared_intersection_with_head(intersection, head, context, layout, writer)
+        self.format_prepared_intersection_with_head_body(
+            intersection,
+            head,
+            context,
+            layout,
+            writer,
+        )
     }
 
     pub(super) fn format_prepared_intersection_with_head(
@@ -682,8 +729,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_intersection_with_head_body(
+            intersection,
+            head,
+            context,
+            layout,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_intersection_with_head_body(
+        &mut self,
+        intersection: PreparedIntersection<'ast>,
+        head: Option<MovableTypeHead<'ast>>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let intersection = self.format_intersection_head(intersection, head, writer)?;
-        self.format_type_in_context(
+        self.format_type_body_in_context(
             intersection.data,
             context,
             layout,
@@ -791,9 +856,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
-        if self.select_compound_boundary_suppression::<false>(operator, before, after, left, right)
+        if self
+            .select_compound_boundary_suppression::<false>(operator, before, after, left, right)
+            .is_some()
         {
-            return Ok(IntersectionBoundary::Source(gap));
+            return Ok(IntersectionBoundary::Source(SourceTypeOperator::new(
+                gap,
+                Span::new(operator, operator + 1),
+            )));
         }
         if !matches!(
             self.comment_binding(comments, gap, Some(right.node.span(self.ast))),
@@ -812,7 +882,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.intersection_comment_attachments(comments, gap.start, operator, gap.end)
         else {
             // Relocating interleaved owners would change comment identity order.
-            return Ok(IntersectionBoundary::Source(gap));
+            return Ok(IntersectionBoundary::Source(SourceTypeOperator::new(
+                gap,
+                Span::new(operator, operator + 1),
+            )));
         };
         let (trailing, leading) = comments.split_at(trailing_count);
         Ok(IntersectionBoundary::Formatted {
@@ -857,7 +930,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 following
             };
             let ends_line = self.line_breaks(last.span.end, following) != 0;
-            let run_leading = self.source_line_starts_line(first.span.start)
+            let run_leading = self.layout_line_starts_line(first.span.start)
                 || !before_operator
                     && (!ends_line
                         || last.kind == CommentKind::Line
@@ -907,7 +980,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         intersection: PreparedIntersection<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         writer.group(false, |writer| {
             let mut prefix = intersection.leading;
             for link in intersection.links {
@@ -932,9 +1005,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
             }
-            self.format_intersection_member(intersection.last, prefix, writer, |_, tail, _| {
-                Ok(tail)
-            })
+            let tail = self.format_intersection_member(
+                intersection.last,
+                prefix,
+                writer,
+                |_, tail, _| Ok(tail),
+            )?;
+            Ok(TypeOutput::from_pending(tail))
         })
     }
 
@@ -949,6 +1026,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
+        let body_opening = match &prefix {
+            IntersectionPrefix::Member { body_opening, .. } => *body_opening,
+            _ => BodyOpening::Plain,
+        };
         let receives_head_line = match &prefix {
             IntersectionPrefix::Member {
                 continuation,
@@ -967,10 +1048,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             IntersectionPrefix::Empty
             | IntersectionPrefix::Source(_)
+            | IntersectionPrefix::SourceMember { .. }
             | IntersectionPrefix::Leading { .. } => false,
-        };
-        let context = TypeContext::IntersectionMember {
-            line_continuation: receives_head_line,
         };
         let indent = matches!(
             &prefix,
@@ -982,12 +1061,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 continuation: IntersectionContinuation::Line
                     | IntersectionContinuation::Inline { indent: true },
                 ..
+            } | IntersectionPrefix::SourceMember {
+                continuation: IntersectionContinuation::Line
+                    | IntersectionContinuation::Inline { indent: true },
+                ..
             }
         );
         let content = |writer: &mut Writer<'ast>| {
+            let mut receives_head_line = receives_head_line;
             match prefix {
                 IntersectionPrefix::Empty => {}
                 IntersectionPrefix::Source(span) => self.format_verbatim(span, writer)?,
+                IntersectionPrefix::SourceMember { after, .. } => {
+                    receives_head_line = matches!(
+                        self.format_type_source_head_gap(after, writer)?,
+                        LineConstraint::NewLine(_)
+                    );
+                }
                 IntersectionPrefix::Leading {
                     boundary,
                     member_start,
@@ -1017,6 +1107,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     member_start,
                     leading_own_line,
                     continuation,
+                    ..
                 } => {
                     if leading_own_line {
                         writer.line();
@@ -1033,15 +1124,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
-            let tail = match node {
-                IntersectionMember::Type(node) => {
-                    self.format_prepared_type(node, context, writer)?
-                }
-                IntersectionMember::Prepared(content) => {
-                    self.format_prepared_type_content(*content, context, TypeLayout::Root, writer)?
-                }
+            let context = TypeContext::IntersectionMember {
+                line_continuation: receives_head_line,
+                body_opening,
             };
-            finish(self, tail, writer)
+            let output = match node {
+                IntersectionMember::Type(node) => {
+                    self.format_prepared_type_body(node, context, TypeLayout::Root, writer)?
+                }
+                IntersectionMember::Prepared(content) => self.format_prepared_type_content_body(
+                    *content,
+                    context,
+                    TypeLayout::Root,
+                    writer,
+                )?,
+            };
+            finish(self, output.pending, writer)
         };
         if indent {
             writer.indent(content)
@@ -1106,6 +1204,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 member_start: *member_start,
                 leading_own_line: true,
                 continuation,
+                body_opening: BodyOpening::Plain,
             });
         }
         let tail_has_line = tail.as_ref().is_some_and(|(tail, _)| {
@@ -1118,7 +1217,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.hard_line();
         }
         let (before, after, member_start, leading_own_line) = match boundary {
-            IntersectionBoundary::Source(span) => return Ok(IntersectionPrefix::Source(span)),
+            IntersectionBoundary::Source(source) => {
+                self.format_source_gap(source.prefix, writer)?;
+                return Ok(IntersectionPrefix::SourceMember {
+                    after: source.after,
+                    continuation,
+                });
+            }
             IntersectionBoundary::Bound { before, after, .. } => {
                 self.format_intersection_before(&before, tail_has_line, writer)?;
                 before
@@ -1146,11 +1251,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.space();
         }
         writer.text("&");
+        // A following leading run or line owns the handoff instead of the body.
+        let body_opening = if matches!(continuation, IntersectionContinuation::Inline { .. })
+            && !leading_own_line
+            && after.is_empty()
+            && before
+                .comments()
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            BodyOpening::AfterOperatorLine
+        } else {
+            BodyOpening::Plain
+        };
         Ok(IntersectionPrefix::Member {
             boundary: after,
             member_start,
             leading_own_line,
             continuation,
+            body_opening,
         })
     }
 
@@ -1219,6 +1338,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    fn union_layout_member(&self, mut member: PreparedType) -> Result<PreparedType, FormatError> {
+        loop {
+            member = self.normalize_type_head(member)?;
+            if member.source_owner.is_some() || member.source_head.is_some() {
+                return Ok(member);
+            }
+            let TsTypeData::TsParenthesizedType(node) = member.data else {
+                return Ok(member);
+            };
+            let parentheses =
+                self.prepare_type_parentheses(node, None, None, TypeContext::UnionMember);
+            if parentheses.retained {
+                return Ok(member);
+            }
+            member = parentheses.child;
+        }
+    }
+
     fn prepare_union_members(
         &self,
         node: PreparedType,
@@ -1285,6 +1422,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let mut hug = match &leading {
+            _ if preserve_lines => UnionHug::Unavailable,
             UnionLeading::Empty => UnionHug::NoObject,
             UnionLeading::Formatted { before, after, .. }
                 if before.is_empty() && after.boundary().is_empty() =>
@@ -1312,16 +1450,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut current,
                 &mut next,
             )?;
-            hug.include(current);
             hug.include_boundary(&boundary);
+            if !matches!(hug, UnionHug::Unavailable) {
+                hug.include(self.union_layout_member(current)?);
+            }
             links.push(UnionLink {
                 left: current,
                 boundary,
             });
             current = next;
         }
-        hug.include(current);
-        let hug = matches!(hug, UnionHug::Object) && !preserve_lines;
+        if !matches!(hug, UnionHug::Unavailable) {
+            hug.include(self.union_layout_member(current)?);
+        }
+        let hug = matches!(hug, UnionHug::Object);
         Ok(PreparedUnion {
             data: node.data,
             inline_head_target: (node.source_owner != Some(node.node)
@@ -1346,11 +1488,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context_with_enclosure(
+        self.format_prepared_union_body(union, context, layout, head, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_union_body(
+        &mut self,
+        union: PreparedUnion<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        head: Option<Fragment<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_body_in_context_with_enclosure(
             union.data,
             context,
             layout,
-            context.needs_parentheses(union.data, self.ast),
+            union.frame(context, self.ast),
             writer,
             |formatter, layout, enclosure, writer| {
                 formatter.format_union_members(union, layout, enclosure, head, None, writer)
@@ -1366,7 +1520,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let PreparedUnion {
             leading,
             links,
@@ -1384,19 +1538,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.write_fragment(head);
             }
             let content = |writer: &mut Writer<'ast>| {
-                let leading = self.format_union_leading(leading, hug, writer)?;
+                let leading = self.format_union_leading(leading, hug, preserve_lines, writer)?;
                 let mut prefix = leading;
                 let mut prepared = None;
                 let mut links = links.into_iter().peekable();
                 while let Some(link) = links.next() {
-                    let tail =
+                    let output =
                         self.format_union_member(link.left, prefix, prepared, hug, writer)?;
-                    self.format_expression_tail(tail, writer)?;
+                    let adjacency =
+                        self.format_expression_tail_adjacency(output.pending, writer)?;
                     let next = links.peek().map_or(last, |link| link.left);
                     (prefix, prepared) =
-                        self.format_union_separator(link.boundary, next, hug, writer)?;
+                        self.format_union_separator(link.boundary, next, hug, adjacency, writer)?;
                 }
-                let tail = self.format_union_member(last, prefix, prepared, hug, writer)?;
+                let output = self.format_union_member(last, prefix, prepared, hug, writer)?;
+                let tail = output.pending;
                 let own_line = self.type_tail_closing_gap(tail.as_ref()).is_some();
                 let enclosed_line_tail = enclosure == super::TypeEnclosure::Parentheses
                     && tail.as_ref().is_some_and(|tail| {
@@ -1404,7 +1560,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .last()
                             .is_some_and(|comment| comment.kind == CommentKind::Line)
                     });
+                // Physical tails participate in this body group even after their
+                // original enclosing pair has been removed.
+                let enclosed_packet_tail = enclosure == super::TypeEnclosure::Parentheses
+                    && self
+                        .type_tail_continuation_gap(tail.as_ref(), false)
+                        .is_some();
                 if enclosed_line_tail
+                    || enclosed_packet_tail
                     || layout == TypeLayout::ContinuationRoot
                         && self
                             .type_tail_continuation_gap(tail.as_ref(), true)
@@ -1413,31 +1576,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     writer.break_parent();
                 }
-                let tail = if enclosure == super::TypeEnclosure::Parentheses && own_line {
+                let tail = if enclosed_packet_tail {
                     self.format_expression_tail(tail, writer)?;
                     None
                 } else {
                     tail
                 };
                 if let Some(trailing) = trailing {
-                    self.format_expression_tail(tail, writer)?;
-                    self.format_comment_boundary(&trailing, writer)?;
-                    Ok(None)
+                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
+                    self.format_comment_boundary_after(&trailing, adjacency, writer)?;
+                    Ok(TypeOutput::closed())
                 } else {
-                    Ok(tail)
+                    Ok(TypeOutput::from_pending(tail))
                 }
             };
-            let pending = if hug || tuple_element {
+            let output = if hug || tuple_element {
                 content(writer)?
             } else {
                 writer.group(false, content)?
             };
             if let Some(tail) = tail {
-                self.format_expression_tail(pending, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
                 self.format_type_boundary_tail(tail, writer)?;
-                Ok(None)
+                Ok(TypeOutput::closed())
             } else {
-                Ok(pending)
+                Ok(output)
             }
         };
         if hug {
@@ -1477,21 +1640,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         leading: UnionLeading<'ast>,
         hug: bool,
+        preserve_lines: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<UnionMemberPrefix<'ast>>, FormatError> {
+        // A source-sensitive union can inherit a broken group while its own
+        // separators remain on their original lines. Its leading operator must
+        // therefore come from the source rather than the surrounding group.
         match leading {
             UnionLeading::Source(span) => {
                 self.format_verbatim(span, writer)?;
                 Ok(None)
             }
             UnionLeading::Empty => {
-                if !hug {
+                if !hug && !preserve_lines {
                     writer.if_break("| ");
                 }
                 Ok(None)
             }
             UnionLeading::MemberHead(prefix) => {
-                if !hug {
+                if !hug && !preserve_lines {
                     writer.if_break("| ");
                 }
                 Ok(Some(prefix))
@@ -1515,7 +1682,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 if retain_operator {
                     writer.text(operator);
-                } else if !hug {
+                } else if !hug && !preserve_lines {
                     writer.if_break(operator);
                 }
                 if after.boundary().is_empty() {
@@ -1547,7 +1714,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: Option<Box<PreparedTypeContent<'ast>>>,
         hug: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let align = !hug && self.union_member_needs_alignment(node, prefix.as_ref());
         let content = |writer: &mut Writer<'ast>| {
             if let Some(prefix) = prefix {
@@ -1570,16 +1737,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let tail = match prepared {
-                Some(content) => self.format_prepared_type_content(
+            let output = match prepared {
+                Some(content) => self.format_prepared_type_content_body(
                     *content,
                     TypeContext::UnionMember,
                     TypeLayout::Root,
                     writer,
                 )?,
-                None => self.format_prepared_type(node, TypeContext::UnionMember, writer)?,
+                None => self.format_prepared_type_body(
+                    node,
+                    TypeContext::UnionMember,
+                    TypeLayout::Root,
+                    writer,
+                )?,
             };
-            Ok(tail)
+            Ok(output)
         };
         if align {
             writer.align(2, content)
@@ -1639,6 +1811,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: TypeBoundaryLayout<'ast>,
         next: PreparedType,
         hug: bool,
+        adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<
         (
@@ -1664,7 +1837,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        self.format_comment_boundary(&before, writer)?;
+        self.format_comment_boundary_after(&before, adjacency, writer)?;
         before.gap().write(writer, FlatSeparator::Space, |writer| {
             if hug {
                 writer.space();
@@ -1675,7 +1848,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(head) = head
             && head.comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.source_line_starts_line(comment.span.start)
+                    || self.layout_line_starts_line(comment.span.start)
             })
             && matches!(
                 self.comment_boundary_binding(&after, next.node.span(self.ast)),
@@ -1814,6 +1987,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         union: &mut PreparedUnion<'ast>,
         pending: &mut PendingTypeHead<'ast>,
     ) {
+        if pending.group == TypeHeadGroup::Caller
+            && matches!(pending.position, TypeHeadPosition::Emitted)
+        {
+            pending.position = TypeHeadPosition::Leading;
+        }
         let Some(target) = union.inline_head_target else {
             return;
         };
@@ -1924,8 +2102,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.break_parent();
             self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
             if let Some(last) = comments.last() {
-                self.comment_gap_constraint(last.span.end, next_start)
-                    .write(writer, FlatSeparator::Space, |_| {});
+                self.comment_gap_after_constraint(*last, next_start).write(
+                    writer,
+                    FlatSeparator::Space,
+                    |_| {},
+                );
             }
             return Ok(());
         }
@@ -1986,8 +2167,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    /// Keep the exterior prefix while returning an adjacent run to the member owner.
+    pub(super) fn prepare_union_inline_packet(
+        &self,
+        union: &mut PreparedUnion<'ast>,
+        boundary: &CommentBoundary<'ast>,
+    ) -> Option<PreparedUnionHeadPrefix<'ast>> {
+        let comments = boundary.comments();
+        if comments.is_empty() {
+            return None;
+        }
+        if !union.accepts_inline_head() {
+            return None;
+        }
+        let target = union.inline_head_target?;
+        let mut split = comments.len();
+        let mut next = target.start;
+        while split != 0 {
+            let comment = comments[split - 1];
+            if comment.kind != CommentKind::Block || self.line_breaks(comment.span.end, next) != 0 {
+                break;
+            }
+            if self.line_breaks(comment.span.start, comment.span.end) != 0 {
+                return None;
+            }
+            next = comment.span.start;
+            split -= 1;
+        }
+        let (prefix, member) = comments.split_at(split);
+        let first = member.first()?;
+        if !matches!(
+            self.comment_binding(
+                member,
+                Span::new(first.span.start, target.start),
+                Some(target),
+            ),
+            CommentBinding::Unbound
+        ) {
+            return None;
+        }
+        let prefix = self.prepare_comment_boundary(prefix, boundary.source_end(), first.span.start);
+        let opening = self.line_constraint(boundary.source_end(), comments[0].span.start);
+        let next_start = first.span.start;
+        let member = self.prepare_comment_boundary(member, first.span.start, target.start);
+        union.set_inline_head(member, target.start);
+        Some(PreparedUnionHeadPrefix {
+            boundary: prefix,
+            next_start,
+            opening,
+        })
+    }
+
     /// Delay the complete head until its surviving content owner is known.
     pub(super) fn format_movable_type_head(
+        &mut self,
+        current: PreparedType,
+        pending: &mut PendingTypeHead<'ast>,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedTypeContent<'ast>, FormatError> {
+        self.with_recursion(current.node, |formatter| {
+            formatter.format_movable_type_head_inner(current, pending, context, writer)
+        })
+    }
+
+    fn format_movable_type_head_inner(
         &mut self,
         mut current: PreparedType,
         pending: &mut PendingTypeHead<'ast>,
@@ -2113,26 +2357,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_type_content_body(content, context, layout, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_prepared_type_content_body(
+        &mut self,
+        content: PreparedTypeContent<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.with_recursion_scope(|formatter| {
+            formatter.format_prepared_type_content_inner(content, context, layout, writer)
+        })
+    }
+
+    fn format_prepared_type_content_inner(
+        &mut self,
+        content: PreparedTypeContent<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         match content {
             PreparedTypeContent::Union(union) => {
-                self.format_prepared_union(union, context, layout, None, writer)
+                self.format_prepared_union_body(union, context, layout, None, writer)
             }
             PreparedTypeContent::Intersection(intersection) => {
-                self.format_prepared_intersection(intersection, context, layout, writer)
+                self.format_prepared_intersection_body(intersection, context, layout, writer)
             }
             PreparedTypeContent::Postfix(postfix) => {
-                self.format_prepared_postfix_type(postfix, context, layout, writer)
+                self.format_prepared_postfix_type_body(postfix, context, layout, writer)
             }
             PreparedTypeContent::Conditional(conditional) => {
-                self.format_prepared_conditional_type(conditional, context, layout, writer)
+                self.format_prepared_conditional_type_body(conditional, context, layout, writer)
             }
             PreparedTypeContent::Type(node) => {
-                self.format_prepared_type_with_layout(node, context, layout, writer)
+                self.format_prepared_type_body(node, context, layout, writer)
             }
             PreparedTypeContent::Parentheses(parentheses) => {
-                self.format_prepared_type_parentheses(parentheses, context, layout, writer)
+                self.format_prepared_type_parentheses_body(parentheses, context, layout, writer)
             }
-            PreparedTypeContent::Compound(single) => self.format_type_in_context(
+            PreparedTypeContent::Compound(single) => self.format_type_body_in_context(
                 single.data,
                 context,
                 layout,
@@ -2163,7 +2430,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         kind: CompoundTypeKind,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let CompoundHead {
             mut current,
@@ -2210,14 +2477,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let gap = Span::new(current.node.span(ast).end, next.node.span(ast).start);
                     let boundary =
                         self.prepare_compound_boundary(gap, kind, &mut current, &mut next)?;
-                    let tail = self.format_compound_member(current, kind, layout, writer)?;
-                    self.format_expression_tail(tail, writer)?;
+                    let output = self.format_compound_member(current, kind, layout, writer)?;
+                    self.format_expression_tail(output.pending, writer)?;
                     self.format_compound_boundary(boundary, kind, writer)?;
                     current = next;
                 }
-                let tail = self.format_compound_member(current, kind, layout, writer)?;
-                self.format_expression_tail(tail, writer)?;
-                Ok(None)
+                let output = self.format_compound_member(current, kind, layout, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
+                Ok(TypeOutput::closed())
             };
             if layout == TypeLayout::AliasRhs {
                 content(writer)
@@ -2233,15 +2500,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         kind: CompoundTypeKind,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let context = match kind {
             CompoundTypeKind::Union => TypeContext::UnionMember,
             CompoundTypeKind::Intersection => TypeContext::CompoundMember,
         };
         if layout == TypeLayout::AliasRhs && matches!(kind, CompoundTypeKind::Union) {
-            writer.align(2, |writer| self.format_prepared_type(node, context, writer))
+            writer.align(2, |writer| {
+                self.format_prepared_type_body(node, context, TypeLayout::Root, writer)
+            })
         } else {
-            self.format_prepared_type(node, context, writer)
+            self.format_prepared_type_body(node, context, TypeLayout::Root, writer)
         }
     }
 
@@ -2272,7 +2541,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         operator, before, after, left, right,
                     ),
             };
-            if source {
+            if let Some(target) = source {
+                let right_span = right.node.span(self.ast);
+                if matches!(kind, CompoundTypeKind::Union)
+                    && matches!(target, TypeSuppressionTarget::Following)
+                    && right.source_owner == Some(right.node)
+                    && comments.first().is_some_and(|comment| {
+                        let previous_end = if comment.span.start < operator {
+                            gap.start
+                        } else {
+                            operator + 1
+                        };
+                        self.line_breaks(previous_end, comment.span.start) != 0
+                    })
+                    && self
+                        .comment_binding(comments, gap, Some(right_span))
+                        .allows_relocation(Some(right_span))
+                {
+                    return Ok(TypeBoundaryLayout::Formatted {
+                        before: self.prepare_comment_boundary(comments, gap.start, gap.end),
+                        after: CommentBoundary::adjacent(gap.end),
+                    });
+                }
                 return Ok(TypeBoundaryLayout::Source(gap));
             }
         }
@@ -2347,14 +2637,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         after: &[Comment],
         left: &mut PreparedType,
         right: &mut PreparedType,
-    ) -> bool {
+    ) -> Option<TypeSuppressionTarget> {
         if !self.has_suppression {
-            return false;
+            return None;
         }
-        let mut source = false;
+        let mut target: Option<TypeSuppressionTarget> = None;
         let mut attachment = None;
         for (_, position) in self.suppressed_comment_runs(before, operator) {
-            source = true;
+            let selected = if matches!(position, SuppressionPosition::OwnLine) {
+                TypeSuppressionTarget::Following
+            } else {
+                TypeSuppressionTarget::Preceding
+            };
+            target = Some(target.map_or(selected, |target| target.combine(selected)));
             if matches!(position, SuppressionPosition::OwnLine) {
                 if UNION {
                     right.source_owner = Some(right.node);
@@ -2368,7 +2663,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         for (_, position) in self.suppressed_comment_runs(after, right.node.span(self.ast).start) {
-            source = true;
+            let selected = if matches!(position, SuppressionPosition::EndOfLine) {
+                TypeSuppressionTarget::Preceding
+            } else {
+                TypeSuppressionTarget::Following
+            };
+            target = Some(target.map_or(selected, |target| target.combine(selected)));
             if matches!(position, SuppressionPosition::EndOfLine) {
                 left.source_owner = Some(left.node);
             } else {
@@ -2393,7 +2693,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self.comments.in_range(Span::new(start, end));
             self.finalize_type_head(right, &attachment, comments);
         }
-        source
+        target
     }
 
     fn format_compound_boundary(

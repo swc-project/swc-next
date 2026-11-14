@@ -11,7 +11,7 @@ class C {
 {"printWidth":80}
 ---------- Output ----------
 class C {
-  value = /* ordinary */ <Item value={61} /> /* source tail */;
+  value = (/* ordinary */ <Item value={61} />) /* source tail */;
   // prettier-ignore
   next=  [  1,2  ];
 }
@@ -20,7 +20,7 @@ class C {
 {"printWidth":80,"semi":false}
 ---------- Output ----------
 class C {
-  value = /* ordinary */ <Item value={61} /> /* source tail */;
+  value = (/* ordinary */ <Item value={61} />) /* source tail */;
   // prettier-ignore
   next=  [  1,2  ];
 }

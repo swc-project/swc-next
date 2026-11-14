@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export = value /* comment */;
+---------- Options ----------
+{}
+---------- Output ----------
+export = value /* comment */;

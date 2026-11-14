@@ -15,7 +15,7 @@ const value = <LongType>(
 ---------- Output ----------
 const value = <
   LongType
-> /* operand head */ receiver.method(
+>/* operand head */ receiver.method(
   firstArgument,
   secondArgument,
 );
@@ -26,7 +26,7 @@ const value = <
 const value =
   <
     LongType
-  > /* operand head */ receiver.method(
+  >/* operand head */ receiver.method(
     firstArgument,
     secondArgument,
   )
@@ -36,7 +36,7 @@ const value =
 ---------- Output ----------
 const value = <
 	LongType
-> /* operand head */ receiver.method(
+>/* operand head */ receiver.method(
 	firstArgument,
 	secondArgument,
 );

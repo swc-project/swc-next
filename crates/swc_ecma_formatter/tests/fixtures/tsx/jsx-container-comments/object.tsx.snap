@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = <div>{{ /* a */ /* b */ }}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const a = (
+  <div>
+    {
+      {
+        /* a */
+        /* b */
+      }
+    }
+  </div>
+);

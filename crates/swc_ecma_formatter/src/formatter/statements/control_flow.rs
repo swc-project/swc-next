@@ -25,7 +25,10 @@ use crate::formatter::expressions::{
 };
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{ConditionTarget, Writer},
+};
 
 #[derive(Clone, Copy)]
 enum ControlledBodyRole {
@@ -76,6 +79,7 @@ struct ControlledBody<'ast> {
     source_candidate: ContinuationBoundary,
     end: ControlledBodyEnd,
     annotation_tail: Option<ControlledBodyTail<'ast>>,
+    operator_tail: Option<&'ast super::DeferredOperatorTail<'ast>>,
 }
 
 /// The statement may consume a prefix while preserving an ignored source terminator.
@@ -84,7 +88,25 @@ struct ControlledBodyTail<'ast> {
     binding: CommentBinding,
 }
 
-impl ControlledBody<'_> {
+impl<'ast> ControlledBody<'ast> {
+    fn condition_suffix(&self) -> Option<ConditionLineSuffix<'ast>> {
+        if !matches!(self.shape, ControlledBodyShape::Block)
+            || !matches!(self.end, ControlledBodyEnd::LoopCondition(_))
+        {
+            return None;
+        }
+        let tail = self.annotation_tail.as_ref()?;
+        tail.binding
+            .allows_relocation(None)
+            .then(|| ConditionLineSuffix::new(tail.tail.comments))
+            .flatten()
+    }
+
+    fn with_operator_tail(mut self, tail: Option<&'ast super::DeferredOperatorTail<'ast>>) -> Self {
+        self.operator_tail = tail;
+        self
+    }
+
     fn with_empty_block(mut self, empty: EmptyBlock) -> Self {
         self.empty_block = empty;
         self
@@ -122,6 +144,22 @@ enum ConditionHeader<'ast> {
         relocate_before_opening: bool,
     },
     Source(Span),
+}
+
+#[derive(Clone, Copy)]
+struct ConditionLineSuffix<'ast> {
+    comments: &'ast [Comment],
+}
+
+impl<'ast> ConditionLineSuffix<'ast> {
+    fn new(comments: &'ast [Comment]) -> Option<Self> {
+        let (last, prefix) = comments.split_last()?;
+        (last.kind == CommentKind::Line
+            && prefix
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block))
+        .then_some(Self { comments })
+    }
 }
 
 struct Condition<'ast> {
@@ -354,6 +392,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         condition: Condition<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_condition_with_suffix(condition, None, writer)
+    }
+
+    fn format_condition_line_suffix(
+        &mut self,
+        suffix: ConditionLineSuffix<'ast>,
+        opening: FlatSeparator,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(suffix.comments)?;
+        let Some((line, prefix)) = suffix.comments.split_last() else {
+            return Ok(());
+        };
+        if !prefix.is_empty() {
+            if matches!(opening, FlatSeparator::Space) {
+                writer.space();
+            }
+            self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
+        }
+        writer.line_suffix(|writer| {
+            writer.space();
+            writer.text(self.source(line.span).trim_end());
+            Ok(())
+        })
+    }
+
+    fn format_condition_with_suffix(
+        &mut self,
+        condition: Condition<'ast>,
+        suffix: Option<ConditionLineSuffix<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let Condition {
             header,
             expression,
@@ -409,7 +479,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.line_constraint(opening + 1, first)
             }
         };
-        writer.group(false, |writer| {
+        if let Some(suffix) = suffix {
+            self.format_condition_line_suffix(suffix, FlatSeparator::Empty, writer)?;
+        }
+        writer.group(suffix.is_some(), |writer| {
             let mut write_contents = |writer: &mut Writer<'ast>| {
                 if !inline {
                     opening_constraint.write(writer, FlatSeparator::Empty, Writer::soft_line);
@@ -524,6 +597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_candidate: ContinuationBoundary::End,
             end,
             annotation_tail,
+            operator_tail: None,
         }
     }
 
@@ -657,7 +731,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             punctuation,
             source_candidate,
             end,
-            annotation_tail,
+            ref annotation_tail,
+            operator_tail,
         } = body;
         let trailing_limit = end.limit();
         let first = leading
@@ -674,10 +749,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ControlledBodyShape::Block | ControlledBodyShape::ElseIf | ControlledBodyShape::Label
         );
         let empty = matches!(shape, ControlledBodyShape::Empty);
-        let compact_head = matches!(
-            (shape, empty_block),
-            (ControlledBodyShape::Block, EmptyBlock::Compact)
-        ) && mode == ContentMode::Formatted
+        let compact_head = operator_tail.is_none()
+            && matches!(
+                (shape, empty_block),
+                (ControlledBodyShape::Block, EmptyBlock::Compact)
+            )
+            && mode == ContentMode::Formatted
             && leading.first().is_some_and(|comment| {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(head_end, comment.span.start) == 0
@@ -697,15 +774,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inline_head = empty
             && mode == ContentMode::Formatted
             && !matches!(constraint, LineConstraint::NewLine(_));
-        let write_body = |writer: &mut Writer<'ast>| {
-            let flat = if empty && leading.is_empty() {
+        let write_gap = |constraint: LineConstraint,
+                         leading_line: bool,
+                         has_operator_head: bool,
+                         writer: &mut Writer<'ast>| {
+            let flat = if empty && leading.is_empty() && !has_operator_head {
                 FlatSeparator::Empty
             } else {
                 FlatSeparator::Space
             };
             constraint.write(writer, flat, |writer| {
                 if empty && mode == ContentMode::Formatted {
-                    if !leading.is_empty() {
+                    if !leading.is_empty() || has_operator_head {
                         writer.space();
                     }
                 } else if leading_line {
@@ -717,10 +797,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.line();
                 }
             });
+        };
+        let mut write_body = |writer: &mut Writer<'ast>| {
+            if let Some(tail) = operator_tail {
+                debug_assert!(tail.destination() == super::OperatorTailDestination::ControlledBody);
+                let (headed, ()) = writer.record_with_value(|writer| {
+                    write_gap(LineConstraint::Unconstrained, false, true, writer);
+                    self.format_deferred_operator_head(tail, first, writer);
+                    Ok::<_, FormatError>(())
+                })?;
+                if let Some(group) = tail.flat_group() {
+                    let (ordinary, ()) = writer.record_with_value(|writer| {
+                        write_gap(constraint, leading_line, false, writer);
+                        Ok::<_, FormatError>(())
+                    })?;
+                    writer.if_break_doc(ConditionTarget::Group(group), ordinary, headed);
+                } else {
+                    writer.write_fragment(headed);
+                }
+            } else {
+                write_gap(constraint, leading_line, false, writer);
+            }
             self.comments.claim(leading)?;
             let mut printed = self.format_statement(
                 statement,
                 StatementLayout {
+                    operator_tail_destination: super::OperatorTailDestination::Local,
                     start: ExpressionStart::StatementBody,
                     empty_block,
                     source_candidate: if matches!(
@@ -776,9 +878,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .any(|comment| comment.kind == CommentKind::Line)
                 });
                 if line_tail {
-                    // The keyword owns the packet after this body's indent,
-                    // while its pending line suffix still breaks the body group.
-                    writer.break_parent();
+                    if body.condition_suffix().is_none() {
+                        writer.break_parent();
+                    }
                 } else {
                     printed = self.flush_statement_tail(printed, writer)?.into();
                 }

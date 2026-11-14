@@ -9,14 +9,17 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::{
-    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, ChainArgumentFacts,
-    SourceArguments,
+    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallArgumentPolicy, CallFrameRole,
+    ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
+use super::parentheses::ExpressionContent;
+use super::typescript::{PreparedBinaryTypeExpression, TypeBinaryOperator};
 use super::{
     ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
+    TailOwner,
 };
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
@@ -59,23 +62,25 @@ pub(super) struct SelectedCallback {
     prepared_body: Option<PreparedArrowBody>,
 }
 
-pub(super) struct SelectedObject {
+pub(super) struct SelectedObject<'ast> {
     argument: Argument,
     expression: Expr,
     object: ObjectExpression,
+    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) struct SelectedArray {
+pub(super) struct SelectedArray<'ast> {
     argument: Argument,
     expression: Expr,
     array: ArrayExpression,
     arity: ArrayArgumentArity,
+    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) enum SelectedArgument {
+pub(super) enum SelectedArgument<'ast> {
     Callback(SelectedCallback),
-    FinalObject(SelectedObject),
-    FinalArray(SelectedArray),
+    FinalObject(SelectedObject<'ast>),
+    FinalArray(SelectedArray<'ast>),
 }
 
 enum SelectionOutcome {
@@ -121,6 +126,8 @@ struct RecordedArgument<'a> {
 #[derive(Clone, Copy)]
 enum GroupedSignature<'a> {
     Independent(Fragment<'a>),
+    /// Retain named signature groups while fitting the head in the call.
+    CallFit(Fragment<'a>),
     Flat(FlatFragment<'a>),
 }
 
@@ -154,14 +161,10 @@ impl<'a> RecordedArgument<'a> {
                 }
                 match grouping_view(value, policy) {
                     Some(value) => GroupedValue::Ordinary(value),
-                    // A callback candidate may retain a neighbor's independent
-                    // groups, including named groups that cannot be projected.
-                    // Its first line must still fit with the callback signature.
-                    None if matches!(policy, GroupingPolicy::Callback)
-                        && !value.has_intrinsic_lines() =>
-                    {
-                        GroupedValue::Retained(value)
-                    }
+                    // Preserve a neighboring value's independent groups when
+                    // the complete flat view cannot represent them. Its first
+                    // line still participates in the selected layout fit.
+                    None if !value.has_intrinsic_lines() => GroupedValue::Retained(value),
                     None => return None,
                 }
             }
@@ -377,7 +380,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             role: CallbackRole::Test,
             prepared_body: None,
         };
-        let (value, tail) = self.record_callback(&mut selected, false, jsx_call, None, writer)?;
+        let (value, tail) =
+            self.record_callback(&mut selected, false, false, jsx_call, None, writer)?;
         match value {
             RecordedValue::Callback {
                 signature: Some(signature),
@@ -385,7 +389,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ..
             } => {
                 match signature {
-                    GroupedSignature::Independent(signature) => writer.write_fragment(signature),
+                    GroupedSignature::Independent(signature)
+                    | GroupedSignature::CallFit(signature) => writer.write_fragment(signature),
                     GroupedSignature::Flat(signature) => writer.write_flat_fragment(signature),
                 }
                 writer.write_fragment(body);
@@ -409,6 +414,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         };
         let content = self.expression_content(expression);
+        self.callback_content(&content)
+    }
+
+    fn callback_content(&self, content: &ExpressionContent) -> Option<Callback> {
         if let Some(boundary) = content.parentheses.map(|removed| removed.source)
             && (!self
                 .comments
@@ -484,8 +493,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn select_argument_layout(
         &self,
         arguments: SubRange<Argument>,
-        allow_final_collection: bool,
-    ) -> Option<SelectedArgument> {
+    ) -> Option<SelectedArgument<'ast>> {
         let ast = self.ast;
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let first = items.next()?;
@@ -509,15 +517,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ArgumentData::Expr(expression) = data else {
             return None;
         };
-        let content = self.expression_content(expression);
-        let allow_final_collection = allow_final_collection
-            && content
+        let mut content = self.expression_content(expression);
+        let mut wrappers = Vec::new();
+        let mut context = ExpressionContext::at(ExpressionPosition::Nested);
+        let mut allow_final_collection = content
+            .parentheses
+            .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
+        while arguments.len() > 1 && allow_final_collection {
+            let (operand, annotation, operator) = match content.data {
+                ExprData::TsAsExpression(assertion) => (
+                    assertion.expression(ast),
+                    assertion.type_annotation(ast),
+                    TypeBinaryOperator::As,
+                ),
+                ExprData::TsSatisfiesExpression(assertion) => (
+                    assertion.expression(ast),
+                    assertion.type_annotation(ast),
+                    TypeBinaryOperator::Satisfies,
+                ),
+                _ => break,
+            };
+            let source = self
+                .prepare_binary_type_expression(operand, annotation, operator, context.tail_owner)
+                .ok()?;
+            if source.operand_mode() != ContentMode::Formatted {
+                return None;
+            }
+            wrappers.push(source);
+            content = self.expression_content(operand);
+            allow_final_collection = content
                 .parentheses
                 .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
+            context = context.type_operand(
+                ExpressionPosition::TypeBinaryOperand,
+                ContentMode::Formatted,
+                TailOwner::ParentOperation,
+            );
+        }
         let callback = match content.data {
             ExprData::ArrowFunctionExpression(_)
             | ExprData::Function(_)
-            | ExprData::ParenthesizedExpression(_) => self.callback_data(data)?,
+            | ExprData::ParenthesizedExpression(_) => {
+                if wrappers.is_empty() {
+                    self.callback_content(&content)?
+                } else {
+                    self.callback_data(data)?
+                }
+            }
             ExprData::ObjectExpression(object) if allow_final_collection => {
                 if let Some(previous) = items.next_back()
                     && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
@@ -526,7 +572,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return None;
                 }
                 let span = object.span(ast);
-                if object.properties(ast).is_empty()
+                if arguments.len() > 1
+                    && object.properties(ast).is_empty()
                     && self
                         .comments
                         .in_range(Span::new(span.start + 1, span.end - 1))
@@ -538,6 +585,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     argument,
                     expression,
                     object,
+                    wrappers,
                 }));
             }
             ExprData::ArrayExpression(array) if allow_final_collection => {
@@ -553,7 +601,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 let span = array.span(ast);
-                if array.elements(ast).is_empty()
+                if arguments.len() > 1
+                    && array.elements(ast).is_empty()
                     && self
                         .comments
                         .in_range(Span::new(span.start + 1, span.end - 1))
@@ -570,6 +619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         ArrayArgumentArity::Multiple
                     },
+                    wrappers,
                 }));
             }
             _ => return None,
@@ -820,6 +870,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         selected: &mut SelectedCallback,
         sole_argument: bool,
+        constructor: bool,
         jsx_call: Option<CallExpression>,
         independent_callback: Option<ArrowFunctionExpression>,
         writer: &mut Writer<'ast>,
@@ -921,7 +972,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     CallbackBody::Retained(body),
                     normal,
                     None,
-                    independent || shape == Some(CallbackParameterShape::Other),
+                    independent
+                        || constructor && sole_argument
+                        || shape == Some(CallbackParameterShape::Other),
                 )
             }
         };
@@ -929,6 +982,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout.write(writer, |writer| writer.write_fragment(normal));
             Ok::<_, FormatError>(())
         })?;
+        let retain_signature = sole_argument
+            && !signature.preferred_breaks()
+            && !signature.has_intrinsic_lines()
+            && signature.try_flat().is_none();
+        // Without runtime parameters, the generic list owns the signature's
+        // optional breaks. Otherwise the call candidate fits the whole head,
+        // while the callback body remains free to expand.
+        let independent_parameterless_head = retain_signature
+            && match callback.kind {
+                CallbackKind::Arrow(arrow) => {
+                    let parameters = arrow.params(self.ast);
+                    parameters.items(self.ast).is_empty() && parameters.rest(self.ast).is_none()
+                }
+                CallbackKind::Function(function) => {
+                    let parameters = function.params(self.ast);
+                    parameters.items(self.ast).is_empty()
+                        && parameters.rest(self.ast).is_none()
+                        && function.this_param(self.ast).is_none()
+                }
+            };
         let signature = match (selected.role, callback.kind, layout) {
             (CallbackRole::Test, _, _) => Some(GroupedSignature::Independent(signature)),
             (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
@@ -936,10 +1009,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ if selected.role == CallbackRole::Last
                 && (independent
+                    || independent_parameterless_head
                     || matches!(callback.kind, CallbackKind::Arrow(arrow)
                         if independent_callback == Some(arrow))) =>
             {
                 Some(GroupedSignature::Independent(signature))
+            }
+            _ if selected.role == CallbackRole::Last && retain_signature => {
+                Some(GroupedSignature::CallFit(signature))
             }
             _ => signature.try_flat().map(GroupedSignature::Flat),
         };
@@ -956,14 +1033,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn format_selected_arguments(
         &mut self,
-        arguments: SubRange<Argument>,
-        content: Span,
+        sequence: SelectedArgumentSequence,
         head: ArgumentHead,
-        mut selected: SelectedArgument,
+        protect_runtime_items: bool,
+        mut selected: SelectedArgument<'ast>,
         chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
+        let SelectedArgumentSequence { arguments, content } = sequence;
         let source_opening = head
             .source_opening
             .map(|opening| {
@@ -1005,6 +1083,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| ast.get_node_in_sub_range(id))
             .peekable();
         let mut previous = None;
+        let policy = CallArgumentPolicy {
+            trailing_comma: self.options.trailing_commas == TrailingCommas::All,
+            protect_runtime_items,
+        };
         while let Some(argument) = arguments.next() {
             let (prefix, mut item) = writer.record_with_value(|writer| {
                 self.prepare_argument_slot(
@@ -1012,7 +1094,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     arguments.peek().copied(),
                     previous,
                     content,
-                    self.options.trailing_commas == TrailingCommas::All,
+                    policy,
                     writer,
                 )
             })?;
@@ -1035,6 +1117,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let (mut value, tail) = self.record_callback(
                         selected,
                         sole_argument,
+                        head.constructor,
                         head.jsx_call,
                         head.independent_callback,
                         writer,
@@ -1056,10 +1139,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     let object =
                         self.record_object_argument(selected.expression, selected.object, writer)?;
+                    let object = self.record_type_wrapped_argument(
+                        object.normal,
+                        object.forced,
+                        std::mem::take(&mut selected.wrappers),
+                        self.expression_layout(selected.expression),
+                        writer,
+                    )?;
                     outcome = SelectionOutcome::FinalObject {
                         has_forced: object.forced.is_some(),
                     };
-                    (RecordedValue::FinalObject(object), None)
+                    (
+                        RecordedValue::FinalObject(RecordedObject {
+                            normal: object.normal,
+                            forced: object.forced,
+                        }),
+                        object.tail,
+                    )
                 }
                 SelectedArgument::FinalArray(selected)
                     if argument == selected.argument
@@ -1073,14 +1169,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )? {
                         RecordedArrayArgument::Selected(array) => {
+                            let array = self.record_type_wrapped_argument(
+                                array.normal,
+                                array.forced,
+                                std::mem::take(&mut selected.wrappers),
+                                self.expression_layout(selected.expression),
+                                writer,
+                            )?;
                             outcome = SelectionOutcome::FinalArray {
                                 has_forced: array.forced.is_some(),
                             };
-                            (RecordedValue::FinalArray(array), None)
+                            (
+                                RecordedValue::FinalArray(RecordedArray {
+                                    normal: array.normal,
+                                    forced: array.forced,
+                                }),
+                                array.tail,
+                            )
                         }
                         RecordedArrayArgument::Ordinary(value) => {
+                            let value = self.record_type_wrapped_argument(
+                                value,
+                                None,
+                                std::mem::take(&mut selected.wrappers),
+                                self.expression_layout(selected.expression),
+                                writer,
+                            )?;
                             outcome = SelectionOutcome::Ordinary;
-                            (RecordedValue::Ordinary(value), None)
+                            (RecordedValue::Ordinary(value.normal), value.tail)
                         }
                     }
                 }
@@ -1287,7 +1403,8 @@ fn write_grouped_arguments<'a>(
                 suffix,
             } => {
                 match signature {
-                    GroupedSignature::Independent(signature) => writer.write_fragment(signature),
+                    GroupedSignature::Independent(signature)
+                    | GroupedSignature::CallFit(signature) => writer.write_fragment(signature),
                     GroupedSignature::Flat(signature) => writer.write_flat_fragment(signature),
                 }
                 writer.group(expand_body, |writer| {
@@ -1308,6 +1425,10 @@ fn write_grouped_arguments<'a>(
                         writer.write_fragment(signature);
                         writer.write_fragment(body);
                     });
+                }
+                GroupedSignature::CallFit(signature) => {
+                    writer.write_fragment(signature);
+                    writer.group(expand_body, |writer| writer.write_fragment(body));
                 }
                 GroupedSignature::Flat(signature) => {
                     writer.write_flat_fragment(signature);

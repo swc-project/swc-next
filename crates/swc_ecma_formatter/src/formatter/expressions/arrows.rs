@@ -7,12 +7,14 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::TrailingCommaPolicy;
-use super::parentheses::{ExpressionContent, SourceParentheses};
+use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParentheses};
 use super::{
     CopiedRawExpression, ExpressionContext, ExpressionLayout, ExpressionOutput, ExpressionPosition,
     Formatter, JsxCallbackContext, SourceTailOwner, TailOwner,
 };
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{
+    CommentBinding, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::functions::{FunctionBodyAttachment, SignatureBoundaryRole};
 use crate::formatter::parameters::{ArrowParameterParentheses, ParameterFrame, SourceParameters};
@@ -190,7 +192,8 @@ pub(super) enum PreparedArrowBody {
 
 /// A JSX layout pair owns its ordinary head and line-owning source tail.
 struct ArrowJsxComments<'ast> {
-    head: NodeHead<'ast>,
+    prefix: &'ast [Comment],
+    head: ResolvedExpressionHead<'ast>,
     tail: ArrowJsxTail<'ast>,
 }
 
@@ -524,7 +527,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(head_end, |next| next.span.start);
             comment.kind == CommentKind::Line
                 || (matches!(leading_layout, CommentRunLayout::GroupedLeading(_))
-                    && self.source_position_starts_line(comment.span.start)
+                    && self.layout_position_starts_line(comment.span.start)
                     && self.line_breaks(comment.span.end, next_start) != 0)
         });
         let jsx_comments = if mode == ContentMode::Formatted {
@@ -599,7 +602,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
         };
-        if self.source_line_starts_line(start) {
+        if self.layout_line_starts_line(start) {
             return false;
         }
         template.quasis(self.ast).iter().any(|id| {
@@ -615,7 +618,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator: u32,
         source_end: u32,
     ) -> Option<ArrowJsxComments<'ast>> {
-        let PreparedArrowBody::Expression { content, .. } = body else {
+        let PreparedArrowBody::Expression {
+            expression,
+            content,
+        } = body
+        else {
             return None;
         };
         if !matches!(
@@ -642,6 +649,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !matches!(tail_binding, CommentBinding::Unbound) {
             return None;
         }
+        let joined = leading.first().is_some_and(|first| {
+            !self.layout_position_starts_line(first.span.start)
+                || leading
+                    .windows(2)
+                    .any(|pair| self.source_comment_gap_is_run(pair[0], pair[1]))
+        });
+        // The complete source binding is settled before splitting the packet.
+        // Only the exterior prefix joins across removed opening delimiters;
+        // interior source rows and the arrow pair's final gap keep their owners.
+        let joined_blocks = joined
+            && leading.iter().all(|&comment| {
+                comment.kind == CommentKind::Block && self.comment_semantics(comment).is_ordinary()
+            });
+        let prefix_len = if joined_blocks {
+            let mut envelope = *expression;
+            let mut prefix_end = envelope.span(self.ast).start;
+            while envelope != content.expression
+                && let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(envelope)
+            {
+                prefix_end = pair.span(self.ast).start;
+                envelope = pair.expression(self.ast);
+            }
+            // Keep the final comment with its gap even without a source pair.
+            leading
+                .partition_point(|comment| comment.span.end <= prefix_end)
+                .min(leading.len().saturating_sub(1))
+        } else {
+            0
+        };
+        let (prefix, leading) = leading.split_at(prefix_len);
+        let head_layout = if joined_blocks {
+            CommentRunLayout::SourceLeading {
+                next: content_span.start,
+                placement: HeadGapPlacement::Inline,
+            }
+        } else {
+            CommentRunLayout::Leading(content_span.start)
+        };
         let tail = if trailing.is_empty() {
             ArrowJsxTail::Empty
         } else {
@@ -656,11 +701,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         Some(ArrowJsxComments {
-            head: NodeHead {
-                comments: leading,
-                content_start: content_span.start,
-                layout: CommentRunLayout::Leading(content_span.start),
-                gap_end: None,
+            prefix,
+            head: ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: leading,
+                    content_start: content_span.start,
+                    layout: head_layout,
+                    gap_end: None,
+                },
+                binding: head_binding,
             },
             tail,
         })
@@ -972,7 +1021,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inline = !self.diagnostic_range_is_sensitive(span)
             && comments.iter().all(|&comment| {
                 comment.kind == CommentKind::Block
-                    && !self.source_position_starts_line(comment.span.start)
+                    && !self.layout_position_starts_line(comment.span.start)
                     && self.comment_semantics(comment).is_ordinary()
             });
         ArrowLinkTail {
@@ -1197,7 +1246,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let ArrowJsxComments { head, tail } = comments;
+        let ArrowJsxComments {
+            prefix,
+            head: ResolvedExpressionHead { head, binding },
+            tail,
+        } = comments;
         let (enclosed, pending) = match tail {
             ArrowJsxTail::Empty => (None, None),
             ArrowJsxTail::Enclosed(tail) => (Some(tail), None),
@@ -1208,6 +1261,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .last()
                 .is_some_and(|comment| comment.kind == CommentKind::Line)
         });
+        self.comments.claim(prefix)?;
         self.comments.claim(head.comments)?;
         writer.group(
             matches!(context.jsx_callback, JsxCallbackContext::Body),
@@ -1220,10 +1274,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         parentheses: None,
                         ..content
                     };
-                    let pending = self.format_prepared_expression_with_leading_comments(
+                    self.format_comment_run(
+                        prefix,
+                        CommentRunLayout::Leading(
+                            head.comments
+                                .first()
+                                .map_or(head.content_start, |comment| comment.span.start),
+                        ),
+                        writer,
+                    )?;
+                    let pending = self.format_prepared_expression_with_resolved_head(
                         expression,
                         content,
-                        head,
+                        ResolvedExpressionHead { head, binding },
                         context.inside_parentheses(),
                         writer,
                     )?;

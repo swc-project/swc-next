@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type G = <T> /* c */ (a: T) => T;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type G = <T>(/* c */ a: T) => T;

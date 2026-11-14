@@ -11,7 +11,7 @@ use swc_next_ecma_ast::{
 use super::{Formatter, PrintedStatement, StatementBoundary, StatementPunctuation};
 use crate::Semicolons;
 use crate::formatter::bindings::InitializerLayout;
-use crate::formatter::comments::{CommentRunLayout, NodeHead};
+use crate::formatter::comments::{CommentCursor, CommentRunLayout, NodeHead};
 use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::arguments::{
@@ -23,6 +23,20 @@ use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use crate::{FormatError, TrailingCommas, document::Writer};
+
+#[derive(Clone, Copy)]
+pub(super) enum DeclarationOwner {
+    Statement(Decl),
+    Export(Decl),
+}
+
+impl DeclarationOwner {
+    fn declaration(self) -> Decl {
+        match self {
+            Self::Statement(declaration) | Self::Export(declaration) => declaration,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 enum ModuleName {
@@ -111,6 +125,7 @@ struct ModuleList<'ast> {
     expand: bool,
     named: bool,
     terminal: Option<ModuleSourceBoundary<'ast>>,
+    relocated_tail: &'ast [Comment],
 }
 
 enum ModuleSourcePrefix<'a, 'ast> {
@@ -146,6 +161,7 @@ struct ModuleSource<'ast> {
     mode: ContentMode,
     preceding: ContentMode,
     specifier_tail: Option<ModuleSourceBoundary<'ast>>,
+    relocated_tail: &'ast [Comment],
     header_head: &'ast [Comment],
     attributes: Option<ModuleAttributes<'ast>>,
     empty_header: Option<Span>,
@@ -154,12 +170,14 @@ struct ModuleSource<'ast> {
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_declaration(
         &mut self,
-        declaration: Decl,
+        owner: DeclarationOwner,
         mode: ContentMode,
         punctuation: StatementPunctuation,
         declaration_source: super::ContinuationBoundary,
+        operator_tail_destination: super::OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let declaration = owner.declaration();
         let data = self.ast.decl_data(declaration);
         if mode == ContentMode::Verbatim {
             let span = declaration.span(self.ast);
@@ -214,6 +232,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         match data {
             DeclData::Function(function) => {
+                let _scope = self.recursion_scope(function)?;
                 self.format_function(function, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: function.span(self.ast).end,
@@ -222,6 +241,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::Class(class) => {
+                let _scope = self.recursion_scope(class)?;
                 self.format_class(class, ExpressionPosition::ExportDefault, false, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: class.span(self.ast).end,
@@ -235,6 +255,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     keyword,
                     punctuation.tail_boundary(),
                     declaration_source.is_following(),
+                    operator_tail_destination,
                     writer,
                 )?;
                 let punctuation = if matches!(
@@ -258,7 +279,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     punctuation
                 };
-                self.finish_statement(output.end, output.tail, punctuation, writer)
+                self.finish_statement_with_operator_tail(
+                    output.end,
+                    output.tail,
+                    output.operator_tail,
+                    punctuation,
+                    writer,
+                )
             }
             DeclData::TsInterfaceDeclaration(interface) => {
                 self.format_interface(interface, keyword, writer)?;
@@ -270,15 +297,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::TsTypeAliasDeclaration(alias) => {
-                let (end, tail) = self.format_type_alias(alias, keyword, writer)?;
+                let trailing = match owner {
+                    DeclarationOwner::Statement(_) => self.prepare_declaration_type_tail(
+                        alias.span(self.ast),
+                        alias.type_annotation(self.ast).span(self.ast),
+                    ),
+                    DeclarationOwner::Export(_) => None,
+                };
+                let (end, tail) = self.format_type_alias(alias, keyword, trailing, writer)?;
                 let mut printed = self.finish_statement(end, tail, punctuation, writer)?;
                 printed.boundary = printed.boundary.type_declaration();
                 Ok(printed)
             }
             DeclData::TsModuleDeclaration(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_namespace_declaration(node, keyword, punctuation, writer)
             }
             DeclData::TsGlobalDeclaration(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_global_declaration(node, keyword, writer)
             }
             DeclData::TsImportEqualsDeclaration(node) => {
@@ -406,7 +442,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let mut content =
                 self.prepare_module_item(ModuleItem::Import(node), PropertyKeyQuoting::Preserve)?;
-            if type_only && mode == ContentMode::Formatted {
+            if mode == ContentMode::Formatted {
                 self.prepare_module_namespace_head(&mut content.content, owner.start + 1);
             }
             self.format_module_gap(end, owner.start, true, writer)?;
@@ -440,18 +476,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let Some(node) = namespace {
             let owner = node.span(ast);
-            let content =
+            let mut content =
                 self.prepare_module_item(ModuleItem::Import(node), PropertyKeyQuoting::Preserve)?;
-            self.format_module_item(
-                owner,
-                content,
-                if source.preceding == ContentMode::Verbatim {
-                    source.preceding
-                } else {
-                    incoming
-                },
-                writer,
-            )?;
+            let mode = if source.preceding == ContentMode::Verbatim {
+                source.preceding
+            } else {
+                incoming
+            };
+            if mode == ContentMode::Formatted {
+                self.prepare_module_namespace_head(&mut content.content, owner.start + 1);
+            }
+            self.format_module_item(owner, content, mode, writer)?;
             end = owner.end;
         }
         if source.empty_header.is_some() {
@@ -459,6 +494,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("{}");
         } else if let Some(mut list) = list {
             list.terminal = source.specifier_tail;
+            list.relocated_tail = source.relocated_tail;
             let mut leading = None;
             if standalone.is_none() {
                 let comments = self.comments.in_range(Span::new(end, list.span.start));
@@ -495,6 +531,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: ExportNamedDeclaration,
         punctuation: StatementPunctuation,
         declaration_source: super::ContinuationBoundary,
+        operator_tail_destination: super::OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -508,10 +545,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("export");
             self.format_module_gap(keyword_end, declaration.span(ast).start, true, writer)?;
             return self.format_declaration(
-                declaration,
+                DeclarationOwner::Export(declaration),
                 mode,
                 punctuation,
                 declaration_source,
+                operator_tail_destination,
                 writer,
             );
         }
@@ -543,6 +581,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .transpose()?;
         list.terminal = source.as_ref().and_then(|source| source.specifier_tail);
+        list.relocated_tail = source.as_ref().map_or(&[], |source| source.relocated_tail);
         if first.is_none()
             && source.is_none()
             && self.content_mode(
@@ -553,12 +592,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(Span::new(span.start, list.span.end), writer)?;
             return self.finish_statement(list.span.end, None, punctuation, writer);
         }
+        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
+        if first.is_none() && source.is_none() {
+            let head = Span::new(keyword_end, list.span.end - 1);
+            let comments = self.comments.in_range(head);
+            if !comments.is_empty()
+                && self
+                    .comment_binding(comments, head, None)
+                    .allows_relocation(None)
+                && comments
+                    .iter()
+                    .all(|&comment| !self.comment_is_jsdoc_binding(comment))
+            {
+                self.comments.claim(comments)?;
+                writer.text("export");
+                writer.space();
+                self.format_comment_run(comments, CommentRunLayout::CanonicalDangling, writer)?;
+                if comments
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                {
+                    writer.hard_line();
+                }
+                writer.space();
+                if type_only {
+                    writer.text("type ");
+                }
+                writer.text("{}");
+                return self.finish_statement(list.span.end, None, punctuation, writer);
+            }
+        }
         let comments = self
             .comments
             .in_range(Span::new(keyword_end, list.span.start));
         let mode = self.content_mode(comments);
         writer.text("export");
-        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
         let head_end = if type_only {
             self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
         } else {
@@ -669,10 +737,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 incoming
             };
-            let moved = type_only
-                && mode == ContentMode::Formatted
-                && self.prepare_module_namespace_head(&mut content.content, header.start);
-            if moved {
+            let head = if type_only {
+                header.start
+            } else {
+                owner.start + 1
+            };
+            let moved = mode == ContentMode::Formatted
+                && self.prepare_module_namespace_head(&mut content.content, head);
+            if type_only && moved {
                 writer.space();
             } else {
                 self.format_module_gap(head_end, star, true, writer)?;
@@ -780,10 +852,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_module_gap(operator.end, span.start, true, writer)?;
                 }
                 self.format_declaration(
-                    declaration,
+                    DeclarationOwner::Export(declaration),
                     mode,
                     punctuation,
                     super::ContinuationBoundary::End,
+                    super::OperatorTailDestination::Local,
                     writer,
                 )
             }
@@ -867,6 +940,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     != 0,
             named,
             terminal: None,
+            relocated_tail: &[],
         })
     }
 
@@ -920,6 +994,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if specifier_tail.is_some() {
             mode = ContentMode::Verbatim;
         }
+        let source_relation = match (from, preceding.filter(|_| list.is_some())) {
+            (Some(from), Some(last)) => {
+                self.module_source_specifier_boundary(last, Span::new(preceding_end, from.start))
+            }
+            _ => None,
+        };
+        // An inline run crosses the closer with the last item only when it
+        // includes the complete interior suffix and retains any protected target.
+        let relocated_tail = match (&prefix, from) {
+            (
+                ModuleSourcePrefix::Braced {
+                    list,
+                    last: Some(last),
+                    ..
+                },
+                Some(from),
+            ) if specifier_tail.is_none() && !before.is_empty() => {
+                let span = Span::new(last.end, from.start);
+                let comments = self.comments.in_range(span);
+                let inner_count =
+                    comments.partition_point(|comment| comment.span.end < list.span.end);
+                let trailing = self.trailing_comment_prefix(comments, span, last.end, false);
+                let protected_target = self.content_mode(trailing) == ContentMode::Verbatim;
+                let target_matches = !protected_target
+                    || source_relation.is_some_and(|boundary| {
+                        boundary.suppression.preceding == Some(*last)
+                            && boundary.suppression.following == ContentMode::Formatted
+                    });
+                if trailing.len() > inner_count
+                    && target_matches
+                    && self
+                        .comment_binding(trailing, span, Some(*last))
+                        .allows_relocation(Some(*last))
+                    && trailing
+                        .iter()
+                        .all(|&comment| !self.comment_is_jsdoc_binding(comment))
+                {
+                    trailing
+                } else {
+                    &[]
+                }
+            }
+            _ => &[],
+        };
         if self.has_suppression
             && let ModuleSourcePrefix::Star(header) = &prefix
             && self.content_mode(self.comments.in_range(*header)) == ContentMode::Verbatim
@@ -928,10 +1046,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut preceding_mode = ContentMode::Formatted;
         if let Some(from) = from {
-            if let Some(last) = preceding.filter(|_| list.is_some()) {
-                if let Some(relation) = self
-                    .module_source_specifier_boundary(last, Span::new(preceding_end, from.start))
-                {
+            if preceding.is_some() && list.is_some() {
+                if let Some(relation) = source_relation {
                     if relation.suppression.following == ContentMode::Verbatim {
                         mode = ContentMode::Verbatim;
                     }
@@ -960,18 +1076,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             mode = ContentMode::Verbatim;
         }
-        let header_head = if matches!(prefix, ModuleSourcePrefix::Star(_))
-            && mode == ContentMode::Verbatim
-            && after.is_empty()
-            && !before.is_empty()
-            && !self.diagnostic_range_is_sensitive(Span::new(preceding_end, source_span.start))
-            && before.iter().all(|&comment| {
-                let semantics = self.comment_semantics(comment);
-                semantics.suppression || semantics.is_ordinary()
-            }) {
-            before
-        } else {
+        // Any remaining unbound packet belongs to the module source head.
+        let header_head = if before.is_empty() {
             &[]
+        } else {
+            let header = Span::new(preceding_end, source_span.start);
+            let comments = self.comments.in_range(header);
+            let moved_end = relocated_tail
+                .last()
+                .map_or(preceding_end, |comment| comment.span.end);
+            let remainder =
+                &comments[comments.partition_point(|comment| comment.span.end <= moved_end)..];
+            let movable = !remainder.is_empty()
+                && (matches!(prefix, ModuleSourcePrefix::Star(_))
+                    || matches!(prefix, ModuleSourcePrefix::Braced { last: Some(_), .. })
+                        && specifier_tail.is_none()
+                        && remainder.first().is_some_and(|comment| {
+                            from.is_some_and(|from| comment.span.end <= from.start)
+                        }))
+                && self
+                    .comment_binding(remainder, header, None)
+                    .allows_relocation(None)
+                && remainder
+                    .iter()
+                    .all(|&comment| !self.comment_is_jsdoc_binding(comment));
+            let suppressed_star = matches!(prefix, ModuleSourcePrefix::Star(_))
+                && mode == ContentMode::Verbatim
+                && after.is_empty()
+                && !self.diagnostic_range_is_sensitive(header)
+                && before.iter().all(|&comment| {
+                    let semantics = self.comment_semantics(comment);
+                    semantics.suppression || semantics.is_ordinary()
+                });
+            if movable {
+                remainder
+            } else if suppressed_star {
+                before
+            } else {
+                &[]
+            }
         };
         let empty_header = match prefix {
             ModuleSourcePrefix::Empty(keyword_end) => {
@@ -1112,6 +1255,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             preceding: preceding_mode,
             specifier_tail,
+            relocated_tail,
             header_head,
             attributes,
             empty_header,
@@ -1348,20 +1492,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("{");
             let comments = self.comments.between(content)?;
             let comments = self.comments.take(comments.len());
-            if !comments.is_empty() {
+            if let Some(last) = comments.last() {
                 writer.indent(|writer| {
                     writer.space();
                     self.format_comment_run(comments, CommentRunLayout::Source, writer)
                 })?;
-                let end = comments
-                    .last()
-                    .map_or(content.start, |comment| comment.span.end);
-                self.comment_gap(end, content.end, writer);
+                self.comment_gap_after(*last, content.end, writer);
             }
             writer.text("}");
             return Ok(());
         };
         list.breakable |= list.comments.len() > source_head_len
+            || !list.relocated_tail.is_empty()
             || leading.is_some_and(|comments| !comments.is_empty());
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
@@ -1389,7 +1531,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comments.claim(comments)?;
                     self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
                     if let Some(last) = comments.last() {
-                        self.comment_gap(last.span.end, first.span(self).start, writer);
+                        self.comment_gap_after(*last, first.span(self).start, writer);
                     }
                 }
                 let mut transition = None;
@@ -1421,6 +1563,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         prepared.set_leading_mode(incoming);
                     }
                     self.format_module_item(span, prepared_content, prepared.mode, writer)?;
+                    if next.is_none() && !list.relocated_tail.is_empty() {
+                        self.comments.claim(list.relocated_tail)?;
+                        let line_count = usize::from(
+                            list.relocated_tail
+                                .last()
+                                .is_some_and(|comment| comment.kind == CommentKind::Line),
+                        );
+                        let (blocks, line) = list
+                            .relocated_tail
+                            .split_at(list.relocated_tail.len() - line_count);
+                        self.format_inline_trailing_comments(blocks, writer)?;
+                        if list.breakable && self.options.trailing_commas != TrailingCommas::None {
+                            writer.if_break(",");
+                        }
+                        self.format_inline_trailing_comments(line, writer)?;
+                        end = content.end;
+                        break;
+                    }
                     if next.is_none()
                         && let Some(terminal) = list.terminal
                     {
@@ -1598,11 +1758,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                 }
-                let boundary = if modes.left == ContentMode::Formatted
-                    && modes.right == ContentMode::Formatted
-                {
+                let boundary = if modes.left == ContentMode::Formatted {
                     let content = self.expression_content(Expr::StringLiteral(value));
-                    let rhs = self.assignment_rhs(&content);
+                    let rhs = self.assignment_rhs(Expr::StringLiteral(value), &content);
                     Some(self.assignment_boundary(
                         gap.start,
                         &rhs,
@@ -1657,7 +1815,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .all(|&comment| self.comment_semantics(comment).is_ordinary())
                 && comments.iter().any(|comment| {
                     comment.kind == CommentKind::Line
-                        || self.source_position_starts_line(comment.span.start)
+                        || self.layout_position_starts_line(comment.span.start)
                         || self.line_breaks(comment.span.end, span.end) != 0
                 });
             let mut source = ModulePrefixSource::Formatted;
@@ -1757,12 +1915,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let gap = Span::new(left_span.end, right_span.start);
         let comments = self.comments.in_range(gap);
         let promoted = (!comments.is_empty()
+            && !self.diagnostic_range_is_sensitive(gap)
             && comments
                 .iter()
                 .all(|&comment| self.comment_semantics(comment).is_ordinary())
             && comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.source_position_starts_line(comment.span.start)
+                    || self.layout_position_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.end, right_span.start) != 0
             }))
         .then_some(gap);
@@ -1863,16 +2022,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let comments = self.comments.between(head)?;
                     self.comments.claim(comments)?;
                     writer.text("* as ");
-                    self.format_comment_run(
-                        comments,
-                        CommentRunLayout::FlatLeading(right.span(self).start),
-                        writer,
-                    )?;
+                    self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+                    if let Some(last) = comments.last() {
+                        self.source_line_constraint(last.span.end, right.span(self).start)
+                            .write(writer, FlatSeparator::Space, Writer::space);
+                    }
                     return self.format_module_name(right, modes.right, writer);
                 }
                 if name_mode == ContentMode::Verbatim {
                     modes.left = name_mode;
                 }
+                let namespace = left.is_none();
                 let end = if let Some(left) = left {
                     self.format_module_name(left, modes.left, writer)?;
                     left.span(self).end
@@ -1880,9 +2040,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.text("*");
                     owner.start + 1
                 };
-                self.format_module_gap(end, operator.start, true, writer)?;
+                self.format_module_gap_with_directives(
+                    end,
+                    operator.start,
+                    true,
+                    namespace,
+                    writer,
+                )?;
                 writer.text("as");
-                self.format_module_gap(operator.end, right.span(self).start, true, writer)?;
+                self.format_module_gap_with_directives(
+                    operator.end,
+                    right.span(self).start,
+                    true,
+                    namespace,
+                    writer,
+                )?;
                 self.format_module_name(right, modes.right, writer)
             }
             ModuleItemContent::Attribute {
@@ -1988,8 +2160,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         space: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_module_gap_with_directives(start, end, space, false, writer)
+    }
+
+    fn format_module_gap_with_directives(
+        &mut self,
+        start: u32,
+        end: u32,
+        space: bool,
+        preserve_directives: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let comments = self.comments.between(Span::new(start, end))?;
         let source = self.content_mode(comments) == ContentMode::Verbatim
+            || preserve_directives && self.has_comment_directive_in(Span::new(start, end))
             || comments
                 .iter()
                 .any(|comment| comment.kind == CommentKind::Line);
@@ -2051,18 +2235,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         else {
             return false;
         };
-        let span = Span::new(start, right.span(self).start);
-        let comments = self.comments.in_range(span);
-        if comments.is_empty()
-            || self.diagnostic_range_is_sensitive(span)
-            || !comments
-                .iter()
-                .all(|&comment| self.comment_semantics(comment).is_ordinary())
-        {
+        let right = right.span(self);
+        let span = Span::new(start, right.start);
+        let comments = CommentCursor::new(self.ast.comments()).in_range(span);
+        if !self.module_comments_relocatable(comments, Span::new(start, right.end)) {
             return false;
         }
         *namespace_head = Some(span);
         true
+    }
+
+    fn module_comments_relocatable(&self, comments: &[Comment], span: Span) -> bool {
+        !comments.is_empty()
+            && self
+                .comment_binding(comments, span, None)
+                .allows_relocation(None)
+            && !self.lint_line_intersects(span)
+            && !self.has_comment_directive_in(span)
+            && comments
+                .iter()
+                .all(|&comment| !self.comment_is_jsdoc_binding(comment))
     }
 
     pub(super) fn format_decorated_export_class(

@@ -15,7 +15,10 @@ use super::{
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, document::Writer};
+use crate::{
+    FormatError,
+    document::{BodyOpening, Writer},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum BinaryOperatorKind {
@@ -163,6 +166,7 @@ struct BinaryHead {
     expression_head: ExpressionHead,
     protected_head_start: Option<u32>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    opening: BodyOpening,
 }
 
 impl BinaryHead {
@@ -172,6 +176,7 @@ impl BinaryHead {
             expression_head: context.expression_head,
             protected_head_start: context.protected_head_start,
             head_scope: context.head_scope,
+            opening: context.body_opening,
         }
     }
 }
@@ -290,10 +295,18 @@ enum OperandBoundary<'ast> {
         right_start: u32,
         layout: OperandLayout,
         mode: ContentMode,
+        opening: BodyOpening,
     },
 }
 
 impl OperandBoundary<'_> {
+    fn opening(&self) -> BodyOpening {
+        match self {
+            Self::Comments { opening, .. } => *opening,
+            _ => BodyOpening::Plain,
+        }
+    }
+
     fn mode(&self) -> ContentMode {
         match self {
             Self::Constrained { mode, .. } | Self::Comments { mode, .. } => *mode,
@@ -639,20 +652,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let jsx_tail = logical_tail
             .as_ref()
             .is_some_and(|tail| tail.operand.layout == LogicalOperandLayout::Jsx);
-        let parent_indents = match context.position {
-            ExpressionPosition::AssignmentRight(_)
-            | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
-            | ExpressionPosition::PropertyValue => {
-                let has_right_prefix = logical_tail.as_ref().is_some_and(|tail| {
-                    tail.operand.layout == LogicalOperandLayout::Jsx && !tail.steps.is_empty()
-                });
-                !inline_right
-                    || !has_right_prefix
-                        && !BinaryLike::from_data(self.expression_data(binary.left), self.ast)
-                            .is_some_and(|left| binary.operator.flattens(left.operator))
-            }
-            _ => false,
-        };
+        let parent_indents = context.operand_indent == super::OperandIndent::Auto
+            && match context.position {
+                ExpressionPosition::ForTest
+                | ExpressionPosition::ForUpdate
+                | ExpressionPosition::ForInitializer { .. } => true,
+                ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
+                | ExpressionPosition::PropertyValue => {
+                    let has_right_prefix = logical_tail.as_ref().is_some_and(|tail| {
+                        tail.operand.layout == LogicalOperandLayout::Jsx && !tail.steps.is_empty()
+                    });
+                    !inline_right
+                        || !has_right_prefix
+                            && !BinaryLike::from_data(self.expression_data(binary.left), self.ast)
+                                .is_some_and(|left| binary.operator.flattens(left.operator))
+                }
+                _ => false,
+            };
         if parent_indents && !jsx_tail {
             return writer.group(false, |writer| {
                 self.format_prepared_binary_enclosed(chain, context, logical_tail, writer)
@@ -861,6 +878,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let first = entry.binary;
+        let jsx = matches!(first.operator, BinaryOperatorKind::Logical(_))
+            && entry.left_mode() == ContentMode::Formatted
+            && owner.scope == OperandScope::Expression
+            && matches!(
+                self.ast.expr_data(owner.expression),
+                ExprData::JsxElement(_)
+                    | ExprData::JsxFragment(_)
+                    | ExprData::ParenthesizedExpression(_)
+            )
+            && matches!(
+                owner.prepare(self).content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            )
+            && !self.diagnostic_range_is_sensitive(owner.expression.span(self.ast))
+            && self
+                .comments
+                .in_range(Span::new(
+                    owner.expression.span(self.ast).end,
+                    first.right.span(self.ast).start,
+                ))
+                .is_empty();
         writer.group(false, |writer| {
             let mut context = ExpressionContext::at(ExpressionPosition::BinaryOperand {
                 operator: first.operator,
@@ -872,6 +910,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.head_comments = HeadComments::Claimed;
             context.protected_head_start = head.protected_head_start;
             context.head_scope = head.head_scope;
+            context.body_opening = head.opening;
+            if jsx {
+                if context
+                    .expression_start
+                    .needs_statement_guard(self.options.semicolons)
+                {
+                    context.expression_start.write_statement_guard(writer);
+                    context.expression_start = ExpressionStart::StatementGuarded;
+                }
+                writer.if_break("(");
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    let output = self.format_binary_owned_operand(owner, context, writer)?;
+                    self.format_expression_tail(output.pending, writer)
+                })?;
+                writer.soft_line();
+                writer.if_break(")");
+                return Ok(None);
+            }
             self.format_binary_owned_operand(owner, context, writer)
                 .map(|output| output.pending)
         })
@@ -1065,6 +1122,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             next.left_scope = owner.scope;
+            let opening = boundary.opening();
             let mode = self.format_binary_operand_boundary(boundary, writer)?;
             if owner.scope == OperandScope::Expression
                 && next.left_mode() != ContentMode::Verbatim
@@ -1078,7 +1136,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionContext::at(ExpressionPosition::BinaryOperand {
                         operator: left.operator,
                         side: OperandSide::Left,
-                    }),
+                    })
+                    .with_body_opening(opening),
                     &owner.prepare(self).content,
                 );
                 let head_context = self.format_binary_head_comments(
@@ -1126,6 +1185,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     side: OperandSide::Left,
                 })
                 .with_content_mode(mode)
+                .with_body_opening(opening)
                 .with_tail_owner(TailOwner::ParentOperation);
                 tail = self
                     .format_binary_owned_operand(&mut owner, context, writer)?
@@ -1227,6 +1287,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::JsxElement(_) | ExprData::JsxFragment(_)
             );
         let write_argument = |writer: &mut Writer<'ast>| {
+            let opening = boundary.opening();
             Self::format_binary_operand_separator(&boundary, writer);
             let write = |formatter: &mut Self, writer: &mut Writer<'ast>| {
                 let mode = formatter.format_binary_operand_comments(boundary, writer)?;
@@ -1235,6 +1296,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     side: OperandSide::Right,
                 })
                 .with_content_mode(mode)
+                .with_body_opening(opening)
                 .with_tail_owner(tail_owner);
                 formatter.format_binary_owned_operand(owner, context, writer)
             };
@@ -1243,6 +1305,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.if_break("(");
                     writer.indent(|writer| {
                         writer.soft_line();
+                        // This pair owns suffixes queued by the operator boundary.
+                        writer.line_suffix_boundary();
                         let output = write(self, writer)?;
                         self.format_expression_tail(output.pending, writer)
                     })?;
@@ -1467,6 +1531,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             right_start,
             layout,
             mode,
+            opening: if matches!(layout, OperandLayout::Inline)
+                && trailing
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                && leading
+                    .iter()
+                    .all(|comment| self.line_breaks(comment.span.start, comment.span.end) == 0)
+            {
+                BodyOpening::AfterOperatorLine
+            } else {
+                BodyOpening::Plain
+            },
         })
     }
 
@@ -1533,14 +1609,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.format_comment_run(before, CommentRunLayout::Source, writer)?;
         if let Some(last) = before.last() {
-            self.comment_gap(last.span.end, operator_start, writer);
+            self.comment_gap_after(*last, operator_start, writer);
         }
         if self.parenthesis_has_type_cast(right_start) {
             self.format_comment_run(after, CommentRunLayout::Leading(right_start), writer)?;
         } else {
             self.format_comment_run(after, CommentRunLayout::Source, writer)?;
             if let Some(last) = after.last() {
-                self.comment_gap(last.span.end, right_start, writer);
+                self.comment_gap_after(*last, right_start, writer);
             }
         }
         Ok(mode)

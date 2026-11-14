@@ -9,5 +9,5 @@ const x = \u0076alue as /* prettier-ignore */
 {}
 ---------- Output ----------
 const x = \u0076alue as /* prettier-ignore */
-(
+  (
 /* frame */ (A | B));

@@ -162,11 +162,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            prefix = Some(if source {
-                TypeGap::Source(gap)
-            } else {
-                TypeGap::Formatted(self.prepare_comment_boundary(comments, gap.start, gap.end))
-            });
+            prefix = Some(
+                if generic.is_none() && !matches!(preceding, Some(SignaturePreceding::Key(_))) {
+                    self.prepare_bodyless_parameter_gap(&mut parameters, gap, source)?
+                } else {
+                    self.prepare_type_gap(gap, source)
+                },
+            );
             generic_prefix = None;
         }
         let mut generics = generic
@@ -203,12 +205,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node: generic,
                     mode: generic_mode,
                     prefix: generic_prefix,
-                    following: if source {
-                        TypeGap::Source(gap)
+                    following: if matches!(preceding, Some(SignaturePreceding::Key(_))) {
+                        self.prepare_type_gap(gap, source)
                     } else {
-                        TypeGap::Formatted(
-                            self.prepare_comment_boundary(comments, gap.start, gap.end),
-                        )
+                        self.prepare_bodyless_parameter_gap(&mut parameters, gap, source)?
                     },
                 })
             })

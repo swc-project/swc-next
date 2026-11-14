@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = 1;
+class C {
+/* eslint-disable-next-line
+ no-undef
+*/
+field = Missing;other = More;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+const x = 1;
+class C {
+  /* eslint-disable-next-line
+ no-undef
+*/
+  field = Missing; other = More;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const x = 1
+class C {
+  /* eslint-disable-next-line
+ no-undef
+*/
+  field = Missing; other = More;
+}

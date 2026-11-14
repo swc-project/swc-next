@@ -7,8 +7,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 [
-  first,
-  // @ts-ignore
+  first, // @ts-ignore
   second,
 ];
 
@@ -16,7 +15,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"semi":false}
 ---------- Output ----------
 ;[
-  first,
-  // @ts-ignore
+  first, // @ts-ignore
   second,
 ]

@@ -5,13 +5,17 @@ use swc_next_ecma_ast::{Comment, GetSpan, Span, TsMappedType, TsMappedTypeModifi
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, SuppressedTypeHead,
     SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout, TypeOperatorSlot,
+    TypeOutput,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, GroupRequest, Writer},
+};
 
 struct MappedToken<'ast> {
     span: Span,
@@ -109,11 +113,12 @@ enum MappedTail<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_mapped_type(
+    pub(super) fn format_mapped_type_body(
         &mut self,
         node: TsMappedType,
+        body_opening: BodyOpening,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
@@ -125,7 +130,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             // These leading runs select this real mapped node, including its body.
             self.format_verbatim(span, writer)?;
-            return Ok(None);
+            return Ok(TypeOutput::closed());
         }
         let readonly = self.prepare_mapped_modifier(prefix_span, node.readonly(ast), "readonly")?;
         let opening_start = readonly
@@ -188,7 +193,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|(node, boundary)| boundary.map(|boundary| MappedBound { node, boundary }))
             .transpose()?;
         let (suffix, tail) = suffix?;
-        writer.group(expand, |writer| {
+        let request = GroupRequest::from(expand);
+        body_opening.group(writer, request, None, |writer| {
             writer.text("{");
             let closing_gap = writer.indent(|writer| {
                 if let Some(head) = head {
@@ -339,7 +345,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
             writer.text("}");
-            Ok(None)
+            Ok(TypeOutput::closed())
         })
     }
 

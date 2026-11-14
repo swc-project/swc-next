@@ -13,8 +13,8 @@ c = d))) });
   k:
     // @ts-ignore
     (a = (// @ts-expect-error
-        b = (// @ts-ignore
-          c = d))), });
+      b = (// @ts-ignore
+        c = d))), });
 
 ---------- Options ----------
 {"printWidth":20}
@@ -23,8 +23,8 @@ c = d))) });
   k:
     // @ts-ignore
     (a = (// @ts-expect-error
-          b = (// @ts-ignore
-              c = d))), });
+      b = (// @ts-ignore
+        c = d))), });
 
 ---------- Options ----------
 {"printWidth":80,"singleQuote":true}
@@ -33,5 +33,5 @@ c = d))) });
   k:
     // @ts-ignore
     (a = (// @ts-expect-error
-        b = (// @ts-ignore
-          c = d))), });
+      b = (// @ts-ignore
+        c = d))), });

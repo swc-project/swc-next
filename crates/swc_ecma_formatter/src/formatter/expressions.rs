@@ -39,14 +39,19 @@ use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use self::conditional::{ConditionalChain, ConditionalClosing, ConditionalEnvelope};
 use self::objects::RecordedObject;
-use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
+use self::parentheses::{
+    ExpressionContent, ExpressionEntry, OrdinaryExpressionEntry, PlannedExpressionEntry,
+    PreparedExpressionPlan, ResolvedExpressionHead,
+};
 use super::Formatter;
 use super::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, PreparedHeadGaps,
 };
-use super::literals::StringContext;
 use super::suppression::ContentMode;
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, Writer},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum AccessKind {
@@ -96,6 +101,7 @@ pub(super) enum ExpressionPosition {
     ControlCondition,
     ForHead,
     ForTest,
+    ForUpdate,
     ForInitializer {
         grammar: ForInitializerGrammar,
         parentheses: bool,
@@ -231,6 +237,7 @@ pub(super) enum TailBoundary {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OperandIndent {
+    Auto,
     Expression,
     Parent,
 }
@@ -299,6 +306,9 @@ pub(super) struct ExpressionContext<'ast> {
     head_scope: Option<parentheses::HeadScopeOwner>,
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
+    /// The actual operator left a Line suffix before this lexical head.
+    body_opening: BodyOpening,
+    array_layout: arrays::ArrayLayout,
     protected_head_start: Option<u32>,
     ignored_parentheses_closing: Option<Span>,
     emitted_head_binding: EmittedHeadBinding,
@@ -311,10 +321,12 @@ pub(super) struct ExpressionContext<'ast> {
     member_chain_layout: MemberChainLayout,
     arrow_layout: arrows::ArrowLayout,
     jsx_callback: JsxCallbackContext,
+    jsx_field_initializer: bool,
     call_argument_owner: CallArgumentOwner,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
     tail_boundary: TailBoundary,
+    operator_tail_destination: assignment::OperatorTailDestination,
 }
 
 impl<'ast> ExpressionContext<'ast> {
@@ -345,6 +357,12 @@ impl<'ast> ExpressionContext<'ast> {
             .with_arrow_layout(arrows::ArrowLayout::Assignment(
                 arrows::ArrowHeadGap::Expression,
             ))
+    }
+
+    pub(in crate::formatter) fn class_field_initializer() -> Self {
+        let mut context = Self::variable_initializer();
+        context.jsx_field_initializer = true;
+        context
     }
 
     fn with_member_layout(mut self, layout: MemberLayout) -> Self {
@@ -430,7 +448,7 @@ impl<'ast> ExpressionContext<'ast> {
             head_destination: None,
             head_scope: None,
             tail_owner: TailOwner::Expression,
-            operand_indent: OperandIndent::Expression,
+            operand_indent: OperandIndent::Auto,
             protected_head_start: None,
             ignored_parentheses_closing: None,
             emitted_head_binding: EmittedHeadBinding::Pending,
@@ -463,8 +481,12 @@ impl<'ast> ExpressionContext<'ast> {
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
             jsx_callback: JsxCallbackContext::Ordinary,
+            jsx_field_initializer: false,
             call_argument_owner: CallArgumentOwner::Ordinary,
             tail_boundary: TailBoundary::Separated,
+            operator_tail_destination: assignment::OperatorTailDestination::Local,
+            body_opening: BodyOpening::Plain,
+            array_layout: arrays::ArrayLayout::Normal,
         }
     }
 
@@ -517,6 +539,7 @@ impl<'ast> ExpressionContext<'ast> {
     }
 
     pub(super) fn inside_parentheses(mut self) -> Self {
+        self.body_opening = BodyOpening::Plain;
         self.parentheses_owner = ParenthesesOwner::Parent;
         self.head_gap = None;
         self.head_destination = None;
@@ -525,6 +548,12 @@ impl<'ast> ExpressionContext<'ast> {
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
         self.emitted_head_binding = EmittedHeadBinding::Pending;
+        self.operator_tail_destination = assignment::OperatorTailDestination::Local;
+        self
+    }
+
+    fn with_body_opening(mut self, opening: BodyOpening) -> Self {
+        self.body_opening = opening;
         self
     }
 
@@ -543,9 +572,26 @@ impl<'ast> ExpressionContext<'ast> {
         self
     }
 
+    pub(super) fn with_operator_tail_destination(
+        mut self,
+        destination: assignment::OperatorTailDestination,
+    ) -> Self {
+        self.operator_tail_destination = destination;
+        self
+    }
+
+    pub(super) fn operator_tail_destination(self) -> assignment::OperatorTailDestination {
+        self.operator_tail_destination
+    }
+
     pub(super) fn is_formatted_conditional_rhs(&self, data: ExprData) -> bool {
         self.content_mode == ContentMode::Formatted
             && matches!(data, ExprData::ConditionalExpression(_))
+    }
+
+    fn with_array_layout(mut self, layout: arrays::ArrayLayout) -> Self {
+        self.array_layout = layout;
+        self
     }
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
@@ -637,13 +683,27 @@ pub(super) enum ExpressionRightEdge {
 pub(super) struct ExpressionOutput<'ast> {
     pub(super) pending: Option<ExpressionTail<'ast>>,
     pub(super) right_edge: ExpressionRightEdge,
+    pub(super) operator_tail: Option<&'ast assignment::DeferredOperatorTail<'ast>>,
 }
 
 impl<'ast> ExpressionOutput<'ast> {
+    /// A type-only bridge has no JavaScript operator-suffix destination.
+    pub(super) fn local(
+        pending: Option<ExpressionTail<'ast>>,
+        right_edge: ExpressionRightEdge,
+    ) -> Self {
+        Self {
+            pending,
+            right_edge,
+            operator_tail: None,
+        }
+    }
+
     pub(super) fn unreported(pending: Option<ExpressionTail<'ast>>) -> Self {
         Self {
             pending,
             right_edge: ExpressionRightEdge::Unreported,
+            operator_tail: None,
         }
     }
 
@@ -656,6 +716,7 @@ impl<'ast> ExpressionOutput<'ast> {
             right_edge: raw.map_or(ExpressionRightEdge::Closed, |raw| {
                 ExpressionRightEdge::SourceFenceCandidate(CopiedRawOwner::Expression(raw))
             }),
+            operator_tail: None,
         }
     }
 
@@ -663,6 +724,7 @@ impl<'ast> ExpressionOutput<'ast> {
         Self {
             pending,
             right_edge: ExpressionRightEdge::Closed,
+            operator_tail: None,
         }
     }
 }
@@ -714,13 +776,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_prepared_with_entry_output(
+            expression,
+            prepared,
+            context,
+            OrdinaryExpressionEntry,
+            writer,
+        )
+    }
+
+    fn format_expression_prepared_with_plan_output(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        plan: &PreparedExpressionPlan<'_, 'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_prepared_with_entry_output(
+            expression,
+            prepared,
+            context,
+            PlannedExpressionEntry(plan),
+            writer,
+        )
+    }
+
+    fn format_expression_prepared_with_entry_output<P: ExpressionEntry<'ast>>(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        entry: P,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let binding = prepared
             .as_ref()
             .and_then(|content| content.parentheses)
             .map_or(super::comments::CommentBinding::Unbound, |removed| {
                 removed.head.binding
             });
-        self.format_expression_leading_prepared_with_raw_end(
+        self.format_expression_leading_with_entry(
             expression,
             prepared,
             ResolvedExpressionHead {
@@ -734,6 +830,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             context,
             None,
+            entry,
             writer,
         )
     }
@@ -1183,14 +1280,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let data = if matches!(position, ExpressionPosition::Superclass) {
             let mut operand = data;
+            let mut non_null = None;
             loop {
                 let expression = match operand {
                     ExprData::ChainExpression(node) => node.expression(self.ast),
-                    ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                    ExprData::TsNonNullExpression(node) => {
+                        non_null = Some(node);
+                        node.expression(self.ast)
+                    }
                     ExprData::ParenthesizedExpression(node) if mode == ContentMode::Formatted => {
                         node.expression(self.ast)
                     }
-                    _ => break operand,
+                    _ => {
+                        // A postfix assertion already frames its type-operator operand.
+                        // Keep classifying the underlying runtime expression otherwise.
+                        break if mode == ContentMode::Formatted
+                            && matches!(
+                                operand,
+                                ExprData::TsAsExpression(_)
+                                    | ExprData::TsSatisfiesExpression(_)
+                                    | ExprData::TsTypeAssertion(_)
+                            ) {
+                            non_null.map_or(operand, ExprData::TsNonNullExpression)
+                        } else {
+                            operand
+                        };
+                    }
                 };
                 operand = self.ast.expr_data(expression);
             }
@@ -1228,7 +1343,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(
                 data,
                 ExprData::Function(_)
-                    | ExprData::Class(_)
                     | ExprData::ArrowFunctionExpression(_)
                     | ExprData::AssignmentExpression(_)
                     | ExprData::ConditionalExpression(_)
@@ -1303,6 +1417,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(!matches!(
                     position,
                     ExpressionPosition::ForHead
+                        | ExpressionPosition::ForTest
+                        | ExpressionPosition::ForUpdate
                         | ExpressionPosition::ForInitializer {
                             grammar: ForInitializerGrammar::Expression,
                             parentheses: false,
@@ -1469,15 +1585,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (position, ExprData::AssignmentExpression(_)) => !matches!(
                 position,
                 ExpressionPosition::Statement
-                    | ExpressionPosition::ExportDefault
                     | ExpressionPosition::AssignmentRight(_)
-                    | ExpressionPosition::TemplateInterpolation
-                    | ExpressionPosition::JsxExpression
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
+                    | ExpressionPosition::ForUpdate
                     | ExpressionPosition::ForSequenceMember
-                    | ExpressionPosition::ForInitializer { .. }
+                    | ExpressionPosition::ForInitializer {
+                        grammar: ForInitializerGrammar::Expression,
+                        ..
+                    }
             ),
             (
                 ExpressionPosition::UnaryArgument(_)
@@ -1555,10 +1672,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    #[inline]
     fn expression_layout(&self, expression: Expr) -> ExpressionLayout {
         if self.diagnostic_lines.is_empty() {
             return ExpressionLayout::Normal;
         }
+        self.expression_layout_with_diagnostics(expression)
+    }
+
+    #[inline(never)]
+    fn expression_layout_with_diagnostics(&self, expression: Expr) -> ExpressionLayout {
         let span = expression.span(self.ast);
         if self.diagnostic_line_is_sensitive(span.start)
             && self.line_breaks(span.start, span.end) == 0
@@ -1578,6 +1701,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = expression.span(self.ast);
         let source = self.source(span);
         let parenthesize = self.expression_is_parenthesized(data, context)
+            || context.jsx_field_initializer
+                && matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
             || matches!(context.expression_head, ExpressionHead::Iteration(_));
         let grammar_barrier = if matches!(
             data,
@@ -1653,16 +1778,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|_| ())
     }
 
-    fn format_expression_data(
+    fn format_recursive_expression_data<P: ExpressionEntry<'ast>>(
         &mut self,
         expression: Expr,
         data: ExprData,
         context: ExpressionContext<'ast>,
         has_expression_parentheses: bool,
+        entry: P,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match data {
             ExprData::JsxElement(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_jsx_expression(
                         node.span(self.ast),
@@ -1675,6 +1802,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map(ExpressionOutput::closed);
             }
             ExprData::JsxFragment(node) => {
+                let _scope = self.recursion_scope(node)?;
                 self.format_jsx_expression(
                     node.span(self.ast),
                     context,
@@ -1684,14 +1812,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
 
             ExprData::TemplateLiteral(template) => {
+                let _scope = self.recursion_scope(template)?;
                 self.format_template_literal(template, writer)?
             }
             ExprData::TaggedTemplateExpression(template) => {
+                let _scope = self.recursion_scope(template)?;
                 return self
                     .format_tagged_template(template, context, writer)
                     .map(ExpressionOutput::closed);
             }
             ExprData::TsAsExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
@@ -1701,6 +1832,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsSatisfiesExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
@@ -1710,44 +1842,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsTypeAssertion(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_type_assertion_output(node, context, writer);
             }
             ExprData::TsNonNullExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_non_null(node, context, writer)
                     .map(ExpressionOutput::closed);
             }
 
             ExprData::TsInstantiationExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self
                     .format_instantiation(node, context, writer)
                     .map(ExpressionOutput::closed);
             }
-            ExprData::IdentifierReference(node) => {
-                writer.text(self.ast.get_utf8(node.name(self.ast)))
-            }
-            ExprData::BooleanLiteral(node) => writer.text(if node.value(self.ast) {
-                "true"
-            } else {
-                "false"
-            }),
-            ExprData::NullLiteral(_) => writer.text("null"),
-            ExprData::StringLiteral(node) => {
-                self.format_string_literal(node, StringContext::Expression, writer)
-            }
-            ExprData::NumericLiteral(node) => self.format_numeric_literal(node, writer),
-            ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
-            ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
-            ExprData::Super(_) => writer.text("super"),
-            ExprData::PrivateIdentifier(identifier) => {
-                writer.text("#");
-                writer.text(self.ast.get_utf8(identifier.name(self.ast)));
-            }
             ExprData::Class(class) => {
+                let _scope = self.recursion_scope(class)?;
                 self.format_class(class, context.position, has_expression_parentheses, writer)?
             }
-            ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ChainExpression(chain) => {
+                let _scope = self.recursion_scope(chain)?;
                 let child_context = if self
                     .expression_is_parenthesized(ExprData::ChainExpression(chain), context)
                 {
@@ -1762,31 +1878,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AwaitExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_await_output(node, context, writer);
             }
-            ExprData::YieldExpression(node) => return self.format_yield_output(node, writer),
+            ExprData::YieldExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
+                return self.format_yield_output(node, writer);
+            }
             ExprData::ImportExpression(import) => {
+                let _scope = self.recursion_scope(import)?;
                 return self
                     .format_import_expression(import, writer)
                     .map(ExpressionOutput::closed);
             }
-            ExprData::MetaProperty(node) => {
-                self.format_meta_property(node, writer)?;
-            }
             ExprData::Function(function) => {
+                let _scope = self.recursion_scope(function)?;
                 self.format_function(function, writer)?;
             }
             ExprData::ArrowFunctionExpression(arrow) => {
+                let _scope = self.recursion_scope(arrow)?;
                 return self.format_arrow_with_raw_end(arrow, context, writer);
             }
-            ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
-            ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
+            ExprData::ArrayExpression(array) => {
+                let _scope = self.recursion_scope(array)?;
+                self.format_array(array, context.body_opening, context.array_layout, writer)?
+            }
+            ExprData::ObjectExpression(object) => {
+                let _scope = self.recursion_scope(object)?;
+                self.format_object(object, context.body_opening, writer)?
+            }
             ExprData::NewExpression(constructor) => {
+                let _scope = self.recursion_scope(constructor)?;
                 return self
                     .format_new(constructor, context, writer)
                     .map(ExpressionOutput::closed);
             }
             ExprData::MemberExpression(member) => {
+                let _scope = self.recursion_scope(member)?;
                 let eligibility = if context.member_chain_layout == MemberChainLayout::Local {
                     FluentChainEligibility::Unqualified
                 } else {
@@ -1819,6 +1947,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             ExprData::CallExpression(call) => {
+                let _scope = self.recursion_scope(call)?;
                 if !matches!(context.call_argument_owner,
                     CallArgumentOwner::DecoratedFunction(owner) if owner == call)
                     && !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
@@ -1841,6 +1970,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             ExprData::BinaryExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
@@ -1852,6 +1982,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::LogicalExpression(node) => {
+                let _scope = self.recursion_scope(node)?;
                 return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
@@ -1863,13 +1994,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AssignmentExpression(assignment) => {
+                let _scope = self.recursion_scope(assignment)?;
                 return self.format_assignment_with_raw_end(assignment, context, writer);
             }
             ExprData::ConditionalExpression(conditional) => {
+                let _scope = self.recursion_scope(conditional)?;
                 return self.format_conditional_with_raw_end(conditional, context, writer);
             }
-            ExprData::UnaryExpression(unary) => return self.format_unary_output(unary, writer),
+            ExprData::UnaryExpression(unary) => {
+                let _scope = self.recursion_scope(unary)?;
+                let prepared = entry.plan().and_then(|plan| match plan {
+                    PreparedExpressionPlan::Unary(unary) => Some(*unary),
+                    _ => None,
+                });
+                return self.format_unary_output(unary, context, prepared, writer);
+            }
             ExprData::UpdateExpression(update) => {
+                let _scope = self.recursion_scope(update)?;
                 return self
                     .format_update(update, context, writer)
                     .map(ExpressionOutput::closed);
@@ -1888,7 +2029,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match layout {
             ExpressionLayout::Flat => {
                 let (normal, ()) = writer.record_with_value(|writer| {
-                    layout.write(writer, |writer| self.format_object(object, writer))
+                    layout.write(writer, |writer| {
+                        self.format_object(object, BodyOpening::Plain, writer)
+                    })
                 })?;
                 Ok(RecordedObject {
                     normal,
@@ -1910,7 +2053,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match layout {
             ExpressionLayout::Flat => {
                 let (normal, ()) = writer.record_with_value(|writer| {
-                    layout.write(writer, |writer| self.format_array(array, writer))
+                    layout.write(writer, |writer| {
+                        self.format_array(
+                            array,
+                            BodyOpening::Plain,
+                            arrays::ArrayLayout::Normal,
+                            writer,
+                        )
+                    })
                 })?;
                 Ok(RecordedArrayArgument::Selected(RecordedArray {
                     normal,
@@ -1976,7 +2126,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mode = self.content_mode(comments);
                 self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
                 if let Some(last) = comments.last() {
-                    self.comment_gap(last.span.end, argument.span(self.ast).start, writer);
+                    self.comment_gap_after(*last, argument.span(self.ast).start, writer);
                 }
                 self.format_expression(
                     argument,

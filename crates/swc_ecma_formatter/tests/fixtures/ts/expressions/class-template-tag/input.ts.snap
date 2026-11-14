@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (class {})`raw`;
+(class {})`raw`;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = class {}`raw`;
+(class {})`raw`;

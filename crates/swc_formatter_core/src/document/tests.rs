@@ -39,6 +39,44 @@ fn line_document(options: PrintOptions) -> String {
     writer.finish().print(options)
 }
 
+fn resumed_scope_document(request: GroupRequest, options: PrintOptions) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.next_group_id();
+    let outer = writer.begin_group(GroupRequest::Auto, Some(id));
+    writer.text("A(");
+    let indent = writer.begin_indent();
+    writer.soft_line();
+    let inner = writer.begin_group(request, None);
+    writer.text("x");
+    writer.line();
+    writer.text("y");
+    writer.end_group(inner);
+    writer.end_indent(indent);
+    writer.soft_line();
+    writer.text(")");
+    writer.end_group(outer);
+    writer.if_break_for(ConditionTarget::Group(id), "!");
+    writer.finish().print(options)
+}
+
+#[test]
+fn resumed_scopes() {
+    let options = PrintOptions::default();
+    let flat = resumed_scope_document(GroupRequest::Auto, options);
+    assert_eq!(flat, "A(x y)");
+
+    let narrow = PrintOptions {
+        line_width: 4,
+        ..options
+    };
+    let broken = resumed_scope_document(GroupRequest::Auto, narrow);
+    assert_eq!(broken, "A(\n  x\n  y\n)!");
+
+    let expanded = resumed_scope_document(GroupRequest::Expanded, options);
+    assert_eq!(expanded, "A(\n  x\n  y\n)!");
+}
+
 fn line_request_document<'a>(
     allocator: &'a Allocator,
     line: impl FnOnce(&mut Writer<'a>),
@@ -2122,6 +2160,14 @@ fn cached_text_columns() {
     );
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
+    assert_eq!(pair_document("a\u{2028}b", "c", 9), "[a\u{2028}b, c];");
+    assert_eq!(
+        pair_document("a\u{2028}b", "c", 8),
+        "[\n  a\u{2028}b,\n  c,\n];"
+    );
+
+    assert_eq!(pair_document("a\u{2029}b", "c", 9), "[a\u{2029}b, c];");
+
     let tab = super::text::Text::new("a\u{7f}\té");
     assert_eq!(tab.clean_width(), Some(4));
     assert_eq!(tab.advance_column(0), 4);
@@ -2952,9 +2998,9 @@ fn fragment_capabilities() {
     });
     assert!(flat_lines.has_intrinsic_lines());
 
-    let multiline = record(&mut writer, |writer| writer.text("first\u{2028}last"));
-    assert!(multiline.try_neutral().is_none());
-    assert!(multiline.try_flat().is_none());
+    let separators = record(&mut writer, |writer| writer.text("first\u{2028}last"));
+    assert!(separators.try_neutral().is_some());
+    assert!(separators.try_flat().is_some());
 
     let choices = record(&mut writer, |writer| {
         writer.write_alternatives(&[atom], expanded);
@@ -3611,10 +3657,10 @@ fn retained_flat_scopes() {
     assert!(carriage_return.try_flat().is_none());
 
     let line_separator = record(&mut writer, |writer| writer.text("a\u{2028}b"));
-    assert!(line_separator.try_flat().is_none());
+    assert!(line_separator.try_flat().is_some());
 
     let paragraph_separator = record(&mut writer, |writer| writer.text("a\u{2029}b"));
-    assert!(paragraph_separator.try_flat().is_none());
+    assert!(paragraph_separator.try_flat().is_some());
 
     let unicode = record(&mut writer, |writer| writer.text("宽文字"));
     assert!(unicode.try_flat().is_some());

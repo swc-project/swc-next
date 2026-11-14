@@ -14,7 +14,7 @@ const joined=<Box title={`before ${value+1} after`}>{tag`head ${<Inner/>} tail`}
 let a = 0,
   b = 1;
 const x1 = (
-  <Box prop={a = b + 1}>
+  <Box prop={(a = b + 1)}>
     {a ? b : 2}
     {(a, b)}
     {...a ? b : []}
@@ -47,7 +47,9 @@ let a = 0,
   b = 1;
 const x1 = (
   <Box
-    prop={a = b + 1}
+    prop={
+      (a = b + 1)
+    }
   >
     {a ? b : 2}
     {(a, b)}

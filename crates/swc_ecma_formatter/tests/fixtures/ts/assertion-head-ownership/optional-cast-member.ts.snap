@@ -6,7 +6,7 @@ left << <T>(/** @type {Function} */ (receiver))?.method();
 ---------- Options ----------
 {}
 ---------- Output ----------
-left << ((<T> /** @type {Function} */ (receiver)?.method()));
+left << ((<T>/** @type {Function} */ (receiver)?.method()));
 
 ---------- Options ----------
 {"printWidth":20}
@@ -14,7 +14,7 @@ left << ((<T> /** @type {Function} */ (receiver)?.method()));
 left <<
   ((<
     T
-  > /** @type {Function} */ (
+  >/** @type {Function} */ (
     receiver
   )?.method()));
 
@@ -24,7 +24,7 @@ left <<
 left <<
   ((<
     T
-  > /** @type {Function} */ (
+  >/** @type {Function} */ (
     receiver
   )
     ?.method()))
@@ -35,6 +35,6 @@ left <<
 left <<
 	((<
 		T
-	> /** @type {Function} */ (
+	>/** @type {Function} */ (
 		receiver
 	)?.method()));

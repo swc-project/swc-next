@@ -14,9 +14,10 @@ const assignedValueName =
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
-const assignedValueName = !(
-  /* @__PURE__ */ receiver.branch.method()
-);
+const assignedValueName =
+  !(
+    /* @__PURE__ */ receiver.branch.method()
+  );
 
 ---------- Options ----------
 {"printWidth":80}

@@ -19,19 +19,19 @@ const value = (<MissingPanel>{"  "}
 ---------- Output ----------
 // @ts-ignore
 const value = (<MissingPanel>{"  "}
-      {
-        uncoveredAfterSpace
-      }
-    </MissingPanel>
-  );
+    {
+      uncoveredAfterSpace
+    }
+  </MissingPanel>
+);
 
 ---------- Options ----------
 {"printWidth":12,"singleQuote":true}
 ---------- Output ----------
 // @ts-ignore
 const value = (<MissingPanel>{'  '}
-      {
-        uncoveredAfterSpace
-      }
-    </MissingPanel>
-  );
+    {
+      uncoveredAfterSpace
+    }
+  </MissingPanel>
+);

@@ -12,7 +12,7 @@ second = third)) });
   k:
     // @ts-ignore
     (first = (// @ts-expect-error
-        second = third)), });
+      second = third)), });
 
 ---------- Options ----------
 {"printWidth":20}
@@ -21,7 +21,7 @@ second = third)) });
   k:
     // @ts-ignore
     (first = (// @ts-expect-error
-          second = third)), });
+      second = third)), });
 
 ---------- Options ----------
 {"printWidth":80,"singleQuote":true}
@@ -30,4 +30,4 @@ second = third)) });
   k:
     // @ts-ignore
     (first = (// @ts-expect-error
-        second = third)), });
+      second = third)), });

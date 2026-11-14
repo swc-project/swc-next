@@ -84,6 +84,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<StatementBoundary, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
+        if let Some(handler) = node.handler(ast)
+            && let Some(parameter) = handler.param(ast)
+        {
+            let head = Span::new(handler.span(ast).start + 5, parameter.span(ast).start);
+            if self.has_comment_directive_in(head) {
+                self.format_verbatim(span, writer)?;
+                return Ok(StatementBoundary::SourceEnd {
+                    end: span.end,
+                    has_terminator: false,
+                });
+            }
+        }
         let mut body = CompoundBlock::new(node.block(ast), EmptyBlock::Expanded);
         let mut head = self.compound_gap(Span::new(span.start + 3, body.node.span(ast).start));
         self.prepare_block_head(head, &mut body);
@@ -269,7 +281,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .comments
                     .partition_point(|comment| comment.span.end <= opening);
                 let before_opening = &head.comments[..head_split];
-                let leading = &head.comments[head_split..];
+                let relocate = self
+                    .comment_binding(before_opening, head.span, Some(span))
+                    .allows_relocation(Some(span));
+                let leading = if relocate {
+                    head.comments
+                } else {
+                    &head.comments[head_split..]
+                };
+                let before_opening = if relocate { &[] } else { before_opening };
                 let tail_split = tail
                     .comments
                     .partition_point(|comment| comment.span.end <= closing);
@@ -357,8 +377,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let before_close = tail_comments.partition_point(|comment| comment.span.end <= closing);
         let after_close = &tail_comments[before_close..];
         let parameter_end = before_close
-            + after_close
-                .partition_point(|comment| self.line_breaks(comment.span.end, body_start) != 0);
+            + after_close.partition_point(|comment| {
+                self.source_line_breaks(comment.span.end, body_start) != 0
+            });
         let (parameter_tail, body_comments) = tail_comments.split_at(parameter_end);
         let body_gap_start = parameter_tail
             .last()
@@ -402,10 +423,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(tail, CatchParameterTail::Parameter { .. })
             && (head_comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.line_breaks(comment.span.end, span.start) != 0
+                    || self.source_line_breaks(comment.span.end, span.start) != 0
             }) || parameter_tail.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.line_breaks(span.end, comment.span.start) != 0
+                    || self.source_line_breaks(span.end, comment.span.start) != 0
             }));
         let body_head = self.compound_gap(Span::new(
             if matches!(tail, CatchParameterTail::Source(_)) {

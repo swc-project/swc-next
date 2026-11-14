@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+import type { Model as // comment
+Record } from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+import type { Model as // comment
+  Record,
+} from "m";

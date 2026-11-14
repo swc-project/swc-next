@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do /* first */
+{} // tail
+while (aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit + anotherCondition);
+---------- Options ----------
+{}
+---------- Output ----------
+do /* first */
+{} while ( // tail
+  aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
+  anotherCondition
+);
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+do /* first */
+{} while ( // tail
+	aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
+	anotherCondition
+);

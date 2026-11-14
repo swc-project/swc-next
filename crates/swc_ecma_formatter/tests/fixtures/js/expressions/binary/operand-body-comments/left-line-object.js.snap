@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = someLongConditionName // c
+&& { aLongPropertyName: 1, anotherLongPropertyName: 2, third: 3 };
+---------- Options ----------
+{}
+---------- Output ----------
+const x = someLongConditionName && // c
+{
+  aLongPropertyName: 1,
+  anotherLongPropertyName: 2,
+  third: 3,
+};

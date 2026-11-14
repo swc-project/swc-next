@@ -10,14 +10,14 @@ coveredSecond}</MissingPanel>;
 ---------- Output ----------
 // @ts-expect-error
 const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
-        coveredSecond}</MissingPanel>);
+      coveredSecond}</MissingPanel>);
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
 // @ts-expect-error
 const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
-        coveredSecond}</MissingPanel>);
+      coveredSecond}</MissingPanel>);
 
 ---------- Options ----------
 {"printWidth":80}
@@ -31,7 +31,7 @@ const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
 ---------- Output ----------
 // @ts-expect-error
 const value0 = (<MissingPanel>{coveredFirst}{// @ts-expect-error
-				coveredSecond}</MissingPanel>)
+			coveredSecond}</MissingPanel>)
 
 ---------- Options ----------
 {"printWidth":100,"trailingComma":"none"}

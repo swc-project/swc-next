@@ -17,9 +17,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
   first=1+2,
   second = 3 + 4,
 ) {
-  yield (
-    first + second
-  );
+  yield first +
+    second;
 });
 
 ---------- Options ----------
@@ -30,10 +29,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
   second = 3 +
     4
 ) {
-  yield (
-    first +
+  yield first +
     second
-  )
 })
 
 ---------- Options ----------

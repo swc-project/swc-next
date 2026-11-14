@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = f(a)(b).terminal;
+---------- Options ----------
+{"printWidth":9}
+---------- Output ----------
+const x =
+  f(a)(
+    b,
+  ).terminal;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const x =
+  f(a)(b).terminal;

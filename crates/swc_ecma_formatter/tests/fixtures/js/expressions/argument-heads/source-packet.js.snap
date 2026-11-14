@@ -7,13 +7,15 @@ take(/* eslint-disable-line no-undef */
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-take(/* eslint-disable-line no-undef */ value, other);
+take(/* eslint-disable-line no-undef */
+  value,
+  other,
+);
 
 ---------- Options ----------
 {"printWidth":24}
 ---------- Output ----------
-take(
-  /* eslint-disable-line no-undef */
+take(/* eslint-disable-line no-undef */
   value,
   other,
 );
@@ -21,4 +23,7 @@ take(
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
-take(/* eslint-disable-line no-undef */ value, other)
+take(/* eslint-disable-line no-undef */
+  value,
+  other,
+)

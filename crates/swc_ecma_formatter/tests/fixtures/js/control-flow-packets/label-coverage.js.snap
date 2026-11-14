@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: /* c8 ignore next */
+f();
+---------- Options ----------
+{}
+---------- Output ----------
+label: /* c8 ignore next */
+f();

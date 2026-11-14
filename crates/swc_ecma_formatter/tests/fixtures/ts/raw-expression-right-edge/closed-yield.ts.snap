@@ -8,6 +8,6 @@ b; }
 {"semi":false}
 ---------- Output ----------
 function* f() {
-  yield /* prettier-ignore */ (y as ?)
+  yield /* prettier-ignore */ y as ?;
   b
 }

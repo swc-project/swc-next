@@ -16,8 +16,14 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalClose
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, TrailingCommas,
-    document::{ConditionTarget, Fragment, GroupId, Writer},
+    document::{BodyOpening, ConditionTarget, Fragment, GroupId, Writer},
 };
+
+#[derive(Clone, Copy)]
+pub(super) enum ArrayLayout {
+    Normal,
+    InlineTemplateSlot,
+}
 
 #[derive(Clone, Copy)]
 pub(super) enum ArrayArgumentArity {
@@ -35,7 +41,6 @@ struct PreparedArray<'ast> {
     array: ArrayExpression,
     content: Span,
     expand: bool,
-    opening: LineConstraint,
     closing: TerminalCloseBoundary,
     layout: ArgumentLayout,
     numeric_comments: Option<ArrayCommentOwner<'ast>>,
@@ -91,19 +96,22 @@ fn next_item(elements: &mut impl Iterator<Item = Option<Argument>>) -> Option<Ar
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(in crate::formatter) fn format_array(
+    pub(super) fn format_array(
         &mut self,
         array: ArrayExpression,
+        opening: BodyOpening,
+        layout: ArrayLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let source = self.source_array(array, false)?;
-        self.format_source_array(source, writer)
+        let source = self.source_array(array, false, layout)?;
+        self.format_source_array(source, opening, writer)
     }
 
     fn source_array(
         &mut self,
         array: ArrayExpression,
         qualify: bool,
+        parent: ArrayLayout,
     ) -> Result<SourceArray<'ast>, FormatError> {
         let elements = array.elements(self.ast);
         let span = array.span(self.ast);
@@ -128,14 +136,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 reference: None,
             }
         };
-        let opening = self.opening_line_constraint(content);
         let (layout, numeric_comments) = match numeric.fill_first {
             Some(first) => {
                 // Keep this old fallible query even if qualification demotes later.
                 let comments = self.comments.between(content)?;
                 let first_end = first.span(self.ast).end;
                 let fill_line = self.array_has_inline_line_comments(comments, first_end);
-                let layout = if fill_line {
+                let layout = if fill_line || matches!(parent, ArrayLayout::InlineTemplateSlot) {
                     ArgumentLayout::Lines
                 } else {
                     ArgumentLayout::Fill
@@ -183,7 +190,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             array,
             content,
             expand,
-            opening,
             closing,
             layout,
             numeric_comments,
@@ -193,6 +199,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_source_array(
         &mut self,
         source: SourceArray<'ast>,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match source {
@@ -203,7 +210,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             SourceArray::Formatted(source) => {
                 let group = self.array_trailing_comma_group(source.layout, writer);
-                writer.group_with_id(source.expand.into(), group, |writer| {
+                opening.group(writer, source.expand.into(), group, |writer| {
                     self.format_array_contents(source, group, writer)
                         .map(|_| ())
                 })
@@ -218,12 +225,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedArrayArgument<'ast>, FormatError> {
         let qualify = matches!(arity, ArrayArgumentArity::Multiple);
-        let source = self.source_array(array, qualify)?;
+        let source = self.source_array(array, qualify, ArrayLayout::Normal)?;
         let source = match source {
             SourceArray::Formatted(source) => source,
             source => {
-                let (value, ()) =
-                    writer.record_with_value(|writer| self.format_source_array(source, writer))?;
+                let (value, ()) = writer.record_with_value(|writer| {
+                    self.format_source_array(source, BodyOpening::Plain, writer)
+                })?;
                 return Ok(RecordedArrayArgument::Ordinary(value));
             }
         };
@@ -261,18 +269,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         group: Option<GroupId>,
         writer: &mut Writer<'ast>,
     ) -> Result<bool, FormatError> {
+        let first = source.array.elements(self.ast).iter().find_map(|id| {
+            let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
+            argument
+        });
+        let protect_runtime_items =
+            first.is_some() && self.runtime_list_has_line_directive(source.array.span(self.ast));
+        let opening = first
+            .filter(|_| protect_runtime_items)
+            .and_then(|argument| {
+                self.lint_opening_constraint(source.content.start, argument.span(self.ast).start)
+            })
+            .unwrap_or_else(|| self.opening_line_constraint(source.content));
         let mut numeric_comments = source.numeric_comments.take();
         writer.text("[");
         let closing = writer.indent(|writer| {
-            source
-                .opening
-                .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
             match source.layout {
-                ArgumentLayout::Lines => {
-                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
-                }
+                ArgumentLayout::Lines => self.format_array_items(
+                    &source,
+                    group,
+                    protect_runtime_items,
+                    numeric_comments.as_mut(),
+                    writer,
+                ),
                 ArgumentLayout::Fill => writer.fill(|writer| {
-                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
+                    self.format_array_items(
+                        &source,
+                        group,
+                        protect_runtime_items,
+                        numeric_comments.as_mut(),
+                        writer,
+                    )
                 }),
             }
         })?;
@@ -472,6 +500,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: &PreparedArray<'ast>,
         group: Option<GroupId>,
+        protect_runtime_items: bool,
         mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<LineConstraint, FormatError> {
@@ -565,6 +594,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     Span::new(previous_end, span.end),
                     trailing_comma,
+                    protect_runtime_items,
                     numeric_comments.as_deref_mut(),
                     writer,
                 )

@@ -9,6 +9,7 @@ label: /* note */
 ---------- Options ----------
 {}
 ---------- Output ----------
-/* note */ label: (/*#__PURE__*/ a
+/* note */
+label: (/*#__PURE__*/ a
 // prettier-ignore
 ).b;

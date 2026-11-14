@@ -2,7 +2,12 @@
 
 use swc_next_ecma_ast::{Ast, Comment, CommentKind, Span};
 
-use super::{Formatter, diagnostics::LineConstraint, source::is_source_whitespace};
+use super::{
+    Formatter,
+    comments::SourceCommentText,
+    diagnostics::LineConstraint,
+    source::{is_source_horizontal_whitespace, is_source_whitespace},
+};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -52,8 +57,81 @@ pub(super) enum SuppressionPosition {
 
 pub(super) fn is_suppression_comment(ast: &Ast<'_>, comment: Comment) -> bool {
     let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
-    value.trim_matches(|character| is_source_whitespace(character) && character != '\u{85}')
-        == "prettier-ignore"
+    is_suppression_value(value)
+}
+
+pub(super) fn is_suppression_value(value: &str) -> bool {
+    let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
+    let value = value.trim_start_matches(whitespace);
+    value.starts_with('p')
+        && value
+            .strip_prefix("prettier-ignore")
+            .is_some_and(|suffix| suffix.chars().all(whitespace))
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum LintLineDirective {
+    SameLine,
+    NextLine,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CommentDirective {
+    LintLine(LintLineDirective),
+    LintRange,
+    Coverage,
+}
+
+pub(super) fn comment_directive_value(value: &str, kind: CommentKind) -> Option<CommentDirective> {
+    if kind == CommentKind::Block && is_coverage_directive(value) {
+        return Some(CommentDirective::Coverage);
+    }
+    let value = value
+        .trim_start_matches(is_source_whitespace)
+        .strip_prefix("eslint-")?;
+    let (rest, directive) = if let Some(rest) = value.strip_prefix("disable") {
+        if let Some(rest) = rest.strip_prefix("-next-line") {
+            (
+                rest,
+                CommentDirective::LintLine(LintLineDirective::NextLine),
+            )
+        } else if let Some(rest) = rest.strip_prefix("-line") {
+            (
+                rest,
+                CommentDirective::LintLine(LintLineDirective::SameLine),
+            )
+        } else {
+            (rest, CommentDirective::LintRange)
+        }
+    } else {
+        (value.strip_prefix("enable")?, CommentDirective::LintRange)
+    };
+    rest.chars()
+        .next()
+        .is_none_or(is_source_whitespace)
+        .then_some(directive)
+}
+
+fn is_coverage_directive(value: &str) -> bool {
+    let (prefix, supports_next) = match value.as_bytes() {
+        [b' ', b'c', ..] => (" c8 ignore ", true),
+        [b' ', b'v', ..] => (" v8 ignore ", true),
+        // The coverage consumer's range pattern `[c|v]8` also accepts `|8`.
+        [b' ', b'|', ..] => (" |8 ignore ", false),
+        [b' ', b'n', ..] => {
+            return value.strip_prefix(" node:coverage ").is_some_and(|mode| {
+                mode.starts_with("ignore next")
+                    || mode.starts_with("disable")
+                    || mode.starts_with("enable")
+            });
+        }
+        _ => return false,
+    };
+    value.strip_prefix(prefix).is_some_and(|mode| {
+        supports_next && mode.starts_with("next")
+            || mode.starts_with("start")
+            || mode.starts_with("stop")
+    })
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -186,7 +264,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut last = first + 1;
             while last < comments.len() {
                 let gap = Span::new(comments[last - 1].span.end, comments[last].span.start);
-                if self.line_breaks(gap.start, gap.end) != 0
+                if self.source_line_breaks(gap.start, gap.end) != 0
                     || !self.source(gap).chars().all(is_source_whitespace)
                 {
                     break;
@@ -273,10 +351,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: DelimitedSourceGap,
         writer: &mut Writer<'ast>,
     ) -> Result<DelimitedSourceGap, FormatError> {
+        self.format_prepared_delimited_source_gap_with_comments(
+            gap,
+            SourceCommentText::Literal,
+            writer,
+        )
+    }
+
+    pub(super) fn format_prepared_delimited_source_gap_with_comments(
+        &mut self,
+        gap: DelimitedSourceGap,
+        policy: SourceCommentText,
+        writer: &mut Writer<'ast>,
+    ) -> Result<DelimitedSourceGap, FormatError> {
         if gap.break_parent {
             writer.break_parent();
         }
-        self.format_verbatim(gap.source, writer)?;
+        let comments = self.comments.between(gap.source)?;
+        self.comments.claim(comments)?;
+        let mut start = gap.source.start;
+        for &comment in comments {
+            let prefix = self.source(Span::new(start, comment.span.start));
+            let trimmed = prefix.trim_end_matches(is_source_horizontal_whitespace);
+            let before_line = trimmed
+                .strip_suffix("\r\n")
+                .or_else(|| trimmed.strip_suffix(['\r', '\n', '\u{2028}', '\u{2029}']));
+            if let Some(before_line) = before_line {
+                // The gap retains its physical lines and punctuation, while
+                // an own-line comment belongs to the enclosing syntax indent.
+                writer.literal_text(before_line);
+                writer.hard_line();
+            } else if !trimmed.is_empty() || !self.source_position_starts_line(start) {
+                writer.literal_text(prefix);
+            }
+            self.format_source_comment_text(comment, policy, writer)?;
+            start = comment.span.end;
+        }
+        writer.literal_text(self.source(Span::new(start, gap.source.end)));
         Ok(gap)
     }
 
@@ -318,7 +429,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 break;
             }
             if position == TrailingSuppression::Inline
-                && self.line_breaks(previous, comment.span.start) != 0
+                && self.source_line_breaks(previous, comment.span.start) != 0
             {
                 if !terminal {
                     break;

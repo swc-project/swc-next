@@ -7,8 +7,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 [
-	first
-	// marker
+	first // marker
 	,
 	,
 	second,

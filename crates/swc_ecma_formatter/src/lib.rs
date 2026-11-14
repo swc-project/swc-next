@@ -4,6 +4,11 @@
 //! [`EcmaDocumentProducer`] builds documents for a language-independent host session.
 //! Formatting options live in `options`. Syntax support is added incrementally;
 //! unsupported programs return [`FormatError::Unsupported`].
+//!
+//! Recursive document construction allows 128 active formatter scopes, or 32
+//! with debug assertions enabled, to protect default thread stacks. Preparing
+//! and emitting one node share a scope; retained frames can add scopes of their
+//! own. Exceeding this budget returns [`FormatError::Unsupported`].
 
 #![deny(clippy::all)]
 #![deny(unused)]

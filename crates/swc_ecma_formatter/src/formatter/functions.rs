@@ -10,6 +10,7 @@ use super::suppression::{ContentMode, SuppressionPosition, is_suppression_commen
 use super::types::TypeGap;
 use super::types::callable::{
     SignatureParameterLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
+    write_signature_fragments,
 };
 use super::types::generics::{TypeListKind, TypeListPrefix, TypeParameterContext};
 use crate::{FormatError, document::Writer};
@@ -624,16 +625,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let result = self.prepare_function_return(result);
                 let object_return = result.has_object_type();
                 let (result, ()) = writer.record_with_value(|writer| {
-                    let tail = self.format_function_return_before_body(result, writer)?;
-                    self.format_expression_tail(tail, writer)
+                    let output = self.format_function_return_before_body_output(result, writer)?;
+                    self.format_expression_tail(output.pending, writer)
                 })?;
                 writer.group(false, |writer| {
-                    writer.write_fragment(if object_return || result.preferred_breaks() {
-                        parameters.grouped()
-                    } else {
-                        parameters.contents()
-                    });
-                    writer.write_fragment(result);
+                    write_signature_fragments(parameters, result, object_return, writer);
                 });
             }
             result => {
@@ -754,13 +750,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Arrow own-line comments lead the block itself; only an end-of-line
             // packet after a real parameter belongs to the first body item.
             if comments.len() != first_line + 1
-                || self.source_position_starts_line(comments[first_line].span.start)
+                || self.layout_position_starts_line(comments[first_line].span.start)
             {
                 return (comments, StatementBodyLeading::empty());
             }
             while start != 0 && self.source_comment_gap_is_run(comments[start - 1], comments[start])
             {
-                if self.source_position_starts_line(comments[start - 1].span.start) {
+                if self.layout_position_starts_line(comments[start - 1].span.start) {
                     break;
                 }
                 start -= 1;

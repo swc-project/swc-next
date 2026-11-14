@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = </* c */ T>a;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = </* c */ T>a;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const x = <
+  /* c */ T
+>a;

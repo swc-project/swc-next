@@ -16,8 +16,8 @@ export function evaluate(
 ): void {
   for (
     (first in
-      // @ts-expect-error
-      missingRhs) /* tail */; missingCondition; missingUpdate) {}
+    // @ts-expect-error
+    missingRhs) /* tail */; missingCondition; missingUpdate) {}
   const outsideSentinel: number =
     "outside";
 }

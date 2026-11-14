@@ -12,15 +12,21 @@ use super::callable::{
     AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
     SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
-use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeContext, TypeGap, TypeLayout};
-use crate::formatter::comments::{CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail};
+use super::{Formatter, PreparedType, TypeContext, TypeGap, TypeLayout, TypeOutput};
+use crate::formatter::comments::{
+    CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, PreparedCommentAdjacency,
+    SourceCommentText,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{
+    FormatError, Semicolons,
+    document::{BodyOpening, GroupRequest, Writer},
+};
 
 struct MemberKey<'ast> {
     node: PropertyKey,
@@ -42,9 +48,19 @@ enum TypeMemberLeading<'ast> {
 struct PropertyMember<'ast> {
     key: MemberKey<'ast>,
     optional: bool,
-    annotation: Option<(PreparedType, TypeBoundaryLayout<'ast>)>,
+    optional_before: Option<TypeGap<'ast>>,
+    annotation: Option<(PreparedType, PropertyAnnotationPrefix<'ast>)>,
     ending: Option<TypeGap<'ast>>,
     riding: Option<ExpressionTail<'ast>>,
+}
+
+enum PropertyAnnotationPrefix<'ast> {
+    SourceKey(Span),
+    SourceType(super::SourceTypeOperator),
+    Formatted {
+        before: CommentBoundary<'ast>,
+        after: CommentBoundary<'ast>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -196,12 +212,21 @@ pub(super) struct IncomingTypeMember {
 pub(super) struct TypeMemberBodyIncoming<'ast> {
     pub(super) member: Option<IncomingTypeMember>,
     pub(super) comments: Option<&'ast [Comment]>,
+    pub(super) opening: BodyOpening,
 }
 
 #[derive(Clone, Copy)]
 enum MemberGapRole {
     Between(Option<Span>),
-    Closing,
+    Closing(Option<Span>),
+}
+
+impl MemberGapRole {
+    fn separator(self) -> Option<Span> {
+        match self {
+            Self::Between(separator) | Self::Closing(separator) => separator,
+        }
+    }
 }
 
 struct PreparedMember<'ast> {
@@ -212,8 +237,13 @@ struct PreparedMember<'ast> {
     after_separator: Option<ExpressionTail<'ast>>,
 }
 
+struct SourceMemberGap<'ast> {
+    before_separator: Option<TypeGap<'ast>>,
+    following: Span,
+}
+
 enum MemberGap<'ast> {
-    Source(Span),
+    Source(SourceMemberGap<'ast>),
     Formatted {
         trailing: CommentBoundary<'ast>,
         leading: &'ast [Comment],
@@ -231,21 +261,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.line_breaks(opening_end, first_start) != 0
     }
 
-    pub(super) fn format_type_literal(
+    pub(super) fn format_type_literal_body(
         &mut self,
         node: TsTypeLiteral,
         layout: TypeLayout,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_type_member_body_with_layout(
             node.span(self.ast),
             node.members(self.ast),
             TypeMemberBodyKind::Literal,
-            TypeMemberBodyIncoming::default(),
+            TypeMemberBodyIncoming {
+                opening,
+                ..TypeMemberBodyIncoming::default()
+            },
             layout,
             writer,
         )?;
-        Ok(None)
+        Ok(TypeOutput::closed())
     }
 
     pub(super) fn format_type_member_body(
@@ -279,6 +313,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let TypeMemberBodyIncoming {
             member: incoming,
             comments: head_comments,
+            opening,
         } = incoming;
         let content = Span::new(span.start + 1, span.end - 1);
         let quoting = self.property_key_quoting(|| {
@@ -313,7 +348,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(first) = members.peek().copied() else {
             let comments = head_comments.unwrap_or_else(|| self.comments.in_range(content));
             if self.content_mode(comments) == ContentMode::Verbatim {
-                return self.format_verbatim(span, writer);
+                self.format_verbatim(span, writer)?;
+                return Ok(());
             }
             if comments.is_empty() {
                 writer.text("{}");
@@ -362,7 +398,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return if layout == TypeLayout::SignatureParameter {
                 write(writer)
             } else {
-                writer.group(expanded, write)
+                opening.group(writer, GroupRequest::from(expanded), None, write)
             };
         };
         let first_start = first.span(ast).start;
@@ -410,16 +446,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let role = if next.is_some() {
                         MemberGapRole::Between(prepared.separator)
                     } else {
-                        MemberGapRole::Closing
+                        MemberGapRole::Closing(prepared.separator)
                     };
                     // An ignored member without a source separator relies on the
                     // original newline. Adding a separator would change its raw owner.
-                    let gap = if source && prepared.separator.is_none() && next.is_some() {
-                        MemberGap::Source(gap_span)
+                    let mut gap = if source && prepared.separator.is_none() && next.is_some() {
+                        MemberGap::Source(SourceMemberGap {
+                            before_separator: None,
+                            following: gap_span,
+                        })
                     } else {
                         self.prepare_member_gap(gap_span, role)
                     };
-                    let source_gap = matches!(gap, MemberGap::Source(_));
                     // The prepared key can remain verbatim even when its member is
                     // formatted. Its actual printed kind determines contextual tokens;
                     // diagnostic-covered members can also require a same-line separator.
@@ -434,13 +472,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 == LineConstraint::SameLine);
                     let after_separator = prepared.after_separator.take();
                     let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let adjacency = PreparedCommentAdjacency::after_tail(
+                        after_separator
+                            .as_ref()
+                            .filter(|tail| !tail.comments.is_empty())
+                            .or(tail.as_ref()),
+                    );
+                    if let MemberGap::Source(source_gap) = &mut gap
+                        && let Some(before) = source_gap.before_separator.take()
+                    {
+                        let adjacency =
+                            self.format_expression_tail_adjacency(tail.take(), writer)?;
+                        match before {
+                            TypeGap::Source(span) => self.format_verbatim(span, writer)?,
+                            TypeGap::Formatted(boundary) => {
+                                self.format_comment_boundary_after(&boundary, adjacency, writer)?;
+                                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                            }
+                        }
+                    }
                     let emit_tail_after_separator = !source
-                        && !source_gap
-                        && self.type_tail_closing_gap(tail.as_ref()).is_some();
+                        && self
+                            .type_tail_continuation_gap(tail.as_ref(), false)
+                            .is_some();
                     if !emit_tail_after_separator {
                         self.format_expression_tail(tail.take(), writer)?;
                     }
-                    if !source && !source_gap {
+                    if !source {
                         if required_separator
                             || next.is_some() && self.options.semicolons == Semicolons::Always
                         {
@@ -455,14 +513,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_expression_tail(after_separator, writer)?;
                     if next.is_none() {
                         return match gap {
-                            MemberGap::Source(span) => Ok(MemberClosing::Source(span)),
+                            MemberGap::Source(source) => {
+                                Ok(MemberClosing::Source(source.following))
+                            }
                             MemberGap::Formatted { trailing, .. } => {
-                                self.format_comment_boundary(&trailing, writer)?;
+                                self.format_comment_boundary_after(&trailing, adjacency, writer)?;
                                 Ok(MemberClosing::Formatted(trailing.gap()))
                             }
                         };
                     }
-                    self.format_member_gap(gap, role, kind, writer)?;
+                    self.format_member_gap(gap, role, kind, adjacency, writer)?;
                     mode = suppression.map_or(ContentMode::Formatted, |source| source.following);
                 }
                 unreachable!("a nonempty type body retains its final member")
@@ -493,7 +553,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if layout == TypeLayout::SignatureParameter {
             write(writer)
         } else {
-            writer.group(expanded, write)
+            opening.group(writer, GroupRequest::from(expanded), None, write)
         }
     }
 
@@ -530,7 +590,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.line_constraint(last.span.end, next_start).write(
                 writer,
                 FlatSeparator::Space,
-                |writer| self.comment_gap(last.span.end, next_start, writer),
+                |writer| self.comment_gap_after(*last, next_start, writer),
             );
         }
         Ok(())
@@ -539,7 +599,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_member_gap(&self, gap: Span, role: MemberGapRole) -> MemberGap<'ast> {
         let comments = self.comments.in_range(gap);
         if self.content_mode(comments) == ContentMode::Verbatim {
-            return MemberGap::Source(gap);
+            let (before_separator, following) = match role
+                .separator()
+                .filter(|separator| gap.start <= separator.start && separator.end <= gap.end)
+            {
+                Some(separator) => {
+                    let count =
+                        comments.partition_point(|comment| comment.span.end <= separator.start);
+                    let before = &comments[..count];
+                    let before_separator = (!before.is_empty()).then(|| {
+                        let prefix = Span::new(gap.start, separator.start);
+                        if !self
+                            .comment_binding(before, prefix, None)
+                            .allows_relocation(None)
+                        {
+                            TypeGap::Source(prefix)
+                        } else {
+                            TypeGap::Formatted(self.prepare_comment_boundary(
+                                before,
+                                prefix.start,
+                                prefix.end,
+                            ))
+                        }
+                    });
+                    (before_separator, Span::new(separator.end, gap.end))
+                }
+                None => (None, gap),
+            };
+            return MemberGap::Source(SourceMemberGap {
+                before_separator,
+                following,
+            });
         }
         let (trailing, leading) = match role {
             MemberGapRole::Between(separator) => {
@@ -548,7 +638,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
                 self.split_separator_comments(comments, before_separator, gap.start, Some(gap.end))
             }
-            MemberGapRole::Closing => (comments, &[][..]),
+            MemberGapRole::Closing(_) => (comments, &[][..]),
         };
         let leading_start = leading
             .first()
@@ -565,6 +655,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: MemberGap<'ast>,
         role: MemberGapRole,
         kind: TypeMemberBodyKind,
+        adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let spaced = self.options.bracket_spacing || matches!(role, MemberGapRole::Between(_));
@@ -574,7 +665,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             FlatSeparator::Empty
         };
         match gap {
-            MemberGap::Source(span) => {
+            MemberGap::Source(gap) => {
+                let span = gap.following;
                 let source =
                     self.format_delimited_source_gap(span, DelimitedFollowing::Node, writer)?;
                 self.source_line_constraint(source.end, span.end).write(
@@ -589,7 +681,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading,
                 next_start,
             } => {
-                self.format_comment_boundary(&trailing, writer)?;
+                self.format_comment_boundary_after(&trailing, adjacency, writer)?;
                 let leading_start = leading
                     .first()
                     .map_or(next_start, |comment| comment.span.start);
@@ -621,7 +713,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_constraint(last.span.end, next_start).write(
                         writer,
                         FlatSeparator::Space,
-                        |writer| self.comment_gap(last.span.end, next_start, writer),
+                        |writer| self.comment_gap_after(*last, next_start, writer),
                     );
                 }
                 Ok(())
@@ -732,14 +824,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let before_separator = separator.and_then(|separator| {
-            if !matches!(&content, MemberContent::Signature(signature) if signature.result.is_some()) {
-                return None;
-            }
             let gap = Span::new(content_end, separator.start);
             let comments = self.comments.in_range(gap);
-            let bound = !self.comment_binding(comments, gap, None).allows_relocation(None);
-            (!comments.is_empty() && (bound || comments.iter().all(|comment| comment.kind == CommentKind::Block)))
-                .then(|| self.prepare_type_gap(gap, bound))
+            if comments.is_empty() {
+                return None;
+            }
+            let bound = !self
+                .comment_binding(comments, gap, None)
+                .allows_relocation(None);
+            let retained = match &content {
+                MemberContent::Signature(signature) if signature.result.is_some() => {
+                    bound
+                        || comments
+                            .iter()
+                            .all(|comment| comment.kind == CommentKind::Block)
+                }
+                MemberContent::Property(_) | MemberContent::Index(_) => {
+                    !bound
+                        && comments
+                            .last()
+                            .is_some_and(|last| self.line_breaks(content_end, last.span.start) == 0)
+                        && comments
+                            .iter()
+                            .all(|comment| comment.kind == CommentKind::Block)
+                }
+                _ => false,
+            };
+            retained.then(|| self.prepare_type_gap(gap, bound))
         });
         let after_separator = match &mut content {
             MemberContent::Property(property) => property.riding.take(),
@@ -856,6 +967,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PropertyMember<'ast>, FormatError> {
         let ast = self.ast;
         let mut riding = None;
+        let mut optional_before = None;
         let annotation = node
             .type_annotation(ast)
             .map(|annotation| {
@@ -924,15 +1036,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     after
                 };
-                let prefix =
-                    if key.mode == ContentMode::Verbatim || type_node.source_owner.is_some() {
-                        TypeBoundaryLayout::Source(gap)
+                let prefix = if key.mode == ContentMode::Verbatim {
+                    PropertyAnnotationPrefix::SourceKey(gap)
+                } else if type_node.source_owner.is_some() {
+                    PropertyAnnotationPrefix::SourceType(super::SourceTypeOperator::new(
+                        gap,
+                        Span::new(colon, colon + 1),
+                    ))
+                } else {
+                    let (before, start) = if node.optional(ast) && !before.is_empty() {
+                        let marker_gap = Span::new(gap.start, colon);
+                        let marker = self.find_token(marker_gap, before, "?").ok_or_else(|| {
+                            self.unsupported("type property optional marker", node)
+                        })?;
+                        optional_before =
+                            Some(self.prepare_type_gap(Span::new(gap.start, marker), false));
+                        let split = before.partition_point(|comment| comment.span.end <= marker);
+                        (&before[split..], marker + 1)
                     } else {
-                        TypeBoundaryLayout::Formatted {
-                            before: self.prepare_comment_boundary(before, gap.start, colon),
-                            after: self.prepare_comment_boundary(after, colon + 1, gap.end),
-                        }
+                        (before, gap.start)
                     };
+                    PropertyAnnotationPrefix::Formatted {
+                        before: self.prepare_comment_boundary(before, start, colon),
+                        after: self.prepare_comment_boundary(after, colon + 1, gap.end),
+                    }
+                };
                 Ok((type_node, prefix))
             })
             .transpose()?;
@@ -960,6 +1088,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PropertyMember {
             key,
             optional: node.optional(ast),
+            optional_before,
             annotation,
             ending,
             riding,
@@ -1076,7 +1205,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             prefix_gap = Span::new(head_gap.end, head_gap.end);
         }
-        let prefix = self.prepare_type_gap(prefix_gap, head_source);
+        let prefix = if !construct && head_end == parameter_span.start {
+            self.prepare_bodyless_parameter_gap(&mut parameters, prefix_gap, head_source)?
+        } else {
+            self.prepare_type_gap(prefix_gap, head_source)
+        };
         let mut generics = parts
             .generics
             .map(|generic| {
@@ -1105,7 +1238,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                 }
-                Ok((generic, generic_mode, self.prepare_type_gap(gap, source)))
+                let following = if construct {
+                    self.prepare_type_gap(gap, source)
+                } else {
+                    self.prepare_bodyless_parameter_gap(&mut parameters, gap, source)?
+                };
+                Ok((generic, generic_mode, following))
             })
             .transpose()?;
         let result = parts.result.map(|annotation| {
@@ -1365,9 +1503,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let before_separator = member.before_separator.take();
         let tail = self.format_type_member_content(member.content, quoting, writer)?;
         if let Some(before) = before_separator {
-            self.format_expression_tail(tail, writer)?;
-            self.format_type_gap(before, FlatSeparator::Empty, writer)?;
-            Ok(None)
+            match (tail, before) {
+                (Some(tail), TypeGap::Formatted(boundary)) => {
+                    let comments = self
+                        .comments
+                        .in_range(Span::new(tail.source_end, boundary.end()));
+                    debug_assert!(comments.starts_with(tail.comments));
+                    debug_assert!(comments.ends_with(boundary.comments()));
+                    Ok(Some(ExpressionTail {
+                        source_end: tail.source_end,
+                        comments,
+                    }))
+                }
+                (tail, before) => {
+                    self.format_expression_tail(tail, writer)?;
+                    self.format_type_gap(before, FlatSeparator::Empty, writer)?;
+                    Ok(None)
+                }
+            }
         } else {
             Ok(tail)
         }
@@ -1451,10 +1604,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_type_member_leading(property.key.leading.take(), writer)?;
-        let source_prefix = property
-            .annotation
-            .as_ref()
-            .is_some_and(|(_, prefix)| matches!(prefix, TypeBoundaryLayout::Source(_)));
+        let source_prefix = property.annotation.as_ref().is_some_and(|(_, prefix)| {
+            matches!(
+                prefix,
+                PropertyAnnotationPrefix::SourceKey(_) | PropertyAnnotationPrefix::SourceType(_)
+            )
+        });
         self.format_type_member_key(
             property.key,
             PropertyKeyContext::TypeProperty,
@@ -1462,29 +1617,61 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )?;
         if let Some((node, prefix)) = property.annotation {
+            if let Some(before) = property.optional_before {
+                self.format_type_gap(before, FlatSeparator::Empty, writer)?;
+            }
             if property.optional && !source_prefix {
                 writer.text("?");
             }
             match prefix {
-                TypeBoundaryLayout::Source(span) => self.format_verbatim(span, writer)?,
-                TypeBoundaryLayout::Formatted { before, after } => {
+                PropertyAnnotationPrefix::SourceKey(span) => {
+                    self.format_verbatim(span, writer)?;
+                    self.format_prepared_type_with_layout(
+                        node,
+                        TypeContext::Root,
+                        TypeLayout::OpeningProvided,
+                        writer,
+                    )
+                }
+                PropertyAnnotationPrefix::SourceType(source) => {
+                    self.format_verbatim(source.prefix, writer)?;
+                    let head = self.prepare_type_source_head_gap(source.after);
+                    let own_line = head.leading_line;
+                    let mut write = |writer: &mut Writer<'ast>| {
+                        self.format_prepared_type_source_head_gap(
+                            head,
+                            SourceCommentText::Literal,
+                            writer,
+                        )?;
+                        self.format_prepared_type_with_layout(
+                            node,
+                            TypeContext::Root,
+                            if own_line {
+                                TypeLayout::CallerIndented
+                            } else {
+                                TypeLayout::OpeningProvided
+                            },
+                            writer,
+                        )
+                    };
+                    if own_line {
+                        writer.indent(write)
+                    } else {
+                        write(writer)
+                    }
+                }
+                PropertyAnnotationPrefix::Formatted { before, after } => {
                     self.format_type_comment_gap(&before, FlatSeparator::Empty, writer)?;
                     writer.text(":");
-                    return self.format_prepared_type_after_comments(
+                    self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
                         &after,
                         TypeLayout::Root,
                         writer,
-                    );
+                    )
                 }
             }
-            self.format_prepared_type_with_layout(
-                node,
-                TypeContext::Root,
-                TypeLayout::OpeningProvided,
-                writer,
-            )
         } else {
             if let Some(ending) = property.ending {
                 self.format_type_gap(ending, FlatSeparator::Empty, writer)?;

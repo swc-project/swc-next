@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = <div>{x // c
+ ?? (<C />)}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const a = (
+  <div>
+    {x ?? ( // c
+      <C />
+    )}
+  </div>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const a = (
+  <div>
+    {x ?? ( // c
+      <C />
+    )}
+  </div>
+)

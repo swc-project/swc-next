@@ -10,8 +10,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ({
   [a]: /*x*/
-  /* prettier-ignore */
-  [ 1,2 ],
+    /* prettier-ignore */
+    [ 1,2 ],
 });
 
 ---------- Options ----------
@@ -19,8 +19,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ({
   [a]: /*x*/
-  /* prettier-ignore */
-  [ 1,2 ],
+    /* prettier-ignore */
+    [ 1,2 ],
 });
 
 ---------- Options ----------
@@ -28,6 +28,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ;({
   [a]: /*x*/
-  /* prettier-ignore */
-  [ 1,2 ],
+    /* prettier-ignore */
+    [ 1,2 ],
 })

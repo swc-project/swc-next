@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f():
+  // @ts-ignore
+  MissingAlpha | MissingBeta {}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f():
+// @ts-ignore
+MissingAlpha | MissingBeta {}

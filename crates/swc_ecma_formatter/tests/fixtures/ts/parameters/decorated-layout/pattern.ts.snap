@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(@a @b { x }: { x: string }) {} }
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+class C {
+  constructor(
+    @a
+    @b
+    { x }: { x: string },
+  ) {}
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  constructor(@a @b { x }: { x: string }) {}
+}

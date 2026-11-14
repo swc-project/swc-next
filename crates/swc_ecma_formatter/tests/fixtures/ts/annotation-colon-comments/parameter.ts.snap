@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = (a /* c */: string) => void;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type F = (a /* c */ : string) => void;

@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { /* c */ } = source;
+---------- Options ----------
+{}
+---------- Output ----------
+const {/* c */} = source;

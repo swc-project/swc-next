@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (v) {
+case 0:
+; /* a */
+; /* b */
+case 1: f();
+}
+---------- Options ----------
+{}
+---------- Output ----------
+switch (v) {
+  case 0:
+  /* a */ /* b */
+  case 1:
+    f();
+}
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+switch (v) {
+	case 0:
+	/* a */ /* b */
+	case 1:
+		f();
+}
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+switch (v) {  case 0:  /* a */ /* b */  case 1:    f();}

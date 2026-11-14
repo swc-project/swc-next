@@ -7,14 +7,14 @@ class Render {node=(/* ordinary */ <Item value={61}/> /* source tail */);}
 {"printWidth":80}
 ---------- Output ----------
 class Render {
-  node = /* ordinary */ <Item value={61} />; /* source tail */
+  node = (/* ordinary */ <Item value={61} />); /* source tail */
 }
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
 class Render {
-  node = /* ordinary */ <Item value={61} /> /* source tail */
+  node = (/* ordinary */ <Item value={61} />) /* source tail */
 }
 
 ---------- Options ----------

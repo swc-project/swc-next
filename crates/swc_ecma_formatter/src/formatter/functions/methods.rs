@@ -11,7 +11,9 @@ use super::{
 use crate::formatter::classes::member_prefix::{ClassMemberPrefix, ClassMemberPrefixOwner};
 use crate::formatter::comments::{CommentBinding, CommentBoundary};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
+use crate::formatter::expressions::objects::{
+    ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting,
+};
 use crate::formatter::{
     Formatter,
     suppression::{ContentMode, DelimitedFollowing, SuppressionPosition},
@@ -668,8 +670,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !formatted_prefix && (member.has_modifiers() || member.is_source()) {
             let next = keyword.map_or_else(|| star.unwrap_or(key_start), |(_, span)| span.start);
             let space = member.has_modifiers() || member.source_span().is_some();
-            self.format_source_token_gap(head_end, next, space, writer)?;
-            head_end = next;
+            if next != key_start {
+                self.format_source_token_gap(head_end, next, space, writer)?;
+                head_end = next;
+            }
         }
         if let Some((keyword, span)) = keyword {
             writer.text(keyword);
@@ -686,14 +690,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("*");
             head_end = star + 1;
         }
-        self.format_class_member_key_gap(
+        let leading = self.format_class_member_key_gap(
             &member,
             head_end,
             key_start,
-            keyword.is_some() && star.is_none(),
+            computed.is_some() && matches!(key_context, PropertyKeyContext::ClassMethod(_)),
+            keyword.is_some() && star.is_none()
+                || !formatted_prefix && head_end == member.end() && member.has_modifiers(),
             writer,
         )?;
-        self.format_property_key_context(key, computed, key_mode, key_context, quoting, writer)?;
+        self.format_property_key_context_with_leading(
+            key,
+            computed.map(|span| ComputedKeySource { span, leading }),
+            key_mode,
+            key_context,
+            quoting,
+            writer,
+        )?;
         if let Some(question) = question {
             let key_end = computed.map_or(key_span.end, |span| span.end);
             self.format_source_token_gap(key_end, question.start, false, writer)?;

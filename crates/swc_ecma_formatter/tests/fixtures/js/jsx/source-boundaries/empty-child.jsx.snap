@@ -12,8 +12,8 @@ const value0=<MissingPanel>
 // @ts-ignore
 const value0 = (<MissingPanel>
 
-    </MissingPanel>
-  );
+  </MissingPanel>
+);
 
 ---------- Options ----------
 {"printWidth":40}
@@ -39,8 +39,8 @@ const value0 = (<MissingPanel>
 // @ts-ignore
 const value0 = (<MissingPanel>
 
-		</MissingPanel>
-	)
+	</MissingPanel>
+)
 
 ---------- Options ----------
 {"printWidth":100,"trailingComma":"none"}

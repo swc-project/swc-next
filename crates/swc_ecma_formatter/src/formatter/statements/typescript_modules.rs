@@ -1,17 +1,21 @@
 //! TypeScript module leaves retain real names, references and expression owners.
 
 use swc_next_ecma_ast::{
-    Expr, GetSpan, ImportOrExportKind, Span, TsExportAssignment, TsImportEqualsDeclaration,
-    TsModuleReference, TsModuleReferenceData, TsNamespaceExportDeclaration,
+    CommentKind, Expr, GetSpan, ImportOrExportKind, Span, TsExportAssignment,
+    TsImportEqualsDeclaration, TsModuleReference, TsModuleReferenceData,
+    TsNamespaceExportDeclaration,
 };
 
-use super::{DeclarationKeyword, Formatter, PrintedStatement, StatementPunctuation};
-use crate::formatter::comments::{CommentRunLayout, NodeHead};
+use super::{
+    DeclarationKeyword, Formatter, PrintedStatement, StatementPunctuation,
+    StatementSourceTerminator,
+};
+use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::ExpressionContext;
 use crate::formatter::expressions::imports::ImportArguments;
 use crate::formatter::suppression::ContentMode;
-use crate::{FormatError, document::Writer};
+use crate::{FormatError, Semicolons, document::Writer};
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_import_equals_declaration(
@@ -65,6 +69,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         self.format_type_boundary(&boundary, writer)?;
         self.format_ts_module_reference(reference, reference_mode, writer)?;
+        let punctuation = self.module_leaf_punctuation(span, reference_span.end, None, punctuation);
         let mut printed = self.finish_statement(reference_span.end, None, punctuation, writer)?;
         printed.boundary = printed.boundary.type_declaration();
         Ok(printed)
@@ -193,6 +198,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let punctuation =
             self.punctuation_for_expression_output(punctuation, source, node.span(ast), &output);
+        let punctuation = self.module_leaf_punctuation(
+            node.span(ast),
+            span.end,
+            output.pending.as_ref(),
+            punctuation,
+        );
         self.finish_statement(span.end, output.pending, punctuation, writer)
     }
 
@@ -248,8 +259,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.text(ast.get_utf8(name.name(ast)));
         }
+        let punctuation =
+            self.module_leaf_punctuation(node.span(ast), name_span.end, None, punctuation);
         let mut printed = self.finish_statement(name_span.end, None, punctuation, writer)?;
         printed.boundary = printed.boundary.type_declaration();
         Ok(printed)
+    }
+
+    fn module_leaf_punctuation(
+        &self,
+        owner: Span,
+        content_end: u32,
+        tail: Option<&ExpressionTail<'ast>>,
+        punctuation: StatementPunctuation,
+    ) -> StatementPunctuation {
+        if !matches!(
+            punctuation,
+            StatementPunctuation::Canonical(Semicolons::Always)
+        ) {
+            return punctuation;
+        }
+        let start = tail.map_or(content_end, |tail| tail.source_end);
+        let span = Span::new(start, owner.end);
+        let comments = self.comments.in_range(span);
+        let Some(terminator) = self.find_token(span, comments, ";") else {
+            return punctuation;
+        };
+        let count = comments.partition_point(|comment| comment.span.end <= terminator);
+        let comments = &comments[..count];
+        if comments.is_empty()
+            || self.line_breaks(start, terminator) != 0
+            || comments
+                .iter()
+                .any(|comment| comment.kind != CommentKind::Block)
+            || !self
+                .comment_binding(comments, Span::new(start, terminator), None)
+                .allows_relocation(None)
+        {
+            return punctuation;
+        }
+        StatementPunctuation::Source(StatementSourceTerminator { start: terminator })
     }
 }

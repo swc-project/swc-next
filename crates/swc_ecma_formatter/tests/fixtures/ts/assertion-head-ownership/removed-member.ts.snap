@@ -6,7 +6,7 @@ left << <T>((/* head */ receiver).property);
 ---------- Options ----------
 {}
 ---------- Output ----------
-left << (<T> /* head */ receiver.property);
+left << (<T>/* head */ receiver.property);
 
 ---------- Options ----------
 {"printWidth":20}
@@ -14,7 +14,7 @@ left << (<T> /* head */ receiver.property);
 left <<
   (<
     T
-  > /* head */ receiver.property);
+  >/* head */ receiver.property);
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
@@ -22,7 +22,7 @@ left <<
 left <<
   (<
     T
-  > /* head */ receiver.property)
+  >/* head */ receiver.property)
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
@@ -30,4 +30,4 @@ left <<
 left <<
 	(<
 		T
-	> /* head */ receiver.property);
+	>/* head */ receiver.property);

@@ -9,27 +9,27 @@ Record < string , number >;
 {}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >;
+  // prettier-ignore
+  Record < string , number >;
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 const chosen =
   input as
-// prettier-ignore
-Record < string , number >
+    // prettier-ignore
+    Record < string , number >
 
 ---------- Options ----------
 {"printWidth":40,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >;
+	// prettier-ignore
+	Record < string , number >;
 
 ---------- Options ----------
 {"printWidth":100,"semi":false}
 ---------- Output ----------
 const chosen = input as
-// prettier-ignore
-Record < string , number >
+  // prettier-ignore
+  Record < string , number >

@@ -6,7 +6,7 @@ use swc_next_ecma_formatter::{
     EcmaDocumentProducer, FormatError, FormatOptions, IndentWidth, QuoteStyle, Semicolons,
     SyntaxOptions, format, format_ast,
 };
-use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_formatter_core::{LineEnding, PrintOptions, Writer};
 use swc_next_formatter_host::{
     EmbeddedDispatcher, EmbeddedError, EmbeddedOptions, EmbeddedOutcome, EmbeddedRequest,
@@ -43,6 +43,196 @@ fn parser_options() {
         identifier,
         Ok(_) | Err(FormatError::Unsupported { .. })
     ));
+}
+
+fn formatting_results(
+    source: &str,
+    mut parser_options: ParserOptions,
+) -> [Result<String, FormatError>; 3] {
+    let options = FormatOptions::prettier();
+    let source_result = format(source, parser_options, options);
+    parser_options.comments = CommentMode::Flat;
+    parser_options.preserve_parens = true;
+    let allocator = Allocator::default();
+    let parsed = Parser::init(&allocator, source, parser_options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let ast_result = format_ast(&parsed.ast, options);
+    let session = FormatSession::new(options.into());
+    let document_result = session
+        .produce(
+            &EcmaDocumentProducer::new(parser_options),
+            source,
+            &options.into(),
+        )
+        .map(|document| document.print(session.print_options()));
+    [source_result, ast_result, document_result]
+}
+
+#[test]
+fn nesting_limits() {
+    let parser = ParserOptions::default();
+    let depth = 256;
+
+    let input = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!("{}1{}", "f(".repeat(depth), ")".repeat(depth));
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!("{};{}", "{".repeat(depth), "}".repeat(depth));
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!("{};", "if (value)".repeat(depth));
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!(
+        "let {}value{} = source;",
+        "[".repeat(depth),
+        "]".repeat(depth)
+    );
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!(
+        "{}value{} = source;",
+        "(/** @type {any} */ ".repeat(depth),
+        ")".repeat(depth)
+    );
+    let result = formatting_results(&input, parser);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let typescript = ParserOptions {
+        lang: Lang::Ts,
+        ..parser
+    };
+    let input = format!("type T = {}number{};", "(".repeat(depth), ")".repeat(depth));
+    let result = formatting_results(&input, typescript);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let input = format!("type T = Root{};", ".Member".repeat(depth));
+    let result = formatting_results(&input, typescript);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+
+    let jsx = ParserOptions {
+        lang: Lang::Jsx,
+        ..parser
+    };
+    let input = format!("{}value{}", "<>".repeat(depth), "</>".repeat(depth));
+    let result = formatting_results(&input, jsx);
+    assert!(
+        result
+            .iter()
+            .all(|result| matches!(result, Err(FormatError::Unsupported { .. })))
+    );
+}
+
+#[test]
+fn nesting_controls() {
+    let parser = ParserOptions::default();
+    let options = FormatOptions::prettier();
+    let input = format!("{}1{}", "[".repeat(8), "]".repeat(8));
+    let result = formatting_results(&input, parser);
+    for output in result {
+        let output = output.unwrap();
+        assert_eq!(format(&output, parser, options).unwrap(), output);
+    }
+
+    let input = "f(1);\n".repeat(256);
+    let result = formatting_results(&input, parser);
+    assert!(result.iter().all(Result::is_ok));
+
+    let typescript = ParserOptions {
+        lang: Lang::Ts,
+        ..parser
+    };
+    let input = format!("type T = {}number{};", "Box<".repeat(64), ">".repeat(64));
+    let result = formatting_results(&input, typescript);
+    for output in result {
+        let output = output.unwrap();
+        assert_eq!(format(&output, typescript, options).unwrap(), output);
+    }
+
+    let session = FormatSession::new(options.into());
+    let producer = EcmaDocumentProducer::new(parser);
+    let syntax = SyntaxOptions::from(options);
+    let input = format!("{}1{}", "[".repeat(256), "]".repeat(256));
+    let result = session.produce(&producer, &input, &syntax);
+    assert!(matches!(result, Err(FormatError::Unsupported { .. })));
+
+    let document = session
+        .produce(&producer, "const value=1", &syntax)
+        .unwrap();
+    assert_eq!(
+        document.print(session.print_options()),
+        "const value = 1;\n"
+    );
+}
+
+fn assert_available_round_trips(results: [Result<String, FormatError>; 3], parser: ParserOptions) {
+    for result in results {
+        match result {
+            Ok(first) => {
+                for second in formatting_results(&first, parser) {
+                    assert_eq!(second.unwrap(), first);
+                }
+            }
+            Err(error) => assert!(matches!(error, FormatError::Unsupported { .. })),
+        }
+    }
+}
+
+#[test]
+fn nesting_round_trips() {
+    let parser = ParserOptions::default();
+
+    let input = "!function(){return/*#__PURE__*/f(),a}";
+    let result = formatting_results(input, parser);
+    assert!(result.iter().all(Result::is_ok));
+    assert_available_round_trips(result, parser);
+
+    let input = format!("{}function(){{return/*#__PURE__*/f(),a}}", "!".repeat(28));
+    let result = formatting_results(&input, parser);
+    assert_available_round_trips(result, parser);
+
+    let input = format!("{}function(){{return/*#__PURE__*/f(),a}}", "!".repeat(124));
+    let result = formatting_results(&input, parser);
+    assert_available_round_trips(result, parser);
 }
 
 #[test]

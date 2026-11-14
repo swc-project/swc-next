@@ -9,13 +9,13 @@ const;---------- Options ----------
 ---------- Output ----------
 const x =
   [ 1, 2 ] as
-/* prettier-ignore */
-const;
+    /* prettier-ignore */
+    const;
 
 ---------- Options ----------
 {"printWidth":18,"semi":false}
 ---------- Output ----------
 const x =
   [ 1, 2 ] as
-/* prettier-ignore */
-const
+    /* prettier-ignore */
+    const

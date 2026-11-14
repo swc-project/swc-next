@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (a) {
+case 1: /* eslint-disable-next-line no-undef */
+foo(); bar();
+}
+---------- Options ----------
+{}
+---------- Output ----------
+switch (a) {
+case 1: /* eslint-disable-next-line no-undef */
+foo(); bar();
+}

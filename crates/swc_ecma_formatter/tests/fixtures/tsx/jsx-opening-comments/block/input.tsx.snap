@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div a="1" /* note */
+  b="2" />;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+<div
+  a="1" /* note */
+  b="2"
+/>;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+<div a="1" /* note */ b="2" />;

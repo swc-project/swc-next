@@ -9,6 +9,7 @@ label: /* note */
 ---------- Options ----------
 {}
 ---------- Output ----------
-/* note */ label: (/** @type {any} */ a
+/* note */
+label: (/** @type {any} */ a
 // prettier-ignore
 )[b];

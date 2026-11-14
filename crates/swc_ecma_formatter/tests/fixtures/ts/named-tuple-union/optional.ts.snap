@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = [value?: AlphaResult | BetaResult];
+---------- Options ----------
+{}
+---------- Output ----------
+type T = [value?: AlphaResult | BetaResult];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = [
+  value?:
+    | AlphaResult
+    | BetaResult,
+];

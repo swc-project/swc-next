@@ -1,15 +1,18 @@
 //! Assignment layouts and borrowed operator boundaries prepared before printing.
 
+use std::ops::ControlFlow;
+
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
 use super::parentheses::{
-    EmittedHeadAnnotation, ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket,
+    EmittedHeadAnnotation, ExpressionContent, PreparedExpressionPlan, PreparedReleasedRhsPair,
+    ResolvedExpressionHead, SourceOpeningPacket,
 };
 use super::{ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{
-    CommentBinding, CommentOpening, CommentRunLayout, HeadGapPlacement, NodeHead, PreparedHeadGap,
-    PreparedHeadGaps,
+    CommentBinding, CommentOpening, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead,
+    PreparedCommentAdjacency, PreparedHeadGap, PreparedHeadGaps,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
@@ -18,12 +21,12 @@ use crate::formatter::suppression::{
 };
 use crate::{
     FormatError,
-    document::{Fragment, Writer},
+    document::{Fragment, GroupId, GroupRequest, Writer},
 };
 use swc_next_ecma_ast::{
     ArgumentData, AssignmentExpression, AssignmentTarget, AssignmentTargetData, CallExpression,
     Comment, CommentKind, Expr, ExprData, GetSpan, PropertyKeyData, SimpleAssignmentTargetData,
-    Span, TemplateElement,
+    Span, TemplateElement, UnaryExpression,
 };
 
 /// Layout sees the prepared packet even when its source owner stops projection.
@@ -35,6 +38,7 @@ struct AssignmentExpressionHead<'ast> {
 
 /// Layout borrows the complete RHS, independently of its source-head owner.
 pub(in crate::formatter) struct AssignmentRhs<'content> {
+    expression: Expr,
     content: &'content ExpressionContent,
 }
 
@@ -42,6 +46,43 @@ pub(in crate::formatter) struct AssignmentRhs<'content> {
 pub(in crate::formatter) enum AssignmentParent {
     Statement,
     Nested,
+}
+
+/// The real parent boundary that will print a claimed ordinary operator suffix.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(in crate::formatter) enum OperatorTailDestination {
+    Local,
+    Terminator,
+    ForHeader,
+    ControlledBody,
+}
+
+/// A claimed suffix borrowed until its requested punctuation owner is reached.
+pub(in crate::formatter) struct DeferredOperatorTail<'ast> {
+    comments: &'ast [Comment],
+    destination: OperatorTailDestination,
+    flat_group: Option<GroupId>,
+    text: Fragment<'ast>,
+}
+
+impl<'ast> DeferredOperatorTail<'ast> {
+    pub(in crate::formatter) fn comments(&self) -> &'ast [Comment] {
+        self.comments
+    }
+
+    pub(in crate::formatter) fn destination(&self) -> OperatorTailDestination {
+        self.destination
+    }
+
+    pub(in crate::formatter) fn flat_group(&self) -> Option<GroupId> {
+        self.flat_group
+    }
+}
+
+#[derive(Default)]
+pub(in crate::formatter) struct PreparedOperatorTailCompletion<'ast> {
+    pub(in crate::formatter) prefix: Option<ExpressionTail<'ast>>,
+    pub(in crate::formatter) following: Option<ExpressionTail<'ast>>,
 }
 
 #[derive(Clone, Copy)]
@@ -82,6 +123,22 @@ impl RhsLayout {
             }
         }
     }
+
+    /// A fixed operator gap cannot own conditional continuation indentation.
+    pub(in crate::formatter) fn write_with_operator_constraint<'ast, T>(
+        self,
+        writer: &mut Writer<'ast>,
+        constraint: LineConstraint,
+        separator: impl FnOnce(&mut Writer<'ast>),
+        right: impl FnOnce(&mut Writer<'ast>) -> T,
+    ) -> T {
+        if matches!(self, Self::Fluid) && constraint == LineConstraint::SameLine {
+            separator(writer);
+            right(writer)
+        } else {
+            self.write(writer, separator, right)
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -95,6 +152,7 @@ enum AssignmentLayout {
 struct RhsContent {
     data: ExprData,
     unary_operand: Option<Expr>,
+    head_is_framed: bool,
 }
 
 struct AssignmentSuppression<'ast> {
@@ -165,9 +223,26 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     head_gap: Option<&'ast PreparedHeadGaps>,
     head_destination: Option<&'ast super::parentheses::PreparedHeadDestination>,
     head_scope: Option<super::parentheses::HeadScopeOwner>,
+    enclose_moved_head: bool,
+    value_tail_operator_prefix: bool,
+    operator_tail_destination: OperatorTailDestination,
+    prepared_unary_operand: Option<&'ast super::unary::PreparedUnaryOperand<'ast>>,
+    released_source: Option<&'ast PreparedReleasedRhsPair>,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
+    pub(in crate::formatter) fn has_value_tail_operator_prefix(&self) -> bool {
+        self.value_tail_operator_prefix
+    }
+
+    pub(in crate::formatter) fn with_operator_tail_destination(
+        mut self,
+        destination: OperatorTailDestination,
+    ) -> Self {
+        self.operator_tail_destination = destination;
+        self
+    }
+
     pub(in crate::formatter) fn rhs_requires_line(&self) -> bool {
         self.rhs_starts_on_own_line()
             || !self.operator_line.is_empty()
@@ -181,8 +256,9 @@ impl<'ast> AssignmentBoundary<'ast> {
     fn rhs_starts_on_own_line(&self) -> bool {
         self.own_line
             && !(self.mode == ContentMode::Formatted
-                && self.moved.is_empty()
-                && matches!(self.enclosed_head_binding, Some(CommentBinding::Unbound)))
+                && (self.enclose_moved_head
+                    || self.moved.is_empty()
+                        && matches!(self.enclosed_head_binding, Some(CommentBinding::Unbound))))
     }
 
     pub(in crate::formatter) fn resolved_right_head(&self) -> Option<ResolvedExpressionHead<'ast>> {
@@ -259,6 +335,24 @@ impl<'ast> AssignmentBoundary<'ast> {
                 CommentRunLayout::FlatLeading(self.layout_start)
             },
             gap_end: source_gap.then_some(self.layout_start),
+        }
+    }
+}
+
+/// The original RHS endpoint stays separate from its parent's prepared tail owner.
+pub(in crate::formatter) enum AssignmentSourceEnd<'ast> {
+    Expression(u32),
+    /// The real parent keeps an already prepared trailing packet bound to this value.
+    ValueWithBoundTail(u32),
+    /// The actual contextual renderer releases this source envelope's ordinary tail.
+    ReleasedEnvelope(&'ast PreparedReleasedRhsPair),
+}
+
+impl AssignmentSourceEnd<'_> {
+    fn end(&self) -> u32 {
+        match self {
+            Self::Expression(end) | Self::ValueWithBoundTail(end) => *end,
+            Self::ReleasedEnvelope(plan) => plan.source_end(),
         }
     }
 }
@@ -355,15 +449,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_tail_owner(context.tail_owner)
             .with_tail_boundary(context.tail_boundary)
+            .with_operator_tail_destination(context.operator_tail_destination)
             .with_decorated_function_call(decorated_function);
-        let rhs = self.assignment_rhs(&content);
-        let boundary = self.assignment_boundary(
+        let rhs = self.assignment_rhs(right, &content);
+        let mut boundary = self.assignment_boundary(
             target.left_end(),
             &rhs,
             target.operator_span,
             right.span(self.ast).end,
             right_context,
         )?;
+        self.prepare_assignment_rhs(&rhs, &mut boundary, &right_context)?;
         let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
         let mut layout = self.assignment_layout(&rhs, context.position, right_context, &boundary);
         let binding = target.binding();
@@ -410,12 +506,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         };
         let left = if matches!(layout, AssignmentLayout::Ordinary(RhsLayout::Fluid))
-            && boundary.mode == ContentMode::Formatted
-            && (matches!(
-                data,
-                ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
-            ) || matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty()))
-        {
+            && matches!(
+                self.fixed_left_rhs_layout(data, &boundary, RhsLayout::Fluid),
+                Some(RhsLayout::NeverBreakAfterOperator)
+            ) {
             let (left, ()) = writer.record_with_value(|writer| write_left(self, writer))?;
             if !left.has_line_breaks() {
                 layout = AssignmentLayout::Ordinary(RhsLayout::NeverBreakAfterOperator);
@@ -456,50 +550,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 right_context = right_context.with_operand_indent(operand_indent);
             }
             let write_right = |writer: &mut Writer<'ast>| {
-                self.comments.claim(boundary.moved)?;
-                self.format_comment_run(
-                    boundary.moved,
-                    if boundary.own_line {
-                        CommentRunLayout::Source
-                    } else {
-                        CommentRunLayout::FlatLeading(boundary.layout_start)
-                    },
-                    writer,
-                )?;
-                if boundary.own_line
-                    && let Some(last) = boundary.moved.last()
-                {
-                    let next = boundary
-                        .leading
-                        .first()
-                        .map_or(boundary.layout_start, |comment| comment.span.start);
-                    let before = self.line_breaks(last.span.end, boundary.operator_span.start);
-                    let after = self.line_breaks(boundary.operator_span.end, next);
-                    // The displaced operator occupied a source line, not an empty line.
-                    match before.max(after) {
-                        0 => writer.space(),
-                        1 => writer.hard_line(),
-                        _ => {
-                            writer.hard_line();
-                            writer.hard_line();
-                        }
-                    }
-                }
-                self.comments.claim(boundary.leading)?;
-                self.comments.claim(boundary.trailing)?;
-                if let Some(head) = boundary.resolved_right_head() {
-                    return self.format_prepared_expression_with_resolved_head_and_raw_end(
-                        right,
-                        content,
-                        head,
-                        right_context,
-                        writer,
-                    );
-                }
-                self.format_prepared_expression_with_leading_comments_and_raw_end(
+                self.format_assignment_right_output(
                     right,
-                    content,
-                    boundary.right_head(),
+                    Some(content),
+                    &boundary,
                     right_context,
                     writer,
                 )
@@ -521,7 +575,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     });
             };
             if !boundary.trailing.is_empty() {
-                let (right, tail) = writer.record_with_value(write_right)?;
+                let (right, mut tail) = writer.record_with_value(write_right)?;
                 let rhs_layout = match layout {
                     AssignmentLayout::Ordinary(rhs_layout) => rhs_layout,
                     AssignmentLayout::OperatorLine | AssignmentLayout::ChainTail => {
@@ -529,7 +583,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     AssignmentLayout::Chain => RhsLayout::Fluid,
                 };
-                self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
+                tail.operator_tail =
+                    self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
                 return Ok(tail);
             }
             let tail = match layout {
@@ -538,12 +593,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) =>
                 {
                     writer.group(false, |writer| {
-                        rhs_layout.write(writer, separator, write_right)
+                        rhs_layout.write_with_operator_constraint(
+                            writer,
+                            boundary.after_operator,
+                            separator,
+                            write_right,
+                        )
                     })
                 }
-                AssignmentLayout::Ordinary(rhs_layout) => {
-                    rhs_layout.write(writer, separator, write_right)
-                }
+                AssignmentLayout::Ordinary(rhs_layout) => rhs_layout
+                    .write_with_operator_constraint(
+                        writer,
+                        boundary.after_operator,
+                        separator,
+                        write_right,
+                    ),
                 AssignmentLayout::OperatorLine | AssignmentLayout::ChainTail => {
                     writer.indent(|writer| {
                         separator(writer);
@@ -563,7 +627,169 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    /// The ordinary operator packet and its complete operand share one layout decision.
+    /// Emit the prepared operator packet and complete RHS in their shared frame.
+    pub(in crate::formatter) fn format_assignment_right_output(
+        &mut self,
+        right: Expr,
+        content: Option<ExpressionContent>,
+        boundary: &AssignmentBoundary<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.comments.claim(boundary.moved)?;
+        self.comments.claim(boundary.leading)?;
+        self.comments.claim(boundary.trailing)?;
+        let content = if boundary.moved.is_empty() {
+            content
+        } else {
+            match self
+                .format_moved_assignment_head_output(right, content, boundary, &context, writer)?
+            {
+                ControlFlow::Break(output) => return Ok(output),
+                ControlFlow::Continue(content) => content,
+            }
+        };
+        match content {
+            Some(content) => {
+                if let Some(pair) = boundary.released_source {
+                    let plan = PreparedExpressionPlan::Released {
+                        pair,
+                        following_unary: boundary.prepared_unary_operand,
+                    };
+                    return self.format_assignment_right_with_plan(
+                        right, content, boundary, context, &plan, writer,
+                    );
+                }
+                if let Some(unary) = boundary.prepared_unary_operand {
+                    let plan = PreparedExpressionPlan::Unary(unary);
+                    return self.format_assignment_right_with_plan(
+                        right, content, boundary, context, &plan, writer,
+                    );
+                }
+                match boundary.resolved_right_head() {
+                    Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
+                        right, content, head, context, writer,
+                    ),
+                    None => self.format_prepared_expression_with_leading_comments_and_raw_end(
+                        right,
+                        content,
+                        boundary.right_head(),
+                        context,
+                        writer,
+                    ),
+                }
+            }
+            None => {
+                // A parent can select raw mode after preparing these facts.
+                // The lazy binding entry expires them in its final raw context.
+                debug_assert!(context.content_mode == ContentMode::Verbatim);
+                self.format_expression_with_leading_comments_and_raw_end(
+                    right,
+                    boundary.right_head(),
+                    context,
+                    None,
+                    writer,
+                )
+            }
+        }
+    }
+
+    fn format_assignment_right_with_plan(
+        &mut self,
+        right: Expr,
+        content: ExpressionContent,
+        boundary: &AssignmentBoundary<'ast>,
+        context: ExpressionContext<'ast>,
+        plan: &PreparedExpressionPlan<'_, 'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        match boundary.resolved_right_head() {
+            Some(head) => self.format_expression_leading_with_plan(
+                right,
+                Some(content),
+                head,
+                context,
+                None,
+                plan,
+                writer,
+            ),
+            None => self.format_prepared_expression_with_plan_and_leading_comments(
+                right,
+                content,
+                boundary.right_head(),
+                context,
+                plan,
+                writer,
+            ),
+        }
+    }
+
+    /// Complete an enclosing JSX frame or leave the RHS after its moved head.
+    fn format_moved_assignment_head_output(
+        &mut self,
+        right: Expr,
+        content: Option<ExpressionContent>,
+        boundary: &AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ControlFlow<ExpressionOutput<'ast>, Option<ExpressionContent>>, FormatError> {
+        let prefix = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+            formatter.format_comment_run(
+                boundary.moved,
+                if boundary.own_line {
+                    CommentRunLayout::Source
+                } else {
+                    CommentRunLayout::FlatLeading(boundary.layout_start)
+                },
+                writer,
+            )?;
+            if boundary.own_line
+                && let Some(last) = boundary.moved.last()
+            {
+                let next = boundary
+                    .leading
+                    .first()
+                    .map_or(boundary.layout_start, |comment| comment.span.start);
+                let breaks = formatter
+                    .line_breaks(last.span.end, boundary.operator_span.start)
+                    .max(formatter.line_breaks(boundary.operator_span.end, next));
+                // The displaced operator line contributes a separator, not a blank line.
+                match breaks {
+                    0 => writer.space(),
+                    1 => writer.hard_line(),
+                    _ => {
+                        writer.hard_line();
+                        writer.hard_line();
+                    }
+                }
+            }
+            Ok(())
+        };
+        if boundary.enclose_moved_head && context.content_mode == ContentMode::Formatted {
+            return self
+                .format_optional_jsx_head_frame(
+                    super::parentheses::OptionalJsxHeadFrame {
+                        span: Span::new(boundary.moved[0].span.start, right.span(self.ast).end),
+                        expression: right,
+                        content,
+                        head: boundary
+                            .resolved_right_head()
+                            .unwrap_or(ResolvedExpressionHead {
+                                head: boundary.right_head(),
+                                binding: CommentBinding::Unbound,
+                            }),
+                    },
+                    *context,
+                    None,
+                    writer,
+                    prefix,
+                )
+                .map(|tail| ControlFlow::Break(ExpressionOutput::closed(tail)));
+        }
+        prefix(self, writer)?;
+        Ok(ControlFlow::Continue(content))
+    }
+
     fn assignment_target_is_module_exports(&self, target: AssignmentTarget) -> bool {
         let ast = self.ast;
         let AssignmentTargetData::SimpleAssignmentTarget(target) =
@@ -593,10 +819,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: RhsLayout,
         right: Fragment<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<&'ast DeferredOperatorTail<'ast>>, FormatError> {
         let Some((line, prefix)) = boundary.trailing.split_last() else {
             writer.write_fragment(right);
-            return Ok(());
+            return Ok(None);
         };
         let (prefix, ()) = writer.record_with_value(|writer| {
             self.format_comment_run(
@@ -609,6 +835,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(self.source(line.span).trim_end());
             Ok::<_, FormatError>(())
         })?;
+        if matches!(layout, RhsLayout::NeverBreakAfterOperator)
+            && boundary.operator_tail_destination != OperatorTailDestination::Local
+        {
+            writer.space();
+            writer.write_fragment(prefix);
+            writer.write_fragment(right);
+            return Ok(Some(self.allocator.alloc(DeferredOperatorTail {
+                comments: &boundary.trailing[boundary.trailing.len() - 1..],
+                destination: boundary.operator_tail_destination,
+                flat_group: None,
+                text: suffix,
+            })));
+        }
         let write_suffix = |opening: CommentOpening, writer: &mut Writer<'ast>| {
             writer.group(false, |writer| {
                 writer.line_suffix_boundary();
@@ -620,7 +859,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.write_fragment(prefix);
             writer.write_fragment(right);
             write_suffix(CommentOpening::Needed, writer);
-            return Ok(());
+            return Ok(None);
         }
         let (fallback, ()) = writer.record_with_value(|writer| {
             writer.space();
@@ -634,25 +873,117 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         if matches!(layout, RhsLayout::Fluid) {
             writer.write_fragment(fallback);
-            return Ok(());
+            return Ok(None);
         }
         let (Some(prefix), Some(right)) = (prefix.try_flat(), right.try_flat()) else {
             writer.write_fragment(fallback);
-            return Ok(());
+            return Ok(None);
         };
+        let deferred =
+            boundary.operator_tail_destination == OperatorTailDestination::ControlledBody;
         let (flat, ()) = writer.record_with_value(|writer| {
             writer.space();
             writer.write_flat_fragment(prefix);
             writer.write_flat_fragment(right);
-            write_suffix(CommentOpening::Needed, writer);
+            if !deferred {
+                write_suffix(CommentOpening::Needed, writer);
+            }
             Ok::<_, FormatError>(())
         })?;
         // The operator's line comment requires an enclosing break even when
         // its value fits beside the operator. Candidate groups isolate their
         // own break requests, so this belongs to the assignment boundary.
         writer.break_parent();
+        if deferred {
+            let group = writer.next_group_id();
+            writer.write_group_with_states(GroupRequest::Auto, Some(group), flat, fallback, &[]);
+            return Ok(Some(self.allocator.alloc(DeferredOperatorTail {
+                comments: &boundary.trailing[boundary.trailing.len() - 1..],
+                destination: boundary.operator_tail_destination,
+                flat_group: Some(group),
+                text: suffix,
+            })));
+        }
         writer.write_alternatives(&[flat], fallback);
-        Ok(())
+        Ok(None)
+    }
+
+    pub(in crate::formatter) fn format_deferred_operator_tail(
+        &self,
+        tail: &DeferredOperatorTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        debug_assert!(tail.destination() != OperatorTailDestination::Local);
+        debug_assert!(tail.flat_group().is_none());
+        writer.line_suffix_boundary();
+        CommentOpening::Needed.line_suffix(writer, |writer| writer.write_fragment(tail.text));
+        Ok(PreparedCommentAdjacency::after_comments(tail.comments()))
+    }
+
+    pub(in crate::formatter) fn format_deferred_operator_head(
+        &self,
+        tail: &DeferredOperatorTail<'ast>,
+        next_start: u32,
+        writer: &mut Writer<'ast>,
+    ) {
+        let comment = tail.comments[0];
+        writer.line_suffix_boundary();
+        writer.write_fragment(tail.text);
+        self.prepare_leading_comment_gap(comment.span, comment.kind, next_start, true)
+            .gap
+            .write(writer, FlatSeparator::Space, Writer::line);
+    }
+
+    pub(in crate::formatter) fn prepare_operator_tail_completion(
+        &self,
+        pending: Option<ExpressionTail<'ast>>,
+    ) -> PreparedOperatorTailCompletion<'ast> {
+        if let Some(tail) = pending {
+            let mut end = tail.source_end;
+            let count = tail
+                .comments
+                .iter()
+                .take_while(|comment| {
+                    let inline = comment.kind == CommentKind::Block
+                        && self.line_breaks(end, comment.span.start) == 0;
+                    if inline {
+                        end = comment.span.end;
+                    }
+                    inline
+                })
+                .count();
+            PreparedOperatorTailCompletion {
+                prefix: (count != 0).then_some(ExpressionTail {
+                    source_end: tail.source_end,
+                    comments: &tail.comments[..count],
+                }),
+                following: (count != tail.comments.len()).then_some(ExpressionTail {
+                    source_end: end,
+                    comments: &tail.comments[count..],
+                }),
+            }
+        } else {
+            PreparedOperatorTailCompletion::default()
+        }
+    }
+
+    /// Value-owned inline blocks precede the displaced line suffix; later
+    /// comments follow its completed adjacency at this punctuation boundary.
+    pub(in crate::formatter) fn format_operator_tail_with_pending(
+        &mut self,
+        operator: &DeferredOperatorTail<'ast>,
+        pending: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
+        let completion = self.prepare_operator_tail_completion(pending);
+        self.format_expression_tail(completion.prefix, writer)?;
+        let pending = completion.following;
+        let adjacency = self.format_deferred_operator_tail(operator, writer)?;
+        let following = pending
+            .as_ref()
+            .map(|tail| PreparedCommentAdjacency::after_comments(tail.comments));
+        self.format_expression_tail_after(pending, adjacency, writer)?;
+        Ok(following.unwrap_or(adjacency))
     }
 
     fn prepare_assignment_suppression(
@@ -716,17 +1047,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(in crate::formatter) fn assignment_rhs<'content>(
         &self,
+        expression: Expr,
         content: &'content ExpressionContent,
     ) -> AssignmentRhs<'content> {
-        AssignmentRhs { content }
+        AssignmentRhs {
+            expression,
+            content,
+        }
     }
 
     fn assignment_expression_head(
         &self,
         content: &ExpressionContent,
         mut context: ExpressionContext<'ast>,
+        opaque_type_head: bool,
     ) -> Result<Option<AssignmentExpressionHead<'ast>>, FormatError> {
         let mut data = content.data;
+        let mut operand_owner = None;
+        let mut legacy_projection = None;
         loop {
             if !matches!(
                 data,
@@ -734,6 +1072,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExprData::MemberExpression(_)
                     | ExprData::CallExpression(_)
                     | ExprData::TsInstantiationExpression(_)
+                    | ExprData::TsAsExpression(_)
+                    | ExprData::TsSatisfiesExpression(_)
             ) {
                 return Ok(None);
             }
@@ -742,7 +1082,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             else {
                 return Ok(None);
             };
-            context = operand_context;
+            let annotation = match data {
+                ExprData::TsAsExpression(node) => Some(node.type_annotation(self.ast)),
+                ExprData::TsSatisfiesExpression(node) => Some(node.type_annotation(self.ast)),
+                _ => None,
+            };
+            if annotation.is_some()
+                && (opaque_type_head || context.content_mode == ContentMode::Verbatim)
+            {
+                return Ok(legacy_projection);
+            }
+            if let Some(annotation) = annotation.filter(|_| self.has_suppression) {
+                let end = expression.span(self.ast).end;
+                let comments = self.ast.comments();
+                let first = comments.partition_point(|comment| comment.span.end <= end);
+                if comments
+                    .get(first)
+                    .is_some_and(|comment| comment.span.start < annotation.span(self.ast).start)
+                {
+                    return Ok(legacy_projection);
+                }
+            }
+            context = if annotation.is_some() {
+                operand_context
+                    .with_tail_owner(super::TailOwner::ParentOperation)
+                    .with_conditional_envelope(context.conditional_envelope.terminal_head())
+            } else {
+                operand_context
+            };
             let head = self.expression_content(expression);
             if context.content_mode == ContentMode::Verbatim
                 || head.parentheses.is_some_and(|removed| {
@@ -750,6 +1117,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         || self.expression_has_generated_head_frame(&head, context)
                 })
             {
+                if annotation.is_some() {
+                    return Ok(legacy_projection);
+                }
                 // A packet or physical frame belongs to this operand, not the
                 // complete RHS. Keep its normalized packet for layout inspection.
                 return Ok(Some(AssignmentExpressionHead {
@@ -758,15 +1128,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context,
                 }));
             }
+            if annotation.is_some() && operand_owner.is_none() {
+                operand_owner = Some(expression);
+            }
+            if operand_owner.is_some()
+                && head
+                    .parentheses
+                    .is_some_and(|removed| removed.head.has_comments)
+            {
+                return Ok(Some(AssignmentExpressionHead {
+                    content: head,
+                    source_owner: operand_owner,
+                    context,
+                }));
+            }
             data = match head.data {
                 data @ (ExprData::ChainExpression(_)
                 | ExprData::MemberExpression(_)
                 | ExprData::CallExpression(_)
-                | ExprData::TsInstantiationExpression(_)) => data,
+                | ExprData::TsInstantiationExpression(_)
+                | ExprData::TsAsExpression(_)
+                | ExprData::TsSatisfiesExpression(_)) => {
+                    if operand_owner.is_none()
+                        && matches!(
+                            data,
+                            ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_)
+                        )
+                    {
+                        // Keep the existing transparent-head result if the new
+                        // type edge turns out to own an opaque source frame.
+                        legacy_projection = Some(AssignmentExpressionHead {
+                            content: head,
+                            source_owner: None,
+                            context,
+                        });
+                    }
+                    data
+                }
                 _ => {
                     return Ok(Some(AssignmentExpressionHead {
                         content: head,
-                        source_owner: None,
+                        source_owner: operand_owner,
                         context,
                     }));
                 }
@@ -787,7 +1189,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             attachment: comments
                 .first()
                 .map_or(AssignmentPacketAttachment::Detached, |first| {
-                    if self.source_position_starts_line(first.span.start) {
+                    if self.layout_position_starts_line(first.span.start) {
                         AssignmentPacketAttachment::Detached
                     } else {
                         AssignmentPacketAttachment::Inline
@@ -804,7 +1206,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let alignable = self.comment_is_alignable(comment)?;
             let starts_line = (index != 0 || matches!(origin, AssignmentHeadOrigin::Source))
-                && self.source_line_starts_line(comment.span.start);
+                && self.layout_line_starts_line(comment.span.start);
             packet.own_line |= comment.kind == CommentKind::Line
                 || starts_line && !matches!(cast_leading, Some(CastLeadingLayout::Flat))
                 || alignable;
@@ -970,383 +1372,602 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_right_end: u32,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let content = rhs.content;
-        let context = self.with_head_scope(context, content);
-        let enclosing = content.expression;
-        let source_opening = content
-            .parentheses
-            .map(|removed| removed.source.outer.start);
-        let source_comments = self.ast.comments();
-        let first = source_comments.partition_point(|comment| comment.span.start < left_end);
-        let remaining = &source_comments[first..];
-        let overlaps_left = first
-            .checked_sub(1)
-            .is_some_and(|index| source_comments[index].span.end > left_end);
-        let has_source_packet = overlaps_left
-            || remaining
-                .first()
-                .is_some_and(|comment| comment.span.start < source_right_end);
-        // A clear complete RHS has no source head to rebind. The advancing
-        // comment cursor and the smaller operator gap cannot establish this.
-        let projected = if has_source_packet
-            || context.content_mode != ContentMode::Formatted
-            || self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end))
-        {
-            self.assignment_expression_head(content, context)?
-        } else {
-            None
-        };
-        let content = projected.as_ref().map_or(content, |head| &head.content);
-        let right_start = projected
-            .as_ref()
-            .and_then(|head| head.source_owner)
-            .unwrap_or(content.expression)
-            .span(self.ast)
-            .start;
-        let span = Span::new(left_end, right_start);
-        let comments = remaining;
-        let count = comments.partition_point(|comment| comment.span.end <= span.end);
-        let comments = &comments[..count];
-        let mut boundary = AssignmentBoundary {
-            before: &[],
-            moved: &[],
-            operator_line: &[],
-            leading: &[],
-            trailing: &[],
+        self.assignment_boundary_with_source(
             left_end,
+            rhs,
             operator_span,
-            right_start,
-            layout_start: right_start,
-            before_operator: LineConstraint::Unconstrained,
-            after_operator: LineConstraint::Unconstrained,
-            own_line: false,
-            mode: ContentMode::Formatted,
-            cast_leading: None,
-            enclosed_head_binding: None,
-            released_head: &[],
-            normalized_head_start: content.expression.span(self.ast).start,
-            head_gap: None,
-            head_destination: None,
-            head_scope: context.head_scope,
-        };
-        let head_context = projected.as_ref().map_or(context, |head| head.context);
-        let head_mode = head_context.content_mode;
-        let mut released_head = None;
-        if let Some(removed) = content.parentheses
-            && removed.head.has_comments
-        {
-            let head = self.comments.in_range(Span::new(
-                removed.source.outer.start,
-                content.expression.span(self.ast).start,
-            ));
-            if head_mode == ContentMode::Formatted && removed.head.binding.allows_relocation(None) {
-                released_head = Some(head);
+            AssignmentSourceEnd::Expression(source_right_end),
+            context,
+        )
+    }
+
+    pub(in crate::formatter) fn assignment_boundary_with_source(
+        &self,
+        left_end: u32,
+        rhs: &AssignmentRhs<'_>,
+        operator_span: Span,
+        source: AssignmentSourceEnd<'ast>,
+        context: ExpressionContext<'ast>,
+    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
+        let boundary = 'prepared: {
+            let source_right_end = source.end();
+            let value_tail_bound = matches!(source, AssignmentSourceEnd::ValueWithBoundTail(_));
+            if value_tail_bound {
+                debug_assert!(context.content_mode == ContentMode::Verbatim);
+            }
+            let content = rhs.content;
+            let context = self.with_head_scope(context, content);
+            let enclosing = content.expression;
+            let source_opening = content
+                .parentheses
+                .map(|removed| removed.source.outer.start);
+            let source_comments = self.ast.comments();
+            let first = source_comments.partition_point(|comment| comment.span.start < left_end);
+            let remaining = &source_comments[first..];
+            let original_right_start = content.expression.span(self.ast).start;
+            let (original_count, original_before_count) = if self.has_suppression {
+                let count =
+                    remaining.partition_point(|comment| comment.span.end <= original_right_start);
+                let before = remaining[..count]
+                    .partition_point(|comment| comment.span.end <= operator_span.start);
+                (count, before)
             } else {
-                // A retained semantic or verbatim owner keeps its packet inside.
+                (0, 0)
+            };
+            let mut before_mode = ContentMode::Formatted;
+            let mut first_after_suppression = None;
+            if self.has_suppression {
+                for (index, &comment) in remaining[..original_count].iter().enumerate() {
+                    if !is_suppression_comment(self.ast, comment) {
+                        continue;
+                    }
+                    if index < original_before_count {
+                        before_mode = ContentMode::Verbatim;
+                    } else if first_after_suppression.is_none() {
+                        first_after_suppression = Some(index);
+                    }
+                }
+            }
+            let overlaps_left = first
+                .checked_sub(1)
+                .is_some_and(|index| source_comments[index].span.end > left_end);
+            let has_source_packet = overlaps_left
+                || remaining
+                    .first()
+                    .is_some_and(|comment| comment.span.start < source_right_end);
+            // A clear complete RHS has no source head to rebind. The advancing
+            // comment cursor and the smaller operator gap cannot establish this.
+            let clear_rhs_source = !has_source_packet
+                && context.content_mode == ContentMode::Formatted
+                && !self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end));
+            let projected = if clear_rhs_source {
+                None
+            } else {
+                self.assignment_expression_head(
+                    content,
+                    context,
+                    overlaps_left
+                        || before_mode == ContentMode::Verbatim
+                        || first_after_suppression.is_some(),
+                )?
+            };
+            let content = projected.as_ref().map_or(content, |head| &head.content);
+            let right_start = projected
+                .as_ref()
+                .and_then(|head| head.source_owner)
+                .unwrap_or(content.expression)
+                .span(self.ast)
+                .start;
+            let span = Span::new(left_end, right_start);
+            let comments = remaining;
+            let count = if clear_rhs_source {
+                0
+            } else if self.has_suppression && right_start == original_right_start {
+                original_count
+            } else {
+                comments.partition_point(|comment| comment.span.end <= span.end)
+            };
+            let comments = &comments[..count];
+            let before_count = if self.has_suppression {
+                original_before_count
+            } else {
+                comments.partition_point(|comment| comment.span.end <= operator_span.start)
+            };
+            if self.has_suppression && first_after_suppression.is_none() && count > original_count {
+                first_after_suppression = comments[original_count..]
+                    .iter()
+                    .position(|&comment| is_suppression_comment(self.ast, comment))
+                    .map(|index| original_count + index);
+            }
+            let after_mode = if first_after_suppression.is_some_and(|index| index < count) {
+                ContentMode::Verbatim
+            } else {
+                ContentMode::Formatted
+            };
+            let mut boundary = AssignmentBoundary {
+                before: &[],
+                moved: &[],
+                operator_line: &[],
+                leading: &[],
+                trailing: &[],
+                left_end,
+                operator_span,
+                right_start,
+                layout_start: right_start,
+                before_operator: LineConstraint::Unconstrained,
+                after_operator: LineConstraint::Unconstrained,
+                own_line: false,
+                mode: ContentMode::Formatted,
+                cast_leading: None,
+                enclosed_head_binding: None,
+                released_head: &[],
+                normalized_head_start: content.expression.span(self.ast).start,
+                head_gap: None,
+                head_destination: None,
+                head_scope: context.head_scope,
+                enclose_moved_head: false,
+                value_tail_operator_prefix: false,
+                operator_tail_destination: context.operator_tail_destination,
+                prepared_unary_operand: None,
+                released_source: None,
+            };
+            let head_context = projected.as_ref().map_or(&context, |head| &head.context);
+            let head_mode = head_context.content_mode;
+            let mut released_head = None;
+            if let Some(removed) = content.parentheses
+                && removed.head.has_comments
+            {
+                let head = self.comments.in_range(Span::new(
+                    removed.source.outer.start,
+                    content.expression.span(self.ast).start,
+                ));
+                if head_mode == ContentMode::Formatted
+                    && removed.head.binding.allows_relocation(None)
+                {
+                    released_head = Some(head);
+                } else {
+                    // A retained semantic or verbatim owner keeps its packet inside.
+                    boundary.own_line =
+                        head.iter().any(|comment| comment.kind == CommentKind::Line);
+                }
+            }
+            if let ExprData::ParenthesizedExpression(parenthesized) = content.data
+                && let Some(child) =
+                    self.ignored_parentheses_child(parenthesized, ContentMode::Formatted)
+                && self
+                    .expression_needs_parentheses(
+                        self.ast.expr_data(child),
+                        ExpressionPosition::Nested,
+                        ContentMode::Verbatim,
+                    )
+                    .is_some()
+            {
+                let start = parenthesized.span(self.ast).start;
+                let end = child.span(self.ast).start;
+                let first = source_comments.partition_point(|comment| comment.span.start < start);
+                let head = &source_comments[first..];
+                let count = head.partition_point(|comment| comment.span.end <= end);
+                let head = &head[..count];
                 boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
             }
-        }
-        if let ExprData::ParenthesizedExpression(parenthesized) = content.data
-            && let Some(child) =
-                self.ignored_parentheses_child(parenthesized, ContentMode::Formatted)
-            && self
-                .expression_needs_parentheses(
-                    self.ast.expr_data(child),
-                    ExpressionPosition::Nested,
-                    ContentMode::Verbatim,
+            let sensitive = !clear_rhs_source && self.diagnostic_range_is_sensitive(span);
+            if comments.is_empty() && !sensitive {
+                // Only an actual released packet needs an emitted owner or gap.
+                // Retained heads have already contributed their own-line constraint.
+                let Some(head) = released_head.filter(|head| !head.is_empty()) else {
+                    break 'prepared boundary;
+                };
+                let released =
+                    self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None)?;
+                boundary.own_line |= released.own_line;
+                boundary.released_head = released.comments;
+                let heads = AssignmentPreparedHeads {
+                    leading: self.assignment_head_packet(
+                        &[],
+                        AssignmentHeadOrigin::Source,
+                        None,
+                    )?,
+                    released: Some(released),
+                    joining: None,
+                };
+                boundary.cast_leading = boundary.cast_leading.or_else(|| {
+                    self.assignment_generated_cast_layout(content, &heads, *head_context)
+                });
+                boundary.head_gap =
+                    self.assignment_head_gaps(&boundary, &heads, content, head_mode, *head_context);
+                break 'prepared boundary;
+            }
+            let operator_start = operator_span.start;
+            let (before, after) = comments.split_at(before_count);
+            let hugs_comments = matches!(
+                content.data,
+                ExprData::ArrayExpression(_)
+                    | ExprData::ObjectExpression(_)
+                    | ExprData::TemplateLiteral(_)
+                    | ExprData::TaggedTemplateExpression(_)
+            );
+            let before_line = before
+                .last()
+                .is_some_and(|last| last.kind == CommentKind::Line);
+            let promoted = !sensitive
+                && matches!(
+                    self.comment_binding(before, span, None),
+                    CommentBinding::Unbound
                 )
-                .is_some()
-        {
-            let start = parenthesized.span(self.ast).start;
-            let end = child.span(self.ast).start;
-            let first = source_comments.partition_point(|comment| comment.span.start < start);
-            let head = &source_comments[first..];
-            let count = head.partition_point(|comment| comment.span.end <= end);
-            let head = &head[..count];
-            boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
-        }
-        let sensitive = self.diagnostic_range_is_sensitive(span);
-        if comments.is_empty() && !sensitive {
-            // Only an actual released packet needs an emitted owner or gap.
-            // Retained heads have already contributed their own-line constraint.
-            let Some(head) = released_head.filter(|head| !head.is_empty()) else {
-                return Ok(boundary);
+                && before.first().is_some_and(|first| {
+                    hugs_comments && before_line
+                        || self.line_breaks(left_end, first.span.start) != 0
+                        || before.last().is_some_and(|last| {
+                            last.kind == CommentKind::Block
+                                && self.line_breaks(last.span.end, operator_start) != 0
+                        })
+                });
+            if promoted {
+                boundary.moved = before;
+            } else {
+                boundary.before = before;
+            }
+            let jsx_head = matches!(
+                content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            );
+            let mut line_count = 0;
+            if !before_line && !hugs_comments {
+                // A physical head frame owns the comments inside its source opener.
+                let operator_tail_end = content
+                    .parentheses
+                    .filter(|_| {
+                        jsx_head
+                            || sensitive && self.diagnostic_head_has_frame(content, *head_context)
+                    })
+                    .map_or(right_start, |removed| removed.source.outer.start);
+                let mut end = boundary.operator_span.end;
+                for (index, comment) in after.iter().enumerate() {
+                    if comment.span.start >= operator_tail_end
+                        || self.line_breaks(end, comment.span.start) != 0
+                    {
+                        break;
+                    }
+                    if comment.kind == CommentKind::Line {
+                        line_count = index + 1;
+                        break;
+                    }
+                    end = comment.span.end;
+                }
+            }
+            let (operator_line, leading) = after.split_at(line_count);
+            let right_mode = if promoted && before_mode == ContentMode::Verbatim {
+                ContentMode::Verbatim
+            } else {
+                after_mode
             };
-            let released =
-                self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None)?;
-            boundary.own_line |= released.own_line;
-            boundary.released_head = released.comments;
+            let moved_head_binding = (promoted
+                && self.expression_head_has_optional_jsx_frame(
+                    true,
+                    || rhs.content.data,
+                    CommentBinding::Unbound,
+                    head_context.with_content_mode(right_mode),
+                )
+                && !self.diagnostic_head_has_frame(rhs.content, *head_context))
+            .then(|| {
+                self.enclosed_expression_head_binding(content, after)
+                    .unwrap_or_else(|| {
+                        content
+                            .parentheses
+                            .map_or(CommentBinding::Unbound, |removed| removed.head.binding)
+                    })
+            });
+            let rhs_comments = &source_comments[first + count..];
+            let source_clear_right = rhs_comments
+                .first()
+                .is_none_or(|comment| comment.span.start >= source_right_end);
+            let left_tail = !sensitive
+                && !promoted
+                && before_line
+                && after.is_empty()
+                && self
+                    .prepare_delimited_trailing_run(before, left_end, operator_start, true, None)
+                    .is_some_and(|run| run.len() == before.len());
+            // A movable left suffix and an operator-line suffix have the same
+            // emitted owner. Resolve both before choosing the complete RHS layout.
+            let tail = if left_tail { before } else { operator_line };
+            // Record a promoted RHS packet before claiming the later operator suffix.
+            // An operator prefix shares the RHS owner and must keep its source order.
+            let tail_preserves_packet_order =
+                !promoted || head_mode == ContentMode::Formatted && operator_line.len() == 1;
+            let ordinary_tail_eligible = !tail.is_empty()
+                && !matches!(moved_head_binding, Some(CommentBinding::Unbound))
+                && tail_preserves_packet_order
+                && leading.is_empty()
+                && !matches!(
+                    content.data,
+                    ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+                )
+                && content
+                    .parentheses
+                    .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
+            // A tail candidate is not a release permission. The actual source-pair
+            // plan below must certify the complete normalized RHS and its own tail.
+            let release_candidate = ordinary_tail_eligible
+                && !source_clear_right
+                && matches!(source, AssignmentSourceEnd::Expression(_))
+                && rhs.expression.span(self.ast).end == source_right_end
+                && rhs
+                    .content
+                    .parentheses
+                    .is_some_and(|removed| removed.tail.is_some())
+                && rhs_comments.first().is_some_and(|comment| {
+                    comment.span.start >= rhs.content.expression.span(self.ast).end
+                });
+            let release_candidate = release_candidate && {
+                let count =
+                    rhs_comments.partition_point(|comment| comment.span.end <= source_right_end);
+                let completion = self.prepare_operator_tail_completion(Some(ExpressionTail {
+                    source_end: rhs.content.expression.span(self.ast).end,
+                    comments: &rhs_comments[..count],
+                }));
+                let value_bound_line = completion.following.as_ref().is_some_and(|following| {
+                    following.comments.first().is_some_and(|comment| {
+                        comment.kind == CommentKind::Line
+                            && self.line_breaks(following.source_end, comment.span.start) == 0
+                    })
+                });
+                // An inline suffix still belongs to the value. Removing its pair
+                // does not make that suffix part of the operator's following run.
+                !value_bound_line
+                    && completion.prefix.is_none_or(|prefix| {
+                        // The projected head does not own the complete value's inline
+                        // packet. Its real terminal still decides that packet's fit.
+                        projected.is_none()
+                            && prefix.comments.iter().all(|comment| {
+                                self.line_breaks(comment.span.start, comment.span.end) == 0
+                            })
+                    })
+            };
+            let ordinary_tail_candidate = ordinary_tail_eligible
+                && (source_clear_right || release_candidate)
+                && matches!(
+                    self.comment_binding(tail, span, None),
+                    CommentBinding::Unbound
+                );
+            let source = if ordinary_tail_candidate && release_candidate {
+                self.prepare_released_rhs_pair(
+                    rhs.expression,
+                    rhs.content,
+                    context.with_content_mode(right_mode),
+                )
+                .filter(|plan| plan.source_end() == source_right_end)
+                .map_or(source, AssignmentSourceEnd::ReleasedEnvelope)
+            } else {
+                source
+            };
+            let source_clear_right = source_clear_right
+                || matches!(&source, AssignmentSourceEnd::ReleasedEnvelope(plan)
+                    if rhs_comments.first().is_none_or(|comment| comment.span.start >= plan.value_end()));
+            let ordinary_tail = ordinary_tail_candidate && source_clear_right;
+            if ordinary_tail && let AssignmentSourceEnd::ReleasedEnvelope(plan) = &source {
+                boundary.released_source = Some(*plan);
+            }
+            // This value already owns a source packet at its trailing edge.
+            // Keep the ordinary operator run before that value and its packet.
+            boundary.value_tail_operator_prefix = ordinary_tail && value_tail_bound;
+            let ordinary_tail = ordinary_tail && !value_tail_bound;
+            let leading = if ordinary_tail {
+                if left_tail {
+                    boundary.before = &[];
+                }
+                boundary.trailing = tail;
+                leading
+            } else if promoted {
+                // The pending RHS packet still precedes this complete source run.
+                after
+            } else {
+                boundary.operator_line = operator_line;
+                leading
+            };
+            boundary.leading = leading;
+            if let Some(opening) = source_opening.or_else(|| {
+                content
+                    .parentheses
+                    .map(|removed| removed.source.outer.start)
+            }) && leading
+                .last()
+                .is_none_or(|comment| comment.span.end <= opening)
+            {
+                // A delimiter before the head owns its inner source line breaks.
+                boundary.layout_start = opening;
+            }
+            boundary.mode = right_mode;
+            boundary.own_line |= promoted
+                && before.iter().any(|comment| {
+                    comment.kind == CommentKind::Line
+                        || self.layout_line_starts_line(comment.span.start)
+                        || self.line_breaks(comment.span.start, comment.span.end) != 0
+                });
+            if jsx_head
+                || source_right_end
+                    == content
+                        .parentheses
+                        .map_or(content.expression.span(self.ast).end, |removed| {
+                            removed.source.outer.end
+                        })
+            {
+                boundary.enclosed_head_binding = moved_head_binding
+                    .or_else(|| self.enclosed_expression_head_binding(content, leading));
+            }
+            if !leading.is_empty()
+                && self.has_type_casts
+                && !self.external_opening_owners.is_empty()
+                && let ExprData::ParenthesizedExpression(pair) = content.data
+                && matches!(
+                    self.exterior_cast_head_gap(pair, head_context, boundary.mode),
+                    Some(LineConstraint::NewLine(_))
+                )
+            {
+                // Layout sees the complete head before its source envelope is
+                // released. The real cast still owns and claims its annotation.
+                boundary.cast_leading = Some(CastLeadingLayout::Break);
+                boundary.own_line = true;
+            }
+            if !leading.is_empty() && self.parenthesis_has_type_cast(right_start) {
+                let breaks = leading.iter().enumerate().any(|(index, comment)| {
+                    let next = leading
+                        .get(index + 1)
+                        .map_or(right_start, |next| next.span.start);
+                    comment.kind == CommentKind::Line
+                        || self.line_breaks(comment.span.end, next) != 0
+                });
+                boundary.cast_leading = Some(if breaks {
+                    CastLeadingLayout::Break
+                } else {
+                    CastLeadingLayout::Flat
+                });
+            }
+            if !leading.is_empty()
+                && boundary.mode == ContentMode::Formatted
+                && boundary.enclosed_head_binding.is_none()
+                && boundary.layout_start == boundary.right_start
+                && leading.last().is_some_and(|last| {
+                    last.span.end <= right_start
+                        && self
+                            .source(Span::new(last.span.end, right_start))
+                            .chars()
+                            .all(super::super::source::is_source_whitespace)
+                })
+            {
+                boundary.head_destination = self.prepare_head_destination(
+                    content,
+                    *head_context,
+                    projected
+                        .as_ref()
+                        .is_some_and(|head| head.source_owner.is_none()),
+                    enclosing,
+                    context,
+                )?;
+            }
+            // A normalized root head may already be part of the actual leading run.
+            // A transferred operator tail no longer contributes an RHS head gap.
+            // Only disjoint exterior/released packets have a separate joining gap.
+            let released_head = released_head.filter(|head| {
+                head.first().is_some_and(|first| {
+                    leading
+                        .last()
+                        .is_none_or(|last| last.span.end <= first.span.start)
+                        && !boundary.trailing.ends_with(head)
+                })
+            });
+            let leading_packet = self.assignment_head_packet(
+                leading,
+                AssignmentHeadOrigin::Source,
+                boundary.cast_leading,
+            )?;
+            let released = released_head
+                .map(|head| self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None))
+                .transpose()?;
+            boundary.released_head = released.map_or(&[], |head| head.comments);
+            let joining = self.assignment_joining_gap(&boundary, leading_packet, released);
+            boundary.own_line |= !leading.is_empty() && before_line || leading_packet.own_line;
+            if let Some(head) = released {
+                boundary.own_line |= if boundary.mode == ContentMode::Formatted {
+                    head.own_line
+                } else {
+                    head.comments
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                };
+            }
+            if let Some(AssignmentJoiningGap::Source(gap)) = joining {
+                boundary.own_line |= self.line_breaks(gap.start, gap.end) != 0;
+            }
+            if sensitive {
+                let previous = before.last().map_or(left_end, |last| last.span.end);
+                let next = after.first().map_or(right_start, |first| first.span.start);
+                boundary.before_operator = self.line_constraint(previous, operator_start);
+                boundary.after_operator = self.line_constraint(boundary.operator_span.end, next);
+            }
+            if let (Some(last), Some(first)) =
+                (boundary.operator_line.last(), boundary.leading.first())
+                && self
+                    .source(Span::new(last.span.end, first.span.start))
+                    .chars()
+                    .all(super::super::source::is_source_whitespace)
+            {
+                // Splitting one source comment run between the operator suffix
+                // and RHS head transfers their gap to the separator's owner.
+                // An intervening source opener still owns its internal gap.
+                boundary.after_operator =
+                    self.comment_gap_after_constraint(*last, first.span.start);
+            }
+            if let Some((last, previous)) = boundary.before.split_last()
+                && last.kind == CommentKind::Line
+                && self.line_breaks(
+                    previous.last().map_or(left_end, |comment| comment.span.end),
+                    last.span.start,
+                ) != 0
+                && boundary.before_operator == LineConstraint::Unconstrained
+            {
+                // Own-line comments are emitted directly, unlike deferred line suffixes.
+                boundary.before_operator = LineConstraint::NewLine(1);
+            }
+            boundary.enclose_moved_head = !boundary.moved.is_empty()
+                && boundary.operator_line.is_empty()
+                && boundary.trailing.is_empty()
+                && self.expression_head_has_optional_jsx_frame(
+                    true,
+                    || rhs.content.data,
+                    boundary
+                        .enclosed_head_binding
+                        .unwrap_or(CommentBinding::Unbound),
+                    head_context.with_content_mode(boundary.mode),
+                );
             let heads = AssignmentPreparedHeads {
-                leading: self.assignment_head_packet(&[], AssignmentHeadOrigin::Source, None)?,
-                released: Some(released),
-                joining: None,
+                leading: leading_packet,
+                released,
+                joining,
             };
             boundary.cast_leading = boundary
                 .cast_leading
-                .or_else(|| self.assignment_generated_cast_layout(content, &heads, head_context));
+                .or_else(|| self.assignment_generated_cast_layout(content, &heads, *head_context));
             boundary.head_gap =
-                self.assignment_head_gaps(&boundary, &heads, content, head_mode, head_context);
-            return Ok(boundary);
-        }
-        let operator_start = operator_span.start;
-        let before_count = comments.partition_point(|comment| comment.span.end <= operator_start);
-        let (before, after) = comments.split_at(before_count);
-        let hugs_comments = matches!(
-            content.data,
-            ExprData::ArrayExpression(_)
-                | ExprData::ObjectExpression(_)
-                | ExprData::TemplateLiteral(_)
-                | ExprData::TaggedTemplateExpression(_)
-        );
-        let before_line = before
-            .last()
-            .is_some_and(|last| last.kind == CommentKind::Line);
-        let promoted = !sensitive
-            && matches!(
-                self.comment_binding(before, span, None),
-                CommentBinding::Unbound
-            )
-            && before.first().is_some_and(|first| {
-                hugs_comments && before_line
-                    || self.line_breaks(left_end, first.span.start) != 0
-                    || before.last().is_some_and(|last| {
-                        last.kind == CommentKind::Block
-                            && self.line_breaks(last.span.end, operator_start) != 0
-                    })
-            });
-        if promoted {
-            boundary.moved = before;
-        } else {
-            boundary.before = before;
-        }
-        let jsx_head = matches!(
-            content.data,
-            ExprData::JsxElement(_) | ExprData::JsxFragment(_)
-        );
-        let mut line_count = 0;
-        if !before_line && !hugs_comments {
-            // A physical head frame owns the comments inside its source opener.
-            let operator_tail_end = content
-                .parentheses
-                .filter(|_| {
-                    jsx_head || sensitive && self.diagnostic_head_has_frame(content, head_context)
-                })
-                .map_or(right_start, |removed| removed.source.outer.start);
-            let mut end = boundary.operator_span.end;
-            for (index, comment) in after.iter().enumerate() {
-                if comment.span.start >= operator_tail_end
-                    || self.line_breaks(end, comment.span.start) != 0
-                {
-                    break;
-                }
-                if comment.kind == CommentKind::Line {
-                    line_count = index + 1;
-                    break;
-                }
-                end = comment.span.end;
-            }
-        }
-        let (operator_line, leading) = after.split_at(line_count);
-        let rhs_comments = &source_comments[first + count..];
-        let source_clear_right = rhs_comments
-            .first()
-            .is_none_or(|comment| comment.span.start >= source_right_end);
-        let left_tail = !sensitive
-            && !promoted
-            && before_line
-            && after.is_empty()
-            && self
-                .prepare_delimited_trailing_run(before, left_end, operator_start, true, None)
-                .is_some_and(|run| run.len() == before.len());
-        // A movable left suffix and an operator-line suffix have the same
-        // emitted owner. Resolve both before choosing the complete RHS layout.
-        let tail = if left_tail { before } else { operator_line };
-        // Record a promoted RHS packet before claiming the later operator suffix.
-        // An operator prefix shares the RHS owner and must keep its source order.
-        let tail_preserves_packet_order =
-            !promoted || head_mode == ContentMode::Formatted && operator_line.len() == 1;
-        let ordinary_tail = !tail.is_empty()
-            && tail_preserves_packet_order
-            && leading.is_empty()
-            && source_clear_right
-            && !matches!(
-                content.data,
-                ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
-            )
-            && matches!(
-                self.comment_binding(tail, span, None),
-                CommentBinding::Unbound
-            )
-            && content
-                .parentheses
-                .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
-        let leading = if ordinary_tail {
-            if left_tail {
-                boundary.before = &[];
-            }
-            boundary.trailing = tail;
-            leading
-        } else if promoted {
-            // The pending RHS packet still precedes this complete source run.
-            after
-        } else {
-            boundary.operator_line = operator_line;
-            leading
+                self.assignment_head_gaps(&boundary, &heads, content, head_mode, *head_context);
+            boundary
         };
-        boundary.leading = leading;
-        if let Some(opening) = source_opening.or_else(|| {
-            content
-                .parentheses
-                .map(|removed| removed.source.outer.start)
-        }) && leading
-            .last()
-            .is_none_or(|comment| comment.span.end <= opening)
-        {
-            // A delimiter before the head owns its inner source line breaks.
-            boundary.layout_start = opening;
-        }
-        boundary.mode = if promoted && self.content_mode(before) == ContentMode::Verbatim {
-            ContentMode::Verbatim
-        } else {
-            self.content_mode(after)
-        };
-        boundary.own_line |= promoted
-            && before.iter().any(|comment| {
-                comment.kind == CommentKind::Line
-                    || self.source_line_starts_line(comment.span.start)
-                    || self.line_breaks(comment.span.start, comment.span.end) != 0
-            });
-        if jsx_head
-            || source_right_end
-                == content
-                    .parentheses
-                    .map_or(content.expression.span(self.ast).end, |removed| {
-                        removed.source.outer.end
-                    })
-        {
-            boundary.enclosed_head_binding =
-                self.enclosed_expression_head_binding(content, leading);
-        }
-        if !leading.is_empty()
-            && self.has_type_casts
-            && !self.external_opening_owners.is_empty()
-            && let ExprData::ParenthesizedExpression(pair) = content.data
-            && matches!(
-                self.exterior_cast_head_gap(pair, &head_context, boundary.mode),
-                Some(LineConstraint::NewLine(_))
-            )
-        {
-            // Layout sees the complete head before its source envelope is
-            // released. The real cast still owns and claims its annotation.
-            boundary.cast_leading = Some(CastLeadingLayout::Break);
-            boundary.own_line = true;
-        }
-        if !leading.is_empty() && self.parenthesis_has_type_cast(right_start) {
-            let breaks = leading.iter().enumerate().any(|(index, comment)| {
-                let next = leading
-                    .get(index + 1)
-                    .map_or(right_start, |next| next.span.start);
-                comment.kind == CommentKind::Line || self.line_breaks(comment.span.end, next) != 0
-            });
-            boundary.cast_leading = Some(if breaks {
-                CastLeadingLayout::Break
-            } else {
-                CastLeadingLayout::Flat
-            });
-        }
-        if !leading.is_empty()
-            && boundary.mode == ContentMode::Formatted
-            && boundary.enclosed_head_binding.is_none()
-            && boundary.layout_start == boundary.right_start
-            && leading.last().is_some_and(|last| {
-                last.span.end <= right_start
-                    && self
-                        .source(Span::new(last.span.end, right_start))
-                        .chars()
-                        .all(super::super::source::is_source_whitespace)
-            })
-        {
-            boundary.head_destination = self.prepare_head_destination(
-                content,
-                head_context,
-                projected
-                    .as_ref()
-                    .is_some_and(|head| head.source_owner.is_none()),
-                enclosing,
-                context,
-            )?;
-        }
-        // A normalized root head may already be part of the actual leading run.
-        // Only disjoint exterior/released packets have a separate joining gap.
-        let released_head = released_head.filter(|head| {
-            head.first().is_some_and(|first| {
-                leading
-                    .last()
-                    .is_none_or(|last| last.span.end <= first.span.start)
-            })
-        });
-        let leading_packet = self.assignment_head_packet(
-            leading,
-            AssignmentHeadOrigin::Source,
-            boundary.cast_leading,
-        )?;
-        let released = released_head
-            .map(|head| self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None))
-            .transpose()?;
-        boundary.released_head = released.map_or(&[], |head| head.comments);
-        let joining = self.assignment_joining_gap(&boundary, leading_packet, released);
-        boundary.own_line |= !leading.is_empty() && before_line || leading_packet.own_line;
-        if let Some(head) = released {
-            boundary.own_line |= if boundary.mode == ContentMode::Formatted {
-                head.own_line
-            } else {
-                head.comments
-                    .iter()
-                    .any(|comment| comment.kind == CommentKind::Line)
-            };
-        }
-        if let Some(AssignmentJoiningGap::Source(gap)) = joining {
-            boundary.own_line |= self.line_breaks(gap.start, gap.end) != 0;
-        }
-        if sensitive {
-            let previous = before.last().map_or(left_end, |last| last.span.end);
-            let next = after.first().map_or(right_start, |first| first.span.start);
-            boundary.before_operator = self.line_constraint(previous, operator_start);
-            boundary.after_operator = self.line_constraint(boundary.operator_span.end, next);
-        }
-        if let (Some(last), Some(first)) = (boundary.operator_line.last(), boundary.leading.first())
-            && self
-                .source(Span::new(last.span.end, first.span.start))
-                .chars()
-                .all(super::super::source::is_source_whitespace)
-        {
-            // Splitting one source comment run between the operator suffix
-            // and RHS head transfers their gap to the separator's owner.
-            // An intervening source opener still owns its internal gap.
-            boundary.after_operator = self.comment_gap_constraint(last.span.end, first.span.start);
-        }
-        if let Some((last, previous)) = boundary.before.split_last()
-            && last.kind == CommentKind::Line
-            && self.line_breaks(
-                previous.last().map_or(left_end, |comment| comment.span.end),
-                last.span.start,
-            ) != 0
-            && boundary.before_operator == LineConstraint::Unconstrained
-        {
-            // Own-line comments are emitted directly, unlike deferred line suffixes.
-            boundary.before_operator = LineConstraint::NewLine(1);
-        }
-        let heads = AssignmentPreparedHeads {
-            leading: leading_packet,
-            released,
-            joining,
-        };
-        boundary.cast_leading = boundary
-            .cast_leading
-            .or_else(|| self.assignment_generated_cast_layout(content, &heads, head_context));
-        boundary.head_gap =
-            self.assignment_head_gaps(&boundary, &heads, content, head_mode, head_context);
         Ok(boundary)
+    }
+
+    /// Prepare the value only after its parent has selected the final source mode.
+    #[inline]
+    pub(in crate::formatter) fn prepare_assignment_rhs(
+        &self,
+        rhs: &AssignmentRhs<'_>,
+        boundary: &mut AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+    ) -> Result<(), FormatError> {
+        let ExprData::UnaryExpression(unary) = rhs.content.data else {
+            return Ok(());
+        };
+        if context.content_mode == ContentMode::Formatted
+            && boundary.mode == ContentMode::Formatted
+            && (self.has_suppression
+                || self.has_target_annotations
+                || self.has_file_directives
+                || !self.diagnostic_lines.is_empty())
+        {
+            self.prepare_assignment_unary_rhs(unary, boundary, context)?;
+        }
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn prepare_assignment_unary_rhs(
+        &self,
+        unary: UnaryExpression,
+        boundary: &mut AssignmentBoundary<'ast>,
+        context: &ExpressionContext<'ast>,
+    ) -> Result<(), FormatError> {
+        let context = boundary.with_head_gap(context.with_content_mode(boundary.mode));
+        boundary.prepared_unary_operand = self.prepare_unary_operand(unary, context)?;
+        Ok(())
     }
 
     fn assignment_generated_cast_layout(
@@ -1422,7 +2043,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &AssignmentBoundary<'ast>,
     ) -> RhsLayout {
         let data = rhs.content.data;
-        if boundary.head_gap_requires_group()
+        if boundary.value_tail_operator_prefix
+            || boundary.head_gap_requires_group()
             || boundary.rhs_starts_on_own_line()
             || !boundary.operator_line.is_empty()
             || matches!(boundary.cast_leading, Some(CastLeadingLayout::Break))
@@ -1452,6 +2074,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .leading
             .first()
             .map_or(boundary.right_start, |comment| comment.span.start);
+        if let Some(body) = boundary
+            .prepared_unary_operand
+            .and_then(|operand| operand.formatted_layout_body())
+        {
+            return self.property_rhs_content_layout(
+                RhsContent {
+                    data: body.data,
+                    unary_operand: Some(body.expression),
+                    head_is_framed: true,
+                },
+                prefix_start,
+                false,
+            );
+        }
         self.property_rhs_layout(data, prefix_start, false)
     }
 
@@ -1464,6 +2100,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(content) = self.assignment_right_fluid_content(data) else {
             return RhsLayout::BreakAfterOperator;
         };
+        self.property_rhs_content_layout(content, prefix_start, has_short_key)
+    }
+
+    fn property_rhs_content_layout(
+        &self,
+        content: RhsContent,
+        prefix_start: u32,
+        has_short_key: bool,
+    ) -> RhsLayout {
         if has_short_key {
             return RhsLayout::NeverBreakAfterOperator;
         }
@@ -1473,12 +2118,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         RhsLayout::Fluid
     }
 
+    /// Select a fixed-left replacement only when the prepared boundary cannot
+    /// force a physical RHS continuation.
+    pub(in crate::formatter) fn fixed_left_rhs_layout(
+        &self,
+        data: ExprData,
+        boundary: &AssignmentBoundary<'ast>,
+        layout: RhsLayout,
+    ) -> Option<RhsLayout> {
+        if matches!(layout, RhsLayout::Fluid)
+            && boundary.mode == ContentMode::Formatted
+            && !boundary.rhs_requires_line()
+            && boundary.trailing.is_empty()
+            && !matches!(boundary.after_operator, LineConstraint::NewLine(_))
+            && (matches!(
+                data,
+                ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
+            ) || matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty()))
+        {
+            Some(RhsLayout::NeverBreakAfterOperator)
+        } else {
+            None
+        }
+    }
+
     /// Return the inspected operand unless the existing RHS rule requires an outer break.
     /// Callers can continue classifying it without walking the unary prefix again.
     fn assignment_right_fluid_content(&self, mut data: ExprData) -> Option<RhsContent> {
         let mut content = RhsContent {
             data,
             unary_operand: None,
+            head_is_framed: false,
         };
         match data {
             ExprData::Class(class) if !class.decorators(self.ast).is_empty() => return None,
@@ -1519,7 +2189,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: RhsContent,
         prefix_start: u32,
     ) -> bool {
-        if let Some(operand) = content.unary_operand
+        if !content.head_is_framed
+            && let Some(operand) = content.unary_operand
             && !self.rhs_head_is_inspectable(prefix_start, operand)
         {
             return false;
@@ -1556,7 +2227,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::CallExpression(call) => {
                     let covered_span = *outer_span.get_or_insert(call.span(self.ast));
-                    if content.unary_operand.is_none()
+                    if !content.head_is_framed
+                        && content.unary_operand.is_none()
                         && !self.rhs_head_is_inspectable(prefix_start, Expr::CallExpression(call))
                     {
                         return false;

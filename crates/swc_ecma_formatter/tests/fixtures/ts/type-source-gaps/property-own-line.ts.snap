@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { x:
+// prettier-ignore
+Box<A  , B> | C<D  , E>; }
+---------- Options ----------
+{}
+---------- Output ----------
+interface I {
+  x:
+    // prettier-ignore
+    Box<A  , B> | C<D, E>;
+}

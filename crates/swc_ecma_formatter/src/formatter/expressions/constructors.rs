@@ -44,10 +44,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     AccessKind::Ordinary,
                 )
             };
-            Some(
-                source
-                    .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
-            )
+            let mut source = source
+                .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?;
+            source.constructor = true;
+            Some(source)
         };
         if arguments
             .as_ref()

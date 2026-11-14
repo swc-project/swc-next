@@ -16,25 +16,25 @@ first || second)} />;
 ---------- Output ----------
 async function view() {
   return await // @ts-expect-error
-  (<Panel first={firstArgument} second={secondArgument}/>); }
+  (<Panel first={firstArgument} second={secondArgument} />); }
 (first(),
   // @ts-expect-error
-  (<Panel first={firstArgument} second={secondArgument}/>));
+  (<Panel first={firstArgument} second={secondArgument} />));
 <Panel
   {
     ...// @ts-expect-error
-    (first || second)}/>;
+    (first || second)} />;
 
 ---------- Options ----------
 {"printWidth":24}
 ---------- Output ----------
 async function view() {
   return await // @ts-expect-error
-  (<Panel first={firstArgument} second={secondArgument}/>); }
+  (<Panel first={firstArgument} second={secondArgument} />); }
 (first(),
   // @ts-expect-error
-  (<Panel first={firstArgument} second={secondArgument}/>));
+  (<Panel first={firstArgument} second={secondArgument} />));
 <Panel
   {
     ...// @ts-expect-error
-    (first || second)}/>;
+    (first || second)} />;

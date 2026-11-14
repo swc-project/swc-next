@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do { foo(); } // marker
+while(a);
+---------- Options ----------
+{}
+---------- Output ----------
+do {
+  foo();
+} while (a); // marker
+
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+do {
+  foo();
+} while ( // marker
+  a
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+do {
+  foo()
+} while (a) // marker
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+do {
+	foo();
+} while (a); // marker
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+do {
+  foo();
+} while (a); // marker

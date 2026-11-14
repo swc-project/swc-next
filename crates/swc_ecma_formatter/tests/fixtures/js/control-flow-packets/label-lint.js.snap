@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: /* eslint-disable-line no-unused-labels */
+f();
+---------- Options ----------
+{}
+---------- Output ----------
+/* eslint-disable-line no-unused-labels */ label: f();

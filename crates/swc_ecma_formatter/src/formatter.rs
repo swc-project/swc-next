@@ -8,6 +8,7 @@ mod diagnostics;
 mod expressions;
 mod functions;
 mod heritage;
+mod lint_lines;
 mod literals;
 mod parameters;
 mod restricted;
@@ -18,11 +19,15 @@ mod templates;
 mod types;
 mod variables;
 
-use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, Program, Span, StmtData};
+use std::cell::Cell;
+
+use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, NodeId, Program, Span, StmtData};
 
 use self::comments::CommentCursor;
 use self::statements::{StatementItem, StatementSequenceKind};
 use crate::{FormatError, FormatOptions, document::Writer};
+
+const MAX_RECURSION_DEPTH: usize = if cfg!(debug_assertions) { 32 } else { 128 };
 
 pub(crate) struct Formatter<'ast, 'source> {
     ast: &'ast Ast<'source>,
@@ -30,6 +35,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
+    lint_lines: lint_lines::LintLineCoverage,
     external_opening_owners: Vec<Option<expressions::parentheses::PreparedSourceOpening>>,
     has_suppression: bool,
     has_target_annotations: bool,
@@ -38,8 +44,71 @@ pub(crate) struct Formatter<'ast, 'source> {
     has_file_directives: bool,
     enclosing_await: Option<AwaitExpression>,
     for_initializer_span: Option<Span>,
+    label_chain_head: Option<Span>,
     terminal_close_owner: diagnostics::TerminalCloseOwner,
     source_object_layout: SourceObjectLayout,
+    recursion: &'ast RecursionState,
+}
+
+#[derive(Clone, Copy)]
+struct RecursionFrame {
+    depth: usize,
+    node: Option<NodeId>,
+}
+
+/// Document-arena ownership lets scopes restore state without borrowing the formatter.
+struct RecursionState {
+    current: Cell<RecursionFrame>,
+}
+
+struct RecursionScope<'state> {
+    state: &'state RecursionState,
+    previous: RecursionFrame,
+}
+
+struct RecursionLimit;
+
+impl RecursionState {
+    fn enter(&self, node: Option<NodeId>) -> Result<Option<RecursionScope<'_>>, RecursionLimit> {
+        let previous = self.current.get();
+        // Preparing and emitting the same node share one active scope.
+        if node.is_some() && node == previous.node {
+            return Ok(None);
+        }
+        if previous.depth == MAX_RECURSION_DEPTH {
+            return Err(RecursionLimit);
+        }
+        self.current.set(RecursionFrame {
+            depth: previous.depth + 1,
+            node,
+        });
+        Ok(Some(RecursionScope {
+            state: self,
+            previous,
+        }))
+    }
+
+    /// A physical frame recurses even when its body keeps the active node.
+    fn enter_frame(&self) -> Result<RecursionScope<'_>, RecursionLimit> {
+        let previous = self.current.get();
+        if previous.depth == MAX_RECURSION_DEPTH {
+            return Err(RecursionLimit);
+        }
+        self.current.set(RecursionFrame {
+            depth: previous.depth + 1,
+            ..previous
+        });
+        Ok(RecursionScope {
+            state: self,
+            previous,
+        })
+    }
+}
+
+impl Drop for RecursionScope<'_> {
+    fn drop(&mut self) {
+        self.state.current.set(self.previous);
+    }
 }
 
 /// Language construction facts for stable chain selection, never Doc fitting.
@@ -55,25 +124,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         options: FormatOptions,
         allocator: &'ast swc_next_allocator::Allocator,
     ) -> Self {
+        let lint_lines = lint_lines::LintLineCoverage::new(ast);
+        let has_suppression = lint_lines.has_suppressions();
         let mut formatter = Self {
             ast,
             allocator,
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            lint_lines,
             external_opening_owners: Vec::new(),
-            has_suppression: ast
-                .comments()
-                .iter()
-                .any(|&comment| suppression::is_suppression_comment(ast, comment)),
+            has_suppression,
             has_target_annotations: false,
             has_type_casts: false,
             has_jsdoc_enclosures: std::cell::OnceCell::new(),
             has_file_directives: false,
             enclosing_await: None,
             for_initializer_span: None,
+            label_chain_head: None,
             terminal_close_owner: diagnostics::TerminalCloseOwner::Source,
             source_object_layout: SourceObjectLayout::default(),
+            recursion: allocator.alloc(RecursionState {
+                current: Cell::new(RecursionFrame {
+                    depth: 0,
+                    node: None,
+                }),
+            }),
         };
         for &comment in ast.comments() {
             if !formatter.has_type_casts {
@@ -197,5 +273,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(self.ast.node_kind(node.node_id())),
             node.span(self.ast),
         )
+    }
+
+    fn with_recursion<N: swc_next_ecma_ast::AstNode + GetSpan, R>(
+        &mut self,
+        node: N,
+        format: impl FnOnce(&mut Self) -> Result<R, FormatError>,
+    ) -> Result<R, FormatError> {
+        let _scope = self.recursion_scope(node)?;
+        format(self)
+    }
+
+    #[inline(always)]
+    fn recursion_scope<N: swc_next_ecma_ast::AstNode + GetSpan>(
+        &self,
+        node: N,
+    ) -> Result<Option<RecursionScope<'ast>>, FormatError> {
+        let recursion = self.recursion;
+        recursion
+            .enter(Some(node.node_id()))
+            .map_err(|_| self.recursion_limit_error(node))
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn recursion_limit_error<N: swc_next_ecma_ast::AstNode + GetSpan>(
+        &self,
+        node: N,
+    ) -> FormatError {
+        self.unsupported("nesting depth", node)
+    }
+
+    fn generated_frame_scope<N: swc_next_ecma_ast::AstNode + GetSpan>(
+        &self,
+        owner: N,
+    ) -> Result<RecursionScope<'ast>, FormatError> {
+        self.recursion
+            .enter_frame()
+            .map_err(|_| self.unsupported("nesting depth", owner))
+    }
+
+    fn with_recursion_scope<R>(
+        &mut self,
+        format: impl FnOnce(&mut Self) -> Result<R, FormatError>,
+    ) -> Result<R, FormatError> {
+        let _scope = self.anonymous_recursion_scope()?;
+        format(self)
+    }
+
+    fn anonymous_recursion_scope(&self) -> Result<Option<RecursionScope<'ast>>, FormatError> {
+        let recursion = self.recursion;
+        recursion.enter(None).map_err(|_| {
+            FormatError::unsupported(
+                "nesting depth",
+                None,
+                self.ast.root_program().span(self.ast),
+            )
+        })
     }
 }

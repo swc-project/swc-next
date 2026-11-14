@@ -2,9 +2,9 @@
 
 use swc_next_ecma_ast::{
     BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment, CommentKind,
-    Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span, StaticBlock,
-    StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature, TsMethodDefinition,
-    TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
+    Expr, ExprData, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey,
+    PropertyKeyData, Span, StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction,
+    TsIndexSignature, TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -17,10 +17,13 @@ use super::comments::{
 };
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
+use super::expressions::assignment::{
+    AssignmentSourceEnd, DeferredOperatorTail, OperatorTailDestination, RhsLayout,
+};
+use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
-    ExpressionTypeArguments, TailOwner,
+    ExpressionTypeArguments, OperandIndent, TailOwner,
 };
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
@@ -182,6 +185,8 @@ enum ClassFieldAccessor {
 struct FieldInitializer<'ast> {
     right: Expr,
     layout: InitializerLayout<'ast>,
+    literal_continuation: bool,
+    decorated: bool,
 }
 
 struct SourceFieldSuffix {
@@ -208,6 +213,27 @@ enum ClassMemberEnd {
     LineComment,
 }
 
+struct ClassMemberOutput<'ast> {
+    end: ClassMemberEnd,
+    pending: Option<ExpressionTail<'ast>>,
+    operator_tail: Option<ClassOperatorTail<'ast>>,
+}
+
+struct ClassOperatorTail<'ast> {
+    source_end: u32,
+    packet: &'ast DeferredOperatorTail<'ast>,
+}
+
+impl From<ClassMemberEnd> for ClassMemberOutput<'_> {
+    fn from(end: ClassMemberEnd) -> Self {
+        Self {
+            end,
+            pending: None,
+            operator_tail: None,
+        }
+    }
+}
+
 struct ClassMemberBoundary<'ast> {
     following: bool,
     layout: ClassMemberBoundaryLayout<'ast>,
@@ -219,6 +245,10 @@ enum ClassMemberBoundaryLayout<'ast> {
 }
 
 impl ClassMemberBoundary<'_> {
+    fn has_formatted_tail_owner(&self) -> bool {
+        matches!(self.layout, ClassMemberBoundaryLayout::Formatted(_))
+    }
+
     fn requires_terminator(&self, terminal: ClassMemberEnd) -> bool {
         if !self.following || terminal == ClassMemberEnd::LineComment {
             return false;
@@ -269,13 +299,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ClassCaller::Ordinary
         };
         let prepared = self.prepare_class_with_caller(class, prefix, caller)?;
-        if has_expression_parentheses && prepared.prefix.is_some() && !prepared.is_verbatim() {
+        if has_expression_parentheses
+            && let Some(prefix) = prepared.prefix
+            && !prepared.is_verbatim()
+        {
+            let head = prefix.physical.start;
+            let opening = self.line_constraint(head, head);
+            let closing = self.line_constraint(prepared.span.end, prepared.span.end);
             writer.group(false, |writer| {
                 writer.indent(|writer| {
-                    writer.soft_line();
+                    opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                     self.format_prepared_class(prepared, true, writer)
                 })?;
-                writer.soft_line();
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 Ok(())
             })
         } else {
@@ -503,6 +539,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let body = class.body(ast);
         let span = class.span(ast);
+        let header = Span::new(core_start, body.span(ast).start + 1);
+        if self.lint_line_intersects(header) {
+            return Ok(PreparedClassHead::Verbatim);
+        }
         let name = class.id(ast);
         let (start, prefix) = if class.r#abstract(ast) || class.declare(ast) {
             let (end, prefix) = self.prepare_class_prefix(class, core_start)?;
@@ -570,6 +610,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let extends = self
                 .find_token(gap, comments, "extends")
                 .ok_or_else(|| self.unsupported("class extends boundary", class))?;
+            let after_keyword = comments.partition_point(|comment| comment.span.end <= extends);
+            if self.heritage_has_directive(&comments[after_keyword..]) {
+                return Ok(PreparedClassHead::Verbatim);
+            }
             let prepared = self.prepare_heritage_prefix(
                 gap,
                 Span::new(extends, extends + 7),
@@ -624,11 +668,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(caller, ClassCaller::Ordinary)
                     && arguments.is_none()
                     && self.heritage_expression_is_member(expression);
+            let prefix = if name.is_some() {
+                prepared.prefix.with_class_preceding_line()
+            } else {
+                prepared.prefix
+            };
             Some(SourceClassHeritage {
                 caller,
                 expression,
                 mode,
-                prefix: prepared.prefix,
+                prefix,
                 arguments,
             })
         } else {
@@ -642,6 +691,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let keyword = self
                 .find_token(gap, comments, "implements")
                 .ok_or_else(|| self.unsupported("class implements boundary", class))?;
+            let after_keyword = comments.partition_point(|comment| comment.span.end <= keyword);
+            if self.heritage_has_directive(&comments[after_keyword..]) {
+                return Ok(PreparedClassHead::Verbatim);
+            }
             let prepared = self.prepare_heritage_prefix(
                 gap,
                 Span::new(keyword, keyword + 10),
@@ -727,6 +780,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .as_ref()
                     .is_some_and(|heritage| heritage.arguments.is_some())
             {
+                if name.is_some() {
+                    prefix = prefix.with_class_preceding_line();
+                }
                 prefix = prefix.with_preceding_owner();
             }
             Some(SourceClassImplements {
@@ -844,7 +900,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         comments.iter().any(|comment| {
             comment.kind == CommentKind::Line
-                || self.source_position_starts_line(comment.span.start)
+                || self.layout_position_starts_line(comment.span.start)
         }) || self.line_breaks(last.span.end, gap.end) != 0
     }
 
@@ -1068,13 +1124,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             PreparedHeadGap::new(leading, HeadGapPlacement::OwnLine)
         };
+        let source_bound = self.lint_line_intersects(Span::new(content.start, first_span.start));
         let head = NodeHead {
             comments: leading,
             content_start: first_span.start,
-            layout: CommentRunLayout::Leading(first_span.start),
-            gap_end: source_adjacent.then_some(first_span.start),
+            layout: if source_bound {
+                CommentRunLayout::Source
+            } else {
+                CommentRunLayout::Leading(first_span.start)
+            },
+            gap_end: (source_adjacent || source_bound).then_some(first_span.start),
         };
-        let head = if let Some(gaps) = PreparedHeadGaps::new(None, gap, false) {
+        let head = if !source_bound && let Some(gaps) = PreparedHeadGaps::new(None, gap, false) {
             gaps.apply(head, binding, source_adjacent)
         } else {
             head
@@ -1126,12 +1187,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node_span.end,
                     next_span.map_or(content.end, |span| span.start),
                 );
-                let layout = if current.sibling.is_none() {
+                let covered = self.lint_line_intersects(gap)
+                    || next.is_some()
+                        && gap.start == gap.end
+                        && gap.start > 0
+                        && (gap.end as usize) < ast.source().len()
+                        && self.lint_line_intersects(Span::new(gap.start - 1, gap.end + 1));
+                let layout = if current.sibling.is_none() && !covered {
                     ClassMemberBoundaryLayout::Formatted(
                         self.prepare_class_member_gap(gap, next_span),
                     )
                 } else {
-                    let gap = self.prepare_delimited_source_gap(
+                    let mut source = self.prepare_delimited_source_gap(
                         gap,
                         if next.is_some() {
                             DelimitedFollowing::Node
@@ -1139,7 +1206,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             DelimitedFollowing::End
                         },
                     );
-                    ClassMemberBoundaryLayout::Source(gap)
+                    if covered && next.is_some() {
+                        source.following = self.source_line_constraint(source.end, gap.end);
+                    }
+                    ClassMemberBoundaryLayout::Source(source)
                 };
                 let boundary = ClassMemberBoundary {
                     following: next.is_some(),
@@ -1207,15 +1277,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(leading, Span::new(trailing.end(), gap.end), Some(target)),
                 CommentBinding::Unbound
             );
+            let own_line = leading
+                .first()
+                .is_some_and(|comment| self.layout_position_starts_line(comment.span.start))
+                && leading
+                    .last()
+                    .is_some_and(|comment| self.line_breaks(comment.span.end, target.start) != 0);
+            let source_layout = source_bound || own_line;
             NodeHead {
                 comments: leading,
                 content_start: target.start,
-                layout: if source_bound {
+                layout: if source_layout {
                     CommentRunLayout::Source
                 } else {
                     CommentRunLayout::Leading(target.start)
                 },
-                gap_end: source_bound.then_some(target.start),
+                gap_end: source_layout.then_some(target.start),
             }
         });
         ClassMemberGap {
@@ -1228,12 +1305,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_class_member_boundary(
         &mut self,
         boundary: ClassMemberBoundary<'ast>,
-        terminal: ClassMemberEnd,
+        output: ClassMemberOutput<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, ClassMemberEnd), FormatError> {
         let following = boundary.following;
+        let ClassMemberOutput {
+            end: terminal,
+            pending,
+            operator_tail,
+        } = output;
         match boundary.layout {
             ClassMemberBoundaryLayout::Formatted(gap) => {
+                if let Some(operator) = operator_tail {
+                    let pending = self.capture_expression_tail(
+                        Span::new(operator.source_end, gap.trailing.end()),
+                        pending,
+                    )?;
+                    let adjacency =
+                        self.format_operator_tail_with_pending(operator.packet, pending, writer)?;
+                    let terminal = if adjacency.ends_in_line_comment() {
+                        ClassMemberEnd::LineComment
+                    } else {
+                        ClassMemberEnd::Token
+                    };
+                    let Some(head) = gap.leading else {
+                        return Ok((gap.trailing.end(), terminal));
+                    };
+                    let separation = gap.trailing.gap();
+                    if adjacency.ends_in_line_comment() && !separation.requires_line() {
+                        writer.hard_line();
+                    } else {
+                        separation.write(writer, FlatSeparator::Space, Writer::hard_line);
+                    }
+                    if gap.blank_before {
+                        writer.hard_line();
+                    }
+                    let end = head
+                        .comments
+                        .last()
+                        .map_or(gap.trailing.end(), |comment| comment.span.end);
+                    self.comments.claim(head.comments)?;
+                    self.format_node_head(head, ExpressionStart::None, None, writer)?;
+                    return Ok((end, ClassMemberEnd::Token));
+                }
+                debug_assert!(pending.is_none());
                 if terminal == ClassMemberEnd::LineComment
                     && (following || !gap.trailing.is_empty())
                 {
@@ -1269,6 +1384,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok((end, ClassMemberEnd::Token))
             }
             ClassMemberBoundaryLayout::Source(gap) => {
+                debug_assert!(pending.is_none() && operator_tail.is_none());
                 let has_content = gap.source.start != gap.source.end;
                 let supplied = terminal == ClassMemberEnd::LineComment
                     && (following || has_content)
@@ -1314,7 +1430,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DelimitedFollowing::End
             },
         );
+        // Parameters own their coverage; a field owns its initializer.
+        let lint_owner = if matches!(
+            ast.class_element_data(node),
+            ClassElementData::PropertyDefinition(_)
+        ) {
+            span
+        } else {
+            Span::new(span.start, span.start + 1)
+        };
         let mode = if mode == ContentMode::Verbatim
+            || self.lint_line_intersects(lint_owner)
             || sibling
                 .as_ref()
                 .and_then(|source| source.preceding)
@@ -1412,9 +1538,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<&PreparedClassMember<'ast>>,
         boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<ClassMemberEnd, FormatError> {
+    ) -> Result<ClassMemberOutput<'ast>, FormatError> {
         match content {
-            ClassMemberContent::Verbatim => return self.format_class_member_source(span, writer),
+            ClassMemberContent::Verbatim => {
+                return self
+                    .format_class_member_source(span, writer)
+                    .map(Into::into);
+            }
             ClassMemberContent::Method(header) => self.format_method_header(header, writer)?,
             ClassMemberContent::Bodyless(method) => {
                 return self.format_bodyless_class_method(method, boundary, writer);
@@ -1423,7 +1553,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let end = prefix.end(self.ast);
                 self.format_method_key_prefix(prefix, writer)?;
                 self.format_source_token_gap(end, value.span(self.ast).start, false, writer)?;
-                return self.format_class_member_source(value.span(self.ast), writer);
+                return self
+                    .format_class_member_source(value.span(self.ast), writer)
+                    .map(Into::into);
             }
             ClassMemberContent::Field(field) => {
                 return self.format_class_field(field, following, boundary, writer);
@@ -1434,13 +1566,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_class_member_terminal(
                     index.terminal,
                     tail,
+                    None,
                     false,
                     boundary,
                     writer,
                 );
             }
         }
-        Ok(ClassMemberEnd::Token)
+        Ok(ClassMemberEnd::Token.into())
     }
 
     fn source_bodyless_class_method(
@@ -1452,13 +1585,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ClassMemberContent<'ast>, FormatError> {
         let ast = self.ast;
         let function = node.value(ast);
-        if node.optional(ast) && node.kind(ast) != MethodDefinitionKind::Method
-            || function.r#async(ast)
+        let kind = node.kind(ast);
+        if (node.optional(ast) || function.r#async(ast)) && kind != MethodDefinitionKind::Method
             || function.generator(ast)
         {
             return Err(self.unsupported("typed or decorated bodyless class method", node));
         }
-        let kind = node.kind(ast);
         if kind != MethodDefinitionKind::Method {
             if function.type_parameters(ast).is_some()
                 || (kind != MethodDefinitionKind::Get && function.return_type(ast).is_some())
@@ -1508,12 +1640,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         method: SourceBodylessClassMethod<'ast>,
         boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<ClassMemberEnd, FormatError> {
+    ) -> Result<ClassMemberOutput<'ast>, FormatError> {
         let tail = writer.group(false, |writer| {
             self.format_method_key_prefix(method.prefix, writer)?;
             self.format_bodyless_signature_suffix(method.signature, writer)
         })?;
-        self.format_class_member_terminal(method.terminal, tail, false, boundary, writer)
+        self.format_class_member_terminal(method.terminal, tail, None, false, boundary, writer)
     }
 
     fn source_class_index_signature(
@@ -1565,12 +1697,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         terminal: ClassMemberTerminal,
         tail: Option<ExpressionTail<'ast>>,
+        operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
         following_requires_separator: bool,
         boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<ClassMemberEnd, FormatError> {
+    ) -> Result<ClassMemberOutput<'ast>, FormatError> {
         match terminal {
             ClassMemberTerminal::Canonical { span, semicolon } => {
+                if let Some(operator) = operator_tail {
+                    let end = ClassMemberEnd::LineComment;
+                    if semicolon
+                        || following_requires_separator
+                        || boundary.requires_terminator(end)
+                    {
+                        writer.text(";");
+                    }
+                    return Ok(ClassMemberOutput {
+                        end,
+                        pending: tail,
+                        operator_tail: Some(ClassOperatorTail {
+                            source_end: span.start,
+                            packet: operator,
+                        }),
+                    });
+                }
                 let tail = self.capture_expression_tail(span, tail)?;
                 let end = if tail.as_ref().is_some_and(|tail| {
                     tail.comments
@@ -1585,10 +1735,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.text(";");
                 }
                 self.format_expression_tail(tail, writer)?;
-                Ok(end)
+                Ok(end.into())
             }
             ClassMemberTerminal::Source(span) => {
+                debug_assert!(operator_tail.is_none());
                 self.format_source_class_member_terminal(span, tail, writer)
+                    .map(Into::into)
             }
         }
     }
@@ -1702,6 +1854,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut right_mode = ContentMode::Formatted;
         let mut annotation_mode = ContentMode::Formatted;
         let mut tail_source = false;
+        let mut tail_requires_source_terminal = false;
         let computed = if node.computed(ast) {
             let before = Span::new(prefix_end, key_span.start);
             let opening = match opening {
@@ -1779,6 +1932,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if matches!(position, SuppressionPosition::Inline) {
                         return Ok(None);
                     }
+                    tail_requires_source_terminal |=
+                        matches!(position, SuppressionPosition::OwnLine);
                     if value.is_some() {
                         right_mode = ContentMode::Verbatim;
                     } else {
@@ -1814,6 +1969,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let has_suffix = suffix.is_some();
+        let mut value_tail_operator_prefix = false;
         let initializer = if let Some(right) = value {
             let right_start = right.span(ast).start;
             let gap = Span::new(left_end, right_start);
@@ -1842,35 +1998,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let layout = if let Some(gap) = bound_gap {
-                InitializerLayout::Bound { gap, right_mode }
+            let (layout, literal_continuation) = if let Some(gap) = bound_gap {
+                (InitializerLayout::Bound { gap, right_mode }, false)
             } else {
                 let content = self.expression_content(right);
-                let rhs = self.assignment_rhs(&content);
-                let mut boundary = self.assignment_boundary(
+                let rhs = self.assignment_rhs(right, &content);
+                let source = if tail_source && semicolon.is_some() {
+                    AssignmentSourceEnd::ValueWithBoundTail(right.span(ast).end)
+                } else {
+                    AssignmentSourceEnd::Expression(right.span(ast).end)
+                };
+                let initializer_context = ExpressionContext::class_field_initializer()
+                    .with_tail_owner(TailOwner::ParentOperation)
+                    .with_content_mode(right_mode);
+                let mut boundary = self.assignment_boundary_with_source(
                     left_end,
                     &rhs,
                     Span::new(operator, operator + 1),
-                    right.span(ast).end,
-                    ExpressionContext::variable_initializer()
-                        .with_tail_owner(TailOwner::ParentOperation)
-                        .with_content_mode(right_mode),
+                    source,
+                    initializer_context,
                 )?;
+                value_tail_operator_prefix = boundary.has_value_tail_operator_prefix();
                 if right_mode == ContentMode::Verbatim {
                     boundary.mode = right_mode;
                 }
+                self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
                 let rhs_layout = self.ordinary_rhs_layout(
                     &rhs,
-                    ExpressionContext::variable_initializer()
+                    ExpressionContext::class_field_initializer()
                         .with_tail_owner(TailOwner::ParentOperation),
                     &boundary,
                 );
-                InitializerLayout::Formatted {
-                    boundary,
-                    rhs_layout,
-                }
+                let literal_continuation = boundary.mode == ContentMode::Formatted
+                    && matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator)
+                    && matches!(
+                        content.data,
+                        ExprData::BooleanLiteral(_) | ExprData::NumericLiteral(_)
+                    );
+                (
+                    InitializerLayout::Formatted {
+                        boundary,
+                        rhs_layout,
+                    },
+                    literal_continuation,
+                )
             };
-            Some(FieldInitializer { right, layout })
+            Some(FieldInitializer {
+                right,
+                layout,
+                literal_continuation,
+                decorated: !node.decorators(ast).is_empty(),
+            })
         } else {
             None
         };
@@ -1880,7 +2058,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if accessor.is_some() {
             key_mode = self.unquoted_key_mode(key, computed, key_context, key_mode, quoting);
         }
-        let terminal = if tail_source || source_sibling.is_some() && semicolon.is_some() {
+        let canonical_value_terminal = value_tail_operator_prefix && !tail_requires_source_terminal;
+        let terminal = if tail_source && !canonical_value_terminal
+            || source_sibling.is_some() && semicolon.is_some()
+        {
             ClassMemberTerminal::Source(internal)
         } else {
             ClassMemberTerminal::Canonical {
@@ -1997,7 +2178,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<&PreparedClassMember<'ast>>,
         boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<ClassMemberEnd, FormatError> {
+    ) -> Result<ClassMemberOutput<'ast>, FormatError> {
         let SourceClassField {
             key,
             computed,
@@ -2012,35 +2193,82 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mut terminal,
             source_terminal,
         } = field;
-        self.format_class_member_prefix(&prefix, writer)?;
-        let prefix_end = if let Some(ClassFieldAccessor::Token(accessor)) = accessor {
-            if !prefix.is_formatted() && (prefix.has_modifiers() || prefix.is_source()) {
-                self.format_source_token_gap(
-                    prefix.end(),
-                    accessor.start,
-                    prefix.has_modifiers() || prefix.source_span().is_some(),
-                    writer,
-                )?;
+        let mut tail = None;
+        let mut operator_tail = None;
+        let clean_width = writer.write_with_clean_text_width(|writer| {
+            self.format_class_member_prefix(&prefix, writer)?;
+            let prefix_end = if let Some(ClassFieldAccessor::Token(accessor)) = accessor {
+                if !prefix.is_formatted() && (prefix.has_modifiers() || prefix.is_source()) {
+                    self.format_source_token_gap(
+                        prefix.end(),
+                        accessor.start,
+                        prefix.has_modifiers() || prefix.source_span().is_some(),
+                        writer,
+                    )?;
+                }
+                writer.text("accessor");
+                accessor.end
+            } else {
+                prefix.end()
+            };
+            let leading = self.format_class_member_key_gap(
+                &prefix,
+                prefix_end,
+                key_start,
+                computed.is_some(),
+                accessor.is_some() || prefix.has_modifiers() && !prefix.is_formatted(),
+                writer,
+            )?;
+            self.format_property_key_context_with_leading(
+                key,
+                computed.map(|span| ComputedKeySource { span, leading }),
+                key_mode,
+                key_context,
+                quoting,
+                writer,
+            )?;
+            tail = if let Some(suffix) = suffix {
+                self.format_field_suffix(suffix, initializer.is_some(), writer)?
+            } else {
+                None
+            };
+            Ok::<_, FormatError>(())
+        })?;
+        let tail = if let Some(FieldInitializer {
+            right,
+            mut layout,
+            literal_continuation,
+            decorated,
+        }) = initializer
+        {
+            // Structured and decorated heads have separate layout scopes, so
+            // their literal continuations must participate in line fitting.
+            if (clean_width.is_none() || decorated)
+                && literal_continuation
+                && let InitializerLayout::Formatted { rhs_layout, .. } = &mut layout
+            {
+                *rhs_layout = RhsLayout::Fluid;
             }
-            writer.text("accessor");
-            accessor.end
-        } else {
-            prefix.end()
-        };
-        self.format_class_member_key_gap(
-            &prefix,
-            prefix_end,
-            key_start,
-            accessor.is_some() || prefix.has_modifiers() && !prefix.is_formatted(),
-            writer,
-        )?;
-        self.format_property_key_context(key, computed, key_mode, key_context, quoting, writer)?;
-        let tail = if let Some(suffix) = suffix {
-            self.format_field_suffix(suffix, initializer.is_some(), writer)?
-        } else {
-            None
-        };
-        let tail = if let Some(FieldInitializer { right, layout }) = initializer {
+            if clean_width.is_some()
+                && computed.is_none()
+                && key_mode == ContentMode::Formatted
+                && matches!(
+                    self.ast.property_key_data(key),
+                    PropertyKeyData::IdentifierName(_)
+                )
+                && let InitializerLayout::Formatted {
+                    boundary,
+                    rhs_layout,
+                } = &mut layout
+            {
+                *rhs_layout = self
+                    .fixed_left_rhs_layout(
+                        self.expression_content(right).data,
+                        boundary,
+                        *rhs_layout,
+                    )
+                    .unwrap_or(*rhs_layout);
+            }
             self.format_expression_tail(tail, writer)?;
             let left_end = match &layout {
                 InitializerLayout::Bound { gap, .. } => gap.start,
@@ -2050,10 +2278,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 left_end,
                 right,
                 layout,
-                ExpressionContext::variable_initializer()
-                    .with_tail_owner(TailOwner::ParentOperation),
+                ExpressionContext::class_field_initializer()
+                    .with_tail_owner(TailOwner::ParentOperation)
+                    .with_operator_tail_destination(
+                        if matches!(terminal, ClassMemberTerminal::Canonical { .. })
+                            && boundary.has_formatted_tail_owner()
+                        {
+                            OperatorTailDestination::Terminator
+                        } else {
+                            OperatorTailDestination::Local
+                        },
+                    )
+                    .with_operand_indent(if accessor.is_some() {
+                        OperandIndent::Expression
+                    } else {
+                        OperandIndent::Auto
+                    }),
                 writer,
             )?;
+            operator_tail = output.operator_tail;
             if boundary.following
                 && let (
                     ClassMemberTerminal::Canonical {
@@ -2086,6 +2329,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_class_member_terminal(
             terminal,
             tail,
+            operator_tail,
             following_requires_separator,
             boundary,
             writer,

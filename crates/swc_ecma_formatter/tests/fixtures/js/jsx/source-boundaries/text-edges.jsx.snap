@@ -23,9 +23,9 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;
 // @ts-ignore
 const value2 = (<MissingPanel> 
  café &amp; {
-        uncoveredLiteral
-      }​</MissingPanel>
-  );
+      uncoveredLiteral
+    }​</MissingPanel>
+);
 
 ---------- Options ----------
 {"printWidth":40}
@@ -69,9 +69,9 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>
 // @ts-ignore
 const value2 = (<MissingPanel> 
  café &amp; {
-				uncoveredLiteral
-			}​</MissingPanel>
-	)
+			uncoveredLiteral
+		}​</MissingPanel>
+)
 
 ---------- Options ----------
 {"printWidth":100,"trailingComma":"none"}

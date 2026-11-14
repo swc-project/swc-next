@@ -8,7 +8,7 @@ receiver).method();
 ---------- Options ----------
 {}
 ---------- Output ----------
-left << (<T> /* head */ receiver.method());
+left << (<T>/* head */ receiver.method());
 
 ---------- Options ----------
 {"printWidth":20}
@@ -16,7 +16,7 @@ left << (<T> /* head */ receiver.method());
 left <<
   (<
     T
-  > /* head */ receiver.method());
+  >/* head */ receiver.method());
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
@@ -24,7 +24,7 @@ left <<
 left <<
   (<
     T
-  > /* head */ receiver.method())
+  >/* head */ receiver.method())
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
@@ -32,4 +32,4 @@ left <<
 left <<
 	(<
 		T
-	> /* head */ receiver.method());
+	>/* head */ receiver.method());

@@ -4,13 +4,12 @@ use swc_next_ecma_ast::{GetSpan, Span, TsTemplateLiteralType, TsType};
 
 use super::{PreparedType, TypeContext, TypeLayout};
 use crate::formatter::Formatter;
-use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::suppression::ContentMode;
 use crate::formatter::templates::{TemplateSlot, TemplateSlotLayout};
 use crate::{FormatError, document::Writer};
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_template_literal_type(
+    pub(super) fn format_template_literal_type_body(
         &mut self,
         template: TsTemplateLiteralType,
         writer: &mut Writer<'ast>,
@@ -20,12 +19,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             template.span(ast),
             template.quasis(ast),
             template.types(ast),
-            Self::format_template_type_slot,
+            |formatter, annotation, slot, writer| {
+                formatter.format_template_type_slot_body(annotation, slot, writer)
+            },
             writer,
         )
     }
 
-    fn format_template_type_slot(
+    fn format_template_type_slot_body(
         &mut self,
         annotation: TsType,
         slot: TemplateSlot,
@@ -60,6 +61,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             TemplateSlotLayout::Child
         };
+        let head_layout = self.template_slot_head_layout(leading, span.start);
         self.format_template_slot(
             slot,
             opening,
@@ -68,36 +70,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
             |formatter, layout, writer| {
                 formatter.comments.claim(leading)?;
-                formatter.format_comment_run(
-                    leading,
-                    CommentRunLayout::Leading(span.start),
-                    writer,
-                )?;
+                formatter.format_comment_run(leading, head_layout, writer)?;
                 let layout = match layout {
                     TemplateSlotLayout::Child => TypeLayout::Root,
                     TemplateSlotLayout::Boundaries(_) => TypeLayout::CallerIndented,
                 };
-                let tail = if trailing.is_empty() {
+                let output = if trailing.is_empty() {
                     let layout = formatter.continuation_type_layout(span, layout);
-                    formatter
-                        .format_type_before_continuation(span, writer, |formatter, writer| {
-                            formatter.format_prepared_type_output(
+                    formatter.format_type_body_before_continuation(
+                        span,
+                        writer,
+                        |formatter, writer| {
+                            formatter.format_prepared_type_body(
                                 node,
                                 TypeContext::Root,
                                 layout,
                                 writer,
                             )
-                        })?
-                        .pending
-                } else {
-                    formatter.format_prepared_type_with_layout(
-                        node,
-                        TypeContext::Root,
-                        layout,
-                        writer,
+                        },
                     )?
+                } else {
+                    formatter.format_prepared_type_body(node, TypeContext::Root, layout, writer)?
                 };
-                formatter.format_expression_tail(tail, writer)?;
+                formatter.format_expression_tail(output.pending, writer)?;
                 formatter.format_comment_boundary(&after, writer)
             },
         )

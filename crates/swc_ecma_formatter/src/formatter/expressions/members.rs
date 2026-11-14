@@ -15,6 +15,7 @@ use crate::formatter::comments::{
     CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::source::is_source_horizontal_whitespace;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
     FormatError,
@@ -72,9 +73,50 @@ enum MemberContent {
     },
 }
 
-pub(super) enum PreparedMember {
-    Verbatim(MemberExpression),
+pub(super) enum PreparedMember<'ast> {
+    Verbatim(VerbatimMember<'ast>),
     Formatted(SourceMember),
+}
+
+pub(super) struct VerbatimMember<'ast> {
+    pub(super) node: MemberExpression,
+    pub(super) frame: MemberCalleeFrame<'ast>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum MemberCalleeFrame<'ast> {
+    Inline,
+    Lookup(GroupId),
+    SourceContinuation(&'ast str),
+}
+
+impl<'ast> MemberCalleeFrame<'ast> {
+    pub(super) fn write<T>(
+        self,
+        writer: &mut Writer<'ast>,
+        arguments: impl FnOnce(&mut Writer<'ast>) -> T,
+    ) -> T {
+        match self {
+            Self::Inline => arguments(writer),
+            Self::Lookup(group) => writer.indent_if_break(group, arguments),
+            Self::SourceContinuation(prefix) => {
+                writer.dedent_to_root(|writer| writer.align_text(prefix, arguments))
+            }
+        }
+    }
+
+    pub(super) fn write_chain_tail<T>(
+        self,
+        writer: &mut Writer<'ast>,
+        tail: impl FnOnce(&mut Writer<'ast>) -> T,
+    ) -> T {
+        match self {
+            Self::SourceContinuation(prefix) => {
+                writer.dedent_to_root(|writer| writer.align_text(prefix, tail))
+            }
+            Self::Inline | Self::Lookup(_) => writer.indent(tail),
+        }
+    }
 }
 
 /// The actual member's key and receiver facts, before punctuation or modes.
@@ -174,7 +216,7 @@ pub(super) struct MemberBoundary<'ast> {
     after: &'ast [Comment],
     pub(super) owns_lookup_comments: bool,
     pub(super) empty_line: bool,
-    pub(super) has_comments: bool,
+    pub(super) has_boundary_comments: bool,
 }
 
 impl MemberBoundary<'_> {
@@ -219,14 +261,10 @@ pub(super) enum MemberLookupLayout {
 impl MemberLookupLayout {
     fn write_with_group_reference<'ast>(
         self,
-        mut gap: Option<CommentGap>,
+        gap: Option<CommentGap>,
         writer: &mut Writer<'ast>,
         access: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
     ) -> Result<Option<GroupId>, FormatError> {
-        if matches!(gap, Some(CommentGap::LineComment)) {
-            writer.hard_line();
-            gap = None;
-        }
         let write = |writer: &mut Writer<'ast>| {
             if let Some(gap) = gap {
                 gap.write(writer, FlatSeparator::Empty, |writer| {
@@ -259,9 +297,8 @@ impl MemberLookupLayout {
         writer: &mut Writer<'ast>,
         access: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
     ) -> Result<(), FormatError> {
-        // The caller printed a receiver-owned suffix outside this lookup.
-        // Its mandatory break has the receiver's indentation; only later
-        // lookup continuation breaks belong to the lookup's indent scope.
+        // The receiver's trailing comment ends before the lookup's indent scope.
+        // Comments owned by the lookup enter through `write_contents` instead.
         if matches!(gap, CommentGap::LineComment) {
             writer.hard_line();
             return self.write_contents(writer, access);
@@ -342,7 +379,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.has_suppression {
             return Ok(match self.source_member(member)? {
                 PreparedMember::Verbatim(member) => (
-                    Expr::MemberExpression(member),
+                    Expr::MemberExpression(member.node),
                     context.with_content_mode(ContentMode::Verbatim),
                 ),
                 PreparedMember::Formatted(source) => {
@@ -402,18 +439,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn format_member_callee(
         &mut self,
-        member: MemberExpression,
+        member: PreparedMember<'ast>,
         context: ExpressionContext<'ast>,
         lookup_owner: MemberLookupOwner,
         writer: &mut Writer<'ast>,
-    ) -> Result<(Option<ExpressionTail<'ast>>, Option<GroupId>), FormatError> {
-        let PreparedMember::Formatted(member) = self.source_member(member)? else {
-            let tail = self.format_expression(
-                Expr::MemberExpression(member),
-                context.with_content_mode(ContentMode::Verbatim),
-                writer,
-            )?;
-            return Ok((tail, None));
+    ) -> Result<(Option<ExpressionTail<'ast>>, MemberCalleeFrame<'ast>), FormatError> {
+        let member = match member {
+            PreparedMember::Formatted(member) => member,
+            PreparedMember::Verbatim(member) => {
+                let tail = self.format_expression(
+                    Expr::MemberExpression(member.node),
+                    context.with_content_mode(ContentMode::Verbatim),
+                    writer,
+                )?;
+                return Ok((tail, member.frame));
+            }
         };
         let tail =
             self.format_expression(member.object, member.receiver_context(context), writer)?;
@@ -434,7 +474,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_member_access(&member, boundary, writer)
         })?;
-        Ok((None, group))
+        Ok((
+            None,
+            group.map_or(MemberCalleeFrame::Inline, MemberCalleeFrame::Lookup),
+        ))
     }
 
     pub(super) fn member_lookup_layout(
@@ -527,12 +570,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_member(
         &self,
         member: MemberExpression,
-    ) -> Result<PreparedMember, FormatError> {
+    ) -> Result<PreparedMember<'ast>, FormatError> {
         let head = self.prepare_member_head(member)?;
         self.prepare_source_member(&head)
     }
 
-    fn prepare_source_member(&self, head: &MemberHead) -> Result<PreparedMember, FormatError> {
+    fn prepare_source_member(
+        &self,
+        head: &MemberHead,
+    ) -> Result<PreparedMember<'ast>, FormatError> {
         let member = head.node;
         let object = head.object;
         let property_span = head.property_span;
@@ -594,7 +640,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let content = self.member_content(key, key_boundary, property_span.start, content_comments);
         let MemberContent::Formatted { receiver, mut key } = content else {
-            return Ok(PreparedMember::Verbatim(member));
+            return Ok(PreparedMember::Verbatim(VerbatimMember {
+                node: member,
+                frame: if self.line_breaks(object.span(self.ast).end, punctuation.operator().start)
+                    != 0
+                {
+                    MemberCalleeFrame::SourceContinuation(
+                        self.verbatim_member_prefix(punctuation.operator().start),
+                    )
+                } else {
+                    MemberCalleeFrame::Inline
+                },
+            }));
         };
         if self.has_suppression
             && let MemberPunctuation::Computed {
@@ -622,6 +679,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             receiver_mode: receiver,
             key_mode: key,
         }))
+    }
+
+    fn verbatim_member_prefix(&self, operator: u32) -> &'ast str {
+        let line = self.ast.source()[..operator as usize]
+            .rsplit(['\n', '\r'])
+            .next()
+            .unwrap_or_default();
+        &line[..line.len()
+            - line
+                .trim_start_matches(is_source_horizontal_whitespace)
+                .len()]
     }
 
     /// The same source packet decides lookup ownership and later relocation.
@@ -671,6 +739,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 starts_line
             });
         let after = &comments[before.len()..];
+        let has_boundary_comments = match &member.punctuation {
+            MemberPunctuation::Computed { brackets, .. } => comments
+                .first()
+                .is_some_and(|comment| comment.span.end <= brackets.start),
+            MemberPunctuation::Static { .. } => !comments.is_empty(),
+        };
         let move_lines = before
             .iter()
             .any(|comment| comment.span.start >= operator.end);
@@ -686,7 +760,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             after,
             owns_lookup_comments,
             empty_line,
-            has_comments: !comments.is_empty(),
+            has_boundary_comments,
         })
     }
 

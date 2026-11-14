@@ -34,7 +34,7 @@ mod writer;
 pub use decode::DocumentBufferError;
 pub use line::{LineMode, LineOptions};
 pub use printer::{CursorError, PrintResult};
-pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
+pub use writer::{FillEntry, FillSeparatorPolicy, GroupScope, IndentScope, Writer};
 
 use std::num::NonZeroU32;
 
