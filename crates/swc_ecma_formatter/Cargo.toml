@@ -14,6 +14,7 @@ swc_next_allocator      = { workspace = true }
 swc_next_ecma_ast       = { workspace = true }
 swc_next_ecma_parser    = { workspace = true }
 swc_next_formatter_core = { workspace = true }
+swc_next_formatter_host = { workspace = true }
 zmij_ecma               = { workspace = true }
 
 [dev-dependencies]

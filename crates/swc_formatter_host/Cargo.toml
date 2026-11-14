@@ -1,0 +1,13 @@
+[package]
+description          = "Language-independent formatting sessions and document producers"
+edition              = "2024"
+homepage.workspace   = true
+keywords             = ["formatting", "pretty-printing"]
+license.workspace    = true
+name                 = "swc_next_formatter_host"
+repository.workspace = true
+version              = "0.6.0"
+
+[dependencies]
+swc_next_allocator      = { workspace = true }
+swc_next_formatter_core = { workspace = true }

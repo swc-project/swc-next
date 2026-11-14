@@ -6,9 +6,18 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
+export type CommentsOptionInputWire =
+  CommentMode
+
+export type CommentsOptionOutputWire =
+  CommentMode
+
 export interface GenerateOutput {
   code: string
 }
+
+export type GenerateOutputOutputWire =
+  string
 
 /**
  * JavaScript code generation options.
@@ -26,11 +35,29 @@ export interface GeneratorConfig {
   minify?: boolean
 }
 
+export type JsLangInputWire =
+  Lang
+
+export type JsLangOutputWire =
+  Lang
+
+export type JsSourceTypeInputWire =
+  SourceType
+
+export type JsSourceTypeOutputWire =
+  SourceType
+
 export type Lang =  'js'|
 'ts'|
 'jsx'|
 'tsx'|
 'dts';
+
+export type OptionalGeneratorConfigInputWire =
+  number
+
+export type OptionalParserConfigInputWire =
+  number
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {
@@ -80,7 +107,7 @@ export type SourceType =  'module'|
  * the validity, alignment, and immutability contracts of
  * `swc_next_core::js::generator::generate_from_parts`.
  */
-export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
+export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: OptionalGeneratorConfigInputWire): GenerateOutputOutputWire
 
 export declare function langFromPath(path: string): Lang
 
@@ -90,6 +117,6 @@ export declare function langFromPath(path: string): Lang
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Buffer
+export declare function parseSync(source: Buffer, sourceUtf16Len: number, options: number): Buffer
 
 export declare function sourceTypeFromPath(path: string): SourceType
