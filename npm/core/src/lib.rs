@@ -4,3 +4,4 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub mod generator;
 pub mod parser;
+pub mod transformer;

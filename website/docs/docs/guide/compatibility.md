@@ -11,20 +11,21 @@ SWC Next has its own JavaScript packages and API surface. Integrations built for
 
 ### JavaScript APIs
 
-`@swc-next/core` is a separate package from [`@swc/core`](https://swc.rs/docs/usage/core). Its public APIs cover parsing, AST traversal and editing, and code generation.
+`@swc-next/core` is a separate package from [`@swc/core`](https://swc.rs/docs/usage/core). Its public APIs cover parsing, source transformation, AST traversal and editing, and code generation.
 
 | Capability | SWC Next API |
 | --- | --- |
 | Parsing | [`parseSync`](/api/javascript/parser) parses JavaScript and TypeScript into an AST. |
 | AST traversal and editing | [`walk`](/api/javascript/walk) visits and modifies AST nodes. |
 | Code generation | [`generateSync`](/api/javascript/generator) prints an AST as source code. |
-| Compilation and minification | The JavaScript packages do not currently expose SWC's `transform`, `transformSync`, `minify`, or `minifySync` APIs. |
+| Source transformation | [`transformSync`](/api/javascript/transformer) from `@swc-next/core` or `@swc-next/transformer` lowers TypeScript and JSX using default transformation settings. |
+| Minification | The JavaScript packages do not currently expose `minify` or `minifySync`. |
 
 ### Configuration
 
-SWC Next uses separate parser and code generation options and does not load [`.swcrc` files](https://swc.rs/docs/configuration/swcrc). Compatibility with selected SWC configuration options is planned.
+SWC Next exposes parser and code generation options. The source transformation API uses default transformation settings and does not load [`.swcrc` files](https://swc.rs/docs/configuration/swcrc). Compatibility with selected SWC configuration options is planned.
 
-Available options are documented in the [Parser](/api/javascript/parser) and [Generator](/api/javascript/generator) references.
+Available options are documented in the [Parser](/api/javascript/parser), [Transformer](/api/javascript/transformer), and [Generator](/api/javascript/generator) references.
 
 ### Plugins
 

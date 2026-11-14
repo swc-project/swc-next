@@ -1,3 +1,4 @@
+export { encodeGeneratorConfig } from "./options.js";
 import type { Program } from "@swc-next/types";
 
 /** Borrowed sections in canonical little-endian order. Consume before calling

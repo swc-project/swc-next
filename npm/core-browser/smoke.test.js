@@ -4,10 +4,10 @@
 
 import { expect, test } from "@rstest/core";
 
-import init, { parseSync, generateSync } from "@swc-next/core-browser";
+import init, { parseSync, generateSync, transformSync } from "@swc-next/core-browser";
 import * as core from "@swc-next/core-browser";
 
-test("browser exposes parseSync and generateSync", async () => {
+test("browser exposes parsing, generation, and transformation", async () => {
   await init();
   expect("Lang" in core).toBe(false);
   expect("SourceType" in core).toBe(false);
@@ -23,4 +23,7 @@ test("browser exposes parseSync and generateSync", async () => {
   program.body[0].declarations[0].init.value = 2;
 
   expect(generateSync(program).code).toBe("const value = 2;\n");
+  const transformed = transformSync("const value: number = 42;", { filename: "input.ts" });
+  expect(transformed.code).toBe("const value = 42;\n");
+  expect(transformed.diagnostics).toEqual([]);
 });

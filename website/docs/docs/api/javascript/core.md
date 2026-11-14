@@ -5,7 +5,7 @@ description: Core package exports for Node.js and browser WebAssembly.
 
 # Core
 
-The core packages provide synchronous parsing and code generation with the same function signatures and option types in Node.js and browsers.
+The core packages provide synchronous parsing, source transformation, and code generation with the same function signatures and option types in Node.js and browsers.
 
 ## Packages
 
@@ -19,6 +19,7 @@ The core packages provide synchronous parsing and code generation with the same 
 | Export | Purpose | Reference |
 | --- | --- | --- |
 | `parseSync(source, options?)` | Parse source text into a program, comments, and diagnostics | [Parser](/api/javascript/parser) |
+| `transformSync(source, options?)` | Transform source and return code, diagnostics, and an optional source map | [Transformer](/api/javascript/transformer) |
 | `generateSync(program, options?)` | Generate a `{ code }` result from a program | [Generator](/api/javascript/generator) |
 | `walk(root, hooks, state?)` | Traverse and edit an AST synchronously; exported by the Node.js package | [Walk](/api/javascript/walk) |
 | `langFromPath(path)` | Infer the parser language from a file path | [Parser helpers](/api/javascript/parser#path-helpers) |
@@ -34,9 +35,9 @@ The browser package includes the WebAssembly binary and its JavaScript bindings.
 export default function init(): Promise<void>;
 ```
 
-Await `init()` before calling `parseSync` or `generateSync`. It loads the bundled `.wasm` file; after successful initialization, subsequent calls are idempotent no-ops. Serve the package with a bundler that resolves its WebAssembly asset.
+Await `init()` before calling `parseSync`, `transformSync`, or `generateSync`. It loads the bundled `.wasm` file; after successful initialization, subsequent calls are idempotent no-ops. Serve the package with a bundler that resolves its WebAssembly asset.
 
-Parsing and printing are synchronous after initialization. Run substantial workloads in a worker to keep the interface responsive.
+Parsing, transformation, and printing are synchronous after initialization. Run substantial workloads in a worker to keep the interface responsive.
 
 ## Type imports
 

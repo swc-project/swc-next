@@ -1,8 +1,8 @@
 import { generateSync as __generateSync } from "./binding.js";
-import { encode, encodeOptions } from "@swc-next/encoder";
+import { encode, encodeGeneratorConfig } from "@swc-next/encoder";
 
 export function generateSync(program, options) {
-  const generatorConfig = encodeOptions(options);
+  const generatorConfig = encodeGeneratorConfig(options);
   const code = __generateSync(...encode(program), generatorConfig);
   return { code };
 }

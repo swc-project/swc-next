@@ -15,6 +15,7 @@ Parse source text into an AST compatible with [ESTree](https://github.com/estree
 | [Parser](/api/javascript/parser) | `parseSync`, parser options, results, and diagnostics |
 | [Walk](/api/javascript/walk) | `walk`, visitor hooks, traversal context, and `createWalker` |
 | [Generator](/api/javascript/generator) | `generateSync`, formatting options, and generated output |
+| [Transformer](/api/javascript/transformer) | `transformSync`, source transformations, diagnostics, and source maps |
 | [AST types](/api/javascript/types) | Node declarations and source positions |
 
 ## Compiler components

@@ -22,7 +22,9 @@
     "index.js",
     "decode-js.js",
     "decode-ts.js",
-    "README.md"
+    "README.md",
+    "options.js",
+    "options.d.ts"
   ],
   "publishConfig": {
     "access": "public",

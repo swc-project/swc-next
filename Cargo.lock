@@ -4005,6 +4005,16 @@ name = "swc_next_simd"
 version = "0.6.1"
 
 [[package]]
+name = "swc_next_transformer_bridge"
+version = "0.6.1"
+dependencies = [
+ "mimalloc",
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_core",
+]
+
+[[package]]
 name = "swc_next_type_strip"
 version = "0.6.1"
 dependencies = [
