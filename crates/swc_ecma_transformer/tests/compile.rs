@@ -2,8 +2,15 @@ use std::{fs, path::Path};
 
 use swc_next_allocator::Allocator;
 use swc_next_core::js::{JsTransformApiOptions, transformer::transform_js};
-use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_ast::{
+    Ast, GetSpan, Lang, SetSpan, SourceType, Span, TsEnumMember, VariableDeclarator, VisitMut,
+    VisitMutWith,
+};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_transformer::{
+    Transformer, TransformerOptions, normalize::Normalizer, typescript::TypeScriptOptions,
+};
 
 fn options(mut directory: &Path, root: &Path) -> JsTransformApiOptions {
     loop {
@@ -60,4 +67,93 @@ fn compile() {
             });
         }
     );
+}
+
+#[derive(Clone, Copy)]
+enum InitializationSpans {
+    Collapsed,
+    Reversed,
+}
+
+struct RemapInitializations<'visit, 'ast> {
+    ast: &'visit mut Ast<'ast>,
+    spans: InitializationSpans,
+}
+
+impl RemapInitializations<'_, '_> {
+    fn remap(&mut self, node: impl GetSpan + SetSpan) {
+        let span = match self.spans {
+            InitializationSpans::Collapsed => Span::new(0, 0),
+            InitializationSpans::Reversed => {
+                let span = node.span(self.ast);
+                let end = self.ast.source().len() as u32;
+                Span::new(end - span.end, end - span.start)
+            }
+        };
+        node.set_span(self.ast, span);
+    }
+}
+
+impl<'ast> VisitMut<'ast> for RemapInitializations<'_, 'ast> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.ast
+    }
+
+    fn visit_mut_ts_enum_member(&mut self, member: TsEnumMember) -> Option<TsEnumMember> {
+        self.remap(member);
+        member.visit_mut_children_with(self)
+    }
+
+    fn visit_mut_variable_declarator(
+        &mut self,
+        declarator: VariableDeclarator,
+    ) -> Option<VariableDeclarator> {
+        self.remap(declarator);
+        declarator.visit_mut_children_with(self)
+    }
+}
+
+fn transform_with_initialization_spans(source: &str, spans: InitializationSpans) -> String {
+    let allocator = Allocator::new();
+    let options = ParserOptions {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..ParserOptions::default()
+    };
+    let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let mut ast = parsed.ast;
+    Normalizer::normalize_runtime(&mut ast);
+    let program = ast.root_program();
+    // SAFETY: This visitor uses only handles from this AST and changes source spans.
+    let tree = unsafe { ast.ast_mut() };
+    program.visit_mut_with(&mut RemapInitializations { ast: tree, spans });
+    let analyzed = analyze(&mut ast, AnalyzeOptions::default());
+    assert!(analyzed.diagnostics.is_empty());
+    let options = TransformerOptions {
+        typescript: Some(TypeScriptOptions::default()),
+        ..TransformerOptions::default()
+    };
+    Transformer::transform(analyzed.semantic, options);
+    swc_next_ecma_codegen::generate(&ast, Default::default()).code
+}
+
+// Source fixtures cannot express synthetic AST spans.
+#[test]
+fn enum_initialization_order() {
+    let input = "const value = 'x'; enum E { A = value, B = A }";
+    let expected = r#"const value = "x";
+var E;
+(function(E) {
+  E["A"] = "x";
+  E["B"] = "x";
+})(E || (E = {}));
+"#;
+    for spans in [
+        InitializationSpans::Collapsed,
+        InitializationSpans::Reversed,
+    ] {
+        let output = transform_with_initialization_spans(input, spans);
+        assert_eq!(output, expected);
+    }
 }

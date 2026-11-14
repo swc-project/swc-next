@@ -6,10 +6,11 @@ use swc_next_allocator::{
 };
 use swc_next_ecma_ast::{
     Ast, AstUtf8, BinaryOperator, Expr, ExprData, MemberExpression, NodeId, NodeKindData,
-    NumericLiteral, PropertyKeyData, SymbolId, TsEnumDeclaration, TsEnumMember, UnaryOperator,
-    VariableDeclarator,
+    NumericLiteral, PropertyKeyData, SymbolId, TsEnumMember, UnaryOperator, VariableDeclarator,
 };
 use swc_next_ecma_semantic::{NameResolution, Semantic, SymbolFlags};
+
+use super::availability::{Availability, Initialization};
 
 /// A TypeScript enum member value known without evaluating runtime code.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,21 +49,16 @@ type EnumMemberValues<'a> = FxHashMap<SymbolId, EnumMemberValue<'a>>;
 #[derive(Clone, Copy)]
 pub(super) struct ConstBinding {
     pub syntax: VariableDeclarator,
-    pub deferred: Option<NodeId>,
+    pub initialization: Initialization,
 }
 
 pub(super) type ConstBindings = FxHashMap<SymbolId, ConstBinding>;
 
 #[derive(Clone, Copy)]
-struct EvaluationLocation {
-    node: NodeId,
-    deferred: Option<NodeId>,
-}
-
-#[derive(Clone, Copy)]
-struct EnumMemberDeclaration {
-    syntax: TsEnumMember,
-    owner: usize,
+pub(super) struct EnumMemberDeclaration {
+    pub syntax: TsEnumMember,
+    pub owner: usize,
+    pub initialization: Initialization,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -78,42 +74,26 @@ enum ConstEvaluation<'a> {
     Evaluated(EnumMemberValue<'a>),
 }
 
-#[derive(Clone, Copy)]
 pub(super) struct EnumDeclaration {
-    pub syntax: TsEnumDeclaration,
     pub auto_increment: bool,
-    pub deferred: Option<NodeId>,
+    pub members: Vec<EnumMemberDeclaration>,
 }
 
 pub(super) fn evaluate<'a>(
     tree: &Ast<'a>,
     declarations: &[EnumDeclaration],
+    member_declarations: &FxHashMap<SymbolId, EnumMemberDeclaration>,
     const_bindings: &ConstBindings,
+    availability: &Availability,
     semantic: &Semantic<'a>,
 ) -> EnumMemberValues<'a> {
-    let mut enum_member_declarations = FxHashMap::default();
-    for (owner, declaration) in declarations.iter().enumerate() {
-        let syntax = declaration.syntax;
-        for member_id in syntax.body(tree).members(tree).iter() {
-            let member = tree.get_node_in_sub_range(member_id);
-            if let Some(symbol) = semantic.symbol_of(member.node_id()) {
-                enum_member_declarations.insert(
-                    symbol,
-                    EnumMemberDeclaration {
-                        syntax: member,
-                        owner,
-                    },
-                );
-            }
-        }
-    }
-
     let mut computer = EnumValueComputer {
         tree,
         semantic,
         const_bindings,
-        enum_member_declarations,
+        enum_member_declarations: member_declarations,
         declarations,
+        availability,
         enum_evaluations: vec![EnumEvaluation::Pending; declarations.len()],
         enum_values: FxHashMap::default(),
         const_evaluations: FxHashMap::default(),
@@ -130,8 +110,9 @@ struct EnumValueComputer<'visit, 'a> {
     tree: &'visit Ast<'a>,
     semantic: &'visit Semantic<'a>,
     const_bindings: &'visit ConstBindings,
-    enum_member_declarations: FxHashMap<SymbolId, EnumMemberDeclaration>,
+    enum_member_declarations: &'visit FxHashMap<SymbolId, EnumMemberDeclaration>,
     declarations: &'visit [EnumDeclaration],
+    availability: &'visit Availability,
     enum_evaluations: Vec<EnumEvaluation>,
     enum_values: EnumMemberValues<'a>,
     const_evaluations: FxHashMap<SymbolId, ConstEvaluation<'a>>,
@@ -145,23 +126,18 @@ impl<'a> EnumValueComputer<'_, 'a> {
         // Publish earlier members as we go, but do not reenter an enum whose
         // initializers are being evaluated. This also terminates dependency cycles.
         self.enum_evaluations[index] = EnumEvaluation::Evaluating;
-        let declaration = self.declarations[index];
+        let declaration = &self.declarations[index];
         let mut next = Some(number(0.0));
-        for member_id in declaration.syntax.body(self.tree).members(self.tree).iter() {
-            let member = self.tree.get_node_in_sub_range(member_id);
-            let symbol = self.semantic.symbol_of(member.node_id());
-            let location = EvaluationLocation {
-                node: member.node_id(),
-                deferred: declaration.deferred,
-            };
+        for definition in &declaration.members {
+            let member = definition.syntax;
             let value = if let Some(initializer) = member.initializer(self.tree) {
-                self.compute(initializer, location)
+                self.compute(initializer, definition.initialization)
             } else if declaration.auto_increment {
                 next.map_or(EnumMemberValue::Unknown, EnumMemberValue::Constant)
             } else {
                 EnumMemberValue::Unknown
             };
-            if let Some(symbol) = symbol {
+            if let Some(symbol) = self.semantic.symbol_of(member.node_id()) {
                 if matches!(value, EnumMemberValue::Unknown) {
                     self.enum_values.remove(&symbol);
                 } else {
@@ -173,7 +149,7 @@ impl<'a> EnumValueComputer<'_, 'a> {
         self.enum_evaluations[index] = EnumEvaluation::Evaluated;
     }
 
-    fn compute(&mut self, expression: Expr, location: EvaluationLocation) -> EnumMemberValue<'a> {
+    fn compute(&mut self, expression: Expr, location: Initialization) -> EnumMemberValue<'a> {
         use EnumMemberValue::{Constant, StringExpression, Unknown};
         match self.tree.kind_data(expression.node_id()) {
             NodeKindData::StringLiteral(literal) => Constant(TsEnumConstantValue::String(
@@ -257,7 +233,7 @@ impl<'a> EnumValueComputer<'_, 'a> {
     fn compute_symbol(
         &mut self,
         symbol: SymbolId,
-        location: EvaluationLocation,
+        location: Initialization,
     ) -> EnumMemberValue<'a> {
         // Semantic keeps an alias's binding identity separate from its terminal value.
         let symbol = self
@@ -265,7 +241,10 @@ impl<'a> EnumValueComputer<'_, 'a> {
             .ts_import_alias_target(symbol)
             .unwrap_or(symbol);
         if let Some(declaration) = self.enum_member_declarations.get(&symbol).copied() {
-            if !self.is_declared_before(declaration.syntax.node_id(), location) {
+            if !self
+                .availability
+                .is_available(declaration.initialization, location)
+            {
                 return EnumMemberValue::Unknown;
             }
             self.compute_declaration(declaration.owner);
@@ -277,7 +256,10 @@ impl<'a> EnumValueComputer<'_, 'a> {
         };
         // Declaration order is use-site dependent. Check it before consulting the cache so
         // a forward reference cannot poison a later, valid use of the same const binding.
-        if !self.is_declared_before(binding.syntax.node_id(), location) {
+        if !self
+            .availability
+            .is_available(binding.initialization, location)
+        {
             return EnumMemberValue::Unknown;
         }
         if let Some(evaluation) = self.const_evaluations.get(&symbol).copied() {
@@ -292,31 +274,10 @@ impl<'a> EnumValueComputer<'_, 'a> {
         };
         self.const_evaluations
             .insert(symbol, ConstEvaluation::Visiting);
-        let location = EvaluationLocation {
-            node: binding.syntax.node_id(),
-            deferred: binding.deferred,
-        };
-        let value = self.compute(initializer, location);
+        let value = self.compute(initializer, binding.initialization);
         self.const_evaluations
             .insert(symbol, ConstEvaluation::Evaluated(value));
         value
-    }
-
-    fn is_declared_before(&self, declaration: NodeId, location: EvaluationLocation) -> bool {
-        if declaration == location.node {
-            return false;
-        }
-        let declaration = self.tree.span(declaration);
-        if declaration.start <= self.tree.span(location.node).start {
-            return true;
-        }
-        // A function or instance initializer may execute after an outer binding
-        // is initialized. Bindings within that same deferred region still obey
-        // source order. Immediately invoked functions do not create a region.
-        location.deferred.is_some_and(|region| {
-            let region = self.tree.span(region);
-            declaration.start < region.start || declaration.end > region.end
-        })
     }
 
     fn number_literal(&self, literal: NumericLiteral) -> TsEnumConstantValue<'a> {
@@ -380,7 +341,7 @@ impl<'a> EnumValueComputer<'_, 'a> {
     fn compute_template(
         &mut self,
         template: swc_next_ecma_ast::TemplateLiteral,
-        location: EvaluationLocation,
+        location: Initialization,
     ) -> Option<TsEnumConstantValue<'a>> {
         let quasis = template.quasis(self.tree);
         let expressions = template.expressions(self.tree);
