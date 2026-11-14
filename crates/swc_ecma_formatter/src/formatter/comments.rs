@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{Comment, CommentKind, Span};
 use super::Formatter;
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::source::{is_source_whitespace, lines, split_line};
+use super::suppression::{LintLineDirective, lint_line_directive};
 use crate::{FormatError, document::Writer};
 
 pub(super) enum PreparedBoundaryComments<'ast> {
@@ -1710,12 +1711,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comment: Comment,
         end: u32,
     ) -> LineConstraint {
+        if let Some(constraint) = self.next_line_tool_gap(comment, end) {
+            return constraint;
+        }
         match self.comment_gap_constraint(comment.span.end, end) {
             LineConstraint::SameLine if comment.kind == CommentKind::Line => {
                 LineConstraint::NewLine(1)
             }
             constraint => constraint,
         }
+    }
+
+    /// A next-line command owns semantic source lines, including separators
+    /// which ordinary layout treats as visual whitespace.
+    fn next_line_tool_gap(&self, comment: Comment, end: u32) -> Option<LineConstraint> {
+        if !matches!(
+            lint_line_directive(self.ast, comment),
+            Some(LintLineDirective::NextLine)
+        ) {
+            return None;
+        }
+        let start = comment.span.end;
+        let breaks = self.source_line_breaks(start, end);
+        (breaks > self.line_breaks(start, end)).then_some(LineConstraint::NewLine(breaks))
     }
 
     fn comment_gap_with_opening(
@@ -1753,6 +1771,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
+        if let Some(constraint) = self.next_line_tool_gap(comment, end) {
+            constraint.write(writer, FlatSeparator::Space, |_| {});
+            return;
+        }
         self.comment_gap_with_packet_and_opening(
             comment.span.end,
             end,
@@ -1811,6 +1833,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         next_start: u32,
         inline: bool,
     ) -> PreparedLeadingCommentGap {
+        if let Some(constraint) = self.next_line_tool_gap(Comment::new(span, kind), next_start) {
+            return PreparedLeadingCommentGap {
+                source_breaks: self.source_line_breaks(span.end, next_start),
+                gap: CommentGap::Source(constraint),
+            };
+        }
         let constraint = self.line_constraint(span.end, next_start);
         let breaks = match constraint {
             LineConstraint::SameLine => 0,
