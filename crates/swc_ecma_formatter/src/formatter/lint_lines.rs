@@ -3,16 +3,26 @@
 use swc_next_ecma_ast::{Ast, Span};
 
 use super::Formatter;
-use super::suppression::{LintLineDirective, lint_line_directive};
+use super::suppression::{LintLineDirective, is_suppression_comment, lint_line_directive};
 
 #[derive(Default)]
 pub(super) struct LintLineCoverage {
     lines: Vec<Span>,
+    suppression_markers: Vec<Span>,
 }
 
 impl LintLineCoverage {
-    pub(super) fn new(ast: &Ast<'_>) -> Self {
+    pub(super) fn new(ast: &Ast<'_>, has_suppression: bool) -> Self {
         let source = ast.source();
+        let suppression_markers = if has_suppression {
+            ast.comments()
+                .iter()
+                .filter(|&&comment| is_suppression_comment(ast, comment))
+                .map(|comment| comment.span)
+                .collect()
+        } else {
+            Vec::new()
+        };
         let mut directives = ast
             .comments()
             .iter()
@@ -27,7 +37,10 @@ impl LintLineCoverage {
             })
             .peekable();
         if directives.peek().is_none() {
-            return Self { lines: Vec::new() };
+            return Self {
+                lines: Vec::new(),
+                suppression_markers,
+            };
         }
 
         let mut lines = Vec::new();
@@ -66,7 +79,10 @@ impl LintLineCoverage {
             }
             start = next;
         }
-        Self { lines }
+        Self {
+            lines,
+            suppression_markers,
+        }
     }
 
     pub(super) fn intersects(&self, span: Span) -> bool {
@@ -77,16 +93,29 @@ impl LintLineCoverage {
                 .get(first)
                 .is_some_and(|line| line.start < span.end)
     }
+
+    fn has_suppression(&self, span: Span) -> bool {
+        let first = self
+            .suppression_markers
+            .partition_point(|marker| marker.start < span.start);
+        self.suppression_markers
+            .get(first)
+            .is_some_and(|marker| marker.end <= span.end)
+    }
 }
 
 impl Formatter<'_, '_> {
     fn source_directive_lines(&self) -> &LintLineCoverage {
         self.lint_lines
-            .get_or_init(|| LintLineCoverage::new(self.ast))
+            .get_or_init(|| LintLineCoverage::new(self.ast, self.has_suppression))
     }
 
     pub(super) fn lint_line_intersects(&self, span: Span) -> bool {
         !self.ast.comments().is_empty() && self.source_directive_lines().intersects(span)
+    }
+
+    pub(super) fn has_suppression_in(&self, span: Span) -> bool {
+        self.has_suppression && self.source_directive_lines().has_suppression(span)
     }
 }
 
@@ -108,7 +137,10 @@ mod tests {
         let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
         // SAFETY: All inspected comments come from this unmodified parsed AST.
-        (source, LintLineCoverage::new(unsafe { parsed.ast.ast() }))
+        (
+            source,
+            LintLineCoverage::new(unsafe { parsed.ast.ast() }, true),
+        )
     }
 
     fn text_span(source: &str, text: &str) -> Span {
@@ -137,5 +169,9 @@ mod tests {
 
         let (source, lines) = coverage("/* eslint-disable-next-line\n*/\none;");
         assert!(!lines.intersects(text_span(source, "one")));
+
+        let (source, lines) = coverage("/* prettier-ignore */ one; two;");
+        assert!(lines.has_suppression(text_span(source, "/* prettier-ignore */")));
+        assert!(!lines.has_suppression(text_span(source, "two")));
     }
 }

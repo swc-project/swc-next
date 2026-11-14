@@ -865,15 +865,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => None,
         };
+        let fixed_decorator_group = entry.decorators.is_some_and(|prefix| {
+            self.diagnostic_range_is_sensitive(entry.span)
+                || self.lint_line_intersects(entry.span)
+                || self.has_suppression
+                    && (prefix.physical.start > core_start
+                        || self.has_suppression_in(Span::new(prefix.physical.start, core_start)))
+        });
         writer.group(false, |writer| {
             if let Some(head) = removed {
                 self.format_removed_decorator_head(head, writer)?;
             }
             if let Some(prefix) = entry.decorators {
-                let layout = if matches!(entry.node, RuntimeParameter::Property(_)) {
-                    DecoratorLayout::ParameterProperty
-                } else {
-                    DecoratorLayout::Parameter
+                let layout = match (
+                    matches!(entry.node, RuntimeParameter::Property(_)),
+                    fixed_decorator_group,
+                ) {
+                    (true, true) => DecoratorLayout::ParameterProperty,
+                    (true, false) => DecoratorLayout::ParameterPropertyShared,
+                    (false, true) => DecoratorLayout::Parameter,
+                    (false, false) => DecoratorLayout::ParameterShared,
                 };
                 self.format_decorators(prefix, layout, core_start, writer)?;
             }
