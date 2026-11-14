@@ -136,7 +136,11 @@ impl EnumCollector {
             initialization,
         };
         self.enum_declarations[owner].members.push(declaration);
-        if let Some(symbol) = semantic.symbol_of(member.node_id()) {
+        if let Some(symbol) = semantic.symbol_of(member.node_id())
+            && semantic.declarations(symbol).len() == 1
+        {
+            // Ambiguous members still emit each initializer, but cannot supply
+            // a single constant value for references to the shared symbol.
             self.member_declarations.insert(symbol, declaration);
         }
     }
@@ -227,7 +231,7 @@ struct ConstEnumRemovalCandidate {
 
 #[derive(Default)]
 pub(super) struct EnumAnalysis<'ast> {
-    member_values: FxHashMap<SymbolId, EnumMemberValue<'ast>>,
+    member_values: FxHashMap<TsEnumMember, EnumMemberValue<'ast>>,
     removable: FxHashSet<SymbolId>,
     inline_uses: FxHashMap<NodeId, TsEnumConstantValue<'ast>>,
 }
@@ -266,8 +270,10 @@ impl<'ast> EnumAnalysis<'ast> {
             member,
         } in &collector.inline_candidates
         {
-            if let Some(value) = member_values
+            if let Some(value) = collector
+                .member_declarations
                 .get(&member)
+                .and_then(|declaration| member_values.get(&declaration.syntax))
                 .and_then(|value| value.constant())
             {
                 inline_uses.insert(expression, value);
@@ -317,7 +323,7 @@ impl<'ast> EnumAnalysis<'ast> {
         self.inline_uses.get(&node).copied()
     }
 
-    pub(super) fn member_value(&self, member: SymbolId) -> EnumMemberValue<'ast> {
+    pub(super) fn member_value(&self, member: TsEnumMember) -> EnumMemberValue<'ast> {
         self.member_values.get(&member).copied().unwrap_or_default()
     }
 
@@ -325,7 +331,7 @@ impl<'ast> EnumAnalysis<'ast> {
         candidate: &ConstEnumRemovalCandidate,
         ast: &Ast<'_>,
         semantic: &Semantic<'_>,
-        member_values: &FxHashMap<SymbolId, EnumMemberValue<'_>>,
+        member_values: &FxHashMap<TsEnumMember, EnumMemberValue<'_>>,
         safe_references: &FxHashSet<NodeId>,
     ) -> bool {
         let symbol = candidate.symbol;
@@ -354,18 +360,17 @@ impl<'ast> EnumAnalysis<'ast> {
         declaration: TsEnumDeclaration,
         ast: &Ast<'_>,
         semantic: &Semantic<'_>,
-        member_values: &FxHashMap<SymbolId, EnumMemberValue<'_>>,
+        member_values: &FxHashMap<TsEnumMember, EnumMemberValue<'_>>,
     ) -> bool {
         declaration.body(ast).members(ast).iter().all(|member_id| {
             let member = ast.get_node_in_sub_range(member_id);
             let Some(symbol) = semantic.symbol_of(member.node_id()) else {
                 return false;
             };
-            // Values are keyed by symbol; conflicting member declarations must
-            // not let a later constant hide an earlier unknown initializer.
+            // Conflicting declarations cannot be inlined through their shared symbol.
             semantic.declarations(symbol).len() == 1
                 && member_values
-                    .get(&symbol)
+                    .get(&member)
                     .is_some_and(|value| value.constant().is_some())
         })
     }

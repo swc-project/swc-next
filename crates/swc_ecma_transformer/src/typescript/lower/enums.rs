@@ -110,7 +110,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
                 continue;
             };
             let member_name = self.semantic.symbol(member_symbol).name;
-            let value = self.analysis.enum_member_value(member_symbol);
+            let value = self.analysis.enum_member_value(member);
             let initializer = if let Some(constant) = value.constant() {
                 self.enum_constant_expression(constant, member.span(self.ast_ref()))
             } else if let Some(initializer) = member.initializer(self.ast_ref()) {

@@ -3,10 +3,10 @@ source: crates/swc_ecma_transformer/tests/compile.rs
 ---
 var E;
 (function(E) {
-  E[E["A"] = 1] = "A";
+  E[E["A"] = bump()] = "A";
 })(E || (E = {}));
 (function(E) {
   E[E["A"] = 1] = "A";
 })(E || (E = {}));
-console.log(1);
+console.log(E.A);
 export {};

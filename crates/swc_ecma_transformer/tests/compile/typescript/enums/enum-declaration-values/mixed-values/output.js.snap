@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var E;
+(function(E) {
+  E[E["A"] = sideEffect()] = "A";
+})(E || (E = {}));
+(function(E) {
+  E["A"] = "second";
+})(E || (E = {}));
+export {};
