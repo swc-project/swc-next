@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// eslint-disable-next-line no-unused-vars, no-magic-numbers
+class C { field = 42; }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// eslint-disable-next-line no-unused-vars, no-magic-numbers
+class C { field = 42; }

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {
+  @dec
+  // eslint-disable-next-line no-magic-numbers
+  aaaaaaaaaaaaaaaaaaaaaaaaaa = 42;
+}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  @dec
+  // eslint-disable-next-line no-magic-numbers
+  aaaaaaaaaaaaaaaaaaaaaaaaaa = 42;
+}

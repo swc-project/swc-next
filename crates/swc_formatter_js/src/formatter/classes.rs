@@ -539,6 +539,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let body = class.body(ast);
         let span = class.span(ast);
+        let header = Span::new(core_start, body.span(ast).start + 1);
+        if self.lint_line_intersects(header) {
+            return Ok(PreparedClassHead::Verbatim);
+        }
         let name = class.id(ast);
         let (start, prefix) = if class.r#abstract(ast) || class.declare(ast) {
             let (end, prefix) = self.prepare_class_prefix(class, core_start)?;
@@ -1120,13 +1124,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             PreparedHeadGap::new(leading, HeadGapPlacement::OwnLine)
         };
+        let source_bound = self.lint_line_intersects(Span::new(content.start, first_span.start));
         let head = NodeHead {
             comments: leading,
             content_start: first_span.start,
-            layout: CommentRunLayout::Leading(first_span.start),
-            gap_end: source_adjacent.then_some(first_span.start),
+            layout: if source_bound {
+                CommentRunLayout::Source
+            } else {
+                CommentRunLayout::Leading(first_span.start)
+            },
+            gap_end: (source_adjacent || source_bound).then_some(first_span.start),
         };
-        let head = if let Some(gaps) = PreparedHeadGaps::new(None, gap, false) {
+        let head = if !source_bound && let Some(gaps) = PreparedHeadGaps::new(None, gap, false) {
             gaps.apply(head, binding, source_adjacent)
         } else {
             head
@@ -1178,7 +1187,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node_span.end,
                     next_span.map_or(content.end, |span| span.start),
                 );
-                let layout = if current.sibling.is_none() {
+                let layout = if current.sibling.is_none() && !self.lint_line_intersects(gap) {
                     ClassMemberBoundaryLayout::Formatted(
                         self.prepare_class_member_gap(gap, next_span),
                     )
@@ -1412,7 +1421,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DelimitedFollowing::End
             },
         );
+        // Parameters own their coverage; a field owns its initializer.
+        let lint_owner = if matches!(
+            ast.class_element_data(node),
+            ClassElementData::PropertyDefinition(_)
+        ) {
+            span
+        } else {
+            Span::new(span.start, span.start + 1)
+        };
         let mode = if mode == ContentMode::Verbatim
+            || self.lint_line_intersects(lint_owner)
             || sibling
                 .as_ref()
                 .and_then(|source| source.preceding)
