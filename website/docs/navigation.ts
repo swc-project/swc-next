@@ -76,10 +76,6 @@ export const sidebar = {
           "link": "/api/javascript/generator"
         },
         {
-          "text": "Transformer",
-          "link": "/api/javascript/transformer"
-        },
-        {
           "text": "AST types",
           "link": "/api/javascript/types"
         }

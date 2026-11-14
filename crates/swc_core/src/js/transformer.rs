@@ -412,7 +412,12 @@ impl From<JsAssumptions> for Assumptions {
 // }
 
 /// Transform a source file.
-pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
+///
+/// Set `TRANSFORM` to `false` to skip native syntax transformations.
+pub fn transform_js<const TRANSFORM: bool>(
+    source: &str,
+    options: JsTransformApiOptions,
+) -> JsOutput {
     let mut output = JsOutput::default();
     fn has_errors(diagnostics: &[Diagnostic]) -> bool {
         diagnostics
@@ -447,7 +452,8 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
         // for semantic transforms, then discard comments before generation if needed.
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
-        let collect_pragmas = parser_options.comments.is_none()
+        let collect_pragmas = TRANSFORM
+            && parser_options.comments.is_none()
             && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
         let parser_comments = if collect_pragmas {
             CommentsOption::All
@@ -475,32 +481,31 @@ pub fn transform_js(source: &str, options: JsTransformApiOptions) -> JsOutput {
     };
 
     // ======================= Normalize =======================
-    match &transform.typescript {
-        None | Some(BoolOr::Bool(false)) => Normalizer::normalize(&mut ast),
-        _ => Normalizer::normalize_runtime(&mut ast),
+    if TRANSFORM {
+        match &transform.typescript {
+            None | Some(BoolOr::Bool(false)) => Normalizer::normalize(&mut ast),
+            _ => Normalizer::normalize_runtime(&mut ast),
+        }
     }
 
-    // ======================= Analyze =======================
-    let semantic = {
-        let check_syntax = if parser_options.semantic_errors.unwrap_or(false) {
+    // ======================= Analyze and Transform =======================
+    let semantic_errors = parser_options.semantic_errors.unwrap_or(false);
+    if TRANSFORM || semantic_errors {
+        let check_syntax = if semantic_errors {
             SyntaxChecks::all()
         } else {
             SyntaxChecks::empty()
         };
-        let options = AnalyzeOptions { check_syntax };
-        let analyzed = analyze(&mut ast, options);
+        let analyzed = analyze(&mut ast, AnalyzeOptions { check_syntax });
         output.diagnostics.extend(analyzed.diagnostics);
         if has_errors(&output.diagnostics) {
             return output;
         }
-        analyzed.semantic
-    };
-
-    // ======================= Transform =======================
-    {
-        let transform = transform.to_transformer_options(options.filename.clone());
-        let transformed = Transformer::transform(semantic, transform);
-        output.diagnostics.extend(transformed.diagnostics);
+        if TRANSFORM {
+            let transform = transform.to_transformer_options(options.filename.clone());
+            let transformed = Transformer::transform(analyzed.semantic, transform);
+            output.diagnostics.extend(transformed.diagnostics);
+        }
     }
 
     // ======================= Generate =======================
@@ -580,7 +585,10 @@ pub mod bridge {
         pub labels: Vec<DiagnosticLabel>,
     }
 
-    /// Options for transforming JavaScript and TypeScript source.
+    /// Options for parsing and printing source.
+    ///
+    /// Built-in transformations, including TypeScript type erasure and JSX lowering,
+    /// are not currently implemented by the JavaScript API.
     #[bridge(object, object_from_js = false, object_to_js = false)]
     #[derive(Default)]
     pub struct TransformApiOptions {
@@ -708,7 +716,7 @@ pub mod bridge {
         options: Option<TransformApiOptions>,
     ) -> Vec<u8> {
         let source = unsafe { std::str::from_utf8_unchecked(source) };
-        let output = transform_js(source, options.unwrap_or_default().into());
+        let output = transform_js::<false>(source, options.unwrap_or_default().into());
         let Ok(buffer) = {
             output_to_buffer(source, source_utf16_len, output, |size| {
                 Ok::<_, std::convert::Infallible>(vec![0; size])
@@ -741,7 +749,7 @@ pub mod bridge {
             )
         })?;
         let source = unsafe { std::str::from_utf8_unchecked(source) };
-        let output = transform_js(source, options.unwrap_or_default().into());
+        let output = transform_js::<false>(source, options.unwrap_or_default().into());
         if output.map.is_none() && output.diagnostics.is_empty() {
             return Ok(napi::bindgen_prelude::Either::A(
                 <String as swc_next_bridge::NativeAbi>::into_native(output.code),

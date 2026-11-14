@@ -100,7 +100,12 @@ export type SourceType =  'module'|
 'commonjs'|
 'unambiguous';
 
-/** Options for transforming JavaScript and TypeScript source. */
+/**
+ * Options for parsing and printing source.
+ *
+ * Built-in transformations, including TypeScript type erasure and JSX lowering,
+ * are not currently implemented by the JavaScript API.
+ */
 export interface TransformApiOptions {
   /** Used to infer the language and source type, and for diagnostics and source maps. */
   filename?: string
