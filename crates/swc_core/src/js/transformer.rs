@@ -540,8 +540,8 @@ pub mod bridge {
 
     use super::transform_js;
     use crate::js::{
-        CommentsOption, JsOutput, JsTransformApiOptions, generator::JsGeneratorConfig,
-        parser::JsParserConfig,
+        CommentsOption, JsOutput, JsTransformApiOptions, bridge::Diagnostic,
+        generator::JsGeneratorConfig, parser::JsParserConfig,
     };
 
     #[cfg(not(target_family = "wasm"))]
@@ -558,31 +558,6 @@ pub mod bridge {
         /// Source map as a JSON string. Absent when source maps are disabled.
         pub map: Option<String>,
         pub diagnostics: Vec<Diagnostic>,
-    }
-
-    #[bridge(object, object_from_js = false, object_to_js = false)]
-    pub struct DiagnosticLabel {
-        pub message: String,
-        /// UTF-16 offset in the original source.
-        pub start: u32,
-        /// UTF-16 offset in the original source.
-        pub end: u32,
-    }
-
-    #[bridge(object, object_from_js = false, object_to_js = false)]
-    pub struct Diagnostic {
-        #[cfg_attr(
-            not(target_family = "wasm"),
-            napi(ts_type = "\"error\" | \"warning\" | \"hint\" | \"info\"")
-        )]
-        pub severity: String,
-        pub message: String,
-        /// UTF-16 offset in the original source.
-        pub start: u32,
-        /// UTF-16 offset in the original source.
-        pub end: u32,
-        pub help: Option<String>,
-        pub labels: Vec<DiagnosticLabel>,
     }
 
     /// Options for parsing and printing source.

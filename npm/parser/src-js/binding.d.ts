@@ -6,6 +6,25 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
+export interface Diagnostic {
+  severity: "error" | "warning" | "hint" | "info"
+  message: string
+  /** UTF-16 offset in the original source. */
+  start: number
+  /** UTF-16 offset in the original source. */
+  end: number
+  help?: string
+  labels: Array<DiagnosticLabel>
+}
+
+export interface DiagnosticLabel {
+  message: string
+  /** UTF-16 offset in the original source. */
+  start: number
+  /** UTF-16 offset in the original source. */
+  end: number
+}
+
 export type Lang =  'js'|
 'ts'|
 'jsx'|

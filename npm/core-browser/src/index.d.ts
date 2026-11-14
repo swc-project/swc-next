@@ -2,6 +2,7 @@ import type { Lang, Program, SourceType } from "@swc-next/types";
 export type * from "@swc-next/types";
 
 import type {
+  Diagnostic,
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
@@ -11,6 +12,8 @@ import type {
 
 export type {
   CommentMode,
+  Diagnostic,
+  DiagnosticLabel,
   ParserConfig,
   GeneratorConfig,
   GenerateOutput,
@@ -30,20 +33,6 @@ export interface Comment {
   value: string;
   start: number;
   end: number;
-}
-
-export interface DiagnosticLabel {
-  message: string;
-  /** UTF-16 offset in the source. */
-  start: number;
-  /** UTF-16 offset in the source. */
-  end: number;
-}
-
-export interface Diagnostic extends DiagnosticLabel {
-  severity: "error" | "warning" | "hint" | "info";
-  help?: string;
-  labels: DiagnosticLabel[];
 }
 
 export interface ParseResult {
