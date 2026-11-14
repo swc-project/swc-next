@@ -57,8 +57,16 @@ pub(super) enum SuppressionPosition {
 
 pub(super) fn is_suppression_comment(ast: &Ast<'_>, comment: Comment) -> bool {
     let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
-    value.trim_matches(|character| is_source_whitespace(character) && character != '\u{85}')
-        == "prettier-ignore"
+    is_suppression_value(value)
+}
+
+pub(super) fn is_suppression_value(value: &str) -> bool {
+    let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
+    let value = value.trim_start_matches(whitespace);
+    value.starts_with('p')
+        && value
+            .strip_prefix("prettier-ignore")
+            .is_some_and(|suffix| suffix.chars().all(whitespace))
 }
 
 #[derive(Clone, Copy)]
@@ -74,39 +82,61 @@ pub(super) enum CommentDirective {
     Coverage,
 }
 
-pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<CommentDirective> {
-    let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
-    if comment.kind == CommentKind::Block {
-        let mode = value
-            .strip_prefix(" c8 ignore ")
-            .or_else(|| value.strip_prefix(" v8 ignore "));
+pub(super) fn comment_directive_value(value: &str, kind: CommentKind) -> Option<CommentDirective> {
+    if kind == CommentKind::Block && is_coverage_directive(value) {
+        return Some(CommentDirective::Coverage);
+    }
+    let value = value
+        .trim_start_matches(is_source_whitespace)
+        .strip_prefix("eslint-")?;
+    let (rest, directive) = if let Some(rest) = value.strip_prefix("disable") {
+        if let Some(rest) = rest.strip_prefix("-next-line") {
+            (
+                rest,
+                CommentDirective::LintLine(LintLineDirective::NextLine),
+            )
+        } else if let Some(rest) = rest.strip_prefix("-line") {
+            (
+                rest,
+                CommentDirective::LintLine(LintLineDirective::SameLine),
+            )
+        } else {
+            (rest, CommentDirective::LintRange)
+        }
+    } else {
+        (value.strip_prefix("enable")?, CommentDirective::LintRange)
+    };
+    rest.chars()
+        .next()
+        .is_none_or(is_source_whitespace)
+        .then_some(directive)
+}
+
+fn is_coverage_directive(value: &str) -> bool {
+    let (prefix, supports_next) = match value.as_bytes() {
+        [b' ', b'c', ..] => (" c8 ignore ", true),
+        [b' ', b'v', ..] => (" v8 ignore ", true),
         // The coverage consumer's range pattern `[c|v]8` also accepts `|8`.
-        let range_mode = mode.or_else(|| value.strip_prefix(" |8 ignore "));
-        let node_mode = value.strip_prefix(" node:coverage ");
-        if mode.is_some_and(|mode| mode.starts_with("next"))
-            || range_mode.is_some_and(|mode| mode.starts_with("start") || mode.starts_with("stop"))
-            || node_mode.is_some_and(|mode| {
+        [b' ', b'|', ..] => (" |8 ignore ", false),
+        [b' ', b'n', ..] => {
+            return value.strip_prefix(" node:coverage ").is_some_and(|mode| {
                 mode.starts_with("ignore next")
                     || mode.starts_with("disable")
                     || mode.starts_with("enable")
-            })
-        {
-            return Some(CommentDirective::Coverage);
+            });
         }
-    }
-    let mut words = value
-        .split(is_source_whitespace)
-        .filter(|word| !word.is_empty());
-    match words.next() {
-        Some("eslint-disable-line") => {
-            Some(CommentDirective::LintLine(LintLineDirective::SameLine))
-        }
-        Some("eslint-disable-next-line") => {
-            Some(CommentDirective::LintLine(LintLineDirective::NextLine))
-        }
-        Some("eslint-disable" | "eslint-enable") => Some(CommentDirective::LintRange),
-        _ => None,
-    }
+        _ => return false,
+    };
+    value.strip_prefix(prefix).is_some_and(|mode| {
+        supports_next && mode.starts_with("next")
+            || mode.starts_with("start")
+            || mode.starts_with("stop")
+    })
+}
+
+pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<CommentDirective> {
+    let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
+    comment_directive_value(value, comment.kind)
 }
 
 pub(super) fn lint_line_directive(ast: &Ast<'_>, comment: Comment) -> Option<LintLineDirective> {

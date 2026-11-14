@@ -242,6 +242,13 @@ mod tests {
         assert!(lines.intersects(text_span(source, "two")));
         assert!(!lines.intersects(text_span(source, "three")));
 
+        let (source, lines) = coverage("α; /* \u{feff}eslint-disable-line\u{85}rule */\nβ;");
+        assert!(lines.intersects(text_span(source, "α")));
+        assert!(!lines.intersects(text_span(source, "β")));
+
+        let (_, lines) = coverage("α; /* eslint-disable-lineSuffix */\nβ;");
+        assert!(!lines.has_directives);
+
         let (source, lines) = coverage("// eslint-disable-next-line\r\none;\r\ntwo;");
         assert!(lines.intersects(text_span(source, "one")));
         assert!(!lines.intersects(text_span(source, "two")));
