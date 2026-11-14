@@ -246,7 +246,7 @@ struct OmittedStatementTail<'ast> {
     has_following_comments: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct StatementSourceLine {
     incoming: bool,
     outgoing: Option<Span>,
@@ -254,14 +254,16 @@ struct StatementSourceLine {
 }
 
 impl StatementSourceLine {
-    fn owns(self) -> bool {
+    fn owns(&self) -> bool {
         self.incoming || self.outgoing.is_some() || self.whole
     }
 }
 
 struct StatementPreparation {
     end: u32,
-    incoming_source_line: bool,
+    /// Source relationship for the most recently prepared pending item.
+    source_line: StatementSourceLine,
+    has_lint_lines: bool,
 }
 
 struct PreparedStatement<'ast> {
@@ -270,15 +272,19 @@ struct PreparedStatement<'ast> {
     decorators: Option<StatementDecorators>,
     mode: ContentMode,
     source_gap: Option<LineConstraint>,
-    source_line: StatementSourceLine,
     annotation_tail: Option<StatementAnnotationTail<'ast>>,
     empty_binding: CommentBinding,
 }
 
 impl PreparedStatement<'_> {
-    fn can_omit(&self, ast: &Ast<'_>, header_barrier: Option<Span>) -> bool {
+    fn can_omit(
+        &self,
+        ast: &Ast<'_>,
+        header_barrier: Option<Span>,
+        source_line: &StatementSourceLine,
+    ) -> bool {
         self.item.empty(ast).is_some()
-            && !self.source_line.owns()
+            && !source_line.owns()
             && header_barrier != Some(self.span)
             && self.empty_binding.allows_relocation(None)
     }
@@ -667,7 +673,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
         let mut preparation = StatementPreparation {
             end: hashbang_end.unwrap_or(span.start),
-            incoming_source_line: false,
+            source_line: StatementSourceLine::default(),
+            has_lint_lines: statements.peek().is_some() && self.lint_line_intersects(span),
         };
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(
@@ -678,6 +685,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         });
         while let Some(prepared) = pending {
+            let source_line = preparation.source_line;
             pending = statements.next().map(|item| {
                 self.prepare_sequence_statement(
                     item,
@@ -686,7 +694,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     &mut preparation,
                 )
             });
-            if prepared.can_omit(ast, header_barrier) {
+            if prepared.can_omit(ast, header_barrier, &source_line) {
                 continue;
             }
             let PreparedStatement {
@@ -695,7 +703,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 decorators,
                 mode: source_mode,
                 source_gap,
-                source_line,
                 annotation_tail,
                 empty_binding: _,
             } = prepared;
@@ -706,7 +713,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let leading_mode = self.content_mode(leading);
             let mut omitted: Option<Span> = None;
             while let Some(next) = pending.as_ref() {
-                if !next.can_omit(ast, header_barrier) {
+                if !next.can_omit(ast, header_barrier, &preparation.source_line) {
                     break;
                 }
                 let empty = next.span;
@@ -1449,25 +1456,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let gap_start = preparation.end;
         preparation.end = span.end;
-        let outgoing = if self.ast.comments().is_empty() {
-            None
-        } else {
-            following.and_then(|next| {
-                let start = match next {
+        // Without line directives the sequence frontier stays empty.
+        if preparation.has_lint_lines {
+            let line = if span.start < span.end {
+                self.lint_line_at(span.end - 1)
+            } else {
+                None
+            };
+            let outgoing = line.and_then(|line| {
+                let start = match following? {
                     StatementItem::Statement(node) => self
                         .statement_decorators(node)
                         .map_or_else(|| node.span(self.ast).start, |(span, _)| span.start),
                     StatementItem::Directive(node) => node.span(self.ast).start,
                 };
-                self.covered_statement_gap(span.end, start)
-            })
-        };
-        let source_line = StatementSourceLine {
-            incoming: preparation.incoming_source_line,
-            outgoing,
-            whole: self.lint_line_contains(span),
-        };
-        preparation.incoming_source_line = outgoing.is_some();
+                (span.end <= start
+                    && start <= line.end
+                    && (start as usize) < self.ast.source().len())
+                .then_some(Span::new(span.end, start))
+            });
+            preparation.source_line = StatementSourceLine {
+                incoming: preparation.source_line.outgoing.is_some(),
+                outgoing,
+                whole: line.is_some_and(|line| line.start <= span.start && span.end <= line.end),
+            };
+        }
         let empty = item.empty(self.ast);
         let empty_binding = if empty.is_some() {
             // Only direct statement gaps can contain this owner's leading packet.
@@ -1491,23 +1504,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .filter(|target| target.span == span)
                 .map_or(ContentMode::Formatted, |target| target.mode),
             source_gap: None,
-            source_line,
             annotation_tail,
             empty_binding,
         }
-    }
-
-    /// The immutable source line owns both adjacent statements and their gap.
-    fn covered_statement_gap(&self, left: u32, right: u32) -> Option<Span> {
-        if left == 0
-            || left > right
-            || right as usize >= self.ast.source().len()
-            || self.source_line_breaks(left, right) != 0
-            || !self.lint_line_intersects(Span::new(left - 1, right + 1))
-        {
-            return None;
-        }
-        Some(Span::new(left, right))
     }
 
     fn empty_statement_binding(&self, comments: &[Comment], span: Span) -> CommentBinding {
