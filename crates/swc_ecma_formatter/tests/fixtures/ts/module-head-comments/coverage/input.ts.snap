@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* c8 ignore next */ { value } from 'module';
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+export /* c8 ignore next */ { value } from "module";
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+export /* c8 ignore next */ { value } from "module"
