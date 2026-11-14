@@ -2030,17 +2030,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some((after, space)) = self.format_type_boundary_operator(boundary, writer)? else {
             return Ok(());
         };
-        self.format_comment_boundary(after, writer)?;
-        after.gap().write(writer, space, |writer| {
-            if matches!(
-                boundary.role,
-                TypeBoundaryRole::Constraint(_) | TypeBoundaryRole::Default
-            ) {
-                writer.line();
-            } else if matches!(space, FlatSeparator::Space) {
-                writer.space();
-            }
-        });
+        let inline_qualified_block = matches!(boundary.role, TypeBoundaryRole::Qualified)
+            && after.comments().first().is_some_and(|comment| {
+                comment.kind == CommentKind::Block
+                    && self.source_line_breaks(after.source_end(), comment.span.start) == 0
+            });
+        if inline_qualified_block {
+            self.format_comment_boundary_after_separator(after, writer)?;
+            after
+                .gap()
+                .write(writer, FlatSeparator::Space, Writer::space);
+        } else {
+            self.format_comment_boundary(after, writer)?;
+            after.gap().write(writer, space, |writer| {
+                if matches!(
+                    boundary.role,
+                    TypeBoundaryRole::Constraint(_) | TypeBoundaryRole::Default
+                ) {
+                    writer.line();
+                } else if matches!(space, FlatSeparator::Space) {
+                    writer.space();
+                }
+            });
+        }
         Ok(())
     }
 
