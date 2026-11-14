@@ -8,6 +8,7 @@ mod diagnostics;
 mod expressions;
 mod functions;
 mod heritage;
+mod lint_lines;
 mod literals;
 mod parameters;
 mod restricted;
@@ -34,6 +35,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
+    lint_lines: std::cell::OnceCell<lint_lines::LintLineCoverage>,
     external_opening_owners: Vec<Option<expressions::parentheses::PreparedSourceOpening>>,
     has_suppression: bool,
     has_target_annotations: bool,
@@ -128,6 +130,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            lint_lines: std::cell::OnceCell::new(),
             external_opening_owners: Vec::new(),
             has_suppression: ast
                 .comments()
