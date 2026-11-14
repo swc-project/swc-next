@@ -1187,12 +1187,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node_span.end,
                     next_span.map_or(content.end, |span| span.start),
                 );
-                let layout = if current.sibling.is_none() && !self.lint_line_intersects(gap) {
+                let covered = self.lint_line_intersects(gap)
+                    || next.is_some()
+                        && gap.start == gap.end
+                        && gap.start > 0
+                        && (gap.end as usize) < ast.source().len()
+                        && self.lint_line_intersects(Span::new(gap.start - 1, gap.end + 1));
+                let layout = if current.sibling.is_none() && !covered {
                     ClassMemberBoundaryLayout::Formatted(
                         self.prepare_class_member_gap(gap, next_span),
                     )
                 } else {
-                    let gap = self.prepare_delimited_source_gap(
+                    let mut source = self.prepare_delimited_source_gap(
                         gap,
                         if next.is_some() {
                             DelimitedFollowing::Node
@@ -1200,7 +1206,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             DelimitedFollowing::End
                         },
                     );
-                    ClassMemberBoundaryLayout::Source(gap)
+                    if covered && next.is_some() {
+                        source.following = self.source_line_constraint(source.end, gap.end);
+                    }
+                    ClassMemberBoundaryLayout::Source(source)
                 };
                 let boundary = ClassMemberBoundary {
                     following: next.is_some(),
