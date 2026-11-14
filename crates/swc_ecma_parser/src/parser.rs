@@ -1206,6 +1206,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// committed type parses still produce their diagnostics and recovery.
     failed_type_arguments: FxHashMap<SpeculationKey, TypeArgumentFailures>,
     type_argument_speculation_depth: u32,
+    /// Start of a `(` that begins a list entry; its parenthesized type checks
+    /// the first token inside for a type start.
+    type_start_paren: Option<u32>,
     type_argument_lookahead: TypeArgumentLookahead,
     computed_key_lookahead: ComputedKeyLookahead,
 }
@@ -1530,6 +1533,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             await_identifier_in_async_head: None,
             failed_type_arguments: FxHashMap::default(),
             type_argument_speculation_depth: 0,
+            type_start_paren: None,
             type_argument_lookahead: TypeArgumentLookahead::default(),
             computed_key_lookahead: ComputedKeyLookahead::default(),
         }
@@ -6593,6 +6597,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         parse: impl FnOnce(&mut Self) -> Option<T>,
     ) -> Option<T> {
+        if self.current_token.tag() == TokenTag::LeftParen {
+            // `(` starts a type only if the token after it can start a type or a
+            // parameter. `parse_parenthesized_type` checks that token, so
+            // `a < (super.b) > (0)` is checked at `super`.
+            self.type_start_paren = Some(self.current_token.start());
+            let result = parse(self);
+            self.type_start_paren = None;
+            return result;
+        }
+        self.check_type_start()?;
+        parse(self)
+    }
+
+    fn check_type_start(&mut self) -> Option<()> {
         let token = self.current_token;
         // Non-reserved IdentifierNames already satisfy the type-start predicate.
         if token.tag().is_unconditionally_reserved() && !is_start_of_type(token.tag()) {
@@ -6603,7 +6621,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             self.report_expected(token.span(), "Expected a type", ReportOptions::default());
         }
-        parse(self)
+        Some(())
     }
 
     fn parse_type_no_conditional(&mut self) -> Option<TsType> {
@@ -6957,7 +6975,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_parenthesized_type(&mut self) -> Option<TsType> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftParen);
         let start = self.current_token.start();
+        // A rewound parse of the same entry checks it again.
+        let check_start = self.type_start_paren == Some(start);
         self.advance()?;
+        if check_start {
+            match self.current_token.tag() {
+                TokenTag::LeftParen => self.type_start_paren = Some(self.current_token.start()),
+                // These modifiers can start a parameter.
+                TokenTag::Const | TokenTag::Default | TokenTag::Export | TokenTag::In => {}
+                _ => self.check_type_start()?,
+            }
+        }
         let type_annotation = self.parse_type()?;
         let end = self.current_token.end();
         if !self.expect(
@@ -16082,6 +16110,17 @@ mod tests {
             assert_eq!(kind, NodeKind::BinaryExpression);
 
             assert!(has_errors("f<super>();", options));
+
+            let (errors, kind) = parse("a < (super.b) > (0);", options, expression_kind);
+            assert!(errors.is_empty());
+            assert_eq!(kind, NodeKind::BinaryExpression);
+
+            let (errors, kind) = parse("a < ((delete[0])) > (0);", options, expression_kind);
+            assert!(errors.is_empty());
+            assert_eq!(kind, NodeKind::BinaryExpression);
+
+            assert!(has_errors("a < (if[0]) > (0);", options));
+            assert!(!has_errors("f<(const)>();", options));
         }
     }
 
