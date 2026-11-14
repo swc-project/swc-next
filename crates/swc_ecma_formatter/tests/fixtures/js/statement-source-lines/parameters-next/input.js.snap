@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(
+/* eslint-disable-next-line
+ no-undef
+*/
+value = missing, other = absent
+) { return value + other; }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  /* eslint-disable-next-line
+ no-undef
+*/
+  value = missing, other = absent,
+) {
+  return (
+    value + other
+  );
+}

@@ -137,7 +137,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 reference: None,
             }
         };
-        let opening = self.opening_line_constraint(content);
+        let first = elements.iter().find_map(|id| {
+            let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
+            argument
+        });
+        let opening = first
+            .and_then(|argument| {
+                self.lint_opening_constraint(content.start, argument.span(self.ast).start)
+            })
+            .unwrap_or_else(|| self.opening_line_constraint(content));
         let (layout, numeric_comments) = match numeric.fill_first {
             Some(first) => {
                 // Keep this old fallible query even if qualification demotes later.

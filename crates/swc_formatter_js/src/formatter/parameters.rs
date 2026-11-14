@@ -593,6 +593,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_expression_tail(tail, writer)?;
             return Ok(());
         }
+        let opening = first
+            .map(|entry| entry.span.start)
+            .or_else(|| {
+                rest.map(|rest| {
+                    RuntimeParameterEntry::new(
+                        ast,
+                        RuntimeParameter::Callable(CallableParameter::Rest(rest)),
+                    )
+                    .span
+                    .start
+                })
+            })
+            .and_then(|first| self.lint_opening_constraint(content.start, first))
+            .unwrap_or_else(|| self.opening_line_constraint(content));
         let mut closing = private_boundary
             .as_ref()
             .map_or(DelimitedClose::Source, |source| {
@@ -602,15 +616,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("(");
             let mut write_items = |writer: &mut Writer<'ast>| {
                 if !hug && (has_parameters || !self.comments.in_range(content).is_empty()) {
-                    self.opening_line_constraint(content).write(
-                        writer,
-                        FlatSeparator::Empty,
-                        |writer| {
-                            if frame == ParameterFrame::Ordinary {
-                                writer.soft_line();
-                            }
-                        },
-                    );
+                    opening.write(writer, FlatSeparator::Empty, |writer| {
+                        if frame == ParameterFrame::Ordinary {
+                            writer.soft_line();
+                        }
+                    });
                 }
                 let mut formal_ids = node.items(ast).iter();
                 if matches!(
@@ -709,6 +719,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if suppressed_tail == Some(parameter.node) {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
+                    self.protect_runtime_item(&mut item);
                     let hug = if has_previous { None } else { hugged_parameter };
                     let prepared = if has_previous {
                         None

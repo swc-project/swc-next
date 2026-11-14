@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(
+/* eslint-disable-next-line no-undef */
+first(), second()
+);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+call(
+  /* eslint-disable-next-line no-undef */
+  first(), second(),
+);
