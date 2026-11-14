@@ -159,14 +159,10 @@ impl<'a> RecordedArgument<'a> {
                 }
                 match grouping_view(value, policy) {
                     Some(value) => GroupedValue::Ordinary(value),
-                    // A callback candidate may retain a neighbor's independent
-                    // groups, including named groups that cannot be projected.
-                    // Its first line must still fit with the callback signature.
-                    None if matches!(policy, GroupingPolicy::Callback)
-                        && !value.has_intrinsic_lines() =>
-                    {
-                        GroupedValue::Retained(value)
-                    }
+                    // Preserve a neighboring value's independent groups when
+                    // the complete flat view cannot represent them. Its first
+                    // line still participates in the selected layout fit.
+                    None if !value.has_intrinsic_lines() => GroupedValue::Retained(value),
                     None => return None,
                 }
             }
