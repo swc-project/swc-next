@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function wrapper() {
+  if (ready) {
+    if (enabled) {
+      const actualMessage = UNDEFINED_MODULE_MESSAGE({ kkkkk: V }, 0, [AppModule]);
+    }
+  }
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function wrapper() {
+  if (ready) {
+    if (enabled) {
+      const actualMessage = UNDEFINED_MODULE_MESSAGE({ kkkkk: V }, 0, [
+        AppModule,
+      ]);
+    }
+  }
+}
+
+---------- Options ----------
+{"printWidth":100}
+---------- Output ----------
+function wrapper() {
+  if (ready) {
+    if (enabled) {
+      const actualMessage = UNDEFINED_MODULE_MESSAGE({ kkkkk: V }, 0, [AppModule]);
+    }
+  }
+}
