@@ -1645,7 +1645,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && comments.iter().all(|comment| {
                     comment.kind == CommentKind::Block
                         && self.line_breaks(comment.span.start, comment.span.end) == 0
-                        && !self.source_line_starts_line(comment.span.start)
+                        && !self.layout_line_starts_line(comment.span.start)
                         && self.comment_semantics(*comment).is_ordinary()
                         && !self.comment_is_jsdoc_binding(*comment)
                 })

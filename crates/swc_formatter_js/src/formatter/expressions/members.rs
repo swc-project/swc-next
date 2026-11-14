@@ -683,7 +683,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn verbatim_member_prefix(&self, operator: u32) -> &'ast str {
         let line = self.ast.source()[..operator as usize]
-            .rsplit(['\n', '\r', '\u{2028}', '\u{2029}'])
+            .rsplit(['\n', '\r'])
             .next()
             .unwrap_or_default();
         &line[..line.len()

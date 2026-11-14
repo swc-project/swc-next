@@ -1474,7 +1474,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(layout, CommentRunLayout::Leading(_)) {
                     let breaks = self.line_breaks(comment.span.end, next);
                     if breaks > 1
-                        || breaks == 1 && self.source_position_starts_line(comment.span.start)
+                        || breaks == 1 && self.layout_position_starts_line(comment.span.start)
                     {
                         return true;
                     }
@@ -1597,8 +1597,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(closing) = self.find_token(suffix, comments, ">") else {
             return Err(self.unsupported("type assertion closing token", node));
         };
-        Ok(self.line_breaks(closing + 1, expression_span.start) != 0
-            || self.raw_type_assertion_head_needs_grammar_barrier(self.ast.expr_data(expression)))
+        Ok(
+            self.source_line_breaks(closing + 1, expression_span.start) != 0
+                || self
+                    .raw_type_assertion_head_needs_grammar_barrier(self.ast.expr_data(expression)),
+        )
     }
 
     /// A raw subtree keeps its actual openings and never re-enters formatted owners.

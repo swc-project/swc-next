@@ -524,7 +524,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(head_end, |next| next.span.start);
             comment.kind == CommentKind::Line
                 || (matches!(leading_layout, CommentRunLayout::GroupedLeading(_))
-                    && self.source_position_starts_line(comment.span.start)
+                    && self.layout_position_starts_line(comment.span.start)
                     && self.line_breaks(comment.span.end, next_start) != 0)
         });
         let jsx_comments = if mode == ContentMode::Formatted {
@@ -599,7 +599,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
         };
-        if self.source_line_starts_line(start) {
+        if self.layout_line_starts_line(start) {
             return false;
         }
         template.quasis(self.ast).iter().any(|id| {
@@ -972,7 +972,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inline = !self.diagnostic_range_is_sensitive(span)
             && comments.iter().all(|&comment| {
                 comment.kind == CommentKind::Block
-                    && !self.source_position_starts_line(comment.span.start)
+                    && !self.layout_position_starts_line(comment.span.start)
                     && self.comment_semantics(comment).is_ordinary()
             });
         ArrowLinkTail {

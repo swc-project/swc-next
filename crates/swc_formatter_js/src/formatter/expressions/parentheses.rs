@@ -2176,9 +2176,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let breaks = comments
                 .iter()
                 .any(|comment| comment.kind == CommentKind::Line)
-                || comments
-                    .last()
-                    .is_some_and(|comment| self.line_breaks(trailing.start, comment.span.end) != 0);
+                || comments.last().is_some_and(|comment| {
+                    self.source_line_breaks(trailing.start, comment.span.end) != 0
+                });
             if breaks {
                 return SourceParenthesesChoice::Retained {
                     kind: RetainedParentheses::Operand,

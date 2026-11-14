@@ -858,7 +858,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 following
             };
             let ends_line = self.line_breaks(last.span.end, following) != 0;
-            let run_leading = self.source_line_starts_line(first.span.start)
+            let run_leading = self.layout_line_starts_line(first.span.start)
                 || !before_operator
                     && (!ends_line
                         || last.kind == CommentKind::Line
@@ -1677,7 +1677,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(head) = head
             && head.comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.source_line_starts_line(comment.span.start)
+                    || self.layout_line_starts_line(comment.span.start)
             })
             && matches!(
                 self.comment_boundary_binding(&after, next.node.span(self.ast)),

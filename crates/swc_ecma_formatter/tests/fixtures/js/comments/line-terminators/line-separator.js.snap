@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function l(){return!!(te.flags&(4/* String  */|8/* Number */|4096/* ESSymbol */))}
+---------- Options ----------
+{}
+---------- Output ----------
+function l() {
+  return !!(
+    te.flags &
+    (4 /* String  */ | 8 /* Number */ | 4096) /* ESSymbol */
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function l() {
+  return !!(te.flags & (4 /* String  */ | 8 /* Number */ | 4096) /* ESSymbol */)
+}

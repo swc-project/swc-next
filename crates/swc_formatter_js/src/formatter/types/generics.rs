@@ -1390,7 +1390,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && node.source_head.is_none()
                     && after.comments().last().is_some_and(|last| {
                         last.kind == CommentKind::Block
-                            && self.source_line_starts_line(last.span.start)
+                            && self.layout_line_starts_line(last.span.start)
                             && after.comments().iter().all(|&comment| {
                                 let semantics = self.comment_semantics(comment);
                                 !semantics.suppression

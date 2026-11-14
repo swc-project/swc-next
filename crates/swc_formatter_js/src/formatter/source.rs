@@ -1,4 +1,4 @@
-//! Line boundaries in source gaps, including ECMAScript line terminators.
+//! Visual line boundaries and ECMAScript source line queries.
 
 use swc_next_ecma_ast::{Comment, Span};
 
@@ -17,13 +17,13 @@ pub(super) fn is_source_horizontal_whitespace(character: char) -> bool {
 }
 
 pub(super) fn split_line(source: &str) -> (&str, Option<&str>) {
-    let Some(index) = memchr::memchr2(b'\n', b'\r', source.as_bytes()) else {
+    // Comment text follows document lines; syntax queries retain all JS terminators.
+    let bytes = source.as_bytes();
+    let Some(index) = memchr::memchr2(b'\n', b'\r', bytes) else {
         return (source, None);
     };
-    let is_crlf =
-        source.as_bytes()[index] == b'\r' && source.as_bytes().get(index + 1) == Some(&b'\n');
-    let end = index + 1 + usize::from(is_crlf);
-    (&source[..index], Some(&source[end..]))
+    let length = 1 + usize::from(bytes[index] == b'\r' && bytes.get(index + 1) == Some(&b'\n'));
+    (&source[..index], Some(&source[index + length..]))
 }
 
 pub(super) fn lines(source: &str) -> impl Iterator<Item = &str> {
@@ -37,6 +37,24 @@ pub(super) fn lines(source: &str) -> impl Iterator<Item = &str> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn layout_position_starts_line(&self, position: u32) -> bool {
+        for character in self.ast.source()[..position as usize].chars().rev() {
+            match character {
+                '\n' | '\r' => return true,
+                _ if !is_source_horizontal_whitespace(character) => return false,
+                _ => {}
+            }
+        }
+        true
+    }
+
+    pub(super) fn layout_line_starts_line(&self, position: u32) -> bool {
+        self.ast.source()[..position as usize]
+            .trim_end_matches([' ', '\t'])
+            .ends_with(['\n', '\r'])
+    }
+
+    /// Semantic source ownership includes every ECMAScript line terminator.
     pub(super) fn source_position_starts_line(&self, position: u32) -> bool {
         let before = &self.ast.source()[..position as usize];
         for character in before.chars().rev() {
@@ -101,15 +119,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         characters.next();
                     }
                 }
-                '\n' | '\u{2028}' | '\u{2029}' => {}
+                '\n' => {}
                 _ => continue,
             }
             // A separator on the next line is content, not an empty source line.
             return characters
                 .find(|character| !matches!(character, ' ' | '\t'))
-                .is_some_and(|character| {
-                    matches!(character, '\r' | '\n' | '\u{2028}' | '\u{2029}')
-                });
+                .is_some_and(|character| matches!(character, '\r' | '\n'));
         }
         false
     }
@@ -120,21 +136,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .trim_end_matches([' ', '\t']);
         let Some(previous) = gap
             .strip_suffix("\r\n")
-            .or_else(|| gap.strip_suffix(['\r', '\n', '\u{2028}', '\u{2029}']))
+            .or_else(|| gap.strip_suffix(['\r', '\n']))
         else {
             return false;
         };
         previous
             .trim_end_matches([' ', '\t'])
-            .ends_with(['\r', '\n', '\u{2028}', '\u{2029}'])
+            .ends_with(['\r', '\n'])
     }
 
-    /// Count ECMAScript line terminators for source ownership.
-    pub(super) fn source_line_breaks(&self, start: u32, end: u32) -> u8 {
-        self.line_breaks(start, end)
-    }
-
+    /// Layout counts CR/LF independently of semantic source line boundaries.
     pub(super) fn line_breaks(&self, start: u32, end: u32) -> u8 {
+        let (_, Some(rest)) = split_line(self.source(Span::new(start, end))) else {
+            return 0;
+        };
+        1 + u8::from(split_line(rest).1.is_some())
+    }
+
+    /// Syntax and tool directives retain every ECMAScript line terminator.
+    pub(super) fn source_line_breaks(&self, start: u32, end: u32) -> u8 {
         let mut characters = self.source(Span::new(start, end)).chars().peekable();
         let mut count = 0;
         while let Some(character) = characters.next() {

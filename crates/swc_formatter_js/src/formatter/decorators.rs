@@ -391,10 +391,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap.is_some_and(|source| {
                     source
                         .trim_start_matches(is_source_horizontal_whitespace)
-                        .starts_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                        .starts_with(['\n', '\r'])
                         || source
                             .trim_end_matches(is_source_horizontal_whitespace)
-                            .ends_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                            .ends_with(['\n', '\r'])
                 })
             });
         if matches!(layout, DecoratorLayout::Class) {

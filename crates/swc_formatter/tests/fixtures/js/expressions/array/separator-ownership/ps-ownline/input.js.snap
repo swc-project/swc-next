@@ -7,8 +7,7 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 {"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 [
-	first
-	// marker
+	first // marker
 	,
 	,
 	second,

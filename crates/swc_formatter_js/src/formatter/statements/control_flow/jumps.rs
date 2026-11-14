@@ -188,7 +188,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(first) = comments.first() else {
             return false;
         };
-        self.source_line_starts_line(first.span.start)
+        self.layout_line_starts_line(first.span.start)
             || comments
                 .last()
                 .is_some_and(|last| self.comment_run_ends_line(*last, end))

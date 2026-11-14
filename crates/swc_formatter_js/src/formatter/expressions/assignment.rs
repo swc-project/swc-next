@@ -787,7 +787,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             attachment: comments
                 .first()
                 .map_or(AssignmentPacketAttachment::Detached, |first| {
-                    if self.source_position_starts_line(first.span.start) {
+                    if self.layout_position_starts_line(first.span.start) {
                         AssignmentPacketAttachment::Detached
                     } else {
                         AssignmentPacketAttachment::Inline
@@ -804,7 +804,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let alignable = self.comment_is_alignable(comment)?;
             let starts_line = (index != 0 || matches!(origin, AssignmentHeadOrigin::Source))
-                && self.source_line_starts_line(comment.span.start);
+                && self.layout_line_starts_line(comment.span.start);
             packet.own_line |= comment.kind == CommentKind::Line
                 || starts_line && !matches!(cast_leading, Some(CastLeadingLayout::Flat))
                 || alignable;
@@ -1213,7 +1213,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary.own_line |= promoted
             && before.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.source_line_starts_line(comment.span.start)
+                    || self.layout_line_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.start, comment.span.end) != 0
             });
         if jsx_head

@@ -9,8 +9,7 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* block */
-  // line
+  /* block */ // line
   ,
   last,
 ];
