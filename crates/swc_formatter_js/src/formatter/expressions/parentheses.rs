@@ -4756,7 +4756,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     writer.hard_line();
                 } else {
-                    closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    // An inline cast leaves continuation breaks to its content.
+                    // Only the closing constraint moves its lexical delimiter.
+                    closing.write(writer, FlatSeparator::Empty, |writer| {
+                        if !matches!(kind, RetainedParentheses::Cast)
+                            || opening != LineConstraint::SameLine
+                        {
+                            writer.soft_line();
+                        }
+                    });
                 }
             }
             writer.text(")");
