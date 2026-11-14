@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => { return ast; });
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(
+  <A extends AST>(ast: A): A => {
+    return ast;
+  },
+);
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => {
+  return ast;
+});

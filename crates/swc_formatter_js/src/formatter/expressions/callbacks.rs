@@ -126,6 +126,8 @@ struct RecordedArgument<'a> {
 #[derive(Clone, Copy)]
 enum GroupedSignature<'a> {
     Independent(Fragment<'a>),
+    /// Retain named signature groups while fitting the head in the call.
+    CallFit(Fragment<'a>),
     Flat(FlatFragment<'a>),
 }
 
@@ -386,7 +388,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ..
             } => {
                 match signature {
-                    GroupedSignature::Independent(signature) => writer.write_fragment(signature),
+                    GroupedSignature::Independent(signature)
+                    | GroupedSignature::CallFit(signature) => writer.write_fragment(signature),
                     GroupedSignature::Flat(signature) => writer.write_flat_fragment(signature),
                 }
                 writer.write_fragment(body);
@@ -975,6 +978,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout.write(writer, |writer| writer.write_fragment(normal));
             Ok::<_, FormatError>(())
         })?;
+        let retain_signature = sole_argument
+            && !signature.preferred_breaks()
+            && !signature.has_intrinsic_lines()
+            && signature.try_flat().is_none();
+        // Without runtime parameters, the generic list owns the signature's
+        // optional breaks. Otherwise the call candidate fits the whole head,
+        // while the callback body remains free to expand.
+        let independent_parameterless_head = retain_signature
+            && match callback.kind {
+                CallbackKind::Arrow(arrow) => {
+                    let parameters = arrow.params(self.ast);
+                    parameters.items(self.ast).is_empty() && parameters.rest(self.ast).is_none()
+                }
+                CallbackKind::Function(function) => {
+                    let parameters = function.params(self.ast);
+                    parameters.items(self.ast).is_empty()
+                        && parameters.rest(self.ast).is_none()
+                        && function.this_param(self.ast).is_none()
+                }
+            };
         let signature = match (selected.role, callback.kind, layout) {
             (CallbackRole::Test, _, _) => Some(GroupedSignature::Independent(signature)),
             (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
@@ -982,10 +1005,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ if selected.role == CallbackRole::Last
                 && (independent
+                    || independent_parameterless_head
                     || matches!(callback.kind, CallbackKind::Arrow(arrow)
                         if independent_callback == Some(arrow))) =>
             {
                 Some(GroupedSignature::Independent(signature))
+            }
+            _ if selected.role == CallbackRole::Last && retain_signature => {
+                Some(GroupedSignature::CallFit(signature))
             }
             _ => signature.try_flat().map(GroupedSignature::Flat),
         };
@@ -1366,7 +1393,8 @@ fn write_grouped_arguments<'a>(
                 suffix,
             } => {
                 match signature {
-                    GroupedSignature::Independent(signature) => writer.write_fragment(signature),
+                    GroupedSignature::Independent(signature)
+                    | GroupedSignature::CallFit(signature) => writer.write_fragment(signature),
                     GroupedSignature::Flat(signature) => writer.write_flat_fragment(signature),
                 }
                 writer.group(expand_body, |writer| {
@@ -1387,6 +1415,10 @@ fn write_grouped_arguments<'a>(
                         writer.write_fragment(signature);
                         writer.write_fragment(body);
                     });
+                }
+                GroupedSignature::CallFit(signature) => {
+                    writer.write_fragment(signature);
+                    writer.group(expand_body, |writer| writer.write_fragment(body));
                 }
                 GroupedSignature::Flat(signature) => {
                     writer.write_flat_fragment(signature);

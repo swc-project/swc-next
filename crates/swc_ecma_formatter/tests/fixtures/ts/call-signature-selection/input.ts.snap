@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(function f<T extends U>() {});
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(function f<
+  T extends U,
+>() {});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+f(function f<T extends U>() {});
