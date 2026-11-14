@@ -85,6 +85,22 @@ impl RecursionState {
             previous,
         }))
     }
+
+    /// A physical frame recurses even when its body keeps the active node.
+    fn enter_frame(&self) -> Result<RecursionScope<'_>, RecursionLimit> {
+        let previous = self.current.get();
+        if previous.depth == MAX_RECURSION_DEPTH {
+            return Err(RecursionLimit);
+        }
+        self.current.set(RecursionFrame {
+            depth: previous.depth + 1,
+            ..previous
+        });
+        Ok(RecursionScope {
+            state: self,
+            previous,
+        })
+    }
 }
 
 impl Drop for RecursionScope<'_> {
@@ -284,6 +300,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: N,
     ) -> FormatError {
         self.unsupported("nesting depth", node)
+    }
+
+    fn generated_frame_scope<N: swc_next_ecma_ast::AstNode + GetSpan>(
+        &self,
+        owner: N,
+    ) -> Result<RecursionScope<'ast>, FormatError> {
+        self.recursion
+            .enter_frame()
+            .map_err(|_| self.unsupported("nesting depth", owner))
     }
 
     fn with_recursion_scope<R>(

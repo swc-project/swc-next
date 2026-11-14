@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @jsx h */
+first,
+second;
+---------- Options ----------
+{}
+---------- Output ----------
+/** @jsx h */
+(first, second);
+
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+/** @jsx h */
+(first,
+  second);
+
+---------- Options ----------
+{"tabWidth":1,"useTabs":true}
+---------- Output ----------
+/** @jsx h */
+(first, second);
+
+---------- Options ----------
+{"tabWidth":0}
+---------- Output ----------
+/** @jsx h */
+(first, second);
+
+---------- Options ----------
+{"endOfLine":"crlf","semi":false}
+---------- Output ----------
+/** @jsx h */
+;(first, second)
