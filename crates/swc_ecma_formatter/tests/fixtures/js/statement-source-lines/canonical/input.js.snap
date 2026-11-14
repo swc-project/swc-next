@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// explanation
+import name from 'module'; // eslint-disable-line no-unused-vars
+---------- Options ----------
+{}
+---------- Output ----------
+// explanation
+import name from "module"; // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// explanation
+import name from "module" // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+// explanation
+import name from 'module'; // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+// explanation
+import name from 'module' // eslint-disable-line no-unused-vars
