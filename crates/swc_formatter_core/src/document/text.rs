@@ -1,4 +1,4 @@
-//! Cached display widths and source-line classification for borrowed text.
+//! Cached display widths and layout classification for borrowed text.
 
 use crate::measure_text_width;
 
@@ -17,7 +17,6 @@ pub(super) struct Text<'a> {
 enum WidthKind {
     Ascii,
     Unicode,
-    UnicodeWithLines,
     Multiline,
 }
 
@@ -31,10 +30,9 @@ pub(super) struct Width {
 impl Width {
     #[cold]
     fn measure_slow(source: &str) -> Self {
+        // Unicode line separators remain ordinary text in layout documents.
         let kind = if memchr::memchr2(b'\r', b'\n', source.as_bytes()).is_some() {
             WidthKind::Multiline
-        } else if source.contains(['\u{2028}', '\u{2029}']) {
-            WidthKind::UnicodeWithLines
         } else {
             WidthKind::Unicode
         };
@@ -90,7 +88,7 @@ impl<'a> Text<'a> {
     pub(super) fn clean_width(self) -> Option<usize> {
         Some(match self.width.kind {
             WidthKind::Ascii => self.source().len(),
-            WidthKind::Unicode | WidthKind::UnicodeWithLines => usize::from(self.width.value),
+            WidthKind::Unicode => usize::from(self.width.value),
             WidthKind::Multiline => return None,
         })
     }
