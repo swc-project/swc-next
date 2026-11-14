@@ -768,7 +768,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContentMode::Formatted
             };
-            let prologue_string = directive_prologue == DirectivePrologue::Open
+            let prologue_string = mode == ContentMode::Verbatim
+                && directive_prologue == DirectivePrologue::Open
                 && matches!(statement, StatementItem::Statement(node)
                     if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
                         if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))));
