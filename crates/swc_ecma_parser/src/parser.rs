@@ -1634,7 +1634,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let root_span = Span::new(0, end);
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
-            let end = start + u32::from(hashbang.len);
+            let end = start + hashbang.len;
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
@@ -1672,7 +1672,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         fragment_context: FragmentContext,
     ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
         if let Some(hashbang) = self.lexer.hashbang {
-            let end = hashbang.start + u32::from(hashbang.len);
+            let end = hashbang.start + hashbang.len;
             self.report(
                 Span::new(0, end),
                 "Hashbang comments are only valid at the start of a program",
@@ -14989,6 +14989,82 @@ mod tests {
             .iter()
             .map(|error| &source[error.span.start as usize..error.span.end as usize])
             .collect()
+    }
+
+    fn parse_hashbang(source: &str, options: Options) -> (Span, u32, usize) {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty());
+        let ast = take_ast(parsed.ast);
+        let program = ast.root_program();
+        let hashbang = program.hashbang(&ast).unwrap();
+        (
+            hashbang.span(&ast),
+            hashbang.value(&ast).len(),
+            program.body(&ast).len(),
+        )
+    }
+
+    #[test]
+    fn hashbang_length() {
+        let module = Options::default();
+
+        assert_eq!(parse_hashbang("#!node", module), (Span::new(0, 6), 4, 0));
+
+        assert_eq!(
+            parse_hashbang("#!node\rlet x;", module),
+            (Span::new(0, 6), 4, 1)
+        );
+
+        assert_eq!(
+            parse_hashbang("#!node\u{2028}let x;", module),
+            (Span::new(0, 6), 4, 1)
+        );
+
+        assert_eq!(
+            parse_hashbang("#!node\u{2029}let x;", module),
+            (Span::new(0, 6), 4, 1)
+        );
+
+        let source = format!("#!{}\nlet x;", "a".repeat(65535));
+        assert_eq!(
+            parse_hashbang(&source, module),
+            (Span::new(0, 65537), 65535, 1)
+        );
+
+        let source = format!("#!{}\nlet x;", "a".repeat(65536));
+        assert_eq!(
+            parse_hashbang(&source, module),
+            (Span::new(0, 65538), 65536, 1)
+        );
+
+        let source = format!("#!{}\nlet x;", "a".repeat(65537));
+        assert_eq!(
+            parse_hashbang(&source, module),
+            (Span::new(0, 65539), 65537, 1)
+        );
+
+        let source = format!("#!é{}\nlet x;", "a".repeat(65535));
+        assert_eq!(
+            parse_hashbang(&source, module),
+            (Span::new(0, 65539), 65537, 1)
+        );
+
+        let source = format!("#!{}\nlet x;", "a".repeat(65536));
+        for source_type in [
+            SourceType::Script,
+            SourceType::CommonJs,
+            SourceType::Unambiguous,
+        ] {
+            let options = Options {
+                source_type,
+                ..Options::default()
+            };
+            assert_eq!(
+                parse_hashbang(&source, options),
+                (Span::new(0, 65538), 65536, 1)
+            );
+        }
     }
 
     #[test]
