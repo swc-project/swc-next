@@ -204,6 +204,37 @@ fn nesting_controls() {
     );
 }
 
+fn assert_available_round_trips(results: [Result<String, FormatError>; 3], parser: ParserOptions) {
+    for result in results {
+        match result {
+            Ok(first) => {
+                for second in formatting_results(&first, parser) {
+                    assert_eq!(second.unwrap(), first);
+                }
+            }
+            Err(error) => assert!(matches!(error, FormatError::Unsupported { .. })),
+        }
+    }
+}
+
+#[test]
+fn nesting_round_trips() {
+    let parser = ParserOptions::default();
+
+    let input = "!function(){return/*#__PURE__*/f(),a}";
+    let result = formatting_results(input, parser);
+    assert!(result.iter().all(Result::is_ok));
+    assert_available_round_trips(result, parser);
+
+    let input = format!("{}function(){{return/*#__PURE__*/f(),a}}", "!".repeat(28));
+    let result = formatting_results(&input, parser);
+    assert_available_round_trips(result, parser);
+
+    let input = format!("{}function(){{return/*#__PURE__*/f(),a}}", "!".repeat(124));
+    let result = formatting_results(&input, parser);
+    assert_available_round_trips(result, parser);
+}
+
 #[test]
 fn host_documents() {
     let layout = PrintOptions {

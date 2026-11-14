@@ -267,6 +267,8 @@ pub(super) struct ReleasedSourceCastHead<'ast> {
 pub(super) enum PreparedPairHead<'ast> {
     /// The expression's grammar owner selects its canonical body layout.
     Grammar(NodeHead<'ast>),
+    /// A source-bound first value keeps its packet inside the grammar frame.
+    SourceBoundGrammar(NodeHead<'ast>),
     /// A lexical cast or target owns the whole pair, including its body.
     Lexical(NodeHead<'ast>),
 }
@@ -3273,10 +3275,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        // Diagnostic-only protection does not bind a lexical head. A local
+        // packet is prepared against the sequence's actual first source value.
+        let source_sequence_frame = if !head.comments.is_empty()
+            && matches!(enclosure_binding, CommentBinding::SourceBound)
+            && context.content_mode == ContentMode::Formatted
+            && context.parentheses_owner == ParenthesesOwner::Expression
+        {
+            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            if let ExprData::SequenceExpression(sequence) = content.data
+                && content.expression == expression
+                && content.parentheses.is_none()
+                && self.expression_is_parenthesized(content.data, context)
+                && head.comments.iter().all(|&comment| {
+                    let semantics = self.comment_semantics(comment);
+                    !semantics.file_directive && !semantics.suppression
+                })
+                && let Some(first) = sequence.expressions(self.ast).first()
+            {
+                let first = self.ast.get_node_in_sub_range(first);
+                matches!(
+                    self.prepare_expression_source_head(head.comments, first)
+                        .lexical_binding,
+                    CommentBinding::SourceBound
+                )
+            } else {
+                false
+            }
+        } else {
+            false
+        };
         let parenthesize_head = !head.comments.is_empty()
             && !context.is_verbatim_statement_string(self.ast.expr_data(expression))
             && (matches!(enclosure_binding, CommentBinding::BoundTo(_))
                 || inner_cast.is_some()
+                || source_sequence_frame
                 || generated.is_some()
                     && !matches!(
                         prepared.as_ref().map(|content| content.data),
@@ -3299,6 +3332,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             || content.parentheses.is_some_and(|removed|
                                 target == removed.source.outer)));
             let grammar_body = inner_cast.is_some() || inner_target;
+            if source_sequence_frame {
+                // The mandatory sequence frame encloses the complete source
+                // packet; its first value keeps the original lexical head.
+                context.protected_head_start = Some(head.content_start);
+            }
             let head = if let Some(index) = inner_cast {
                 // Source constraints and a cast's inner target are independent:
                 // keep the prefix outside, and the cast inside the added pair.
@@ -3333,7 +3371,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_parenthesized_expression_output(
                 expression,
                 prepared,
-                if grammar_body {
+                if source_sequence_frame {
+                    PreparedPairHead::SourceBoundGrammar(head)
+                } else if grammar_body {
                     PreparedPairHead::Grammar(head)
                 } else {
                     PreparedPairHead::Lexical(head)
@@ -5368,9 +5408,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let (head, grammar_body) = match pair {
-            PreparedPairHead::Grammar(head) => (head, true),
-            PreparedPairHead::Lexical(head) => (head, false),
+        let (head, grammar_body, source_bound_body) = match pair {
+            PreparedPairHead::Grammar(head) => (head, true, false),
+            PreparedPairHead::SourceBoundGrammar(head) => (head, false, true),
+            PreparedPairHead::Lexical(head) => (head, false, false),
         };
         if grammar_body && context.content_mode == ContentMode::Formatted {
             let content = prepared.get_or_insert_with(|| self.expression_content(expression));
@@ -5444,6 +5485,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             LineConstraint::Unconstrained
         };
+        let _frame_scope = if source_bound_body {
+            Some(self.generated_frame_scope(expression)?)
+        } else {
+            None
+        };
         writer.group(false, |writer| {
             writer.text("(");
             let tail = writer.indent(|writer| {
@@ -5461,16 +5507,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     array_comments.as_deref_mut(),
                     writer,
                 )?;
+                let mut body_context = ExpressionContext::at(position)
+                    .with_operand_indent(operand_indent)
+                    .with_content_mode(context.content_mode)
+                    .with_tail_owner(context.tail_owner)
+                    .with_member_chain_layout(context.member_chain_layout)
+                    .with_target_member_intent(context)
+                    .inside_parentheses();
+                if source_bound_body {
+                    body_context.protected_head_start = context.protected_head_start;
+                }
                 let tail = self.format_expression_prepared_with_array_comments(
                     expression,
                     prepared,
-                    ExpressionContext::at(position)
-                        .with_operand_indent(operand_indent)
-                        .with_content_mode(context.content_mode)
-                        .with_tail_owner(context.tail_owner)
-                        .with_member_chain_layout(context.member_chain_layout)
-                        .with_target_member_intent(context)
-                        .inside_parentheses(),
+                    body_context,
                     array_comments.as_deref_mut(),
                     writer,
                 )?;

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function d(g) {
+  const s = g._sources
+    // @ts-ignore
+    .reduce((acc, val, idx) => ((acc[val] = idx), acc), {});
+}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function d(g) {
+  const s = g._sources
+    // @ts-ignore
+    .reduce((acc, val, idx) => ((acc[val] = idx), acc), {});
+}
