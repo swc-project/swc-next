@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import * /* eslint-disable-next-line no-unused-vars */
+as namespace from 'module';
+---------- Options ----------
+{}
+---------- Output ----------
+import * /* eslint-disable-next-line no-unused-vars */
+as namespace from "module";
