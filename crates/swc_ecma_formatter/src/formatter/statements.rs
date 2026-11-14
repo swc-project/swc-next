@@ -634,6 +634,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         kind: StatementSequenceKind<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<StatementSequence, FormatError> {
+        let has_lint_lines = statements.peek().is_some() && self.lint_line_intersects(span);
+        self.format_statement_sequence_with_lines(statements, span, kind, has_lint_lines, writer)
+    }
+
+    fn format_statement_sequence_with_lines(
+        &mut self,
+        mut statements: std::iter::Peekable<impl Iterator<Item = StatementItem>>,
+        span: Span,
+        kind: StatementSequenceKind<'ast>,
+        has_lint_lines: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<StatementSequence, FormatError> {
         let ast = self.ast;
         let incoming = match kind {
             StatementSequenceKind::Block { incoming, .. }
@@ -674,7 +686,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut preparation = StatementPreparation {
             end: hashbang_end.unwrap_or(span.start),
             source_line: StatementSourceLine::default(),
-            has_lint_lines: statements.peek().is_some() && self.lint_line_intersects(span),
+            has_lint_lines,
         };
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(
@@ -2486,7 +2498,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body = body
             .iter()
             .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)));
-        let items = directives.chain(body).peekable();
+        let mut items = directives.chain(body).peekable();
         let leading = leading.comments();
         let source_empty = if has_items {
             false
@@ -2507,14 +2519,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             });
         } else {
+            // Share the body's coverage with its statement frontier and brace gaps.
+            let has_lint_lines = self.lint_line_intersects(content);
+            let opening = if opening == LineConstraint::Unconstrained
+                && has_lint_lines
+                && self.lint_line_at(content.start - 1).is_some()
+            {
+                let first = items.peek().map_or(content.end, |item| match *item {
+                    StatementItem::Statement(node) => self
+                        .statement_decorators(node)
+                        .map_or_else(|| node.span(ast).start, |(span, _)| span.start),
+                    StatementItem::Directive(node) => node.span(ast).start,
+                });
+                self.lint_opening_constraint(content.start, first)
+                    .unwrap_or(opening)
+            } else {
+                opening
+            };
             let _scope = self.anonymous_recursion_scope()?;
             let sequence = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Space, Writer::hard_line);
-                self.format_statement_sequence(items, content, kind, writer)
+                self.format_statement_sequence_with_lines(
+                    items,
+                    content,
+                    kind,
+                    has_lint_lines,
+                    writer,
+                )
             })?;
-            let closing = sequence
-                .closing_gap
-                .unwrap_or_else(|| self.line_constraint(sequence.end, content.end));
+            let closing = sequence.closing_gap.unwrap_or_else(|| {
+                let closing = self.line_constraint(sequence.end, content.end);
+                if closing == LineConstraint::Unconstrained && has_lint_lines {
+                    self.lint_closing_constraint(sequence.end, content.end)
+                        .unwrap_or(closing)
+                } else {
+                    closing
+                }
+            });
             closing.write(writer, FlatSeparator::Space, Writer::hard_line);
         }
         writer.text("}");

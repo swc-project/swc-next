@@ -8,5 +8,4 @@ function f() {;
 {}
 ---------- Output ----------
 function f() {
-  ;"use strict"; first(); /* eslint-disable-line no-undef */ second(); return this;
-}
+  ;"use strict"; first(); /* eslint-disable-line no-undef */ second(); return this; }

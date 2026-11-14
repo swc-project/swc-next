@@ -665,9 +665,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     next = parameters.next().transpose()?;
                     let span = parameter.span;
                     if next.is_none() && private_boundary.is_none() {
-                        closing = DelimitedClose::Terminal(
+                        let source_closing = DelimitedClose::Terminal(
                             self.terminal_close_boundary(content, || Some((span, end))),
                         );
+                        closing = if protect_runtime_items
+                            && source_closing.constraint(self, span.end, content.end)
+                                == LineConstraint::Unconstrained
+                        {
+                            self.lint_closing_constraint(span.end, content.end)
+                                .map_or(source_closing, DelimitedClose::Fixed)
+                        } else {
+                            source_closing
+                        };
                     }
                     if has_previous {
                         if frame == ParameterFrame::Ordinary
