@@ -1,5 +1,5 @@
 AST Parsed     : 11748/11748 (100.00%)
-Positive Passed: 11632/11748 (99.01%)
+Positive Passed: 11629/11748 (98.99%)
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignToInvalidLHS.ts
@@ -16,6 +16,8 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/expressionWithJSDocTypeArguments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/extendedUnicodeEscapeSequenceIdentifiers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/fileWithNextLine2.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/fileWithNextLine3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclWithDeclareModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclWithDeclareModifierInAmbientContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureMustHaveTypeAnnotation.ts
@@ -47,6 +49,7 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/restParameterWithBindingPattern3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring_ES6.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/sourceMap-LineBreaks.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/sourceMapValidationDecorators.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/taggedTemplateNestedInvalidEscape.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/unicodeEscapesInNames01.ts

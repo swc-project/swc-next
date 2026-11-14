@@ -2439,7 +2439,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_await_using_or_expression(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Await);
         let await_span = self.current_token.span();
-        let next = self.peek_ahead()?;
+        let Some(next) = self.peek_ahead() else {
+            return self.parse_expression_or_labeled_statement();
+        };
         if next.tag() == TokenTag::Using && !next.has_line_terminator_before() {
             let start = await_span.start;
             self.advance()?;
@@ -2520,7 +2522,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_let_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
-        let next = self.peek_ahead()?;
+        // A lookahead that hits a lexical error is treated as a declaration
+        // position so the following advance reports the error at the offending
+        // character instead of aborting without a diagnostic.
+        let Some(next) = self.peek_ahead() else {
+            return Some(false);
+        };
 
         // Lexical declarations cannot be single statements. In this context,
         // `let` therefore starts an ExpressionStatement unless the
@@ -2537,7 +2544,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_using_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Using);
-        let next = self.peek_ahead()?;
+        // A failed lookahead defers so the following advance reports the lexical error at the character.
+        let Some(next) = self.peek_ahead() else {
+            return Some(false);
+        };
         if can_start_using_binding(next.tag()) && !self.can_insert_implicit_semicolon(next) {
             return Some(false);
         }
@@ -2552,11 +2562,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let mut peek = self.begin_peek();
         let result = (|| {
-            let using = peek.next()?;
+            let Some(using) = peek.next() else {
+                return Some(false);
+            };
             if using.tag() != TokenTag::Using || using.has_line_terminator_before() {
                 return Some(false);
             }
-            let binding = peek.next()?;
+            let Some(binding) = peek.next() else {
+                return Some(false);
+            };
             Some(!binding.has_line_terminator_before() && can_start_using_binding(binding.tag()))
         })();
         peek.end();
@@ -8768,7 +8782,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )
             }
             TokenTag::Using => {
-                let next = self.peek_ahead()?;
+                let Some(next) = self.peek_ahead() else {
+                    return self.parse_for_with_expression(start, is_for_await);
+                };
                 if next.has_line_terminator_before() || !can_start_using_binding(next.tag()) {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
@@ -8780,10 +8796,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         peek.next()
                     })();
                     peek.end();
-                    if !matches!(
-                        after_of?.tag(),
-                        TokenTag::Assign | TokenTag::Semicolon | TokenTag::Colon
-                    ) {
+                    // A failed lookahead proceeds as a declaration so the
+                    // following advance reports the lexical error at the
+                    // offending character.
+                    if let Some(after_of) = after_of
+                        && !matches!(
+                            after_of.tag(),
+                            TokenTag::Assign | TokenTag::Semicolon | TokenTag::Colon
+                        )
+                    {
                         return self.parse_for_with_expression(start, is_for_await);
                     }
                 }
@@ -15019,6 +15040,130 @@ mod tests {
 
         let errors = error_spans("0x_1;", Options::default());
         assert_eq!(errors, ["_"]);
+    }
+
+    #[test]
+    fn unicode_whitespace() {
+        fn string_literal_value(source: &str) -> String {
+            let allocator = Allocator::new();
+            let parsed =
+                Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = read_ast(&parsed.ast);
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let declaration = statement.as_declaration(ast).unwrap();
+            let declaration = declaration.as_variable_declaration(ast).unwrap();
+            let declarator = declaration.declarators(ast).get_node(ast, 0).unwrap();
+            let literal = declarator
+                .init(ast)
+                .unwrap()
+                .as_string_literal(ast)
+                .unwrap();
+            ast.get_wtf8(literal.value(ast))
+                .as_str()
+                .unwrap()
+                .to_owned()
+        }
+
+        fn program_body_len(source: &str) -> usize {
+            let allocator = Allocator::new();
+            let parsed =
+                Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = read_ast(&parsed.ast);
+            ast.root_program().body(ast).len()
+        }
+
+        let js_module = Options::default();
+        let js_script = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let ts_module = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let ts_script = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        let errors = error_spans("let\u{0085}x=1;", js_module);
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("let\u{0085}x=1;", js_script);
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("let\u{0085}x=1;", ts_module);
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("let\u{0085}x=1;", ts_script);
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("using\u{0085}x=1;", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("await using\u{0085}x=1;", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("using x=null;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("await using x=null;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("using\nx = null;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("await using\nx = null;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("for (using x of y);", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("for (await using x of y);", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("for (using\u{0085}x of y);", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("for (await using\u{0085}x of y);", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("await\u{0085}using x=1;", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("for (await\u{0085}using x of y);", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("for (using of\u{0085}y);", Options::default());
+        assert_eq!(errors, ["\u{0085}"]);
+
+        let errors = error_spans("for (using of y);", Options::default());
+        assert!(errors.is_empty());
+
+        assert_eq!(program_body_len("using\nx = null;"), 2);
+
+        assert_eq!(program_body_len("await using\nx = null;"), 2);
+
+        let errors = error_spans("let\u{00A0}x=1;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("let\u{FEFF}x=1;", Options::default());
+        assert!(errors.is_empty());
+
+        let errors = error_spans("let\u{3000}x=1;", Options::default());
+        assert!(errors.is_empty());
+
+        let value = string_literal_value("const x=\"\u{0085}\";");
+        assert_eq!(value, "\u{0085}");
+
+        let body_len = program_body_len("//\u{0085}\nlet x=1;");
+        assert_eq!(body_len, 1);
+
+        let body_len = program_body_len("//\u{0085}let x=1;");
+        assert_eq!(body_len, 0);
     }
 
     #[test]
