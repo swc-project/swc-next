@@ -181,7 +181,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .get(index + 1)
                     .map_or(gap.span.end, |next| next.span.start);
                 comment.kind == CommentKind::Line
-                    || self.source_position_starts_line(comment.span.start)
+                    || self.layout_position_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.end, next) != 0
             })
     }

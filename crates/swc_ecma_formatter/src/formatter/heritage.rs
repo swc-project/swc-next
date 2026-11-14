@@ -175,7 +175,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && (matches!(after_binding, CommentBinding::BoundTo(_))
                 || after
                     .first()
-                    .is_some_and(|comment| self.source_position_starts_line(comment.span.start)));
+                    .is_some_and(|comment| self.layout_position_starts_line(comment.span.start)));
         PreparedHeritagePrefix {
             prefix: HeritagePrefix {
                 has_comments: !comments.is_empty(),

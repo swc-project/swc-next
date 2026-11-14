@@ -754,13 +754,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Arrow own-line comments lead the block itself; only an end-of-line
             // packet after a real parameter belongs to the first body item.
             if comments.len() != first_line + 1
-                || self.source_position_starts_line(comments[first_line].span.start)
+                || self.layout_position_starts_line(comments[first_line].span.start)
             {
                 return (comments, StatementBodyLeading::empty());
             }
             while start != 0 && self.source_comment_gap_is_run(comments[start - 1], comments[start])
             {
-                if self.source_position_starts_line(comments[start - 1].span.start) {
+                if self.layout_position_starts_line(comments[start - 1].span.start) {
                     break;
                 }
                 start -= 1;

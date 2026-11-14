@@ -706,7 +706,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
                 && boundary.take_binding_head(
                     comments,
-                    self.source_position_starts_line(comments[0].span.start),
+                    self.layout_position_starts_line(comments[0].span.start),
                 ) {
                 Some(NodeHead {
                     comments,

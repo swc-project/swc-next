@@ -1654,7 +1654,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .all(|&comment| self.comment_semantics(comment).is_ordinary())
                 && comments.iter().any(|comment| {
                     comment.kind == CommentKind::Line
-                        || self.source_position_starts_line(comment.span.start)
+                        || self.layout_position_starts_line(comment.span.start)
                         || self.line_breaks(comment.span.end, span.end) != 0
                 });
             let mut source = ModulePrefixSource::Formatted;
@@ -1759,7 +1759,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .all(|&comment| self.comment_semantics(comment).is_ordinary())
             && comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.source_position_starts_line(comment.span.start)
+                    || self.layout_position_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.end, right_span.start) != 0
             }))
         .then_some(gap);

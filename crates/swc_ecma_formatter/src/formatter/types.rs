@@ -1652,7 +1652,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(node.data, TsTypeData::TsUnionType(union) if union.types(self.ast).len() > 1)
             && before
                 .first()
-                .is_some_and(|comment| self.source_line_starts_line(comment.span.start))
+                .is_some_and(|comment| self.layout_line_starts_line(comment.span.start))
             && matches!(
                 self.comment_binding(comments, gap, Some(node.node.span(self.ast))),
                 CommentBinding::Unbound
@@ -2568,7 +2568,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let first = packet.first()?;
             let prefix_span = Span::new(span.start, attachment.node.span(self.ast).start);
             let prefix = self.comments.in_range(prefix_span);
-            if !self.source_position_starts_line(first.span.start)
+            if !self.layout_position_starts_line(first.span.start)
                 || comments.len() != prefix.len()
                 || !matches!(
                     self.comment_binding(prefix, prefix_span, None),
@@ -3570,7 +3570,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(layout, TypeLayout::Root | TypeLayout::SignatureParameter)
             && self.comments.in_range(span).last().is_some_and(|comment| {
                 (body_follows && comment.kind == CommentKind::Line
-                    || self.source_line_starts_line(comment.span.start)
+                    || self.layout_line_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.start, comment.span.end) != 0)
                     && self
                         .source(Span::new(comment.span.end, span.end))
@@ -4842,7 +4842,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let owns_opening = if after.is_empty() {
                 // This head is borrowed through a removable syntax frame, not
                 // the actual external operator boundary. Keep its proven entry.
-                let starts_line = self.source_line_starts_line(first.span.start)
+                let starts_line = self.layout_line_starts_line(first.span.start)
                     || self.line_breaks(first.span.start, first.span.end) != 0;
                 starts_line
                     && comments.iter().enumerate().any(|(index, comment)| {

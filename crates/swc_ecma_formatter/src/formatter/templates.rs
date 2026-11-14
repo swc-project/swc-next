@@ -83,9 +83,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 format(self, layout, writer)
             });
         }
-        let source_newline = self
-            .source(slot.interior)
-            .contains(['\r', '\n', '\u{2028}', '\u{2029}']);
+        let source_newline = self.source(slot.interior).contains(['\r', '\n']);
         if source_newline
             && matches!(
                 layout,

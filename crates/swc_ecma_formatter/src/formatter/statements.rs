@@ -1235,7 +1235,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let gap = self.source(Span::new(previous, comment.span.start));
             if gap
-                .rsplit_once(['\n', '\r', '\u{2028}', '\u{2029}'])
+                .rsplit_once(['\n', '\r'])
                 .is_some_and(|(_, line)| line.chars().all(is_source_whitespace))
             {
                 break;

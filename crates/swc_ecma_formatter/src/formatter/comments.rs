@@ -950,8 +950,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         (comment.kind == CommentKind::Line).then(|| PreparedLineFact {
             comment,
             run_start: start,
-            current_starts_line: self.source_line_starts_line(comment.span.start),
-            run_starts_line: self.source_line_starts_line(start),
+            current_starts_line: if ordinary {
+                self.layout_line_starts_line(comment.span.start)
+            } else {
+                self.source_line_starts_line(comment.span.start)
+            },
+            run_starts_line: if ordinary {
+                self.layout_line_starts_line(start)
+            } else {
+                self.source_line_starts_line(start)
+            },
             ordinary,
         })
     }
@@ -1016,7 +1024,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if comment.span.start >= trailing_limit {
                 break;
             }
-            inline_prefix &= !self.source_line_starts_line(comment.span.start);
+            inline_prefix &= !self.layout_line_starts_line(comment.span.start);
             let fact = match array_comments.as_deref_mut() {
                 Some(owner) => {
                     let fact = owner.prepare(self, comment);
@@ -1517,7 +1525,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_comment(&self, comment: Comment) -> Result<PreparedComment<'ast>, FormatError> {
         let source = self.source(comment.span);
-        let (first, rest) = split_line(source);
+        // A Line's source span ends before its ECMAScript line terminator.
+        let (first, rest) = match comment.kind {
+            CommentKind::Line => (source, None),
+            CommentKind::Block => split_line(source),
+        };
         let text = match rest {
             None => CommentText::Inline(source.trim_end()),
             Some(rest) if lines(rest).all(|line| line.trim_start().starts_with('*')) => {
@@ -1601,11 +1613,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && start >= transition.source.start
             && end <= transition.source.end
         {
-            let (breaks, empty) = self.transition_gap_lines(start, end, Some(transition), owner);
+            // A constrained gap preserves directive coverage, including source
+            // terminators that do not contribute visual layout lines.
+            let before = self.source_line_breaks(start, transition.comma);
+            let after = self.source_line_breaks(transition.comma + 1, end);
+            let breaks = match owner {
+                SourceSeparatorGap::BeforePacket => before.max(after),
+                SourceSeparatorGap::WithinPacket => before.max(after.min(1)),
+            };
             return if breaks == 0 {
                 LineConstraint::SameLine
             } else {
-                LineConstraint::NewLine(if empty { 2 } else { 1 })
+                LineConstraint::NewLine(breaks)
             };
         }
         constraint
@@ -1780,7 +1799,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             LineConstraint::Unconstrained => match breaks {
                 0 if kind == CommentKind::Block => LineConstraint::SameLine,
                 1 if kind == CommentKind::Block
-                    && (inline || !self.source_position_starts_line(span.start)) =>
+                    && (inline || !self.layout_position_starts_line(span.start)) =>
                 {
                     LineConstraint::Unconstrained
                 }
@@ -1807,7 +1826,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         inline: bool,
         writer: &mut Writer<'ast>,
     ) {
-        self.leading_comment_gap_with_packet(comment, next_start, grouped, inline, None, writer);
+        self.leading_comment_gap_after_with_packet(
+            comment, next_start, grouped, inline, None, writer,
+        );
     }
 
     fn leading_comment_gap_with_placement(
@@ -1823,7 +1844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
     }
 
-    fn leading_comment_gap_with_packet(
+    fn leading_comment_gap_after_with_packet(
         &self,
         comment: &PreparedComment<'ast>,
         next_start: u32,
@@ -1877,7 +1898,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && match placement {
                     Some(HeadGapPlacement::Inline) => true,
                     Some(HeadGapPlacement::OwnLine) => false,
-                    None => !self.source_position_starts_line(comment.span.start),
+                    None => !self.layout_position_starts_line(comment.span.start),
                 } =>
             {
                 if grouped {
@@ -1914,7 +1935,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             *inline = false;
         } else if boundary != next_start {
             // The removed operator joins the following comment to this packet.
-            *inline |= !self.source_position_starts_line(comment.span.start);
+            *inline |= !self.layout_position_starts_line(comment.span.start);
         }
     }
 
@@ -2135,7 +2156,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         CommentRunLayout::Leading(_)
                         | CommentRunLayout::GroupedLeading(_)
                         | CommentRunLayout::InlineLeading(_) => self
-                            .leading_comment_gap_with_packet(
+                            .leading_comment_gap_after_with_packet(
                                 previous,
                                 prepared.span.start,
                                 !matches!(layout, CommentRunLayout::Leading(_)),
@@ -2185,13 +2206,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match (layout, previous) {
             (CommentRunLayout::SourceLeading { next, placement }, Some(previous)) => self
                 .leading_comment_gap_with_placement(&previous, next, true, Some(placement), writer),
-            (CommentRunLayout::Leading(next), Some(previous)) => {
-                self.leading_comment_gap_with_packet(&previous, next, false, false, packet, writer)
-            }
+            (CommentRunLayout::Leading(next), Some(previous)) => self
+                .leading_comment_gap_after_with_packet(
+                    &previous, next, false, false, packet, writer,
+                ),
             (
                 CommentRunLayout::GroupedLeading(next) | CommentRunLayout::InlineLeading(next),
                 Some(previous),
-            ) => self.leading_comment_gap_with_packet(
+            ) => self.leading_comment_gap_after_with_packet(
                 &previous,
                 next,
                 true,

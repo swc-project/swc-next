@@ -7,7 +7,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
 	"first",
-
 	// @ts-expect-error
 	"second",
 ];
@@ -17,7 +16,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   "first",
-
   // @ts-expect-error
   "second",
 ];

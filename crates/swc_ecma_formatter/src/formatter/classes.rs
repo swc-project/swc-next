@@ -844,7 +844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         comments.iter().any(|comment| {
             comment.kind == CommentKind::Line
-                || self.source_position_starts_line(comment.span.start)
+                || self.layout_position_starts_line(comment.span.start)
         }) || self.line_breaks(last.span.end, gap.end) != 0
     }
 

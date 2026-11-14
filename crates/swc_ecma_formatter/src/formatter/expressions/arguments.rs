@@ -1015,7 +1015,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         // Fill must retain the leading packet's own-line attachment for blocks too.
         let mut separator = if comments[boundary_count..].iter().any(|comment| {
-            comment.kind == CommentKind::Line || self.source_line_starts_line(comment.span.start)
+            comment.kind == CommentKind::Line || self.layout_line_starts_line(comment.span.start)
         }) {
             Separator::OwnLineComment
         } else {
@@ -1988,7 +1988,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let outside_line = comments.iter().any(|comment| {
             comment.kind == CommentKind::Line
-                && (!self.source_line_starts_line(comment.span.start)
+                && (!self.layout_line_starts_line(comment.span.start)
                     || !matches!(binding, CommentBinding::Unbound))
         });
         let prefix = if comments.is_empty()
@@ -2035,7 +2035,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut previous_end = source_end;
         let mut pending_line = false;
         for comment in comments {
-            let own_line = self.source_position_starts_line(comment.span.start);
+            let own_line = if self.comment_semantics(*comment).is_ordinary() {
+                self.layout_position_starts_line(comment.span.start)
+            } else {
+                self.source_position_starts_line(comment.span.start)
+            };
             let gap_start = operator
                 .filter(|operator| {
                     previous_end <= operator.start && operator.end <= comment.span.start
@@ -2100,7 +2104,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::TaggedTemplateExpression(tagged) => tagged.quasi(ast),
             _ => return false,
         };
-        if self.source_position_starts_line(prepared.expression.span(ast).start) {
+        if self.layout_position_starts_line(prepared.expression.span(ast).start) {
             return false;
         }
         let multiline = template.quasis(ast).iter().any(|id| {
@@ -2630,7 +2634,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .iter()
                         .any(|comment| comment.kind == CommentKind::Line)
                     || leading.first().is_some_and(|comment| {
-                        self.source_position_starts_line(comment.span.start)
+                        self.layout_position_starts_line(comment.span.start)
                     }) && leading
                         .last()
                         .is_some_and(|comment| self.line_breaks(comment.span.end, span.start) != 0))

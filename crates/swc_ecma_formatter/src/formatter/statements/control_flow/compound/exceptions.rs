@@ -357,8 +357,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let before_close = tail_comments.partition_point(|comment| comment.span.end <= closing);
         let after_close = &tail_comments[before_close..];
         let parameter_end = before_close
-            + after_close
-                .partition_point(|comment| self.line_breaks(comment.span.end, body_start) != 0);
+            + after_close.partition_point(|comment| {
+                self.source_line_breaks(comment.span.end, body_start) != 0
+            });
         let (parameter_tail, body_comments) = tail_comments.split_at(parameter_end);
         let body_gap_start = parameter_tail
             .last()
