@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s2 = _s();
+function App() {
+  _s2();
+  useState(0);
+}
+_s2(App, "rGEI62VsuwnwPY/75ViYiWAYY24=");
+_c2 = App;
+var _c2;
+_c(_c2, "App");

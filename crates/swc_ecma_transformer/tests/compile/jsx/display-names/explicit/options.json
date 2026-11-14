@@ -1,0 +1,14 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "filename": "src/Component.jsx",
+    "jsx": {
+      "displayName": true,
+      "runtime": "classic"
+    },
+    "typescript": false
+  }
+}

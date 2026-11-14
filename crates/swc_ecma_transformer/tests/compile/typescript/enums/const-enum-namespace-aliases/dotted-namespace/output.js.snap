@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  let M;
+  (function(M) {
+  })(M = N.M || (N.M = {}));
+})(N || (N = {}));
+var Root = N;
+export var A = Root.M;

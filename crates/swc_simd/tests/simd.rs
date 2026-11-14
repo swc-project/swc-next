@@ -1,4 +1,4 @@
-use swc_next_simd::prelude::{SimdPartialEq, SimdPartialOrd};
+use swc_next_simd::prelude::{SimdOrd, SimdPartialEq, SimdPartialOrd};
 use swc_next_simd::{Select, Simd, mask8x16, u8x16};
 
 #[test]
@@ -57,12 +57,12 @@ fn mask_reductions() {
     for bitmask in 0..=u16::MAX {
         let values = std::array::from_fn(|lane| bitmask & (1 << lane) != 0);
         let mask = mask8x16::from_array(values);
-        let expected = if bitmask == 0 {
-            None
-        } else {
-            Some(bitmask.trailing_zeros() as usize)
-        };
-        assert_eq!(mask.first_set(), expected);
+        assert_eq!(mask.to_bitmask(), bitmask);
+        // An empty mask leaves the trailing zero count at the lane count.
+        assert_eq!(
+            mask.first_set(),
+            (bitmask != 0).then(|| bitmask.trailing_zeros() as usize)
+        );
         assert_eq!(mask.any(), bitmask != 0);
     }
 }
@@ -119,6 +119,28 @@ fn unsigned_byte_operations() {
                 values.map(|right| left.wrapping_sub(right))
             );
             assert_eq!((a | b).to_array(), values.map(|right| left | right));
+            assert_eq!(
+                a.simd_min(b).to_array(),
+                values.map(|right| left.min(right))
+            );
+        }
+    }
+
+    // `simd_min` keeps a wrapped range offset unsigned, which is how callers use it. Each lane holds
+    // the byte `lo + lane`, so its offset is `lane` even when that byte wrapped past `0xff`.
+    for lo in [0_u8, 0x24, 0x30, 0x61, 0xfe] {
+        for hi in [lo, 0x39, 0x5a, 0x7a, 0xff] {
+            if hi < lo {
+                continue;
+            }
+            let values = std::array::from_fn(|lane| lo.wrapping_add(lane as u8));
+            let bytes = u8x16::from_array(values);
+            let offset = bytes - u8x16::splat(lo);
+            let in_range = offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)));
+            assert_eq!(
+                in_range.to_array(),
+                std::array::from_fn(|lane| lane as u8 <= hi - lo),
+            );
         }
     }
 }

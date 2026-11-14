@@ -1,0 +1,1 @@
+namespace N { export const value = 7; } import A = N; import B = A;

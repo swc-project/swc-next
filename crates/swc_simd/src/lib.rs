@@ -11,7 +11,7 @@ pub mod cmp;
 #[cfg(feature = "memchr")]
 pub mod memchr;
 
-use cmp::{SimdPartialEq, SimdPartialOrd};
+use cmp::{SimdOrd, SimdPartialEq, SimdPartialOrd};
 use std::ops::{BitAnd, BitOr, Not, Sub};
 
 /// Reinterprets mask lanes as bytes. Unlike `array::map`, this compiles to no code.
@@ -139,9 +139,14 @@ impl Mask<i8, 16> {
     /// The first true lane, or `None` when every lane is false.
     #[inline(always)]
     pub fn first_set(self) -> Option<usize> {
-        let lanes = as_unsigned(self.to_simd().to_array());
-        let lane = backend::first_set(lanes);
+        let lane = backend::first_set(as_unsigned(self.to_simd().to_array()));
         (lane < 16).then_some(lane)
+    }
+
+    /// The lanes as one bit each, in lane order, from each lane's high bit.
+    #[inline(always)]
+    pub fn to_bitmask(self) -> u16 {
+        backend::bitmask(as_unsigned(self.to_simd().to_array()))
     }
 }
 
@@ -250,15 +255,50 @@ impl SimdPartialOrd for Simd<u8, 16> {
     }
 }
 
+impl SimdOrd for Simd<u8, 16> {
+    #[inline(always)]
+    fn simd_min(self, other: Self) -> Self {
+        Self(backend::min(self.0, other.0))
+    }
+}
+
 #[allow(non_camel_case_types)]
 pub type u8x16 = Simd<u8, 16>;
 
 #[allow(non_camel_case_types)]
 pub type mask8x16 = Mask<i8, 16>;
 
+/// Four 64-bit lanes.
+#[allow(non_camel_case_types)]
+pub type u64x4 = Simd<u64, 4>;
+
 pub mod prelude {
-    pub use super::cmp::{SimdPartialEq, SimdPartialOrd};
-    pub use super::{Mask, Select, Simd, mask8x16, u8x16};
+    pub use super::cmp::{SimdOrd, SimdPartialEq, SimdPartialOrd};
+    pub use super::{Mask, Select, Simd, mask8x16, u8x16, u64x4};
+}
+
+#[cfg(any(
+    test,
+    target_arch = "aarch64",
+    not(any(
+        target_arch = "x86_64",
+        all(target_arch = "wasm32", target_feature = "simd128")
+    ))
+))]
+mod bits {
+    /// Bit `i` of the result is the high bit of byte `i` of `word`. The multiplication lines the
+    /// byte bits up at the top of the word: bit `8 * i + 7` times `2^(49 - 7 * i)` is bit `56 + i`,
+    /// and no two products collide.
+    const fn byte_bits(word: u64) -> u8 {
+        const HIGH: u64 = 0x8080_8080_8080_8080;
+
+        ((word & HIGH).wrapping_mul(0x0002_0408_1020_4081) >> 56) as u8
+    }
+
+    /// The high bit of each of a vector's 16 bytes, in lane order, from its two words.
+    pub(super) const fn lane_bits(low: u64, high: u64) -> u16 {
+        byte_bits(low) as u16 | ((byte_bits(high) as u16) << 8)
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -297,6 +337,12 @@ mod backend {
         sse2!(_mm_xor_si128(value, _mm_set1_epi8(-1)))
     }
 
+    /// The high bit of each lane, in lane order.
+    #[inline(always)]
+    pub(super) fn bitmask(lanes: [u8; 16]) -> u16 {
+        sse2!(_mm_movemask_epi8(vector(lanes))) as u16
+    }
+
     #[inline(always)]
     pub(super) fn first_set(mask: [u8; 16]) -> usize {
         let bits = sse2!(_mm_movemask_epi8(vector(mask))) as u16;
@@ -306,6 +352,14 @@ mod backend {
     #[inline(always)]
     pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         array(sse2!(std::arch::x86_64::_mm_sub_epi8(
+            vector(left),
+            vector(right)
+        )))
+    }
+
+    #[inline(always)]
+    pub(super) fn min(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        array(sse2!(std::arch::x86_64::_mm_min_epu8(
             vector(left),
             vector(right)
         )))
@@ -403,6 +457,20 @@ mod backend {
         unsafe { std::mem::transmute(value) }
     }
 
+    /// The high bit of each lane, in lane order.
+    #[inline(always)]
+    pub(super) fn bitmask(lanes: [u8; 16]) -> u16 {
+        use crate::bits::lane_bits;
+
+        // No byte movemask on AArch64, so each half is compressed on its own.
+        // SAFETY: NEON is mandatory on AArch64.
+        let high_bits = unsafe { vandq_u8(vector(lanes), vector([0x80; 16])) };
+        let bytes: [u8; 16] = array(high_bits);
+        let low = u64::from_le_bytes(bytes[..8].try_into().unwrap());
+        let high = u64::from_le_bytes(bytes[8..].try_into().unwrap());
+        lane_bits(low, high)
+    }
+
     #[inline(always)]
     pub(super) fn first_set(mask: [u8; 16]) -> usize {
         use std::arch::aarch64::{vreinterpretq_u16_u8, vshrn_n_u16};
@@ -424,6 +492,12 @@ mod backend {
     pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         // SAFETY: NEON is mandatory on AArch64.
         array(unsafe { std::arch::aarch64::vsubq_u8(vector(left), vector(right)) })
+    }
+
+    #[inline(always)]
+    pub(super) fn min(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        // SAFETY: NEON is mandatory on AArch64.
+        array(unsafe { std::arch::aarch64::vminq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
@@ -510,6 +584,12 @@ mod backend {
         unsafe { std::mem::transmute(value) }
     }
 
+    /// The high bit of each lane, in lane order.
+    #[inline(always)]
+    pub(super) fn bitmask(lanes: [u8; 16]) -> u16 {
+        std::arch::wasm32::i8x16_bitmask(vector(lanes)) as u16
+    }
+
     #[inline(always)]
     pub(super) fn first_set(mask: [u8; 16]) -> usize {
         let bits = std::arch::wasm32::i8x16_bitmask(vector(mask)) as u16;
@@ -519,6 +599,11 @@ mod backend {
     #[inline(always)]
     pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         array(std::arch::wasm32::i8x16_sub(vector(left), vector(right)))
+    }
+
+    #[inline(always)]
+    pub(super) fn min(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        array(std::arch::wasm32::u8x16_min(vector(left), vector(right)))
     }
 
     #[inline(always)]
@@ -650,6 +735,14 @@ mod scalar {
     }
 
     #[inline(always)]
+    pub(super) fn bitmask(mask: [u8; 16]) -> u16 {
+        use crate::bits::lane_bits;
+
+        let [low, high] = words(mask);
+        lane_bits(low, high)
+    }
+
+    #[inline(always)]
     pub(super) fn first_set(mask: [u8; 16]) -> usize {
         let [low, high] = words(mask);
         let low = nonzero(low);
@@ -667,6 +760,14 @@ mod scalar {
     pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         map(left, right, |left, right| {
             ((left | HIGH) - (right & LOW)) ^ ((left ^ !right) & HIGH)
+        })
+    }
+
+    #[inline(always)]
+    pub(super) fn min(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        map(left, right, |left, right| {
+            let take_right = expand(ge_bits(left, right));
+            (take_right & right) | (!take_right & left)
         })
     }
 
@@ -793,6 +894,7 @@ mod scalar {
                 assert_lanes("sub", left, right, sub(left, right), u8::wrapping_sub);
                 assert_lanes("and", left, right, and(left, right), |l, r| l & r);
                 assert_lanes("or", left, right, or(left, right), |l, r| l | r);
+                assert_lanes("min", left, right, min(left, right), u8::min);
 
                 let mask = eq(left, right);
                 let selected = select(mask, left, right);
@@ -817,6 +919,7 @@ mod scalar {
             }
             for (left, right) in [(left, right), (right, left)] {
                 assert_lanes("sub", left, right, sub(left, right), u8::wrapping_sub);
+                assert_lanes("min", left, right, min(left, right), u8::min);
                 assert_lanes("lt", left, right, lt(left, right), |l, r| lane_mask(l < r));
                 assert_lanes("le", left, right, le(left, right), |l, r| lane_mask(l <= r));
                 assert_lanes("gt", left, right, gt(left, right), |l, r| lane_mask(l > r));
@@ -826,25 +929,23 @@ mod scalar {
 
         #[test]
         fn masks() {
-            assert_eq!(first_set([0; 16]), 16);
-            assert!(!any([0; 16]));
-
+            // Only the high bit marks a lane, so a lane with every other bit set stays unseen.
+            assert_eq!(bitmask([0x7F; 16]), 0);
             for lane in 0..16 {
-                let mut mask = [0; 16];
-                mask[lane] = 0xFF;
-                assert_eq!(first_set(mask), lane);
-                assert!(any(mask));
-
-                mask[15] = 0xFF;
-                assert_eq!(first_set(mask), lane);
+                let mut mask = [0x7F; 16];
+                mask[lane] = 0x80;
+                assert_eq!(bitmask(mask), 1 << lane, "high bit in lane {lane}");
             }
 
-            let mut mask = [0; 16];
-            mask[7] = 0xFF;
-            mask[8] = 0xFF;
-            assert_eq!(first_set(mask), 7);
-            mask[7] = 0;
-            assert_eq!(first_set(mask), 8);
+            // Every pattern round-trips, which a lane index from `trailing_zeros` relies on. This
+            // covers the empty mask, a single set lane, and a set lane beside lane 15.
+            for pattern in 0..=u16::MAX {
+                let mask = std::array::from_fn(|lane| u8::from(pattern >> lane & 1 != 0) * 0xFF);
+                assert_eq!(bitmask(mask), pattern);
+                assert_eq!(any(mask), pattern != 0);
+                // An empty pattern leaves the zero count at the lane count.
+                assert_eq!(first_set(mask), pattern.trailing_zeros() as usize);
+            }
         }
     }
 }

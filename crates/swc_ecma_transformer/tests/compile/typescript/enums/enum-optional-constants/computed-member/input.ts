@@ -1,0 +1,1 @@
+enum E { A=42 } enum F { A=E?.["A"], B }

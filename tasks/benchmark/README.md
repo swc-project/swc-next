@@ -69,3 +69,11 @@ TARGET=next cargo run -p benchmark --release --example rspack_simulator
 ```
 
 Use `TARGET=oxc` for the Oxc pipeline. Add `--features tracy` to collect a Tracy profile.
+
+## Transformer example
+
+```sh
+TARGET=next cargo run -p benchmark --release --example transformer_comparison
+```
+
+Use `TARGET=oxc` or `TARGET=swc` for the other implementations.

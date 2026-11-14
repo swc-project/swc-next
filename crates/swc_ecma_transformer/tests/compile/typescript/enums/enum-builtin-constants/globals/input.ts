@@ -1,0 +1,1 @@
+enum E { A=Infinity, B=NaN }

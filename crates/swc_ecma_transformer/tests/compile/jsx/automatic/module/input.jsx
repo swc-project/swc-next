@@ -1,0 +1,1 @@
+const node = <><div key="a" /><span /></>;

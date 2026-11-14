@@ -1,0 +1,1 @@
+import * as remote from 'pkg'; import Infinity=remote.value; enum E { A=Infinity }

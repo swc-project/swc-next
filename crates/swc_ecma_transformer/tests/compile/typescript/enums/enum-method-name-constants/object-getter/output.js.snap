@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const obj = { get [(() => {
+  let E;
+  (function(E) {
+    E[E["A"] = 42] = "A";
+    E[E["B"] = 43] = "B";
+  })(E || (E = {}));
+  return E.B;
+})()]() {
+  return 0;
+} };
+const x = 42;
+export {};

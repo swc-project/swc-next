@@ -1,0 +1,1 @@
+const node: unknown = <svg xlink:href="value" />;

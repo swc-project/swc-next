@@ -417,7 +417,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) || matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty()))
         {
             let (left, ()) = writer.record_with_value(|writer| write_left(self, writer))?;
-            if !left.can_break() {
+            if !left.has_line_breaks() {
                 layout = AssignmentLayout::Ordinary(RhsLayout::NeverBreakAfterOperator);
             }
             Some(left)

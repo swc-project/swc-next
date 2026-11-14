@@ -1,0 +1,1 @@
+function App() { use(promise); useState(0); }

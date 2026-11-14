@@ -1,18 +1,21 @@
 # `@swc-next/encoder`
 
 Encodes an ESTree-compatible `Program` into binary sections consumed by
-SWC Next crates. Use the exact package version matching your native binding's
-`swc_next_*` crates.
+SWC Next crates.
+
+**For internal SWC Next use only.** This package's API and binary format do not
+follow semantic versioning and may change in any release. Use the exact package
+version matching the `swc_next_*` Rust crates used by your native binding.
 
 ```js
 import { encode } from "@swc-next/encoder";
 
-const parts = encode(program, meta);
+const parts = encode(program);
 ```
 
-Pass the decoder result's `meta: { lang, sourceType }` to preserve source
-metadata. `encode(program)` supports TypeScript by default; `encodeJs` and
-`encodeTs` are available when the language is known.
+`encode(program)` infers JavaScript or TypeScript from the nodes and reads
+source type from `program.sourceType`. `encodeJs` and `encodeTs` are also
+available for callers that know whether TypeScript support is needed.
 
 Node spans use UTF-16 offsets. String literal values and cooked template values
 preserve lone surrogates through the WTF-8 pool. UTF-8 fields, including

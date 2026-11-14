@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    Ast, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, SubRange,
+    Ast, AstCtx, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, SubRange,
     TsInterfaceDeclaration, TsIntersectionType, TsType, TsTypeAliasDeclaration, TsTypeData,
     TsUnionType, VisitMut, VisitMutWith,
 };
@@ -13,13 +13,19 @@ use crate::context::CommentState;
 pub struct Normalizer {}
 
 impl Normalizer {
-    pub fn normalize<'ast>(program: Program, ast: &mut Ast<'ast>) {
-        Self::run::<true>(program, ast);
+    pub fn normalize(ast: &mut AstCtx<'_>) {
+        let root = ast.root_program();
+        // SAFETY: The root and all visited handles belong to this AST.
+        let ast = unsafe { ast.ast_mut() };
+        Self::run::<true>(root, ast);
     }
 
     /// Normalize runtime expressions while retaining TypeScript declaration shapes.
-    pub fn normalize_runtime<'ast>(program: Program, ast: &mut Ast<'ast>) {
-        Self::run::<false>(program, ast);
+    pub fn normalize_runtime(ast: &mut AstCtx<'_>) {
+        let root = ast.root_program();
+        // SAFETY: The root and all visited handles belong to this AST.
+        let ast = unsafe { ast.ast_mut() };
+        Self::run::<false>(root, ast);
     }
 
     fn run<'ast, const NORMALIZE_TYPES: bool>(program: Program, ast: &mut Ast<'ast>) {

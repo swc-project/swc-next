@@ -1,0 +1,1 @@
+import type { T } from 'types'; const node = <div />;

@@ -2,7 +2,7 @@
 source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
-object.field satisfies T = value;
+(object.field satisfies T) = value;
 ---------- Options ----------
 {}
 ---------- Output ----------

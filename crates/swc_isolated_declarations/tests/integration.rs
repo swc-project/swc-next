@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_codegen::{Options as PrintOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_isolated_declarations::transform;
@@ -62,11 +62,11 @@ fn run_fixture(input: &Path, lang: Lang) {
     );
 
     let mut ast = parse.ast;
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let diagnostics = transform(&mut ast, &semantic)
+    let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
+    let diagnostics = transform(semantic)
         .into_iter()
         .map(|diagnostic| diagnostic.message);
-    let actual = print(&ast, PrintOptions::default()).code;
+    let actual = generate(&ast, GeneratorOptions::default()).code;
     assert!(
         actual == expected,
         "{}: declaration mismatch",

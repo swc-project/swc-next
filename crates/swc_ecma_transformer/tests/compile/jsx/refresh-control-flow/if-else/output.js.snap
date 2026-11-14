@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$(), _s2 = $RefreshSig$();
+if (flag) {
+  function App() {
+    _s();
+    useState();
+  }
+  _s(App, "useState{}");
+} else {
+  function App() {
+    _s2();
+    useEffect();
+  }
+  _s2(App, "useEffect{}");
+}

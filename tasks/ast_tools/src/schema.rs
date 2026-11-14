@@ -87,6 +87,7 @@ pub struct Layout {
     pub mode: LayoutMode,
     /// One location per struct field, in schema order.
     pub fields: Vec<FieldLocation>,
+    /// Number of four-byte units occupied by spilled fields.
     pub extra_count: usize,
     pub extra_start_offset: Option<usize>,
 }

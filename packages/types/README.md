@@ -1,6 +1,6 @@
 # @swc-next/types
 
-Shared ESTree declarations for SWC Next's parser, decoder, encoder, and codegen.
+Shared ESTree declarations for SWC Next's parser, decoder, encoder, and generator.
 
 ```ts
 import type { Program, Node } from "@swc-next/types";

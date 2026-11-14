@@ -6,18 +6,20 @@ booleans and unshadowed global constants, simplifies safe local `typeof`
 comparisons, inlines local constants, and removes unused local declarations
 and computations whose values are unused and have no side effects. It
 rewrites `if` statements and returns as shorter expressions and shortens
-comparisons. It also joins adjacent statements: expression statements with
-the comma operator and declarations of the same kind, and it removes empty
-statements and unneeded blocks. Mangling shortens the names of local
-bindings; top-level names are kept.
+comparisons and property names, such as `a["b"]` to `a.b`. It also joins
+adjacent statements: expression statements with the comma operator and
+declarations of the same kind, and it removes empty statements and unneeded
+blocks. Mangling shortens the names of local bindings; top-level names are
+kept.
 
 Use `Minifier::minify(&mut ast, options)` on a valid JavaScript Program AST.
 Parsing, TypeScript/JSX lowering, and printing are separate operations. Print
 with the code generator's `minify` option for compact output, and recompute
 semantic analysis before querying the optimized AST.
 
-See [minifier options](src/options.rs) for configuration. A program that uses
-`eval` or `with` is neither compressed with semantic optimizations nor mangled.
+See [minifier options](src/options.rs) for configuration. Bindings that `eval`
+or a `with` statement can see keep their names and declarations; the rest of
+the program is optimized as usual.
 
 ## Testing
 

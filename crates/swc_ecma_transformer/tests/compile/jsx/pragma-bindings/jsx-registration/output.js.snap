@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+function App() {
+  return _c("div", null);
+}
+_c2 = App;
+var _c2;
+$RefreshReg$(_c2, "App");

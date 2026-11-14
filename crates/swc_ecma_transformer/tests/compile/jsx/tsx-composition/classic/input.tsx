@@ -1,0 +1,1 @@
+import React, { type FC } from 'react'; const node: JSX.Element = <div />;

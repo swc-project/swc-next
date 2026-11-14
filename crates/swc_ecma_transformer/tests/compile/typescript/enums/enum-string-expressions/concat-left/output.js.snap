@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { suffix } from "dep";
+export var E;
+(function(E) {
+  E["A"] = "fixed";
+  E["B"] = "" + suffix;
+})(E || (E = {}));

@@ -1,36 +1,36 @@
 import {
   parseSync as __parseSync,
-  printSync as __printSync,
+  generateSync as __generateSync,
 } from "./binding.js";
 import {
   decode,
-  encodeOptions as encodeParserOptions,
+  encodeOptions as encodeParserConfig,
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeOptions as encodeCodegenOptions,
+  encodeOptions as encodeGeneratorConfig,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
-const canTransferToFixedLength =
-  typeof ArrayBuffer.prototype.transferToFixedLength === "function";
+let sourceBuffer = new Uint8Array();
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export * from "@swc-next/walker";
 
 export function parseSync(source, options) {
-  // Every byte read below is initialized by encodeInto; avoid zeroing the
-  // oversized scratch buffer on Node. Keep the portable allocation for browsers.
-  const sourceBuffer = typeof source === "string" && typeof Buffer === "function"
-    ? new Uint8Array(Buffer.allocUnsafeSlow(source.length * 3).buffer)
-    : new Uint8Array(source.length * 3);
+  const parserConfig = encodeParserConfig(options);
+  const capacity = source.length * 3;
+  if (sourceBuffer.length < capacity) {
+    const length = Math.max(capacity, sourceBuffer.length * 2, 4096);
+    sourceBuffer = typeof Buffer === "function"
+      ? new Uint8Array(Buffer.allocUnsafeSlow(length).buffer)
+      : new Uint8Array(length);
+  }
   const { written } = textEncoder.encodeInto(source, sourceBuffer);
-  // Lazy decoder getters retain sourceBytes, so drop the unused capacity of
-  // the encodeInto buffer instead of keeping it alive through a subarray.
-  const sourceBytes = canTransferToFixedLength
-    ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
-    : sourceBuffer.slice(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
+  // Native parsing is synchronous. Lazy decoding reads the original string,
+  // so this scratch buffer can be overwritten by the next parse.
+  const sourceBytes = sourceBuffer.subarray(0, written);
+  const buffer = __parseSync(sourceBytes, source.length, parserConfig);
   const result = decode(buffer, source, sourceBytes);
   if (!options?.errorRecovery) {
     const diagnostics = result.diagnostics;
@@ -39,7 +39,8 @@ export function parseSync(source, options) {
   return result;
 }
 
-export function printSync(program, options, meta) {
-  const code = __printSync(...encode(program, meta), encodeCodegenOptions(options));
+export function generateSync(program, options) {
+  const generatorConfig = encodeGeneratorConfig(options);
+  const code = __generateSync(...encode(program), generatorConfig);
   return { code };
 }

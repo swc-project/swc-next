@@ -1,0 +1,1 @@
+import { suffix } from 'dep'; export enum E { A='fixed', B=`${suffix}` }

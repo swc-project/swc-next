@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsx h */
+const node = h(React.Fragment, null, h(this, null), h(foo.Bar, null));

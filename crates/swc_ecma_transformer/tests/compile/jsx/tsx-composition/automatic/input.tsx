@@ -1,0 +1,1 @@
+import React from 'react'; const node = <div />;

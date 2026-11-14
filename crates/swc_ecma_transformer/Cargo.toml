@@ -1,6 +1,4 @@
 [package]
-# Files under tests/ are unit-test modules loaded by src/ through #[path].
-autotests             = false
 description.workspace = true
 edition               = "2024"
 homepage.workspace    = true
@@ -8,13 +6,12 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_ecma_transformer"
 repository.workspace  = true
-version               = "0.5.0"
+version               = "0.6.1"
 
 [dependencies]
 memchr     = { workspace = true }
 phf        = { workspace = true, features = ["macros"] }
 rustc-hash = { workspace = true }
-serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }
 
 swc_next_allocator     = { workspace = true }
@@ -22,6 +19,9 @@ swc_next_ecma_ast      = { workspace = true }
 swc_next_ecma_semantic = { workspace = true }
 
 [dev-dependencies]
-clap                 = { workspace = true }
+clap                  = { workspace = true }
+insta                 = { workspace = true, features = ["glob"] }
+serde_json            = { workspace = true }
+swc_next_core         = { workspace = true, features = ["js_transformer", "serde"] }
 swc_next_ecma_codegen = { workspace = true }
 swc_next_ecma_parser  = { workspace = true }

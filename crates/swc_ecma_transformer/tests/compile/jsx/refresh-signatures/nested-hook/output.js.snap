@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s2 = $RefreshSig$();
+function App() {
+  _s2();
+  var _s = $RefreshSig$();
+  const state = _s(useState(_s(() => {
+    _s();
+    useCustom();
+    return 0;
+  }, "useCustom{}", true)), "useCustom{}", true);
+}
+_s2(App, "useState{state(() => { useCustom(); return 0; })}");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

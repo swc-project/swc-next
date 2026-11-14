@@ -1,0 +1,1 @@
+class C { static { enum E { A=x } } } const x=42;

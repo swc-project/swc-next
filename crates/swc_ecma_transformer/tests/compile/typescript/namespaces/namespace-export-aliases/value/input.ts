@@ -1,0 +1,1 @@
+declare namespace N { const a:number; export { a as x }; } namespace N { export function f(){ return x; } }

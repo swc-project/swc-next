@@ -8,12 +8,12 @@ use std::{
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, SourceType};
+use swc_next_ecma_ast::{AstCtx, Lang, SourceType};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 
-fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
+fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> AstCtx<'a> {
     let result = Parser::init(
         allocator,
         source,

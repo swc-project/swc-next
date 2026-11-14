@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const App = _s(memo(_c = _s(() => {
+  _s();
+  return useState(0);
+}, "useState{(0)}")), "useState{(0)}");
+_c2 = App;
+var _c, _c2;
+$RefreshReg$(_c, "App$memo");
+$RefreshReg$(_c2, "App");
+export {};

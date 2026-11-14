@@ -9,8 +9,9 @@ fn contextual_expression_recovery() {
     ) -> (Ast<'a>, Semantic<'a>) {
         let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
         assert_eq!(parsed.diagnostics.len(), 1);
-        let ast = parsed.ast;
-        let result = analyze(&ast, AnalyzeOptions::default());
+        let result = analyze(&parsed.ast, AnalyzeOptions::default());
+        // SAFETY: All inspected handles come from this parsed AST.
+        let ast = unsafe { parsed.ast.into_ast() };
         assert!(result.diagnostics.is_empty());
         (ast, result.semantic)
     }

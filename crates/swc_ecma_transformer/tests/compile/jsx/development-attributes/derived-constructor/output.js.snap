@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _jsxFileName = "input.jsx";
+class D extends B {
+  constructor() {
+    /* #__PURE__ */ React.createElement("div", { __source: { fileName: _jsxFileName, lineNumber: 1, columnNumber: 37 } });
+  }
+}

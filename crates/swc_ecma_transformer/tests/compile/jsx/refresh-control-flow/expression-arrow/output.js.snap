@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const Foo = () => {
+  _s();
+  return useState(0);
+};
+_s(Foo, "useState{(0)}");
+_c = Foo;
+var _c;
+$RefreshReg$(_c, "Foo");

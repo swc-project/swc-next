@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "react/jsx-runtime";
+const App = () => /* #__PURE__ */ _jsx(A, { onClick: () => import("dep") });
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

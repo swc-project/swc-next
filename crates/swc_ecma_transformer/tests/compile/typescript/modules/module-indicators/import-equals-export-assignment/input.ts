@@ -1,0 +1,1 @@
+import Value = require('pkg'); export = Value;

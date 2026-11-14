@@ -1,0 +1,1 @@
+class C { static x = 1; } namespace C { export interface x {} } export import A = C.x;

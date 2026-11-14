@@ -1,0 +1,1 @@
+const useExternal = () => {}; function App(useParameter) { const useLocal = () => {}; useLocal(); useParameter(); useExternal(); }

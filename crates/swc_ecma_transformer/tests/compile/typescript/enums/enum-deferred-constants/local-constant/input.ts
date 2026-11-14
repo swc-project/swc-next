@@ -1,0 +1,1 @@
+function f(){ const n=x; enum E { A=n, B } return E.B; } const x=42;

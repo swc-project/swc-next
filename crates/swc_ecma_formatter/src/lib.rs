@@ -14,7 +14,7 @@ mod options;
 use std::{error::Error, fmt};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Diagnostic, NodeKind, Severity, Span};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, NodeKind, Severity, Span};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 pub use options::{
@@ -27,7 +27,7 @@ pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.9.9";
 
 #[derive(Debug)]
 pub enum FormatError {
-    Parse(Vec<Diagnostic<'static>>),
+    Parse(Vec<Diagnostic>),
     Unsupported {
         construct: &'static str,
         kind: Option<NodeKind>,
@@ -107,7 +107,9 @@ pub fn format(
 /// # Panics
 ///
 /// Panics if the AST has no root or its root is not a program.
-pub fn format_ast(ast: &Ast<'_>, options: FormatOptions) -> Result<String, FormatError> {
+pub fn format_ast(ast: &AstCtx<'_>, options: FormatOptions) -> Result<String, FormatError> {
+    // SAFETY: The formatter only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
     let allocator = Allocator::new();
     let mut writer = document::Writer::new(&allocator);
     formatter::Formatter::new(ast, options, &allocator).format_program(&mut writer)?;

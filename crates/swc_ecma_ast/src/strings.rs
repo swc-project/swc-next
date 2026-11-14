@@ -22,25 +22,27 @@ macro_rules! define_ast_string {
             pub const fn is_empty(self) -> bool {
                 self.start == self.end
             }
-
-            #[inline]
-            pub(crate) const fn from_raw(raw: u64) -> Self {
-                Self {
-                    start: raw as u32,
-                    end: (raw >> 32) as u32,
-                }
-            }
-
-            #[inline]
-            pub(crate) const fn raw(self) -> u64 {
-                self.start as u64 | ((self.end as u64) << 32)
-            }
         }
     };
 }
 
 define_ast_string!(AstUtf8);
 define_ast_string!(AstWtf8);
+
+impl AstUtf8 {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
+        Self {
+            start: raw as u32,
+            end: (raw >> 32) as u32,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
 
 impl From<AstUtf8> for AstWtf8 {
     #[inline]
@@ -193,7 +195,8 @@ mod tests {
     fn string_lifetimes() {
         let allocator = Allocator::new();
         let (source, first, large, last, surrogate) = {
-            let mut ast = Ast::new("source", &allocator);
+            // SAFETY: All handles used below belong to this AST and remain valid.
+            let mut ast = unsafe { Ast::new("source", &allocator) };
             let source = ast.get_utf8(ast.source_slice(0, 6));
             let first = ast.add_utf8("first");
             let first = ast.get_utf8(first);

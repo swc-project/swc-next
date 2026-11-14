@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "react/jsx-runtime";
+var _s = import.meta.refreshSig();
+export default function App() {
+  _s();
+  useContext(X);
+  return /* #__PURE__ */ _jsx(Foo, {});
+}
+_s(App, "useContext{}");
+_c = App;
+var _c;
+import.meta.refreshReg(_c, "App");

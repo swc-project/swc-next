@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+function App() {
+  _s();
+  useState("@refresh reset");
+}
+_s(App, "useState{('@refresh reset')}");
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

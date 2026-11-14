@@ -38,7 +38,7 @@ impl CommentState {
         }
         let leading = Self::compose(&mut self.leading);
         let trailing = Self::compose(&mut self.trailing);
-        // TODO: Make codegen honor retargeted leading-comment attachment anchors.
+        // TODO: Make the generator honor retargeted leading-comment attachment anchors.
         // It still consumes leading comments by source position, so inherited
         // comments can print too late (e.g. the static-block name-conflict fixture).
         ast.retarget_comments(|position, attached_to| match position {

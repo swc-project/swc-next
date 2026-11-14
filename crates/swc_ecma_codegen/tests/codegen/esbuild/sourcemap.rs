@@ -1,16 +1,16 @@
-// Based on esbuild's scripts/verify-source-map.js, limited to parser/codegen behavior.
+// Based on esbuild's scripts/verify-source-map.js, limited to parser/generator behavior.
 // https://github.com/evanw/esbuild/blob/6ff1d8b0/scripts/verify-source-map.js
 // Decode with an independent consumer and check positions computed from the source and output.
 use sourcemap::{SourceMap as DecodedSourceMap, Token};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Lang;
-use swc_next_ecma_codegen::{Options as PrintOptions, SourceMap, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, SourceMap, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
 const SOURCE_PATH: &str = "file name with spaces.js";
 
 struct Config {
-    print: PrintOptions,
+    generator: GeneratorOptions,
     newline: &'static str,
 }
 
@@ -18,10 +18,10 @@ fn configurations() -> impl Iterator<Item = Config> {
     // Match the upstream LF/CRLF and minify matrix.
     [false, true].into_iter().flat_map(|minify| {
         ["\n", "\r\n"].into_iter().map(move |newline| Config {
-            print: PrintOptions {
+            generator: GeneratorOptions {
                 minify,
                 source_map_path: Some(SOURCE_PATH.into()),
-                ..PrintOptions::default()
+                ..GeneratorOptions::default()
             },
             newline,
         })
@@ -49,7 +49,7 @@ fn decode_map(map: &SourceMap<'_>) -> DecodedSourceMap {
 }
 
 #[track_caller]
-fn generate(source: &str, lang: Lang, config: &Config) -> Output {
+fn generate_output(source: &str, lang: Lang, config: &Config) -> Output {
     let source = source.replace('\n', config.newline);
     let allocator = Allocator::new();
     let parse_options = ParseOptions {
@@ -59,12 +59,12 @@ fn generate(source: &str, lang: Lang, config: &Config) -> Output {
     };
     let parsed = Parser::init(&allocator, &source, parse_options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let printed = print(&parsed.ast, config.print.clone());
-    let map = decode_map(printed.map.as_ref().unwrap());
+    let generated = generate(&parsed.ast, config.generator.clone());
+    let map = decode_map(generated.map.as_ref().unwrap());
     assert_eq!(map.get_source_count(), 1);
     assert_eq!(map.get_source(0), Some(SOURCE_PATH));
     assert_eq!(map.get_source_contents(0), Some(source.as_str()));
-    let code = printed.code;
+    let code = generated.code;
     let output = Output { source, code, map };
     output.expect_coverage();
     output
@@ -145,20 +145,20 @@ fn test_mappings() {
     let js = Lang::Js;
     for config in configurations() {
         // testCaseFileNameWithSpaces.
-        let output = generate("console . log ( \"test\" )", js, &config);
+        let output = generate_output("console . log ( \"test\" )", js, &config);
         output.expect_string("test");
 
         // testCaseES6 and testCaseCommonJS.
-        let output = generate("function a0() { a1(\"a0\") }", js, &config);
+        let output = generate_output("function a0() { a1(\"a0\") }", js, &config);
         output.expect_string("a0");
 
-        let output = generate("export function b0() { b1(\"b0\") }", js, &config);
+        let output = generate_output("export function b0() { b1(\"b0\") }", js, &config);
         output.expect_string("b0");
 
-        let output = generate("exports.c0 = function() { c1(\"c0\") }", js, &config);
+        let output = generate_output("exports.c0 = function() { c1(\"c0\") }", js, &config);
         output.expect_string("c0");
 
-        let output = generate("function c2() { throw new Error(\"c2\") }", js, &config);
+        let output = generate_output("function c2() { throw new Error(\"c2\") }", js, &config);
         output.expect_string("c2");
     }
 }
@@ -168,23 +168,23 @@ fn test_imports() {
     let js = Lang::Js;
     for config in configurations() {
         // testCaseES6.
-        let output = generate("import { b0 } from './b-dir/b'", js, &config);
+        let output = generate_output("import { b0 } from './b-dir/b'", js, &config);
         output.expect_string("./b-dir/b");
         output.expect_name("b0");
 
         // testCaseCommonJS.
-        let output = generate("const { b0 } = require('./b-dir/b')", js, &config);
+        let output = generate_output("const { b0 } = require('./b-dir/b')", js, &config);
         output.expect_string("./b-dir/b");
 
         // testCaseDynamicImport.
-        let output = generate("import(\"./ext/a.js\").then(then)", js, &config);
+        let output = generate_output("import(\"./ext/a.js\").then(then)", js, &config);
         output.expect_string("./ext/a.js");
 
         // testCaseEmptyFile.
-        let output = generate("export { default as fn } from './test'", js, &config);
+        let output = generate_output("export { default as fn } from './test'", js, &config);
         output.expect_string("./test");
 
-        let output = generate("import d\nfrom'x'with{\ntype:'json'\n}", js, &config);
+        let output = generate_output("import d\nfrom'x'with{\ntype:'json'\n}", js, &config);
         output.expect_name("d");
         output.expect_string("x");
         output.expect_mapping("import", "with");
@@ -198,13 +198,13 @@ fn test_unicode() {
     // testCaseUnicode.
     let js = Lang::Js;
     for config in configurations() {
-        let output = generate("console.log('🍕🍕🍕', \"a\")", js, &config);
+        let output = generate_output("console.log('🍕🍕🍕', \"a\")", js, &config);
         output.expect_string("a");
 
-        let output = generate("console.log({𐀀: \"b\"})", js, &config);
+        let output = generate_output("console.log({𐀀: \"b\"})", js, &config);
         output.expect_string("b");
 
-        let output = generate("[\n'🍕',\n'last'\n]", js, &config);
+        let output = generate_output("[\n'🍕',\n'last'\n]", js, &config);
         output.expect_string("🍕");
         output.expect_string("last");
         output.expect_mapping("]", "]");
@@ -216,47 +216,47 @@ fn test_names() {
     // testCaseNames, with the /**/ position markers removed.
     let js = Lang::Js;
     for config in configurations() {
-        let output = generate("var foo = foo || 0", js, &config);
+        let output = generate_output("var foo = foo || 0", js, &config);
         output.expect_name("foo");
 
-        let output = generate("function fn(bar) {}", js, &config);
+        let output = generate_output("function fn(bar) {}", js, &config);
         output.expect_name("fn");
         output.expect_name("bar");
 
-        let output = generate("class cls {}", js, &config);
+        let output = generate_output("class cls {}", js, &config);
         output.expect_name("cls");
 
-        let output = generate("export let foo = bar => bar()", js, &config);
+        let output = generate_output("export let foo = bar => bar()", js, &config);
         output.expect_name("foo");
         output.expect_name("bar");
 
-        let output = generate("var { mangle_: bar } = foo", js, &config);
+        let output = generate_output("var { mangle_: bar } = foo", js, &config);
         output.expect_name("mangle_");
         output.expect_name("bar");
 
-        let output = generate("var { 'mangle_': bar } = foo", js, &config);
+        let output = generate_output("var { 'mangle_': bar } = foo", js, &config);
         output.expect_string("mangle_");
         output.expect_name("bar");
 
-        let output = generate("foo.mangle_ = 1", js, &config);
+        let output = generate_output("foo.mangle_ = 1", js, &config);
         output.expect_name("mangle_");
 
-        let output = generate("foo['mangle_']", js, &config);
+        let output = generate_output("foo['mangle_']", js, &config);
         output.expect_string("mangle_");
 
-        let output = generate("foo = { mangle_: 0 }", js, &config);
+        let output = generate_output("foo = { mangle_: 0 }", js, &config);
         output.expect_name("mangle_");
 
-        let output = generate("foo = { 'mangle_': 0 }", js, &config);
+        let output = generate_output("foo = { 'mangle_': 0 }", js, &config);
         output.expect_string("mangle_");
 
-        let output = generate("foo = class { mangle_ = 0 }", js, &config);
+        let output = generate_output("foo = class { mangle_ = 0 }", js, &config);
         output.expect_name("mangle_");
 
-        let output = generate("foo = class { 'mangle_' = 0 }", js, &config);
+        let output = generate_output("foo = class { 'mangle_' = 0 }", js, &config);
         output.expect_string("mangle_");
 
-        let output = generate("foo = 'mangle_' in bar", js, &config);
+        let output = generate_output("foo = 'mangle_' in bar", js, &config);
         output.expect_string("mangle_");
     }
 }
@@ -266,10 +266,10 @@ fn test_jsx() {
     // JSX expressions extracted from testCaseJSXRuntime.
     let jsx = Lang::Jsx;
     for config in configurations() {
-        let output = generate("<Fragment id=\"A0\"><>a0</></Fragment>", jsx, &config);
+        let output = generate_output("<Fragment id=\"A0\"><>a0</></Fragment>", jsx, &config);
         output.expect_string("A0");
 
-        let output = generate("<div {...jsx} data-testid=\"A1\">a1</div>", jsx, &config);
+        let output = generate_output("<div {...jsx} data-testid=\"A1\">a1</div>", jsx, &config);
         output.expect_string("A1");
     }
 }

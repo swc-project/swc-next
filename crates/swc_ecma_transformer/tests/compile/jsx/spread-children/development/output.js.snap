@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+/* #__PURE__ */ _jsxDEV(Comp, { children: [...items] }, void 0, true);

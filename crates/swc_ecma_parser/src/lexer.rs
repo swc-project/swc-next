@@ -18,6 +18,10 @@ use super::util::{
     unicode_separator_len,
 };
 
+mod scan_ident;
+
+use scan_ident::{is_identifier_byte, scan_ascii_identifier_continue};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
     UnterminatedString,
@@ -102,6 +106,8 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Annex B comments which become errors if an unambiguous program resolves
     /// to a module.
     pub(crate) module_mode_errors: ArenaVec<'a, Span>,
+    /// The first comment that may still need an attachment. Later comments
+    /// in this suffix may already be trailing.
     pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
@@ -129,7 +135,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
 
         let tokens = if config.tokens() {
-            ArenaVec::with_capacity_in(source.len() + 1, allocator)
+            ArenaVec::with_capacity_in((source.len() / 3).max(64), allocator)
         } else {
             ArenaVec::new_in(allocator)
         };
@@ -264,46 +270,67 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         byte: u8,
     ) -> bool {
         let flags = fast_token_flags(LINE_BREAK);
-        match FAST_CLASS[byte as usize] {
-            FastClass::Identifier => return self.try_identifier_token::<LINE_BREAK>(target, start),
-            FastClass::Punctuation => {
-                self.cursor = start + 1;
-                *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
-            }
-            FastClass::Digit => {
-                if !self.scan_decimal_integer(start, byte, flags, target) {
-                    return false;
-                }
-            }
-            FastClass::Dot => {
-                if self
-                    .source
-                    .get(start as usize + 1)
-                    .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
-                {
-                    return false;
-                }
-                self.cursor = start + 1;
-                *target = Token::new(start, start + 1, TokenTag::Dot, flags);
-            }
-            FastClass::Operator => {
-                let end = start + 1;
-                // A second byte outside this set ends the operator, so the token is
-                // one byte long and does not need the full punctuation scan.
-                let Some(&next) = self.source.get(end as usize) else {
-                    return self.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
-                };
-                if OPERATOR_EXTENDS[next as usize] {
-                    return self.try_operator_token::<LINE_BREAK>(target, start, byte, next);
-                }
-                self.cursor = end;
-                *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
-            }
-            FastClass::Quote => return self.try_string_token::<LINE_BREAK>(target, start),
-            FastClass::Slow => return false,
+        let class = FAST_CLASS[byte as usize];
+
+        if class == FastClass::Punctuation {
+            self.cursor = start + 1;
+            *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
+            self.handle_fast_token(*target);
+            return true;
+        } else if class == FastClass::Identifier {
+            return self.try_identifier_token::<LINE_BREAK>(target, start);
         }
-        self.handle_fast_token(*target);
-        true
+
+        /// Scans a token of one of the classes the two tests above do not cover, and returns
+        /// `false` when the token needs the full scanner. `#[cold]` names it the rare path, which
+        /// is what keeps the jump table out of the hot code above.
+        #[cold]
+        fn cold_class_token<C: ParserConfig, const LINE_BREAK: bool>(
+            lexer: &mut Lexer<'_, C>,
+            target: &mut Token,
+            start: u32,
+            byte: u8,
+            class: FastClass,
+            flags: u8,
+        ) -> bool {
+            match class {
+                FastClass::Digit => {
+                    if !lexer.scan_decimal_integer(start, byte, flags, target) {
+                        return false;
+                    }
+                }
+                FastClass::Dot => {
+                    if lexer
+                        .source
+                        .get(start as usize + 1)
+                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
+                    {
+                        return false;
+                    }
+                    lexer.cursor = start + 1;
+                    *target = Token::new(start, start + 1, TokenTag::Dot, flags);
+                }
+                FastClass::Operator => {
+                    let end = start + 1;
+                    // A second byte outside this set ends the operator, so the token is
+                    // one byte long and does not need the full punctuation scan.
+                    let Some(&next) = lexer.source.get(end as usize) else {
+                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
+                    };
+                    if OPERATOR_EXTENDS[next as usize] {
+                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, next);
+                    }
+                    lexer.cursor = end;
+                    *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
+                }
+                FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
+                FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
+            }
+            lexer.handle_fast_token(*target);
+            true
+        }
+
+        cold_class_token::<C, LINE_BREAK>(self, target, start, byte, class, flags)
     }
 
     /// Reads an ASCII identifier or keyword at `start`. Identifier, string, and
@@ -497,7 +524,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
         if let Some(&next) = self.source.get(end)
-            && (ASCII_IDENTIFIER_CLASS[next as usize] != IdentifierClass::End || next == b'.')
+            && (is_identifier_byte(next) || next == b'.')
         {
             return false;
         }
@@ -1633,10 +1660,12 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
-            for comment in &mut self.comments[self.processed_comments..] {
-                comment.attached_to = self.state.prev_token_end;
+            if self.processed_comments == self.comments.len() {
+                self.processed_comments += 1;
             }
-            self.processed_comments = self.comments.len() + 1;
+        } else {
+            // Leading marks an unresolved comment in the unprocessed suffix.
+            comment.position = CommentPosition::Leading;
         }
         self.comments.push(comment);
         Ok(())
@@ -1655,8 +1684,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
 
         for comment in &mut self.comments[self.processed_comments..] {
-            comment.position = position;
-            comment.attached_to = attached_to;
+            if comment.position == CommentPosition::Leading {
+                comment.position = position;
+                comment.attached_to = attached_to;
+            }
         }
         self.processed_comments = self.comments.len();
     }
@@ -1889,45 +1920,6 @@ const FAST_CLASS: [FastClass; 256] = {
     table
 };
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
-
-/// How a byte after an ASCII identifier prefix affects the identifier.
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-enum IdentifierClass {
-    /// An ASCII identifier part.
-    Continue,
-    /// A byte that ends the identifier.
-    End,
-    /// An escape or non-ASCII byte that needs the full identifier scanner.
-    Slow,
-}
-
-const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
-    let mut table = [IdentifierClass::End; 256];
-    let mut byte = 0;
-    while byte < 256 {
-        if (byte >= b'0' as usize && byte <= b'9' as usize)
-            || (byte >= b'A' as usize && byte <= b'Z' as usize)
-            || (byte >= b'a' as usize && byte <= b'z' as usize)
-            || byte == b'_' as usize
-            || byte == b'$' as usize
-        {
-            table[byte] = IdentifierClass::Continue;
-        } else if byte == b'\\' as usize || byte >= 0x80 {
-            table[byte] = IdentifierClass::Slow;
-        }
-        byte += 1;
-    }
-    table
-};
-
-const ASCII_JSX_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
-    let mut table = ASCII_IDENTIFIER_CLASS;
-    table[b'-' as usize] = IdentifierClass::Continue;
-    table
-};
-
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
 fn fast_token_flags(line_break: bool) -> u8 {
@@ -1936,61 +1928,6 @@ fn fast_token_flags(line_break: bool) -> u8 {
     } else {
         0
     }
-}
-
-// This is a very hot path. Inline this loop too
-// to avoid losing the single-call-site bonus and
-// introducing a new helper call.
-/// Returns the end of the ASCII identifier part at `start`, or `None` if an
-/// escape or a non-ASCII byte follows it and the full scanner is needed.
-#[inline(always)]
-fn scan_ascii_identifier_continue<const JSX: bool>(source: &[u8], start: u32) -> Option<u32> {
-    debug_assert!(u32::try_from(source.len()).is_ok());
-    debug_assert!((start as usize) <= source.len());
-    // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
-    let mut position = start as usize;
-    let classes = if JSX {
-        &ASCII_JSX_IDENTIFIER_CLASS
-    } else {
-        &ASCII_IDENTIFIER_CLASS
-    };
-
-    // Comparing the batch end instead of the remaining length keeps no extra counter live, so
-    // the scan fits in caller-saved registers. `position + IDENTIFIER_BATCH_SIZE` cannot overflow
-    // because a slice length is at most `isize::MAX`.
-    while position + IDENTIFIER_BATCH_SIZE <= source.len() {
-        let batch_end = position + IDENTIFIER_BATCH_SIZE;
-        // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
-        // guarantees that `batch_end` is within `source`.
-        let batch = unsafe { source.get_unchecked(position..batch_end) };
-        for (offset, byte) in batch.iter().enumerate() {
-            if classes[*byte as usize] != IdentifierClass::Continue {
-                return ascii_identifier_end(*byte, position + offset);
-            }
-        }
-        position += IDENTIFIER_BATCH_SIZE;
-    }
-    while let Some(byte) = source.get(position) {
-        if classes[*byte as usize] != IdentifierClass::Continue {
-            return ascii_identifier_end(*byte, position);
-        }
-        position += 1;
-    }
-
-    debug_assert!(position >= start as usize);
-    debug_assert!(position <= source.len());
-    Some(position as u32)
-}
-
-/// Ends an ASCII identifier part at `position`, where `byte` is not an
-/// identifier part. Returns `None` for `\\` and non-ASCII bytes, which are the
-/// [`IdentifierClass::Slow`] bytes. Testing the byte instead of the table keeps
-/// the scan loop from holding the class of each byte.
-#[inline(always)]
-fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
-    // `\\` maps to zero and non-ASCII bytes stay negative.
-    let slow = (byte ^ b'\\') as i8 <= 0;
-    (!slow).then_some(position as u32)
 }
 
 #[inline]

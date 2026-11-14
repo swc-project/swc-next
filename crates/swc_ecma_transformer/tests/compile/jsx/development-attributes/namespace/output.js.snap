@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _jsxFileName = "";
+var N;
+(function(N) {
+  N.node = /* #__PURE__ */ React.createElement("div", { __self: this, __source: { fileName: _jsxFileName, lineNumber: 1, columnNumber: 35 } });
+})(N || (N = {}));
+export {};

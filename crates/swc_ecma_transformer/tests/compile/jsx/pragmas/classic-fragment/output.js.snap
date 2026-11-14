@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsx h
+ * @jsxRuntime classic
+ * @jsxFrag Frag */
+h(Frag, null);

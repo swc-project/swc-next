@@ -11,7 +11,7 @@
 //! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to eight bytes;
 //! - `node_count` 16-byte `NodePayload` values;
-//! - `extra_count` 8-byte `ExtraData` values;
+//! - `extra_count` 4-byte `ExtraDataUnit` values;
 //! - the raw extra string pool, padded to four bytes;
 //! - `comment_count` 16-byte records in source order. Each record contains
 //!   UTF-16 start/end and UTF-8 byte start/end for extracting comment text.
@@ -45,15 +45,15 @@ use {
 };
 
 use crate::{
-    Ast, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId, NodeKind,
-    NodePayload, SourceType, Span,
+    Ast, AstCtx, Comment, CommentKind, CommentPosition, Diagnostic, ExtraDataUnit, Lang, NodeId,
+    NodeKind, NodePayload, SourceType, Span,
 };
 
 const HEADER_SIZE: usize = 40;
 const SPAN_SIZE: usize = 8;
 const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
-const EXTRA_DATA_SIZE: usize = 8;
+const EXTRA_DATA_SIZE: usize = 4;
 const COMMENT_SIZE: usize = 16;
 // SourceType uses the low two bits; Lang uses the next three.
 const FLAG_LANG_SHIFT: u32 = 2;
@@ -65,9 +65,9 @@ const _: () = {
     assert!(size_of::<Span>() == SPAN_SIZE);
     assert!(size_of::<NodeKind>() == NODE_KIND_SIZE);
     assert!(size_of::<NodePayload>() == NODE_PAYLOAD_SIZE);
-    assert!(size_of::<ExtraData>() == EXTRA_DATA_SIZE);
+    assert!(size_of::<ExtraDataUnit>() == EXTRA_DATA_SIZE);
     assert!(align_of::<NodePayload>() <= 8);
-    assert!(align_of::<ExtraData>() <= 8);
+    assert!(align_of::<ExtraDataUnit>() == 4);
     assert!(size_of::<CommentKind>() == 2);
     assert!(size_of::<CommentPosition>() == 2);
     assert!(size_of::<Comment>() == COMMENT_SIZE);
@@ -78,7 +78,9 @@ const _: () = {
 };
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.
-pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
+pub fn buffer_size(tree: &AstCtx<'_>, diagnostics: &[Diagnostic]) -> usize {
+    // SAFETY: Sizing only reads this AST's storage lengths and comments.
+    let tree = unsafe { tree.ast() };
     HEADER_SIZE
         + tree.node_count() * SPAN_SIZE
         + align_to_eight(tree.node_count() * NODE_KIND_SIZE)
@@ -115,8 +117,8 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
 /// required size without writing a partial payload.
 /// `source_utf16_len` must be the UTF-16 code unit length of `tree.source()`.
 pub fn serialize_into(
-    tree: &Ast<'_>,
-    diagnostics: &[Diagnostic<'_>],
+    tree: &AstCtx<'_>,
+    diagnostics: &[Diagnostic],
     buf: &mut [u8],
     source_utf16_len: usize,
 ) -> usize {
@@ -124,6 +126,8 @@ pub fn serialize_into(
     if buf.len() < required {
         return required;
     }
+    // SAFETY: Serialization only reads handles and storage belonging to this AST.
+    let tree = unsafe { tree.ast() };
     let (positions, first_non_ascii_pos) = build_pos_map(tree.source(), source_utf16_len);
 
     // ====================== Header ======================
@@ -297,20 +301,12 @@ impl std::error::Error for DeserializeError {}
 /// A read-only AST view backed by immutable transfer sections.
 ///
 /// Mutation is unavailable because its tables may alias immutable buffer bytes.
-///
-/// ```compile_fail
-/// use swc_next_ecma_ast::ffi::ast::BorrowedAst;
-///
-/// fn reserve(view: &mut BorrowedAst<'_>) {
-///     view.reserve(1, 1);
-/// }
-/// ```
 pub struct BorrowedAst<'a> {
-    ast: Ast<'a>,
+    ast: AstCtx<'a>,
 }
 
 impl<'a> Deref for BorrowedAst<'a> {
-    type Target = Ast<'a>;
+    type Target = AstCtx<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.ast
@@ -410,7 +406,8 @@ pub unsafe fn deserialize_from<'a>(
         }
         let source = std::str::from_utf8(&buf[strings..source_end])
             .map_err(|_| DeserializeError("AST string source contains invalid UTF-8"))?;
-        let mut tree = Ast::new(source, allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut tree = unsafe { Ast::new(source, allocator) };
         tree.reserve(node_count, 0);
 
         // SAFETY: `reserve` allocated each destination for `node_count` elements.
@@ -468,7 +465,7 @@ pub unsafe fn deserialize_from<'a>(
         };
         tree.set_source_metadata(source_type, lang);
 
-        Ok(BorrowedAst { ast: tree })
+        Ok(BorrowedAst { ast: tree.into() })
     }
 
     #[cfg(target_endian = "little")]
@@ -507,8 +504,8 @@ pub unsafe fn deserialize_from<'a>(
 /// The sections must obey the same version, encoding, node, and metadata contracts
 /// as [`deserialize_from`]. `header` must contain 40 bytes; the other sections must
 /// contain the initialized spans, kinds, payloads, extra data, and strings described
-/// by that header, without padding. Spans must be aligned to four bytes, payloads
-/// and extra data to eight bytes. Every section must remain immutable for the
+/// by that header, without padding. Spans and extra data must be aligned to four
+/// bytes, and payloads to eight bytes. Every section must remain immutable for the
 /// returned view's lifetime. Comment and diagnostic sections must be empty.
 #[cfg(target_endian = "little")]
 #[inline]
@@ -529,7 +526,7 @@ pub unsafe fn deserialize_parts<'a>(
     let flags = read_u32(header, 32);
     debug_assert!(spans.as_ptr().addr().is_multiple_of(align_of::<Span>()));
     debug_assert!(payloads.as_ptr().addr().is_multiple_of(8));
-    debug_assert!(extra.as_ptr().addr().is_multiple_of(8));
+    debug_assert!(extra.as_ptr().addr().is_multiple_of(4));
 
     // SAFETY: The caller guarantees valid encodings, initialized tables, and
     // alignment. BorrowedAst exposes no mutable access to these pointers.
@@ -550,7 +547,7 @@ pub unsafe fn deserialize_parts<'a>(
         ast.root = Some(NodeId::from_usize(root));
         ast.source_type = std::mem::transmute::<u8, SourceType>((flags & 3) as u8);
         ast.lang = std::mem::transmute::<u8, Lang>(((flags >> FLAG_LANG_SHIFT) & 7) as u8);
-        Ok(BorrowedAst { ast })
+        Ok(BorrowedAst { ast: ast.into() })
     }
 }
 
@@ -725,7 +722,7 @@ fn deserialize_extra_data(tree: &mut Ast<'_>, bytes: &[u8]) {
 
     // SAFETY: The allocation has room for `extra_count` entries. Copy through
     // its allocation pointer before creating a byte slice over initialized
-    // storage. All bit patterns are valid for `ExtraData`.
+    // storage. All bit patterns are valid for `ExtraDataUnit`.
     unsafe {
         let destination = tree.extra_data.as_mut_ptr().cast::<u8>();
         std::ptr::copy_nonoverlapping(bytes.as_ptr(), destination, bytes.len());
@@ -744,23 +741,25 @@ mod tests {
     use swc_next_allocator::Allocator;
 
     use super::{PositionCache, buffer_size, build_pos_map, deserialize_from, serialize_into};
-    use crate::{Ast, Diagnostic, GetSpan, Label, Severity, Span, SubRange};
+    use crate::{Ast, AstCtx, Diagnostic, GetSpan, Label, Severity, Span, SubRange};
 
     #[test]
     fn canonical_little_endian_format() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let statement = ast.stmt_empty_statement(Span::new(0, 0));
         let body = ast.add_sub_range([statement]);
         let program = ast.program(Span::new(0, 0), SubRange::empty(), body, None);
         ast.set_root_program(program);
 
+        let ast = AstCtx::from(ast);
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         assert_eq!(serialize_into(&ast, &[], &mut buffer, 0), buffer.len());
-        assert_eq!(buffer.len(), 112);
+        assert_eq!(buffer.len(), 108);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
-        assert_eq!(u32_at(&buffer, 4), 2); // extra-data count
+        assert_eq!(u32_at(&buffer, 4), 3); // extra-data unit count
         assert_eq!(u32_at(&buffer, 28), 1); // root node ID
         assert_eq!(u32_at(&buffer, 36), 0); // no non-ASCII source bytes
 
@@ -770,20 +769,45 @@ mod tests {
         assert_eq!(u32_at(&buffer, 92), 1); // out-of-line body field
 
         assert_eq!(u32_at(&buffer, 96), 0); // body element node ID
-        assert_eq!(u32_at(&buffer, 100), 0); // node ID padding
-        assert_eq!(u32_at(&buffer, 104), 0); // body range start
-        assert_eq!(u32_at(&buffer, 108), 1); // body range end
+        assert_eq!(u32_at(&buffer, 100), 0); // body range start
+        assert_eq!(u32_at(&buffer, 104), 1); // body range end
+    }
+
+    #[test]
+    fn packed_extra_data() {
+        let allocator = Allocator::new();
+        // SAFETY: All handles below are created and used within this AST.
+        let mut ast = unsafe { Ast::new("", &allocator) };
+        let statement = ast.stmt_empty_statement(Span::new(0, 0));
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(0, 0), SubRange::empty(), body, None);
+        let following = ast.add_sub_range([Some(statement), None]);
+
+        assert_eq!(ast.extra_data_count(), 5);
+        assert_eq!(program.body(&ast).len(), 1);
+        program.set_body(&mut ast, SubRange::empty());
+        assert!(program.body(&ast).is_empty());
+        assert!(
+            following
+                .get_node(&ast, 0)
+                .unwrap()
+                .unwrap()
+                .is_empty_statement(&ast)
+        );
+        assert!(following.get_node(&ast, 1).unwrap().is_none());
     }
 
     #[test]
     fn deserialize_little_endian_format() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let statement = ast.stmt_empty_statement(Span::new(2, 3));
         let body = ast.add_sub_range([statement]);
         let program = ast.program(Span::new(1, 4), SubRange::empty(), body, None);
         ast.set_root_program(program);
 
+        let ast = AstCtx::from(ast);
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         serialize_into(&ast, &[], &mut buffer, 0);
         let buffer = AlignedBuffer::new(&buffer);
@@ -791,21 +815,24 @@ mod tests {
         let decoded_allocator = Allocator::new();
         // SAFETY: The serializer produced a valid, aligned transfer.
         let decoded = unsafe { deserialize_from(&buffer, &decoded_allocator) }.unwrap();
+        // SAFETY: All decoded handles below are used only with the decoded AST.
+        let decoded = unsafe { decoded.ast() };
         let decoded_program = decoded.root_program();
-        let decoded_body = decoded_program.body(&decoded);
-        let decoded_statement = decoded_body.get_node(&decoded, 0).unwrap();
+        let decoded_body = decoded_program.body(decoded);
+        let decoded_statement = decoded_body.get_node(decoded, 0).unwrap();
 
         assert_eq!(decoded.node_count(), 2);
-        assert_eq!(decoded.extra_data_count(), 2);
-        assert_eq!(decoded_program.span(&decoded), Span::new(1, 4));
-        assert_eq!(decoded_statement.span(&decoded), Span::new(2, 3));
-        assert!(decoded_statement.is_empty_statement(&decoded));
+        assert_eq!(decoded.extra_data_count(), 3);
+        assert_eq!(decoded_program.span(decoded), Span::new(1, 4));
+        assert_eq!(decoded_statement.span(decoded), Span::new(2, 3));
+        assert!(decoded_statement.is_empty_statement(decoded));
 
         // Every Program stores its body range in extra data. Exercise an empty
         // section directly through the production decoder.
         #[cfg(target_endian = "big")]
         {
-            let mut empty = Ast::new("", &allocator);
+            // SAFETY: All handles used below belong to this AST and remain valid.
+            let mut empty = unsafe { Ast::new("", &allocator) };
             super::deserialize_extra_data(&mut empty, &[]);
             assert_eq!(empty.extra_data_count(), 0);
         }
@@ -852,7 +879,8 @@ mod tests {
     #[test]
     fn serialized_unicode_spans() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("éa😀b", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("éa😀b", &allocator) };
         let detached = ast.stmt_empty_statement(Span::new(2, 3));
         let later = ast.stmt_empty_statement(Span::new(7, 8));
         let earlier = ast.stmt_empty_statement(Span::new(2, 3));
@@ -860,6 +888,7 @@ mod tests {
         let program = ast.program(Span::new(0, 8), SubRange::empty(), body, None);
         ast.set_root_program(program);
 
+        let ast = AstCtx::from(ast);
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         serialize_into(&ast, &[], &mut buffer, 5);
         let span = |id: crate::NodeId| {
@@ -875,7 +904,8 @@ mod tests {
     #[test]
     fn packed_diagnostic_format() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("éx", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("éx", &allocator) };
         let program = ast.program(Span::new(0, 3), SubRange::empty(), SubRange::empty(), None);
         ast.set_root_program(program);
 
@@ -889,6 +919,7 @@ mod tests {
                 message: Cow::Borrowed("abc"),
             }],
         }];
+        let ast = AstCtx::from(ast);
         let diagnostics_offset = buffer_size(&ast, &[]);
         let required = buffer_size(&ast, &diagnostics);
         assert_eq!(required, diagnostics_offset + 40);

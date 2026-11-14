@@ -1,14 +1,12 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 
-import type { ParserOptions as BindingParserOptions } from "./binding.js";
-import type { AstMeta } from "@swc-next/decoder";
-export type { AstMeta } from "@swc-next/decoder";
+import type { ParserConfig } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
-export type { CommentMode } from "./binding.js";
+export type { CommentMode, ParserConfig } from "./binding.js";
 
-export interface ParserOptions extends BindingParserOptions {
+export interface ParseApiOptions extends ParserConfig {
   /** Return diagnostics and the recovered AST instead of throwing the first diagnostic. @default false */
   errorRecovery?: boolean;
 }
@@ -35,7 +33,6 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
-  readonly meta: AstMeta;
   readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
@@ -44,5 +41,5 @@ export interface ParseResult {
 
 export declare function parseSync(
   source: string,
-  options?: ParserOptions | undefined | null,
+  options?: ParseApiOptions | undefined | null,
 ): ParseResult;

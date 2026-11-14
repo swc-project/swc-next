@@ -1,5 +1,6 @@
 mod assert_layout;
 mod ast;
+mod ast_ctx;
 mod comment;
 mod derive;
 mod diagnostic;
@@ -20,7 +21,7 @@ mod generated {
 }
 
 use generated::ast_payload::NodePayload;
-use node_id::ExtraData;
+use node_id::{ExtraData, ExtraDataUnit, SubRangeNode};
 use swc_next_allocator::{
     Allocator,
     hash_map::HashMap as ArenaHashMap,
@@ -28,12 +29,13 @@ use swc_next_allocator::{
 };
 
 pub use ast::*;
+pub use ast_ctx::AstCtx;
 pub use comment::*;
 pub use derive::*;
 pub use diagnostic::*;
 pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
-pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
+pub use node_id::{AstNode, ExtraDataId, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstUtf8, AstWtf8};
 pub use syntax::*;
@@ -44,6 +46,29 @@ use swc_next_allocator::vec::multi_index_vec;
 use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
+///
+/// # Safety
+///
+/// Handles are not tied to their owning AST. These include [`NodeId`], typed
+/// node handles such as [`Expr`] and [`Program`], [`ExtraDataId`], [`SubRange`],
+/// and string handles ([`AstUtf8`] and [`AstWtf8`]). They identify storage within
+/// one AST; copying a handle does not copy its data or track later mutations.
+///
+/// Access this type through [`AstCtx`]. Its unsafe accessors require callers to
+/// uphold the following invariants throughout subsequent uses of the AST and
+/// its handles, even when individual operations are safe functions:
+///
+/// - Handles belong to this AST and refer to initialized, in-bounds storage.
+/// - Typed node handles match the stored node kind. Field and list handles
+///   match the stored value types, and string ranges have the expected UTF-8
+///   or WTF-8 encoding.
+/// - Mutations preserve these invariants for all AST edges and handles that
+///   remain in use, including if a panic unwinds.
+/// - Handles invalidated by replacing or truncating storage are never reused,
+///   even if their indices are allocated again.
+///
+/// Accesses may use unchecked indexing or interpret storage according to the
+/// handle's type. Violating these invariants can cause undefined behavior.
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
@@ -59,7 +84,7 @@ pub struct Ast<'a> {
     pub(crate) nodes: NodeData<'a>,
 
     /// Flattening AST fields.
-    extra_data: ArenaIndexVec<'a, ExtraDataId, ExtraData>,
+    extra_data: ArenaIndexVec<'a, ExtraDataId, ExtraDataUnit>,
 
     /// Source-backed and decoded AST strings.
     strings: StringPool<'a>,
@@ -189,23 +214,16 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_sub_range<N: ExtraDataValue, I: IntoIterator<Item = N>>(
+    pub fn add_sub_range<N: SubRangeNode, I: IntoIterator<Item = N>>(
         &mut self,
         iter: I,
     ) -> SubRange<N> {
         let start = self.next_extra_data_id();
         for node in iter {
-            let data = node.into_extra_data();
+            let data = ExtraDataUnit::from_raw_node_id(node.into_raw_node_id());
             self.extra_data.push(data);
         }
         SubRange::new(start, self.next_extra_data_id())
-    }
-
-    /// Append pre-encoded extra data and return its starting index.
-    fn add_extra_data_slice(&mut self, data: &[ExtraData]) -> ExtraDataId {
-        let start = self.next_extra_data_id();
-        self.extra_data.extend_from_slice_copy(data);
-        start
     }
 
     #[inline]
@@ -332,7 +350,7 @@ impl<'a> Ast<'a> {
         self.nodes.len()
     }
 
-    /// Returns the number of entries in the out-of-line field table.
+    /// Returns the number of four-byte units in the out-of-line field table.
     #[inline]
     pub fn extra_data_count(&self) -> usize {
         self.extra_data.len()
@@ -354,7 +372,12 @@ impl<'a> Ast<'a> {
 #[doc(hidden)]
 impl<'a> Ast<'a> {
     /// Create a flattening AST backed by `source` and `allocator`.
-    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// The caller must uphold the handle invariants documented on [`Ast`]
+    /// throughout all subsequent uses of the returned AST and its handles.
+    pub unsafe fn new(source: &'a str, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             root: None,
@@ -409,8 +432,19 @@ impl<'a> Ast<'a> {
     }
 
     /// Rewinds node and out-of-line field storage to an earlier checkpoint.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the root, retained nodes, and retained
+    /// out-of-line fields do not refer to removed nodes or fields. Every
+    /// out-of-line field range used after this call must remain fully within
+    /// the retained storage.
+    ///
+    /// Handles, indices, and ranges that refer to removed storage must never be
+    /// used to access the AST again, even if subsequent allocations reuse their
+    /// indices.
     #[inline]
-    pub fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
+    pub unsafe fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
         assert!(nodes_len <= self.nodes.len());
         assert!(extra_data_len <= self.extra_data.len());
         self.nodes.truncate(nodes_len);
@@ -420,9 +454,47 @@ impl<'a> Ast<'a> {
 
 #[doc(hidden)]
 impl Ast<'_> {
+    /// Reads a two-unit value whose schema determines its active union field.
+    ///
+    /// # Safety
+    /// `offset` must identify two initialized units with the expected field representation.
     #[inline]
-    fn add_extra<T: ExtraDataValue>(&mut self, value: T) -> ExtraDataId {
-        self.extra_data.push(value.into_extra_data())
+    unsafe fn read_extra_data(&self, offset: ExtraDataId) -> ExtraData {
+        debug_assert!(offset.index() + 2 <= self.extra_data.len());
+        // SAFETY: Both types have four-byte alignment; the caller guarantees two units.
+        unsafe {
+            self.extra_data
+                .as_raw_slice()
+                .as_ptr()
+                .add(offset.index())
+                .cast::<ExtraData>()
+                .read()
+        }
+    }
+
+    /// Writes a two-unit value into an existing schema field.
+    ///
+    /// # Safety
+    /// `offset` must identify two initialized units assigned to this field.
+    #[inline]
+    unsafe fn write_extra_data(&mut self, offset: ExtraDataId, value: ExtraData) {
+        debug_assert!(offset.index() + 2 <= self.extra_data.len());
+        // SAFETY: Both types have four-byte alignment; the caller guarantees two units.
+        unsafe {
+            self.extra_data
+                .as_mut_ptr()
+                .add(offset.index())
+                .cast::<ExtraData>()
+                .write(value)
+        }
+    }
+
+    /// Append pre-encoded extra data and return its starting index.
+    #[inline]
+    fn add_extra_data_slice(&mut self, data: &[ExtraDataUnit]) -> ExtraDataId {
+        let start = self.next_extra_data_id();
+        self.extra_data.extend_from_slice_copy(data);
+        start
     }
 
     #[inline]

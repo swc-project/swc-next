@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+[
+    Diagnostic {
+        severity: Error,
+        message: "Please provide an explicit key value. Using `key` as shorthand for `key={true}` is not allowed.",
+        span: 18..21,
+        help: None,
+        labels: [],
+    },
+]

@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _s = $RefreshSig$();
+const useThing = () => {
+};
+function App() {
+  _s();
+  useThing();
+}
+_s(App, "useThing{}", false, function() {
+  return [useThing];
+});
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");

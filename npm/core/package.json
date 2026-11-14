@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/core",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "The extensible Node.js API for SWC Next",
   "repository": {
     "type": "git",
@@ -33,7 +33,7 @@
     "test:walk": "rstest run --include \"test/walk/*.test.js\"",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts"
+    "test:codec": "pnpm build --release && node ./test/codec-conformance.ts"
   },
   "keywords": [],
   "author": "",

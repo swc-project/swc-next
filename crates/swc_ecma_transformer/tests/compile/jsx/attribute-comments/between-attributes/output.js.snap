@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const node = /* #__PURE__ */ React.createElement(
+  Trans,
+  /* before */
+  { a: "1", /** between */ b: "2" /* after */ }
+);

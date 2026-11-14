@@ -1,0 +1,1 @@
+import * as N from 'pkg'; export import A = N.Member;

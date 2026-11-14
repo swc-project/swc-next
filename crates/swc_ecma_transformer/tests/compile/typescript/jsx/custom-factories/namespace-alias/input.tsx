@@ -1,0 +1,1 @@
+namespace N { export function h() {} } import h = N.h; export const x = <div />;

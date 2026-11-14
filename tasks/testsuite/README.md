@@ -90,6 +90,6 @@ pnpm test:codec
 ```
 
 ESTree conformance checks the N-API AST against reference fixtures. Codec
-conformance checks that JavaScript decode/encode output agrees with native
-parse/codegen. Each command builds its required native bindings. Both are
-separate from the Rust conformance runner.
+conformance encodes parsed programs into buffers, then checks byte-for-byte
+stability after decoding and re-encoding with the original source. Each command
+builds its native bindings. Both are separate from the Rust conformance runner.

@@ -15,7 +15,7 @@
 
 SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc) from the ground up, built around a flat, ESTree-based AST for performance and extensibility.
 
-- **Performance:** **Up to 3× faster than SWC** in [native parser benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-native) and **up to 10× faster** in [JavaScript API benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-js).
+- **Performance:** **Up to 3× faster than SWC** in [native parser benchmarks](https://github.com/rstackjs/ecmascript-parser-benchmark-native) and **up to 15× faster** in [JavaScript API benchmarks](https://github.com/rstackjs/ecmascript-parser-benchmark-js).
 - **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript enable writing plugins in JavaScript.
 - **Correctness:** Tested against Test262, TypeScript, and Babel, supplemented by additional unit tests.
 
@@ -32,11 +32,11 @@ npm install @swc-next/core
 Then parse and print a program:
 
 ```js
-import { parseSync, printSync } from "@swc-next/core";
+import { parseSync, generateSync } from "@swc-next/core";
 
 const { program, diagnostics } = parseSync("const answer = 42;");
 console.log(diagnostics);
-console.log(printSync(program).code);
+console.log(generateSync(program).code);
 ```
 
 ## Roadmap
@@ -49,11 +49,13 @@ See the [project roadmap](https://github.com/swc-project/swc-next/issues/181) fo
 
 See the [Flattening AST design](https://next.swc.rs/architecture/flat-ast) and other documents.
 
-## Rust API Soundness
+## Rust API Safety
 
-The current Rust AST API has known soundness issues:
+Node IDs and typed handles are not tied to their owning `Ast`. Handles include `NodeId`, typed node handles such as `Expr`, `SubRange<T>` list ranges, and `AstUtf8` / `AstWtf8` string handles. Using them with the wrong AST or after invalidation can cause undefined behavior.
 
-- Node IDs and typed handles are not tied to their owning `Ast`. Using a handle with a different AST can access unrelated nodes or cause undefined behavior through unchecked access, even through safe APIs.
+Use `AstCtx` through its safe APIs where possible. Custom node access requires `unsafe { ctx.ast() }` for reading or `unsafe { ctx.ast_mut() }` for mutation. You must use handles with their owning AST, keep them valid and correctly typed, and preserve these guarantees when editing. Never reuse handles invalidated by mutation.
+
+See the [`Ast`](crates/swc_ecma_ast/src/lib.rs) and [`AstCtx`](crates/swc_ecma_ast/src/ast_ctx.rs) Rust docs for the full safety requirements.
 
 ## Compatibility
 

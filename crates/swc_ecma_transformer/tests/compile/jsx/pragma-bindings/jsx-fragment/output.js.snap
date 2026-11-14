@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _jsxFileName2 = "";
+h(_jsxFileName, null, h("div", { __self: this, __source: { fileName: _jsxFileName2, lineNumber: 1, columnNumber: 3 } }));

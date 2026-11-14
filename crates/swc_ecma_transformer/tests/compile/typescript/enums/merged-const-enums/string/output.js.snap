@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+console.log("ab");
+export {};

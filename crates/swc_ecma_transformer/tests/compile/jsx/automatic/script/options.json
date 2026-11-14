@@ -1,0 +1,10 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "script"
+  },
+  "transformer": {
+    "jsx": {},
+    "typescript": false
+  }
+}

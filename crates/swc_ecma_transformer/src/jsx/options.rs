@@ -1,7 +1,4 @@
-use serde::Deserialize;
-
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum JsxRuntime {
     Classic,
     #[default]
@@ -10,10 +7,11 @@ pub enum JsxRuntime {
 
 /// JSX configuration targeting Babel 8.
 ///
+/// JSX spread children are supported as an extension in both runtimes.
+///
 /// `useSpread` and `useBuiltIns` were removed in Babel 8 and are intentionally
 /// rejected. Lowering object spread syntax belongs to a separate transform.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[derive(Debug, Clone)]
 pub struct JsxOptions {
     pub runtime: JsxRuntime,
     pub development: bool,
@@ -45,8 +43,7 @@ impl Default for JsxOptions {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+#[derive(Debug, Clone)]
 pub struct ReactRefreshOptions {
     pub refresh_reg: String,
     pub refresh_sig: String,

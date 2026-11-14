@@ -22,7 +22,7 @@ fn parse_program<'a>(src: &'a str, allocator: &'a Allocator, lang: Lang) -> Ast<
     )
     .parse();
     assert!(result.diagnostics.is_empty());
-    result.ast
+    unsafe { result.ast.into_ast() }
 }
 
 fn bench_visit(b: &mut Bencher, src: &'static str, lang: Lang) {

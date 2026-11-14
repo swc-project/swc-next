@@ -23,7 +23,7 @@ pub struct Ast<'a> {
     root: Option<NodeId>,
     // Source metadata and attached comments omitted.
     nodes: NodeData<'a>,
-    extra_data: ArenaVec<'a, ExtraData>,
+    extra_data: ArenaIndexVec<'a, ExtraDataId, ExtraDataUnit>,
     strings: StringPool<'a>,
 }
 ```
@@ -41,7 +41,7 @@ Different node kinds have different fields. `ast_tools` computes a fixed layout 
 - **Full layout:** All fields fit in the 16-byte payload; no extra field slots are needed.
 - **Partial layout:** Selected fields occupy the first 12 bytes, and the last 4 bytes hold an `ExtraDataId` pointing to the remaining fields. Smaller fields are preferred to keep more fields inline.
 
-For example, `Program` stores `directives` and `hashbang` inline, while `body` occupies one extra-data slot:
+For example, `Program` stores `directives` and `hashbang` inline, while `body` occupies two consecutive extra-data units:
 
 ```rs
 #[repr(C)]
@@ -52,11 +52,11 @@ pub(crate) struct ProgramPayload {
 }
 ```
 
-`ExtraData` is an 8-byte, type-erased slot. The AST schema supplies the field type and its encoding; no per-slot runtime discriminant is needed.
+`ExtraDataUnit` is a 4-byte storage unit. The AST schema supplies each field's type, width, and offset; no runtime discriminant is needed. `ExtraData` provides a typed union view over two consecutive units, aligned to 4 bytes.
 
-- Node handles are encoded as `NodeId` values.
-- Supported scalar fields are encoded as compact words.
-- `AstUtf8`, `AstWtf8`, and `SubRange<T>` store two `u32` offsets in one slot.
+- Node handles are encoded as `NodeId` values in one unit.
+- Supported scalar fields occupy one unit.
+- Out-of-line string ranges and `SubRange<T>` store their two `u32` offsets in consecutive units.
 - Optional handles and strings use reserved representations for `None`, such as `u32::MAX` for an optional node ID.
 
 ![Flattening AST](/images/flattening-ast.excalidraw.png)

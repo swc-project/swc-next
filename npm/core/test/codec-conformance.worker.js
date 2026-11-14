@@ -4,7 +4,7 @@ import { readExpected } from "./conformance-utils.js";
 
 import { decode, encodeOptions } from "@swc-next/decoder";
 import { encode } from "@swc-next/encoder";
-import * as binding from "./binding/index.js";
+import * as binding from "../src-js/binding.js";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
@@ -45,16 +45,32 @@ function checkUnit(file, unit, suite, sourceType) {
   }
   result.parsed = true;
   try {
-    const program = parsed.program;
-    const native = binding.nativeParsePrintSync(source, options, 0);
-    const codec = binding.printSync(...encode(program, parsed.meta), 0);
-    if (codec !== native) {
-      return { ...result, error: "Codec output differs from native output" };
+    const buffer = encodeBuffer(parsed.program);
+    const decoded = decode(buffer, source, sourceBytes);
+    const roundtrip = encodeBuffer(decoded.program);
+    if (!buffer.equals(roundtrip)) {
+      return { ...result, error: "Codec buffer differs after decode/encode" };
     }
     return { ...result, passed: true };
   } catch (error) {
     return { ...result, error: String(error) };
   }
+}
+
+function encodeBuffer(program) {
+  const [header, spans, kinds, payloads, extra, strings] = encode(program);
+  const kindPadding = Buffer.alloc((8 - (kinds.byteLength % 8)) % 8);
+  const stringPadding = Buffer.alloc((4 - (strings.byteLength % 4)) % 4);
+  // Copy reusable encoder storage before the next encode overwrites it.
+  const buffer = Buffer.concat([
+    header, spans, kinds, kindPadding, payloads, extra, strings, stringPadding,
+  ]);
+  // Decoder source-backed fields use original source spans. Keep encoded strings
+  // in the pool so their offsets are independent of the original source text.
+  buffer.writeUInt32LE(strings.byteLength, 8);
+  buffer.writeUInt32LE(0, 12);
+  buffer.writeUInt32LE(0, 36);
+  return buffer;
 }
 
 function getLang(unit, suite) {

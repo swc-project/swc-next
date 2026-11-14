@@ -1,0 +1,1 @@
+const Header = styled.div``; <Header />;

@@ -34,6 +34,6 @@ Use `jsx` or `tsx` for JSX input, and `dts` for declaration files. Parsing TypeS
 
 ## Next steps
 
-[Walk the AST](/guide/walk) or [generate code](/guide/codegen).
+[Walk the AST](/guide/walk) or [generate code](/guide/generator).
 
 See the [Parser API](/api/javascript/parser) for input and output types, language and source type options, comments, diagnostics, and source positions.

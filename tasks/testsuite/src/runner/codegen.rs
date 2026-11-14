@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::Options as ParserOptions;
 
 use crate::{
@@ -54,13 +54,13 @@ fn run_case<C: Case>(case: &C) -> Result<(), String> {
         };
         let ast = parse_with_options(&allocator, case.code(), options)
             .map_err(|error| format!("preserve_parens={preserve_parens}: input {error}"))?;
-        let output = print(&ast, CodegenOptions::default()).code;
+        let output = generate(&ast, GeneratorOptions::default()).code;
         let reparsed = parse_with_options(&allocator, &output, options)
             .map_err(|error| format!("preserve_parens={preserve_parens}: output {error}"))?;
         if let Err(error) = ast_compare::compare(&ast, &reparsed) {
             errors.push(format!("preserve_parens={preserve_parens}: {error}"));
         }
-        let output2 = print(&reparsed, CodegenOptions::default()).code;
+        let output2 = generate(&reparsed, GeneratorOptions::default()).code;
         if output != output2 {
             errors.push(format!(
                 "preserve_parens={preserve_parens}: codegen output changed after reparse"

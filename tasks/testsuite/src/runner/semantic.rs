@@ -44,7 +44,8 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let allocator = Allocator::new();
     let ast = parse_case(&allocator, case)?;
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let actual = semantic_snapshot(&ast, &semantic);
+    // SAFETY: The model and the inspected handles come from this AST.
+    let actual = semantic_snapshot(unsafe { semantic.ctx().ast() }, semantic.semantic());
 
     if actual == case.expected() {
         Ok(())

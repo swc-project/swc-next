@@ -1,0 +1,1 @@
+export default memo((() => <div/>) as F) as F;

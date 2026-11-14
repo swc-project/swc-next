@@ -10,17 +10,19 @@
 //! unused local declarations and computations whose values are unused and
 //! have no side effects. It
 //! rewrites `if` statements and returns as shorter expressions and shortens
-//! comparisons. It also joins adjacent expression statements and
-//! declarations, and removes empty statements and unneeded blocks.
+//! comparisons and property names. It also joins adjacent expression
+//! statements and declarations, and removes empty statements and unneeded
+//! blocks.
 //! Mangling shortens the names of local bindings. Enabled semantic
 //! optimizations and mangling share one analysis and one traversal.
 
 #![deny(clippy::all)]
 #![deny(unused)]
 
-use swc_next_ecma_ast::Ast;
+use swc_next_ecma_ast::AstCtx;
 
 mod compress;
+mod dynamic;
 mod mangle;
 mod options;
 
@@ -41,8 +43,9 @@ impl Minifier {
     /// do not reuse a model computed before minification.
     ///
     /// Semantic optimizations and mangling build their own model before the
-    /// single traversal. Dynamic lookup (`eval` references or `with`) disables
-    /// them.
+    /// single traversal. They skip the bindings of the scopes around an `eval`
+    /// reference or a `with` statement, and the unresolved names that such
+    /// dynamic lookup can shadow.
     ///
     /// With `compress: None` and `mangle: false`, the AST is left unchanged and
     /// analysis is skipped.
@@ -51,7 +54,7 @@ impl Minifier {
     ///
     /// Panics if compression or mangling is enabled and the AST root is not a
     /// program.
-    pub fn minify(ast: &mut Ast<'_>, options: MinifierOptions) {
+    pub fn minify(ast: &mut AstCtx<'_>, options: MinifierOptions) {
         if options.compress.is_none() && !options.mangle {
             return;
         }

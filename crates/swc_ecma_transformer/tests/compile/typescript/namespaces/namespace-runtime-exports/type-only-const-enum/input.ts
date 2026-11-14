@@ -1,0 +1,1 @@
+namespace N { const enum E { A=0 } } export type { N };

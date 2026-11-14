@@ -38,10 +38,11 @@ serde            = "1.0.229"
 serde_json       = "1.0.154"
 sourcemap        = "9.3.2"
 unicode-id-start = "1.5.0"
+unicode-width    = { version = "0.2.2", default-features = false }
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "=83.0.0", features = [
+swc_core = { version = "=84.0.2", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
@@ -66,35 +67,37 @@ phf          = "0.14.0"
 prettyplease = "0.3.0"
 proc-macro2  = "1.0.107"
 quote        = "1.0.47"
-syn          = { version = "3.0.9", default-features = false }
+syn          = { version = "3.0.10", default-features = false }
 
 # Workspace
-swc_next_allocator             = { version = "0.5.0", path = "crates/swc_allocator" }
-swc_next_ast_macros            = { version = "0.5.0", path = "crates/swc_ast_macros" }
-swc_next_bridge                = { version = "0.5.0", path = "crates/swc_bridge" }
-swc_next_bridge_macros         = { version = "0.5.0", path = "crates/swc_bridge_macros" }
-swc_next_ecma_ast              = { version = "0.5.0", path = "crates/swc_ecma_ast" }
-swc_next_ecma_codegen          = { version = "0.5.0", path = "crates/swc_ecma_codegen" }
-swc_next_ecma_formatter        = { version = "0.1.0", path = "crates/swc_ecma_formatter" }
-swc_next_ecma_minifier         = { version = "0.5.0", path = "crates/swc_ecma_minifier" }
-swc_next_ecma_parser           = { version = "0.5.0", path = "crates/swc_ecma_parser" }
-swc_next_ecma_semantic         = { version = "0.5.0", path = "crates/swc_ecma_semantic" }
-swc_next_ecma_transformer      = { version = "0.5.0", path = "crates/swc_ecma_transformer" }
-swc_next_formatter_core        = { version = "0.1.0", path = "crates/swc_formatter_core" }
-swc_next_simd                  = { version = "0.5.0", path = "crates/swc_simd" }
-swc_next_type_strip            = { version = "0.5.0", path = "crates/swc_type_strip" }
+swc_next_allocator             = { version = "0.6.0", path = "crates/swc_allocator" }
+swc_next_ast_macros            = { version = "0.6.0", path = "crates/swc_ast_macros" }
+swc_next_bridge                = { version = "0.6.0", path = "crates/swc_bridge" }
+swc_next_bridge_macros         = { version = "0.6.0", path = "crates/swc_bridge_macros" }
+swc_next_core                  = { version = "0.5.0", path = "crates/swc_core" }
+swc_next_ecma_ast              = { version = "0.6.0", path = "crates/swc_ecma_ast" }
+swc_next_ecma_codegen          = { version = "0.6.0", path = "crates/swc_ecma_codegen" }
+swc_next_ecma_formatter        = { version = "0.6.0", path = "crates/swc_ecma_formatter" }
+swc_next_ecma_minifier         = { version = "0.6.0", path = "crates/swc_ecma_minifier" }
+swc_next_ecma_parser           = { version = "0.6.0", path = "crates/swc_ecma_parser" }
+swc_next_ecma_semantic         = { version = "0.6.0", path = "crates/swc_ecma_semantic" }
+swc_next_ecma_transformer      = { version = "0.6.0", path = "crates/swc_ecma_transformer" }
+swc_next_formatter_core        = { version = "0.6.0", path = "crates/swc_formatter_core" }
+swc_next_simd                  = { version = "0.6.0", path = "crates/swc_simd" }
+swc_next_type_strip            = { version = "0.6.0", path = "crates/swc_type_strip" }
 
 # Dev
 anyhow        = "1.0.104"
 clap          = { version = "4.6.7", features = ["derive"] }
 criterion     = { package = "codspeed-criterion-compat", version = "6.0.0" }
 gungraun      = "0.20.0"
+insta         = "1.49.0"
 jwalk         = "0.9.0"
-jsonc-parser  = { version = "0.26.2", features = ["serde"] }
+jsonc-parser  = { version = "0.34.0", features = ["serde"] }
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
-oxc           = { version = "0.156.0", features = ["ast_visit", "semantic"] }
-oxc_allocator = "0.156.0"
+oxc           = { version = "0.158.0", features = ["ast_visit", "semantic"] }
+oxc_allocator = "0.158.0"
 saphyr        = "0.3.3"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }

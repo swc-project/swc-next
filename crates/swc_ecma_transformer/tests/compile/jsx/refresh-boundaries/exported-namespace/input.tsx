@@ -1,0 +1,1 @@
+namespace Foo { export namespace Bar { export const A = () => null; } }

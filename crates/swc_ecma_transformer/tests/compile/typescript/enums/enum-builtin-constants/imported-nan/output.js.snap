@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import * as remote from "pkg";
+var NaN = remote.value;
+var E;
+(function(E) {
+  E[E["A"] = NaN] = "A";
+})(E || (E = {}));

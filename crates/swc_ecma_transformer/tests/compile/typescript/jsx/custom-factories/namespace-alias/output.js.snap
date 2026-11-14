@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var N;
+(function(N) {
+  function h() {
+  }
+  N.h = h;
+})(N || (N = {}));
+var h = N.h;
+export const x = <div />;

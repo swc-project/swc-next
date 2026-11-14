@@ -357,7 +357,7 @@ fn assert_composed_namespace_export_recovery(source: &str, runtime_read: bool) {
         let result = analyze(&parse.ast, AnalyzeOptions { check_syntax });
         // These inputs can produce TS1379. Test recovery semantics,
         // without requiring either the presence or absence of diagnostics.
-        let ast = &parse.ast;
+        let ast = unsafe { parse.ast.ast() };
         let semantic = &result.semantic;
         let alias = symbol_named(ast, semantic, b"Alias");
         let references = reference_symbols(ast, semantic, b"Alias");

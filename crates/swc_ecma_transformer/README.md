@@ -19,4 +19,7 @@ The example lowers TypeScript and class static blocks while preserving JSX.
 cargo test -p swc_next_ecma_transformer --locked
 ```
 
+Local code-output regressions use [compile tests](tests/README.md) with
+`JsTransformApiOptions` JSON.
+
 For Babel, TypeScript, and SWC fixture coverage, see [conformance testing](../../tasks/testsuite/README.md).

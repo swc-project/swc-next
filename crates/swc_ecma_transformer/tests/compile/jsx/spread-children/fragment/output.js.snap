@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+/* #__PURE__ */ _jsxs(_Fragment, { children: [...items] });

@@ -3,7 +3,7 @@ use std::{hash::BuildHasher, iter::successors, mem::swap};
 use hashbrown::HashMap;
 use rustc_hash::FxBuildHasher;
 use swc_next_allocator::{
-    Allocator, IndexSlice,
+    Allocator, Idx, IndexSlice,
     boxed::Box as ArenaBox,
     hash_map::HashMap as ArenaHashMap,
     vec::{ArenaIndexVec, ArenaVec},
@@ -4089,6 +4089,16 @@ impl<'a> SymbolTracker<'a> {
         self.node_semantic[node].symbol()
     }
 
+    #[inline]
+    pub(crate) fn record_scope(&mut self, node: NodeId, id: ScopeId) {
+        let slot = &mut self.node_semantic[node];
+        debug_assert!(matches!(
+            *slot,
+            NodeSemanticId::None | NodeSemanticId::Scope(_)
+        ));
+        *slot = NodeSemanticId::Scope(id);
+    }
+
     fn default_export_symbol(&self) -> Option<SymbolId> {
         self.ts_source_exports
             .as_ref()?
@@ -4340,7 +4350,7 @@ impl<'a> SymbolTracker<'a> {
                 &mut use_ranges,
                 &mut reference_candidates,
             );
-        } else {
+        } else if !self.references.is_empty() {
             // No signature or conditional-type view can alter lexical lookup.
             // Select the policy once instead of testing every ancestor edge.
             self.resolve_lexical_references::<false, false, false>(
@@ -4390,14 +4400,6 @@ impl<'a> SymbolTracker<'a> {
                 NodeSemanticId::None | NodeSemanticId::Reference(_)
             ));
             *slot = NodeSemanticId::Reference(id);
-        }
-        for (id, scope) in scopes.list.iter_enumerated() {
-            let slot = &mut self.node_semantic[scope.node];
-            debug_assert!(matches!(
-                *slot,
-                NodeSemanticId::None | NodeSemanticId::Scope(_)
-            ));
-            *slot = NodeSemanticId::Scope(id);
         }
         let declarations = self.declarations;
         let redeclarations = self.redeclarations;
@@ -4606,6 +4608,24 @@ impl<'a> SymbolTracker<'a> {
             .map(|aliases| aliases.spaces.as_slice())
             .unwrap_or_default();
         let mut candidates = Vec::new();
+        let mut binding_ancestors = Vec::new();
+        if !PRECISE_IMPORT_ALIASES && !TS_LOOKUP && !FILTER_BY_SPACE {
+            // JavaScript name lookup can skip scopes without bindings: record,
+            // for every scope, its nearest ancestor that declares a name. Keep
+            // the original tree for public queries and `arguments` lookup.
+            binding_ancestors.reserve(scopes.list.len());
+            for (id, scope) in scopes.list.iter_enumerated() {
+                let ancestor = scope.parent.and_then(|parent| {
+                    debug_assert!(parent.index() < id.index());
+                    if self.scope_maps[parent].is_empty() {
+                        binding_ancestors[parent.index()]
+                    } else {
+                        Some(parent)
+                    }
+                });
+                binding_ancestors.push(ancestor);
+            }
+        }
         for id in self.references.indices() {
             candidates.clear();
             let reference = self.references[id];
@@ -4636,6 +4656,8 @@ impl<'a> SymbolTracker<'a> {
                     query,
                     |symbol| candidates.push(symbol),
                 )
+            } else if !TS_LOOKUP && !FILTER_BY_SPACE {
+                lookup::lookup_javascript_name(lexical, query, &binding_ancestors)
             } else {
                 lookup_lexical_name::<true, TS_LOOKUP, FILTER_BY_SPACE>(lexical, query)
             };

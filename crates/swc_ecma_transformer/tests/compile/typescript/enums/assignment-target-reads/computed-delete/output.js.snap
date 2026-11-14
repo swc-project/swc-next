@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const a = [];
+delete a[0];
+export {};

@@ -1,0 +1,1 @@
+class B {} class C extends B { constructor(public x: number) { class Inner { constructor(@dec(super()) public arg: number) {} } } }

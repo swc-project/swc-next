@@ -1,0 +1,1 @@
+<div first={before()} {...{ second: middle() }} third={after()} />;

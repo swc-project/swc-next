@@ -3,21 +3,22 @@ export type * from "@swc-next/types";
 export * from "@swc-next/walker";
 
 import type {
-  CodegenOptions,
-  CodegenOutput,
-  ParserOptions as BindingParserOptions,
+  GeneratorConfig,
+  GenerateOutput,
+  ParserConfig,
 } from "./binding.js";
-import type { AstMeta } from "@swc-next/decoder";
-export type { AstMeta } from "@swc-next/decoder";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export type {
   CommentMode,
-  CodegenOptions,
-  CodegenOutput,
+  ParserConfig,
+  GeneratorConfig,
+  GenerateOutput,
 } from "./binding.js";
 
-export interface ParserOptions extends BindingParserOptions {
+export type GenerateApiOptions = GeneratorConfig;
+
+export interface ParseApiOptions extends ParserConfig {
   /** Return diagnostics and the recovered AST instead of throwing the first diagnostic. @default false */
   errorRecovery?: boolean;
 }
@@ -44,7 +45,6 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
-  readonly meta: AstMeta;
   readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
@@ -53,11 +53,10 @@ export interface ParseResult {
 
 export declare function parseSync(
   source: string,
-  options?: ParserOptions | undefined | null,
+  options?: ParseApiOptions | undefined | null,
 ): ParseResult;
 
-export declare function printSync(
+export declare function generateSync(
   program: Program,
-  options?: CodegenOptions | undefined | null,
-  meta?: Partial<AstMeta>,
-): CodegenOutput;
+  options?: GenerateApiOptions | undefined | null,
+): GenerateOutput;

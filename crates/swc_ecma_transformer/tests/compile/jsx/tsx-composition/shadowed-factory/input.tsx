@@ -1,0 +1,1 @@
+import { h } from 'ui'; function render(h: any) { return <div />; }

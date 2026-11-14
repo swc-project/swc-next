@@ -1,0 +1,1 @@
+/*! license */ declare const value: number;

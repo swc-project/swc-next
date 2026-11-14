@@ -1,24 +1,25 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, AstUtf8, BinaryExpression, BinaryOperator, BindingIdentifier,
-    BindingPattern, BindingPatternData, BindingProperty, BlockStatement, CallExpression,
-    ConditionalExpression, DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function,
-    FunctionBody, FunctionType, GetSpan, IdentifierReference, IfStatement, LogicalExpression,
-    LogicalOperator, NodeId, NodeKindData, ObjectProperty, Program, PropertyKey, PropertyKeyData,
-    SimpleAssignmentTargetData, Span, StaticBlock, Stmt, StmtData, SubRange, SwitchCase,
-    TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
-    UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
-    WhileStatement,
+    ArrowFunctionExpression, Ast, AstCtx, AstUtf8, BinaryExpression, BinaryOperator,
+    BindingIdentifier, BindingPattern, BindingPatternData, BindingProperty, BlockStatement,
+    CallExpression, ConditionalExpression, DeclData, Expr, ExprData, ForStatement,
+    ForStatementInitData, Function, FunctionBody, FunctionType, GetSpan, IdentifierReference,
+    IfStatement, LogicalExpression, LogicalOperator, MemberExpression, NodeId, NodeKindData,
+    ObjectProperty, Program, PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span,
+    StaticBlock, Stmt, StmtData, SubRange, SwitchCase, TaggedTemplateExpression, TraverseAction,
+    TraverseMut, TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator,
+    VariableDeclaration, VariableDeclarator, VariableKind, WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
 };
 
-use crate::{CompressOptions, mangle::Renames};
+use crate::{CompressOptions, dynamic::DynamicScopes, mangle::Renames};
 
 mod conditionals;
 mod dead_code;
 mod effects;
+mod properties;
 mod reduce;
 mod side_effects;
 mod statements;
@@ -49,7 +50,7 @@ struct Candidates {
 }
 
 impl Candidates {
-    fn build(ast: &mut Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
+    fn build(ast: &mut AstCtx<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
         if !options.global_defs
             && !options.comparisons
@@ -61,23 +62,24 @@ impl Candidates {
         {
             return candidates;
         }
-        let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        let (ast, semantic) = analyze(ast, AnalyzeOptions::default())
+            .semantic
+            .into_parts();
+        // SAFETY: Candidates only use handles from this AST and its fresh model.
+        let ast = unsafe { ast.ast_mut() };
         // Dynamic lookup can observe declarations absent from the static use index.
-        if semantic
-            .iter_scopes()
-            .any(|entry| entry.scope.kind == ScopeKind::With)
-            || semantic
-                .iter_references()
-                .any(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"eval")
-        {
-            return candidates;
-        }
+        let dynamic = DynamicScopes::build(ast, &semantic);
         if mangle {
-            candidates.renames = Renames::build(ast, &semantic);
+            candidates.renames = Renames::build(ast, &semantic, &dynamic);
         }
         let mut local_vars = FxHashMap::default();
         let mut in_function = FxHashSet::default();
         for entry in semantic.iter_symbols() {
+            // Dynamic lookup can read or write these bindings at any time.
+            // Leaving them out of `in_function` also keeps reductions away.
+            if dynamic.contains(&semantic, entry.id) {
+                continue;
+            }
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
                 continue;
@@ -119,7 +121,9 @@ impl Candidates {
             let reference = entry.reference;
             match reference.resolution() {
                 NameResolution::Unresolved
-                    if options.global_defs && reference.flags.is_read_only() =>
+                    if options.global_defs
+                        && reference.flags.is_read_only()
+                        && !dynamic.shadows(reference.scope) =>
                 {
                     let global = match ast.get_utf8(reference.name).as_bytes() {
                         b"undefined" => Value::Undefined,
@@ -168,6 +172,7 @@ impl Candidates {
                 .filter(|entry| {
                     is_initialized(entry.symbol.flags)
                         && !reduction.removable.contains(&entry.id)
+                        && !dynamic.contains(&semantic, entry.id)
                         && !semantic.declarations(entry.id).any(|declaration| {
                             is_global_var(semantic.scope(declaration.scope).kind, declaration.flags)
                         })
@@ -202,8 +207,10 @@ impl Candidates {
     }
 }
 
-pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions, mangle: bool) {
+pub(super) fn compress(ast: &mut AstCtx<'_>, options: CompressOptions, mangle: bool) {
     let mut candidates = Candidates::build(ast, &options, mangle);
+    // SAFETY: Compression keeps all handles within their originating AST.
+    let ast = unsafe { ast.ast_mut() };
     let names = std::mem::take(&mut candidates.renames.names)
         .iter()
         .map(|name| ast.add_utf8(name))
@@ -1178,6 +1185,20 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                 node.set_shorthand(ast, false);
             }
         }
+        if self.options.properties {
+            properties::object_property(ast, node);
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_member_expression(
+        &mut self,
+        node: MemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<MemberExpression> {
+        if self.options.properties {
+            properties::member(ctx.ast, node);
+        }
         TraverseAction::Continue
     }
 
@@ -1327,7 +1348,7 @@ mod tests {
         let result =
             Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
-        result.ast
+        unsafe { result.ast.into_ast() }
     }
 
     pub(super) fn expression(ast: &Ast<'_>) -> Expr {
@@ -1342,7 +1363,7 @@ mod tests {
     #[test]
     fn source_spans() {
         let allocator = Allocator::new();
-        let mut ast = parse(&allocator, "  true;");
+        let ast = parse(&allocator, "  true;");
         let span = expression(&ast).span(&ast);
         let compress = CompressOptions {
             side_effects: false,
@@ -1352,7 +1373,10 @@ mod tests {
             compress: Some(compress),
             ..MinifierOptions::default()
         };
+        let mut ast = ast.into();
         Minifier::minify(&mut ast, options);
+        // SAFETY: Only handles from the transformed AST are used below.
+        let ast = unsafe { ast.into_ast() };
         let ExprData::UnaryExpression(replacement) = ast.expr_data(expression(&ast)) else {
             panic!();
         };
@@ -1370,6 +1394,8 @@ mod tests {
         let result = Parser::init(&allocator, "typeof (x);", options, NoTokenParserConfig).parse();
         let mut ast = result.ast;
         Minifier::minify(&mut ast, MinifierOptions::default());
+        // SAFETY: Only handles from the transformed AST are used below.
+        let ast = unsafe { ast.into_ast() };
         let ExprData::UnaryExpression(unary) = ast.expr_data(expression(&ast)) else {
             panic!();
         };

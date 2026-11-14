@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsx h @jsxFrag Frag */
+import { h, Frag } from "react";
+export const x = <></>;

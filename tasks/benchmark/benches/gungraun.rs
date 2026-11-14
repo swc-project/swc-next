@@ -7,17 +7,18 @@ use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, Decorator, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith, TsTypeAnnotation, Visit,
-    VisitMut, VisitMutWith, VisitWith,
+    Ast, AstCtx, BindingIdentifier, Decorator, IdentifierName, IdentifierReference,
+    LabelIdentifier, Lang, PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith,
+    TsTypeAnnotation, Visit, VisitMut, VisitMutWith, VisitWith,
 };
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_formatter::{FormatOptions, format_ast};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions,
+    Transformer, TransformerOptions, TransformerReturn,
+    es2019::ES2019Options,
     es2022::ES2022Options,
     jsx::{JsxOptions, ReactRefreshOptions},
     normalize::Normalizer,
@@ -43,6 +44,9 @@ const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
 const EFFECT_SCHEMA_AST: &str = include_str!("../files/effect-schema-ast.ts");
 const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
+const EXCALIDRAW_APP: &str = include_str!("../files/App.tsx");
+const RADIX_UI_ADOPTION: &str = include_str!("../files/RadixUIAdoptionSection.jsx");
+const KITCHEN_SINK: &str = include_str!("../files/kitchen-sink.tsx");
 
 #[library_benchmark]
 #[bench::angular(ANGULAR, Lang::Js)]
@@ -73,7 +77,7 @@ fn bench_parser(source: &str, lang: Lang) {
     );
 }
 
-fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
+fn setup_program(source: &'static str, lang: Lang) -> AstCtx<'static> {
     let allocator = Box::leak(Box::new(Allocator::new()));
     let result = Parser::init(
         allocator,
@@ -89,7 +93,7 @@ fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
     result.ast
 }
 
-fn setup_minifier(source: &'static str) -> Ast<'static> {
+fn setup_minifier(source: &'static str) -> AstCtx<'static> {
     let allocator = Box::leak(Box::new(Allocator::new()));
     let result = Parser::init(
         allocator,
@@ -120,7 +124,7 @@ fn setup_minifier(source: &'static str) -> Ast<'static> {
 #[bench::angular(setup_minifier(ANGULAR))]
 #[bench::typescript(setup_minifier(TYPESCRIPT))]
 #[bench::semantic(setup_minifier(MINIFIER_SEMANTIC))]
-fn bench_minifier(ast: Ast<'static>) -> Ast<'static> {
+fn bench_minifier(ast: AstCtx<'static>) -> AstCtx<'static> {
     let mut ast = black_box(ast);
     Minifier::minify(&mut ast, black_box(MinifierOptions::default()));
     // Return the AST so its drop is outside the measured function.
@@ -131,7 +135,7 @@ fn bench_minifier(ast: Ast<'static>) -> Ast<'static> {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 #[bench::typescript_checker(setup_program(TYPESCRIPT_CHECKER, Lang::Ts))]
-fn bench_analyze(ast: Ast<'static>) {
+fn bench_analyze(ast: AstCtx<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
 
@@ -139,7 +143,7 @@ fn bench_analyze(ast: Ast<'static>) {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 #[bench::typescript_checker(setup_program(TYPESCRIPT_CHECKER, Lang::Ts))]
-fn bench_syntax_check(ast: Ast<'static>) {
+fn bench_syntax_check(ast: AstCtx<'static>) {
     black_box(analyze(
         &ast,
         AnalyzeOptions {
@@ -151,11 +155,11 @@ fn bench_syntax_check(ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_codegen(ast: Ast<'static>) {
-    black_box(print(&ast, CodegenOptions::default()));
+fn bench_generate(ast: AstCtx<'static>) {
+    black_box(generate(&ast, GeneratorOptions::default()));
 }
 
-fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static Ast<'static> {
+fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static AstCtx<'static> {
     // Each case runs in its own process. Keep parsing and AST destruction
     // outside the measured function.
     let allocator = Box::leak(Box::new(Allocator::new()));
@@ -187,17 +191,22 @@ fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static Ast<'st
 #[bench::astro_config(setup_formatter_program(ASTRO_CONFIG, Lang::Ts))]
 #[bench::effect_schema_ast(setup_formatter_program(EFFECT_SCHEMA_AST, Lang::Ts))]
 #[bench::hono_types(setup_formatter_program(HONO_TYPES, Lang::Ts))]
-fn bench_formatter(ast: &'static Ast<'static>) -> String {
+fn bench_formatter(ast: &'static AstCtx<'static>) -> String {
     black_box(format_ast(black_box(ast), FormatOptions::prettier()).unwrap())
 }
 
-type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
+type TransformInput = (
+    SemanticAst<'static, &'static mut AstCtx<'static>>,
+    TransformerOptions,
+);
 
-fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
+fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
+    let lang = Lang::from_path(filename);
     let mut ast = setup_program(source, lang);
-    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    Normalizer::normalize_runtime(&mut ast);
+    // Exercise the complete pipeline for every workload, including plain JavaScript.
     let options = TransformerOptions {
-        filename: Some("benchmark.tsx".to_owned()),
+        filename: Some(filename.to_owned()),
         typescript: Some(TypeScriptOptions::default()),
         jsx: Some(JsxOptions {
             development: true,
@@ -206,6 +215,9 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
             refresh: Some(ReactRefreshOptions::default()),
             ..JsxOptions::default()
         }),
+        es2019: ES2019Options {
+            optional_catch_binding: true,
+        },
         es2022: ES2022Options {
             static_blocks: true,
         },
@@ -214,28 +226,30 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
         },
         ..TransformerOptions::default()
     };
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    (ast, semantic, options)
+    // Setup owns the leaked context so the binding can borrow it outside timing.
+    let ast = Box::leak(Box::new(ast));
+    let analyzed = analyze(
+        ast,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
+        },
+    );
+    assert!(analyzed.diagnostics.is_empty());
+    (analyzed.semantic, options)
 }
 
 #[library_benchmark]
-#[bench::angular(setup_transform(ANGULAR, Lang::Js))]
-#[bench::backbone(setup_transform(BACKBONE, Lang::Js))]
-#[bench::jquery(setup_transform(JQUERY, Lang::Js))]
-#[bench::jquery_mobile(setup_transform(JQUERY_MOBILE, Lang::Js))]
-#[bench::mootools(setup_transform(MOOTOOLS, Lang::Js))]
-#[bench::underscore(setup_transform(UNDERSCORE, Lang::Js))]
-#[bench::three(setup_transform(THREE, Lang::Js))]
-#[bench::yui(setup_transform(YUI, Lang::Js))]
-#[bench::typescript(setup_transform(TYPESCRIPT, Lang::Js))]
-#[bench::cal_com_tsx(setup_transform(CAL_COM_TSX, Lang::Tsx))]
-#[bench::astro_config(setup_transform(ASTRO_CONFIG, Lang::Ts))]
-#[bench::effect_schema_ast(setup_transform(EFFECT_SCHEMA_AST, Lang::Ts))]
-#[bench::hono_types(setup_transform(HONO_TYPES, Lang::Ts))]
-fn bench_transform(input: TransformInput) {
-    let (mut ast, semantic, options) = black_box(input);
-    let result = Transformer::transform(&mut ast, semantic, options);
-    black_box((ast, result));
+// Class-heavy JS, real TSX, small JSX, type erasure, and broad modern syntax.
+#[bench::three(setup_transform(THREE, "three-0.138.3.js"))]
+#[bench::excalidraw_app(setup_transform(EXCALIDRAW_APP, "App.tsx"))]
+#[bench::radix_ui_adoption(setup_transform(RADIX_UI_ADOPTION, "RadixUIAdoptionSection.jsx"))]
+#[bench::hono_types(setup_transform(HONO_TYPES, "hono-types.ts"))]
+#[bench::kitchen_sink(setup_transform(KITCHEN_SINK, "kitchen-sink.tsx"))]
+fn bench_transform(input: TransformInput) -> TransformerReturn<'static> {
+    let (semantic, options) = black_box(input);
+    let result = Transformer::transform(semantic, options);
+    // Keep result destruction outside the measured function.
+    black_box(result)
 }
 
 fn type_strip_options(lang: Lang) -> StripOptions {
@@ -387,12 +401,11 @@ impl<'ast> Traverse<'ast> for TraverseCounter {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_visit(ast: Ast<'static>) {
+fn bench_visit(ast: AstCtx<'static>) {
+    // SAFETY: The traversal only reads handles from this AST.
+    let ast = unsafe { ast.ast() };
     let program = ast.root_program();
-    let mut counter = VisitCounter {
-        ast: &ast,
-        count: 0,
-    };
+    let mut counter = VisitCounter { ast, count: 0 };
     program.visit_with(&mut counter);
     black_box(counter.count);
 }
@@ -400,12 +413,11 @@ fn bench_visit(ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_visit_mut(mut ast: Ast<'static>) {
+fn bench_visit_mut(mut ast: AstCtx<'static>) {
+    // SAFETY: The visitor only uses handles from this AST.
+    let ast = unsafe { ast.ast_mut() };
     let program = ast.root_program();
-    let mut counter = VisitMutCounter {
-        ast: &mut ast,
-        count: 0,
-    };
+    let mut counter = VisitMutCounter { ast, count: 0 };
     program.visit_mut_with(&mut counter);
     black_box(counter.count);
 }
@@ -413,10 +425,12 @@ fn bench_visit_mut(mut ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_traverse(ast: Ast<'static>) {
+fn bench_traverse(ast: AstCtx<'static>) {
+    // SAFETY: The traversal only reads handles from this AST.
+    let ast = unsafe { ast.ast() };
     let program = ast.root_program();
     let mut counter = TraverseCounter { count: 0 };
-    program.traverse_with(&mut counter, &mut TraverseCtx::new(&ast, ()));
+    program.traverse_with(&mut counter, &mut TraverseCtx::new(ast, ()));
     black_box(counter.count);
 }
 
@@ -427,7 +441,7 @@ library_benchmark_group!(
     benchmarks = [bench_analyze, bench_syntax_check]
 );
 
-library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
+library_benchmark_group!(name = generator, benchmarks = bench_generate);
 
 library_benchmark_group!(
     name = formatter,
@@ -453,6 +467,6 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, codegen, formatter, minifier, transform, type_strip, visit
+        parser, semantic, generator, formatter, minifier, transform, type_strip, visit
     ]
 );

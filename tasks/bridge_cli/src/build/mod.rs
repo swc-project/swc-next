@@ -14,7 +14,7 @@ use crate::bindings;
 pub(super) fn build(component: &str, output_dir: &Path, cargo_args: &[OsString]) -> Result<()> {
     let metadata = metadata::read(component, output_dir)?;
     for component in &metadata.components {
-        // Keep each component's feature set independent, especially parser and codegen.
+        // Keep each component's feature set independent, especially parser and generator.
         let output = Command::new("cargo")
             .current_dir(&metadata.root)
             .args(["build", "--locked", "--target", metadata::TARGET])

@@ -1,11 +1,10 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, Severity, SourceType};
-use swc_next_ecma_codegen::print;
-use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
-use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
+use swc_next_core::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
+use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 use crate::{cases::TransformCase, runner::Runner, suite::TestResult, util::workspace_root};
 
@@ -50,26 +49,28 @@ impl<C: TransformCase> Runner<C> for TransformerRunner {
 }
 
 fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
-    let allocator = Allocator::new();
-    let source_type = case.source_type();
-    let lang = case.lang();
-    let Some(ast) = transform_program(case, &allocator, case.code(), source_type, lang)? else {
-        return Ok(false);
-    };
+    let mut options = case.options();
+    let parser = options.parser.unwrap_or_default();
+    let lang: Lang = parser.lang.map(Into::into).unwrap_or_default();
+    let output = transform_js(case.code(), options.clone());
+    if let Err(error) = check_diagnostics(&output.diagnostics) {
+        return if case.expected_output().is_some() {
+            Err(error)
+        } else {
+            Ok(false)
+        };
+    }
 
-    let output = print(&ast, case.codegen_options()).code;
     if let Some(expected) = case.expected_output() {
-        let expected_allocator = Allocator::new();
-        let Some(expected_ast) =
-            parse_program(&expected_allocator, expected, source_type, lang, true)
-        else {
+        let allocator = Allocator::default();
+        let Some(ast) = parse_program(&allocator, &options, expected, true) else {
             return Ok(false);
         };
-        let expected = print(&expected_ast, case.codegen_options()).code;
-        let Some(actual) = normalize_output(case, &output) else {
+        let expected = generate(&ast, generator_options(&options)).code;
+        let Some(actual) = normalize_output(&options, &output.code) else {
             return Ok(false);
         };
-        let Some(expected) = normalize_output(case, &expected) else {
+        let Some(expected) = normalize_output(&options, &expected) else {
             return Ok(false);
         };
         if actual != expected {
@@ -77,7 +78,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         }
     } else {
         if lang == Lang::Dts {
-            if !output.is_empty() {
+            if !output.code.is_empty() {
                 return Err("declaration input emitted JavaScript".into());
             }
             return Ok(true);
@@ -87,54 +88,20 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         } else {
             Lang::Js
         };
-        let output_allocator = Allocator::new();
-        // TODO: Configure decorators and module transforms when those passes are supported.
-        // Keep the input's parsing mode even when unambiguous parsing resolved its AST.
-        let Some(output_ast) =
-            transform_program(case, &output_allocator, &output, source_type, output_lang)?
-        else {
+        options.parser.get_or_insert_with(Default::default).lang = Some(output_lang.into());
+        let retransformed = transform_js(&output.code, options);
+        if check_diagnostics(&retransformed.diagnostics).is_err() {
             return Ok(false);
-        };
-        let retransformed = print(&output_ast, case.codegen_options()).code;
-        if output != retransformed {
+        }
+        if output.code != retransformed.code {
             return Err("transformed output is not idempotent".into());
         }
     }
     Ok(true)
 }
 
-fn transform_program<'a, C: TransformCase>(
-    case: &C,
-    allocator: &'a Allocator,
-    source: &'a str,
-    source_type: SourceType,
-    lang: Lang,
-) -> Result<Option<Ast<'a>>, String> {
-    let Some(mut ast) = parse_program(allocator, source, source_type, lang, true) else {
-        return Ok(None);
-    };
-    let options = case.transformer_options();
-    if options.typescript.is_some() {
-        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
-    } else {
-        Normalizer::normalize(ast.root_program(), &mut ast);
-    }
-    let semantic_ret = analyze(
-        &ast,
-        AnalyzeOptions {
-            check_syntax: SyntaxChecks::all(),
-        },
-    );
-    let diagnostics = &semantic_ret.diagnostics;
-    if diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-    {
-        return Ok(None);
-    }
-    let transformed = Transformer::transform(&mut ast, semantic_ret.semantic, options);
-    if let Some(diagnostic) = transformed
-        .diagnostics
+fn check_diagnostics(diagnostics: &[Diagnostic]) -> Result<(), String> {
+    if let Some(diagnostic) = diagnostics
         .iter()
         .find(|diagnostic| diagnostic.severity == Severity::Error)
     {
@@ -143,44 +110,46 @@ fn transform_program<'a, C: TransformCase>(
             diagnostic.message, diagnostic.span.start, diagnostic.span.end
         ));
     }
-    Ok(Some(ast))
+    Ok(())
 }
 
 fn parse_program<'a>(
     allocator: &'a Allocator,
+    options: &JsTransformApiOptions,
     source: &'a str,
-    source_type: SourceType,
-    lang: Lang,
     preserve_parens: bool,
-) -> Option<Ast<'a>> {
+) -> Option<AstCtx<'a>> {
+    let parser = options.parser.unwrap_or_default();
     let result = Parser::init(
         allocator,
         source,
         ParserOptions {
-            source_type,
-            lang,
             preserve_parens,
-            ..ParserOptions::default()
+            comments: CommentMode::Flat,
+            ..parser.into()
         },
         NoTokenParserConfig,
     )
     .parse();
-    let diagnostics = &result.diagnostics;
-    if diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-    {
-        return None;
-    }
+    check_diagnostics(&result.diagnostics).ok()?;
     Some(result.ast)
 }
 
 /// Compare output with comments while ignoring redundant parentheses and formatting.
-fn normalize_output<C: TransformCase>(case: &C, source: &str) -> Option<String> {
-    let allocator = Allocator::new();
-    let ast = parse_program(&allocator, source, case.source_type(), case.lang(), false)?;
-    let mut options = case.codegen_options();
-    options.minify = true;
-    options.comments = true;
-    Some(print(&ast, options).code)
+fn normalize_output(options: &JsTransformApiOptions, source: &str) -> Option<String> {
+    let allocator = Allocator::default();
+    let ast = parse_program(&allocator, options, source, false)?;
+    let mut generator = generator_options(options);
+    generator.minify = true;
+    generator.comments = true;
+    Some(generate(&ast, generator).code)
+}
+
+fn generator_options(options: &JsTransformApiOptions) -> GeneratorOptions {
+    let parser = options.parser.unwrap_or_default();
+    let comments = options.comments.unwrap_or(CommentsOption::All);
+    let parser_comments = parser.comments.unwrap_or(CommentsOption::All);
+    let mut generator = GeneratorOptions::from(options.generator.unwrap_or_default());
+    generator.comments = comments == CommentsOption::All && parser_comments == CommentsOption::All;
+    generator
 }

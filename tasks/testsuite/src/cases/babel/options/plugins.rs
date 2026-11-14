@@ -1,8 +1,5 @@
 use serde::Deserialize;
-use swc_next_ecma_transformer::{
-    jsx::JsxOptions,
-    typescript::{JsxImportOptions, TypeScriptOptions},
-};
+use swc_next_core::js::transformer::{JsTypeScriptConfig, JsxConfig};
 
 use super::PluginPresetEntries;
 
@@ -24,16 +21,14 @@ struct TransformTypeScriptOptions {
     jsx_pragma_frag: Option<String>,
 }
 
-impl From<TransformTypeScriptOptions> for TypeScriptOptions {
+impl From<TransformTypeScriptOptions> for JsTypeScriptConfig {
     fn from(options: TransformTypeScriptOptions) -> Self {
         Self {
-            verbatim_module_syntax: options.only_remove_type_imports,
-            preserve_const_enums: !options.optimize_const_enums,
-            jsx: JsxImportOptions {
-                pragma: options.jsx_pragma,
-                pragma_frag: options.jsx_pragma_frag,
-                ..JsxImportOptions::default()
-            },
+            verbatim_module_syntax: Some(options.only_remove_type_imports),
+            preserve_const_enums: Some(!options.optimize_const_enums),
+            jsx_pragma: options.jsx_pragma,
+            jsx_pragma_frag: options.jsx_pragma_frag,
+            ..Default::default()
         }
     }
 }
@@ -49,10 +44,13 @@ pub struct BabelPlugins {
     pub syntax_jsx: bool,
 
     // TypeScript / JSX
-    pub typescript: Option<TypeScriptOptions>,
-    pub react_jsx: Option<JsxOptions>,
-    pub react_jsx_dev: Option<JsxOptions>,
+    pub typescript: Option<JsTypeScriptConfig>,
+    pub react_jsx: Option<JsxConfig>,
+    pub react_jsx_dev: Option<JsxConfig>,
     pub react_display_name: bool,
+
+    // ES2019
+    pub optional_catch_binding: bool,
 
     // ES2022
     pub static_blocks: bool,
@@ -78,7 +76,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 },
                 "transform-react-jsx" => {
                     plugins.react_jsx = entry
-                        .value::<JsxOptions>()
+                        .value::<JsxConfig>()
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
                 }
@@ -86,14 +84,15 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 // Metadata stays opt-in through this plugin's `sourceSelf` option.
                 "transform-react-jsx-development" => {
                     plugins.react_jsx_dev = entry
-                        .value::<JsxOptions>()
+                        .value::<JsxConfig>()
                         .map(|mut options| {
-                            options.development = true;
+                            options.development = Some(true);
                             options
                         })
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
                 }
+                "transform-optional-catch-binding" => plugins.optional_catch_binding = true,
                 "transform-class-static-block" => plugins.static_blocks = true,
                 "transform-react-display-name" => plugins.react_display_name = true,
                 _ => plugins.unsupported.push(entry.name().to_owned()),
@@ -143,12 +142,12 @@ mod tests {
     fn development_metadata() {
         let plugins = parse(r#"["transform-react-jsx-development"]"#);
         let options = plugins.react_jsx_dev.unwrap();
-        assert!(options.development);
-        assert!(!options.source_self);
+        assert_eq!(options.development, Some(true));
+        assert!(options.source_self.is_none());
 
         let plugins = parse(r#"[["transform-react-jsx-development", {"sourceSelf": true}]]"#);
         let options = plugins.react_jsx_dev.unwrap();
-        assert!(options.development);
-        assert!(options.source_self);
+        assert_eq!(options.development, Some(true));
+        assert_eq!(options.source_self, Some(true));
     }
 }

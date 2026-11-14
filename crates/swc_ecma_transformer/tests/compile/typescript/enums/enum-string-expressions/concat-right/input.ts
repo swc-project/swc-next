@@ -1,0 +1,1 @@
+import { suffix } from 'dep'; enum E { A=suffix + '' }

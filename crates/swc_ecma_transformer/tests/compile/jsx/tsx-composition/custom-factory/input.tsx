@@ -1,0 +1,1 @@
+import { h, Frag } from 'ui'; const node = <div />;

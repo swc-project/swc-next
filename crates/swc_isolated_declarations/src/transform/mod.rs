@@ -15,23 +15,24 @@ mod type_surface;
 
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{
-    Ast, Diagnostic, ExportDefaultDeclarationKindData, GetSpan, NodeId, Stmt, StmtData, SubRange,
+    Ast, AstCtx, Diagnostic, ExportDefaultDeclarationKindData, GetSpan, NodeId, Stmt, StmtData,
+    SubRange,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::{Semantic, SemanticAst};
 
 use crate::UsedSymbols;
 use crate::surface::{DeclContext, DeclarationSurface, ExportExpression, export_expression};
 use crate::type_usage::TypeUsageAnalyzer;
 
-/// Transforms a semantically analyzed flat AST into isolated TypeScript declarations.
+/// Generates isolated declarations using a bound semantic model.
 ///
-/// Returns diagnostics encountered during declaration generation.
-///
-/// The semantic model must have been built from `ast` before this function is called. The
-/// transform consumes its symbol and reference indexes during declaration reachability analysis,
-/// then mutates the AST in place. Re-run semantic analysis before performing later semantic work
-/// on the transformed tree.
-pub fn transform<'ast>(ast: &mut Ast<'ast>, semantic: &Semantic<'ast>) -> Vec<Diagnostic<'static>> {
+/// Consumes the analysis binding and releases the AST for subsequent use.
+/// Re-run analysis before performing semantic work on the transformed tree.
+pub fn transform<'a>(analyzed: SemanticAst<'a, &mut AstCtx<'a>>) -> Vec<Diagnostic> {
+    let (ast, semantic) = analyzed.into_parts();
+    let semantic = &semantic;
+    // SAFETY: The consumed binding supplies this AST's model; emitted handles stay in this AST.
+    let ast = unsafe { ast.ast_mut() };
     let (used, diagnostics, surface) = TypeUsageAnalyzer::analyze(ast, semantic);
     let mut transformer = Transformer {
         semantic,
@@ -50,7 +51,7 @@ struct Transformer<'semantic, 'ast> {
     semantic: &'semantic Semantic<'ast>,
     used: UsedSymbols,
     surface: DeclarationSurface,
-    diagnostics: Vec<Diagnostic<'static>>,
+    diagnostics: Vec<Diagnostic>,
     next_default_id: u32,
     reserved_names: Option<FxHashSet<&'ast [u8]>>,
     validated_type_methods: FxHashSet<NodeId>,

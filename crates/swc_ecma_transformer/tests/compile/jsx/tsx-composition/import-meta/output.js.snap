@@ -1,0 +1,6 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+/** @jsx import.meta.h */
+const node = import.meta.h("div", null);
+export {};

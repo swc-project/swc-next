@@ -21,7 +21,7 @@ extension selects JavaScript, TypeScript, or JSX/TSX.
 ## Profiling
 
 The `profile` example parses JavaScript and TypeScript files recursively and prints
-the path, source bytes, AST node count, extra-data count, and diagnostic count as TSV.
+the path, source bytes, AST node count, extra-data unit count, and diagnostic count as TSV.
 It uses the default parser options without token collection.
 
 ```sh

@@ -89,7 +89,7 @@ pub struct StripResult<'source> {
     /// Contains parser diagnostics and at most one `erasableSyntaxOnly` error for
     /// syntax that cannot be safely erased. When non-empty, [`Self::code`] is
     /// recovery output and may not preserve program semantics.
-    pub diagnostics: Vec<Diagnostic<'static>>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 /// Strips erasable TypeScript syntax from `source` while preserving UTF-16 offsets
@@ -129,10 +129,12 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         mut diagnostics,
         ..
     } = parse;
+    // SAFETY: The eraser only reads handles obtained from this AST.
+    let ast = unsafe { ast.ast() };
 
     let program = ast.root_program();
     let mut eraser = TypeEraser {
-        ast: &ast,
+        ast,
         tokens: TokenCursor::new(&allocator, source, options.into()),
         restricted_argument: None,
         edits: EditPlan::default(),
@@ -175,7 +177,7 @@ struct TypeEraser<'ast, 'tokens> {
     /// argument, for the most recently visited keyword with an argument.
     restricted_argument: Option<Span>,
     edits: EditPlan,
-    diagnostic: Option<Diagnostic<'static>>,
+    diagnostic: Option<Diagnostic>,
     item_context: ItemContext,
     expr_frames: ArenaVec<'ast, ExprFrame>,
 }

@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import { jsx as _jsx } from "react/jsx-runtime";
+/* #__PURE__ */ _jsx(Comp, { ...{ get value() {
+  sideEffect();
+  return 1;
+} } });

@@ -1,0 +1,16 @@
+{
+  "parser": {
+    "lang": "tsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "development": true,
+      "pragma": "h",
+      "pragmaFrag": "_jsxFileName",
+      "runtime": "classic",
+      "sourceSelf": true
+    },
+    "typescript": {}
+  }
+}

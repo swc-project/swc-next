@@ -1,31 +1,5 @@
-use std::mem;
-
 use cow_utils::CowUtils;
 use swc_next_ast_macros::{ast, estree};
-
-use crate::{
-    ExtraData,
-    node_id::{ExtraDataValue, sealed::ExtraDataValue as SealedExtraDataValue},
-};
-
-macro_rules! impl_extra_data_value {
-    ($($ty:ty),+ $(,)?) => {
-        $(
-            impl SealedExtraDataValue for $ty {}
-            impl ExtraDataValue for $ty {
-                #[inline]
-                fn into_extra_data(self) -> ExtraData {
-                    ExtraData::from_raw(self as u64)
-                }
-
-                #[inline]
-                unsafe fn from_extra_data(data: &ExtraData) -> Self {
-                    unsafe { mem::transmute(data.raw() as u8) }
-                }
-            }
-        )+
-    };
-}
 
 /// Kind of a class method definition.
 ///
@@ -385,56 +359,6 @@ pub enum ImportPhase {
     Defer,
 }
 
-impl_extra_data_value!(
-    MethodDefinitionKind,
-    Accessibility,
-    ClassType,
-    BinaryOperator,
-    LogicalOperator,
-    UnaryOperator,
-    UpdateOperator,
-    AssignmentOperator,
-    VariableKind,
-    FunctionType,
-    FormalParameterKind,
-    PropertyKind,
-    ImportOrExportKind,
-    ImportPhase,
-);
-
-impl SealedExtraDataValue for Option<ImportPhase> {}
-
-impl ExtraDataValue for Option<ImportPhase> {
-    #[inline]
-    fn into_extra_data(self) -> ExtraData {
-        ExtraData::from_raw(self.map_or(u8::MAX as u64, |phase| phase as u64))
-    }
-
-    #[inline]
-    unsafe fn from_extra_data(data: &ExtraData) -> Self {
-        let value = data.raw() as u8;
-        (value != u8::MAX).then(|| unsafe { mem::transmute(value) })
-    }
-}
-
-/// The top-level node of every parsed file.
-///
-/// See: <https://tc39.es/ecma262/#prod-Script>,
-/// <https://tc39.es/ecma262/#prod-Module>
-///
-/// CommonJS sources use Script statement grammar with the top-level
-/// allowances of an ordinary function body.
-///
-/// ## Example
-/// ```js
-/// #!/usr/bin/env node
-/// "use strict";
-/// import x from "y";
-/// console.log(x);
-/// ```
-///
-/// `hashbang` is the `#!` line if present. `directives` contains the directive
-/// prologue (`"use strict";`), while `body` contains imports and statements.
 #[ast]
 #[estree(fields(sourceType(ts_type = "SourceType")))]
 pub struct Program {
@@ -2376,7 +2300,8 @@ mod tests {
 
     fn bigint_value(raw: &str) -> Option<BigInt> {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
+        // SAFETY: All handles used below belong to this AST and remain valid.
+        let mut ast = unsafe { Ast::new("", &allocator) };
         let raw = ast.add_utf8(raw);
         let literal = ast.big_int_literal(DUMMY_SP, raw);
         literal.value(&ast)

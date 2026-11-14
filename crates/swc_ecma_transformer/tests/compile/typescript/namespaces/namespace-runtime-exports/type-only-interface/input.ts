@@ -1,0 +1,1 @@
+namespace N { interface T {} } export type { N };

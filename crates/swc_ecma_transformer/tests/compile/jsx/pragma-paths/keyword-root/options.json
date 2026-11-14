@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "lang": "jsx",
+    "sourceType": "module"
+  },
+  "transformer": {
+    "jsx": {
+      "pragma": "true.factory",
+      "runtime": "classic"
+    },
+    "typescript": false
+  }
+}

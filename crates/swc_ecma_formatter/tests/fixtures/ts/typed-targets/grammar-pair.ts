@@ -1,1 +1,1 @@
-object.field satisfies T = value;
+(object.field satisfies T) = value;
