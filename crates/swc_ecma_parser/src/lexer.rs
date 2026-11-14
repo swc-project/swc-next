@@ -68,7 +68,7 @@ pub struct LexerState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Hashbang {
     pub start: u32,
-    pub len: u16,
+    pub len: u32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -178,7 +178,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             self.hashbang = Some(Hashbang {
                 start: 2,
-                len: (end - 2) as u16,
+                len: end - 2,
             });
             self.cursor = end;
         }
