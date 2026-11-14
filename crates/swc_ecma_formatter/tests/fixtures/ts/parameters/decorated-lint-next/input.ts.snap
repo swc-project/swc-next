@@ -11,6 +11,5 @@ class C { constructor(
 class C {
   constructor(
     // eslint-disable-next-line no-undef
-    @a @b private x?: string | null,
-  ) {}
+    @a @b private x?: string | null) {}
 }

@@ -298,6 +298,16 @@ impl Formatter<'_, '_> {
         Some(self.source_line_constraint(start, next))
     }
 
+    /// Keep a real closing token with the covered source line before it.
+    pub(super) fn lint_closing_constraint(&self, end: u32, close: u32) -> Option<LineConstraint> {
+        if end == 0 || end > close {
+            return None;
+        }
+        self.lint_line_at(end - 1)
+            .filter(|line| close < line.end)
+            .map(|_| LineConstraint::SameLine)
+    }
+
     pub(super) fn has_suppression_in(&self, span: Span) -> bool {
         self.has_suppression && self.source_directive_lines().has_suppression(span)
     }
