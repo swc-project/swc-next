@@ -5,7 +5,6 @@ use swc_next_ecma_ast::{Comment, CommentKind, Span};
 use super::Formatter;
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::source::{is_source_whitespace, lines, split_line};
-use super::suppression::{LintLineDirective, lint_line_directive};
 use crate::{FormatError, document::Writer};
 
 pub(super) enum PreparedBoundaryComments<'ast> {
@@ -1725,10 +1724,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     /// A next-line command owns semantic source lines, including separators
     /// which ordinary layout treats as visual whitespace.
     fn next_line_tool_gap(&self, comment: Comment, end: u32) -> Option<LineConstraint> {
-        if !matches!(
-            lint_line_directive(self.ast, comment),
-            Some(LintLineDirective::NextLine)
-        ) {
+        if !self.is_next_line_directive(comment.span) {
             return None;
         }
         let start = comment.span.end;

@@ -12,8 +12,8 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, DelimitedSuppression, LintLineDirective, SuppressionPosition,
-    lint_line_directive,
+    CommentDirective, ContentMode, DelimitedFollowing, DelimitedSuppression, LintLineDirective,
+    SuppressionPosition,
 };
 use crate::{
     FormatError, TrailingCommas,
@@ -453,8 +453,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_marker = comments.runtime
             && leading.last().is_some_and(|&comment| {
                 matches!(
-                    lint_line_directive(self.ast, comment),
-                    Some(LintLineDirective::SameLine)
+                    self.comment_directive(comment),
+                    Some(CommentDirective::LintLine(LintLineDirective::SameLine))
                 ) && self.source_line_breaks(comment.span.start, comment.span.end) == 0
             });
         let source_head = source_marker

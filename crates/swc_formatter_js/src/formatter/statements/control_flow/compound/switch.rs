@@ -9,7 +9,7 @@ use crate::formatter::statements::{
     StatementItem, StatementSequenceKind,
 };
 use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive, is_suppression_comment,
+    ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
 };
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
@@ -78,12 +78,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .map_or(span.end - 1, |node| node.span(ast).start);
                     Some(Span::new(span.start + 1, end))
                 });
-                let directive = |span| {
-                    comments
-                        .in_range(span)
-                        .iter()
-                        .any(|&comment| comment_directive(ast, comment).is_some())
-                };
+                let directive = |span| self.has_comment_directive_in(span);
                 if previous_end.is_some_and(|start| directive(Span::new(start, case_span.start)))
                     || directive(head)
                     || block_head.is_some_and(directive)

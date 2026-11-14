@@ -9,7 +9,7 @@ use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionOutput, ExpressionPosition};
-use super::suppression::{ContentMode, SuppressionPosition, comment_directive};
+use super::suppression::{ContentMode, SuppressionPosition};
 use super::types::PreparedBindingAnnotation;
 use super::types::generics::TypeArgumentOwner;
 use crate::{FormatError, TrailingCommas, document::Writer};
@@ -1245,7 +1245,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && (has_items
                     || comments.iter().any(|&comment| {
                         !self.comment_semantics(comment).is_ordinary()
-                            || comment_directive(ast, comment).is_some()
+                            || self.comment_directive(comment).is_some()
                     }));
             let end = writer.indent(|writer| {
                 if has_items || has_comments {

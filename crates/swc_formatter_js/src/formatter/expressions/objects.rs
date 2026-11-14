@@ -18,9 +18,7 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 
 use crate::formatter::literals::StringContext;
-use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
-};
+use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
     FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
     document::{BodyOpening, Fragment, Writer},
@@ -1738,7 +1736,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                     && comment.span.end <= child_span.end)
                             && self.comment_semantics(*comment).is_ordinary()
                             && !self.comment_is_jsdoc_binding(*comment)
-                            && comment_directive(self.ast, *comment).is_none()
+                            && self.comment_directive(*comment).is_none()
                     }) && self
                         .comment_binding(comments, content, None)
                         .allows_relocation(None))));

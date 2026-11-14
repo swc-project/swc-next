@@ -35,7 +35,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
-    lint_lines: std::cell::OnceCell<lint_lines::LintLineCoverage>,
+    lint_lines: lint_lines::LintLineCoverage,
     external_opening_owners: Vec<Option<expressions::parentheses::PreparedSourceOpening>>,
     has_suppression: bool,
     has_target_annotations: bool,
@@ -124,18 +124,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         options: FormatOptions,
         allocator: &'ast swc_next_allocator::Allocator,
     ) -> Self {
+        let lint_lines = lint_lines::LintLineCoverage::new(ast);
+        let has_suppression = lint_lines.has_suppressions();
         let mut formatter = Self {
             ast,
             allocator,
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
-            lint_lines: std::cell::OnceCell::new(),
+            lint_lines,
             external_opening_owners: Vec::new(),
-            has_suppression: ast
-                .comments()
-                .iter()
-                .any(|&comment| suppression::is_suppression_comment(ast, comment)),
+            has_suppression,
             has_target_annotations: false,
             has_type_casts: false,
             has_jsdoc_enclosures: std::cell::OnceCell::new(),

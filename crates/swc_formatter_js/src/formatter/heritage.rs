@@ -9,7 +9,7 @@ use super::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLay
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, ItemBoundary};
 use super::expressions::{AccessKind, ExpressionContext, ExpressionPosition, TailOwner};
-use super::suppression::{ContentMode, SuppressionPosition, comment_directive};
+use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -115,7 +115,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn heritage_has_directive(&self, comments: &[Comment]) -> bool {
         comments
             .iter()
-            .any(|&comment| comment_directive(self.ast, comment).is_some())
+            .any(|&comment| self.comment_directive(comment).is_some())
     }
 
     /// Source parentheses and chain wrappers do not change the header's operand shape.

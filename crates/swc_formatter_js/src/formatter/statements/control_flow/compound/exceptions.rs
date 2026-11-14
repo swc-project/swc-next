@@ -2,12 +2,10 @@
 
 use super::{CompoundBlock, CompoundGap, Formatter};
 use crate::formatter::bindings::{BindingGroup, PreparedAnnotatedBinding};
-use crate::formatter::comments::{CommentCursor, CommentRunLayout};
+use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::statements::{EmptyBlock, StatementBoundary};
-use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
-};
+use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
     BindingPattern, CatchClause, Comment, CommentKind, GetSpan, Span, TryStatement,
@@ -90,11 +88,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(parameter) = handler.param(ast)
         {
             let head = Span::new(handler.span(ast).start + 5, parameter.span(ast).start);
-            if CommentCursor::new(ast.comments())
-                .in_range(head)
-                .iter()
-                .any(|&comment| comment_directive(ast, comment).is_some())
-            {
+            if self.has_comment_directive_in(head) {
                 self.format_verbatim(span, writer)?;
                 return Ok(StatementBoundary::SourceEnd {
                     end: span.end,
