@@ -191,7 +191,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut last = first + 1;
             while last < comments.len() {
                 let gap = Span::new(comments[last - 1].span.end, comments[last].span.start);
-                if self.line_breaks(gap.start, gap.end) != 0
+                if self.source_line_breaks(gap.start, gap.end) != 0
                     || !self.source(gap).chars().all(is_source_whitespace)
                 {
                     break;
@@ -356,7 +356,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 break;
             }
             if position == TrailingSuppression::Inline
-                && self.line_breaks(previous, comment.span.start) != 0
+                && self.source_line_breaks(previous, comment.span.start) != 0
             {
                 if !terminal {
                     break;

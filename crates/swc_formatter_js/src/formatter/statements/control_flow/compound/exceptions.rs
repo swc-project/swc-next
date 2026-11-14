@@ -402,10 +402,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(tail, CatchParameterTail::Parameter { .. })
             && (head_comments.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.line_breaks(comment.span.end, span.start) != 0
+                    || self.source_line_breaks(comment.span.end, span.start) != 0
             }) || parameter_tail.iter().any(|comment| {
                 comment.kind == CommentKind::Line
-                    || self.line_breaks(span.end, comment.span.start) != 0
+                    || self.source_line_breaks(span.end, comment.span.start) != 0
             }));
         let body_head = self.compound_gap(Span::new(
             if matches!(tail, CatchParameterTail::Source(_)) {

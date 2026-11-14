@@ -463,7 +463,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         };
                         let lookup = self.member_lookup_comments(comments, gap, operator, false);
                         requires_envelope |= lookup.iter().any(|comment| {
-                            self.line_breaks(comment.span.start, comment.span.end) != 0
+                            self.source_line_breaks(comment.span.start, comment.span.end) != 0
                                 || self.source_position_starts_line(comment.span.start)
                         });
                     }
@@ -530,8 +530,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments.iter().enumerate().any(|(index, comment)| {
             let next = comments.get(index + 1).map_or(end, |next| next.span.start);
             comment.kind == CommentKind::Line
-                || self.line_breaks(comment.span.start, comment.span.end) != 0
-                || self.line_breaks(comment.span.end, next) != 0
+                || self.source_line_breaks(comment.span.start, comment.span.end) != 0
+                || self.source_line_breaks(comment.span.end, next) != 0
         })
     }
 }
