@@ -150,7 +150,8 @@ struct TypeAssertionOperand<'ast> {
 
 impl TypeAssertionOperandHead<'_> {
     fn has_leading_separator(&self) -> bool {
-        matches!(self, Self::Prepared { head, .. } if !head.head.comments.is_empty())
+        matches!(self, Self::Prepared { head, .. }
+            if head.head.comments.first().is_some_and(|comment| comment.kind == CommentKind::Line))
     }
 }
 
@@ -1684,10 +1685,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if boundary.is_empty() && body.starts_with_type_parameters(self.ast) {
                         writer.space();
                     }
-                    self.format_comment_boundary(&boundary, writer)?;
-                    boundary
-                        .gap()
-                        .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    if let Some(first) = boundary.comments().first() {
+                        self.line_constraint(boundary.source_end(), first.span.start)
+                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                        self.format_comment_boundary_with_layout(
+                            &boundary,
+                            CommentRunLayout::FlatLeading(body.source_start()),
+                            writer,
+                        )?;
+                    } else {
+                        boundary
+                            .gap()
+                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    }
                     self.format_prepared_delimited_type(
                         body,
                         TypeContext::Root,
@@ -1755,7 +1765,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             TypeAssertionOperandHead::Boundary { before, content } => {
-                self.format_type_expression_gap(before, FlatSeparator::Empty, writer)?;
+                match before {
+                    TypeExpressionGap::Formatted(boundary)
+                        if boundary.comments().first().is_some_and(|comment| {
+                            comment.kind == CommentKind::Block
+                                && self
+                                    .source_line_breaks(boundary.source_end(), comment.span.start)
+                                    == 0
+                        }) =>
+                    {
+                        self.format_comment_boundary_after_separator(&boundary, writer)?;
+                        boundary
+                            .gap()
+                            .write(writer, FlatSeparator::Space, Writer::space);
+                    }
+                    before => {
+                        self.format_type_expression_gap(before, FlatSeparator::Empty, writer)?;
+                    }
+                }
                 self.format_expression_prepared_output(
                     operand.expression,
                     content,

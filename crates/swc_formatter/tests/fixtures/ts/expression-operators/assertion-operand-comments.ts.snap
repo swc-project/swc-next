@@ -6,28 +6,27 @@ const value = < /* before type */ LongType /* before close */ > /* operand head 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const value = < /* before type */LongType /* before close */>(
+const value = </* before type */ LongType /* before close */>(
   /* operand head */ receiver.method(firstArgument, secondArgument)
 );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-const value =
-  < /* before type */
-    LongType /* before close */
-  > /* operand head */ receiver.method(
-    firstArgument,
-    secondArgument,
-  );
+const value = <
+  /* before type */ LongType /* before close */
+>/* operand head */ receiver.method(
+  firstArgument,
+  secondArgument,
+);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 const value =
-  < /* before type */
-    LongType /* before close */
-  > /* operand head */ receiver.method(
+  <
+    /* before type */ LongType /* before close */
+  >/* operand head */ receiver.method(
     firstArgument,
     secondArgument,
   )
@@ -35,10 +34,9 @@ const value =
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
-const value =
-	< /* before type */
-		LongType /* before close */
-	> /* operand head */ receiver.method(
-		firstArgument,
-		secondArgument,
-	);
+const value = <
+	/* before type */ LongType /* before close */
+>/* operand head */ receiver.method(
+	firstArgument,
+	secondArgument,
+);

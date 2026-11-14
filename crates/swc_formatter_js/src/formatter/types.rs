@@ -414,6 +414,10 @@ pub(super) enum PreparedDelimitedTypeHead<'ast> {
     Boundary(PreparedDelimitedType<'ast>, CommentBoundary<'ast>),
 }
 impl PreparedDelimitedType<'_> {
+    pub(super) fn source_start(&self) -> u32 {
+        self.span.start
+    }
+
     pub(super) fn starts_with_type_parameters(&self, ast: &Ast<'_>) -> bool {
         matches!(&self.content, PreparedTypeContent::Type(node)
             if matches!(node.data, TsTypeData::TsFunctionType(function)
