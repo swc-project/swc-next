@@ -12,6 +12,7 @@ Default to English unless requested otherwise.
 - Read the applicable `AGENTS.md`.
 - Omit routine bot comments and unrelated diffs. Fetch linked issues or discussions when they resolve a concrete uncertainty. Don't read CI results.
 - Prefer removal or reuse over added flags, layers, and special cases. Suggest concrete simpler alternatives without weakening behavior or safety.
+- Internal binary protocols and their transport APIs do not follow semver; do not flag their changes alone as breaking changes. Still verify that producers and consumers remain consistent within the same version.
 
 ## Explain
 

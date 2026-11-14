@@ -529,6 +529,10 @@ pub fn transform_js<const TRANSFORM: bool>(
 
 #[cfg(feature = "bridge")]
 pub mod bridge {
+    //! For internal SWC Next use only. These APIs and packed option/result
+    //! formats do not follow semantic versioning and may change in any release.
+    //! Use matching `@swc-next/encoder/transform` helpers and native/Wasm bindings.
+    //!
     //! Binary source transformation bridge. Options use a 16-byte little-endian
     //! header, optionally followed by a length-prefixed UTF-8 filename. Empty options
     //! select defaults. Output starts with code length, optional map length

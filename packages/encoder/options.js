@@ -1,3 +1,5 @@
+// Internal bridge option word; this API and format do not follow semver.
+// Keep in sync with crates/swc_core/src/js/generator.rs.
 export function encodeGeneratorConfig(options) {
   if (options === undefined || options === null) return 0;
   if (typeof options !== "object" || Array.isArray(options)) {

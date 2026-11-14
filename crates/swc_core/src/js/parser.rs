@@ -151,6 +151,10 @@ impl From<JsParserConfig> for Options {
 #[cfg(feature = "bridge")]
 pub mod bridge {
     //! Binary parser bridge for JavaScript ASTs and diagnostics.
+    //!
+    //! For internal SWC Next use only. These APIs, AST/diagnostic buffers, and
+    //! packed option words do not follow semantic versioning and may change in
+    //! any release. Use matching `@swc-next/decoder` and native/Wasm bindings.
 
     use swc_next_allocator::Allocator;
     use swc_next_bridge::{BridgeDecodeOptional, bridge};
@@ -238,6 +242,8 @@ pub mod bridge {
         Ok(buffer)
     }
 
+    // Internal option word paired with packages/decoder/options.js. Update both
+    // ends together; cross-version compatibility is not guaranteed.
     const OPTIONS_PRESENT: u32 = 1 << 0;
 
     const SOURCE_TYPE_SHIFT: u32 = 1;

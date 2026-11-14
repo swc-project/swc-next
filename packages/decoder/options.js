@@ -1,3 +1,5 @@
+// Internal bridge option word; this API and format do not follow semver.
+// Keep in sync with crates/swc_core/src/js/parser.rs.
 const OPTION_SOURCE_TYPES = ["module", "script", "commonjs", "unambiguous"];
 const OPTION_LANGS = ["js", "ts", "jsx", "tsx", "dts"];
 const OPTION_COMMENT_MODES = ["all", "none"];

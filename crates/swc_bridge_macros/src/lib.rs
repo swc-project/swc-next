@@ -1,3 +1,8 @@
+//! Internal code generation for SWC Next's native/Wasm bridge.
+//!
+//! This crate's API and generated ABI/metadata do not follow semantic versioning
+//! and may change in any release. Use matching bridge and binding generator versions.
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{ToTokens, quote};

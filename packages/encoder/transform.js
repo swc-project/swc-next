@@ -1,4 +1,5 @@
-// Binary transform transport. Keep the layout aligned with
+// Internal binary transform transport; the APIs and formats do not follow
+// semver and may change in any release. Keep the layout aligned with
 // crates/swc_core/src/js/transformer.rs.
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { ignoreBOM: true });

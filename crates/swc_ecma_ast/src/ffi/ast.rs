@@ -1,5 +1,9 @@
 //! Binary AST transfer format used by the JavaScript FFI.
 //!
+//! For internal SWC Next use only. These APIs and the AST/diagnostic formats do
+//! not follow semantic versioning and may change in any release. Buffers are not
+//! intended for persistent storage or exchange between versions.
+//!
 //! The AST already stores nodes as three structure-of-arrays sections, so the
 //! wire format preserves that representation instead of packing every logical
 //! field again. JavaScript can reconstruct fields from `kind`, `payload`, and
@@ -117,6 +121,9 @@ pub fn diagnostics_buffer_size(diagnostics: &[Diagnostic]) -> usize {
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
+///
+/// Internal transport; this API and format do not follow semver. Decode with the
+/// matching SWC Next JavaScript decoder.
 ///
 /// When `buf` is too small, including when it is empty, this returns the
 /// required size without writing a partial payload.
@@ -273,6 +280,8 @@ pub fn serialize_into(
 }
 
 /// Serialize packed diagnostics with UTF-16 spans into a caller-owned buffer.
+/// This internal API and format do not follow semver; use a matching consumer.
+///
 /// Returns the required size without writing when the buffer is too small.
 /// `source_utf16_len` must match the source's UTF-16 length.
 pub fn serialize_diagnostics(
@@ -349,6 +358,8 @@ impl<'a> Deref for BorrowedAst<'a> {
 }
 
 /// Decode an AST produced by the generated JavaScript encoder.
+///
+/// Internal transport; this API and format do not follow semver.
 ///
 /// The source section holds concatenated UTF-8 field values, not original source
 /// text. Transfers containing lone surrogates use the extra WTF-8 pool instead.
@@ -533,6 +544,8 @@ pub unsafe fn deserialize_from<'a>(
 }
 
 /// Borrow separate sections produced by the JavaScript encoder without joining them.
+///
+/// Internal transport; this API and format do not follow semver.
 ///
 /// # Safety
 ///

@@ -55,6 +55,9 @@ pub struct GenerateOutput {
 
 /// Print a trusted AST transfer buffer.
 ///
+/// For internal SWC Next use only. This API and binary format do not follow
+/// semantic versioning and may change in any release.
+///
 /// # Safety
 ///
 /// `buffer` must be produced by `@swc-next/encoder` matching the version of this
@@ -73,6 +76,9 @@ pub unsafe fn generate_from_buffer(
 }
 
 /// Print separate, trusted JavaScript encoder sections.
+///
+/// For internal SWC Next use only. This API and binary format do not follow
+/// semantic versioning and may change in any release.
 ///
 /// Native little-endian targets borrow the sections. WebAssembly and big-endian
 /// targets first join them into an aligned transfer buffer.
@@ -142,6 +148,8 @@ const _: () = {
         }
     }
 
+    // Internal option word paired with packages/encoder/options.js. Its layout
+    // does not follow semver; update both ends together.
     const OPTIONS_PRESENT: u32 = 1 << 0;
 
     const ASCII_ONLY_SHIFT: u32 = 1;
