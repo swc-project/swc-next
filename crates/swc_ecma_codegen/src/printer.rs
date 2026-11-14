@@ -831,7 +831,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_quoted(&mut self, value: &Wtf8, allow_backtick: bool) {
+    fn string_quote(&self, value: &Wtf8, allow_backtick: bool) -> u8 {
         let allow_backtick = allow_backtick && self.options.minify;
         let bytes = value.as_bytes();
         let single_cost = bytes.iter().filter(|&&byte| byte == b'\'').count();
@@ -848,6 +848,11 @@ impl<'a> Printer<'a> {
                 quote = b'`';
             }
         }
+        quote
+    }
+
+    fn print_quoted(&mut self, value: &Wtf8, allow_backtick: bool) {
+        let quote = self.string_quote(value, allow_backtick);
         quote_into(
             &mut self.js,
             value,
@@ -954,8 +959,10 @@ impl<'a> Printer<'a> {
                 }
                 self.print_indent();
                 self.stmt_start = self.js.len();
+                // A template literal cannot become a directive, even after quote selection.
                 let wrap = prevent_directive
-                    && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(_));
+                    && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(literal)
+                        if self.string_quote(self.ast.get_wtf8(literal.value(self.ast)), true) != b'`');
                 if wrap {
                     self.print("(");
                 }

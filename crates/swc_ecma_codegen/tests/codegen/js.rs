@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
+    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, Lang, ObjectPropertyKind, PropertyKey,
     PropertyKind, SourceType, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as GeneratorOptions, generate};
@@ -861,6 +861,58 @@ fn identifier_names() {
     expect_generated_with_options("({ 𐐀: 0 });", "({\\u{10400}:0});", ascii.clone());
 
     expect_generated_with_options("({ 𐐀 });", "({\\u{10400}});", ascii);
+}
+
+#[track_caller]
+fn expect_directive_position_string(source: &str, expected: &str) {
+    for lang in [Lang::Js, Lang::Ts, Lang::Tsx] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            lang,
+            preserve_parens: false,
+            ..ParseOptions::default()
+        };
+        let options = GeneratorOptions {
+            minify: true,
+            ..GeneratorOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+        let generated = generate(&original.ast, options.clone());
+        assert_eq!(generated.code, expected);
+
+        let reparsed = Parser::init(
+            &allocator,
+            &generated.code,
+            parse_options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(reparsed.diagnostics.is_empty());
+        // SAFETY: All handles below are obtained from their own AST.
+        let (original_ast, output_ast) = unsafe { (original.ast.ast(), reparsed.ast.ast()) };
+        assert_eq!(
+            original_ast.root_program().directives(original_ast).len(),
+            output_ast.root_program().directives(output_ast).len()
+        );
+        assert_eq!(generate(&reparsed.ast, options).code, generated.code);
+    }
+}
+
+#[test]
+fn test_directive_position_strings() {
+    expect_directive_position_string("(\"a\\\"'\");", "`a\"'`;");
+
+    expect_directive_position_string("function f() { (\"a\\\"'\"); }", "function f(){`a\"'`}");
+
+    expect_directive_position_string("(\"use strict\");", "(\"use strict\");");
+
+    expect_directive_position_string(
+        "function f() { (\"use strict\"); }",
+        "function f(){(\"use strict\")}",
+    );
+
+    expect_directive_position_string("(\"a\\\"'\"); \"use strict\";", "`a\"'`;\"use strict\";");
 }
 
 #[test]
