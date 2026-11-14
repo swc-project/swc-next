@@ -1533,14 +1533,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.format_comment_run(before, CommentRunLayout::Source, writer)?;
         if let Some(last) = before.last() {
-            self.comment_gap(last.span.end, operator_start, writer);
+            self.comment_gap_after(*last, operator_start, writer);
         }
         if self.parenthesis_has_type_cast(right_start) {
             self.format_comment_run(after, CommentRunLayout::Leading(right_start), writer)?;
         } else {
             self.format_comment_run(after, CommentRunLayout::Source, writer)?;
             if let Some(last) = after.last() {
-                self.comment_gap(last.span.end, right_start, writer);
+                self.comment_gap_after(*last, right_start, writer);
             }
         }
         Ok(mode)

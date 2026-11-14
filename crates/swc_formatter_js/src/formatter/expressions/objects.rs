@@ -444,7 +444,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.comments.claim(leading)?;
                         self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                         if let Some(last) = leading.last() {
-                            self.comment_gap(last.span.end, property_span.start, writer);
+                            self.comment_gap_after(*last, property_span.start, writer);
                         }
                         let tail = if mode == ContentMode::Verbatim {
                             self.format_verbatim(property_span, writer)?;
@@ -1274,7 +1274,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         self.format_comment_run(header.before, CommentRunLayout::Source, writer)?;
         if let (Some(before), Some(after)) = (header.before.last(), header.after.first()) {
-            self.comment_gap(before.span.end, after.span.start, writer);
+            self.comment_gap_after(*before, after.span.start, writer);
         }
         self.format_comment_run(header.after, CommentRunLayout::Source, writer)?;
         match header.gap {

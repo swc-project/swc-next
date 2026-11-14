@@ -1976,7 +1976,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mode = self.content_mode(comments);
                 self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
                 if let Some(last) = comments.last() {
-                    self.comment_gap(last.span.end, argument.span(self.ast).start, writer);
+                    self.comment_gap_after(*last, argument.span(self.ast).start, writer);
                 }
                 self.format_expression(
                     argument,

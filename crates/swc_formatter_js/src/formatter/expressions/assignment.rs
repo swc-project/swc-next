@@ -1323,7 +1323,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Splitting one source comment run between the operator suffix
             // and RHS head transfers their gap to the separator's owner.
             // An intervening source opener still owns its internal gap.
-            boundary.after_operator = self.comment_gap_constraint(last.span.end, first.span.start);
+            boundary.after_operator = self.comment_gap_after_constraint(*last, first.span.start);
         }
         if let Some((last, previous)) = boundary.before.split_last()
             && last.kind == CommentKind::Line

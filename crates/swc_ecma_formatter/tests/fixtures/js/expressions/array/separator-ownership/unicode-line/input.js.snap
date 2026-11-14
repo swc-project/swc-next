@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first // marker , second];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first,
+  // marker
+  second,
+];

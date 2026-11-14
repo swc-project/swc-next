@@ -538,7 +538,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.line_constraint(last.span.end, next_start).write(
                 writer,
                 FlatSeparator::Space,
-                |writer| self.comment_gap(last.span.end, next_start, writer),
+                |writer| self.comment_gap_after(*last, next_start, writer),
             );
         }
         Ok(())
@@ -630,7 +630,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_constraint(last.span.end, next_start).write(
                         writer,
                         FlatSeparator::Space,
-                        |writer| self.comment_gap(last.span.end, next_start, writer),
+                        |writer| self.comment_gap_after(*last, next_start, writer),
                     );
                 }
                 Ok(())
