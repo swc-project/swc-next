@@ -13,8 +13,7 @@ use crate::formatter::comments::{CommentBinding, CommentCursor, CommentRunLayout
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::suppression::{
-    CommentDirective, ContentMode, LintLineDirective, SuppressionPosition, comment_directive,
-    lint_line_directive,
+    CommentDirective, ContentMode, LintLineDirective, SuppressionPosition,
 };
 use crate::{FormatError, document::Writer};
 
@@ -118,8 +117,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if controlled
                     || prefix.iter().any(|&comment| {
                         matches!(
-                            lint_line_directive(self.ast, comment),
-                            Some(LintLineDirective::SameLine)
+                            self.comment_directive(comment),
+                            Some(CommentDirective::LintLine(LintLineDirective::SameLine))
                         )
                     })
                 {
@@ -302,8 +301,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if controlled
                 || after.iter().any(|&comment| {
                     matches!(
-                        lint_line_directive(ast, comment),
-                        Some(LintLineDirective::SameLine)
+                        self.comment_directive(comment),
+                        Some(CommentDirective::LintLine(LintLineDirective::SameLine))
                     )
                 })
             {
@@ -357,7 +356,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.diagnostic_range_is_sensitive(span)
             || comments.iter().any(|&comment| {
                 matches!(
-                    comment_directive(self.ast, comment),
+                    self.comment_directive(comment),
                     Some(CommentDirective::LintRange | CommentDirective::Coverage)
                 )
             })

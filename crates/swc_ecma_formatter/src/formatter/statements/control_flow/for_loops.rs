@@ -20,9 +20,7 @@ use crate::formatter::expressions::targets::SourceTarget;
 use crate::formatter::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ForInitializerGrammar, TailOwner,
 };
-use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, SuppressionPosition, comment_directive,
-};
+use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::formatter::variables::VariableContext;
 use crate::{FormatError, document::Writer};
 
@@ -200,11 +198,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .as_ref()
                 .or(update.as_ref())
                 .map_or(body_start, |node| node.span.start);
-            let comments = CommentCursor::new(ast.comments()).in_range(Span::new(keyword_end, end));
-            if comments
-                .iter()
-                .any(|&comment| comment_directive(ast, comment).is_some())
-            {
+            if self.has_comment_directive_in(Span::new(keyword_end, end)) {
                 let statement = super::super::StatementItem::Statement(Stmt::ForStatement(node));
                 let content = self.statement_content(statement);
                 return self.format_verbatim_statement_with_source_fence(

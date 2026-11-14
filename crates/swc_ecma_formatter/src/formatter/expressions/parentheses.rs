@@ -16,9 +16,7 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{DiagnosticCoverage, FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
 use crate::formatter::source::is_source_whitespace;
-use crate::formatter::suppression::{
-    ContentMode, SuppressionPosition, TrailingSuppression, comment_directive,
-};
+use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
 use crate::{
     FormatError, Semicolons,
     document::{BodyOpening, Writer},
@@ -3849,7 +3847,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || context.content_mode == ContentMode::Formatted && context.head_gap.is_some()
         {
             for &comment in head.comments {
-                has_directive |= comment_directive(self.ast, comment).is_some();
+                has_directive |= self.comment_directive(comment).is_some();
                 if join_function_head {
                     join_function_head = !has_directive
                         && comment.kind == CommentKind::Block
@@ -3957,7 +3955,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && head
                 .comments
                 .iter()
-                .any(|comment| comment_directive(self.ast, *comment).is_some());
+                .any(|comment| self.comment_directive(*comment).is_some());
         self.canonical_head_gap_with_directive(expression, head, binding, context, has_directive)
     }
 

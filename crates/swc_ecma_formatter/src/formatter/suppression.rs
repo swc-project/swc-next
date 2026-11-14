@@ -134,18 +134,6 @@ fn is_coverage_directive(value: &str) -> bool {
     })
 }
 
-pub(super) fn comment_directive(ast: &Ast<'_>, comment: Comment) -> Option<CommentDirective> {
-    let value = ast.get_utf8(comment.value(ast.source().as_bytes()));
-    comment_directive_value(value, comment.kind)
-}
-
-pub(super) fn lint_line_directive(ast: &Ast<'_>, comment: Comment) -> Option<LintLineDirective> {
-    match comment_directive(ast, comment) {
-        Some(CommentDirective::LintLine(line)) => Some(line),
-        _ => None,
-    }
-}
-
 impl<'ast, 'source> Formatter<'ast, 'source> {
     #[inline]
     pub(super) fn suppression_position(
