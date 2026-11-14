@@ -29,11 +29,14 @@ impl LintLineCoverage {
             .filter_map(|&comment| {
                 let kind = lint_line_directive(ast, comment)?;
                 let text = &source[comment.span.start as usize..comment.span.end as usize];
-                // Line-scoped lint markers in multiline comments are invalid.
-                if text.contains(['\r', '\n', '\u{2028}', '\u{2029}']) {
+                // A same-line directive is invalid in a multiline block. A
+                // next-line directive instead uses the comment's ending line.
+                if matches!(kind, LintLineDirective::SameLine)
+                    && text.contains(['\r', '\n', '\u{2028}', '\u{2029}'])
+                {
                     return None;
                 }
-                Some((comment.span.start as usize, kind))
+                Some(((comment.span.end - 1) as usize, kind))
             })
             .peekable();
         if directives.peek().is_none() {
@@ -167,7 +170,20 @@ mod tests {
         assert!(lines.intersects(text_span(source, "one")));
         assert!(!lines.intersects(text_span(source, "two")));
 
-        let (source, lines) = coverage("/* eslint-disable-next-line\n*/\none;");
+        for newline in ["\n", "\r", "\r\n", "\u{2028}", "\u{2029}"] {
+            let source = format!(
+                "/* eslint-disable-next-line{newline} no-undef{newline}*/ same;{newline}one;{newline}two;"
+            );
+            let (_, lines) = coverage(&source);
+            assert!(!lines.intersects(text_span(&source, "same")));
+            assert!(lines.intersects(text_span(&source, "one")));
+            assert!(!lines.intersects(text_span(&source, "two")));
+        }
+
+        let (source, lines) = coverage("/* eslint-disable-line\n*/ one;");
+        assert!(!lines.intersects(text_span(source, "one")));
+
+        let (source, lines) = coverage("/* eslint-disable-next-line\n*/\n\none;");
         assert!(!lines.intersects(text_span(source, "one")));
 
         let (source, lines) = coverage("/* prettier-ignore */ one; two;");
