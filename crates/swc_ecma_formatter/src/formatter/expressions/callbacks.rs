@@ -380,7 +380,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             role: CallbackRole::Test,
             prepared_body: None,
         };
-        let (value, tail) = self.record_callback(&mut selected, false, jsx_call, None, writer)?;
+        let (value, tail) =
+            self.record_callback(&mut selected, false, false, jsx_call, None, writer)?;
         match value {
             RecordedValue::Callback {
                 signature: Some(signature),
@@ -869,6 +870,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         selected: &mut SelectedCallback,
         sole_argument: bool,
+        constructor: bool,
         jsx_call: Option<CallExpression>,
         independent_callback: Option<ArrowFunctionExpression>,
         writer: &mut Writer<'ast>,
@@ -970,7 +972,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     CallbackBody::Retained(body),
                     normal,
                     None,
-                    independent || shape == Some(CallbackParameterShape::Other),
+                    independent
+                        || constructor && sole_argument
+                        || shape == Some(CallbackParameterShape::Other),
                 )
             }
         };
@@ -1108,6 +1112,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let (mut value, tail) = self.record_callback(
                         selected,
                         sole_argument,
+                        head.constructor,
                         head.jsx_call,
                         head.independent_callback,
                         writer,
