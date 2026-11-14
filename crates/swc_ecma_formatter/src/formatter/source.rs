@@ -129,6 +129,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .ends_with(['\r', '\n', '\u{2028}', '\u{2029}'])
     }
 
+    /// Count ECMAScript line terminators for source ownership.
+    pub(super) fn source_line_breaks(&self, start: u32, end: u32) -> u8 {
+        self.line_breaks(start, end)
+    }
+
     pub(super) fn line_breaks(&self, start: u32, end: u32) -> u8 {
         let mut characters = self.source(Span::new(start, end)).chars().peekable();
         let mut count = 0;

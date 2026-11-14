@@ -1408,7 +1408,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut count = 0;
         for &comment in comments {
             let gap = self.source(Span::new(end, comment.span.start));
-            if target.is_some() && self.line_breaks(end, comment.span.start) != 0
+            if target.is_some() && self.source_line_breaks(end, comment.span.start) != 0
                 || !gap.chars().all(is_source_whitespace)
             {
                 break;
@@ -1457,7 +1457,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let following_gap = if suppression.following == ContentMode::Verbatim {
             Some(
-                match self.line_breaks(end, following.span(self.ast).start) {
+                match self.source_line_breaks(end, following.span(self.ast).start) {
                     0 => LineConstraint::SameLine,
                     count => LineConstraint::NewLine(count),
                 },

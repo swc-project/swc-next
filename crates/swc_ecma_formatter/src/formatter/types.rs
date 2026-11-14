@@ -2699,7 +2699,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         if node.source_owner != Some(attachment.node)
-            || self.line_breaks(first.span.start, source_span.start) != 0
+            || self.source_line_breaks(first.span.start, source_span.start) != 0
         {
             return None;
         }
@@ -2720,7 +2720,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut marker_types_following = true;
         for &comment in after.iter().rev() {
             if comment.kind != CommentKind::Block
-                || self.line_breaks(comment.span.start, comment.span.end) != 0
+                || self.source_line_breaks(comment.span.start, comment.span.end) != 0
             {
                 return None;
             }
@@ -2747,7 +2747,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         if !existing_marker_head {
             let attachment_start = attachment.node.span(self.ast).start;
-            let source_breaks = self.line_breaks(first.span.start, attachment_start);
+            let source_breaks = self.source_line_breaks(first.span.start, attachment_start);
             if !all_following
                 || source_breaks != 0
                     && !(matches!(

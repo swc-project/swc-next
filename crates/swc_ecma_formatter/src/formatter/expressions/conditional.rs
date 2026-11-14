@@ -662,7 +662,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut trailing = 0;
         let mut offset = 0;
         for run in comments.chunk_by(|left, right| {
-            self.line_breaks(left.span.end, right.span.start) == 0
+            self.source_line_breaks(left.span.end, right.span.start) == 0
                 && self
                     .source(Span::new(left.span.end, right.span.start))
                     .chars()
@@ -676,7 +676,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(following_start, |comment| comment.span.start);
             let ends_line = self.comment_run_ends_line(last, next);
             if self.source_position_starts_line(first.span.start)
-                || ends_line && self.line_breaks(operand_end, first.span.start) != 0
+                || ends_line && self.source_line_breaks(operand_end, first.span.start) != 0
             {
                 break;
             }

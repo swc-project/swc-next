@@ -1227,7 +1227,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if self.separator_comment_starts_following(*comment, index, before_separator) {
                 break;
             }
-            if self.line_breaks(previous_end, comment.span.start) != 0 {
+            if self.source_line_breaks(previous_end, comment.span.start) != 0 {
                 break;
             }
             previous_end = comment.span.end;
@@ -1239,7 +1239,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 trailing_count = index + 1;
             }
             if comment.kind == CommentKind::Line
-                || next_start.is_none_or(|start| self.line_breaks(comment.span.end, start) != 0)
+                || next_start
+                    .is_none_or(|start| self.source_line_breaks(comment.span.end, start) != 0)
             {
                 trailing_count = index + 1;
                 break;
@@ -2037,7 +2038,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let end = previous
                         .as_ref()
                         .map_or(start, |previous| previous.span.end);
-                    self.line_breaks(end, comment.span.start) == 0
+                    self.source_line_breaks(end, comment.span.start) == 0
                 }
                 (CommentRunLayout::SourceDangling, CommentKind::Line) => {
                     previous.is_some()
@@ -2205,7 +2206,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         };
         last.kind == CommentKind::Line
-            && self.line_breaks(
+            && self.source_line_breaks(
                 previous.last().map_or(start, |comment| comment.span.end),
                 last.span.start,
             ) != 0

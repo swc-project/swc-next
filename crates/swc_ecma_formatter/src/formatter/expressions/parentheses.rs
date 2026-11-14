@@ -1368,13 +1368,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return CommentBinding::SourceBound;
             }
             if diagnostic_tail {
-                on_operand_line &= self.line_breaks(start, comment.span.start) == 0;
+                on_operand_line &= self.source_line_breaks(start, comment.span.start) == 0;
                 if !on_operand_line && self.comment_semantics(*comment).is_ordinary() {
                     // An own-line ordinary suffix needs this real carrier to
                     // remain attached to the preceding expression.
                     return CommentBinding::SourceBound;
                 }
-                on_operand_line &= self.line_breaks(comment.span.start, comment.span.end) == 0;
+                on_operand_line &=
+                    self.source_line_breaks(comment.span.start, comment.span.end) == 0;
             }
             start = comment.span.end;
         }
