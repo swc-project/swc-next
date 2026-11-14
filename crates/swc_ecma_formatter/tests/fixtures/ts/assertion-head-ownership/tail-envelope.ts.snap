@@ -7,7 +7,7 @@ left << <T>((/* head */ receiver).method() /* tail */)();
 {}
 ---------- Output ----------
 left <<
-  (<T> /* head */ receiver
+  (<T>/* head */ receiver
     .method() /* tail */());
 
 ---------- Options ----------
@@ -16,7 +16,7 @@ left <<
 left <<
   (<
     T
-  > /* head */ receiver
+  >/* head */ receiver
     .method() /* tail */());
 
 ---------- Options ----------
@@ -25,7 +25,7 @@ left <<
 left <<
   (<
     T
-  > /* head */ receiver
+  >/* head */ receiver
     .method() /* tail */())
 
 ---------- Options ----------
@@ -34,5 +34,5 @@ left <<
 left <<
 	(<
 		T
-	> /* head */ receiver
+	>/* head */ receiver
 		.method() /* tail */());

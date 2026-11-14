@@ -6,28 +6,27 @@ const value = < /* before type */ LongType /* before close */ > /* operand head 
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-const value = < /* before type */LongType /* before close */>(
+const value = </* before type */ LongType /* before close */>(
   /* operand head */ receiver.method(firstArgument, secondArgument)
 );
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-const value =
-  < /* before type */
-    LongType /* before close */
-  > /* operand head */ receiver.method(
-    firstArgument,
-    secondArgument,
-  );
+const value = <
+  /* before type */ LongType /* before close */
+>/* operand head */ receiver.method(
+  firstArgument,
+  secondArgument,
+);
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
 ---------- Output ----------
 const value =
-  < /* before type */
-    LongType /* before close */
-  > /* operand head */ receiver.method(
+  <
+    /* before type */ LongType /* before close */
+  >/* operand head */ receiver.method(
     firstArgument,
     secondArgument,
   )
@@ -35,10 +34,9 @@ const value =
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
 ---------- Output ----------
-const value =
-	< /* before type */
-		LongType /* before close */
-	> /* operand head */ receiver.method(
-		firstArgument,
-		secondArgument,
-	);
+const value = <
+	/* before type */ LongType /* before close */
+>/* operand head */ receiver.method(
+	firstArgument,
+	secondArgument,
+);

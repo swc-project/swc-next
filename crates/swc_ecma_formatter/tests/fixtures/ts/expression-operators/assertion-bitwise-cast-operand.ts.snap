@@ -6,7 +6,7 @@ left << <T>(/** @type {number} */ (value));
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-left << ((<T> /** @type {number} */ (value)));
+left << ((<T>/** @type {number} */ (value)));
 
 ---------- Options ----------
 {"printWidth":20}
@@ -14,7 +14,7 @@ left << ((<T> /** @type {number} */ (value)));
 left <<
   ((<
     T
-  > /** @type {number} */ (
+  >/** @type {number} */ (
     value
   )));
 
@@ -24,7 +24,7 @@ left <<
 left <<
   ((<
     T
-  > /** @type {number} */ (
+  >/** @type {number} */ (
     value
   )))
 
@@ -34,6 +34,6 @@ left <<
 left <<
 	((<
 		T
-	> /** @type {number} */ (
+	>/** @type {number} */ (
 		value
 	)));
