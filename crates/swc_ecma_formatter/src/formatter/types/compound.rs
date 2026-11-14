@@ -1926,8 +1926,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.break_parent();
             self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
             if let Some(last) = comments.last() {
-                self.comment_gap_constraint(last.span.end, next_start)
-                    .write(writer, FlatSeparator::Space, |_| {});
+                self.comment_gap_after_constraint(*last, next_start).write(
+                    writer,
+                    FlatSeparator::Space,
+                    |_| {},
+                );
             }
             return Ok(());
         }

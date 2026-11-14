@@ -4921,7 +4921,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = after.comments();
             self.format_comment_boundary_with_layout(after, CommentRunLayout::Source, writer)?;
             if let Some(last) = comments.last() {
-                self.comment_gap(last.span.end, node.node.span(self.ast).start, writer);
+                self.comment_gap_after(*last, node.node.span(self.ast).start, writer);
             }
             return self.format_prepared_type_output(node, context, layout, writer);
         }

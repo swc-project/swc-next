@@ -1348,15 +1348,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("{");
             let comments = self.comments.between(content)?;
             let comments = self.comments.take(comments.len());
-            if !comments.is_empty() {
+            if let Some(last) = comments.last() {
                 writer.indent(|writer| {
                     writer.space();
                     self.format_comment_run(comments, CommentRunLayout::Source, writer)
                 })?;
-                let end = comments
-                    .last()
-                    .map_or(content.start, |comment| comment.span.end);
-                self.comment_gap(end, content.end, writer);
+                self.comment_gap_after(*last, content.end, writer);
             }
             writer.text("}");
             return Ok(());
@@ -1389,7 +1386,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comments.claim(comments)?;
                     self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
                     if let Some(last) = comments.last() {
-                        self.comment_gap(last.span.end, first.span(self).start, writer);
+                        self.comment_gap_after(*last, first.span(self).start, writer);
                     }
                 }
                 let mut transition = None;

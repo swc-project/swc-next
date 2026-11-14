@@ -465,7 +465,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(end) = head.gap_end
             && let Some(last) = head.comments.last()
         {
-            self.comment_gap_with_packet(last.span.end, end, packet.as_ref(), writer);
+            self.comment_gap_after_with_packet(*last, end, packet.as_ref(), writer);
         }
         Ok(item)
     }

@@ -3489,7 +3489,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // Apply that gap after the relocated leading packet, once.
                 LineConstraint::NewLine(2).write(writer, FlatSeparator::Space, |_| {});
             } else {
-                self.comment_gap(last.span.end, end, writer);
+                self.comment_gap_after(*last, end, writer);
             }
         }
         Ok(start)

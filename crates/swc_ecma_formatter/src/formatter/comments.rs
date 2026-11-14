@@ -1658,6 +1658,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comment_gap_with_opening(start, end, CommentOpening::Needed, writer);
     }
 
+    /// An emitted line comment must end before any following token or comment.
+    pub(super) fn comment_gap_after(&self, comment: Comment, end: u32, writer: &mut Writer<'ast>) {
+        self.comment_gap_after_constraint(comment, end)
+            .write(writer, FlatSeparator::Space, |_| {});
+    }
+
+    pub(super) fn comment_gap_after_constraint(
+        &self,
+        comment: Comment,
+        end: u32,
+    ) -> LineConstraint {
+        match self.comment_gap_constraint(comment.span.end, end) {
+            LineConstraint::SameLine if comment.kind == CommentKind::Line => {
+                LineConstraint::NewLine(1)
+            }
+            constraint => constraint,
+        }
+    }
+
     fn comment_gap_with_opening(
         &self,
         start: u32,
@@ -1686,18 +1705,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn comment_gap_with_packet(
+    pub(super) fn comment_gap_after_with_packet(
         &self,
-        start: u32,
+        comment: Comment,
         end: u32,
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
         self.comment_gap_with_packet_and_opening(
-            start,
+            comment.span.end,
             end,
             packet,
             CommentOpening::Needed,
+            comment.kind == CommentKind::Line,
             writer,
         );
     }
@@ -1708,22 +1728,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         end: u32,
         packet: Option<&SourceSeparatorPacket<'ast>>,
         opening: CommentOpening,
+        after_line: bool,
         writer: &mut Writer<'ast>,
     ) {
         if packet.is_none() {
-            self.comment_gap_with_opening(start, end, opening, writer);
+            let constraint = match self.comment_gap_constraint(start, end) {
+                LineConstraint::SameLine if after_line => LineConstraint::NewLine(1),
+                constraint => constraint,
+            };
+            constraint.write(writer, opening.separator(), |_| {});
             return;
         }
         let (breaks, empty) = self.packet_gap_lines(start, end, packet);
-        self.source_transition_constraint(
+        let constraint = self.source_transition_constraint(
             start,
             end,
             packet.map(|packet| &packet.transition),
             SourceSeparatorGap::WithinPacket,
-        )
-        .write(writer, opening.separator(), |writer| match breaks {
-            0 => opening.write(writer),
-            1 => writer.hard_line(),
+        );
+        let constraint = match constraint {
+            LineConstraint::SameLine if after_line => LineConstraint::NewLine(1),
+            constraint => constraint,
+        };
+        constraint.write(writer, opening.separator(), |writer| match breaks {
+            0 if !after_line => opening.write(writer),
+            0 | 1 => writer.hard_line(),
             _ => {
                 writer.hard_line();
                 if empty {
@@ -2076,12 +2105,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
                         | CommentRunLayout::StatementTail(_)
-                        | CommentRunLayout::SourceLeading { .. } => self.comment_gap_with_packet(
-                            previous.span.end,
-                            prepared.span.start,
-                            packet,
-                            writer,
-                        ),
+                        | CommentRunLayout::SourceLeading { .. } => self
+                            .comment_gap_after_with_packet(
+                                Comment::new(previous.span, previous.kind),
+                                prepared.span.start,
+                                packet,
+                                writer,
+                            ),
                         CommentRunLayout::OwnLineTrailing
                             if previous.kind == CommentKind::Block
                                 && self.line_breaks(previous.span.end, prepared.span.start)
@@ -2133,6 +2163,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     prepared.span.start,
                     packet,
                     opening,
+                    false,
                     writer,
                 );
             }
