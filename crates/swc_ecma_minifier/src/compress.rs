@@ -1,4 +1,4 @@
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, AstCtx, AstUtf8, BinaryExpression, BinaryOperator,
     BindingIdentifier, BindingPattern, BindingPatternData, BindingProperty, BlockStatement,
@@ -14,7 +14,7 @@ use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
 };
 
-use crate::{CompressOptions, dynamic::DynamicScopes, mangle::Renames};
+use crate::{CompressOptions, dynamic::DynamicScopes, id_set::IdSet, mangle::Renames};
 
 mod conditionals;
 mod dead_code;
@@ -35,17 +35,17 @@ use value::{Value, skip_parentheses};
 struct Candidates {
     globals: FxHashMap<NodeId, Value<'static>>,
     typeofs: FxHashMap<NodeId, NodeId>,
-    unused: FxHashSet<NodeId>,
+    unused: IdSet<NodeId>,
     /// Names of function declarations that are removed.
-    removed_functions: FxHashSet<NodeId>,
+    removed_functions: IdSet<NodeId>,
     /// The constant that replaces each read of an inlined binding.
     inlined: FxHashMap<NodeId, Constant>,
     /// Removed bindings whose initializers are constants that are not
     /// folded yet.
-    constant_bindings: FxHashSet<NodeId>,
+    constant_bindings: IdSet<NodeId>,
     /// Reads that cannot throw and whose removal cannot make a declaration
     /// removable.
-    pure_reads: FxHashSet<NodeId>,
+    pure_reads: IdSet<NodeId>,
     renames: Renames,
 }
 
@@ -73,7 +73,7 @@ impl Candidates {
             candidates.renames = Renames::build(ast, &semantic, &dynamic);
         }
         let mut local_vars = FxHashMap::default();
-        let mut in_function = FxHashSet::default();
+        let mut in_function = IdSet::default();
         for entry in semantic.iter_symbols() {
             // Dynamic lookup can read or write these bindings at any time.
             // Leaving them out of `in_function` also keeps reductions away.
@@ -111,7 +111,7 @@ impl Candidates {
                 ancestor = scope.parent;
             }
             if options.unused
-                && in_function.contains(&entry.id)
+                && in_function.contains(entry.id)
                 && semantic.uses(entry.id).is_empty()
             {
                 candidates.unused.insert(declaration.node);
@@ -159,7 +159,7 @@ impl Candidates {
         };
         let reduction = Reduction::build(ast, &context);
         candidates.removed_functions = reduction.functions;
-        candidates.unused.extend(reduction.removed);
+        candidates.unused.extend(&reduction.removed);
         candidates.inlined = reduction.inlined;
         candidates.constant_bindings = reduction.constant_bindings;
 
@@ -171,7 +171,7 @@ impl Candidates {
                 .iter_symbols()
                 .filter(|entry| {
                     is_initialized(entry.symbol.flags)
-                        && !reduction.removable.contains(&entry.id)
+                        && !reduction.removable.contains(entry.id)
                         && !dynamic.contains(&semantic, entry.id)
                         && !semantic.declarations(entry.id).any(|declaration| {
                             is_global_var(semantic.scope(declaration.scope).kind, declaration.flags)
@@ -221,13 +221,13 @@ pub(super) fn compress(ast: &mut AstCtx<'_>, options: CompressOptions, mangle: b
         candidates,
         names,
         delete_depth: 0,
-        deleted_reads: FxHashSet::default(),
-        primitive_bindings: FxHashSet::default(),
+        deleted_reads: IdSet::default(),
+        primitive_bindings: IdSet::default(),
         pending_typeofs: Vec::new(),
         hoisted: Vec::new(),
         function_starts: Vec::new(),
         branches: Vec::new(),
-        reference_positions: FxHashSet::default(),
+        reference_positions: IdSet::default(),
         statement_list: StatementList::default(),
     };
     let _ = program.traverse_mut_with(&mut compressor, &mut TraverseMutCtx::new(ast, ()));
@@ -247,8 +247,8 @@ struct Compressor {
     /// Number of enclosing `delete` operators.
     delete_depth: u32,
     /// Reads of inlined bindings that are `delete` operands.
-    deleted_reads: FxHashSet<NodeId>,
-    primitive_bindings: FxHashSet<NodeId>,
+    deleted_reads: IdSet<NodeId>,
+    primitive_bindings: IdSet<NodeId>,
     pending_typeofs: Vec<TypeofRewrite>,
     /// Hoisted declarations in open functions. Each function's entries are
     /// dropped when it exits.
@@ -260,7 +260,7 @@ struct Compressor {
     /// Conditional, logical, and sequence expressions used as a callee, a
     /// tag, or a `delete` or `typeof` operand, where a reference keeps its
     /// receiver.
-    reference_positions: FxHashSet<NodeId>,
+    reference_positions: IdSet<NodeId>,
     statement_list: StatementList,
 }
 
@@ -383,8 +383,8 @@ impl Compressor {
             return false;
         };
         let binding = binding.node_id();
-        self.candidates.constant_bindings.contains(&binding)
-            || self.candidates.unused.contains(&binding)
+        self.candidates.constant_bindings.contains(binding)
+            || self.candidates.unused.contains(binding)
                 && declarator
                     .init(ast)
                     .is_none_or(|expr| !may_have_side_effects(ast, expr))
@@ -429,7 +429,7 @@ impl Compressor {
     fn global(&mut self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
         if let Some(constant) = self.candidates.inlined.get(&node.node_id()).copied() {
             // `delete a` becomes `false`; see `exit_expr`.
-            if self.deleted_reads.contains(&node.node_id()) {
+            if self.deleted_reads.contains(node.node_id()) {
                 return None;
             }
             let span = node.span(ast);
@@ -466,7 +466,7 @@ impl Compressor {
     /// receiver stays `undefined`, `delete` still sees a value, and `typeof`
     /// still throws for an undeclared name.
     fn kept_branch(&mut self, ast: &mut Ast<'_>, node: Expr, kept: Expr) -> Expr {
-        if !self.reference_positions.remove(&node.node_id()) || !dead_code::is_reference(ast, kept)
+        if !self.reference_positions.remove(node.node_id()) || !dead_code::is_reference(ast, kept)
         {
             return kept;
         }
@@ -641,7 +641,7 @@ impl Compressor {
     ) -> Option<Option<Stmt>> {
         let bindings =
             dead_code::hoisted_bindings(ast, &self.hoisted[entries], exclude, |binding| {
-                !self.candidates.unused.contains(&binding.node_id())
+                !self.candidates.unused.contains(binding.node_id())
             })?;
         prefix.extend(dead_code::declarators(ast, &bindings));
         Some((!prefix.is_empty()).then(|| dead_code::var_statement(ast, span, prefix)))
@@ -890,7 +890,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         // Forward uses can precede their declarations. Patch recorded handles on
         // exit; this worklist never visits a node or walks its children again.
         for rewrite in std::mem::take(&mut self.pending_typeofs) {
-            if !self.primitive_bindings.contains(&rewrite.binding) {
+            if !self.primitive_bindings.contains(rewrite.binding) {
                 continue;
             }
             // A later rewrite may have negated the comparison.
@@ -932,7 +932,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                 if function.id(ast).is_some_and(|binding| {
                     self.candidates
                         .removed_functions
-                        .contains(&binding.node_id())
+                        .contains(binding.node_id())
                 }) =>
             {
                 let span = node.span(ast);
@@ -1271,7 +1271,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                 if unary.operator(ast) == UnaryOperator::Delete
                     && self
                         .deleted_reads
-                        .remove(&skip_parentheses(ast, unary.argument(ast)).node_id()) =>
+                        .remove(skip_parentheses(ast, unary.argument(ast)).node_id()) =>
             {
                 let span = node.span(ast);
                 self.value_expr(ast, span, Value::Boolean(false))

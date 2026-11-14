@@ -23,6 +23,7 @@ use swc_next_ecma_ast::AstCtx;
 
 mod compress;
 mod dynamic;
+mod id_set;
 mod mangle;
 mod options;
 

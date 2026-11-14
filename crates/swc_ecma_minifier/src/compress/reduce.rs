@@ -18,7 +18,7 @@ use swc_next_ecma_semantic::{
 };
 
 use super::{effects::may_have_side_effects, value::Value};
-use crate::CompressOptions;
+use crate::{CompressOptions, id_set::IdSet};
 
 /// A constant that replaces the reads of an inlined binding.
 #[derive(Clone, Copy)]
@@ -45,21 +45,21 @@ impl Constant {
 #[derive(Default)]
 pub(super) struct Reduction {
     /// Bindings whose declarations the traversal removes.
-    pub(super) removed: FxHashSet<NodeId>,
+    pub(super) removed: IdSet<NodeId>,
     /// Names of the removed function declarations.
-    pub(super) functions: FxHashSet<NodeId>,
+    pub(super) functions: IdSet<NodeId>,
     /// Symbols of a kind whose declarations can be removed when they lose
     /// their uses. The kind does not depend on where the declaration is, so
     /// moving it does not change how a repeated pass treats its reads.
-    pub(super) removable: FxHashSet<SymbolId>,
+    pub(super) removable: IdSet<SymbolId>,
     /// The constant that replaces each read of an inlined binding.
     pub(super) inlined: FxHashMap<NodeId, Constant>,
     /// Removed bindings whose initializers are constants written with reads,
     /// such as `a + 1` for an inlined `a`. The traversal removes them before
     /// it folds the initializers.
-    pub(super) constant_bindings: FxHashSet<NodeId>,
-    removed_symbols: FxHashSet<SymbolId>,
-    inlined_symbols: FxHashSet<SymbolId>,
+    pub(super) constant_bindings: IdSet<NodeId>,
+    removed_symbols: IdSet<SymbolId>,
+    inlined_symbols: IdSet<SymbolId>,
     /// The code that removing each declaration removes.
     containers: FxHashMap<SymbolId, Span>,
     /// For containers that lost a use, the number of their uses outside
@@ -102,10 +102,10 @@ struct Declarations {
     /// The declaration that holds each declarator.
     holders: FxHashMap<NodeId, Option<VariableDeclaration>>,
     /// Declarations in loop heads, which are not statements.
-    loop_heads: FxHashSet<NodeId>,
+    loop_heads: IdSet<NodeId>,
     /// `var` declarations directly in a function body, which run before
     /// any statement that follows them.
-    top_level: FxHashSet<NodeId>,
+    top_level: IdSet<NodeId>,
     /// The span of each function declaration, by its name.
     functions: FxHashMap<NodeId, Option<Span>>,
     /// Names of function declarations in blocks. Outside strict code, such
@@ -208,7 +208,7 @@ impl Declarations {
     fn statement(&self, binding: NodeId) -> Option<(VariableDeclarator, VariableDeclaration)> {
         let declarator = (*self.declarators.get(&binding)?)?;
         let declaration = (*self.holders.get(&declarator.node_id())?)?;
-        (!self.loop_heads.contains(&declaration.node_id())).then_some((declarator, declaration))
+        (!self.loop_heads.contains(declaration.node_id())).then_some((declarator, declaration))
     }
 }
 
@@ -216,7 +216,7 @@ pub(super) struct Context<'s, 'a> {
     pub(super) semantic: &'s Semantic<'a>,
     pub(super) options: &'s CompressOptions,
     /// Whether each symbol is declared inside a function.
-    pub(super) in_function: &'s FxHashSet<SymbolId>,
+    pub(super) in_function: &'s IdSet<SymbolId>,
     /// Constants of global reads.
     pub(super) globals: &'s FxHashMap<NodeId, Value<'static>>,
     /// The printed length of each binding's name.
@@ -257,7 +257,7 @@ impl Reduction {
                     reduction.removable.insert(entry.id);
                 }
             }
-            reduction.pending = reduction.removable.iter().copied().collect();
+            reduction.pending = reduction.removable.iter().collect();
         }
         if options.reduce_vars {
             reduction.collect_inline_candidates(ast, context, &declarations);
@@ -279,7 +279,7 @@ impl Reduction {
             }
         }
         let semantic = context.semantic;
-        for &symbol in &reduction.removed_symbols {
+        for symbol in reduction.removed_symbols.iter() {
             let declaration = semantic.declarations(symbol).next().unwrap();
             reduction.removed.insert(declaration.node);
             if let Some((_, true)) = reduction.container(ast, context, &declarations, symbol) {
@@ -397,7 +397,7 @@ impl Reduction {
             let Some(target) = reference.symbol else {
                 continue;
             };
-            if self.removed_symbols.contains(&target) {
+            if self.removed_symbols.contains(target) {
                 continue;
             }
             let Some(&container) = self.containers.get(&target) else {
@@ -467,7 +467,7 @@ impl Reduction {
         for entry in semantic.iter_symbols() {
             // `arguments` can also name the arguments object, and a value
             // in place of `__proto__` in `{ __proto__ }` sets the prototype.
-            if !context.in_function.contains(&entry.id)
+            if !context.in_function.contains(entry.id)
                 || semantic.uses(entry.id).is_empty()
                 || matches!(
                     ast.get_wtf8(entry.symbol.name).as_bytes(),
@@ -487,7 +487,7 @@ impl Reduction {
                 continue;
             };
             let dominates = match holder.kind(ast) {
-                VariableKind::Var => declarations.top_level.contains(&holder.node_id()),
+                VariableKind::Var => declarations.top_level.contains(holder.node_id()),
                 // A `case` can jump past the declaration.
                 VariableKind::Let | VariableKind::Const => {
                     let scope = semantic.scope(declaration.scope);
@@ -525,7 +525,7 @@ impl Reduction {
                 scope,
                 init,
             } = *candidate;
-            if self.removed_symbols.contains(&symbol) || self.inlined_symbols.contains(&symbol) {
+            if self.removed_symbols.contains(symbol) || self.inlined_symbols.contains(symbol) {
                 continue;
             }
             // Cheap checks first: most initializers are not constant.
@@ -666,7 +666,7 @@ fn is_removable_kind(
     symbol: SymbolId,
 ) -> bool {
     let semantic = context.semantic;
-    if !context.in_function.contains(&symbol) {
+    if !context.in_function.contains(symbol) {
         return false;
     }
     let mut iter = semantic.declarations(symbol);
