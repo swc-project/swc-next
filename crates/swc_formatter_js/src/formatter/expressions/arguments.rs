@@ -1316,6 +1316,7 @@ pub(super) struct SourceArguments<'ast> {
     pub(super) allow_composition: bool,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) binary_indent: OperandIndent,
+    pub(super) constructor: bool,
 }
 
 struct ArgumentPunctuation {
@@ -1346,6 +1347,7 @@ pub(super) struct ArgumentHead {
     pub(super) closing: DelimitedClose,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) independent_callback: Option<ArrowFunctionExpression>,
+    pub(super) constructor: bool,
     pub(super) binary_indent: OperandIndent,
 }
 
@@ -1864,6 +1866,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             curried_callee: None,
             jsx_call: None,
             binary_indent: OperandIndent::Expression,
+            constructor: false,
         };
         list.frame = self.structural_argument_frame(&list);
         Some(list)
@@ -2292,6 +2295,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             frame,
             jsx_call,
             binary_indent,
+            constructor,
             allow_composition,
             ..
         } = list;
@@ -2449,6 +2453,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     closing,
                     jsx_call,
                     independent_callback: frame.independent_callback(),
+                    constructor,
                     binary_indent,
                 },
                 selected,
