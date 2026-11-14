@@ -1,15 +1,10 @@
-use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{
-    Lang, SourceType,
-    ffi::ast::{buffer_size, serialize_into},
-};
-use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_parser::{CommentMode, Options};
 
 use super::CommentsOption;
 
 #[cfg(feature = "bridge")]
-use swc_next_bridge::{BridgeDecodeOptional, bridge};
+use swc_next_bridge::bridge;
 
 #[cfg(all(feature = "bridge", not(target_family = "wasm")))]
 use swc_next_bridge::napi;
@@ -153,85 +148,95 @@ impl From<JsParserConfig> for Options {
     }
 }
 
-/// # Safety
-///
-/// The caller must ensure that `source` contains valid UTF-8.
-/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-pub unsafe fn parse_to_buffer(
-    source: &[u8],
-    source_utf16_len: u32,
-    options: Option<JsParseApiOptions>,
-) -> Vec<u8> {
-    let Ok(buffer) = unsafe {
-        parse_with_buffer(source, source_utf16_len, options, |size| {
-            Ok::<_, std::convert::Infallible>(vec![0; size])
-        })
-    };
-    buffer
-}
-
-/// Parse directly into a Node-owned buffer using the packed JavaScript options.
-///
-/// # Safety
-///
-/// The caller must ensure that `source` contains valid UTF-8.
-/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-#[cfg(all(feature = "bridge", not(target_family = "wasm")))]
-pub unsafe fn parse_to_node_buffer(
-    env: &napi::Env,
-    source: &[u8],
-    source_utf16_len: u32,
-    options: u32,
-) -> napi::Result<napi::bindgen_prelude::Buffer> {
-    use swc_next_bridge::BridgeDecode;
-
-    let options = <Option<JsParserConfig> as BridgeDecode>::decode(options).ok_or_else(|| {
-        napi::Error::new(
-            napi::Status::InvalidArg,
-            "invalid bridge value for `options`",
-        )
-    })?;
-    unsafe {
-        parse_with_buffer(source, source_utf16_len, options, |size| {
-            swc_next_bridge::create_buffer(env, size)
-        })
-    }
-}
-
-/// Parse and serialize into a buffer allocated by the caller after its exact
-/// size is known. The returned buffer must contain at least that many bytes.
-///
-/// # Safety
-///
-/// The caller must ensure that `source` contains valid UTF-8.
-/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
-    source: &[u8],
-    source_utf16_len: u32,
-    options: Option<JsParseApiOptions>,
-    allocate: impl FnOnce(usize) -> Result<T, E>,
-) -> Result<T, E> {
-    let source = unsafe { std::str::from_utf8_unchecked(source) };
-    let allocator = Allocator::default();
-    let options = options.unwrap_or_default();
-    let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
-
-    let mut diagnostics = result.diagnostics;
-    if options.semantic_errors.unwrap_or(false) {
-        diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
-    }
-
-    let buffer_size = buffer_size(&result.ast, &diagnostics);
-    let mut buffer = allocate(buffer_size)?;
-    let bytes = buffer.as_mut();
-    assert!(bytes.len() >= buffer_size);
-    serialize_into(&result.ast, &diagnostics, bytes, source_utf16_len as usize);
-    Ok(buffer)
-}
-
 #[cfg(feature = "bridge")]
-const _: () = {
-    use self::JsParserConfig as ParserConfig;
+pub mod bridge {
+    //! Binary parser bridge for JavaScript ASTs and diagnostics.
+
+    use swc_next_allocator::Allocator;
+    use swc_next_bridge::{BridgeDecodeOptional, bridge};
+    use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
+    use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
+    use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+
+    use super::{JsLang, JsParseApiOptions, JsParserConfig as ParserConfig, JsSourceType};
+    use crate::js::CommentsOption;
+
+    #[cfg(not(target_family = "wasm"))]
+    use swc_next_bridge::{BridgeDecode, napi};
+
+    /// # Safety
+    ///
+    /// The caller must ensure that `source` contains valid UTF-8.
+    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+    pub unsafe fn parse_to_buffer(
+        source: &[u8],
+        source_utf16_len: u32,
+        options: Option<JsParseApiOptions>,
+    ) -> Vec<u8> {
+        let Ok(buffer) = unsafe {
+            parse_with_buffer(source, source_utf16_len, options, |size| {
+                Ok::<_, std::convert::Infallible>(vec![0; size])
+            })
+        };
+        buffer
+    }
+
+    /// Parse directly into a Node-owned buffer using the packed JavaScript options.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `source` contains valid UTF-8.
+    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+    #[cfg(not(target_family = "wasm"))]
+    pub unsafe fn parse_to_node_buffer(
+        env: &napi::Env,
+        source: &[u8],
+        source_utf16_len: u32,
+        options: u32,
+    ) -> napi::Result<napi::bindgen_prelude::Buffer> {
+        let options = <Option<ParserConfig> as BridgeDecode>::decode(options).ok_or_else(|| {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                "invalid bridge value for `options`",
+            )
+        })?;
+        unsafe {
+            parse_with_buffer(source, source_utf16_len, options, |size| {
+                swc_next_bridge::create_buffer(env, size)
+            })
+        }
+    }
+
+    /// Parse and serialize into a buffer allocated by the caller after its exact
+    /// size is known. The returned buffer must contain at least that many bytes.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `source` contains valid UTF-8.
+    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+    unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
+        source: &[u8],
+        source_utf16_len: u32,
+        options: Option<JsParseApiOptions>,
+        allocate: impl FnOnce(usize) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let source = unsafe { std::str::from_utf8_unchecked(source) };
+        let allocator = Allocator::default();
+        let options = options.unwrap_or_default();
+        let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
+
+        let mut diagnostics = result.diagnostics;
+        if options.semantic_errors.unwrap_or(false) {
+            diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
+        }
+
+        let buffer_size = buffer_size(&result.ast, &diagnostics);
+        let mut buffer = allocate(buffer_size)?;
+        let bytes = buffer.as_mut();
+        assert!(bytes.len() >= buffer_size);
+        serialize_into(&result.ast, &diagnostics, bytes, source_utf16_len as usize);
+        Ok(buffer)
+    }
 
     const OPTIONS_PRESENT: u32 = 1 << 0;
 
@@ -306,7 +311,7 @@ const _: () = {
                 _ => return None,
             };
 
-            Some(Some(JsParserConfig {
+            Some(Some(ParserConfig {
                 source_type,
                 lang,
                 preserve_parens,
@@ -319,4 +324,4 @@ const _: () = {
     fn field(value: u32, mask: u32, shift: u32) -> u32 {
         (value & mask) >> shift
     }
-};
+}
