@@ -88,6 +88,7 @@ pub(super) struct LintLineCoverage {
     // only effective line markers enter this source-ordered index.
     line_markers: Vec<u32>,
     has_line_directives: bool,
+    has_next_line_directives: bool,
 }
 
 impl LintLineCoverage {
@@ -100,6 +101,7 @@ impl LintLineCoverage {
         let mut line: Option<SourceLine> = None;
         let mut same_line = false;
         let mut next_line = false;
+        let mut has_next_line_directives = false;
         for &comment in ast.comments() {
             let value = ast.get_utf8(comment.value(source.as_bytes()));
             if is_suppression_value(value) {
@@ -141,7 +143,10 @@ impl LintLineCoverage {
             }
             match kind {
                 LintLineDirective::SameLine => same_line = true,
-                LintLineDirective::NextLine => next_line = true,
+                LintLineDirective::NextLine => {
+                    next_line = true;
+                    has_next_line_directives = true;
+                }
             }
         }
         if let Some(line) = line {
@@ -152,6 +157,7 @@ impl LintLineCoverage {
             suppression_markers,
             directives,
             has_line_directives: !line_markers.is_empty(),
+            has_next_line_directives,
             line_markers,
         }
     }
@@ -256,6 +262,16 @@ impl Formatter<'_, '_> {
         self.source_directive_lines().has_comment_directive_in(span)
     }
 
+    /// Whether a runtime list can own a covered line or a line-scoped marker.
+    pub(super) fn runtime_list_has_line_directive(&self, span: Span) -> bool {
+        let lines = self.source_directive_lines();
+        // A valid same-line marker is inside its covered line; only a
+        // next-line marker can be contained without intersecting coverage.
+        !lines.line_markers.is_empty()
+            && (lines.intersects(span)
+                || lines.has_next_line_directives && lines.has_line_directive_in(span))
+    }
+
     pub(super) fn has_line_directive_in(&self, span: Span) -> bool {
         self.has_lint_line_directives() && self.source_directive_lines().has_line_directive_in(span)
     }
@@ -263,13 +279,6 @@ impl Formatter<'_, '_> {
     pub(super) fn is_next_line_directive(&self, span: Span) -> bool {
         let lines = self.source_directive_lines();
         lines.has_line_directives && lines.is_next_line_directive(span)
-    }
-
-    pub(super) fn lint_line_contains(&self, span: Span) -> bool {
-        span.start < span.end
-            && self
-                .lint_line_at(span.start)
-                .is_some_and(|line| span.end <= line.end)
     }
 
     pub(super) fn lint_line_at(&self, offset: u32) -> Option<Span> {
@@ -287,15 +296,6 @@ impl Formatter<'_, '_> {
             .filter(|comment| comment.span.end <= first)
             .map_or(first, |comment| comment.span.start);
         Some(self.source_line_constraint(start, next))
-    }
-
-    pub(super) fn same_covered_lint_line(&self, left: u32, right: u32) -> bool {
-        left > 0
-            && left <= right
-            && (right as usize) < self.ast.source().len()
-            && self.has_lint_line_directives()
-            && self.source_line_breaks(left, right) == 0
-            && self.lint_line_intersects(Span::new(left - 1, right + 1))
     }
 
     pub(super) fn has_suppression_in(&self, span: Span) -> bool {

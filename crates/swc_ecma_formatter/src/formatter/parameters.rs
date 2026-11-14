@@ -593,6 +593,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_expression_tail(tail, writer)?;
             return Ok(());
         }
+        let protect_runtime_items =
+            has_parameters && self.runtime_list_has_line_directive(node.span(ast));
         let opening = first
             .map(|entry| entry.span.start)
             .or_else(|| {
@@ -605,6 +607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .start
                 })
             })
+            .filter(|_| protect_runtime_items)
             .and_then(|first| self.lint_opening_constraint(content.start, first))
             .unwrap_or_else(|| self.opening_line_constraint(content));
         let mut closing = private_boundary
@@ -719,7 +722,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if suppressed_tail == Some(parameter.node) {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
-                    self.protect_runtime_item(&mut item);
+                    if protect_runtime_items {
+                        self.protect_runtime_item(&mut item);
+                    }
                     let hug = if has_previous { None } else { hugged_parameter };
                     let prepared = if has_previous {
                         None
