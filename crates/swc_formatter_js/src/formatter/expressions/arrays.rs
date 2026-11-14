@@ -41,7 +41,6 @@ struct PreparedArray<'ast> {
     array: ArrayExpression,
     content: Span,
     expand: bool,
-    opening: LineConstraint,
     closing: TerminalCloseBoundary,
     layout: ArgumentLayout,
     numeric_comments: Option<ArrayCommentOwner<'ast>>,
@@ -137,15 +136,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 reference: None,
             }
         };
-        let first = elements.iter().find_map(|id| {
-            let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
-            argument
-        });
-        let opening = first
-            .and_then(|argument| {
-                self.lint_opening_constraint(content.start, argument.span(self.ast).start)
-            })
-            .unwrap_or_else(|| self.opening_line_constraint(content));
         let (layout, numeric_comments) = match numeric.fill_first {
             Some(first) => {
                 // Keep this old fallible query even if qualification demotes later.
@@ -200,7 +190,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             array,
             content,
             expand,
-            opening,
             closing,
             layout,
             numeric_comments,
@@ -280,18 +269,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         group: Option<GroupId>,
         writer: &mut Writer<'ast>,
     ) -> Result<bool, FormatError> {
+        let first = source.array.elements(self.ast).iter().find_map(|id| {
+            let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
+            argument
+        });
+        let protect_runtime_items =
+            first.is_some() && self.runtime_list_has_line_directive(source.array.span(self.ast));
+        let opening = first
+            .filter(|_| protect_runtime_items)
+            .and_then(|argument| {
+                self.lint_opening_constraint(source.content.start, argument.span(self.ast).start)
+            })
+            .unwrap_or_else(|| self.opening_line_constraint(source.content));
         let mut numeric_comments = source.numeric_comments.take();
         writer.text("[");
         let closing = writer.indent(|writer| {
-            source
-                .opening
-                .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
             match source.layout {
-                ArgumentLayout::Lines => {
-                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
-                }
+                ArgumentLayout::Lines => self.format_array_items(
+                    &source,
+                    group,
+                    protect_runtime_items,
+                    numeric_comments.as_mut(),
+                    writer,
+                ),
                 ArgumentLayout::Fill => writer.fill(|writer| {
-                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
+                    self.format_array_items(
+                        &source,
+                        group,
+                        protect_runtime_items,
+                        numeric_comments.as_mut(),
+                        writer,
+                    )
                 }),
             }
         })?;
@@ -491,6 +500,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: &PreparedArray<'ast>,
         group: Option<GroupId>,
+        protect_runtime_items: bool,
         mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<LineConstraint, FormatError> {
@@ -584,6 +594,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     Span::new(previous_end, span.end),
                     trailing_comma,
+                    protect_runtime_items,
                     numeric_comments.as_deref_mut(),
                     writer,
                 )

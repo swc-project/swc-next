@@ -9,8 +9,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::{
-    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, ChainArgumentFacts,
-    SourceArguments,
+    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallArgumentPolicy, CallFrameRole,
+    ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
@@ -1033,14 +1033,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn format_selected_arguments(
         &mut self,
-        arguments: SubRange<Argument>,
-        content: Span,
+        sequence: SelectedArgumentSequence,
         head: ArgumentHead,
+        protect_runtime_items: bool,
         mut selected: SelectedArgument<'ast>,
         chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
+        let SelectedArgumentSequence { arguments, content } = sequence;
         let source_opening = head
             .source_opening
             .map(|opening| {
@@ -1082,6 +1083,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| ast.get_node_in_sub_range(id))
             .peekable();
         let mut previous = None;
+        let policy = CallArgumentPolicy {
+            trailing_comma: self.options.trailing_commas == TrailingCommas::All,
+            protect_runtime_items,
+        };
         while let Some(argument) = arguments.next() {
             let (prefix, mut item) = writer.record_with_value(|writer| {
                 self.prepare_argument_slot(
@@ -1089,7 +1094,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     arguments.peek().copied(),
                     previous,
                     content,
-                    self.options.trailing_commas == TrailingCommas::All,
+                    policy,
                     writer,
                 )
             })?;

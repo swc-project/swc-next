@@ -144,7 +144,8 @@ pub(in crate::formatter) struct PreparedItem {
     omit_source_terminal_comma: bool,
     suppression: Option<DelimitedSuppression>,
     separator_spacing: SeparatorSpacing,
-    source_following: Option<Span>,
+    /// The following node's gap retains its source punctuation and spacing.
+    source_following: bool,
 }
 
 impl PreparedItem {
@@ -281,6 +282,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         slot: ArrayArgumentSlot,
         span: Span,
         trailing_comma: TrailingCommaPolicy,
+        protect_runtime_items: bool,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
@@ -309,12 +311,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head: CommentRunLayout::Source,
                 array: array_comments.as_deref_mut(),
                 separator_transition: transition,
-                runtime: true,
+                runtime: protect_runtime_items,
             },
             writer,
         )?;
         item.set_leading_mode(mode);
-        self.protect_runtime_item(&mut item);
+        if protect_runtime_items {
+            self.protect_runtime_item(&mut item);
+        }
         item.set_trailing_comma(trailing_comma);
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
@@ -366,16 +370,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         transition: Option<SourceSeparatorTransition>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
+        self.prepare_call_argument_item_with_policy(
+            item_span,
+            following,
+            span,
+            CallArgumentPolicy {
+                trailing_comma,
+                protect_runtime_items: true,
+            },
+            transition,
+            writer,
+        )
+    }
+
+    fn prepare_call_argument_item_with_policy(
+        &mut self,
+        item_span: Span,
+        following: FollowingItem,
+        span: Span,
+        policy: CallArgumentPolicy,
+        transition: Option<SourceSeparatorTransition>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedItem, FormatError> {
         self.prepare_delimited_item_with_comments(
             item_span,
             following,
             span,
-            trailing_comma,
+            policy.trailing_comma,
             ItemComments {
                 head: CommentRunLayout::GroupedLeading(item_span.start),
                 array: None,
                 separator_transition: transition,
-                runtime: true,
+                runtime: policy.protect_runtime_items,
             },
             writer,
         )
@@ -445,7 +471,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             suppression,
             separator_spacing: SeparatorSpacing::SourcePacket,
-            source_following: None,
+            source_following: false,
         };
         if !has_leading_comments {
             return Ok(item);
@@ -621,7 +647,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .map_or(ContentMode::Formatted, |source| source.following);
         let preceding = suppression.as_ref().and_then(|source| source.preceding);
-        if let Some(gap) = source_following {
+        if let (true, Some(following_start)) = (source_following, following_start) {
+            let gap = Span::new(item_span.end, following_start);
             self.format_expression_tail_with_array_comments(
                 tail,
                 array_comments.as_deref_mut(),
@@ -1397,6 +1424,17 @@ struct SourceFirstArgument {
 struct CallArgumentSlot {
     node: Argument,
     following: Option<Argument>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct CallArgumentPolicy {
+    pub(super) trailing_comma: bool,
+    pub(super) protect_runtime_items: bool,
+}
+
+pub(super) struct SelectedArgumentSequence {
+    pub(super) arguments: SubRange<Argument>,
+    pub(super) content: Span,
 }
 
 pub(super) struct ArgumentHead {
@@ -2489,7 +2527,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
         }
-        let covered_opening = if source_opening.is_none() {
+        // A prefix may have been borrowed into the argument list before its
+        // opener. Include that packet and both source delimiters in the proof.
+        let protect_runtime_items = !arguments.is_empty()
+            && self.runtime_list_has_line_directive(Span::new(
+                content.start.min(opening),
+                delimiters.end,
+            ));
+        let covered_opening = if protect_runtime_items && source_opening.is_none() {
             first.and_then(|argument| {
                 self.lint_opening_constraint(opening + 1, argument.node.span(ast).start)
             })
@@ -2511,8 +2556,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                chain_facts: Option<&mut ChainArgumentFacts>,
                                writer: &mut Writer<'ast>| {
             let tail = formatter.format_selected_arguments(
-                arguments,
-                content,
+                SelectedArgumentSequence { arguments, content },
                 ArgumentHead {
                     first_mode,
                     source_opening,
@@ -2523,6 +2567,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     constructor,
                     binary_indent,
                 },
+                protect_runtime_items,
                 selected,
                 chain_facts,
                 writer,
@@ -2559,6 +2604,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return format_selected(self, selected, chain_facts, writer);
         }
+        let policy = CallArgumentPolicy {
+            trailing_comma: !hugged && self.options.trailing_commas == TrailingCommas::All,
+            protect_runtime_items,
+        };
         let tail = group.write(expand, writer, |writer| {
             if let Some(opening) = source_opening {
                 self.format_verbatim(opening.span, writer)?;
@@ -2591,8 +2640,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         slot,
                         previous,
                         content,
-                        !hugged && self.options.trailing_commas == TrailingCommas::All,
                         frame,
+                        policy,
                         writer,
                     )?;
                     if previous.is_none() && first_mode == ContentMode::Verbatim {
@@ -2666,7 +2715,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<Argument>,
         previous: Option<ItemBoundary>,
         content: Span,
-        trailing_comma: bool,
+        policy: CallArgumentPolicy,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         let slot = CallArgumentSlot {
@@ -2677,8 +2726,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             slot,
             previous,
             content,
-            trailing_comma,
             CallArgumentFrame::Ordinary,
+            policy,
             writer,
         )
     }
@@ -2688,8 +2737,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         slot: CallArgumentSlot,
         previous: Option<ItemBoundary>,
         content: Span,
-        trailing_comma: bool,
         frame: CallArgumentFrame,
+        policy: CallArgumentPolicy,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         let CallArgumentSlot { node, following } = slot;
@@ -2736,11 +2785,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let following = following.map_or(FollowingItem::End, |argument| {
             FollowingItem::Node(argument.span(self.ast))
         });
-        let mut item = self.prepare_call_argument_item(
+        let mut item = self.prepare_call_argument_item_with_policy(
             span,
             following,
             Span::new(end, content.end),
-            trailing_comma,
+            policy,
             previous.and_then(|boundary| boundary.transition),
             writer,
         )?;
@@ -2751,33 +2800,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(previous) = previous {
             item.set_leading_mode(previous.following_mode);
         }
-        self.protect_runtime_item(&mut item);
+        if policy.protect_runtime_items {
+            self.protect_runtime_item(&mut item);
+        }
         Ok(item)
     }
 
     /// Runtime items retain their covered source line and punctuation.
     /// A line-scoped marker also owns its adjoining source gap.
     pub(in crate::formatter) fn protect_runtime_item(&self, item: &mut PreparedItem) {
-        if !self.has_lint_line_directives() {
-            return;
-        }
-        if self.lint_line_contains(item.item_span) {
+        let left = item.item_span.end;
+        let covered_line = left.checked_sub(1).and_then(|end| self.lint_line_at(end));
+        if item.item_span.start < left
+            && covered_line.is_some_and(|line| line.start <= item.item_span.start)
+        {
             item.set_leading_mode(ContentMode::Verbatim);
         }
         let Some(next) = item.following.node() else {
             return;
         };
-        let left = item.item_span.end;
         let right = next.start;
         if left == 0 || left > right || right as usize >= self.ast.source().len() {
             return;
         }
         let gap = Span::new(left, right);
-        let covered = self.same_covered_lint_line(left, right);
+        // Covered-line spans exclude terminators, so containment also proves
+        // that this source gap has no semantic line break.
+        let covered = covered_line.is_some_and(|line| right <= line.end);
         let semantic_gap = !covered && self.has_line_directive_in(gap);
         if covered || semantic_gap {
             item.set_leading_mode(ContentMode::Verbatim);
-            item.source_following = Some(gap);
+            item.source_following = true;
         }
     }
 
