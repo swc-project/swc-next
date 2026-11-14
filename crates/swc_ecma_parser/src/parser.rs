@@ -2266,8 +2266,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[inline]
     fn parse_statement_inner(&mut self) -> Option<Stmt> {
-        if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
-            return self.parse_ts_declaration();
+        if self.lang.is_typescript() && self.is_start_of_ts_declaration(false)? {
+            return self.parse_ts_declaration(self.current_token.start(), None, SubRange::empty());
         }
         match self.current_token.tag() {
             TokenTag::Await => self.parse_await_using_or_expression(),
@@ -2322,8 +2322,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_decorated_statement(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::At);
-        let (decorators_start, decorators) = self.parse_decorators()?;
+        let (decorators_start, decorators) = self.parse_decorators(SubRange::empty())?;
         if self.current_token.tag() != TokenTag::Export {
+            if self.lang.is_typescript() && self.is_start_of_ts_declaration(true)? {
+                return self.parse_ts_declaration(decorators_start, None, decorators);
+            }
             return Some(Stmt::Declaration(Decl::Class(self.parse_class_decorated(
                 ParseClassOpts::default(),
                 Some(decorators_start),
@@ -2350,7 +2353,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let before_export = !decorators.is_empty();
         let mut class_start = None;
         while self.current_token.tag() == TokenTag::At {
-            let (start, following) = self.parse_decorators()?;
+            let (start, following) = self.parse_decorators(decorators)?;
             class_start = Some(start);
             if before_export {
                 self.report(
@@ -2359,21 +2362,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ReportOptions::default(),
                 );
             }
-            if decorators.is_empty() {
-                decorators = following;
-            } else {
-                let checkpoint = self.scratch_decorators.begin();
-                for id in decorators.iter() {
-                    self.scratch_decorators
-                        .append(self.ast.get_node_in_sub_range(id));
-                }
-                for id in following.iter() {
-                    self.scratch_decorators
-                        .append(self.ast.get_node_in_sub_range(id));
-                }
-                decorators = self.add_extra_from_scratch_decorators(checkpoint);
-                self.scratch_decorators.reset(checkpoint);
-            }
+            decorators = following;
             if !is_default && self.eat(TokenTag::Default)? {
                 self.report(
                     Span::new(start, self.lexer.state.prev_token_end),
@@ -2383,6 +2372,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 is_default = true;
                 class_start = None;
             }
+        }
+        if !is_default
+            && !decorators.is_empty()
+            && self.lang.is_typescript()
+            && self.is_start_of_ts_declaration(true)?
+        {
+            return self.parse_ts_declaration(
+                class_start.unwrap_or(self.current_token.start()),
+                Some(export_start),
+                decorators,
+            );
         }
         let class = self.parse_class_decorated(
             ParseClassOpts {
@@ -3313,30 +3313,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         decorators: SubRange<Decorator>,
     ) -> Option<Class> {
         let start = start_from_param.unwrap_or(self.current_token.start());
-        // Undecorated `declare class` is parsed by `parse_ts_declaration`; only
-        // decorators can lead here before `declare`, for example `@dec declare class C {}`.
-        if self.current_token.tag() == TokenTag::Declare
-            && !opts.is_declare
-            && !decorators.is_empty()
-            && !opts.is_expression
-            && !opts.is_default_export
-            && self.lang.is_typescript()
-            && self.is_declare_class_next()?
-        {
-            self.advance()?;
-            let ambient = self.ts_context.ambient();
-            self.ts_context.set(TsContext::AMBIENT, true);
-            let class = self.parse_class_decorated(
-                ParseClassOpts {
-                    is_declare: true,
-                    ..opts
-                },
-                Some(start),
-                decorators,
-            );
-            self.ts_context.set(TsContext::AMBIENT, ambient);
-            return class;
-        }
         let mut is_abstract = opts.is_abstract;
         if self.current_token.tag() == TokenTag::Abstract
             && !is_abstract
@@ -3518,7 +3494,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_class_element(&mut self) -> Option<ClassElement> {
         let element_start = self.current_token.start();
         let decorators = if self.current_token.tag() == TokenTag::At {
-            self.parse_decorators()?.1
+            self.parse_decorators(SubRange::empty())?.1
         } else {
             SubRange::empty()
         };
@@ -4093,9 +4069,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_decorators(&mut self) -> Option<(u32, SubRange<Decorator>)> {
+    fn parse_decorators(
+        &mut self,
+        preceding: SubRange<Decorator>,
+    ) -> Option<(u32, SubRange<Decorator>)> {
         let start = self.current_token.start();
         let checkpoint = self.scratch_decorators.begin();
+        for id in preceding.iter() {
+            self.scratch_decorators
+                .append(self.ast.get_node_in_sub_range(id));
+        }
         let result = (|| {
             while self.current_token.tag() == TokenTag::At {
                 let decorator = self.parse_decorator()?;
@@ -4227,7 +4210,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let parameter_start = self.current_token.start();
                 let decorators =
                     if self.lang.is_typescript() && self.current_token.tag() == TokenTag::At {
-                        self.parse_decorators()?.1
+                        self.parse_decorators(SubRange::empty())?.1
                     } else {
                         SubRange::empty()
                     };
@@ -5203,7 +5186,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::At {
-            let (decorators_start, decorators) = self.parse_decorators()?;
+            let (decorators_start, decorators) = self.parse_decorators(SubRange::empty())?;
             let class = self.parse_class_decorated(
                 ParseClassOpts {
                     is_default_export: true,
@@ -5264,25 +5247,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(next.tag() == TokenTag::Class && !next.has_line_terminator_before())
     }
 
-    /// Returns whether the current `declare` starts `declare class` or
-    /// `declare abstract class` on the same line.
-    fn is_declare_class_next(&mut self) -> Option<bool> {
-        let mut peek = self.begin_peek();
-        let next = peek.next()?;
-        let result = if next.has_line_terminator_before() {
-            false
-        } else if next.tag() == TokenTag::Class {
-            true
-        } else if next.tag() == TokenTag::Abstract {
-            let class = peek.next()?;
-            class.tag() == TokenTag::Class && !class.has_line_terminator_before()
-        } else {
-            false
-        };
-        peek.end();
-        Some(result)
-    }
-
     fn is_legacy_accessibility_import(&mut self) -> Option<bool> {
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Import && !next.has_line_terminator_before())
@@ -5326,9 +5290,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_export_with_declaration(&mut self, start: u32) -> Option<Stmt> {
-        if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
-            let statement = self.parse_ts_declaration()?;
-            return self.finish_export_ts_declaration(start, statement);
+        if self.lang.is_typescript() && self.is_start_of_ts_declaration(false)? {
+            // `parse_ts_declaration` owns export wrapping: it returns the
+            // export statement for both normal and recovered exports.
+            return self.parse_ts_declaration(
+                self.current_token.start(),
+                Some(start),
+                SubRange::empty(),
+            );
         }
         if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Import {
             let statement = self.parse_import_declaration()?;
@@ -5750,16 +5719,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         // Keep the lookahead on the slow path so lexical errors behave as before.
         if is_const_enum_head(self.peek_ahead()?) {
-            return self.parse_ts_declaration().map(Some);
+            return self
+                .parse_ts_declaration(start, None, SubRange::empty())
+                .map(Some);
         }
         self.advance()?;
         Some(None)
     }
 
-    fn is_start_of_ts_declaration(&mut self) -> Option<bool> {
+    fn is_start_of_ts_declaration(&mut self, class_only: bool) -> Option<bool> {
+        let tag = self.current_token.tag();
         if !self.lang.is_typescript()
-            || !matches!(
-                self.current_token.tag(),
+            || !(matches!(
+                tag,
                 TokenTag::Declare
                     | TokenTag::Abstract
                     | TokenTag::Enum
@@ -5768,7 +5740,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     | TokenTag::Namespace
                     | TokenTag::Module
                     | TokenTag::Global
-            )
+            ) || (class_only && tag == TokenTag::Export))
         {
             return Some(false);
         }
@@ -5776,23 +5748,43 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut peek = self.begin_peek();
         let mut has_declare = false;
         let mut has_abstract = false;
+        let mut has_export = false;
 
-        if current.tag() == TokenTag::Declare {
+        // Scan the modifier shape only: `declare`, `abstract`, and a
+        // misplaced `export` in any order or repetition. The declaration
+        // parser diagnoses duplicates and ordering; here the shape must
+        // still end at an unambiguous declaration. Only contextual
+        // modifiers require the next token on the same line.
+        loop {
+            let consumed = current.tag();
+            if consumed == TokenTag::Declare {
+                has_declare = true;
+            } else if consumed == TokenTag::Abstract {
+                has_abstract = true;
+            } else if consumed == TokenTag::Export {
+                has_export = true;
+            } else {
+                break;
+            }
             current = peek.next()?;
-            if current.has_line_terminator_before() {
+            // `export @` is an unambiguous class prefix. Let the real
+            // decorator parser handle its expression rather than guessing
+            // its boundary in token lookahead.
+            if consumed == TokenTag::Export && current.tag() == TokenTag::At {
+                peek.end();
+                return Some(true);
+            }
+            // The same-line requirement applies after the contextual
+            // modifiers; `export` may be separated from its declaration
+            // by a line terminator, as in the normal export path.
+            if consumed != TokenTag::Export && current.has_line_terminator_before() {
                 peek.end();
                 return Some(false);
             }
-            has_declare = true;
         }
-        if current.tag() == TokenTag::Abstract {
-            let next = peek.next()?;
-            if next.has_line_terminator_before() || next.tag() != TokenTag::Class {
-                peek.end();
-                return Some(false);
-            }
-            current = next;
-            has_abstract = true;
+        if (class_only || has_abstract || has_export) && current.tag() != TokenTag::Class {
+            peek.end();
+            return Some(false);
         }
         let result = match current.tag() {
             // `const enum` is detected after advancing past `const`; see
@@ -5814,7 +5806,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let next = peek.next()?;
                 next.tag() == TokenTag::LeftBrace
             }
-            TokenTag::Class => has_declare || has_abstract,
+            TokenTag::Class => has_declare || has_abstract || has_export,
             TokenTag::Function => has_declare,
             TokenTag::Var | TokenTag::Let => has_declare,
             TokenTag::Async => {
@@ -5849,14 +5841,85 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(result)
     }
 
-    fn parse_ts_declaration(&mut self) -> Option<Stmt> {
-        let start = self.current_token.start();
+    fn parse_ts_declaration(
+        &mut self,
+        start: u32,
+        export_start: Option<u32>,
+        mut decorators: SubRange<Decorator>,
+    ) -> Option<Stmt> {
+        // Export wrapping has one owner: this function. Ordinary statements
+        // pass `None`; the export caller passes its `export` position, and
+        // recovered exports set the same state from inside the scan below.
+        let wrap_start = export_start.unwrap_or(start);
+        let mut exported = export_start.is_some();
         let mut modifiers = TsDeclarationModifiers::default();
-        if self.eat(TokenTag::Declare)? {
-            modifiers.declare = true;
+        // Scan `declare`, `abstract`, and misplaced `export` in one loop.
+        // Repeats and misplaced exports are reported but still consumed,
+        // so the declaration AST is preserved.
+        loop {
+            let token = self.current_token;
+            if token.tag() == TokenTag::Declare {
+                if modifiers.declare {
+                    self.report(
+                        token.span(),
+                        "Duplicate 'declare' modifier",
+                        ReportOptions::default(),
+                    );
+                } else if modifiers.r#abstract {
+                    self.report(
+                        token.span(),
+                        "'declare' modifier must precede 'abstract' modifier",
+                        ReportOptions::default(),
+                    );
+                }
+                modifiers.declare = true;
+            } else if token.tag() == TokenTag::Abstract {
+                if modifiers.r#abstract {
+                    self.report(
+                        token.span(),
+                        "Duplicate 'abstract' modifier",
+                        ReportOptions::default(),
+                    );
+                }
+                modifiers.r#abstract = true;
+            } else if token.tag() == TokenTag::Export {
+                self.record_module_declaration();
+                if exported {
+                    self.report(
+                        token.span(),
+                        "Duplicate export modifier",
+                        ReportOptions::default(),
+                    );
+                } else {
+                    self.report(
+                        token.span(),
+                        "'export' must precede declaration modifiers",
+                        ReportOptions::default(),
+                    );
+                }
+                exported = true;
+                self.advance()?;
+                if self.current_token.tag() == TokenTag::At {
+                    let before_export = !decorators.is_empty();
+                    let (start, following) = self.parse_decorators(decorators)?;
+                    if before_export {
+                        self.report(
+                            Span::new(start, self.lexer.state.prev_token_end),
+                            "Decorators cannot appear both before and after export",
+                            ReportOptions::default(),
+                        );
+                    }
+                    decorators = following;
+                }
+                continue;
+            } else {
+                break;
+            }
+            self.advance()?;
         }
-        if self.eat(TokenTag::Abstract)? {
-            modifiers.r#abstract = true;
+        if !decorators.is_empty() && self.current_token.tag() != TokenTag::Class {
+            self.expect(TokenTag::Class, "Expected 'class' keyword", None);
+            return None;
         }
         if self.current_token.tag() == TokenTag::Const {
             let next = self.peek_ahead()?;
@@ -5905,13 +5968,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .into_declaration(),
                 ))
             }
-            TokenTag::Class => Some(Stmt::Declaration(Decl::Class(self.parse_class(
+            TokenTag::Class => Some(Stmt::Declaration(Decl::Class(self.parse_class_decorated(
                 ParseClassOpts {
                     is_declare: modifiers.declare,
                     is_abstract: modifiers.r#abstract,
                     ..ParseClassOpts::default()
                 },
                 Some(start),
+                decorators,
             )?))),
             TokenTag::Import => self.parse_declare_import_equals(start),
             TokenTag::Namespace => self.parse_module_declaration(
@@ -5928,7 +5992,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             _ => None,
         })();
         self.ts_context.set(TsContext::AMBIENT, ambient);
-        result
+        let result = result?;
+        if exported {
+            self.finish_export_ts_declaration(wrap_start, result)
+        } else {
+            Some(result)
+        }
     }
 
     fn parse_declare_import_equals(&mut self, start: u32) -> Option<Stmt> {
@@ -9640,7 +9709,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .into_function_expression(),
             )),
             TokenTag::At => {
-                let (start, decorators) = self.parse_decorators()?;
+                let (start, decorators) = self.parse_decorators(SubRange::empty())?;
                 Some(Expr::Class(self.parse_class_decorated(
                     ParseClassOpts {
                         is_expression: true,
@@ -16255,6 +16324,18 @@ mod tests {
             ..module
         };
 
+        let errors = diagnostics("declare export @dec function f(): void;", typescript);
+        assert!(!errors.is_empty());
+
+        let errors = diagnostics("export @dec export function f(): void;", typescript);
+        assert!(!errors.is_empty());
+
+        let errors = diagnostics("@dec declare function f(): void;", typescript);
+        assert!(!errors.is_empty());
+
+        let errors = diagnostics("export @dec declare function f(): void;", typescript);
+        assert!(!errors.is_empty());
+
         let errors = diagnostics("function f(,) {\n  return;\n}", script);
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].span, Span::new(11, 12));
@@ -16411,6 +16492,180 @@ mod tests {
                 .body(read_ast(&parsed.ast))
                 .is_empty()
         );
+
+        fn recover(source: &str, lang: Lang) -> (bool, bool, bool, usize, usize, usize) {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                source_type: SourceType::Unambiguous,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, TokenParserConfig).parse();
+            let ast = read_ast(&parsed.ast);
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let (exported, declaration) = match statement.as_export_named_declaration(ast) {
+                Some(export) => (true, export.declaration(ast).unwrap()),
+                None => (false, statement.as_declaration(ast).unwrap()),
+            };
+            if exported {
+                assert_eq!(ast.source_type(), SourceType::Module);
+            }
+            let class = declaration.as_class(ast).unwrap();
+            assert_eq!(ast.get_utf8(class.id(ast).unwrap().name(ast)), "Foo");
+            assert_eq!(ast.root_program().body(ast).len(), 1);
+            let decorators = class.decorators(ast);
+            for id in decorators.iter() {
+                let decorator = ast.get_node_in_sub_range(id);
+                let expression = decorator.expression(ast);
+                let callee = if let Some(call) = expression.as_call_expression(ast) {
+                    assert_eq!(call.arguments(ast).len(), 1);
+                    call.callee(ast)
+                } else {
+                    expression
+                };
+                let name = callee.as_identifier_reference(ast).unwrap();
+                assert_eq!(ast.get_utf8(name.name(ast)), "dec");
+            }
+            let members = class.body(ast).body(ast);
+            let method = members
+                .get_node(ast, 0)
+                .unwrap()
+                .as_ts_method_definition(ast)
+                .unwrap();
+            let key = method.key(ast).as_identifier_name(ast).unwrap();
+            assert_eq!(ast.get_utf8(key.name(ast)), "m");
+            assert!(method.value(ast).return_type(ast).is_some());
+            (
+                exported,
+                class.declare(ast),
+                class.r#abstract(ast),
+                members.len(),
+                parsed.diagnostics.len(),
+                decorators.len(),
+            )
+        }
+
+        for lang in [Lang::Ts, Lang::Dts] {
+            let result = recover("declare export @dec abstract class Foo{m():T;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("abstract export @dec declare class Foo{m():T;}", lang);
+            assert_eq!(result, (true, true, true, 1, 2, 1));
+
+            let result = recover("declare export @dec(1) abstract class Foo{m():T;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("declare export\n@dec abstract class Foo{m():T;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("export @dec export class Foo{m():T;}", lang);
+            assert_eq!(result, (true, false, false, 1, 1, 1));
+
+            let result = recover("export @dec export export class Foo{m():T;}", lang);
+            assert_eq!(result, (true, false, false, 1, 2, 1));
+
+            let result = recover("export @dec export @dec class Foo{m():T;}", lang);
+            assert_eq!(result, (true, false, false, 1, 2, 2));
+
+            let result = recover("@dec export export class Foo{m():T;}", lang);
+            assert_eq!(result, (true, false, false, 1, 1, 1));
+
+            let result = recover("declare export @dec export class Foo{m():T;}", lang);
+            assert_eq!(result, (true, true, false, 1, 2, 1));
+
+            let result = recover("@dec abstract export class Foo {m():void;}", lang);
+            assert_eq!(result, (true, false, true, 1, 1, 1));
+
+            let result = recover("export @dec abstract export class Foo {m():void;}", lang);
+            assert_eq!(result, (true, false, true, 1, 1, 1));
+
+            let result = recover("@dec declare export class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, false, 1, 1, 1));
+
+            let result = recover("@dec abstract export declare class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 2, 1));
+
+            let result = recover("@dec declare export abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec abstract export\nclass Foo {m():void;}", lang);
+            assert_eq!(result, (true, false, true, 1, 1, 1));
+
+            let result = recover("@dec declare export\nabstract class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec abstract export export class Foo {m():void;}", lang);
+            assert_eq!(result, (true, false, true, 1, 2, 1));
+
+            let result = recover("@dec export @dec abstract export class Foo{m():T;}", lang);
+            assert_eq!(result, (true, false, true, 1, 2, 2));
+
+            let result = recover("@dec abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 1));
+
+            let result = recover("export @dec abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec export abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 1));
+
+            let result = recover("@dec declare abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 0, 1));
+
+            let result = recover("export @dec declare abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (true, true, true, 1, 0, 1));
+
+            let result = recover("@dec declare declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, false, 1, 1, 1));
+
+            let result = recover("@dec abstract abstract class Foo {m():void;}", lang);
+            assert_eq!(result, (false, false, true, 1, 1, 1));
+
+            let result = recover("@dec declare abstract declare class Foo {m():void;}", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 1));
+
+            let result = recover("abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 0));
+
+            let result = recover("export abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 0));
+
+            let result = recover("declare abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 0, 0));
+
+            let result = recover("export declare abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 0, 0));
+
+            let result = recover("declare declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, false, 1, 1, 0));
+
+            let result = recover("abstract abstract class Foo { abstract m(): void; }", lang);
+            assert_eq!(result, (false, false, true, 1, 1, 0));
+
+            let result = recover("declare abstract declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (false, true, true, 1, 1, 0));
+
+            let result = recover("abstract export class Foo { abstract m(): void; }", lang);
+            assert_eq!(result, (true, false, true, 1, 1, 0));
+
+            let result = recover("declare export class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1, 0));
+
+            let result = recover("export declare export class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1, 0));
+
+            let result = recover("abstract export declare class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 2, 0));
+
+            let result = recover("declare export abstract class Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, true, 1, 1, 0));
+
+            let result = recover("abstract export\nclass Foo { m(): void; }", lang);
+            assert_eq!(result, (true, false, true, 1, 1, 0));
+
+            let result = recover("declare export\nclass Foo { m(): void; }", lang);
+            assert_eq!(result, (true, true, false, 1, 1, 0));
+        }
     }
 
     #[test]
@@ -16902,6 +17157,12 @@ mod tests {
             "abstract class /* marker\n continued */ Foo { abstract method<T>(x: T): T; }",
         );
         assert_eq!(flags, (false, true, 1));
+
+        let flags = class_flags("declare abstract class Foo {}");
+        assert_eq!(flags, (true, true, 0));
+
+        let flags = class_flags("export declare abstract class Foo {}");
+        assert_eq!(flags, (true, true, 0));
 
         let allocator = Allocator::new();
         let (ast, declaration) =
