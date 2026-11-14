@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const a: number, b: number;
+const value = (/* @ts-ignore */ a + b);
+const target: Missing = 0;
+---------- Options ----------
+{}
+---------- Output ----------
+declare const a: number, b: number;
+const value = /* @ts-ignore */ a + b;
+const target: Missing = 0;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare const a: number,
+  b: number;
+const value =
+  /* @ts-ignore */ a + b;
+const target: Missing = 0;

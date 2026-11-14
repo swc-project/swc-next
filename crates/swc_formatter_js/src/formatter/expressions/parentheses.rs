@@ -1525,6 +1525,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         boundary: SourceParentheses,
         emitted_inner: Option<Expr>,
+        last_directive_end: Option<u32>,
     ) -> Option<DiagnosticHeadFrontier> {
         let expression = match emitted_inner {
             Some(expression) => expression,
@@ -1553,15 +1554,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !comments.tail.is_empty() {
             return None;
         }
-        let coverage = self.diagnostic_head_reset_coverage(
-            comments.head,
-            boundary.outer.start,
-            emitted.start,
-        )?;
+        let coverage =
+            self.diagnostic_head_reset_coverage(comments.head, boundary.outer.start, emitted.start);
+        // A directive sharing the emitted head's line retains its next-line
+        // target through the normal sensitive-line constraints. No inner
+        // covered range is transferred through this source frame.
+        if coverage.is_none()
+            && !last_directive_end
+                .is_some_and(|end| self.source_line_breaks(end, emitted.start) == 0)
+        {
+            return None;
+        }
         Some(DiagnosticHeadFrontier {
             packet,
             count: comments.head.len(),
-            coverage: Some(coverage),
+            coverage,
         })
     }
 
@@ -1908,14 +1915,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(CommentBinding::Unbound, CommentBinding::BoundTo)
         };
         let mut cast_binding = None;
-        let mut has_diagnostic = false;
+        let mut last_directive_end = None;
         let resolve = |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.suppression || semantics.file_directive {
                 return CommentBinding::SourceBound;
             }
             if semantics.diagnostic {
-                has_diagnostic = true;
+                last_directive_end = Some(comment.span.end);
                 return if semantics.optimizer || semantics.type_cast {
                     CommentBinding::SourceBound
                 } else {
@@ -1991,7 +1998,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             CommentBinding::combine_all(comments.iter().copied().map(resolve))
         };
-        let diagnostic_frontier = if has_diagnostic
+        let diagnostic_frontier = if last_directive_end.is_some()
             && matches!(binding, CommentBinding::Unbound)
             && comments
                 .first()
@@ -2000,12 +2007,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .last()
                 .is_some_and(|comment| comment.span.end <= boundary.inner.start)
         {
-            self.source_parentheses_diagnostic_frontier(boundary, emitted_inner)
+            self.source_parentheses_diagnostic_frontier(boundary, emitted_inner, last_directive_end)
         } else {
             None
         };
         SourceParenthesesHead {
-            binding: if has_diagnostic {
+            binding: if last_directive_end.is_some() {
                 CommentBinding::SourceBound
             } else {
                 binding
