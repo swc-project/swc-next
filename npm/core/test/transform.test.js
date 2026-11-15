@@ -53,8 +53,6 @@ test("transform validates configuration values", () => {
     assert.throws(() => transform("", { parser: { lang: "invalid" } }), TypeError);
 
     assert.throws(() => transform("", { generator: { minify: 1 } }), TypeError);
-
-    assert.throws(() => transform("", { parser: { errorRecovery: true } }), TypeError);
   }
 });
 

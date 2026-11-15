@@ -186,7 +186,6 @@ test("errorRecovery controls whether the first diagnostic is thrown", () => {
         return true;
       });
     }
-    assert.throws(() => parse(source, { errorRecovery: 1 }), TypeError);
     const semantic = "let a; let a;";
     const options = { semanticErrors: true, errorRecovery: true };
     const first = parse(semantic, options).diagnostics[0];

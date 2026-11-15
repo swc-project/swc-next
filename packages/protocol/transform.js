@@ -6,18 +6,8 @@ import { encodeGeneratorConfig } from "./generator.js";
 
 const encoder = new TextEncoder();
 const empty = new Uint8Array();
-const rootKeys = ["filename", "sourceMap", "comments", "parser", "generator"];
-const parserKeys = ["sourceType", "lang", "preserveParens", "comments", "semanticErrors"];
-const generatorKeys = ["asciiOnly", "minify", "inlineScript"];
 const comments = ["all", "none"];
 
-function object(value, keys, name) {
-  if (value == null) return;
-  if (typeof value !== "object" || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
-  for (const key of Object.keys(value)) {
-    if (!keys.includes(key)) throw new TypeError(`Unknown ${name} option: ${key}`);
-  }
-}
 function boolean(value, name) {
   if (value == null) return 0;
   if (typeof value !== "boolean") throw new TypeError(`${name} must be a boolean`);
@@ -39,11 +29,11 @@ let view;
  */
 export function encodeTransformApiOptions(options) {
   if (options == null) return empty;
-  object(options, rootKeys, "options");
+  if (typeof options !== "object" || Array.isArray(options)) {
+    throw new TypeError("options must be an object");
+  }
   const parser = options.parser;
   const generator = options.generator;
-  object(parser, parserKeys, "parser");
-  object(generator, generatorKeys, "generator");
   const filename = options.filename;
   if (filename != null && typeof filename !== "string") throw new TypeError("filename must be a string");
   const capacity = filename == null ? 16 : 20 + filename.length * 3;
