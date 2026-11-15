@@ -331,11 +331,16 @@ impl<'a> Printer<'a> {
         } else {
             Vec::new()
         };
+        let comments = if options.comments {
+            ast.comments()
+        } else {
+            &[]
+        };
         Self {
             ast,
             options,
             js: Vec::with_capacity(ast.source().len()),
-            comments: ast.comments(),
+            comments,
             expr_visitor_stack: Vec::new(),
             builder: make_chunk_builder(line_offset_tables),
             next_comment: 0,
@@ -362,7 +367,6 @@ impl<'a> Printer<'a> {
             ast,
             options,
             js,
-            comments,
             builder,
             ..
         } = self;
@@ -375,7 +379,8 @@ impl<'a> Printer<'a> {
         };
 
         let code = String::from_utf8(js).expect("generated code must be valid UTF-8");
-        let legal_comments = comments
+        let legal_comments = ast
+            .comments()
             .iter()
             .filter(|comment| is_legal_comment(ast, **comment))
             .copied()

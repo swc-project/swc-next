@@ -157,15 +157,20 @@ fn expect_token_boundary_mapping(source: &str, expected: &[u8]) {
 fn test_generate_result_ownership() {
     let code = {
         let allocator = Allocator::new();
-        let source = "const value = 1;";
-        let parse_options = ParseOptions::default();
+        let source = "/*! license */ const value = 1;";
+        let parse_options = ParseOptions {
+            comments: swc_next_ecma_parser::CommentMode::Flat,
+            ..ParseOptions::default()
+        };
         let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
         let generator_options = GeneratorOptions {
+            comments: false,
             source_map_path: Some("路径.js".into()),
             ..GeneratorOptions::default()
         };
         let generated = generate(&parsed.ast, generator_options);
+        assert_eq!(generated.legal_comments.len(), 1);
         let map = generated.map.unwrap();
         assert_eq!(map.sources().len(), 1);
         assert_eq!(map.sources()[0], "路径.js".as_bytes());
@@ -1003,6 +1008,12 @@ fn test_jsx_container_comments() {
 
 #[test]
 fn test_container_comments() {
+    let without_comments = GeneratorOptions {
+        comments: false,
+        ..GeneratorOptions::default()
+    };
+    expect_generated_with_options("f(a, b /* keep */, c);", "f(a, b, c);\n", without_comments);
+
     expect_stable("let x /*! license */;", "let x /*! license */ ;\n");
 
     expect_stable("const x = [1 /* keep */];", "const x = [1 /* keep */ ];\n");
