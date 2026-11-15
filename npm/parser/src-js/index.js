@@ -1,5 +1,5 @@
 import { parseSync as __parseSync } from "./binding.js";
-import { decode, encodeOptions } from "@swc-next/decoder";
+import { decode, encodeParserConfig } from "@swc-next/decoder";
 
 const textEncoder = new TextEncoder();
 let sourceBuffer = new Uint8Array();
@@ -7,7 +7,7 @@ let sourceBuffer = new Uint8Array();
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 
 export function parseSync(source, options) {
-  const parserConfig = encodeOptions(options);
+  const parserConfig = encodeParserConfig(options);
   const capacity = source.length * 3;
   if (sourceBuffer.length < capacity) {
     const length = Math.max(capacity, sourceBuffer.length * 2, 4096);

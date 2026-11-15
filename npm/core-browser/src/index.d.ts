@@ -2,16 +2,23 @@ import type { Lang, Program, SourceType } from "@swc-next/types";
 export type * from "@swc-next/types";
 
 import type {
+  Diagnostic,
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
+  TransformApiOptions,
+  JsOutput,
 } from "./binding.js";
 
 export type {
   CommentMode,
+  Diagnostic,
+  DiagnosticLabel,
   ParserConfig,
   GeneratorConfig,
   GenerateOutput,
+  TransformApiOptions,
+  JsOutput,
 } from "./binding.js";
 
 export type GenerateApiOptions = GeneratorConfig;
@@ -26,20 +33,6 @@ export interface Comment {
   value: string;
   start: number;
   end: number;
-}
-
-export interface DiagnosticLabel {
-  message: string;
-  /** UTF-16 offset in the source. */
-  start: number;
-  /** UTF-16 offset in the source. */
-  end: number;
-}
-
-export interface Diagnostic extends DiagnosticLabel {
-  severity: "error" | "warning" | "hint" | "info";
-  help?: string;
-  labels: DiagnosticLabel[];
 }
 
 export interface ParseResult {
@@ -67,3 +60,16 @@ export declare function generateSync(
 
 export declare function langFromPath(path: string): Lang;
 export declare function sourceTypeFromPath(path: string): SourceType;
+
+/** Parse and print source synchronously.
+ * Built-in transformations, including TypeScript type erasure and JSX lowering,
+ * are not currently implemented by this API.
+ * Syntax errors are returned in diagnostics.
+ * Options encoding shares state across entry points and is not reentrant. Option
+ * getters and Proxy traps must not call any transformSync or encodeTransformApiOptions
+ * while it is encoding options.
+ */
+export declare function transformSync(
+  source: string,
+  options?: TransformApiOptions | undefined | null,
+): JsOutput;

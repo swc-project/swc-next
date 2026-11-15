@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
 
-import { encode, encodeJs, encodeTs, encodeOptions } from "@swc-next/encoder";
+import { encode, encodeJs, encodeTs, encodeGeneratorConfig } from "@swc-next/encoder";
 import { decodeJs } from "@swc-next/decoder";
 import { parseSync, generateSync } from "../src-js/index.js";
 import { generateSync as generateNative } from "../src-js/binding.js";
 
 function generateEncoded(program, encoder) {
-  return generateNative(...encoder(program), encodeOptions());
+  return generateNative(...encoder(program), encodeGeneratorConfig());
 }
 
 function encodedParameterKinds(source, encoder, options) {

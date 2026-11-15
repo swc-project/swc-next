@@ -1,10 +1,10 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 
-import type { ParserConfig } from "./binding.js";
+import type { Diagnostic, ParserConfig } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
-export type { CommentMode, ParserConfig } from "./binding.js";
+export type { CommentMode, Diagnostic, DiagnosticLabel, ParserConfig } from "./binding.js";
 
 export interface ParseApiOptions extends ParserConfig {
   /** Return diagnostics and the recovered AST instead of throwing the first diagnostic. @default false */
@@ -16,20 +16,6 @@ export interface Comment {
   value: string;
   start: number;
   end: number;
-}
-
-export interface DiagnosticLabel {
-  message: string;
-  /** UTF-16 offset in the source. */
-  start: number;
-  /** UTF-16 offset in the source. */
-  end: number;
-}
-
-export interface Diagnostic extends DiagnosticLabel {
-  severity: "error" | "warning" | "hint" | "info";
-  help?: string;
-  labels: DiagnosticLabel[];
 }
 
 export interface ParseResult {

@@ -1,14 +1,20 @@
 import {
+  encodeSource,
+  encodeTransformApiOptions,
+  decodeJsOutput,
+} from "@swc-next/encoder/transform";
+import {
   parseSync as __parseSync,
   generateSync as __generateSync,
+  transformSync as __transformSync,
 } from "./binding.js";
 import {
   decode,
-  encodeOptions as encodeParserConfig,
+  encodeParserConfig,
 } from "@swc-next/decoder";
 import {
   encode,
-  encodeOptions as encodeGeneratorConfig,
+  encodeGeneratorConfig,
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
@@ -43,4 +49,10 @@ export function generateSync(program, options) {
   const generatorConfig = encodeGeneratorConfig(options);
   const code = __generateSync(...encode(program), generatorConfig);
   return { code };
+}
+
+export function transformSync(source, options) {
+  const config = encodeTransformApiOptions(options, encodeParserConfig, encodeGeneratorConfig);
+  const output = __transformSync(encodeSource(source), source.length, config);
+  return decodeJsOutput(output);
 }

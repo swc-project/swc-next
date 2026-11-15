@@ -1,3 +1,9 @@
+//! Internal native/Wasm transport for SWC Next's JavaScript bindings.
+//!
+//! This crate's APIs and ABI do not follow semantic versioning and may change in
+//! any release. Use matching versions of the bridge macros, Rust components,
+//! generated JavaScript bindings, and runtime.
+//!
 //! Native strings use Latin-1 for ASCII and UTF-16 transcoding otherwise.
 //! N-API copies the output into the JavaScript heap before the Rust allocation
 //! is released.

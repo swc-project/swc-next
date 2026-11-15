@@ -52,7 +52,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
     let mut options = case.options();
     let parser = options.parser.unwrap_or_default();
     let lang: Lang = parser.lang.map(Into::into).unwrap_or_default();
-    let output = transform_js(case.code(), options.clone());
+    let output = transform_js::<true>(case.code(), options.clone());
     if let Err(error) = check_diagnostics(&output.diagnostics) {
         return if case.expected_output().is_some() {
             Err(error)
@@ -89,7 +89,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
             Lang::Js
         };
         options.parser.get_or_insert_with(Default::default).lang = Some(output_lang.into());
-        let retransformed = transform_js(&output.code, options);
+        let retransformed = transform_js::<true>(&output.code, options);
         if check_diagnostics(&retransformed.diagnostics).is_err() {
             return Ok(false);
         }

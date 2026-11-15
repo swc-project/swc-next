@@ -18,11 +18,11 @@ SWC Next has its own JavaScript packages and API surface. Integrations built for
 | Parsing | [`parseSync`](/api/javascript/parser) parses JavaScript and TypeScript into an AST. |
 | AST traversal and editing | [`walk`](/api/javascript/walk) visits and modifies AST nodes. |
 | Code generation | [`generateSync`](/api/javascript/generator) prints an AST as source code. |
-| Compilation and minification | The JavaScript packages do not currently expose SWC's `transform`, `transformSync`, `minify`, or `minifySync` APIs. |
+| Minification | The JavaScript packages do not currently expose `minify` or `minifySync`. |
 
 ### Configuration
 
-SWC Next uses separate parser and code generation options and does not load [`.swcrc` files](https://swc.rs/docs/configuration/swcrc). Compatibility with selected SWC configuration options is planned.
+SWC Next exposes parser and code generation options. It does not load [`.swcrc` files](https://swc.rs/docs/configuration/swcrc). Compatibility with selected SWC configuration options is planned.
 
 Available options are documented in the [Parser](/api/javascript/parser) and [Generator](/api/javascript/generator) references.
 

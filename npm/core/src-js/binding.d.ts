@@ -6,6 +6,25 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
+export interface Diagnostic {
+  severity: "error" | "warning" | "hint" | "info"
+  message: string
+  /** UTF-16 offset in the original source. */
+  start: number
+  /** UTF-16 offset in the original source. */
+  end: number
+  help?: string
+  labels: Array<DiagnosticLabel>
+}
+
+export interface DiagnosticLabel {
+  message: string
+  /** UTF-16 offset in the original source. */
+  start: number
+  /** UTF-16 offset in the original source. */
+  end: number
+}
+
 export interface GenerateOutput {
   code: string
 }
@@ -24,6 +43,13 @@ export interface GeneratorConfig {
   inlineScript?: boolean
   /** Print compact code independently of AST compression and mangling. */
   minify?: boolean
+}
+
+export interface JsOutput {
+  code: string
+  /** Source map as a JSON string. Absent when source maps are disabled. */
+  map?: string
+  diagnostics: Array<Diagnostic>
 }
 
 export type Lang =  'js'|
@@ -73,6 +99,29 @@ export type SourceType =  'module'|
 'script'|
 'commonjs'|
 'unambiguous';
+
+/**
+ * Options for parsing and printing source.
+ *
+ * Built-in transformations, including TypeScript type erasure and JSX lowering,
+ * are not currently implemented by the JavaScript API.
+ */
+export interface TransformApiOptions {
+  /** Used to infer the language and source type, and for diagnostics and source maps. */
+  filename?: string
+  /**
+   * Source map generation.
+   *
+   * @default false
+   */
+  sourceMap?: boolean
+  /** Comment policy. */
+  comments?: CommentMode
+  /** Parser configuration. */
+  parser?: ParserConfig
+  /** Generator configuration. */
+  generator?: GeneratorConfig
+}
 /**
  * # Safety
  *
@@ -93,3 +142,9 @@ export declare function langFromPath(path: string): Lang
 export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Buffer
 
 export declare function sourceTypeFromPath(path: string): SourceType
+
+/**
+ * # Safety
+ * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
+ */
+export declare function transformSync(source: Buffer, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Buffer

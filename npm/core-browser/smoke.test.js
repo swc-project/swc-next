@@ -7,7 +7,7 @@ import { expect, test } from "@rstest/core";
 import init, { parseSync, generateSync } from "@swc-next/core-browser";
 import * as core from "@swc-next/core-browser";
 
-test("browser exposes parseSync and generateSync", async () => {
+test("browser exposes parsing and generation", async () => {
   await init();
   expect("Lang" in core).toBe(false);
   expect("SourceType" in core).toBe(false);

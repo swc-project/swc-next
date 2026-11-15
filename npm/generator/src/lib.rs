@@ -1,3 +1,8 @@
+//! Internal native/Wasm generator bindings, wrapped by the public JavaScript API.
+//!
+//! These low-level APIs and binary protocols do not follow semantic versioning
+//! and may change in any release. Use a matching JavaScript wrapper and encoder.
+
 use swc_next_bridge::bridge;
 use swc_next_core::js::generator::{
     DeserializeError, GenerateOutput, JsGeneratorConfig as GeneratorConfig, generate_from_parts,

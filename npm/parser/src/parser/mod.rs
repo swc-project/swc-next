@@ -3,7 +3,7 @@ use swc_next_bridge::bridge;
 use swc_next_bridge::{napi, napi_derive::napi};
 use swc_next_core::js::parser::{JsLang, JsSourceType};
 #[cfg(target_family = "wasm")]
-use swc_next_core::js::parser::{JsParserConfig as ParserConfig, parse_to_buffer};
+use swc_next_core::js::parser::{JsParserConfig as ParserConfig, bridge::parse_to_buffer};
 use swc_next_ecma_ast::{Lang, SourceType};
 
 #[cfg(target_family = "wasm")]
@@ -37,7 +37,12 @@ pub unsafe fn parse_sync(
     options: u32,
 ) -> napi::Result<napi::bindgen_prelude::Buffer> {
     unsafe {
-        swc_next_core::js::parser::parse_to_node_buffer(&env, &source, source_utf16_len, options)
+        swc_next_core::js::parser::bridge::parse_to_node_buffer(
+            &env,
+            &source,
+            source_utf16_len,
+            options,
+        )
     }
 }
 

@@ -182,3 +182,37 @@ fn serialize_source_map(map: &swc_next_ecma_codegen::SourceMap<'_>) -> String {
     }
     value.to_string()
 }
+
+#[cfg(all(feature = "bridge", feature = "js_parser"))]
+pub mod bridge {
+    //! Shared JavaScript bridge types.
+
+    use swc_next_bridge::bridge;
+    #[cfg(not(target_family = "wasm"))]
+    use swc_next_bridge::napi;
+
+    #[bridge(object, object_from_js = false, object_to_js = false)]
+    pub struct DiagnosticLabel {
+        pub message: String,
+        /// UTF-16 offset in the original source.
+        pub start: u32,
+        /// UTF-16 offset in the original source.
+        pub end: u32,
+    }
+
+    #[bridge(object, object_from_js = false, object_to_js = false)]
+    pub struct Diagnostic {
+        #[cfg_attr(
+            not(target_family = "wasm"),
+            napi(ts_type = "\"error\" | \"warning\" | \"hint\" | \"info\"")
+        )]
+        pub severity: String,
+        pub message: String,
+        /// UTF-16 offset in the original source.
+        pub start: u32,
+        /// UTF-16 offset in the original source.
+        pub end: u32,
+        pub help: Option<String>,
+        pub labels: Vec<DiagnosticLabel>,
+    }
+}

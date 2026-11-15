@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
-import { decode, encodeOptions } from "@swc-next/decoder";
+import { decode, encodeParserConfig } from "@swc-next/decoder";
 import { encode } from "@swc-next/encoder";
 import * as binding from "../src-js/binding.js";
 
@@ -30,7 +30,7 @@ function checkUnit(file, unit, suite, sourceType) {
   const result = { file, name: unit.name, parsed: false, passed: false };
   const source = unit.content;
   const sourceBytes = textEncoder.encode(source);
-  const options = encodeOptions({
+  const options = encodeParserConfig({
     lang: getLang(unit, suite),
     sourceType: sourceType ?? (unit.sourceType.module ? "module" : "script"),
     preserveParens: suite !== "typescript",

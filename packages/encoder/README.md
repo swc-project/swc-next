@@ -3,9 +3,7 @@
 Encodes an ESTree-compatible `Program` into binary sections consumed by
 SWC Next crates.
 
-**For internal SWC Next use only.** This package's API and binary format do not
-follow semantic versioning and may change in any release. Use the exact package
-version matching the `swc_next_*` Rust crates used by your native binding.
+**For internal SWC Next use only.** This package's API and binary format do not follow semantic versioning and may change in any release. Use matching Rust and JavaScript versions.
 
 ```js
 import { encode } from "@swc-next/encoder";

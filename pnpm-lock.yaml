@@ -277,22 +277,6 @@ importers:
         specifier: 'catalog:'
         version: 1.62.1
 
-  npm/generator:
-    dependencies:
-      '@swc-next/encoder':
-        specifier: workspace:*
-        version: link:../../packages/encoder
-      '@swc-next/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-    devDependencies:
-      '@napi-rs/cli':
-        specifier: 'catalog:'
-        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.1.1
-
   npm/core:
     dependencies:
       '@swc-next/decoder':
@@ -354,6 +338,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/types
 
+  npm/generator:
+    dependencies:
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
+      '@swc-next/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
   npm/parser:
     dependencies:
       '@swc-next/decoder':
@@ -362,6 +362,22 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
+  npm/transformer:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'

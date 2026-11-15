@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encode, encodeOptions } from "@swc-next/encoder";
+import { encode, encodeGeneratorConfig } from "@swc-next/encoder";
 import { generateSync as generateStandalone } from "../../generator/src-js/index.js";
 import * as binding from "../src-js/binding.js";
 import { parseSync, generateSync } from "../src-js/index.js";
@@ -14,7 +14,7 @@ function assertTransfer(program, options, expected) {
     40, nodes * 8, nodes, nodes * 16, view.getUint32(4, true) * 4,
     view.getUint32(8, true) + view.getUint32(12, true),
   ]);
-  const optionBits = encodeOptions(options);
+  const optionBits = encodeGeneratorConfig(options);
   assert.equal(binding.generateSync(...parts, optionBits), expected);
   assert.equal(generateSync(program, options).code, expected);
   assert.equal(generateStandalone(program, options).code, expected);

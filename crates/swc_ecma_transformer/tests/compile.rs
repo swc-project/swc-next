@@ -46,7 +46,7 @@ fn compile() {
                 source_type: source_type.unwrap_or_default(),
                 ..parser.into()
             };
-            let output = transform_js(&input, options);
+            let output = transform_js::<true>(&input, options);
             let allocator = Allocator::new();
             let reparsed =
                 Parser::init(&allocator, &output.code, parser, NoTokenParserConfig).parse();
