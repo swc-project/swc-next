@@ -14,12 +14,12 @@ pub(super) fn wire_type_alias(
 ) -> syn::Result<TokenStream> {
     let ident = native_wire_type_name(semantic_type, direction)?;
     let native_type = if is_byte_vec(wire_type) {
-        parse_quote!(::swc_next_bridge::napi::bindgen_prelude::Buffer)
+        parse_quote!(::swc_next_bridge::napi::bindgen_prelude::Uint8Array)
     } else {
         wire_type.clone()
     };
     // N-API cannot resolve associated ABI types while generating declarations.
-    // Type aliases carry the wire impl's exact type without adding runtime exports.
+    // Type aliases expose wire mappings without adding runtime exports.
     Ok(quote! {
         #[cfg(not(target_family = "wasm"))]
         #[::swc_next_bridge::napi_derive::napi]

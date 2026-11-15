@@ -86,7 +86,7 @@ export type OptionalParserConfigInputWire =
   number
 
 export type OptionalTransformApiOptionsInputWire =
-  Buffer
+  Uint8Array
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {
@@ -183,4 +183,4 @@ export declare function sourceTypeFromPath(path: string): SourceType
  * # Safety
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */
-export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Uint8Array
+export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, options: Uint8Array): string | Uint8Array

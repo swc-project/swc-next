@@ -22,7 +22,7 @@ pub unsafe fn transform_sync(
 #[cfg(not(target_family = "wasm"))]
 #[napi(
     js_name = "transformSync",
-    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null",
+    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: Uint8Array",
     ts_return_type = "string | Uint8Array"
 )]
 /// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.

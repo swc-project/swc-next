@@ -746,7 +746,7 @@ mod tests {
         let Type::Path(path) = *alias.ty else {
             panic!("expected a native buffer type");
         };
-        assert_eq!(path.path.segments.last().unwrap().ident, "Buffer");
+        assert_eq!(path.path.segments.last().unwrap().ident, "Uint8Array");
 
         let function = parse_quote! {
             pub fn call(options: Option<Config>) -> Option<Output> { unreachable!() }
