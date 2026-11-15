@@ -59,15 +59,21 @@ Sources live in `src-js`; Rslib bundles the plugin into `dist`. Run
 `pnpm build:js` from the workspace root to build the JavaScript entry points.
 The plugin test commands rebuild these entry points before running.
 
-Tests compare every local formatter fixture and option set directly with the
-native Rust printer on the same host-normalized input. Native Rust measures text
-with `unicode-width`; Prettier lays out Docs with its JavaScript string-width
-behavior. A few exact Unicode- or tab-sensitive options can therefore choose
-different line breaks while preserving the same syntax. The test-only
-[`width-only-parity.json`](test/width-only-parity.json) records those exact input,
-option, and output hashes. Those cases still pass the core parser/codegen AST
-comparison and the plugin fixed-point check; every other fixture and option set
-remains byte-for-byte compared. A test-only N-API addon calls `format()` and
-returns strings directly, preserving CR, LF, and EOF whitespace. The test
-commands build this addon with the `test-native` Cargo feature and use it as the
-native oracle for both native and Wasm plugin bindings.
+`test/prettier-plugin-conformance.js` runs two comparisons for each local
+formatter fixture and option set:
+
+- SWC plugin + SWC formatter versus SWC plugin + Prettier formatter: compare
+  the printers using SWC-produced documents.
+- SWC plugin + Prettier formatter versus native Prettier + Prettier formatter:
+  compare the language formatters using Prettier's printer.
+
+Each run writes two corresponding sections to
+[`prettier-plugin-conformance.json`](test/prettier-plugin-conformance.json).
+Both sections group differences by fixture and show the options and both compared
+outputs, or their first error lines. Matching cases are omitted.
+CI checks report changes with `git diff`.
+
+Run `pnpm --filter @swc-next/formatter-prettier-plugin test` for native bindings,
+or `pnpm --filter @swc-next/formatter-prettier-plugin test:wasm` after building
+the Wasm bindings. Both commands regenerate the report. Rust tests check
+formatting, idempotency, and document serialization.

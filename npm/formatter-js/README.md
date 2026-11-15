@@ -17,6 +17,3 @@ Build Wasm: `pnpm --filter @swc-next/formatter-js build:wasm`.
 Then run `pnpm --filter @swc-next/formatter-js build:js` to build the JavaScript
 entry point in `dist`. Sources live in `src-js`; native and Wasm artifacts
 also go to `dist`.
-
-Plugin tests use `build:test` to build the separate native
-`formatNativeSync` oracle. That test-only entry is excluded from the published API.

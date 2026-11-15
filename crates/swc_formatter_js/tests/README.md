@@ -9,7 +9,8 @@ An `options.json` array selects Prettier-style options; the nearest ancestor
 file wins, and absent options use Prettier defaults.
 
 The fixture runner formats twice. Both passes must parse, retain the comment
-count, and agree between the source and AST entry points. Non-idempotent output
+count, agree between the source and AST entry points, and retain the same output
+after document encoding and decoding. Non-idempotent output
 fails the test rather than being accepted in a snapshot. Comment counts and parsing
 alone do not prove that formatting preserved semantics.
 

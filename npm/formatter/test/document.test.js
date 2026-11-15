@@ -70,6 +70,14 @@ test("document encoding rejects cycles and isolated surrogates", () => {
   );
 });
 
+test("document encoding rejects invalid alignment values", () => {
+  const align = (n) => ({ type: "align", n, contents: "x" });
+  assert.throws(() => encodeDoc(align(NaN)), RangeError);
+  assert.throws(() => encodeDoc(align(Infinity)), RangeError);
+  assert.throws(() => encodeDoc(align(0.5)), RangeError);
+  assert.throws(() => encodeDoc(align(0x1_0000_0000)), RangeError);
+});
+
 test("cursor positions are reported in UTF-16 after trimming and line ending conversion", () => {
   const cursor = { type: "cursor" };
   const { buffer } = encodeDoc([

@@ -4,7 +4,8 @@ use serde_json::{Map, Value};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_formatter_js::{FormatOptions, LineEnding, format, format_ast};
+use swc_next_formatter_host::FormatSession;
+use swc_next_formatter_js::{FormatOptions, LineEnding, format, format_ast, format_to_doc_buffer};
 
 use super::prettier_options;
 
@@ -79,6 +80,12 @@ fn format_pass(
         .unwrap_or_else(|error| panic!("{id} AST entry point failed: {error}"));
     assert_eq!(ast_output, output, "{id} entry-point parity");
 
+    let document_output = format_document(input, parser_options, options);
+    assert_eq!(
+        document_output, output,
+        "{id} document serialization parity"
+    );
+
     let output_allocator = Allocator::new();
     let reparsed = Parser::init(
         &output_allocator,
@@ -96,6 +103,17 @@ fn format_pass(
         reparsed.ast.comments().len(),
         "{id} formatting must preserve comment count"
     );
+    output
+}
+
+fn format_document(input: &str, parser_options: ParserOptions, options: FormatOptions) -> String {
+    let bytes = format_to_doc_buffer(input, parser_options, options).unwrap();
+    let session = FormatSession::new(options.into());
+    let document = session.decode(&bytes).unwrap();
+    let mut output = document.print(session.print_options());
+    if input.starts_with('\u{feff}') {
+        output.insert(0, '\u{feff}');
+    }
     output
 }
 
