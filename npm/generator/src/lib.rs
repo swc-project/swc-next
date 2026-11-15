@@ -8,7 +8,10 @@ use swc_next_core::js::generator::{
     DeserializeError, GenerateOutput, JsGeneratorConfig as GeneratorConfig, generate_from_parts,
 };
 
-#[bridge]
+#[bridge(
+    ts_args_type = "header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: number",
+    ts_return_type = "string"
+)]
 /// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
 ///
 /// # Safety

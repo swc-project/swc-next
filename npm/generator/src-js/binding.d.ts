@@ -4,9 +4,6 @@ export interface GenerateOutput {
   code: string
 }
 
-export type GenerateOutputOutputWire =
-  string
-
 /**
  * JavaScript code generation options.
  *
@@ -22,9 +19,6 @@ export interface GeneratorConfig {
   /** Print compact code independently of AST compression and mangling. */
   minify?: boolean
 }
-
-export type OptionalGeneratorConfigInputWire =
-  number
 /**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
  *
@@ -34,4 +28,4 @@ export type OptionalGeneratorConfigInputWire =
  * the validity, alignment, and immutability contracts of
  * `swc_next_core::js::generator::generate_from_parts`.
  */
-export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: OptionalGeneratorConfigInputWire): GenerateOutputOutputWire
+export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: number): string

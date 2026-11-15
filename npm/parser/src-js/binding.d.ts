@@ -6,12 +6,6 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
-export type CommentsOptionInputWire =
-  CommentMode
-
-export type CommentsOptionOutputWire =
-  CommentMode
-
 export interface Diagnostic {
   severity: "error" | "warning" | "hint" | "info"
   message: string
@@ -31,26 +25,11 @@ export interface DiagnosticLabel {
   end: number
 }
 
-export type JsLangInputWire =
-  Lang
-
-export type JsLangOutputWire =
-  Lang
-
-export type JsSourceTypeInputWire =
-  SourceType
-
-export type JsSourceTypeOutputWire =
-  SourceType
-
 export type Lang =  'js'|
 'ts'|
 'jsx'|
 'tsx'|
 'dts';
-
-export type OptionalParserConfigInputWire =
-  number
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {

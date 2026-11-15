@@ -4,7 +4,7 @@ use swc_next_core::js::parser::JsParserConfig as ParserConfig;
 #[cfg(all(feature = "test-native", not(target_family = "wasm")))]
 pub mod test;
 
-#[bridge]
+#[bridge(ts_args_type = "source: string, parser: number, options: Uint8Array")]
 pub fn format_doc_buffer_sync(
     source: String,
     parser: Option<ParserConfig>,
