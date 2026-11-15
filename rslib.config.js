@@ -2,7 +2,13 @@ import path from "node:path";
 import { defineConfig } from "@rslib/core";
 
 const root = import.meta.dirname;
-const components = ["core", "parser", "generator", "transformer", "core-browser"];
+const components = [
+  "core",
+  "parser",
+  "generator",
+  "transformer",
+  "core-browser",
+];
 
 export default defineConfig({
   lib: components.map((component) => {
@@ -26,8 +32,24 @@ export default defineConfig({
           { from: path.join(source, "{*.d.ts,binding.js}"), to: "[name][ext]" },
         ],
         autoExternal: false,
-        externals: ["./binding.js", "./swc-next-core.browser.mjs", "@swc-next/walker"],
-        minify: true,
+        externals: [
+          "./binding.js",
+          "./swc-next-core.browser.mjs",
+          "@swc-next/walker",
+        ],
+        minify: {
+          jsOptions: {
+            minimizerOptions: {
+              compress: {
+                module: true,
+                toplevel: false,
+                inline: 0,
+                reduce_vars: false,
+              },
+              mangle: { toplevel: false },
+            },
+          },
+        },
       },
     };
   }),
