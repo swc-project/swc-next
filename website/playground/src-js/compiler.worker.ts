@@ -1,4 +1,4 @@
-import { decode } from "@swc-next/decoder";
+import { decode } from "@swc-next/protocol/ast/decode";
 import init, { run } from "../wasm/playground.browser.mjs";
 import type { CompileRequest, CompileResponse } from "./types";
 

@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
 
-import { encode, encodeJs, encodeTs, encodeGeneratorConfig } from "@swc-next/encoder";
-import { decodeJs } from "@swc-next/decoder";
-import { parseSync, generateSync } from "../src-js/index.js";
-import { generateSync as generateNative } from "../src-js/binding.js";
+import { encode, encodeJs, encodeTs } from "@swc-next/protocol/ast/encode";
+import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
+import { decodeJs } from "@swc-next/protocol/ast/decode";
+import { parseSync, generateSync } from "@swc-next/core";
+import { generateSync as generateNative } from "../dist/binding.js";
 
 function generateEncoded(program, encoder) {
   return generateNative(...encoder(program), encodeGeneratorConfig());
@@ -434,7 +435,7 @@ function encodeWithBufferMode(program, mode) {
     globalThis.Buffer = mode === "absent" ? undefined
       : mode === "missing" ? { prototype: {} }
       : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
-    const { encodeJs, encodeTs } = await import(${JSON.stringify(new URL("../../../packages/encoder/index.js", import.meta.url).href)});
+    const { encodeJs, encodeTs } = await import(${JSON.stringify(new URL("../../../packages/protocol/ast/encode.js", import.meta.url).href)});
     console.log(JSON.stringify([encodeJs(program), encodeTs(program)].map(parts =>
       parts.map(bytes => NodeBuffer.from(bytes).toString("base64")))));
   `;

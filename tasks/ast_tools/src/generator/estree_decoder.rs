@@ -10,7 +10,7 @@ use super::{
     js_minifier::minify,
 };
 
-const OUTPUT_DIR: &str = "packages/decoder";
+const OUTPUT_DIR: &str = "packages/protocol/ast";
 
 // TypeScript keeps common small node bodies in a hot dispatcher. TSX and empty
 // programs use the complete dispatcher to avoid unnecessary calls or closures.

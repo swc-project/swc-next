@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor/editor.js";
 import "monaco-editor/features/register.all.js";
 import "monaco-editor/languages/definitions/typescript/register.js";
 import "monaco-editor/languages/definitions/javascript/register.js";
-import type { Diagnostic } from "@swc-next/decoder";
+import type { Diagnostic } from "@swc-next/protocol/ast/decode";
 import type { SourceRange } from "../types";
 
 globalThis.MonacoEnvironment = {

@@ -7,8 +7,10 @@
   "main": "index.js",
   "scripts": {
     "build": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build",
+    "build:js": "rslib build",
     "build:wasm": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build:wasm",
     "build:browser": "pnpm --filter @swc-next/core-browser build:browser",
+    "prepare:browser": "pnpm --filter @swc-next/core-browser prepare:browser",
     "test": "pnpm --filter @swc-next/core test",
     "test:wasm": "pnpm --filter @swc-next/core test:wasm",
     "test:browser": "pnpm --filter @swc-next/core-browser test:browser",
@@ -26,6 +28,7 @@
   "packageManager": "pnpm@11.17.0",
   "devDependencies": {
     "@napi-rs/cli": "catalog:",
+    "@rslib/core": "catalog:",
     "@rstest/browser": "catalog:",
     "@rstest/core": "catalog:",
     "cac": "catalog:",

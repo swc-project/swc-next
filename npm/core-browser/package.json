@@ -7,36 +7,37 @@
     "url": "git+https://github.com/swc-project/swc-next.git",
     "directory": "npm/core-browser"
   },
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "type": "module",
-  "types": "./src/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
-      "import": "./src/index.js",
-      "default": "./src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "src/binding.d.ts",
-    "src/index.d.ts",
-    "src/index.js",
-    "src/swc-next-core.bridge.mjs",
-    "src/swc-next-core.browser.mjs",
-    "src/swc-next-core.runtime.mjs",
-    "src/swc-next-core.wasm"
+    "dist/binding.d.ts",
+    "dist/index.d.ts",
+    "dist/index.js",
+    "dist/swc-next-core.bridge.mjs",
+    "dist/swc-next-core.browser.mjs",
+    "dist/swc-next-core.runtime.mjs",
+    "dist/swc-next-core.wasm"
   ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build:browser": "cargo run --quiet --locked --manifest-path ../../Cargo.toml -p bridge_cli -- build core --output-dir ../../target/wasm-package/core",
-    "test:browser": "rstest run --include smoke.test.js --browser --browser.headless"
+    "build:js": "pnpm -w exec rslib build --lib core-browser",
+    "build:browser": "cargo run --quiet --locked --manifest-path ../../Cargo.toml -p bridge_cli -- build core --output-dir dist",
+    "test:browser": "pnpm build:js && rstest run --include smoke.test.js --browser --browser.headless",
+    "prepack": "pnpm build:js",
+    "prepare:browser": "node ../../scripts/wasm-package/cli.mjs prepare-browser"
   },
   "dependencies": {
-    "@swc-next/decoder": "workspace:*",
-    "@swc-next/encoder": "workspace:*",
     "@swc-next/types": "workspace:*"
   },
   "keywords": [
@@ -48,5 +49,8 @@
     "webassembly"
   ],
   "author": "",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@swc-next/protocol": "workspace:*"
+  }
 }

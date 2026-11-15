@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decode } from "@swc-next/decoder";
-import * as core from "../src-js/index.js";
-import { langFromPath, parseSync, sourceTypeFromPath } from "../src-js/index.js";
-import { parseSync as parseStandalone } from "../../parser/src-js/index.js";
+import { decode } from "@swc-next/protocol/ast/decode";
+import * as core from "@swc-next/core";
+import { langFromPath, parseSync, sourceTypeFromPath } from "@swc-next/core";
+import { parseSync as parseStandalone } from "@swc-next/parser";
 
 test("parser options use strings without enum value exports", () => {
   assert.equal("Lang" in core, false);

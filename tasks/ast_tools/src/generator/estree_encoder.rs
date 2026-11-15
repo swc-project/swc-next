@@ -12,7 +12,7 @@ use crate::{
 
 use super::{estree::ENUMS, js_minifier::minify_encoder};
 
-const OUTPUT_DIR: &str = "packages/encoder";
+const OUTPUT_DIR: &str = "packages/protocol/ast";
 
 // Switch hit frequencies from the 25 codec benchmark fixtures, normalized per
 // fixture and combined across JS/TS. Unobserved cases follow the profiled cases.

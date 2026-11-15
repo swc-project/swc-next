@@ -1,14 +1,10 @@
-import { encodeParserConfig } from "@swc-next/decoder";
-import { encodeGeneratorConfig } from "@swc-next/encoder";
 import { transformSync as __transformSync } from "./binding.js";
-import {
-  encodeSource,
-  encodeTransformApiOptions,
-  decodeJsOutput,
-} from "@swc-next/encoder/transform";
+import { encodeSource } from "@swc-next/protocol/source";
+import { encodeTransformApiOptions } from "@swc-next/protocol/transform";
+import { decodeJsOutput } from "@swc-next/protocol/output";
 
 export function transformSync(source, options) {
-  const config = encodeTransformApiOptions(options, encodeParserConfig, encodeGeneratorConfig);
+  const config = encodeTransformApiOptions(options);
   const output = __transformSync(encodeSource(source), source.length, config);
   return decodeJsOutput(output);
 }

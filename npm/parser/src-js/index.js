@@ -1,5 +1,6 @@
 import { parseSync as __parseSync } from "./binding.js";
-import { decode, encodeParserConfig } from "@swc-next/decoder";
+import { decode } from "@swc-next/protocol/ast/decode";
+import { encodeParserConfig } from "@swc-next/protocol/parser";
 
 const textEncoder = new TextEncoder();
 let sourceBuffer = new Uint8Array();

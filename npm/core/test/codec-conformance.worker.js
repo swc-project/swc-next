@@ -2,9 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
-import { decode, encodeParserConfig } from "@swc-next/decoder";
-import { encode } from "@swc-next/encoder";
-import * as binding from "../src-js/binding.js";
+import { decode } from "@swc-next/protocol/ast/decode";
+import { encodeParserConfig } from "@swc-next/protocol/parser";
+import { encode } from "@swc-next/protocol/ast/encode";
+import * as binding from "../dist/binding.js";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
