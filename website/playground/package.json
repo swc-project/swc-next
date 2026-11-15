@@ -11,7 +11,6 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@swc-next/decoder": "workspace:*",
     "@swc-next/types": "workspace:*",
     "jotai": "^2.20.3",
     "lucide-react": "^1.46.0",
@@ -23,6 +22,7 @@
     "@fontsource-variable/inter": "catalog:",
     "@rsbuild/core": "^2.2.13",
     "@rsbuild/plugin-react": "^2.1.1",
+    "@swc-next/protocol": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "catalog:",
     "@types/react": "^19.3.0",

@@ -10,8 +10,6 @@ export function encodeParserConfig(options) {
     throw new TypeError("options must be an object");
   }
 
-  encodeOptionBoolean(options.errorRecovery, "errorRecovery");
-
   let value = 1;
   value |= encodeOptionEnum(options.sourceType, "sourceType", OPTION_SOURCE_TYPES) << 1;
   value |= encodeOptionEnum(options.lang, "lang", OPTION_LANGS) << 4;

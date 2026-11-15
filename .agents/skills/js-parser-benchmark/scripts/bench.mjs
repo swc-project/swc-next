@@ -22,8 +22,8 @@ const MIN_ROUNDS = 5;
 
 function usage() {
   return `Usage: node ${path.relative(process.cwd(), SCRIPT)} \\
-  --baseline /absolute/path/to/main/npm/core/src-js/index.js \\
-  --candidate /absolute/path/to/branch/npm/core/src-js/index.js \\
+  --baseline /absolute/path/to/main/npm/core/dist/index.js \\
+  --candidate /absolute/path/to/branch/npm/core/dist/index.js \\
   [--fixtures ${DEFAULT_FIXTURES}] [--file name.js ...] \\
   [--trials 3] [--time-ms 1000]`;
 }

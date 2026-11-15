@@ -60,7 +60,7 @@ pub struct GenerateOutput {
 ///
 /// # Safety
 ///
-/// `buffer` must be produced by `@swc-next/encoder` matching the version of this
+/// `buffer` must be produced by `@swc-next/protocol/ast/encode` matching the version of this
 /// crate and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
 /// It must satisfy the alignment requirements of [`ast::deserialize_from`] and remain
 /// immutable throughout this call.
@@ -148,7 +148,7 @@ const _: () = {
         }
     }
 
-    // Internal option word paired with packages/encoder/options.js. Its layout
+    // Internal option word paired with packages/protocol/generator.js. Its layout
     // does not follow semver; update both ends together.
     const OPTIONS_PRESENT: u32 = 1 << 0;
 

@@ -488,7 +488,7 @@ fn infer_ts_type(ty: &Type, position: TypePosition) -> syn::Result<String> {
         Type::Group(group) => infer_ts_type(&group.elem, position),
         Type::Paren(paren) => infer_ts_type(&paren.elem, position),
         Type::Reference(reference) => infer_ts_type(&reference.elem, position),
-        Type::Slice(slice) if is_ident_type(&slice.elem, "u8") => Ok("Buffer".into()),
+        Type::Slice(slice) if is_ident_type(&slice.elem, "u8") => Ok("Uint8Array".into()),
         Type::Tuple(tuple) if tuple.elems.is_empty() => match position {
             TypePosition::Argument => Err(syn::Error::new_spanned(
                 ty,
@@ -509,7 +509,7 @@ fn infer_ts_type(ty: &Type, position: TypePosition) -> syn::Result<String> {
                 "String" | "str" if matches!(segment.arguments, PathArguments::None) => {
                     Ok("string".into())
                 }
-                "Vec" if is_byte_vec(ty) => Ok("Buffer".into()),
+                "Vec" if is_byte_vec(ty) => Ok("Uint8Array".into()),
                 _ if matches!(segment.arguments, PathArguments::None) => Ok(ident),
                 _ => cannot_infer_ts_type(ty),
             }

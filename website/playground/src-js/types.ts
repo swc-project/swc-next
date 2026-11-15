@@ -1,4 +1,4 @@
-import type { Diagnostic } from "@swc-next/decoder";
+import type { Diagnostic } from "@swc-next/protocol/ast/decode";
 import type { Lang, Program, SourceType } from "@swc-next/types";
 
 export interface Options {

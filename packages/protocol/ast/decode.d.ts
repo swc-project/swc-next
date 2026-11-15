@@ -1,4 +1,3 @@
-export { encodeParserConfig } from "./options.js";
 import type { Program } from "@swc-next/types";
 
 export interface Comment {
@@ -31,14 +30,14 @@ export interface DecodeResult {
 /** Decode a buffer produced by a matching SWC Next parser crate into ESTree.
  * Internal use only: this API and format do not follow semver and may change in any release.
  */
-export declare function decode(buffer: Uint8Array, source: string, sourceBuffer: Uint8Array): DecodeResult;
+export declare function decode(buffer: Uint8Array, source: string): DecodeResult;
 
 /** Decode a JavaScript buffer produced by a matching SWC Next parser crate.
  * Internal API/format, not covered by semver.
  */
-export declare function decodeJs(buffer: Uint8Array, source: string, sourceBuffer: Uint8Array): DecodeResult;
+export declare function decodeJs(buffer: Uint8Array, source: string): DecodeResult;
 
 /** Decode a TypeScript buffer produced by a matching SWC Next parser crate.
  * Internal API/format, not covered by semver.
  */
-export declare function decodeTs(buffer: Uint8Array, source: string, sourceBuffer: Uint8Array): DecodeResult;
+export declare function decodeTs(buffer: Uint8Array, source: string): DecodeResult;

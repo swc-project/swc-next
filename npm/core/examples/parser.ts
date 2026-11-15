@@ -4,7 +4,7 @@ import {
   langFromPath,
   parseSync,
   sourceTypeFromPath,
-} from "../src-js/index.js";
+} from "@swc-next/core";
 
 const filePath = process.argv[2];
 

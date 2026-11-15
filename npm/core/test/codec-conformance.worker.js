@@ -2,9 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
-import { decode, encodeParserConfig } from "@swc-next/decoder";
-import { encode } from "@swc-next/encoder";
-import * as binding from "../src-js/binding.js";
+import { decode } from "@swc-next/protocol/ast/decode";
+import { encodeParserConfig } from "@swc-next/protocol/parser";
+import { encode } from "@swc-next/protocol/ast/encode";
+import * as binding from "../dist/binding.js";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
@@ -38,7 +39,7 @@ function checkUnit(file, unit, suite, sourceType) {
   });
   let parsed;
   try {
-    parsed = decode(binding.parseSync(sourceBytes, source.length, options), source, sourceBytes);
+    parsed = decode(binding.parseSync(sourceBytes, source.length, options), source);
     if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) return result;
   } catch (error) {
     return { ...result, error: String(error) };
@@ -46,7 +47,7 @@ function checkUnit(file, unit, suite, sourceType) {
   result.parsed = true;
   try {
     const buffer = encodeBuffer(parsed.program);
-    const decoded = decode(buffer, source, sourceBytes);
+    const decoded = decode(buffer, source);
     const roundtrip = encodeBuffer(decoded.program);
     if (!buffer.equals(roundtrip)) {
       return { ...result, error: "Codec buffer differs after decode/encode" };

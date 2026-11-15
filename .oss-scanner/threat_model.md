@@ -33,7 +33,7 @@ Prioritize unsafe Rust and the safe code that establishes its invariants:
   storage, and mutations that can invalidate references or internal invariants.
 - `crates/swc_simd` and parser scanning: vector load bounds, tail handling,
   masks, architecture differences, and fallback behavior.
-- `crates/swc_bridge`, `npm/core`, `packages/encoder`, and `packages/decoder`:
+- `crates/swc_bridge`, `npm/core`, and `packages/protocol`:
   pointer and length validation, buffer lifetimes, UTF-8/UTF-16 conversions,
   wire offsets, and AST round trips across the JavaScript/Rust boundary.
 - Parser, codegen, transforms, and other callers that can invalidate the

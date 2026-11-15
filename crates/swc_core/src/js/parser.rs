@@ -154,7 +154,7 @@ pub mod bridge {
     //!
     //! For internal SWC Next use only. These APIs, AST/diagnostic buffers, and
     //! packed option words do not follow semantic versioning and may change in
-    //! any release. Use matching `@swc-next/decoder` and native/Wasm bindings.
+    //! any release. Use matching `@swc-next/protocol/ast/decode` and native/Wasm bindings.
 
     use swc_next_allocator::Allocator;
     use swc_next_bridge::{BridgeDecodeOptional, bridge};
@@ -242,7 +242,7 @@ pub mod bridge {
         Ok(buffer)
     }
 
-    // Internal option word paired with packages/decoder/options.js. Update both
+    // Internal option word paired with packages/protocol/parser.js. Update both
     // ends together; cross-version compatibility is not guaranteed.
     const OPTIONS_PRESENT: u32 = 1 << 0;
 

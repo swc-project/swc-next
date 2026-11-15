@@ -74,11 +74,11 @@ jobs:
             --exclude='*/target' \
             gungraun-js-prepared/build-metadata.json \
             gungraun-js-prepared/harness \
-            gungraun-js-prepared/base/npm/core/src-js \
+            gungraun-js-prepared/base/npm/core/dist \
             gungraun-js-prepared/base/npm/core/package.json \
             gungraun-js-prepared/base/npm/core/node_modules/@swc-next \
             gungraun-js-prepared/base/packages \
-            gungraun-js-prepared/head/npm/core/src-js \
+            gungraun-js-prepared/head/npm/core/dist \
             gungraun-js-prepared/head/npm/core/package.json \
             gungraun-js-prepared/head/npm/core/node_modules/@swc-next \
             gungraun-js-prepared/head/packages

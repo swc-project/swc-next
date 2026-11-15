@@ -13,13 +13,6 @@ tasks/testsuite/outputs
 node_modules
 *.node
 *.wasm
-/npm/core-browser/src/*.mjs
-/npm/*/src-js/*.node.mjs
-/npm/*/src-js/runtime.mjs
-/npm/*/src-js/*.bridge.mjs
-/npm/*/src-js/*.browser.mjs
-/npm/*/src-js/*.module.mjs
-/npm/*/src-js/*.runtime.mjs
 dist
 /website/docs/doc_build
 /website/docs/.rspress

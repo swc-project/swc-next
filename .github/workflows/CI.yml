@@ -105,7 +105,7 @@ jobs:
       - name: Build WebAssembly bindings
         run: pnpm build:wasm --profile wasm-release
       - name: Prepare browser package
-        run: node scripts/wasm-package/cli.mjs prepare-browser --source-dir npm/core/src-js
+        run: pnpm prepare:browser --source-dir ../core/dist
       - name: Run Node.js WebAssembly tests
         run: pnpm test:wasm
       - name: Install Chromium Headless Shell
@@ -136,6 +136,8 @@ jobs:
         run: cargo run --locked -p testsuite --bin formatter_conformance --profile conformance
       - name: Build Node.js bindings
         run: pnpm build --release
+      - name: Build JavaScript APIs
+        run: pnpm build:js
       - name: Run ESTree conformance
         run: pnpm test:conformance
       - name: Run codec conformance

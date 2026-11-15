@@ -64,6 +64,7 @@ function prepare() {
     const env = { ...process.env, CARGO_PROFILE_RELEASE_DEBUG: "2", CARGO_PROFILE_RELEASE_STRIP: "none" };
     run("pnpm", ["install", "--frozen-lockfile"], { cwd: checkout, env });
     run("pnpm", ["--filter", "@swc-next/core", "build", "--release"], { cwd: checkout, env });
+    run("pnpm", ["--filter", "@swc-next/core", "build:js"], { cwd: checkout, env });
   }
   writeFileSync(join(prepared, "build-metadata.json"), JSON.stringify(metadata, null, 2));
   if (process.env.GITHUB_OUTPUT) {
@@ -87,7 +88,7 @@ async function measure() {
   saveMetadata();
   try {
     for (const side of ["base", "head"]) {
-      const entry = join(prepared, sameSha ? "head" : side, "npm/core/src-js/index.js");
+      const entry = join(prepared, sameSha ? "head" : side, "npm/core/dist/index.js");
       const log = join(output, `${side}.log`);
       writeFileSync(log, "");
       // Stream progress to Actions while preserving the exact output in artifacts.

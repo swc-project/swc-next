@@ -233,7 +233,7 @@ jobs:
         with:
           if-no-files-found: error
           name: bindings-${{ matrix.target }}
-          path: npm/*/src-js/*.node
+          path: npm/*/dist/*.node
 
   build_wasm:
     name: Build wasm32-unknown-unknown
@@ -273,12 +273,12 @@ jobs:
           if-no-files-found: error
           name: bindings-wasm32-unknown-unknown
           path: |
-            npm/*/src-js/*.wasm
-            npm/*/src-js/*.bridge.mjs
-            npm/*/src-js/*.node.mjs
-            npm/*/src-js/*.browser.mjs
-            npm/*/src-js/*.module.mjs
-            npm/*/src-js/*.runtime.mjs
+            npm/*/dist/*.wasm
+            npm/*/dist/*.bridge.mjs
+            npm/*/dist/*.node.mjs
+            npm/*/dist/*.browser.mjs
+            npm/*/dist/*.module.mjs
+            npm/*/dist/*.runtime.mjs
 
   release_npm:
     name: Release NPM packages
@@ -343,7 +343,10 @@ jobs:
             node "$wasm_cli" pre-publish --package-json-path "$package_json" --npm-dir "$npm_dir" --tag-style npm --no-gh-release --skip-optional-publish
           done < <(node .github/scripts/release/version.mjs wasm-packages)
 
-          node "$wasm_cli" prepare-browser --source-dir release-dir/core/wasm32-unknown-unknown
+          pnpm prepare:browser --source-dir ../../release-dir/core/wasm32-unknown-unknown
+
+      - name: Build JavaScript APIs
+        run: pnpm build:js
 
       - name: Publish NPM packages
         run: node .github/scripts/release/publish-npm.mjs release-dir ${{ inputs.dry_run && '--dry-run' || '' }}

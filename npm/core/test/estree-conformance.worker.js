@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
-import { langFromPath, parseSync } from "../src-js/index.js";
+import { langFromPath, parseSync } from "@swc-next/core";
 
 // =========================== Paths ==============================
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");

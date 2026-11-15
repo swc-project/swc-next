@@ -1,0 +1,41 @@
+{
+  "name": "@swc-next/protocol",
+  "version": "0.6.1",
+  "private": true,
+  "description": "Shared source for SWC Next internal JavaScript transport protocols",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./ast/encode": {
+      "types": "./ast/encode.d.ts",
+      "import": "./ast/encode.js"
+    },
+    "./ast/decode": {
+      "types": "./ast/decode.d.ts",
+      "import": "./ast/decode.js"
+    },
+    "./parser": {
+      "types": "./parser.d.ts",
+      "import": "./parser.js"
+    },
+    "./generator": {
+      "types": "./generator.d.ts",
+      "import": "./generator.js"
+    },
+    "./transform": {
+      "types": "./transform.d.ts",
+      "import": "./transform.js"
+    },
+    "./source": {
+      "types": "./source.d.ts",
+      "import": "./source.js"
+    },
+    "./output": {
+      "types": "./output.d.ts",
+      "import": "./output.js"
+    }
+  },
+  "devDependencies": {
+    "@swc-next/types": "workspace:*"
+  }
+}

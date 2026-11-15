@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decode } from "@swc-next/decoder";
-import * as core from "../src-js/index.js";
-import { langFromPath, parseSync, sourceTypeFromPath } from "../src-js/index.js";
-import { parseSync as parseStandalone } from "../../parser/src-js/index.js";
+import { decode } from "@swc-next/protocol/ast/decode";
+import * as core from "@swc-next/core";
+import { langFromPath, parseSync, sourceTypeFromPath, transformSync } from "@swc-next/core";
+import { parseSync as parseStandalone } from "@swc-next/parser";
 
 test("parser options use strings without enum value exports", () => {
   assert.equal("Lang" in core, false);
@@ -32,7 +32,7 @@ test("decoder reads little-endian words from unaligned buffers", () => {
   view.setUint32(4, 2, true); // extra-data unit count
   view.setUint32(64, 0xffffffff, true); // no hashbang
 
-  const result = decode(buffer, "", new Uint8Array());
+  const result = decode(buffer, "");
   assert.deepEqual(result.program, {
     type: "Program",
     start: 0,
@@ -68,7 +68,7 @@ test("decoder rejects unknown diagnostic severities", () => {
   view.setUint32(24, 1, true); // diagnostic count
   buffer[72] = 0xff; // diagnostic severity
 
-  const result = decode(buffer, "", new Uint8Array());
+  const result = decode(buffer, "");
   assert.throws(
     () => result.diagnostics,
     new RangeError("Unknown diagnostic severity 255"),
@@ -102,6 +102,24 @@ test("parseSync preserves source-backed lone surrogates", () => {
 
     const loneTemplate = parseSync("tag`\ud800`;", { lang }).program.body[0];
     assert.deepEqual(loneTemplate.expression.quasi.quasis[0].value, { raw: "\ud800", cooked: "\ud800" });
+  }
+});
+
+test("parseSync preserves lazy source data across buffer reuse", () => {
+  const source = '/* 雪😀 */ const 名字 = "🌍";';
+  for (const parse of [parseSync, parseStandalone]) {
+    for (const lang of ["js", "ts"]) {
+      const result = parse(source, { lang, comments: "all" });
+
+      parse(" ".repeat(256), { lang });
+      transformSync(" ".repeat(512));
+
+      const declaration = result.program.body[0].declarations[0];
+      assert.equal(declaration.id.name, "名字");
+      assert.equal(declaration.init.value, "🌍");
+      assert.equal(declaration.init.raw, '"🌍"');
+      assert.equal(result.comments[0].value, " 雪😀 ");
+    }
   }
 });
 
@@ -186,7 +204,6 @@ test("errorRecovery controls whether the first diagnostic is thrown", () => {
         return true;
       });
     }
-    assert.throws(() => parse(source, { errorRecovery: 1 }), TypeError);
     const semantic = "let a; let a;";
     const options = { semanticErrors: true, errorRecovery: true };
     const first = parse(semantic, options).diagnostics[0];
