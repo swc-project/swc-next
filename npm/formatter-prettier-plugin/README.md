@@ -55,6 +55,10 @@ comments. Errors carry source locations for Prettier's code frames. See the
 The binary document format and `formatDocBufferSync` are internal, version-matched
 interfaces. Consumers should use the Prettier plugin API.
 
+Sources live in `src-js`; Rslib bundles the plugin into `dist`. Run
+`pnpm build:js` from the workspace root to build the JavaScript entry points.
+The plugin test commands rebuild these entry points before running.
+
 Tests compare every local formatter fixture and option set directly with the
 native Rust printer on the same host-normalized input. Native Rust measures text
 with `unicode-width`; Prettier lays out Docs with its JavaScript string-width

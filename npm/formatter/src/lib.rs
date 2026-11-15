@@ -6,11 +6,13 @@
 use swc_next_bridge::bridge;
 
 #[bridge]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
 pub fn print_doc_buffer_sync(buffer: &[u8], options: &[u8]) -> Result<String, String> {
     swc_next_bridge::print_doc(buffer, options)
 }
 
 #[bridge]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
 pub fn print_doc_buffer_with_cursor_sync(buffer: &[u8], options: &[u8]) -> Result<Vec<u8>, String> {
     let result = swc_next_bridge::print_doc_with_cursor(buffer, options)?;
     let mut output = Vec::with_capacity(result.text.len() + 9);

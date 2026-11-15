@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as prettier from "prettier";
 import { formatDocBufferSync } from "@swc-next/formatter-js";
-import * as plugin from "../index.js";
+import * as plugin from "../dist/index.js";
 
 const js = { parser: "swc", plugins: [plugin] };
 const tsx = { ...js, parser: "swc-tsx" };

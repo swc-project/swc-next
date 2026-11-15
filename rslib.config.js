@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "@rslib/core";
+import { defineConfig, mergeRslibConfig } from "@rslib/core";
 
 const root = import.meta.dirname;
 const components = [
@@ -8,11 +8,13 @@ const components = [
   "generator",
   "transformer",
   "core-browser",
+  "formatter",
+  "formatter-js",
+  "formatter-prettier-plugin",
 ];
 
-export default defineConfig({
+const baseConfig = defineConfig({
   lib: components.map((component) => {
-    const browser = component === "core-browser";
     const directory = path.join(root, "npm", component);
     const source = path.join(directory, "src-js");
     return {
@@ -21,10 +23,12 @@ export default defineConfig({
       bundle: true,
       syntax: "es2022",
       source: {
-        entry: { index: path.join(source, "index.js") },
+        entry: {
+          index: path.join(source, "index.js"),
+        },
       },
       output: {
-        target: browser ? "web" : "node",
+        target: "node",
         distPath: { root: path.join(directory, "dist") },
         // Native/Wasm build tools also write artifacts to dist.
         cleanDistPath: false,
@@ -53,4 +57,29 @@ export default defineConfig({
       },
     };
   }),
+});
+
+export default mergeRslibConfig(baseConfig, {
+  lib: [
+    {
+      id: "core-browser",
+      output: {
+        target: "web",
+      },
+    },
+    {
+      id: "formatter",
+      source: {
+        entry: {
+          document: path.join(root, "npm/formatter/src-js/document.js"),
+        },
+      },
+    },
+    {
+      id: "formatter-prettier-plugin",
+      output: {
+        externals: ["@swc-next/formatter-js", "prettier/doc", "prettier/plugins/estree"],
+      },
+    },
+  ],
 });

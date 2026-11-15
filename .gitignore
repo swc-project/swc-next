@@ -1,6 +1,5 @@
 /target
 /npm/formatter-js/test/binding/
-/npm/formatter-js/src-js/swc-next-formatter-js.*.mjs
 *.json.gz
 callgrind*
 input.*

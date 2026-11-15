@@ -233,9 +233,7 @@ jobs:
         with:
           if-no-files-found: error
           name: bindings-${{ matrix.target }}
-          path: |
-            npm/*/dist/*.node
-            npm/formatter-js/src-js/*.node
+          path: npm/*/dist/*.node
 
   build_wasm:
     name: Build wasm32-unknown-unknown
@@ -281,12 +279,6 @@ jobs:
             npm/*/dist/*.browser.mjs
             npm/*/dist/*.module.mjs
             npm/*/dist/*.runtime.mjs
-            npm/formatter-js/src-js/*.wasm
-            npm/formatter-js/src-js/*.bridge.mjs
-            npm/formatter-js/src-js/*.node.mjs
-            npm/formatter-js/src-js/*.browser.mjs
-            npm/formatter-js/src-js/*.module.mjs
-            npm/formatter-js/src-js/*.runtime.mjs
 
   release_npm:
     name: Release NPM packages

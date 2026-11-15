@@ -11,7 +11,7 @@ test("the formatter host package runs without a language producer", () => {
   const source = fileURLToPath(new URL("../../formatter/", import.meta.url));
   try {
     cpSync(join(source, "package.json"), join(directory, "package.json"));
-    cpSync(join(source, "src-js"), join(directory, "src-js"), { recursive: true });
+    cpSync(join(source, "dist"), join(directory, "dist"), { recursive: true });
     const entry = join(directory, "smoke.mjs");
     writeFileSync(
       entry,

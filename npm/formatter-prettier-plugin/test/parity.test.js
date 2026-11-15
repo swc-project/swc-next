@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import * as prettier from "prettier";
 import * as core from "../../../npm/core/dist/index.js";
-import * as plugin from "../index.js";
+import * as plugin from "../dist/index.js";
 import { fixtureCases, formatNativeSync, normalizeInput } from "./native.js";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");

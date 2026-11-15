@@ -7,34 +7,36 @@
     "url": "git+https://github.com/swc-project/swc-next.git",
     "directory": "npm/formatter"
   },
-  "main": "src-js/index.js",
+  "main": "dist/index.js",
   "type": "module",
-  "types": "./src-js/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src-js/index.js",
-      "types": "./src-js/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./document": {
-      "types": "./src-js/document.d.ts",
-      "import": "./src-js/document.js"
+      "types": "./dist/document.d.ts",
+      "import": "./dist/document.js"
     }
   },
   "files": [
-    "src-js/binding.d.ts",
-    "src-js/binding.js",
-    "src-js/document.d.ts",
-    "src-js/document.js",
-    "src-js/index.d.ts",
-    "src-js/index.js"
+    "dist/binding.d.ts",
+    "dist/binding.js",
+    "dist/document.d.ts",
+    "dist/document.js",
+    "dist/index.d.ts",
+    "dist/index.js"
   ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter --output-dir src-js"
+    "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
+    "build:js": "pnpm -w exec rslib build --lib formatter",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter --output-dir dist",
+    "prepack": "pnpm build:js"
   },
   "keywords": [
     "formatter",

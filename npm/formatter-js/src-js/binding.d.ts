@@ -78,4 +78,5 @@ export declare const enum SourceType {
   CommonJs = 'commonjs',
   Unambiguous = 'unambiguous'
 }
+/** Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper. */
 export declare function formatDocBufferSync(source: string, parser: number, options: Uint8Array): Uint8Array

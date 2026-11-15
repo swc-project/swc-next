@@ -25,3 +25,7 @@ Document printing uses the native printer's existing resource behavior.
 
 Build native: `pnpm --filter @swc-next/formatter build`.
 Build Wasm: `pnpm --filter @swc-next/formatter build:wasm`.
+
+Then run `pnpm --filter @swc-next/formatter build:js` to bundle the JavaScript
+entry points into `dist`. Sources live in `src-js`; native and Wasm artifacts
+also go to `dist`.

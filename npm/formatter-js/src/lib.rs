@@ -10,6 +10,7 @@ use swc_next_core::js::parser::JsParserConfig as ParserConfig;
 pub mod test;
 
 #[bridge(ts_args_type = "source: string, parser: number, options: Uint8Array")]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
 pub fn format_doc_buffer_sync(
     source: String,
     parser: Option<ParserConfig>,
