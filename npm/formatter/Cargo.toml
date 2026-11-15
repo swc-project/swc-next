@@ -1,5 +1,5 @@
 [package]
-description           = "Native and Wasm host for language-independent SWCD documents"
+description           = "Experimental and unstable native and Wasm host for language-independent SWCD documents"
 edition               = "2024"
 homepage.workspace    = true
 keywords              = ["formatting", "pretty-printing"]

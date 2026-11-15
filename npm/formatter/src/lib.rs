@@ -1,3 +1,8 @@
+//! Native and Wasm printing for language-independent formatting documents.
+//!
+//! Experimental and unstable. APIs, document formats, and formatting output may
+//! change without notice.
+
 use swc_next_bridge::bridge;
 
 #[bridge]

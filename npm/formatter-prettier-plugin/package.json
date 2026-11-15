@@ -22,7 +22,7 @@
   "peerDependencies": {
     "prettier": "3.9.9"
   },
-  "description": "SWCFMT: SWC formatting documents rendered by Prettier",
+  "description": "Experimental and unstable JavaScript and TypeScript formatting through SWC and Prettier",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/swc-project/swc-next.git",

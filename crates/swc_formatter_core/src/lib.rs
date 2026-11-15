@@ -1,5 +1,8 @@
 //! Language-independent layout documents backed by a formatting arena.
 //!
+//! Experimental and unstable. APIs, document formats, and formatting output may
+//! change without notice.
+//!
 //! [`Writer`] constructs balanced scopes and shared [`Fragment`]s. Finishing a
 //! writer seals its document; the arena and borrowed text must remain alive
 //! until the document has been printed or encoded.

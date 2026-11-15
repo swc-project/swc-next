@@ -1,5 +1,8 @@
 # @swc-next/formatter
 
+**Experimental and unstable.** APIs, document formats, and formatting output may
+change without notice.
+
 Language-independent document encoding and Rust layout printing for native and
 Wasm runtimes. The package consumes SWCD documents using the shared formatter
 core. For JavaScript and TypeScript source formatting, use
@@ -18,8 +21,7 @@ native or Wasm binding. Label values remain in the encoder's caller-owned
 sidecar. The printing API also supports cursor ranges, indentation, and output
 line endings.
 
-The version-0 API and wire format may change. Document printing uses the native
-printer's existing resource behavior.
+Document printing uses the native printer's existing resource behavior.
 
 Build native: `pnpm --filter @swc-next/formatter build`.
 Build Wasm: `pnpm --filter @swc-next/formatter build:wasm`.

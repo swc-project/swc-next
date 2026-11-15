@@ -1,5 +1,8 @@
 # SWC Next Formatter Core
 
+**Experimental and unstable.** APIs, document formats, and formatting output may
+change without notice.
+
 Language-independent document construction and layout printing. Documents use
 borrowed text, shared fragments, groups, conditional layouts, Fill and line suffixes.
 The formatting arena and input text must outlive printing or document encoding.

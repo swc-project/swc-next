@@ -1,3 +1,8 @@
+//! Native and Wasm JavaScript and TypeScript formatting document production.
+//!
+//! Experimental and unstable. APIs, document formats, and formatting output may
+//! change without notice.
+
 use swc_next_bridge::bridge;
 use swc_next_core::js::parser::JsParserConfig as ParserConfig;
 

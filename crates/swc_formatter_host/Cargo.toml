@@ -1,5 +1,5 @@
 [package]
-description          = "Language-independent formatting sessions and document producers"
+description          = "Experimental and unstable language-independent formatting sessions and document producers"
 edition              = "2024"
 homepage.workspace   = true
 keywords             = ["formatting", "pretty-printing"]

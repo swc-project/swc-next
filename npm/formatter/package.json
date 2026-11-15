@@ -1,7 +1,7 @@
 {
   "name": "@swc-next/formatter",
   "version": "0.3.0",
-  "description": "Language-independent SWCD document encoding and native/Wasm printing",
+  "description": "Experimental and unstable SWCD document encoding and native/Wasm printing",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/swc-project/swc-next.git",

@@ -1,5 +1,8 @@
 //! Language-independent formatting sessions and document production.
 //!
+//! Experimental and unstable. APIs, document formats, and formatting output may
+//! change without notice.
+//!
 //! A [`FormatSession`] owns storage and shared layout options for one formatting
 //! operation. Language producers retain their own parser configuration, syntax
 //! options and errors. Produced and decoded documents can be composed with

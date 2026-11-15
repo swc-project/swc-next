@@ -1,5 +1,5 @@
 [package]
-description           = "Source-aware JavaScript and TypeScript formatting for the SWC Next AST"
+description           = "Experimental and unstable JavaScript and TypeScript formatting for the SWC Next AST"
 edition               = "2024"
 homepage.workspace    = true
 keywords.workspace    = true

@@ -1,5 +1,8 @@
 # @swc-next/formatter-js
 
+**Experimental and unstable.** APIs, document formats, and formatting output may
+change without notice.
+
 Internal, version-matched ECMAScript document producer for
 `@swc-next/formatter-prettier-plugin`, with native and Wasm bindings.
 

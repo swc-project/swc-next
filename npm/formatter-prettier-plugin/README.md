@@ -1,6 +1,9 @@
 # @swc-next/formatter-prettier-plugin
 
-Experimental JavaScript and TypeScript formatting through SWC and Prettier.
+**Experimental and unstable.** APIs, document formats, and formatting output may
+change without notice.
+
+JavaScript and TypeScript formatting through SWC and Prettier.
 Rust constructs the formatting document; a compact binary transport carries it
 through `@swc-next/formatter-js`, and Prettier performs the final layout. The
 parser/printer format identifier is **SWCFMT**.

@@ -1,5 +1,5 @@
 [package]
-description.workspace = true
+description           = "Experimental and unstable native and Wasm JavaScript and TypeScript formatter bindings"
 edition               = "2024"
 homepage.workspace    = true
 keywords.workspace    = true

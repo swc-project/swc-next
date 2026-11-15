@@ -1,5 +1,8 @@
 //! Source-aware JavaScript and TypeScript formatting for the SWC Next AST.
 //!
+//! Experimental and unstable. APIs, document formats, and formatting output may
+//! change without notice.
+//!
 //! [`format()`] parses source, while [`format_ast()`] accepts an existing program.
 //! [`EcmaDocumentProducer`] builds documents for a language-independent host session.
 //! Formatting options live in `options`. Syntax support is added incrementally;

@@ -1,5 +1,8 @@
 # SWC Next Formatter Host
 
+**Experimental and unstable.** APIs, document formats, and formatting output may
+change without notice.
+
 Language-independent formatting sessions for typed source-to-document producers
 and encoded documents. Sessions own an arena and shared layout options; language
 crates provide parsing, syntax options, and errors.
