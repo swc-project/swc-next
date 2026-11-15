@@ -5,10 +5,7 @@ use crate::{
     schema::{AstStruct, AstType, FieldLocation, Schema},
 };
 
-use super::{
-    estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra_fields},
-    js_minifier::minify,
-};
+use super::estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra_fields};
 
 const OUTPUT_DIR: &str = "packages/protocol/ast";
 
@@ -48,17 +45,9 @@ const HOT_TS_NODE_KINDS: &[&str] = &[
 pub fn estree_decoder(schema: &Schema) -> Vec<RawOutput> {
     let mut outputs = Vec::new();
     for (is_ts, suffix, name) in [(false, "js", "decodeJs"), (true, "ts", "decodeTs")] {
-        let pretty_path = format!("{OUTPUT_DIR}/decode-{suffix}.pretty.js");
-        let minified_path = format!("{OUTPUT_DIR}/decode-{suffix}.js");
-        let output = decoder_source(schema, is_ts, name);
-        let minified = minify(&output, &pretty_path);
         outputs.push(RawOutput {
-            path: pretty_path,
-            content: output.into_bytes(),
-        });
-        outputs.push(RawOutput {
-            path: minified_path,
-            content: minified.into_bytes(),
+            path: format!("{OUTPUT_DIR}/decode-{suffix}.js"),
+            content: decoder_source(schema, is_ts, name).into_bytes(),
         });
     }
 

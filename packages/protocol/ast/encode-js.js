@@ -1,1 +1,1985 @@
-let reusableBuffers,nodeCapacity,spans,kinds,payloadBuffer,payload,extraCapacity,extraBuffer,extra,poolCapacity,pool;let NULL=0xffffffff,writeUtf8=(()=>{if("u">typeof Buffer&&"function"==typeof Buffer.prototype.write){let e=Buffer.prototype.write;try{let t=new Uint8Array(1);if(1===e.call(t,"x",0,1,"utf8")&&120===t[0])return e;}catch{}}let e=new TextEncoder;return function(t,n,r){return e.encodeInto(t,this.subarray(n,n+r)).written;};})(),NATIVE_LITTLE_ENDIAN=1===new Uint8Array(new Uint32Array([1]).buffer)[0],isWellFormed=String.prototype.isWellFormed?e=>e.isWellFormed():e=>{for(let t=0;t<e.length;t++){let n=e.charCodeAt(t);if(n>=55296&&n<=56319){let n=e.charCodeAt(++t);if(!(n>=56320&&n<=57343))return!1;}else if(n>=56320&&n<=57343)return!1;}return!0;},ENUMS=Object.freeze([["js","ts","jsx","tsx","dts"],["module","script","commonjs","unambiguous"],["constructor","method","get","set"],["ClassDeclaration","ClassExpression"],["==","!=","===","!==","<","<=",">",">=","+","-","*","/","%","**","|","^","&","<<",">>",">>>","in","instanceof"],["&&","||","??"],["-","+","!","~","typeof","void","delete"],["++","--"],["=","+=","-=","*=","/=","%=","**=","<<=",">>=",">>>=","|=","^=","&=","||=","&&=","??="],["var","let","const","using","await using"],["FunctionDeclaration","FunctionExpression"],["formal","unique","arrow","signature"],["init","get","set"],["source","defer"],[null,"public","private","protected"],["value","type"],["keyof","unique","readonly"],["method","get","set"],["namespace","module"],[null,!0,"+","-"],["decimal","hex","octal","binary"]]),nodeCount=0,extraCount=0,poolLength=0,hasWtf8=!1,firstNonAsciiPos=NULL,isTs=0;function createBuffers(e){let t=Math.max(512,e/7|0),n=Math.max(512,e/20|0),r=Math.max(4096,e/8|0),a=new ArrayBuffer(16*t),o=new ArrayBuffer(4*n);return{nodeCapacity:t,extraCapacity:n,poolCapacity:r,spans:new Uint32Array(2*t),kinds:new Uint8Array(t),payloadBuffer:a,payload:new DataView(a),extraBuffer:o,extra:new DataView(o),pool:new Uint8Array(r),header:new Uint8Array(40),nodeCount:0,extraCount:0};}function clearState(){spans=kinds=payloadBuffer=payload=extraBuffer=extra=pool=void 0;}function enumValue(e,t){let n=ENUMS[e]?.indexOf(t);return null==n||n<0?0:n;}function ensureNodes(){if(nodeCount<nodeCapacity)return;let e=new Uint32Array(2*(nodeCapacity*=2));e.set(spans),spans=e;let t=new Uint8Array(nodeCapacity);t.set(kinds),kinds=t;let n=new ArrayBuffer(16*nodeCapacity);new Uint8Array(n).set(new Uint8Array(payloadBuffer)),payload=new DataView(payloadBuffer=n);}function allocNode(e,t,n){ensureNodes();let r=nodeCount++;return spans[2*r]=t>>>0,spans[2*r+1]=n>>>0,kinds[r]=e,r;}function allocExtra(e){let t=extraCount;if((extraCount+=e)>extraCapacity){do extraCapacity*=2;while(extraCount>extraCapacity)let e=new ArrayBuffer(4*extraCapacity);new Uint8Array(e).set(new Uint8Array(extraBuffer)),extra=new DataView(extraBuffer=e);}return t;}function setPayloadU8(e,t,n){payload.setUint8(16*e+t,n);}function setPayloadU32(e,t,n){payload.setUint32(16*e+t,n,!0);}function setPayloadF64(e,t,n){payload.setFloat64(16*e+t,n,!0);}function setExtraU8(e,t,n){extra.setUint8(4*e+t,n);}function setExtraU32(e,t,n){extra.setUint32(4*e+t,n,!0);}function encArray(e,t,n){let r=e?.length??0;if(!r)return 0;let a=allocExtra(r);for(let o=0;o<r;o++){let r=e[o];setExtraU32(a+o,0,n&&null==r?NULL:t(r));}return a;}function encArraySlice(e,t,n,r){if(n===r)return 0;let a=allocExtra(r-n);for(let o=n,l=a;o<r;o++,l++)setExtraU32(l,0,t(e[o]));return a;}function encTemplateElements(e,t){let n=e?.length??0;if(!n)return 0;let r=allocExtra(n),a=e[0].start===t;for(let t=0;t<n;t++){let n=encTemplateElement(e[t],a);setExtraU32(r+t,0,n);}return r;}function writeArrayRange(e,t,n,r){n.setUint32(r,e,!0),n.setUint32(r+4,e+(t?.length??0),!0);}function writeRange(e,t,n,r){n.setUint32(r,e,!0),n.setUint32(r+4,e+t,!0);}function encStr(e,t,n,r){if("string"==typeof e){let r=e.length,a=poolLength,o=a+r;if(r>0&&r<=64&&o<=pool.length&&o<=0x7fffffff){let l=0;for(;l<r;l++){let t=e.charCodeAt(l);if(t>=128)break;pool[a+l]=t;}if(l===r){poolLength=o,t.setUint32(n,a,!0),t.setUint32(n+4,o,!0);return;}}}encStrSlow(e,t,n,r);}function encStrSlow(e,t,n,r=!1){if(null==e||""===e){t.setUint32(n,0,!0),t.setUint32(n+4,0,!0);return;}"string"!=typeof e&&(e=String(e));let a=poolLength,o=e.length;ensurePool(3*o);let l=r&&!isWellFormed(e),c=l?writeWtf8(e,a):writeUtf8.call(pool,e,a,poolCapacity-a,"utf8");if(hasWtf8||=l,poolLength+=c,firstNonAsciiPos===NULL&&c!==o){let t=0;for(;128>e.charCodeAt(t);)t++;firstNonAsciiPos=a+t;}t.setUint32(n,a,!0),t.setUint32(n+4,poolLength,!0);}function writeWtf8(e,t){let n=t;for(let t=0;t<e.length;t++){let r=e.charCodeAt(t);if(r<128)pool[n++]=r;else if(r<2048)pool[n++]=192|r>>6,pool[n++]=128|63&r;else{if(r>=55296&&r<=56319){let a=e.charCodeAt(t+1);if(a>=56320&&a<=57343){r=65536+(r-55296<<10)+a-56320,t++,pool[n++]=240|r>>18,pool[n++]=128|r>>12&63,pool[n++]=128|r>>6&63,pool[n++]=128|63&r;continue;}}pool[n++]=224|r>>12,pool[n++]=128|r>>6&63,pool[n++]=128|63&r;}}return n-t;}function ensurePool(e){let t=poolLength+e;if(t>0x7fffffff)throw RangeError("AST string source exceeds signed 32-bit range");if(t<=poolCapacity)return;do poolCapacity*=2;while(t>poolCapacity)let n=new Uint8Array(poolCapacity);n.set(pool.subarray(0,poolLength)),pool=n;}function templateRaw(e){return e.includes("\r")?e.replace(/\r\n?/g,"\n"):e;}function numericKind(e){if("string"!=typeof e||e.length<2||48!==e.charCodeAt(0))return"decimal";let t=e[1].toLowerCase();return"x"===t?"hex":"o"===t||/^0[0-7]+$/.test(e)?"octal":"b"===t?"binary":"decimal";}function numericRaw(e){if("string"!=typeof e.raw)return null;let t=e.raw.includes("_")?e.raw.replaceAll("_",""):e.raw;return Object.is("octal"===numericKind(t)&&t[1]?.toLowerCase()!=="o"?parseInt(t.slice(1),8):+t,e.value)?e.raw:null;}function bigIntValue(e){return"bigint"==typeof e.value?e.value:BigInt(e.bigint??0);}function bigIntRaw(e){let t=bigIntValue(e);if("string"==typeof e.raw&&e.raw.endsWith("n")){let n=e.raw.slice(0,-1);try{if(BigInt(n.replaceAll("_",""))===t)return n;}catch{}}return String(t);}function propertyKeyNode(e){return e?.type!=="Literal"||null==e.bigint&&"bigint"!=typeof e.value||bigIntValue(e)>=0n?e:{...e,value:String(bigIntValue(e)),bigint:null,raw:""};}function hexDigit(e){return e>=48&&e<=57?e-48:e>=65&&e<=70?e-65+10:e>=97&&e<=102?e-97+10:-1;}function directiveRawValue(e,t){if(-1===e.indexOf("\\",1))return t;let n="";for(let t=1;t<e.length-1;t++){let r=e.charCodeAt(t);if(92!==r){n+=e[t];continue;}if(++t>=e.length-1)return null;if(10===(r=e.charCodeAt(t))||8232===r||8233===r)continue;if(13===r){10===e.charCodeAt(t+1)&&t++;continue;}let a={98:8,102:12,110:10,114:13,116:9,118:11}[r];if(void 0!==a){n+=String.fromCharCode(a);continue;}if(120===r||117===r){let a=t+1,o=a+(120===r?2:4);if(117===r&&123===e.charCodeAt(a)&&(a++,(o=e.indexOf("}",a))<0||o===a))return null;let l=0;for(let t=a;t<o;t++){let n=hexDigit(e.charCodeAt(t));if(n<0)return null;l=16*l+n;}if(o>e.length-1||l>1114111)return null;n+=117===r&&123===e.charCodeAt(t+1)?String.fromCodePoint(l):String.fromCharCode(l),t=117===r&&123===e.charCodeAt(t+1)?o:o-1;continue;}if(r>=48&&r<=55){let a=r-48,o=r<=51?3:2,l=1;for(;l<o;){let n=e.charCodeAt(t+1);if(n<48||n>55)break;a=8*a+n-48,t++,l++;}n+=String.fromCharCode(a);continue;}n+=e[t];}return n;}function jsxStringRaw(e){let t=e.raw;if("string"!=typeof t||t.length<2)return"";let n=t[0];return('"'===n||"'"===n)&&t[t.length-1]===n&&t.slice(1,-1)===e.value?t:"";}function encProgram(e){let t=e.body,n=t?.length??0,r=0;for(;r<n;){let e=t[r];if(e?.type!=="ExpressionStatement"||"string"!=typeof e.directive||e.expression?.type!=="Literal"||"string"!=typeof e.expression.value)break;r++;}let a=encArraySlice(t,encDirective,0,r),o=encArraySlice(t,encStmt,r,n),l=null==e.hashbang?NULL:encHashbang(e.hashbang),c=allocExtra(2),s=allocNode(0,e.start,e.end);return setPayloadU32(s,12,c),writeRange(a,r,payload,16*s+0),writeRange(o,n-r,extra,(c+0)*4),setPayloadU32(s,8,l),s;}function encSuper(e){return allocNode(1,e.start,e.end);}function encThisExpression(e){return allocNode(2,e.start,e.end);}function encStringLiteral(e){let t=e.value,n=e.raw,r=allocNode(3,e.start,e.end);return encStr(t,payload,16*r+0,!0),encStr(n,payload,16*r+8),r;}function encNumericLiteral(e){let t=null==e.raw?null:numericRaw(e),n=e.value??0,r=t,a=allocNode(4,e.start,e.end);return setPayloadF64(a,0,n),null==r?(setPayloadU32(a,8,NULL),setPayloadU32(a,12,0)):encStr(r,payload,16*a+8),a;}function encBigIntLiteral(e){let t=bigIntValue(e);if(t<0n){let n=-t;return encUnaryExpression({type:"UnaryExpression",start:e.start,end:e.end,operator:"-",argument:{...e,value:n,bigint:String(n),raw:null}});}let n=bigIntRaw(e),r=allocNode(5,e.start,e.end);return encStr(n,payload,16*r+0),r;}function encBooleanLiteral(e){let t=+!!e.value,n=allocNode(6,e.start,e.end);return setPayloadU8(n,0,t),n;}function encNullLiteral(e){return allocNode(7,e.start,e.end);}function encRegExpLiteral(e){let t=e.regex?.pattern??e.value?.source??"",n=e.regex?.flags??e.value?.flags??"",r=allocNode(8,e.start,e.end);return encStr(t,payload,16*r+0),encStr(n,payload,16*r+8),r;}function encTemplateLiteral(e){let t=encTemplateElements(e.quasis,e.start),n=encArray(e.expressions,encExpr,!1),r=allocNode(9,e.start,e.end);return writeArrayRange(t,e.quasis,payload,16*r+0),writeArrayRange(n,e.expressions,payload,16*r+8),r;}function encTemplateElement(e,t){let n=e.value?.cooked??"",r=templateRaw(e.value?.raw??""),a=+!!e.tail,o=+(e.value?.cooked==null),l=allocExtra(2),c=allocNode(10,e.start,e.end);if(t){let e=2*c,t=2-a,n=spans[e+1]-spans[e]>t;spans[e]+=n,spans[e+1]-=t*n;}return setPayloadU32(c,12,l),encStr(n,payload,16*c+0,!0),encStr(r,extra,(l+0)*4),setPayloadU8(c,8,a),setPayloadU8(c,9,o),c;}function encIdentifierReference(e){let t=e.name,n=allocNode(11,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encPrivateIdentifier(e){let t=e.name,n=allocNode(12,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encBindingIdentifier(e){let t=e.name,n=allocNode(13,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encIdentifierName(e){let t=e.name,n=allocNode(14,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encLabelIdentifier(e){let t=e.name,n=allocNode(15,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encAssignmentPattern(e){let t=encBindingPattern(e.left),n=encExpr(e.right),r=allocNode(16,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encBindingRestElement(e){let t=encBindingPattern(e.argument),n=allocNode(17,e.start,e.end);return setPayloadU32(n,0,t),n;}function encArrayPattern(e){let t=e.elements,n=t?.length??0,r=t?.[n-1],a=r?.type==="RestElement"?r:null,o=n-+(null!==a),l=o?allocExtra(o):0;for(let e=0;e<o;e++){let n=t[e];setExtraU32(l+e,0,null==n?NULL:encBindingPattern(n));}let c=null==a?NULL:encBindingRestElement(a),s=allocNode(18,e.start,e.end);return writeRange(l,o,payload,16*s+0),setPayloadU32(s,8,c),s;}function encObjectPattern(e){let t=e.properties,n=t?.length??0,r=n-0,a=null;for(let e=0;e<n;e++){let n=t[e];n?.type==="RestElement"&&(a=n,r--);}let o=r?allocExtra(r):0,l=o;for(let e=0;e<n;e++){let n=t[e];if(n?.type!=="RestElement"){let e=encBindingProperty(n);setExtraU32(l++,0,e);}}let c=null==a?NULL:encBindingRestElement(a),s=allocNode(19,e.start,e.end);return writeRange(o,r,payload,16*s+0),setPayloadU32(s,8,c),s;}function encBindingProperty(e){let t=e.computed?encExpr(e.key):encPropertyKey(propertyKeyNode(e.key)),n=encBindingPattern(e.value),r=+!!e.shorthand,a=+!!e.computed,o=allocNode(20,e.start,e.end);return setPayloadU32(o,0,t),setPayloadU32(o,4,n),setPayloadU8(o,8,r),setPayloadU8(o,9,a),o;}function encBinaryExpression(e){let t=encExpr(e.left),n=encExpr(e.right),r=enumValue(4,e.operator),a=allocNode(21,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU8(a,8,r),a;}function encLogicalExpression(e){let t=encExpr(e.left),n=encExpr(e.right),r=enumValue(5,e.operator),a=allocNode(22,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU8(a,8,r),a;}function encConditionalExpression(e){let t=encExpr(e.test),n=encExpr(e.consequent),r=encExpr(e.alternate),a=allocNode(23,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU32(a,8,r),a;}function encUnaryExpression(e){let t=encExpr(e.argument),n=enumValue(6,e.operator),r=allocNode(24,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU8(r,4,n),r;}function encUpdateExpression(e){let t=encSimpleAssignmentTarget(e.argument),n=enumValue(7,e.operator),r=+!!e.prefix,a=allocNode(25,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU8(a,4,n),setPayloadU8(a,5,r),a;}function encAssignmentExpression(e){let t=encAssignmentTarget(e.left),n=encExpr(e.right),r=enumValue(8,e.operator),a=allocNode(26,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU8(a,8,r),a;}function encVariableDeclaration(e){let t=enumValue(9,e.kind),n=encArray(e.declarations,encVariableDeclarator,!1),r=allocNode(27,e.start,e.end);return setPayloadU8(r,8,t),writeArrayRange(n,e.declarations,payload,16*r+0),setPayloadU8(r,9,0),r;}function encVariableDeclarator(e){let t=encBindingPattern(e.id),n=null==e.init?NULL:encExpr(e.init),r=allocNode(28,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,NULL),setPayloadU32(r,8,n),setPayloadU8(r,12,0),r;}function encIfStatement(e){let t=encExpr(e.test),n=encStmt(e.consequent),r=null==e.alternate?NULL:encStmt(e.alternate),a=allocNode(29,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU32(a,8,r),a;}function encSwitchStatement(e){let t=encExpr(e.discriminant),n=encArray(e.cases,encSwitchCase,!1),r=allocNode(30,e.start,e.end);return setPayloadU32(r,8,t),writeArrayRange(n,e.cases,payload,16*r+0),r;}function encSwitchCase(e){let t=null==e.test?NULL:encExpr(e.test),n=encArray(e.consequent,encStmt,!1),r=allocNode(31,e.start,e.end);return setPayloadU32(r,8,t),writeArrayRange(n,e.consequent,payload,16*r+0),r;}function encForStatement(e){let t=null==e.init?NULL:encForStatementInit(e.init),n=null==e.test?NULL:encExpr(e.test),r=null==e.update?NULL:encExpr(e.update),a=encStmt(e.body),o=allocNode(32,e.start,e.end);return setPayloadU32(o,0,t),setPayloadU32(o,4,n),setPayloadU32(o,8,r),setPayloadU32(o,12,a),o;}function encForInStatement(e){let t=encForStatementLeft(e.left),n=encExpr(e.right),r=encStmt(e.body),a=allocNode(33,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU32(a,8,r),a;}function encForOfStatement(e){let t=encForStatementLeft(e.left),n=encExpr(e.right),r=encStmt(e.body),a=+!!e.await,o=allocNode(34,e.start,e.end);return setPayloadU32(o,0,t),setPayloadU32(o,4,n),setPayloadU32(o,8,r),setPayloadU8(o,12,a),o;}function encTryStatement(e){let t=encBlockStatement(e.block),n=null==e.handler?NULL:encCatchClause(e.handler),r=null==e.finalizer?NULL:encBlockStatement(e.finalizer),a=allocNode(35,e.start,e.end);return setPayloadU32(a,0,t),setPayloadU32(a,4,n),setPayloadU32(a,8,r),a;}function encCatchClause(e){let t=null==e.param?NULL:encBindingPattern(e.param),n=encBlockStatement(e.body),r=allocNode(36,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,NULL),setPayloadU32(r,8,n),r;}function encBreakStatement(e){let t=null==e.label?NULL:encLabelIdentifier(e.label),n=allocNode(37,e.start,e.end);return setPayloadU32(n,0,t),n;}function encContinueStatement(e){let t=null==e.label?NULL:encLabelIdentifier(e.label),n=allocNode(38,e.start,e.end);return setPayloadU32(n,0,t),n;}function encLabeledStatement(e){let t=encLabelIdentifier(e.label),n=encStmt(e.body),r=allocNode(39,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encExpressionStatement(e){let t=encExpr(e.expression),n=allocNode(40,e.start,e.end);return setPayloadU32(n,0,t),n;}function encReturnStatement(e){let t=null==e.argument?NULL:encExpr(e.argument),n=allocNode(41,e.start,e.end);return setPayloadU32(n,0,t),n;}function encThrowStatement(e){let t=encExpr(e.argument),n=allocNode(42,e.start,e.end);return setPayloadU32(n,0,t),n;}function encDebuggerStatement(e){return allocNode(43,e.start,e.end);}function encEmptyStatement(e){return allocNode(44,e.start,e.end);}function encDirective(e){let t=e.expression?.raw,n=t?.[0],r=encStringLiteral("string"==typeof t&&t.length>=2&&('"'===n||"'"===n)&&t[t.length-1]===n&&"string"==typeof e.directive&&t.length===e.directive.length+2&&t.startsWith(e.directive,1)&&directiveRawValue(t,e.directive)===e.expression?.value?e.expression:{...e.expression,raw:""}),a=e.directive,o=allocNode(45,e.start,e.end);return setPayloadU32(o,8,r),encStr(a,payload,16*o+0),o;}function encDecorator(e){let t=encExpr(e.expression),n=allocNode(46,e.start,e.end);return setPayloadU32(n,0,t),n;}function encClass(e){let t=enumValue(3,"ClassExpression"===e.type?"ClassExpression":"ClassDeclaration"),n=encArray(e.decorators,encDecorator,!1),r=null==e.id?NULL:encBindingIdentifier(e.id),a=null==e.superClass?NULL:encExpr(e.superClass),o=encClassBody(e.body),l=allocExtra(7),c=allocNode(47,e.start,e.end);return setPayloadU32(c,12,l),setPayloadU8(c,8,t),writeArrayRange(n,e.decorators,extra,(l+0)*4),setPayloadU32(c,0,r),setPayloadU32(c,4,NULL),setExtraU32(l+2,0,a),setExtraU32(l+3,0,NULL),writeArrayRange(0,null,extra,(l+4)*4),setExtraU32(l+6,0,o),setPayloadU8(c,9,0),setPayloadU8(c,10,0),c;}function encClassBody(e){let t=encArray(e.body,encClassElement,!1),n=allocNode(48,e.start,e.end);return writeArrayRange(t,e.body,payload,16*n+0),n;}function encMethodDefinition(e){let t=encArray(e.decorators,encDecorator,!1),n=e.computed?encExpr(e.key):encPropertyKey(propertyKeyNode(e.key)),r=encFunction(e.value,"unique"),a=enumValue(2,e.kind),o=+!!e.computed,l=+!!e.static,c=allocExtra(3),s=allocNode(49,e.start,e.end);return setPayloadU32(s,12,c),writeArrayRange(t,e.decorators,extra,(c+0)*4),setPayloadU32(s,0,n),setExtraU32(c+2,0,r),setPayloadU8(s,4,a),setPayloadU8(s,5,o),setPayloadU8(s,6,l),setPayloadU8(s,7,0),setPayloadU8(s,8,0),setPayloadU8(s,9,0),setPayloadU8(s,10,0),s;}function encPropertyDefinition(e){let t=encArray(e.decorators,encDecorator,!1),n=e.computed?encExpr(e.key):encPropertyKey(propertyKeyNode(e.key)),r=null==e.value?NULL:encExpr(e.value),a=+!!e.computed,o=+!!e.static,l=+("AccessorProperty"===e.type),c=allocExtra(5),s=allocNode(50,e.start,e.end);return setPayloadU32(s,12,c),writeArrayRange(t,e.decorators,extra,(c+0)*4),setExtraU32(c+2,0,n),setExtraU32(c+3,0,NULL),setExtraU32(c+4,0,r),setPayloadU8(s,0,a),setPayloadU8(s,1,o),setPayloadU8(s,2,l),setPayloadU8(s,3,0),setPayloadU8(s,4,0),setPayloadU8(s,5,0),setPayloadU8(s,6,0),setPayloadU8(s,7,0),setPayloadU8(s,8,0),setPayloadU8(s,9,0),s;}function encStaticBlock(e){let t=encArray(e.body,encStmt,!1),n=allocNode(51,e.start,e.end);return writeArrayRange(t,e.body,payload,16*n+0),n;}function encFunction(e,t="formal"){let n=enumValue(10,"FunctionExpression"===e.type?"FunctionExpression":"FunctionDeclaration"),r=null==e.id?NULL:encBindingIdentifier(e.id),a=encFormalParameters(e.params,0,t),o=encFunctionBody(e.body),l=+!!e.generator,c=+!!e.async,s=allocExtra(4),i=allocNode(52,e.start,e.end);return setPayloadU32(i,12,s),setPayloadU8(i,8,n),setPayloadU32(i,0,r),setPayloadU32(i,4,NULL),setExtraU32(s+0,0,NULL),setExtraU32(s+1,0,a),setExtraU32(s+2,0,NULL),setExtraU32(s+3,0,o),setPayloadU8(i,9,l),setPayloadU8(i,10,c),i;}function encFunctionBody(e){let t=e.body,n=t?.length??0,r=0;for(;r<n;){let e=t[r];if(e?.type!=="ExpressionStatement"||"string"!=typeof e.directive||e.expression?.type!=="Literal"||"string"!=typeof e.expression.value)break;r++;}let a=encArraySlice(t,encDirective,0,r),o=encArraySlice(t,encStmt,r,n),l=allocNode(53,e.start,e.end);return writeRange(a,r,payload,16*l+0),writeRange(o,n-r,payload,16*l+8),l;}function encBlockStatement(e){let t=encArray(e.body,encStmt,!1),n=allocNode(54,e.start,e.end);return writeArrayRange(t,e.body,payload,16*n+0),n;}function encWhileStatement(e){let t=encExpr(e.test),n=encStmt(e.body),r=allocNode(55,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encDoWhileStatement(e){let t=encStmt(e.body),n=encExpr(e.test),r=allocNode(56,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encWithStatement(e){let t=encExpr(e.object),n=encStmt(e.body),r=allocNode(57,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encFormalParameters(e,t=0,n="formal"){let r=e,a=r?.length??0,o=a-t,l=null;for(let e=t;e<a;e++){let t=r[e];t?.type==="RestElement"&&(l=t,o--);}let c=a>t?r[t].start:0,s=a>t?r[a-1].end:0,i=o?allocExtra(o):0,u=i;for(let e=t;e<a;e++){let t=r[e];if(t?.type!=="RestElement"){let e=encFormalParameterItem(t);setExtraU32(u++,0,e);}}let d=null==l?NULL:encFormalParameterRest(l),p=enumValue(11,n),y=allocNode(58,c,s);return writeRange(i,o,payload,16*y+0),setPayloadU32(y,8,d),setPayloadU8(y,12,p),y;}function encFormalParameter(e){let t="AssignmentPattern"===e.type,n=t?e.left:e,r=t?e.right:null,a=encArray(e.decorators,encDecorator,!1),o=encFormalParameterPattern(n),l=null==r?NULL:encExpr(r),c=allocExtra(3),s=allocNode(59,e.start,e.end);return setPayloadU32(s,12,c),writeArrayRange(a,e.decorators,extra,(c+0)*4),setPayloadU32(s,0,o),setPayloadU32(s,4,NULL),setExtraU32(c+2,0,l),setPayloadU8(s,8,0),s;}function encFormalParameterRest(e){let t=encArray(e.decorators,encDecorator,!1),n=encFormalParameterPattern(e.argument),r=allocNode(60,e.start,e.end);return writeArrayRange(t,e.decorators,payload,16*r+0),setPayloadU32(r,8,n),setPayloadU32(r,12,NULL),r;}function encArrayExpression(e){let t=encArray(e.elements,encArgument,!0),n=allocNode(61,e.start,e.end);return writeArrayRange(t,e.elements,payload,16*n+0),n;}function encObjectExpression(e){let t=encArray(e.properties,encObjectPropertyKind,!1),n=allocNode(62,e.start,e.end);return writeArrayRange(t,e.properties,payload,16*n+0),n;}function encSpreadElement(e){let t=encExpr(e.argument),n=allocNode(63,e.start,e.end);return setPayloadU32(n,0,t),n;}function encObjectProperty(e){let t=e.computed?encExpr(e.key):encPropertyKey(propertyKeyNode(e.key)),n="FunctionExpression"===e.value.type&&(e.method||"get"===e.kind||"set"===e.kind)?encFunction(e.value,"unique"):encExpr(e.value),r=enumValue(12,e.kind),a=+!!e.method,o=+!!e.shorthand,l=+!!e.computed,c=allocNode(64,e.start,e.end);return setPayloadU32(c,0,t),setPayloadU32(c,4,n),setPayloadU8(c,8,r),setPayloadU8(c,9,a),setPayloadU8(c,10,o),setPayloadU8(c,11,l),c;}function encParenthesizedExpression(e){let t=encExpr(e.expression),n=allocNode(65,e.start,e.end);return setPayloadU32(n,0,t),n;}function encArrowFunctionExpression(e){let t=+!!e.expression,n=+!!e.async,r=encFormalParameters(e.params,0,"arrow"),a=encArrowFunctionBody(e.body),o=allocExtra(2),l=allocNode(66,e.start,e.end);return setPayloadU32(l,12,o),setPayloadU8(l,8,t),setPayloadU8(l,9,n),setPayloadU32(l,0,NULL),setPayloadU32(l,4,r),setExtraU32(o+0,0,NULL),setExtraU32(o+1,0,a),l;}function encSequenceExpression(e){let t=encArray(e.expressions,encExpr,!1),n=allocNode(67,e.start,e.end);return writeArrayRange(t,e.expressions,payload,16*n+0),n;}function encMemberExpression(e){let t=encExpr(e.object),n=e.computed?encExpr(e.property):encPropertyKey(e.property),r=+!!e.computed,a=+!!e.optional,o=allocNode(68,e.start,e.end);return setPayloadU32(o,0,t),setPayloadU32(o,4,n),setPayloadU8(o,8,r),setPayloadU8(o,9,a),o;}function encCallExpression(e){let t=encExpr(e.callee),n=encArray(e.arguments,encArgument,!1),r=+!!e.optional,a=allocExtra(2),o=allocNode(69,e.start,e.end);return setPayloadU32(o,12,a),setPayloadU32(o,0,t),setPayloadU32(o,4,NULL),writeArrayRange(n,e.arguments,extra,(a+0)*4),setPayloadU8(o,8,r),setPayloadU8(o,9,0),o;}function encChainExpression(e){let t=encExpr(e.expression),n=allocNode(70,e.start,e.end);return setPayloadU32(n,0,t),n;}function encTaggedTemplateExpression(e){let t=encExpr(e.tag),n=encTemplateLiteral(e.quasi),r=allocNode(71,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,NULL),setPayloadU32(r,8,n),r;}function encNewExpression(e){let t=encExpr(e.callee),n=encArray(e.arguments,encArgument,!1),r=allocNode(72,e.start,e.end);return setPayloadU32(r,8,t),setPayloadU32(r,12,NULL),writeArrayRange(n,e.arguments,payload,16*r+0),r;}function encAwaitExpression(e){let t=encExpr(e.argument),n=allocNode(73,e.start,e.end);return setPayloadU32(n,0,t),n;}function encYieldExpression(e){let t=null==e.argument?NULL:encExpr(e.argument),n=+!!e.delegate,r=allocNode(74,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU8(r,4,n),r;}function encMetaProperty(e){let t=encIdentifierName(e.meta),n=encIdentifierName(e.property),r=allocNode(75,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encImportExpression(e){let t=encExpr(e.source),n=null==e.options?NULL:encExpr(e.options),r=null==e.phase?255:enumValue(13,e.phase),a=allocExtra(1),o=allocNode(76,e.start,e.end);return setPayloadU32(o,12,a),setPayloadU32(o,0,t),setPayloadU32(o,4,n),setExtraU8(a+0,0,r),setPayloadU8(o,8,0),o;}function encImportDeclaration(e){let t=encArray(e.specifiers,encImportDeclarationSpecifier,!1),n=encStringLiteral(e.source),r=encArray(e.attributes,encImportAttribute,!1),a=null==e.phase?255:enumValue(13,e.phase),o=allocExtra(5),l=allocNode(77,e.start,e.end);return setPayloadU32(l,12,o),writeArrayRange(t,e.specifiers,extra,(o+0)*4),setPayloadU32(l,0,n),writeArrayRange(r,e.attributes,extra,(o+2)*4),setExtraU8(o+4,0,a),setPayloadU8(l,4,0),l;}function encImportSpecifier(e){let t=encModuleExportName(e.imported),n=encBindingIdentifier(e.local),r=allocNode(78,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),setPayloadU8(r,8,0),r;}function encImportDefaultSpecifier(e){let t=encBindingIdentifier(e.local),n=allocNode(79,e.start,e.end);return setPayloadU32(n,0,t),n;}function encImportNamespaceSpecifier(e){let t=encBindingIdentifier(e.local),n=allocNode(80,e.start,e.end);return setPayloadU32(n,0,t),n;}function encImportAttribute(e){let t=encModuleExportName(e.key),n=encStringLiteral(e.value),r=allocNode(81,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encExportNamedDeclaration(e){let t=null==e.declaration?NULL:encDecl(e.declaration),n=encArray(e.specifiers,encExportSpecifier,!1),r=null==e.source?NULL:encStringLiteral(e.source),a=encArray(e.attributes,encImportAttribute,!1),o=allocExtra(4),l=allocNode(82,e.start,e.end);return setPayloadU32(l,12,o),setPayloadU32(l,0,t),writeArrayRange(n,e.specifiers,extra,(o+0)*4),setPayloadU32(l,4,r),writeArrayRange(a,e.attributes,extra,(o+2)*4),setPayloadU8(l,8,0),l;}function encExportDefaultDeclaration(e){let t=encExportDefaultDeclarationKind(e.declaration),n=allocNode(83,e.start,e.end);return setPayloadU32(n,0,t),n;}function encExportAllDeclaration(e){let t=null==e.exported?NULL:encModuleExportName(e.exported),n=encStringLiteral(e.source),r=encArray(e.attributes,encImportAttribute,!1),a=allocExtra(2),o=allocNode(84,e.start,e.end);return setPayloadU32(o,12,a),setPayloadU32(o,0,t),setPayloadU32(o,4,n),writeArrayRange(r,e.attributes,extra,(a+0)*4),setPayloadU8(o,8,0),o;}function encExportSpecifier(e){let t=encModuleExportName(e.local),n=encModuleExportName(e.exported),r=allocNode(85,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),setPayloadU8(r,8,0),r;}function encHashbang(e){let t=e.value,n=allocNode(86,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encJsxElement(e){let t=encJsxOpeningElement(e.openingElement),n=encArray(e.children,encJsxChild,!1),r=null==e.closingElement?NULL:encJsxClosingElement(e.closingElement),a=allocNode(161,e.start,e.end);return setPayloadU32(a,8,t),writeArrayRange(n,e.children,payload,16*a+0),setPayloadU32(a,12,r),a;}function encJsxOpeningElement(e){let t=encJsxElementName(e.name),n=encArray(e.attributes,encJsxAttributeItem,!1),r=+!!e.selfClosing,a=allocExtra(2),o=allocNode(162,e.start,e.end);return setPayloadU32(o,12,a),setPayloadU32(o,0,t),setPayloadU32(o,4,NULL),writeArrayRange(n,e.attributes,extra,(a+0)*4),setPayloadU8(o,8,r),o;}function encJsxClosingElement(e){let t=encJsxElementName(e.name),n=allocNode(163,e.start,e.end);return setPayloadU32(n,0,t),n;}function encJsxFragment(e){let t=encJsxOpeningFragment(e.openingFragment),n=encArray(e.children,encJsxChild,!1),r=encJsxClosingFragment(e.closingFragment),a=allocNode(164,e.start,e.end);return setPayloadU32(a,8,t),writeArrayRange(n,e.children,payload,16*a+0),setPayloadU32(a,12,r),a;}function encJsxOpeningFragment(e){return allocNode(165,e.start,e.end);}function encJsxClosingFragment(e){return allocNode(166,e.start,e.end);}function encJsxIdentifier(e){let t=e.name,n=allocNode(167,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encJsxNamespacedName(e){let t=encJsxIdentifier(e.namespace),n=encJsxIdentifier(e.name),r=allocNode(168,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encJsxMemberExpression(e){let t=encJsxMemberExpressionObject(e.object),n=encJsxIdentifier(e.property),r=allocNode(169,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encJsxAttribute(e){let t=encJsxAttributeName(e.name),n=null==e.value?NULL:encJsxAttributeValue(e.value),r=allocNode(170,e.start,e.end);return setPayloadU32(r,0,t),setPayloadU32(r,4,n),r;}function encJsxSpreadAttribute(e){let t=encExpr(e.argument),n=allocNode(171,e.start,e.end);return setPayloadU32(n,0,t),n;}function encJsxExpressionContainer(e){let t=encJsxExpression(e.expression),n=allocNode(172,e.start,e.end);return setPayloadU32(n,0,t),n;}function encJsxEmptyExpression(e){return allocNode(173,e.start,e.end);}function encJsxText(e){let t=e.value??e.raw??"",n=allocNode(174,e.start,e.end);return encStr(t,payload,16*n+0),n;}function encJsxSpreadChild(e){let t=encExpr(e.expression),n=allocNode(175,e.start,e.end);return setPayloadU32(n,0,t),n;}function encStmt(e){switch(e.type){case"ExpressionStatement":return encExpressionStatement(e);case"BlockStatement":return encBlockStatement(e);case"IfStatement":return encIfStatement(e);case"ReturnStatement":return encReturnStatement(e);case"ImportDeclaration":return encImportDeclaration(e);case"ExportNamedDeclaration":return encExportNamedDeclaration(e);case"ForStatement":return encForStatement(e);case"BreakStatement":return encBreakStatement(e);case"ThrowStatement":return encThrowStatement(e);case"WhileStatement":return encWhileStatement(e);case"ForOfStatement":return encForOfStatement(e);case"SwitchStatement":return encSwitchStatement(e);case"TryStatement":return encTryStatement(e);case"ForInStatement":return encForInStatement(e);case"ExportDefaultDeclaration":return encExportDefaultDeclaration(e);case"ContinueStatement":return encContinueStatement(e);case"DoWhileStatement":return encDoWhileStatement(e);case"EmptyStatement":return encEmptyStatement(e);case"LabeledStatement":return encLabeledStatement(e);case"DebuggerStatement":return encDebuggerStatement(e);case"WithStatement":return encWithStatement(e);case"ExportAllDeclaration":return encExportAllDeclaration(e);default:return encDecl(e);}}function encDecl(e){switch(e.type){case"VariableDeclaration":return encVariableDeclaration(e);case"FunctionDeclaration":return encFunction(e);case"ClassDeclaration":return encClass(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encExpr(e){switch(e.type){case"Identifier":return encIdentifierReference(e);case"MemberExpression":return encMemberExpression(e);case"Literal":if(null!=e.regex||e.value instanceof RegExp)return encRegExpLiteral(e);if(null!=e.bigint||"bigint"==typeof e.value)return encBigIntLiteral(e);if("string"==typeof e.value)return encStringLiteral(e);if("number"==typeof e.value)return encNumericLiteral(e);if("boolean"==typeof e.value)return encBooleanLiteral(e);return encNullLiteral(e);case"CallExpression":return encCallExpression(e);case"BinaryExpression":return encBinaryExpression(e);case"AssignmentExpression":return encAssignmentExpression(e);case"LogicalExpression":return encLogicalExpression(e);case"ThisExpression":return encThisExpression(e);case"ObjectExpression":return encObjectExpression(e);case"UnaryExpression":return encUnaryExpression(e);case"ParenthesizedExpression":return encParenthesizedExpression(e);case"FunctionExpression":return encFunction(e);case"ConditionalExpression":return encConditionalExpression(e);case"JSXElement":return encJsxElement(e);case"ArrowFunctionExpression":return encArrowFunctionExpression(e);case"ArrayExpression":return encArrayExpression(e);case"TemplateLiteral":return encTemplateLiteral(e);case"ChainExpression":return encChainExpression(e);case"NewExpression":return encNewExpression(e);case"UpdateExpression":return encUpdateExpression(e);case"AwaitExpression":return encAwaitExpression(e);case"PrivateIdentifier":return encPrivateIdentifier(e);case"SequenceExpression":return encSequenceExpression(e);case"TaggedTemplateExpression":return encTaggedTemplateExpression(e);case"JSXFragment":return encJsxFragment(e);case"ImportExpression":return encImportExpression(e);case"Super":return encSuper(e);case"YieldExpression":return encYieldExpression(e);case"MetaProperty":return encMetaProperty(e);case"ClassExpression":return encClass(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encBindingPattern(e){switch(e.type){case"Identifier":return encBindingIdentifier(e);case"ObjectPattern":return encObjectPattern(e);case"ArrayPattern":return encArrayPattern(e);case"AssignmentPattern":return encAssignmentPattern(e);case"RestElement":return encBindingRestElement(e);default:return encSimpleAssignmentTarget(e);}}function encAssignmentTarget(e){switch(e.type){case"ObjectPattern":return encObjectPattern(e);case"ArrayPattern":return encArrayPattern(e);default:return encSimpleAssignmentTarget(e);}}function encSimpleAssignmentTarget(e){switch(e.type){case"Identifier":return encIdentifierReference(e);case"MemberExpression":return encMemberExpression(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encPropertyKey(e){return"Identifier"===e.type?encIdentifierName(e):encExpr(e);}function encModuleExportName(e){switch(e.type){case"Identifier":return encIdentifierName(e);case"Literal":return encStringLiteral(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encArgument(e){return"SpreadElement"===e.type?encSpreadElement(e):encExpr(e);}function encObjectPropertyKind(e){switch(e.type){case"Property":return encObjectProperty(e);case"SpreadElement":return encSpreadElement(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encForStatementInit(e){return"VariableDeclaration"===e.type?encVariableDeclaration(e):encExpr(e);}function encForStatementLeft(e){return"VariableDeclaration"===e.type?encVariableDeclaration(e):encAssignmentTarget(e);}function encArrowFunctionBody(e){return"BlockStatement"===e.type?encFunctionBody(e):encExpr(e);}function encFormalParameterItem(e){switch(e.type){case"Identifier":case"ObjectPattern":case"ArrayPattern":case"AssignmentPattern":return encFormalParameter(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encFormalParameterPattern(e){switch(e.type){case"Identifier":return encBindingIdentifier(e);case"ObjectPattern":return encObjectPattern(e);case"ArrayPattern":return encArrayPattern(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encClassElement(e){switch(e.type){case"MethodDefinition":return encMethodDefinition(e);case"PropertyDefinition":case"AccessorProperty":return encPropertyDefinition(e);case"StaticBlock":return encStaticBlock(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encImportDeclarationSpecifier(e){switch(e.type){case"ImportSpecifier":return encImportSpecifier(e);case"ImportDefaultSpecifier":return encImportDefaultSpecifier(e);case"ImportNamespaceSpecifier":return encImportNamespaceSpecifier(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encExportDefaultDeclarationKind(e){switch(e.type){case"FunctionDeclaration":return encFunction(e);case"ClassDeclaration":return encClass(e);default:return encExpr(e);}}function encJsxElementName(e){switch(e.type){case"JSXIdentifier":return encJsxIdentifier(e);case"JSXMemberExpression":return encJsxMemberExpression(e);case"JSXNamespacedName":return encJsxNamespacedName(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encJsxMemberExpressionObject(e){switch(e.type){case"JSXIdentifier":return encJsxIdentifier(e);case"JSXMemberExpression":return encJsxMemberExpression(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encJsxAttributeName(e){switch(e.type){case"JSXIdentifier":return encJsxIdentifier(e);case"JSXNamespacedName":return encJsxNamespacedName(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encJsxAttributeItem(e){switch(e.type){case"JSXAttribute":return encJsxAttribute(e);case"JSXSpreadAttribute":return encJsxSpreadAttribute(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encJsxAttributeValue(e){if("Literal"===e.type&&"string"==typeof e.value)return encStringLiteral({...e,raw:jsxStringRaw(e)});switch(e.type){case"Literal":return encStringLiteral(e);case"JSXElement":return encJsxElement(e);case"JSXExpressionContainer":return encJsxExpressionContainer(e);case"JSXFragment":return encJsxFragment(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encJsxExpression(e){return"JSXEmptyExpression"===e.type?encJsxEmptyExpression(e):encExpr(e);}function encJsxChild(e){switch(e.type){case"JSXText":return encJsxText(e);case"JSXElement":return encJsxElement(e);case"JSXExpressionContainer":return encJsxExpressionContainer(e);case"JSXFragment":return encJsxFragment(e);case"JSXSpreadChild":return encJsxSpreadChild(e);default:throw TypeError(`Unsupported ESTree node type ${e.type}`);}}function encodeJs(e){try{return _encodeJs(e);}finally{clearState();}}function _encodeJs(e){let t=e.end||0,n=reusableBuffers??createBuffers(t);reusableBuffers=void 0,({nodeCapacity,spans,kinds,payloadBuffer,payload,extraCapacity,extraBuffer,extra,poolCapacity,pool}=n),nodeCount=extraCount=poolLength=0,hasWtf8=!1,isTs=0,firstNonAsciiPos=NULL,new Uint8Array(payloadBuffer).fill(0,0,16*n.nodeCount),new Uint8Array(extraBuffer).fill(0,0,4*n.extraCount);let r=encProgram(e),a=n.header,o=new DataView(a.buffer);o.setUint32(0,nodeCount,!0),o.setUint32(4,extraCount,!0),o.setUint32(8,hasWtf8?poolLength:0,!0),o.setUint32(12,hasWtf8?0:poolLength,!0),o.setUint32(16,0,!0),o.setUint32(20,0,!0),o.setUint32(24,0,!0),o.setUint32(28,r,!0);let l=enumValue(1,e.sourceType);o.setUint32(32,l|(0!==isTs)<<2,!0),o.setUint32(36,hasWtf8?0:firstNonAsciiPos===NULL?poolLength:firstNonAsciiPos,!0);let c=new Uint8Array(spans.buffer,0,8*nodeCount);if(!NATIVE_LITTLE_ENDIAN){let e=new DataView((c=new Uint8Array(8*nodeCount)).buffer);for(let t=0;t<2*nodeCount;t++)e.setUint32(4*t,spans[t],!0);}let s=[a,c,kinds.subarray(0,nodeCount),new Uint8Array(payloadBuffer,0,16*nodeCount),new Uint8Array(extraBuffer,0,4*extraCount),pool.subarray(0,poolLength)];return spans.byteLength+kinds.byteLength+payloadBuffer.byteLength+extraBuffer.byteLength+pool.byteLength<=0x2000000&&(Object.assign(n,{nodeCapacity,spans,kinds,payloadBuffer,payload,nodeCount,extraCapacity,extraBuffer,extra,extraCount,poolCapacity,pool}),reusableBuffers=n),s;}export{encodeJs};
+// generated by tasks/ast_tools, do not edit
+
+const NULL = 0xffffffff;
+const writeUtf8 = (() => {
+  if (typeof Buffer !== "undefined" && typeof Buffer.prototype.write === "function") {
+    const write = Buffer.prototype.write;
+    // Older Node versions and Buffer polyfills may reject Uint8Array receivers.
+    try {
+      const probe = new Uint8Array(1);
+      if (write.call(probe, "x", 0, 1, "utf8") === 1 && probe[0] === 0x78) return write;
+    } catch {}
+  }
+  const encoder = new TextEncoder();
+  return function(value, start, length) {
+    return encoder.encodeInto(value, this.subarray(start, start + length)).written;
+  };
+})();
+const HEADER_SIZE = 40;
+const NATIVE_LITTLE_ENDIAN =
+  new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+const isWellFormed = String.prototype.isWellFormed
+  ? value => value.isWellFormed()
+  : value => {
+      for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index);
+        if (code >= 0xd800 && code <= 0xdbff) {
+          const next = value.charCodeAt(++index);
+          if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+        } else if (code >= 0xdc00 && code <= 0xdfff) return false;
+      }
+      return true;
+    };
+
+const ENUMS = Object.freeze([
+  ["js", "ts", "jsx", "tsx", "dts"], // Lang
+  ["module", "script", "commonjs", "unambiguous"], // SourceType
+  ["constructor", "method", "get", "set"], // MethodDefinitionKind
+  ["ClassDeclaration", "ClassExpression"], // ClassType
+  ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"], // BinaryOperator
+  ["&&", "||", "??"], // LogicalOperator
+  ["-", "+", "!", "~", "typeof", "void", "delete"], // UnaryOperator
+  ["++", "--"], // UpdateOperator
+  ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="], // AssignmentOperator
+  ["var", "let", "const", "using", "await using"], // VariableKind
+  ["FunctionDeclaration", "FunctionExpression"], // FunctionType
+  ["formal", "unique", "arrow", "signature"], // FormalParameterKind
+  ["init", "get", "set"], // PropertyKind
+  ["source", "defer"], // ImportPhase
+  [null, "public", "private", "protected"], // Accessibility
+  ["value", "type"], // ImportOrExportKind
+  ["keyof", "unique", "readonly"], // TsTypeOperatorKind
+  ["method", "get", "set"], // TsMethodSignatureKind
+  ["namespace", "module"], // TsModuleDeclarationKind
+  [null, true, "+", "-"], // TsMappedTypeModifier
+  ["decimal", "hex", "octal", "binary"], // NumericLiteralKind
+]);
+
+
+// Maximum combined capacity of the reusable data buffers.
+const MAX_ENCODER_CACHE_BYTES = 32 * 1024 * 1024;
+let reusableBuffers;
+let nodeCapacity, spans, kinds, payloadBuffer, payload;
+let extraCapacity, extraBuffer, extra, poolCapacity, pool;
+let nodeCount = 0, extraCount = 0, poolLength = 0;
+let hasWtf8 = false, firstNonAsciiPos = NULL, isTs = 0;
+
+function createBuffers(sizeHint) {
+  const nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
+  const extraCapacity = Math.max(512, (sizeHint / 20) | 0);
+  const poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
+  const payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
+  const extraBuffer = new ArrayBuffer(extraCapacity * 4);
+  return {
+    nodeCapacity, extraCapacity, poolCapacity,
+    spans: new Uint32Array(nodeCapacity * 2),
+    kinds: new Uint8Array(nodeCapacity),
+    payloadBuffer, payload: new DataView(payloadBuffer),
+    extraBuffer, extra: new DataView(extraBuffer),
+    pool: new Uint8Array(poolCapacity),
+    header: new Uint8Array(HEADER_SIZE),
+    nodeCount: 0, extraCount: 0,
+  };
+}
+
+function clearState() {
+  // Uncached buffers must not remain reachable through the module state.
+  spans = kinds = payloadBuffer = payload = extraBuffer = extra = pool = undefined;
+}
+
+function enumValue(enumIndex, value) {
+  const index = ENUMS[enumIndex]?.indexOf(value);
+  return index == null || index < 0 ? 0 : index;
+}
+
+function ensureNodes() {
+  if (nodeCount < nodeCapacity) return;
+  nodeCapacity *= 2;
+  const nextSpans = new Uint32Array(nodeCapacity * 2);
+  nextSpans.set(spans); spans = nextSpans;
+  const nextKinds = new Uint8Array(nodeCapacity);
+  nextKinds.set(kinds); kinds = nextKinds;
+  const nextPayload = new ArrayBuffer(nodeCapacity * 16);
+  new Uint8Array(nextPayload).set(new Uint8Array(payloadBuffer));
+  payloadBuffer = nextPayload; payload = new DataView(payloadBuffer);
+}
+function allocNode(kind, start, end) {
+  ensureNodes();
+  const index = nodeCount++;
+  spans[index * 2] = start >>> 0;
+  spans[index * 2 + 1] = end >>> 0;
+  kinds[index] = kind;
+  return index;
+}
+function allocExtra(count) {
+  const start = extraCount;
+  extraCount += count;
+  if (extraCount > extraCapacity) {
+    do extraCapacity *= 2; while (extraCount > extraCapacity);
+    const next = new ArrayBuffer(extraCapacity * 4);
+    new Uint8Array(next).set(new Uint8Array(extraBuffer));
+    extraBuffer = next; extra = new DataView(extraBuffer);
+  }
+  return start;
+}
+function setPayloadU8(i, o, v) { payload.setUint8(i * 16 + o, v); }
+function setPayloadI8(i, o, v) { payload.setInt8(i * 16 + o, v); }
+function setPayloadU16(i, o, v) { payload.setUint16(i * 16 + o, v, true); }
+function setPayloadI16(i, o, v) { payload.setInt16(i * 16 + o, v, true); }
+function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, true); }
+function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, true); }
+function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, true); }
+function setExtraU8(i, o, v) { extra.setUint8(i * 4 + o, v); }
+function setExtraI8(i, o, v) { extra.setInt8(i * 4 + o, v); }
+function setExtraU16(i, o, v) { extra.setUint16(i * 4 + o, v, true); }
+function setExtraI16(i, o, v) { extra.setInt16(i * 4 + o, v, true); }
+function setExtraU32(i, o, v) { extra.setUint32(i * 4 + o, v, true); }
+function setExtraI32(i, o, v) { extra.setInt32(i * 4 + o, v, true); }
+function setExtraF64(i, o, v) { extra.setFloat64(i * 4 + o, v, true); }
+
+function encArray(values, encoder, holes) {
+  const length = values?.length ?? 0;
+  if (!length) return 0;
+  // Reserve the contiguous range before children allocate their own extra data.
+  const start = allocExtra(length);
+  for (let index = 0; index < length; index++) {
+    const value = values[index];
+    const id = holes && value == null ? NULL : encoder(value);
+    // A child may grow extraBuffer, so use the current DataView.
+    setExtraU32(start + index, 0, id);
+  }
+  return start;
+}
+
+function encArraySlice(values, encoder, from, end) {
+  if (from === end) return 0;
+  const start = allocExtra(end - from);
+  for (let index = from, slot = start; index < end; index++, slot++) {
+    const id = encoder(values[index]);
+    setExtraU32(slot, 0, id);
+  }
+  return start;
+}
+
+function encTemplateElements(values, templateStart) {
+  const length = values?.length ?? 0;
+  if (!length) return 0;
+  const start = allocExtra(length);
+  const delimited = values[0].start === templateStart;
+  for (let index = 0; index < length; index++) {
+    const id = encTemplateElement(values[index], delimited);
+    setExtraU32(start + index, 0, id);
+  }
+  return start;
+}
+
+function writeArrayRange(start, values, view, offset) {
+  // Called after the parent is allocated, so view refers to the current buffer.
+  view.setUint32(offset, start, true);
+  view.setUint32(offset + 4, start + (values?.length ?? 0), true);
+}
+
+function writeRange(start, length, view, offset) {
+  view.setUint32(offset, start, true);
+  view.setUint32(offset + 4, start + length, true);
+}
+
+function encStr(value, view, offset, wtf8) {
+  if (typeof value === "string") {
+    const length = value.length;
+    const start = poolLength;
+    const end = start + length;
+    // Keep the short ASCII path small enough to inline into field encoders.
+    if (length > 0 && length <= 64 && end <= pool.length && end <= 0x7fffffff) {
+      let index = 0;
+      for (; index < length; index++) {
+        const code = value.charCodeAt(index);
+        if (code >= 0x80) break;
+        pool[start + index] = code;
+      }
+      if (index === length) {
+        poolLength = end;
+        view.setUint32(offset, start, true);
+        view.setUint32(offset + 4, end, true);
+        return;
+      }
+    }
+  }
+  encStrSlow(value, view, offset, wtf8);
+}
+
+function encStrSlow(value, view, offset, wtf8 = false) {
+  if (value == null || value === "") {
+    view.setUint32(offset, 0, true);
+    view.setUint32(offset + 4, 0, true);
+    return;
+  }
+  if (typeof value !== "string") value = String(value);
+  const start = poolLength;
+  const length = value.length;
+  ensurePool(length * 3);
+  const useWtf8 = wtf8 && !isWellFormed(value);
+  const written = useWtf8
+    ? writeWtf8(value, start)
+    : writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
+  hasWtf8 ||= useWtf8;
+  poolLength += written;
+  if (firstNonAsciiPos === NULL && written !== length) {
+    let index = 0;
+    while (value.charCodeAt(index) < 0x80) index++;
+    firstNonAsciiPos = start + index;
+  }
+  view.setUint32(offset, start, true);
+  view.setUint32(offset + 4, poolLength, true);
+}
+
+function writeWtf8(value, start) {
+  let offset = start;
+  for (let index = 0; index < value.length; index++) {
+    let code = value.charCodeAt(index);
+    if (code < 0x80) {
+      pool[offset++] = code;
+    } else if (code < 0x800) {
+      pool[offset++] = 0xc0 | (code >> 6);
+      pool[offset++] = 0x80 | (code & 0x3f);
+    } else {
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = value.charCodeAt(index + 1);
+        if (next >= 0xdc00 && next <= 0xdfff) {
+          code = 0x10000 + ((code - 0xd800) << 10) + next - 0xdc00;
+          index++;
+          pool[offset++] = 0xf0 | (code >> 18);
+          pool[offset++] = 0x80 | ((code >> 12) & 0x3f);
+          pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
+          pool[offset++] = 0x80 | (code & 0x3f);
+          continue;
+        }
+      }
+      pool[offset++] = 0xe0 | (code >> 12);
+      pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
+      pool[offset++] = 0x80 | (code & 0x3f);
+    }
+  }
+  return offset - start;
+}
+
+function ensurePool(additionalBytes) {
+  const required = poolLength + additionalBytes;
+  if (required > 0x7fffffff) throw new RangeError("AST string source exceeds signed 32-bit range");
+  if (required <= poolCapacity) return;
+  do poolCapacity *= 2; while (required > poolCapacity);
+  const next = new Uint8Array(poolCapacity);
+  next.set(pool.subarray(0, poolLength)); pool = next;
+}
+
+function templateRaw(raw) {
+  return raw.includes("\r") ? raw.replace(/\r\n?/g, "\n") : raw;
+}
+
+function numericKind(raw) {
+  if (typeof raw !== "string" || raw.length < 2 || raw.charCodeAt(0) !== 48) return "decimal";
+  const prefix = raw[1].toLowerCase();
+  return prefix === "x" ? "hex" : prefix === "o" || /^0[0-7]+$/.test(raw) ? "octal" : prefix === "b" ? "binary" : "decimal";
+}
+function numericRaw(node) {
+  if (typeof node.raw !== "string") return null;
+  const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
+  const kind = numericKind(normalized);
+  const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
+    ? parseInt(normalized.slice(1), 8)
+    : +normalized;
+  return Object.is(value, node.value) ? node.raw : null;
+}
+
+function bigIntValue(node) {
+  return typeof node.value === "bigint" ? node.value : BigInt(node.bigint ?? 0);
+}
+
+function bigIntRaw(node) {
+  const value = bigIntValue(node);
+  if (typeof node.raw === "string" && node.raw.endsWith("n")) {
+    const raw = node.raw.slice(0, -1);
+    try {
+      if (BigInt(raw.replaceAll("_", "")) === value) return raw;
+    } catch {}
+  }
+  return String(value);
+}
+
+function propertyKeyNode(node) {
+  if (node?.type !== "Literal" ||
+      (node.bigint == null && typeof node.value !== "bigint") ||
+      bigIntValue(node) >= 0n) return node;
+  return { ...node, value: String(bigIntValue(node)), bigint: null, raw: "" };
+}
+
+function hexDigit(code) {
+  if (code >= 0x30 && code <= 0x39) return code - 0x30;
+  if (code >= 0x41 && code <= 0x46) return code - 0x41 + 10;
+  if (code >= 0x61 && code <= 0x66) return code - 0x61 + 10;
+  return -1;
+}
+
+function directiveRawValue(raw, unescaped) {
+  // The caller already matched the raw interior to this existing string.
+  if (raw.indexOf("\\", 1) === -1) return unescaped;
+  let result = "";
+  for (let index = 1; index < raw.length - 1; index++) {
+    let code = raw.charCodeAt(index);
+    if (code !== 0x5c) {
+      result += raw[index];
+      continue;
+    }
+    if (++index >= raw.length - 1) return null;
+    code = raw.charCodeAt(index);
+    if (code === 0x0a || code === 0x2028 || code === 0x2029) continue;
+    if (code === 0x0d) {
+      if (raw.charCodeAt(index + 1) === 0x0a) index++;
+      continue;
+    }
+    const escaped = { 0x62: 0x08, 0x66: 0x0c, 0x6e: 0x0a,
+      0x72: 0x0d, 0x74: 0x09, 0x76: 0x0b }[code];
+    if (escaped !== undefined) {
+      result += String.fromCharCode(escaped);
+      continue;
+    }
+    if (code === 0x78 || code === 0x75) {
+      let digits = code === 0x78 ? 2 : 4;
+      let start = index + 1;
+      let end = start + digits;
+      if (code === 0x75 && raw.charCodeAt(start) === 0x7b) {
+        start++;
+        end = raw.indexOf("}", start);
+        if (end < 0 || end === start) return null;
+      }
+      let value = 0;
+      for (let cursor = start; cursor < end; cursor++) {
+        const digit = hexDigit(raw.charCodeAt(cursor));
+        if (digit < 0) return null;
+        value = value * 16 + digit;
+      }
+      if (end > raw.length - 1 || value > 0x10ffff) return null;
+      result += code === 0x75 && raw.charCodeAt(index + 1) === 0x7b
+        ? String.fromCodePoint(value)
+        : String.fromCharCode(value);
+      index = code === 0x75 && raw.charCodeAt(index + 1) === 0x7b ? end : end - 1;
+      continue;
+    }
+    if (code >= 0x30 && code <= 0x37) {
+      let value = code - 0x30;
+      const maxDigits = code <= 0x33 ? 3 : 2;
+      let digits = 1;
+      while (digits < maxDigits) {
+        const next = raw.charCodeAt(index + 1);
+        if (next < 0x30 || next > 0x37) break;
+        value = value * 8 + next - 0x30;
+        index++;
+        digits++;
+      }
+      result += String.fromCharCode(value);
+      continue;
+    }
+    result += raw[index];
+  }
+  return result;
+}
+
+function jsxStringRaw(node) {
+  const raw = node.raw;
+  if (typeof raw !== "string" || raw.length < 2) return "";
+  const quote = raw[0];
+  return (quote === "\"" || quote === "'") &&
+    raw[raw.length - 1] === quote && raw.slice(1, -1) === node.value
+    ? raw
+    : "";
+}
+
+function encProgram(n) {
+  const _body = n.body;
+  const _length = _body?.length ?? 0;
+  let _directiveCount = 0;
+  while (_directiveCount < _length) {
+    const statement = _body[_directiveCount];
+    if (statement?.type !== "ExpressionStatement" ||
+        typeof statement.directive !== "string" ||
+        statement.expression?.type !== "Literal" ||
+        typeof statement.expression.value !== "string") break;
+    _directiveCount++;
+  }
+  const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
+  const v_1 = encArraySlice(_body, encStmt, _directiveCount, _length);
+  const v_2 = n.hashbang == null ? NULL : encHashbang(n.hashbang);
+  const extraId = allocExtra(2);
+  const index = allocNode(0, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  writeRange(v_0, _directiveCount, payload, index * 16 + 0);
+  writeRange(v_1, _length - _directiveCount, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encSuper(n) {
+  const index = allocNode(1, n.start, n.end);
+  return index;
+}
+
+function encThisExpression(n) {
+  const index = allocNode(2, n.start, n.end);
+  return index;
+}
+
+function encStringLiteral(n) {
+  const v_0 = n.value;
+  const v_1 = n.raw;
+  const index = allocNode(3, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0, true);
+  encStr(v_1, payload, index * 16 + 8);
+  return index;
+}
+
+function encNumericLiteral(n) {
+  const _numericRaw = n.raw == null ? null : numericRaw(n);
+  const v_0 = n.value ?? 0;
+  const v_1 = _numericRaw;
+  const index = allocNode(4, n.start, n.end);
+  setPayloadF64(index, 0, v_0);
+  if (v_1 == null) {
+    setPayloadU32(index, 8, NULL);
+    setPayloadU32(index, 12, 0);
+  } else {
+    encStr(v_1, payload, index * 16 + 8);
+  }
+  return index;
+}
+
+function encBigIntLiteral(n) {
+  const _bigIntValue = bigIntValue(n);
+  if (_bigIntValue < 0n) {
+    const absolute = -_bigIntValue;
+    return encUnaryExpression({
+      type: "UnaryExpression",
+      start: n.start,
+      end: n.end,
+      operator: "-",
+      argument: { ...n, value: absolute, bigint: String(absolute), raw: null },
+    });
+  }
+  const v_0 = bigIntRaw(n);
+  const index = allocNode(5, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encBooleanLiteral(n) {
+  const v_0 = n.value ? 1 : 0;
+  const index = allocNode(6, n.start, n.end);
+  setPayloadU8(index, 0, v_0);
+  return index;
+}
+
+function encNullLiteral(n) {
+  const index = allocNode(7, n.start, n.end);
+  return index;
+}
+
+function encRegExpLiteral(n) {
+  const v_0 = n.regex?.pattern ?? n.value?.source ?? "";
+  const v_1 = n.regex?.flags ?? n.value?.flags ?? "";
+  const index = allocNode(8, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  encStr(v_1, payload, index * 16 + 8);
+  return index;
+}
+
+function encTemplateLiteral(n) {
+  const v_0 = encTemplateElements(n.quasis, n.start);
+  const v_1 = encArray(n.expressions, encExpr, false);
+  const index = allocNode(9, n.start, n.end);
+  writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
+  writeArrayRange(v_1, n.expressions, payload, index * 16 + 8);
+  return index;
+}
+
+function encTemplateElement(n, delimited) {
+  const v_0 = n.value?.cooked ?? "";
+  const v_1 = templateRaw(n.value?.raw ?? "");
+  const v_2 = n.tail ? 1 : 0;
+  const v_3 = n.value?.cooked == null ? 1 : 0;
+  const extraId = allocExtra(2);
+  const index = allocNode(10, n.start, n.end);
+  if (delimited) {
+    const span = index * 2;
+    const endOffset = 2 - v_2;
+    // TS ESTree spans include delimiters; wire spans cover only raw content.
+    const trim = spans[span + 1] - spans[span] > endOffset;
+    spans[span] += trim;
+    spans[span + 1] -= endOffset * trim;
+  }
+  setPayloadU32(index, 12, extraId);
+  encStr(v_0, payload, index * 16 + 0, true);
+  encStr(v_1, extra, (extraId + 0) * 4);
+  setPayloadU8(index, 8, v_2);
+  setPayloadU8(index, 9, v_3);
+  return index;
+}
+
+function encIdentifierReference(n) {
+  const v_0 = n.name;
+  const index = allocNode(11, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encPrivateIdentifier(n) {
+  const v_0 = n.name;
+  const index = allocNode(12, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encBindingIdentifier(n) {
+  const v_0 = n.name;
+  const index = allocNode(13, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encIdentifierName(n) {
+  const v_0 = n.name;
+  const index = allocNode(14, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encLabelIdentifier(n) {
+  const v_0 = n.name;
+  const index = allocNode(15, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encAssignmentPattern(n) {
+  const v_0 = encBindingPattern(n.left);
+  const v_1 = encExpr(n.right);
+  const index = allocNode(16, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encBindingRestElement(n) {
+  const v_0 = encBindingPattern(n.argument);
+  const index = allocNode(17, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encArrayPattern(n) {
+  const _values = n.elements;
+  const _length = _values?.length ?? 0;
+  const _last = _values?.[_length - 1];
+  const _rest = _last?.type === "RestElement" ? _last : null;
+  const _itemCount = _length - (_rest === null ? 0 : 1);
+  const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+  for (let index = 0; index < _itemCount; index++) {
+    const value = _values[index];
+    const id = value == null ? NULL : encBindingPattern(value);
+    setExtraU32(_itemsStart + index, 0, id);
+  }
+  const v_0 = _itemsStart;
+  const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
+  const index = allocNode(18, n.start, n.end);
+  writeRange(v_0, _itemCount, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
+  return index;
+}
+
+function encObjectPattern(n) {
+  const _values = n.properties;
+  const _length = _values?.length ?? 0;
+  let _itemCount = _length - 0;
+  let _rest = null;
+  for (let i = 0; i < _length; i++) {
+    const value = _values[i];
+    if (value?.type === "RestElement") {
+      _rest = value;
+      _itemCount--;
+    }
+  }
+  const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+  let slot = _itemsStart;
+  for (let i = 0; i < _length; i++) {
+    const value = _values[i];
+    if (value?.type !== "RestElement") {
+      const id = encBindingProperty(value);
+      setExtraU32(slot++, 0, id);
+    }
+  }
+  const v_0 = _itemsStart;
+  const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
+  const index = allocNode(19, n.start, n.end);
+  writeRange(v_0, _itemCount, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
+  return index;
+}
+
+function encBindingProperty(n) {
+  const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
+  const v_1 = encBindingPattern(n.value);
+  const v_2 = n.shorthand ? 1 : 0;
+  const v_3 = n.computed ? 1 : 0;
+  const index = allocNode(20, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  setPayloadU8(index, 9, v_3);
+  return index;
+}
+
+function encBinaryExpression(n) {
+  const v_0 = encExpr(n.left);
+  const v_1 = encExpr(n.right);
+  const v_2 = enumValue(4, n.operator);
+  const index = allocNode(21, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  return index;
+}
+
+function encLogicalExpression(n) {
+  const v_0 = encExpr(n.left);
+  const v_1 = encExpr(n.right);
+  const v_2 = enumValue(5, n.operator);
+  const index = allocNode(22, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  return index;
+}
+
+function encConditionalExpression(n) {
+  const v_0 = encExpr(n.test);
+  const v_1 = encExpr(n.consequent);
+  const v_2 = encExpr(n.alternate);
+  const index = allocNode(23, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encUnaryExpression(n) {
+  const v_0 = encExpr(n.argument);
+  const v_1 = enumValue(6, n.operator);
+  const index = allocNode(24, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU8(index, 4, v_1);
+  return index;
+}
+
+function encUpdateExpression(n) {
+  const v_0 = encSimpleAssignmentTarget(n.argument);
+  const v_1 = enumValue(7, n.operator);
+  const v_2 = n.prefix ? 1 : 0;
+  const index = allocNode(25, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU8(index, 4, v_1);
+  setPayloadU8(index, 5, v_2);
+  return index;
+}
+
+function encAssignmentExpression(n) {
+  const v_0 = encAssignmentTarget(n.left);
+  const v_1 = encExpr(n.right);
+  const v_2 = enumValue(8, n.operator);
+  const index = allocNode(26, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  return index;
+}
+
+function encVariableDeclaration(n) {
+  const v_0 = enumValue(9, n.kind);
+  const v_1 = encArray(n.declarations, encVariableDeclarator, false);
+  const v_2 = 0;
+  const index = allocNode(27, n.start, n.end);
+  setPayloadU8(index, 8, v_0);
+  writeArrayRange(v_1, n.declarations, payload, index * 16 + 0);
+  setPayloadU8(index, 9, v_2);
+  return index;
+}
+
+function encVariableDeclarator(n) {
+  const v_0 = encBindingPattern(n.id);
+  const v_1 = NULL;
+  const v_2 = n.init == null ? NULL : encExpr(n.init);
+  const v_3 = 0;
+  const index = allocNode(28, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  setPayloadU8(index, 12, v_3);
+  return index;
+}
+
+function encIfStatement(n) {
+  const v_0 = encExpr(n.test);
+  const v_1 = encStmt(n.consequent);
+  const v_2 = n.alternate == null ? NULL : encStmt(n.alternate);
+  const index = allocNode(29, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encSwitchStatement(n) {
+  const v_0 = encExpr(n.discriminant);
+  const v_1 = encArray(n.cases, encSwitchCase, false);
+  const index = allocNode(30, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  writeArrayRange(v_1, n.cases, payload, index * 16 + 0);
+  return index;
+}
+
+function encSwitchCase(n) {
+  const v_0 = n.test == null ? NULL : encExpr(n.test);
+  const v_1 = encArray(n.consequent, encStmt, false);
+  const index = allocNode(31, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  writeArrayRange(v_1, n.consequent, payload, index * 16 + 0);
+  return index;
+}
+
+function encForStatement(n) {
+  const v_0 = n.init == null ? NULL : encForStatementInit(n.init);
+  const v_1 = n.test == null ? NULL : encExpr(n.test);
+  const v_2 = n.update == null ? NULL : encExpr(n.update);
+  const v_3 = encStmt(n.body);
+  const index = allocNode(32, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  setPayloadU32(index, 12, v_3);
+  return index;
+}
+
+function encForInStatement(n) {
+  const v_0 = encForStatementLeft(n.left);
+  const v_1 = encExpr(n.right);
+  const v_2 = encStmt(n.body);
+  const index = allocNode(33, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encForOfStatement(n) {
+  const v_0 = encForStatementLeft(n.left);
+  const v_1 = encExpr(n.right);
+  const v_2 = encStmt(n.body);
+  const v_3 = n.await ? 1 : 0;
+  const index = allocNode(34, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  setPayloadU8(index, 12, v_3);
+  return index;
+}
+
+function encTryStatement(n) {
+  const v_0 = encBlockStatement(n.block);
+  const v_1 = n.handler == null ? NULL : encCatchClause(n.handler);
+  const v_2 = n.finalizer == null ? NULL : encBlockStatement(n.finalizer);
+  const index = allocNode(35, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encCatchClause(n) {
+  const v_0 = n.param == null ? NULL : encBindingPattern(n.param);
+  const v_1 = NULL;
+  const v_2 = encBlockStatement(n.body);
+  const index = allocNode(36, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encBreakStatement(n) {
+  const v_0 = n.label == null ? NULL : encLabelIdentifier(n.label);
+  const index = allocNode(37, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encContinueStatement(n) {
+  const v_0 = n.label == null ? NULL : encLabelIdentifier(n.label);
+  const index = allocNode(38, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encLabeledStatement(n) {
+  const v_0 = encLabelIdentifier(n.label);
+  const v_1 = encStmt(n.body);
+  const index = allocNode(39, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encExpressionStatement(n) {
+  const v_0 = encExpr(n.expression);
+  const index = allocNode(40, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encReturnStatement(n) {
+  const v_0 = n.argument == null ? NULL : encExpr(n.argument);
+  const index = allocNode(41, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encThrowStatement(n) {
+  const v_0 = encExpr(n.argument);
+  const index = allocNode(42, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encDebuggerStatement(n) {
+  const index = allocNode(43, n.start, n.end);
+  return index;
+}
+
+function encEmptyStatement(n) {
+  const index = allocNode(44, n.start, n.end);
+  return index;
+}
+
+function encDirective(n) {
+  const _directiveRaw = n.expression?.raw;
+  const _directiveQuote = _directiveRaw?.[0];
+  const _directiveExpression =
+    typeof _directiveRaw === "string" && _directiveRaw.length >= 2 &&
+    (_directiveQuote === "\"" || _directiveQuote === "'") &&
+    _directiveRaw[_directiveRaw.length - 1] === _directiveQuote &&
+    typeof n.directive === "string" &&
+    _directiveRaw.length === n.directive.length + 2 &&
+    _directiveRaw.startsWith(n.directive, 1) &&
+    directiveRawValue(_directiveRaw, n.directive) === n.expression?.value
+      ? n.expression
+      : { ...n.expression, raw: "" };
+  const v_0 = encStringLiteral(_directiveExpression);
+  const v_1 = n.directive;
+  const index = allocNode(45, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  encStr(v_1, payload, index * 16 + 0);
+  return index;
+}
+
+function encDecorator(n) {
+  const v_0 = encExpr(n.expression);
+  const index = allocNode(46, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encClass(n) {
+  const v_0 = enumValue(3, n.type === "ClassExpression" ? "ClassExpression" : "ClassDeclaration");
+  const v_1 = encArray(n.decorators, encDecorator, false);
+  const v_2 = n.id == null ? NULL : encBindingIdentifier(n.id);
+  const v_3 = NULL;
+  const v_4 = n.superClass == null ? NULL : encExpr(n.superClass);
+  const v_5 = NULL;
+  const v_6 = 0;
+  const v_7 = encClassBody(n.body);
+  const v_8 = 0;
+  const v_9 = 0;
+  const extraId = allocExtra(7);
+  const index = allocNode(47, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU8(index, 8, v_0);
+  writeArrayRange(v_1, n.decorators, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_2);
+  setPayloadU32(index, 4, v_3);
+  setExtraU32(extraId + 2, 0, v_4);
+  setExtraU32(extraId + 3, 0, v_5);
+  writeArrayRange(v_6, null, extra, (extraId + 4) * 4);
+  setExtraU32(extraId + 6, 0, v_7);
+  setPayloadU8(index, 9, v_8);
+  setPayloadU8(index, 10, v_9);
+  return index;
+}
+
+function encClassBody(n) {
+  const v_0 = encArray(n.body, encClassElement, false);
+  const index = allocNode(48, n.start, n.end);
+  writeArrayRange(v_0, n.body, payload, index * 16 + 0);
+  return index;
+}
+
+function encMethodDefinition(n) {
+  const v_0 = encArray(n.decorators, encDecorator, false);
+  const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
+  const v_2 = encFunction(n.value, "unique");
+  const v_3 = enumValue(2, n.kind);
+  const v_4 = n.computed ? 1 : 0;
+  const v_5 = n.static ? 1 : 0;
+  const v_6 = 0;
+  const v_7 = 0;
+  const v_8 = 0;
+  const v_9 = 0;
+  const extraId = allocExtra(3);
+  const index = allocNode(49, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  setExtraU32(extraId + 2, 0, v_2);
+  setPayloadU8(index, 4, v_3);
+  setPayloadU8(index, 5, v_4);
+  setPayloadU8(index, 6, v_5);
+  setPayloadU8(index, 7, v_6);
+  setPayloadU8(index, 8, v_7);
+  setPayloadU8(index, 9, v_8);
+  setPayloadU8(index, 10, v_9);
+  return index;
+}
+
+function encPropertyDefinition(n) {
+  const v_0 = encArray(n.decorators, encDecorator, false);
+  const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
+  const v_2 = NULL;
+  const v_3 = n.value == null ? NULL : encExpr(n.value);
+  const v_4 = n.computed ? 1 : 0;
+  const v_5 = n.static ? 1 : 0;
+  const v_6 = n.type === "AccessorProperty" ? 1 : 0;
+  const v_7 = 0;
+  const v_8 = 0;
+  const v_9 = 0;
+  const v_10 = 0;
+  const v_11 = 0;
+  const v_12 = 0;
+  const v_13 = 0;
+  const extraId = allocExtra(5);
+  const index = allocNode(50, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
+  setExtraU32(extraId + 2, 0, v_1);
+  setExtraU32(extraId + 3, 0, v_2);
+  setExtraU32(extraId + 4, 0, v_3);
+  setPayloadU8(index, 0, v_4);
+  setPayloadU8(index, 1, v_5);
+  setPayloadU8(index, 2, v_6);
+  setPayloadU8(index, 3, v_7);
+  setPayloadU8(index, 4, v_8);
+  setPayloadU8(index, 5, v_9);
+  setPayloadU8(index, 6, v_10);
+  setPayloadU8(index, 7, v_11);
+  setPayloadU8(index, 8, v_12);
+  setPayloadU8(index, 9, v_13);
+  return index;
+}
+
+function encStaticBlock(n) {
+  const v_0 = encArray(n.body, encStmt, false);
+  const index = allocNode(51, n.start, n.end);
+  writeArrayRange(v_0, n.body, payload, index * 16 + 0);
+  return index;
+}
+
+function encFunction(n, parameterKind = "formal") {
+  const v_0 = enumValue(10, n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
+  const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
+  const v_2 = NULL;
+  const v_3 = NULL;
+  const v_4 = encFormalParameters(n.params, 0, parameterKind);
+  const v_5 = NULL;
+  const v_6 = encFunctionBody(n.body);
+  const v_7 = n.generator ? 1 : 0;
+  const v_8 = n.async ? 1 : 0;
+  const extraId = allocExtra(4);
+  const index = allocNode(52, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU8(index, 8, v_0);
+  setPayloadU32(index, 0, v_1);
+  setPayloadU32(index, 4, v_2);
+  setExtraU32(extraId + 0, 0, v_3);
+  setExtraU32(extraId + 1, 0, v_4);
+  setExtraU32(extraId + 2, 0, v_5);
+  setExtraU32(extraId + 3, 0, v_6);
+  setPayloadU8(index, 9, v_7);
+  setPayloadU8(index, 10, v_8);
+  return index;
+}
+
+function encFunctionBody(n) {
+  const _body = n.body;
+  const _length = _body?.length ?? 0;
+  let _directiveCount = 0;
+  while (_directiveCount < _length) {
+    const statement = _body[_directiveCount];
+    if (statement?.type !== "ExpressionStatement" ||
+        typeof statement.directive !== "string" ||
+        statement.expression?.type !== "Literal" ||
+        typeof statement.expression.value !== "string") break;
+    _directiveCount++;
+  }
+  const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
+  const v_1 = encArraySlice(_body, encStmt, _directiveCount, _length);
+  const index = allocNode(53, n.start, n.end);
+  writeRange(v_0, _directiveCount, payload, index * 16 + 0);
+  writeRange(v_1, _length - _directiveCount, payload, index * 16 + 8);
+  return index;
+}
+
+function encBlockStatement(n) {
+  const v_0 = encArray(n.body, encStmt, false);
+  const index = allocNode(54, n.start, n.end);
+  writeArrayRange(v_0, n.body, payload, index * 16 + 0);
+  return index;
+}
+
+function encWhileStatement(n) {
+  const v_0 = encExpr(n.test);
+  const v_1 = encStmt(n.body);
+  const index = allocNode(55, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encDoWhileStatement(n) {
+  const v_0 = encStmt(n.body);
+  const v_1 = encExpr(n.test);
+  const index = allocNode(56, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encWithStatement(n) {
+  const v_0 = encExpr(n.object);
+  const v_1 = encStmt(n.body);
+  const index = allocNode(57, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encFormalParameters(n, from = 0, kind = "formal") {
+  const _values = n;
+  const _length = _values?.length ?? 0;
+  let _itemCount = _length - from;
+  let _rest = null;
+  for (let i = from; i < _length; i++) {
+    const value = _values[i];
+    if (value?.type === "RestElement") {
+      _rest = value;
+      _itemCount--;
+    }
+  }
+  const _start = _length > from ? _values[from].start : 0;
+  const _end = _length > from ? _values[_length - 1].end : 0;
+  const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+  let slot = _itemsStart;
+  for (let i = from; i < _length; i++) {
+    const value = _values[i];
+    if (value?.type !== "RestElement") {
+      const id = encFormalParameterItem(value);
+      setExtraU32(slot++, 0, id);
+    }
+  }
+  const v_0 = _itemsStart;
+  const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
+  const v_2 = enumValue(11, kind);
+  const index = allocNode(58, _start, _end);
+  writeRange(v_0, _itemCount, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
+  setPayloadU8(index, 12, v_2);
+  return index;
+}
+
+function encFormalParameter(n) {
+  const _hasInitializer = n.type === "AssignmentPattern";
+  const _pattern = _hasInitializer ? n.left : n;
+  const _initializer = _hasInitializer ? n.right : null;
+  const v_0 = encArray(n.decorators, encDecorator, false);
+  const v_1 = encFormalParameterPattern(_pattern);
+  const v_2 = NULL;
+  const v_3 = _initializer == null ? NULL : encExpr(_initializer);
+  const v_4 = 0;
+  const extraId = allocExtra(3);
+  const index = allocNode(59, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  setPayloadU32(index, 4, v_2);
+  setExtraU32(extraId + 2, 0, v_3);
+  setPayloadU8(index, 8, v_4);
+  return index;
+}
+
+function encFormalParameterRest(n) {
+  const v_0 = encArray(n.decorators, encDecorator, false);
+  const v_1 = encFormalParameterPattern(n.argument);
+  const v_2 = NULL;
+  const index = allocNode(60, n.start, n.end);
+  writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
+  setPayloadU32(index, 12, v_2);
+  return index;
+}
+
+function encArrayExpression(n) {
+  const v_0 = encArray(n.elements, encArgument, true);
+  const index = allocNode(61, n.start, n.end);
+  writeArrayRange(v_0, n.elements, payload, index * 16 + 0);
+  return index;
+}
+
+function encObjectExpression(n) {
+  const v_0 = encArray(n.properties, encObjectPropertyKind, false);
+  const index = allocNode(62, n.start, n.end);
+  writeArrayRange(v_0, n.properties, payload, index * 16 + 0);
+  return index;
+}
+
+function encSpreadElement(n) {
+  const v_0 = encExpr(n.argument);
+  const index = allocNode(63, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encObjectProperty(n) {
+  const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
+  const v_1 = n.value.type === "FunctionExpression" && (n.method || n.kind === "get" || n.kind === "set") ? encFunction(n.value, "unique") : encExpr(n.value);
+  const v_2 = enumValue(12, n.kind);
+  const v_3 = n.method ? 1 : 0;
+  const v_4 = n.shorthand ? 1 : 0;
+  const v_5 = n.computed ? 1 : 0;
+  const index = allocNode(64, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  setPayloadU8(index, 9, v_3);
+  setPayloadU8(index, 10, v_4);
+  setPayloadU8(index, 11, v_5);
+  return index;
+}
+
+function encParenthesizedExpression(n) {
+  const v_0 = encExpr(n.expression);
+  const index = allocNode(65, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encArrowFunctionExpression(n) {
+  const v_0 = n.expression ? 1 : 0;
+  const v_1 = n.async ? 1 : 0;
+  const v_2 = NULL;
+  const v_3 = encFormalParameters(n.params, 0, "arrow");
+  const v_4 = NULL;
+  const v_5 = encArrowFunctionBody(n.body);
+  const extraId = allocExtra(2);
+  const index = allocNode(66, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU8(index, 8, v_0);
+  setPayloadU8(index, 9, v_1);
+  setPayloadU32(index, 0, v_2);
+  setPayloadU32(index, 4, v_3);
+  setExtraU32(extraId + 0, 0, v_4);
+  setExtraU32(extraId + 1, 0, v_5);
+  return index;
+}
+
+function encSequenceExpression(n) {
+  const v_0 = encArray(n.expressions, encExpr, false);
+  const index = allocNode(67, n.start, n.end);
+  writeArrayRange(v_0, n.expressions, payload, index * 16 + 0);
+  return index;
+}
+
+function encMemberExpression(n) {
+  const v_0 = encExpr(n.object);
+  const v_1 = n.computed ? encExpr(n.property) : encPropertyKey(n.property);
+  const v_2 = n.computed ? 1 : 0;
+  const v_3 = n.optional ? 1 : 0;
+  const index = allocNode(68, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  setPayloadU8(index, 9, v_3);
+  return index;
+}
+
+function encCallExpression(n) {
+  const v_0 = encExpr(n.callee);
+  const v_1 = NULL;
+  const v_2 = encArray(n.arguments, encArgument, false);
+  const v_3 = n.optional ? 1 : 0;
+  const v_4 = 0 ? 1 : 0;
+  const extraId = allocExtra(2);
+  const index = allocNode(69, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  writeArrayRange(v_2, n.arguments, extra, (extraId + 0) * 4);
+  setPayloadU8(index, 8, v_3);
+  setPayloadU8(index, 9, v_4);
+  return index;
+}
+
+function encChainExpression(n) {
+  const v_0 = encExpr(n.expression);
+  const index = allocNode(70, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encTaggedTemplateExpression(n) {
+  const v_0 = encExpr(n.tag);
+  const v_1 = NULL;
+  const v_2 = encTemplateLiteral(n.quasi);
+  const index = allocNode(71, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
+  return index;
+}
+
+function encNewExpression(n) {
+  const v_0 = encExpr(n.callee);
+  const v_1 = NULL;
+  const v_2 = encArray(n.arguments, encArgument, false);
+  const index = allocNode(72, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  setPayloadU32(index, 12, v_1);
+  writeArrayRange(v_2, n.arguments, payload, index * 16 + 0);
+  return index;
+}
+
+function encAwaitExpression(n) {
+  const v_0 = encExpr(n.argument);
+  const index = allocNode(73, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encYieldExpression(n) {
+  const v_0 = n.argument == null ? NULL : encExpr(n.argument);
+  const v_1 = n.delegate ? 1 : 0;
+  const index = allocNode(74, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU8(index, 4, v_1);
+  return index;
+}
+
+function encMetaProperty(n) {
+  const v_0 = encIdentifierName(n.meta);
+  const v_1 = encIdentifierName(n.property);
+  const index = allocNode(75, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encImportExpression(n) {
+  const v_0 = encExpr(n.source);
+  const v_1 = n.options == null ? NULL : encExpr(n.options);
+  const v_2 = n.phase == null ? 0xff : enumValue(13, n.phase);
+  const v_3 = 0 ? 1 : 0;
+  const extraId = allocExtra(1);
+  const index = allocNode(76, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setExtraU8(extraId + 0, 0, v_2);
+  setPayloadU8(index, 8, v_3);
+  return index;
+}
+
+function encImportDeclaration(n) {
+  const v_0 = encArray(n.specifiers, encImportDeclarationSpecifier, false);
+  const v_1 = encStringLiteral(n.source);
+  const v_2 = encArray(n.attributes, encImportAttribute, false);
+  const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
+  const v_4 = 0;
+  const extraId = allocExtra(5);
+  const index = allocNode(77, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 2) * 4);
+  setExtraU8(extraId + 4, 0, v_3);
+  setPayloadU8(index, 4, v_4);
+  return index;
+}
+
+function encImportSpecifier(n) {
+  const v_0 = encModuleExportName(n.imported);
+  const v_1 = encBindingIdentifier(n.local);
+  const v_2 = 0;
+  const index = allocNode(78, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  return index;
+}
+
+function encImportDefaultSpecifier(n) {
+  const v_0 = encBindingIdentifier(n.local);
+  const index = allocNode(79, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encImportNamespaceSpecifier(n) {
+  const v_0 = encBindingIdentifier(n.local);
+  const index = allocNode(80, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encImportAttribute(n) {
+  const v_0 = encModuleExportName(n.key);
+  const v_1 = encStringLiteral(n.value);
+  const index = allocNode(81, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encExportNamedDeclaration(n) {
+  const v_0 = n.declaration == null ? NULL : encDecl(n.declaration);
+  const v_1 = encArray(n.specifiers, encExportSpecifier, false);
+  const v_2 = n.source == null ? NULL : encStringLiteral(n.source);
+  const v_3 = encArray(n.attributes, encImportAttribute, false);
+  const v_4 = 0;
+  const extraId = allocExtra(4);
+  const index = allocNode(82, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU32(index, 0, v_0);
+  writeArrayRange(v_1, n.specifiers, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 4, v_2);
+  writeArrayRange(v_3, n.attributes, extra, (extraId + 2) * 4);
+  setPayloadU8(index, 8, v_4);
+  return index;
+}
+
+function encExportDefaultDeclaration(n) {
+  const v_0 = encExportDefaultDeclarationKind(n.declaration);
+  const index = allocNode(83, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encExportAllDeclaration(n) {
+  const v_0 = n.exported == null ? NULL : encModuleExportName(n.exported);
+  const v_1 = encStringLiteral(n.source);
+  const v_2 = encArray(n.attributes, encImportAttribute, false);
+  const v_3 = 0;
+  const extraId = allocExtra(2);
+  const index = allocNode(84, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 4);
+  setPayloadU8(index, 8, v_3);
+  return index;
+}
+
+function encExportSpecifier(n) {
+  const v_0 = encModuleExportName(n.local);
+  const v_1 = encModuleExportName(n.exported);
+  const v_2 = 0;
+  const index = allocNode(85, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  setPayloadU8(index, 8, v_2);
+  return index;
+}
+
+function encHashbang(n) {
+  const v_0 = n.value;
+  const index = allocNode(86, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encJsxElement(n) {
+  const v_0 = encJsxOpeningElement(n.openingElement);
+  const v_1 = encArray(n.children, encJsxChild, false);
+  const v_2 = n.closingElement == null ? NULL : encJsxClosingElement(n.closingElement);
+  const index = allocNode(161, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  writeArrayRange(v_1, n.children, payload, index * 16 + 0);
+  setPayloadU32(index, 12, v_2);
+  return index;
+}
+
+function encJsxOpeningElement(n) {
+  const v_0 = encJsxElementName(n.name);
+  const v_1 = NULL;
+  const v_2 = encArray(n.attributes, encJsxAttributeItem, false);
+  const v_3 = n.selfClosing ? 1 : 0;
+  const extraId = allocExtra(2);
+  const index = allocNode(162, n.start, n.end);
+  setPayloadU32(index, 12, extraId);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 4);
+  setPayloadU8(index, 8, v_3);
+  return index;
+}
+
+function encJsxClosingElement(n) {
+  const v_0 = encJsxElementName(n.name);
+  const index = allocNode(163, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encJsxFragment(n) {
+  const v_0 = encJsxOpeningFragment(n.openingFragment);
+  const v_1 = encArray(n.children, encJsxChild, false);
+  const v_2 = encJsxClosingFragment(n.closingFragment);
+  const index = allocNode(164, n.start, n.end);
+  setPayloadU32(index, 8, v_0);
+  writeArrayRange(v_1, n.children, payload, index * 16 + 0);
+  setPayloadU32(index, 12, v_2);
+  return index;
+}
+
+function encJsxOpeningFragment(n) {
+  const index = allocNode(165, n.start, n.end);
+  return index;
+}
+
+function encJsxClosingFragment(n) {
+  const index = allocNode(166, n.start, n.end);
+  return index;
+}
+
+function encJsxIdentifier(n) {
+  const v_0 = n.name;
+  const index = allocNode(167, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encJsxNamespacedName(n) {
+  const v_0 = encJsxIdentifier(n.namespace);
+  const v_1 = encJsxIdentifier(n.name);
+  const index = allocNode(168, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encJsxMemberExpression(n) {
+  const v_0 = encJsxMemberExpressionObject(n.object);
+  const v_1 = encJsxIdentifier(n.property);
+  const index = allocNode(169, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encJsxAttribute(n) {
+  const v_0 = encJsxAttributeName(n.name);
+  const v_1 = n.value == null ? NULL : encJsxAttributeValue(n.value);
+  const index = allocNode(170, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
+  return index;
+}
+
+function encJsxSpreadAttribute(n) {
+  const v_0 = encExpr(n.argument);
+  const index = allocNode(171, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encJsxExpressionContainer(n) {
+  const v_0 = encJsxExpression(n.expression);
+  const index = allocNode(172, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encJsxEmptyExpression(n) {
+  const index = allocNode(173, n.start, n.end);
+  return index;
+}
+
+function encJsxText(n) {
+  const v_0 = n.value ?? n.raw ?? "";
+  const index = allocNode(174, n.start, n.end);
+  encStr(v_0, payload, index * 16 + 0);
+  return index;
+}
+
+function encJsxSpreadChild(n) {
+  const v_0 = encExpr(n.expression);
+  const index = allocNode(175, n.start, n.end);
+  setPayloadU32(index, 0, v_0);
+  return index;
+}
+
+function encStmt(n) {
+  switch (n.type) {
+    case "ExpressionStatement":
+      return encExpressionStatement(n);
+    case "BlockStatement":
+      return encBlockStatement(n);
+    case "IfStatement":
+      return encIfStatement(n);
+    case "ReturnStatement":
+      return encReturnStatement(n);
+    case "ImportDeclaration":
+      return encImportDeclaration(n);
+    case "ExportNamedDeclaration":
+      return encExportNamedDeclaration(n);
+    case "ForStatement":
+      return encForStatement(n);
+    case "BreakStatement":
+      return encBreakStatement(n);
+    case "ThrowStatement":
+      return encThrowStatement(n);
+    case "WhileStatement":
+      return encWhileStatement(n);
+    case "ForOfStatement":
+      return encForOfStatement(n);
+    case "SwitchStatement":
+      return encSwitchStatement(n);
+    case "TryStatement":
+      return encTryStatement(n);
+    case "ForInStatement":
+      return encForInStatement(n);
+    case "ExportDefaultDeclaration":
+      return encExportDefaultDeclaration(n);
+    case "ContinueStatement":
+      return encContinueStatement(n);
+    case "DoWhileStatement":
+      return encDoWhileStatement(n);
+    case "EmptyStatement":
+      return encEmptyStatement(n);
+    case "LabeledStatement":
+      return encLabeledStatement(n);
+    case "DebuggerStatement":
+      return encDebuggerStatement(n);
+    case "WithStatement":
+      return encWithStatement(n);
+    case "ExportAllDeclaration":
+      return encExportAllDeclaration(n);
+    default: return encDecl(n);
+  }
+}
+
+function encDecl(n) {
+  switch (n.type) {
+    case "VariableDeclaration":
+      return encVariableDeclaration(n);
+    case "FunctionDeclaration":
+      return encFunction(n);
+    case "ClassDeclaration":
+      return encClass(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encExpr(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encIdentifierReference(n);
+    case "MemberExpression":
+      return encMemberExpression(n);
+    case "Literal":
+      if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
+      if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
+      if (typeof n.value === "string") return encStringLiteral(n);
+      if (typeof n.value === "number") return encNumericLiteral(n);
+      if (typeof n.value === "boolean") return encBooleanLiteral(n);
+      return encNullLiteral(n);
+    case "CallExpression":
+      return encCallExpression(n);
+    case "BinaryExpression":
+      return encBinaryExpression(n);
+    case "AssignmentExpression":
+      return encAssignmentExpression(n);
+    case "LogicalExpression":
+      return encLogicalExpression(n);
+    case "ThisExpression":
+      return encThisExpression(n);
+    case "ObjectExpression":
+      return encObjectExpression(n);
+    case "UnaryExpression":
+      return encUnaryExpression(n);
+    case "ParenthesizedExpression":
+      return encParenthesizedExpression(n);
+    case "FunctionExpression":
+      return encFunction(n);
+    case "ConditionalExpression":
+      return encConditionalExpression(n);
+    case "JSXElement":
+      return encJsxElement(n);
+    case "ArrowFunctionExpression":
+      return encArrowFunctionExpression(n);
+    case "ArrayExpression":
+      return encArrayExpression(n);
+    case "TemplateLiteral":
+      return encTemplateLiteral(n);
+    case "ChainExpression":
+      return encChainExpression(n);
+    case "NewExpression":
+      return encNewExpression(n);
+    case "UpdateExpression":
+      return encUpdateExpression(n);
+    case "AwaitExpression":
+      return encAwaitExpression(n);
+    case "PrivateIdentifier":
+      return encPrivateIdentifier(n);
+    case "SequenceExpression":
+      return encSequenceExpression(n);
+    case "TaggedTemplateExpression":
+      return encTaggedTemplateExpression(n);
+    case "JSXFragment":
+      return encJsxFragment(n);
+    case "ImportExpression":
+      return encImportExpression(n);
+    case "Super":
+      return encSuper(n);
+    case "YieldExpression":
+      return encYieldExpression(n);
+    case "MetaProperty":
+      return encMetaProperty(n);
+    case "ClassExpression":
+      return encClass(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encBindingPattern(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encBindingIdentifier(n);
+    case "ObjectPattern":
+      return encObjectPattern(n);
+    case "ArrayPattern":
+      return encArrayPattern(n);
+    case "AssignmentPattern":
+      return encAssignmentPattern(n);
+    case "RestElement":
+      return encBindingRestElement(n);
+    default: return encSimpleAssignmentTarget(n);
+  }
+}
+
+function encAssignmentTarget(n) {
+  switch (n.type) {
+    case "ObjectPattern":
+      return encObjectPattern(n);
+    case "ArrayPattern":
+      return encArrayPattern(n);
+    default: return encSimpleAssignmentTarget(n);
+  }
+}
+
+function encSimpleAssignmentTarget(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encIdentifierReference(n);
+    case "MemberExpression":
+      return encMemberExpression(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encPropertyKey(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encIdentifierName(n);
+    default: return encExpr(n);
+  }
+}
+
+function encModuleExportName(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encIdentifierName(n);
+    case "Literal":
+      return encStringLiteral(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encArgument(n) {
+  switch (n.type) {
+    case "SpreadElement":
+      return encSpreadElement(n);
+    default: return encExpr(n);
+  }
+}
+
+function encObjectPropertyKind(n) {
+  switch (n.type) {
+    case "Property":
+      return encObjectProperty(n);
+    case "SpreadElement":
+      return encSpreadElement(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encForStatementInit(n) {
+  switch (n.type) {
+    case "VariableDeclaration":
+      return encVariableDeclaration(n);
+    default: return encExpr(n);
+  }
+}
+
+function encForStatementLeft(n) {
+  switch (n.type) {
+    case "VariableDeclaration":
+      return encVariableDeclaration(n);
+    default: return encAssignmentTarget(n);
+  }
+}
+
+function encArrowFunctionBody(n) {
+  switch (n.type) {
+    case "BlockStatement":
+      return encFunctionBody(n);
+    default: return encExpr(n);
+  }
+}
+
+function encFormalParameterItem(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encFormalParameter(n);
+    case "ObjectPattern":
+      return encFormalParameter(n);
+    case "ArrayPattern":
+      return encFormalParameter(n);
+    case "AssignmentPattern":
+      return encFormalParameter(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encFormalParameterPattern(n) {
+  switch (n.type) {
+    case "Identifier":
+      return encBindingIdentifier(n);
+    case "ObjectPattern":
+      return encObjectPattern(n);
+    case "ArrayPattern":
+      return encArrayPattern(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encClassElement(n) {
+  switch (n.type) {
+    case "MethodDefinition":
+      return encMethodDefinition(n);
+    case "PropertyDefinition":
+      return encPropertyDefinition(n);
+    case "AccessorProperty":
+      return encPropertyDefinition(n);
+    case "StaticBlock":
+      return encStaticBlock(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encImportDeclarationSpecifier(n) {
+  switch (n.type) {
+    case "ImportSpecifier":
+      return encImportSpecifier(n);
+    case "ImportDefaultSpecifier":
+      return encImportDefaultSpecifier(n);
+    case "ImportNamespaceSpecifier":
+      return encImportNamespaceSpecifier(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encExportDefaultDeclarationKind(n) {
+  switch (n.type) {
+    case "FunctionDeclaration":
+      return encFunction(n);
+    case "ClassDeclaration":
+      return encClass(n);
+    default: return encExpr(n);
+  }
+}
+
+function encJsxElementName(n) {
+  switch (n.type) {
+    case "JSXIdentifier":
+      return encJsxIdentifier(n);
+    case "JSXMemberExpression":
+      return encJsxMemberExpression(n);
+    case "JSXNamespacedName":
+      return encJsxNamespacedName(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encJsxMemberExpressionObject(n) {
+  switch (n.type) {
+    case "JSXIdentifier":
+      return encJsxIdentifier(n);
+    case "JSXMemberExpression":
+      return encJsxMemberExpression(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encJsxAttributeName(n) {
+  switch (n.type) {
+    case "JSXIdentifier":
+      return encJsxIdentifier(n);
+    case "JSXNamespacedName":
+      return encJsxNamespacedName(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encJsxAttributeItem(n) {
+  switch (n.type) {
+    case "JSXAttribute":
+      return encJsxAttribute(n);
+    case "JSXSpreadAttribute":
+      return encJsxSpreadAttribute(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encJsxAttributeValue(n) {
+  if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });
+  switch (n.type) {
+    case "Literal":
+      return encStringLiteral(n);
+    case "JSXElement":
+      return encJsxElement(n);
+    case "JSXExpressionContainer":
+      return encJsxExpressionContainer(n);
+    case "JSXFragment":
+      return encJsxFragment(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+function encJsxExpression(n) {
+  switch (n.type) {
+    case "JSXEmptyExpression":
+      return encJsxEmptyExpression(n);
+    default: return encExpr(n);
+  }
+}
+
+function encJsxChild(n) {
+  switch (n.type) {
+    case "JSXText":
+      return encJsxText(n);
+    case "JSXElement":
+      return encJsxElement(n);
+    case "JSXExpressionContainer":
+      return encJsxExpressionContainer(n);
+    case "JSXFragment":
+      return encJsxFragment(n);
+    case "JSXSpreadChild":
+      return encJsxSpreadChild(n);
+    default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+  }
+}
+
+
+function encodeJs(program) {
+  try {
+    return _encodeJs(program);
+  } finally {
+    clearState();
+  }
+}
+
+function _encodeJs(program) {
+  const sizeHint = program.end || 0;
+  const buffers = reusableBuffers ?? createBuffers(sizeHint);
+  reusableBuffers = undefined;
+  ({
+    nodeCapacity, spans, kinds, payloadBuffer, payload,
+    extraCapacity, extraBuffer, extra, poolCapacity, pool,
+  } = buffers);
+  nodeCount = extraCount = poolLength = 0;
+  hasWtf8 = false;
+  isTs = 0;
+  firstNonAsciiPos = NULL;
+
+  // Fields and padding not explicitly written by a node must remain zero.
+  new Uint8Array(payloadBuffer).fill(0, 0, buffers.nodeCount * 16);
+  new Uint8Array(extraBuffer).fill(0, 0, buffers.extraCount * 4);
+  const root = encProgram(program);
+  const header = buffers.header;
+  const view = new DataView(header.buffer);
+
+  view.setUint32(0, nodeCount, true);
+  view.setUint32(4, extraCount, true);
+  // A source section must be valid UTF-8. Move strings containing lone
+  // surrogates into the extra WTF-8 pool without changing any string offset.
+  view.setUint32(8, hasWtf8 ? poolLength : 0, true);
+  view.setUint32(12, hasWtf8 ? 0 : poolLength, true);
+  view.setUint32(16, 0, true);
+  view.setUint32(20, 0, true);
+  view.setUint32(24, 0, true);
+  view.setUint32(28, root, true);
+  const sourceType = enumValue(1, program.sourceType);
+  view.setUint32(32, sourceType | ((isTs !== 0) << 2), true);
+  view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
+
+  let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);
+  if (!NATIVE_LITTLE_ENDIAN) {
+    spanBytes = new Uint8Array(nodeCount * 8);
+    const spanView = new DataView(spanBytes.buffer);
+    for (let index = 0; index < nodeCount * 2; index++) {
+      spanView.setUint32(index * 4, spans[index], true);
+    }
+  }
+  const parts = [
+    header,
+    spanBytes,
+    kinds.subarray(0, nodeCount),
+    new Uint8Array(payloadBuffer, 0, nodeCount * 16),
+    new Uint8Array(extraBuffer, 0, extraCount * 4),
+    pool.subarray(0, poolLength),
+  ];
+  const bufferCapacityBytes = spans.byteLength + kinds.byteLength +
+    payloadBuffer.byteLength + extraBuffer.byteLength + pool.byteLength;
+  if (bufferCapacityBytes <= MAX_ENCODER_CACHE_BYTES) {
+    Object.assign(buffers, {
+      nodeCapacity, spans, kinds, payloadBuffer, payload, nodeCount,
+      extraCapacity, extraBuffer, extra, extraCount, poolCapacity, pool,
+    });
+    reusableBuffers = buffers;
+  }
+  return parts;
+}
+
+export { encodeJs };

@@ -1,1 +1,1022 @@
-let NULL=-1,HEADER_SIZE=40,NATIVE_LITTLE_ENDIAN=1===new Uint8Array(new Int32Array([1]).buffer)[0],utf8Slice="u">typeof Buffer&&"function"==typeof Buffer.prototype.utf8Slice?Buffer.prototype.utf8Slice:(()=>{let e=new TextDecoder("utf-8",{ignoreBOM:!0});return function(t,r){return e.decode(this.subarray(t,r));};})(),fromCharCode=String.fromCharCode,shortStringChars=Array(65);for(let length=0;length<=64;length++)shortStringChars[length]=Array(length).fill(0);let ENUMS=Object.freeze([["js","ts","jsx","tsx","dts"],["module","script","commonjs","unambiguous"],["constructor","method","get","set"],["ClassDeclaration","ClassExpression"],["==","!=","===","!==","<","<=",">",">=","+","-","*","/","%","**","|","^","&","<<",">>",">>>","in","instanceof"],["&&","||","??"],["-","+","!","~","typeof","void","delete"],["++","--"],["=","+=","-=","*=","/=","%=","**=","<<=",">>=",">>>=","|=","^=","&=","||=","&&=","??="],["var","let","const","using","await using"],["FunctionDeclaration","FunctionExpression"],["formal","unique","arrow","signature"],["init","get","set"],["source","defer"]]);function decodePool(e){let t=e.length;if(t<=64){let r=shortStringChars[t],a=0;for(;a<t;a++){let t=e[a];if(t>=128)break;r[a]=t;}if(a===t)return fromCharCode.apply(null,r);}let r=!1;for(let t of e)if(237===t){r=!0;break;}if(!r)return utf8Slice.call(e,0,t);let a="";for(let t=0;t<e.length;){let r=e[t];r<128?(a+=String.fromCharCode(r),t++):r<224?(a+=String.fromCharCode((31&r)<<6|63&e[t+1]),t+=2):r<240?(a+=String.fromCharCode((15&r)<<12|(63&e[t+1])<<6|63&e[t+2]),t+=3):(a+=String.fromCodePoint((7&r)<<18|(63&e[t+1])<<12|(63&e[t+2])<<6|63&e[t+3]),t+=4);}return a;}function copyLittleEndianI32(e){let t=new Int32Array(e.byteLength>>2);for(let r=0;r+4<=e.byteLength;r+=4)t[r>>2]=e.getInt32(r,!0);return t;}export function decodeJs(e,t,r){let a,n,s,i=e instanceof ArrayBuffer?e:e.buffer,o=e.byteOffset??0,l=e.byteLength;if(l>0x7fffffff)throw RangeError("AST buffer exceeds signed 32-bit range");let c=new Uint8Array(i,o,l),p=new DataView(i,o,l),y=NATIVE_LITTLE_ENDIAN&&(3&o)===0?new Int32Array(i,o,l>>2):copyLittleEndianI32(p),b=y[0],g=y[1],u=p.getUint32(8,!0),k=p.getUint32(12,!0);if(k+u>0x7fffffff)throw RangeError("AST string offsets exceed signed 32-bit range");let d=y[4],f=y[6],m=y[7],h=y[8],S=40+8*b,E=S+b+7&-8,x=E+16*b,U=x+4*g,A=U+(u+3&-4),w=A+16*d,C=(e,t)=>decodePool(c.subarray(U+e-k,U+t-k)),I=(e,t)=>{let r=ENUMS[e];return void 0!==r&&t<r.length?r[t]:t;},v=I(1,3&h),L=(e,t)=>255===t?null:I(e,t),D=e=>-1===e?null:P(e),T=(e,t,r)=>{let a=Array(t-e);for(let n=e;n<t;n++){let t=y[(x>>2)+n];a[n-e]=r&&-1===t?null:P(t);}return a;},J=(e,t,r,a)=>{let n=Array(t-e+a-r),s=0;for(let r=e;r<t;r++)n[s++]=P(y[(x>>2)+r]);for(let e=r;e<a;e++)n[s++]=P(y[(x>>2)+e]);return n;};function P(e){let r,a=40+8*e,n=y[a>>2],s=y[(a>>2)+1],i=E+16*e;switch(c[S+e]){case 0:{let e=y[i+12>>2];r={type:"Program",start:n,end:s,sourceType:v,hashbang:D(y[i+8>>2]),body:J(y[i+0>>2],y[i+0+4>>2],y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2])};break;}case 1:r={type:"Super",start:n,end:s};break;case 2:r={type:"ThisExpression",start:n,end:s};break;case 3:{let e=y[i+0>>2]===y[i+0+4>>2]?"":y[i+0>>2]<k?t.slice(n+1,s-1):C(y[i+0>>2],y[i+0+4>>2]),a=t.slice(n,s);r={type:"Literal",start:n,end:s,value:e,raw:a};break;}case 4:{let e=p.getFloat64(i+0,!0),a=t.slice(n,s);r={type:"Literal",start:n,end:s,value:e,raw:a};break;}case 5:{let e=BigInt(t.slice(n,s-1).replaceAll("_",""));r={type:"Literal",start:n,end:s,value:e,raw:t.slice(n,s),bigint:e.toString()};break;}case 6:{let e=0!==p.getUint8(i+0);r={type:"Literal",start:n,end:s,value:e,raw:e?"true":"false"};break;}case 7:r={type:"Literal",start:n,end:s,value:null,raw:"null"};break;case 8:{let e=t.lastIndexOf("/",s-1),a=t.slice(n+1,e),i=t.slice(e+1,s),o=null;try{o=new RegExp(a,i);}catch{}r={type:"Literal",start:n,end:s,value:o,raw:t.slice(n,s),regex:{pattern:a,flags:[...i].sort().join("")}};break;}case 9:r={type:"TemplateLiteral",start:n,end:s,quasis:T(y[i+0>>2],y[i+0+4>>2],!1),expressions:T(y[i+8>>2],y[i+8+4>>2],!1)};break;case 10:{let e=y[i+0>>2]===y[i+0+4>>2]?"":y[i+0>>2]<k?t.slice(n,s):C(y[i+0>>2],y[i+0+4>>2]),a=t.slice(n,s).replace(/\r\n?/g,"\n"),o=0!==p.getUint8(i+8);r={type:"TemplateElement",start:n,end:s,value:{raw:a,cooked:0!==p.getUint8(i+9)?null:e},tail:o};break;}case 11:case 13:case 14:case 15:r={type:"Identifier",start:n,end:s,name:y[i+0>>2]<k?t.slice(n,s):C(y[i+0>>2],y[i+0+4>>2])};break;case 12:r={type:"PrivateIdentifier",start:n,end:s,name:y[i+0>>2]<k?t.slice(n+1,s):C(y[i+0>>2],y[i+0+4>>2])};break;case 16:r={type:"AssignmentPattern",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2])};break;case 17:r={type:"RestElement",start:n,end:s,argument:P(y[i+0>>2])};break;case 18:{let e=T(y[i+0>>2],y[i+0+4>>2],!0),t=D(y[i+8>>2]);null!==t&&e.push(t),r={type:"ArrayPattern",start:n,end:s,elements:e};break;}case 19:{let e=T(y[i+0>>2],y[i+0+4>>2],!1),t=D(y[i+8>>2]);null!==t&&e.push(t),r={type:"ObjectPattern",start:n,end:s,properties:e};break;}case 20:r={type:"Property",start:n,end:s,kind:"init",key:P(y[i+0>>2]),value:P(y[i+4>>2]),method:!1,shorthand:0!==p.getUint8(i+8),computed:0!==p.getUint8(i+9)};break;case 21:r={type:"BinaryExpression",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2]),operator:I(4,p.getUint8(i+8))};break;case 22:r={type:"LogicalExpression",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2]),operator:I(5,p.getUint8(i+8))};break;case 23:r={type:"ConditionalExpression",start:n,end:s,test:P(y[i+0>>2]),consequent:P(y[i+4>>2]),alternate:P(y[i+8>>2])};break;case 24:{let e=P(y[i+0>>2]);r={type:"UnaryExpression",start:n,end:s,operator:I(6,p.getUint8(i+4)),prefix:!0,argument:e};break;}case 25:r={type:"UpdateExpression",start:n,end:s,argument:P(y[i+0>>2]),operator:I(7,p.getUint8(i+4)),prefix:0!==p.getUint8(i+5)};break;case 26:r={type:"AssignmentExpression",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2]),operator:I(8,p.getUint8(i+8))};break;case 27:r={type:"VariableDeclaration",start:n,end:s,kind:I(9,p.getUint8(i+8)),declarations:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 28:r={type:"VariableDeclarator",start:n,end:s,id:P(y[i+0>>2]),init:D(y[i+8>>2])};break;case 29:r={type:"IfStatement",start:n,end:s,test:P(y[i+0>>2]),consequent:P(y[i+4>>2]),alternate:D(y[i+8>>2])};break;case 30:r={type:"SwitchStatement",start:n,end:s,discriminant:P(y[i+8>>2]),cases:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 31:r={type:"SwitchCase",start:n,end:s,test:D(y[i+8>>2]),consequent:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 32:r={type:"ForStatement",start:n,end:s,init:D(y[i+0>>2]),test:D(y[i+4>>2]),update:D(y[i+8>>2]),body:P(y[i+12>>2])};break;case 33:r={type:"ForInStatement",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2]),body:P(y[i+8>>2])};break;case 34:r={type:"ForOfStatement",start:n,end:s,left:P(y[i+0>>2]),right:P(y[i+4>>2]),body:P(y[i+8>>2]),await:0!==p.getUint8(i+12)};break;case 35:r={type:"TryStatement",start:n,end:s,block:P(y[i+0>>2]),handler:D(y[i+4>>2]),finalizer:D(y[i+8>>2])};break;case 36:r={type:"CatchClause",start:n,end:s,param:D(y[i+0>>2]),body:P(y[i+8>>2])};break;case 37:r={type:"BreakStatement",start:n,end:s,label:D(y[i+0>>2])};break;case 38:r={type:"ContinueStatement",start:n,end:s,label:D(y[i+0>>2])};break;case 39:r={type:"LabeledStatement",start:n,end:s,label:P(y[i+0>>2]),body:P(y[i+4>>2])};break;case 40:r={type:"ExpressionStatement",start:n,end:s,expression:P(y[i+0>>2])};break;case 41:r={type:"ReturnStatement",start:n,end:s,argument:D(y[i+0>>2])};break;case 42:r={type:"ThrowStatement",start:n,end:s,argument:P(y[i+0>>2])};break;case 43:r={type:"DebuggerStatement",start:n,end:s};break;case 44:r={type:"EmptyStatement",start:n,end:s};break;case 45:{let e=P(y[i+8>>2]),a=y[i+0>>2]===y[i+0+4>>2]?"":y[i+0>>2]<k?t.slice(e.start+1,e.end-1):C(y[i+0>>2],y[i+0+4>>2]);r={type:"ExpressionStatement",start:n,end:s,expression:e,directive:a};break;}case 46:r={type:"Decorator",start:n,end:s,expression:P(y[i+0>>2])};break;case 47:{let e=y[i+12>>2];r={type:I(3,p.getUint8(i+8)),start:n,end:s,decorators:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),id:D(y[i+0>>2]),superClass:D(y[x+(e+2)*4>>2]),body:P(y[x+(e+6)*4>>2])};break;}case 48:r={type:"ClassBody",start:n,end:s,body:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 49:{let e=y[i+12>>2];r={type:"MethodDefinition",start:n,end:s,decorators:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),key:P(y[i+0>>2]),value:P(y[x+(e+2)*4>>2]),kind:I(2,p.getUint8(i+4)),computed:0!==p.getUint8(i+5),static:0!==p.getUint8(i+6)};break;}case 50:{let e=y[i+12>>2],t=T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),a=P(y[x+(e+2)*4>>2]),o=D(y[x+(e+4)*4>>2]),l=0!==p.getUint8(i+0),c=0!==p.getUint8(i+1);r={type:0!==p.getUint8(i+2)?"AccessorProperty":"PropertyDefinition",start:n,end:s,decorators:t,key:a,value:o,computed:l,static:c};break;}case 51:r={type:"StaticBlock",start:n,end:s,body:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 52:{let e=y[i+12>>2],t=I(10,p.getUint8(i+8)),a=D(y[i+0>>2]),o=P(y[x+(e+1)*4>>2]),l=P(y[x+(e+3)*4>>2]);r={type:t,start:n,end:s,id:a,generator:0!==p.getUint8(i+9),async:0!==p.getUint8(i+10),params:o.params,body:l,expression:!1};break;}case 53:r={type:"BlockStatement",start:n,end:s,body:J(y[i+0>>2],y[i+0+4>>2],y[i+8>>2],y[i+8+4>>2])};break;case 54:r={type:"BlockStatement",start:n,end:s,body:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 55:r={type:"WhileStatement",start:n,end:s,test:P(y[i+0>>2]),body:P(y[i+4>>2])};break;case 56:r={type:"DoWhileStatement",start:n,end:s,body:P(y[i+0>>2]),test:P(y[i+4>>2])};break;case 57:r={type:"WithStatement",start:n,end:s,object:P(y[i+0>>2]),body:P(y[i+4>>2])};break;case 58:{let e=T(y[i+0>>2],y[i+0+4>>2],!1),t=D(y[i+8>>2]);null!==t&&e.push(t),r={params:e};break;}case 59:{let e=y[i+12>>2],t=P(y[i+0>>2]),a=D(y[x+(e+2)*4>>2]);null===a?(r=t).end=s:r={type:"AssignmentPattern",start:t.start,end:s,left:t,right:a};break;}case 60:r={type:"RestElement",start:n,end:s,argument:P(y[i+8>>2])};break;case 61:r={type:"ArrayExpression",start:n,end:s,elements:T(y[i+0>>2],y[i+0+4>>2],!0)};break;case 62:r={type:"ObjectExpression",start:n,end:s,properties:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 63:r={type:"SpreadElement",start:n,end:s,argument:P(y[i+0>>2])};break;case 64:r={type:"Property",start:n,end:s,key:P(y[i+0>>2]),value:P(y[i+4>>2]),kind:I(12,p.getUint8(i+8)),method:0!==p.getUint8(i+9),shorthand:0!==p.getUint8(i+10),computed:0!==p.getUint8(i+11)};break;case 65:r={type:"ParenthesizedExpression",start:n,end:s,expression:P(y[i+0>>2])};break;case 66:{let e=y[i+12>>2],t=0!==p.getUint8(i+8),a=0!==p.getUint8(i+9),o=P(y[i+4>>2]),l=P(y[x+(e+1)*4>>2]);r={type:"ArrowFunctionExpression",start:n,end:s,id:null,generator:!1,async:a,params:o.params,body:l,expression:t};break;}case 67:r={type:"SequenceExpression",start:n,end:s,expressions:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 68:r={type:"MemberExpression",start:n,end:s,object:P(y[i+0>>2]),property:P(y[i+4>>2]),computed:0!==p.getUint8(i+8),optional:0!==p.getUint8(i+9)};break;case 69:{let e=y[i+12>>2];r={type:"CallExpression",start:n,end:s,callee:P(y[i+0>>2]),arguments:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),optional:0!==p.getUint8(i+8)};break;}case 70:r={type:"ChainExpression",start:n,end:s,expression:P(y[i+0>>2])};break;case 71:r={type:"TaggedTemplateExpression",start:n,end:s,tag:P(y[i+0>>2]),quasi:P(y[i+8>>2])};break;case 72:r={type:"NewExpression",start:n,end:s,callee:P(y[i+8>>2]),arguments:T(y[i+0>>2],y[i+0+4>>2],!1)};break;case 73:r={type:"AwaitExpression",start:n,end:s,argument:P(y[i+0>>2])};break;case 74:r={type:"YieldExpression",start:n,end:s,argument:D(y[i+0>>2]),delegate:0!==p.getUint8(i+4)};break;case 75:r={type:"MetaProperty",start:n,end:s,meta:P(y[i+0>>2]),property:P(y[i+4>>2])};break;case 76:{let e=y[i+12>>2];r={type:"ImportExpression",start:n,end:s,source:P(y[i+0>>2]),options:D(y[i+4>>2]),phase:L(13,p.getUint8(x+(e+0)*4))};break;}case 77:{let e=y[i+12>>2];r={type:"ImportDeclaration",start:n,end:s,specifiers:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),source:P(y[i+0>>2]),attributes:T(y[x+(e+2)*4>>2],y[x+(e+2)*4+4>>2],!1),phase:L(13,p.getUint8(x+(e+4)*4))};break;}case 78:r={type:"ImportSpecifier",start:n,end:s,imported:P(y[i+0>>2]),local:P(y[i+4>>2])};break;case 79:r={type:"ImportDefaultSpecifier",start:n,end:s,local:P(y[i+0>>2])};break;case 80:r={type:"ImportNamespaceSpecifier",start:n,end:s,local:P(y[i+0>>2])};break;case 81:r={type:"ImportAttribute",start:n,end:s,key:P(y[i+0>>2]),value:P(y[i+4>>2])};break;case 82:{let e=y[i+12>>2];r={type:"ExportNamedDeclaration",start:n,end:s,declaration:D(y[i+0>>2]),specifiers:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),source:D(y[i+4>>2]),attributes:T(y[x+(e+2)*4>>2],y[x+(e+2)*4+4>>2],!1)};break;}case 83:r={type:"ExportDefaultDeclaration",start:n,end:s,declaration:P(y[i+0>>2])};break;case 84:{let e=y[i+12>>2];r={type:"ExportAllDeclaration",start:n,end:s,exported:D(y[i+0>>2]),source:P(y[i+4>>2]),attributes:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1)};break;}case 85:r={type:"ExportSpecifier",start:n,end:s,local:P(y[i+0>>2]),exported:P(y[i+4>>2])};break;case 86:r={type:"Hashbang",start:n,end:s,value:y[i+0>>2]===y[i+0+4>>2]?"":y[i+0>>2]<k?t.slice(n+2,s):C(y[i+0>>2],y[i+0+4>>2])};break;case 161:r={type:"JSXElement",start:n,end:s,openingElement:P(y[i+8>>2]),children:T(y[i+0>>2],y[i+0+4>>2],!1),closingElement:D(y[i+12>>2])};break;case 162:{let e=y[i+12>>2];r={type:"JSXOpeningElement",start:n,end:s,name:P(y[i+0>>2]),attributes:T(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),selfClosing:0!==p.getUint8(i+8)};break;}case 163:r={type:"JSXClosingElement",start:n,end:s,name:P(y[i+0>>2])};break;case 164:r={type:"JSXFragment",start:n,end:s,openingFragment:P(y[i+8>>2]),children:T(y[i+0>>2],y[i+0+4>>2],!1),closingFragment:P(y[i+12>>2])};break;case 165:r={type:"JSXOpeningFragment",start:n,end:s};break;case 166:r={type:"JSXClosingFragment",start:n,end:s};break;case 167:r={type:"JSXIdentifier",start:n,end:s,name:y[i+0>>2]<k?t.slice(n,s):C(y[i+0>>2],y[i+0+4>>2])};break;case 168:r={type:"JSXNamespacedName",start:n,end:s,namespace:P(y[i+0>>2]),name:P(y[i+4>>2])};break;case 169:r={type:"JSXMemberExpression",start:n,end:s,object:P(y[i+0>>2]),property:P(y[i+4>>2])};break;case 170:r={type:"JSXAttribute",start:n,end:s,name:P(y[i+0>>2]),value:D(y[i+4>>2])};break;case 171:r={type:"JSXSpreadAttribute",start:n,end:s,argument:P(y[i+0>>2])};break;case 172:r={type:"JSXExpressionContainer",start:n,end:s,expression:P(y[i+0>>2])};break;case 173:r={type:"JSXEmptyExpression",start:n,end:s};break;case 174:{let e=t.slice(n,s);r={type:"JSXText",start:n,end:s,value:e,raw:e};break;}case 175:r={type:"JSXSpreadChild",start:n,end:s,expression:P(y[i+0>>2])};break;default:throw RangeError(`Unknown AST node kind ${c[S+e]}`);}return r;}return{get program(){return void 0!==a?a:a=P(m);},get comments(){return void 0!==n?n:n=(()=>{let e=Array(d);for(let r=0;r<d;r++){let a=A+16*r,n=y[a>>2],s=y[(a>>2)+1],i=t.charCodeAt(n),o=+(42===t.charCodeAt(n+1)),l=n+(60===i?4:45===i?3:2),c=s-2*(1===o);e[r]={type:1===o?"Block":"Line",value:t.slice(l,c),start:n,end:s};}return e;})();},get diagnostics(){return void 0!==s?s:s=(()=>{let e=w,t=()=>c[e++],r=()=>{let t=p.getUint32(e,!0);return e+=4,t;},a=()=>{let t=r(),a=utf8Slice.call(c,e,e+t);return e+=t,a;},n=["error","warning","hint","info"],s=Array(f);for(let e=0;e<f;e++){let i=t(),o=n[i];if(void 0===o)throw RangeError(`Unknown diagnostic severity ${i}`);let l=r(),c=r(),p=a(),y=0===t()?void 0:a(),b=r(),g=Array(b);for(let e=0;e<b;e++)g[e]={start:r(),end:r(),message:a()};s[e]={severity:o,message:p,start:l,end:c,help:y,labels:g};}return s;})();}};}
+// generated by tasks/ast_tools, do not edit
+
+const NULL = -1;
+const HEADER_SIZE = 40;
+const NATIVE_LITTLE_ENDIAN =
+  new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
+const utf8Slice = typeof Buffer !== "undefined" &&
+  typeof Buffer.prototype.utf8Slice === "function"
+  ? Buffer.prototype.utf8Slice
+  : (() => {
+      const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+      return function(start, end) {
+        return decoder.decode(this.subarray(start, end));
+      };
+    })();
+const fromCharCode = String.fromCharCode;
+const shortStringChars = Array(65);
+for (let length = 0; length <= 64; length++) {
+  shortStringChars[length] = Array(length).fill(0);
+}
+
+const ENUMS = Object.freeze([
+  ["js", "ts", "jsx", "tsx", "dts"], // Lang
+  ["module", "script", "commonjs", "unambiguous"], // SourceType
+  ["constructor", "method", "get", "set"], // MethodDefinitionKind
+  ["ClassDeclaration", "ClassExpression"], // ClassType
+  ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"], // BinaryOperator
+  ["&&", "||", "??"], // LogicalOperator
+  ["-", "+", "!", "~", "typeof", "void", "delete"], // UnaryOperator
+  ["++", "--"], // UpdateOperator
+  ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="], // AssignmentOperator
+  ["var", "let", "const", "using", "await using"], // VariableKind
+  ["FunctionDeclaration", "FunctionExpression"], // FunctionType
+  ["formal", "unique", "arrow", "signature"], // FormalParameterKind
+  ["init", "get", "set"], // PropertyKind
+  ["source", "defer"], // ImportPhase
+
+]);
+
+function decodePool(bytes) {
+  const length = bytes.length;
+  if (length <= 64) {
+    const chars = shortStringChars[length];
+    let i = 0;
+    for (; i < length; i++) {
+      const byte = bytes[i];
+      if (byte >= 0x80) break;
+      chars[i] = byte;
+    }
+    if (i === length) return fromCharCode.apply(null, chars);
+  }
+  let hasSurrogate = false;
+  for (const byte of bytes) {
+    if (byte === 0xed) {
+      hasSurrogate = true;
+      break;
+    }
+  }
+  if (!hasSurrogate) return utf8Slice.call(bytes, 0, length);
+
+  let result = "";
+  for (let i = 0; i < bytes.length;) {
+    const first = bytes[i];
+    if (first < 0x80) {
+      result += String.fromCharCode(first);
+      i++;
+    } else if (first < 0xe0) {
+      result += String.fromCharCode(((first & 0x1f) << 6) | (bytes[i + 1] & 0x3f));
+      i += 2;
+    } else if (first < 0xf0) {
+      result += String.fromCharCode(
+        ((first & 0x0f) << 12) |
+        ((bytes[i + 1] & 0x3f) << 6) |
+        (bytes[i + 2] & 0x3f),
+      );
+      i += 3;
+    } else {
+      result += String.fromCodePoint(
+        ((first & 0x07) << 18) |
+        ((bytes[i + 1] & 0x3f) << 12) |
+        ((bytes[i + 2] & 0x3f) << 6) |
+        (bytes[i + 3] & 0x3f),
+      );
+      i += 4;
+    }
+  }
+  return result;
+}
+
+function copyLittleEndianI32(view) {
+  const i32 = new Int32Array(view.byteLength >> 2);
+  for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
+    i32[offset >> 2] = view.getInt32(offset, true);
+  }
+  return i32;
+}
+export function decodeJs(buffer, source, sourceBuffer) {
+
+  const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
+  const byteOffset = buffer.byteOffset ?? 0;
+  const byteLength = buffer.byteLength;
+  if (byteLength > 0x7fffffff) {
+    throw new RangeError("AST buffer exceeds signed 32-bit range");
+  }
+  const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
+  const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
+  const _i32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
+    ? new Int32Array(arrayBuffer, byteOffset, byteLength >> 2)
+    : copyLittleEndianI32(_dv);
+  const nodeCount = _i32[0];
+  const extraCount = _i32[1];
+  const stringPoolLength = _dv.getUint32(8, true);
+  const sourceLength = _dv.getUint32(12, true);
+  if (sourceLength + stringPoolLength > 0x7fffffff) {
+    throw new RangeError("AST string offsets exceed signed 32-bit range");
+  }
+  const commentCount = _i32[4];
+  const diagnosticCount = _i32[6];
+  const programIndex = _i32[7];
+  const flags = _i32[8];
+
+  const spans = HEADER_SIZE;
+  const kinds = spans + nodeCount * 8;
+  const payloads = (kinds + nodeCount + 7) & ~7;
+  const extra = payloads + nodeCount * 16;
+  const strings = extra + extraCount * 4;
+  const comments = strings + ((stringPoolLength + 3) & ~3);
+  const diagnostics = comments + commentCount * 16;
+  const str = (start, end) => decodePool(bytes.subarray(
+    strings + start - sourceLength,
+    strings + end - sourceLength,
+  ));
+  const enumValue = (index, value) => {
+    const values = ENUMS[index];
+    return values !== undefined && value < values.length ? values[value] : value;
+  };
+  const sourceType = enumValue(1, flags & 3);
+  const optionalEnum = (index, value) =>
+    value === 0xff ? null : enumValue(index, value);
+  const optionalNode = index => index === NULL ? null : node(index);
+  const nodeArray = (start, end, holes) => {
+    const result = new Array(end - start);
+    for (let i = start; i < end; i++) {
+      const index = _i32[(extra >> 2) + i];
+      result[i - start] = holes && index === NULL ? null : node(index);
+    }
+    return result;
+  };
+  const nodeArrayPair = (firstStart, firstEnd, secondStart, secondEnd) => {
+    const result = new Array(firstEnd - firstStart + secondEnd - secondStart);
+    let out = 0;
+    for (let i = firstStart; i < firstEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i]);
+    }
+    for (let i = secondStart; i < secondEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i]);
+    }
+    return result;
+  };
+
+  const _decodeComments = () => {
+    const result = new Array(commentCount);
+    for (let index = 0; index < commentCount; index++) {
+      const offset = comments + index * 16;
+      const start = _i32[offset >> 2];
+      const end = _i32[(offset >> 2) + 1];
+      const first = source.charCodeAt(start);
+      const kind = source.charCodeAt(start + 1) === 0x2a ? 1 : 0;
+      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = end - (kind === 1 ? 2 : 0);
+      result[index] = {
+        type: kind === 1 ? "Block" : "Line",
+        value: source.slice(valueStart, valueEnd),
+        start,
+        end,
+      };
+    }
+    return result;
+  };
+
+  const _decodeDiagnostics = () => {
+    let offset = diagnostics;
+    const readU8 = () => bytes[offset++];
+    const readU32 = () => {
+      const value = _dv.getUint32(offset, true);
+      offset += 4;
+      return value;
+    };
+    const readDiagnosticString = () => {
+      const length = readU32();
+      const value = utf8Slice.call(bytes, offset, offset + length);
+      offset += length;
+      return value;
+    };
+    const severities = ["error", "warning", "hint", "info"];
+    const result = new Array(diagnosticCount);
+    for (let index = 0; index < diagnosticCount; index++) {
+      const severityValue = readU8();
+      const severity = severities[severityValue];
+      if (severity === undefined) {
+        throw new RangeError(`Unknown diagnostic severity ${severityValue}`);
+      }
+      const start = readU32();
+      const end = readU32();
+      const message = readDiagnosticString();
+      const help = readU8() === 0 ? undefined : readDiagnosticString();
+      const labelCount = readU32();
+      const labels = new Array(labelCount);
+      for (let label = 0; label < labelCount; label++) {
+        labels[label] = {
+          start: readU32(),
+          end: readU32(),
+          message: readDiagnosticString(),
+        };
+      }
+      result[index] = { severity, message, start, end, help, labels };
+    }
+    return result;
+  };
+
+  // Each reference is decoded into a fresh value, so parents can finish their
+  // owned children in place before exposing the result.
+  function node(index) {
+    const span = spans + index * 8;
+    const start = _i32[span >> 2];
+    const end = _i32[(span >> 2) + 1];
+    const payload = payloads + index * 16;
+    let result;
+    switch (bytes[kinds + index]) {
+      case 0: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_hashbang = optionalNode(_i32[(payload + 8) >> 2]);
+        const body = nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2]);
+        result = { type: "Program", start, end, sourceType, hashbang: f_hashbang, body };
+        break;
+      }
+      case 1: {
+        result = { type: "Super", start, end,
+        };
+        break;
+      }
+      case 2: {
+        result = { type: "ThisExpression", start, end,
+        };
+        break;
+      }
+      case 3: {
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
+        result = { type: "Literal", start, end, value: f_value, raw: f_raw };
+        break;
+      }
+      case 4: {
+        const f_value = _dv.getFloat64(payload + 0, true);
+        const f_raw = source.slice(start, end);
+        const value = f_value;
+        result = { type: "Literal", start, end, value, raw: f_raw };
+        break;
+      }
+      case 5: {
+        const f_raw = source.slice(start, end - 1);
+        const value = BigInt(f_raw.replaceAll("_", ""));
+        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
+        break;
+      }
+      case 6: {
+        const f_value = _dv.getUint8(payload + 0) !== 0;
+        result = {
+          type: "Literal", start, end,
+          value: f_value, raw: f_value ? "true" : "false",
+        };
+        break;
+      }
+      case 7: {
+        result = { type: "Literal", start, end, value: null, raw: "null" };
+        break;
+      }
+      case 8: {
+        const separator = source.lastIndexOf("/", end - 1);
+        const f_pattern = source.slice(start + 1, separator);
+        const f_flags = source.slice(separator + 1, end);
+        let value = null;
+        try {
+          value = new RegExp(f_pattern, f_flags);
+        } catch {}
+        result = {
+          type: "Literal", start, end, value,
+          raw: source.slice(start, end),
+          regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
+        };
+        break;
+      }
+      case 9: {
+        result = { type: "TemplateLiteral", start, end,
+          quasis: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          expressions: nodeArray(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 10: {
+        const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end).replace(/\r\n?/g, "\n");
+        const f_tail = _dv.getUint8(payload + 8) !== 0;
+        const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
+        result = { type: "TemplateElement", start, end, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
+        break;
+      }
+      case 11: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 12: {
+        result = { type: "PrivateIdentifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 13: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 14: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 15: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 16: {
+        result = { type: "AssignmentPattern", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 17: {
+        result = { type: "RestElement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 18: {
+        const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_elements.push(f_rest);
+        result = { type: "ArrayPattern", start, end, elements: f_elements };
+        break;
+      }
+      case 19: {
+        const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_properties.push(f_rest);
+        result = { type: "ObjectPattern", start, end, properties: f_properties };
+        break;
+      }
+      case 20: {
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_value = node(_i32[(payload + 4) >> 2]);
+        const f_shorthand = _dv.getUint8(payload + 8) !== 0;
+        const f_computed = _dv.getUint8(payload + 9) !== 0;
+        result = {
+          type: "Property", start, end, kind: "init",
+          key: f_key, value: f_value,
+          method: false, shorthand: f_shorthand, computed: f_computed,
+        };
+        break;
+      }
+      case 21: {
+        result = { type: "BinaryExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(4, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 22: {
+        result = { type: "LogicalExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(5, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 23: {
+        result = { type: "ConditionalExpression", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 24: {
+        const f_argument = node(_i32[(payload + 0) >> 2]);
+        const f_operator = enumValue(6, _dv.getUint8(payload + 4));
+        result = {
+          type: "UnaryExpression", start, end,
+          operator: f_operator, prefix: true, argument: f_argument,
+        };
+        break;
+      }
+      case 25: {
+        result = { type: "UpdateExpression", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+          operator: enumValue(7, _dv.getUint8(payload + 4)),
+          prefix: _dv.getUint8(payload + 5) !== 0,
+        };
+        break;
+      }
+      case 26: {
+        result = { type: "AssignmentExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(8, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 27: {
+        result = { type: "VariableDeclaration", start, end,
+          kind: enumValue(9, _dv.getUint8(payload + 8)),
+          declarations: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 28: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
+        result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init };
+        break;
+      }
+      case 29: {
+        result = { type: "IfStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 30: {
+        result = { type: "SwitchStatement", start, end,
+          discriminant: node(_i32[(payload + 8) >> 2]),
+          cases: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 31: {
+        result = { type: "SwitchCase", start, end,
+          test: optionalNode(_i32[(payload + 8) >> 2]),
+          consequent: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 32: {
+        result = { type: "ForStatement", start, end,
+          init: optionalNode(_i32[(payload + 0) >> 2]),
+          test: optionalNode(_i32[(payload + 4) >> 2]),
+          update: optionalNode(_i32[(payload + 8) >> 2]),
+          body: node(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 33: {
+        result = { type: "ForInStatement", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          body: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 34: {
+        result = { type: "ForOfStatement", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          body: node(_i32[(payload + 8) >> 2]),
+          await: _dv.getUint8(payload + 12) !== 0,
+        };
+        break;
+      }
+      case 35: {
+        result = { type: "TryStatement", start, end,
+          block: node(_i32[(payload + 0) >> 2]),
+          handler: optionalNode(_i32[(payload + 4) >> 2]),
+          finalizer: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 36: {
+        const f_param = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_body = node(_i32[(payload + 8) >> 2]);
+        result = { type: "CatchClause", start, end, param: f_param, body: f_body };
+        break;
+      }
+      case 37: {
+        result = { type: "BreakStatement", start, end,
+          label: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 38: {
+        result = { type: "ContinueStatement", start, end,
+          label: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 39: {
+        result = { type: "LabeledStatement", start, end,
+          label: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 40: {
+        result = { type: "ExpressionStatement", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 41: {
+        result = { type: "ReturnStatement", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 42: {
+        result = { type: "ThrowStatement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 43: {
+        result = { type: "DebuggerStatement", start, end,
+        };
+        break;
+      }
+      case 44: {
+        result = { type: "EmptyStatement", start, end,
+        };
+        break;
+      }
+      case 45: {
+        const f_expression = node(_i32[(payload + 8) >> 2]);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(f_expression.start + 1, f_expression.end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        result = {
+          type: "ExpressionStatement", start, end,
+          expression: f_expression, directive: f_value,
+        };
+        break;
+      }
+      case 46: {
+        result = { type: "Decorator", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 47: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_classType = enumValue(3, _dv.getUint8(payload + 8));
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_superClass = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_body = node(_i32[(extra + (extraId + 6) * 4) >> 2]);
+        result = {
+          type: f_classType, start, end,
+          decorators: f_decorators,
+          id: f_id,
+          superClass: f_superClass,
+          body: f_body,
+        };
+        break;
+      }
+      case 48: {
+        result = { type: "ClassBody", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 49: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_value = node(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_kind = enumValue(2, _dv.getUint8(payload + 4));
+        const f_computed = _dv.getUint8(payload + 5) !== 0;
+        const f_static = _dv.getUint8(payload + 6) !== 0;
+        result = {
+          type: "MethodDefinition",
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          kind: f_kind,
+          computed: f_computed,
+          static: f_static,
+        };
+        break;
+      }
+      case 50: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_key = node(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_value = optionalNode(_i32[(extra + (extraId + 4) * 4) >> 2]);
+        const f_computed = _dv.getUint8(payload + 0) !== 0;
+        const f_static = _dv.getUint8(payload + 1) !== 0;
+        const f_accessor = _dv.getUint8(payload + 2) !== 0;
+        const accessor = f_accessor;
+        result = {
+          type: accessor ? "AccessorProperty" : "PropertyDefinition",
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          computed: f_computed,
+          static: f_static,
+        };
+        break;
+      }
+      case 51: {
+        result = { type: "StaticBlock", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 52: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_functionType = enumValue(10, _dv.getUint8(payload + 8));
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_params = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        const f_body = node(_i32[(extra + (extraId + 3) * 4) >> 2]);
+        const f_generator = _dv.getUint8(payload + 9) !== 0;
+        const f_async = _dv.getUint8(payload + 10) !== 0;
+        result = {
+          type: f_functionType, start, end,
+          id: f_id,
+          generator: f_generator,
+          async: f_async,
+          params: f_params.params,
+          body: f_body,
+          expression: false,
+        };
+        break;
+      }
+      case 53: {
+        result = { type: "BlockStatement", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
+        break;
+      }
+      case 54: {
+        result = { type: "BlockStatement", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 55: {
+        result = { type: "WhileStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 56: {
+        result = { type: "DoWhileStatement", start, end,
+          body: node(_i32[(payload + 0) >> 2]),
+          test: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 57: {
+        result = { type: "WithStatement", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 58: {
+        const f_items = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_items.push(f_rest);
+        result = { params: f_items };
+        break;
+      }
+      case 59: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_pattern = node(_i32[(payload + 0) >> 2]);
+        const f_initializer = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const left = f_pattern;
+        if (f_initializer === null) {
+          result = left;
+          result.end = end;
+        } else {
+          result = { type: "AssignmentPattern", start: left.start, end, left, right: f_initializer };
+        }
+        break;
+      }
+      case 60: {
+        const f_argument = node(_i32[(payload + 8) >> 2]);
+        result = { type: "RestElement", start, end, argument: f_argument };
+        break;
+      }
+      case 61: {
+        result = { type: "ArrayExpression", start, end,
+          elements: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true),
+        };
+        break;
+      }
+      case 62: {
+        result = { type: "ObjectExpression", start, end,
+          properties: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 63: {
+        result = { type: "SpreadElement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 64: {
+        result = { type: "Property", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+          kind: enumValue(12, _dv.getUint8(payload + 8)),
+          method: _dv.getUint8(payload + 9) !== 0,
+          shorthand: _dv.getUint8(payload + 10) !== 0,
+          computed: _dv.getUint8(payload + 11) !== 0,
+        };
+        break;
+      }
+      case 65: {
+        result = { type: "ParenthesizedExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 66: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_expression = _dv.getUint8(payload + 8) !== 0;
+        const f_async = _dv.getUint8(payload + 9) !== 0;
+        const f_params = node(_i32[(payload + 4) >> 2]);
+        const f_body = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        result = {
+          type: "ArrowFunctionExpression", start, end,
+          id: null, generator: false, async: f_async,
+          params: f_params.params,
+          body: f_body, expression: f_expression,
+        };
+        break;
+      }
+      case 67: {
+        result = { type: "SequenceExpression", start, end,
+          expressions: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 68: {
+        result = { type: "MemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+          optional: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 69: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "CallExpression", start, end,
+          callee: node(_i32[(payload + 0) >> 2]),
+          arguments: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          optional: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 70: {
+        result = { type: "ChainExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 71: {
+        result = { type: "TaggedTemplateExpression", start, end,
+          tag: node(_i32[(payload + 0) >> 2]),
+          quasi: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 72: {
+        result = { type: "NewExpression", start, end,
+          callee: node(_i32[(payload + 8) >> 2]),
+          arguments: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 73: {
+        result = { type: "AwaitExpression", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 74: {
+        result = { type: "YieldExpression", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+          delegate: _dv.getUint8(payload + 4) !== 0,
+        };
+        break;
+      }
+      case 75: {
+        result = { type: "MetaProperty", start, end,
+          meta: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 76: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ImportExpression", start, end,
+          source: node(_i32[(payload + 0) >> 2]),
+          options: optionalNode(_i32[(payload + 4) >> 2]),
+          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 0) * 4)),
+        };
+        break;
+      }
+      case 77: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ImportDeclaration", start, end,
+          specifiers: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          source: node(_i32[(payload + 0) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 2) * 4) >> 2], _i32[(extra + (extraId + 2) * 4 + 4) >> 2], false),
+          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 4) * 4)),
+        };
+        break;
+      }
+      case 78: {
+        result = { type: "ImportSpecifier", start, end,
+          imported: node(_i32[(payload + 0) >> 2]),
+          local: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 79: {
+        result = { type: "ImportDefaultSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 80: {
+        result = { type: "ImportNamespaceSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 81: {
+        result = { type: "ImportAttribute", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 82: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ExportNamedDeclaration", start, end,
+          declaration: optionalNode(_i32[(payload + 0) >> 2]),
+          specifiers: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          source: optionalNode(_i32[(payload + 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 2) * 4) >> 2], _i32[(extra + (extraId + 2) * 4 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 83: {
+        result = { type: "ExportDefaultDeclaration", start, end,
+          declaration: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 84: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ExportAllDeclaration", start, end,
+          exported: optionalNode(_i32[(payload + 0) >> 2]),
+          source: node(_i32[(payload + 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 85: {
+        result = { type: "ExportSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+          exported: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 86: {
+        result = { type: "Hashbang", start, end,
+          value: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 2, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 161: {
+        result = { type: "JSXElement", start, end,
+          openingElement: node(_i32[(payload + 8) >> 2]),
+          children: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          closingElement: optionalNode(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 162: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "JSXOpeningElement", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          selfClosing: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 163: {
+        result = { type: "JSXClosingElement", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 164: {
+        result = { type: "JSXFragment", start, end,
+          openingFragment: node(_i32[(payload + 8) >> 2]),
+          children: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          closingFragment: node(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 165: {
+        result = { type: "JSXOpeningFragment", start, end,
+        };
+        break;
+      }
+      case 166: {
+        result = { type: "JSXClosingFragment", start, end,
+        };
+        break;
+      }
+      case 167: {
+        result = { type: "JSXIdentifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 168: {
+        result = { type: "JSXNamespacedName", start, end,
+          namespace: node(_i32[(payload + 0) >> 2]),
+          name: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 169: {
+        result = { type: "JSXMemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 170: {
+        result = { type: "JSXAttribute", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+          value: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 171: {
+        result = { type: "JSXSpreadAttribute", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 172: {
+        result = { type: "JSXExpressionContainer", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 173: {
+        result = { type: "JSXEmptyExpression", start, end,
+        };
+        break;
+      }
+      case 174: {
+        const f_value = source.slice(start, end);
+        result = { type: "JSXText", start, end, value: f_value, raw: f_value };
+        break;
+      }
+      case 175: {
+        result = { type: "JSXSpreadChild", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      default:
+        throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);
+    }
+    return result;
+  }
+
+  let _program, _comments, _diagnostics;
+  return {
+    get program() {
+      return _program !== undefined
+        ? _program
+        : (_program = node(programIndex));
+    },
+    get comments() {
+      return _comments !== undefined
+        ? _comments
+        : (_comments = _decodeComments());
+    },
+    get diagnostics() {
+      return _diagnostics !== undefined
+        ? _diagnostics
+        : (_diagnostics = _decodeDiagnostics());
+    },
+  };
+}

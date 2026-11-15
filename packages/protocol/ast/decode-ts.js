@@ -1,1 +1,1963 @@
-let NULL=-1,HEADER_SIZE=40,NATIVE_LITTLE_ENDIAN=1===new Uint8Array(new Int32Array([1]).buffer)[0],utf8Slice="u">typeof Buffer&&"function"==typeof Buffer.prototype.utf8Slice?Buffer.prototype.utf8Slice:(()=>{let e=new TextDecoder("utf-8",{ignoreBOM:!0});return function(t,a){return e.decode(this.subarray(t,a));};})(),fromCharCode=String.fromCharCode,shortStringChars=Array(65);for(let length=0;length<=64;length++)shortStringChars[length]=Array(length).fill(0);let ENUMS=Object.freeze([["js","ts","jsx","tsx","dts"],["module","script","commonjs","unambiguous"],["constructor","method","get","set"],["ClassDeclaration","ClassExpression"],["==","!=","===","!==","<","<=",">",">=","+","-","*","/","%","**","|","^","&","<<",">>",">>>","in","instanceof"],["&&","||","??"],["-","+","!","~","typeof","void","delete"],["++","--"],["=","+=","-=","*=","/=","%=","**=","<<=",">>=",">>>=","|=","^=","&=","||=","&&=","??="],["var","let","const","using","await using"],["FunctionDeclaration","FunctionExpression"],["formal","unique","arrow","signature"],["init","get","set"],["source","defer"],[null,"public","private","protected"],["value","type"],["keyof","unique","readonly"],["method","get","set"],["namespace","module"],[null,!0,"+","-"]]),DEEP_AST={};function decodePool(e){let t=e.length;if(t<=64){let a=shortStringChars[t],r=0;for(;r<t;r++){let t=e[r];if(t>=128)break;a[r]=t;}if(r===t)return fromCharCode.apply(null,a);}let a=!1;for(let t of e)if(237===t){a=!0;break;}if(!a)return utf8Slice.call(e,0,t);let r="";for(let t=0;t<e.length;){let a=e[t];a<128?(r+=String.fromCharCode(a),t++):a<224?(r+=String.fromCharCode((31&a)<<6|63&e[t+1]),t+=2):a<240?(r+=String.fromCharCode((15&a)<<12|(63&e[t+1])<<6|63&e[t+2]),t+=3):(r+=String.fromCodePoint((7&a)<<18|(63&e[t+1])<<12|(63&e[t+2])<<6|63&e[t+3]),t+=4);}return r;}function copyLittleEndianI32(e){let t=new Int32Array(e.byteLength>>2);for(let a=0;a+4<=e.byteLength;a+=4)t[a>>2]=e.getInt32(a,!0);return t;}export function decodeTs(e,t,a){let r,n,i,s=e instanceof ArrayBuffer?e:e.buffer,o=e.byteOffset??0,p=e.byteLength;if(p>0x7fffffff)throw RangeError("AST buffer exceeds signed 32-bit range");let l=new Uint8Array(s,o,p),c=new DataView(s,o,p),y=NATIVE_LITTLE_ENDIAN&&(3&o)===0?new Int32Array(s,o,p>>2):copyLittleEndianI32(c),b=y[0],d=y[1],g=c.getUint32(8,!0),u=c.getUint32(12,!0);if(u+g>0x7fffffff)throw RangeError("AST string offsets exceed signed 32-bit range");let k=y[4],m=y[6],S=y[7],T=y[8],f=40+8*b,U=f+b+7&-8,x=U+16*b,A=x+4*d,h=A+(g+3&-4),E=h+16*k,w=(e,t)=>decodePool(l.subarray(A+e-u,A+t-u)),D=(e,t)=>{let a=ENUMS[e];return void 0!==a&&t<a.length?a[t]:t;},I=D(1,3&T),v=(e,t)=>255===t?null:D(e,t),P=e=>-1===e?null:L(e),C=(e,t,a)=>{let r=Array(t-e);for(let n=e;n<t;n++){let t=y[(x>>2)+n];r[n-e]=a&&-1===t?null:L(t);}return r;},N=(e,t,a,r)=>{let n=Array(t-e+r-a),i=0;for(let a=e;a<t;a++)n[i++]=L(y[(x>>2)+a]);for(let e=a;e<r;e++)n[i++]=L(y[(x>>2)+e]);return n;},L=1===b||(T>>2&7)===3?K:function(e,a){let r,n=40+8*e,i=y[n>>2],s=y[(n>>2)+1],o=U+16*e;switch(l[f+e]){case 2:r={type:"ThisExpression",start:i,end:s};break;case 3:{let e=y[o+0>>2]===y[o+0+4>>2]?"":y[o+0>>2]<u?t.slice(i+1,s-1):w(y[o+0>>2],y[o+0+4>>2]),a=t.slice(i,s);r={type:"Literal",start:i,end:s,value:e,raw:a};break;}case 4:{let e=c.getFloat64(o+0,!0),a=t.slice(i,s);r={type:"Literal",start:i,end:s,value:e,raw:a};break;}case 11:case 13:case 14:r={type:"Identifier",start:i,end:s,name:y[o+0>>2]<u?t.slice(i,s):w(y[o+0>>2],y[o+0+4>>2]),decorators:[],optional:!1,typeAnnotation:null};break;case 21:r={type:"BinaryExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(4,c.getUint8(o+8))};break;case 22:r={type:"LogicalExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(5,c.getUint8(o+8))};break;case 24:{let e=L(y[o+0>>2]);r={type:"UnaryExpression",start:i,end:s,operator:D(6,c.getUint8(o+4)),prefix:!0,argument:e};break;}case 26:r={type:"AssignmentExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(8,c.getUint8(o+8))};break;case 27:r={type:"VariableDeclaration",start:i,end:s,kind:D(9,c.getUint8(o+8)),declarations:C(y[o+0>>2],y[o+0+4>>2],!1),declare:0!==c.getUint8(o+9)};break;case 28:{let e=L(y[o+0>>2]),t=P(y[o+4>>2]),a=P(y[o+8>>2]),n=0!==c.getUint8(o+12);e.typeAnnotation=t,e.end=t?.end??e.end,r={type:"VariableDeclarator",start:i,end:s,id:e,init:a,definite:n};break;}case 29:r={type:"IfStatement",start:i,end:s,test:L(y[o+0>>2]),consequent:L(y[o+4>>2]),alternate:P(y[o+8>>2])};break;case 40:r={type:"ExpressionStatement",start:i,end:s,expression:L(y[o+0>>2]),directive:null};break;case 41:r={type:"ReturnStatement",start:i,end:s,argument:P(y[o+0>>2])};break;case 53:r={type:"BlockStatement",start:i,end:s,body:N(y[o+0>>2],y[o+0+4>>2],y[o+8>>2],y[o+8+4>>2])};break;case 54:r={type:"BlockStatement",start:i,end:s,body:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 58:{let e=C(y[o+0>>2],y[o+0+4>>2],!1),t=P(y[o+8>>2]);null!==t&&e.push(t),r={params:e};break;}case 61:r={type:"ArrayExpression",start:i,end:s,elements:C(y[o+0>>2],y[o+0+4>>2],!0)};break;case 62:r={type:"ObjectExpression",start:i,end:s,properties:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 64:r={type:"Property",start:i,end:s,key:L(y[o+0>>2]),value:L(y[o+4>>2]),kind:D(12,c.getUint8(o+8)),method:0!==c.getUint8(o+9),shorthand:0!==c.getUint8(o+10),computed:0!==c.getUint8(o+11),optional:!1};break;case 68:r={type:"MemberExpression",start:i,end:s,object:L(y[o+0>>2]),property:L(y[o+4>>2]),computed:0!==c.getUint8(o+8),optional:0!==c.getUint8(o+9)};break;case 69:{let e=y[o+12>>2];r={type:"CallExpression",start:i,end:s,callee:L(y[o+0>>2]),typeArguments:P(y[o+4>>2]),arguments:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),optional:0!==c.getUint8(o+8)};break;}case 78:r={type:"ImportSpecifier",start:i,end:s,imported:L(y[o+0>>2]),local:L(y[o+4>>2]),importKind:D(15,c.getUint8(o+8))};break;case 89:r={type:"TSTypeAnnotation",start:i,end:s,typeAnnotation:L(y[o+0>>2])};break;case 104:r={type:"TSTypeReference",start:i,end:s,typeName:L(y[o+0>>2]),typeArguments:P(y[o+4>>2])};break;default:if(64===B)throw DEEP_AST;B++;try{return K(e,a);}finally{B--;}}return r;},B=0;function K(e,a){let r,n=40+8*e,i=y[n>>2],s=y[(n>>2)+1],o=U+16*e;switch(l[f+e]){case 0:{let e=y[o+12>>2],t=P(y[o+8>>2]),a=N(y[o+0>>2],y[o+0+4>>2],y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2]),n=a[0],i=n?.declaration??n,p=n?.start??s;r={type:"Program",start:Math.min(p,i?.decorators?.[0]?.start??p),end:s,sourceType:I,hashbang:t,body:a};break;}case 1:r={type:"Super",start:i,end:s};break;case 2:r={type:"ThisExpression",start:i,end:s};break;case 3:{let e=y[o+0>>2]===y[o+0+4>>2]?"":y[o+0>>2]<u?t.slice(i+1,s-1):w(y[o+0>>2],y[o+0+4>>2]),a=t.slice(i,s);r={type:"Literal",start:i,end:s,value:e,raw:a};break;}case 4:{let e=c.getFloat64(o+0,!0),a=t.slice(i,s);r={type:"Literal",start:i,end:s,value:e,raw:a};break;}case 5:{let e=BigInt(t.slice(i,s-1).replaceAll("_",""));r={type:"Literal",start:i,end:s,value:e,raw:t.slice(i,s),bigint:e.toString()};break;}case 6:{let e=0!==c.getUint8(o+0);r={type:"Literal",start:i,end:s,value:e,raw:e?"true":"false"};break;}case 7:r={type:"Literal",start:i,end:s,value:null,raw:"null"};break;case 8:{let e=t.lastIndexOf("/",s-1),a=t.slice(i+1,e),n=t.slice(e+1,s),o=null;try{o=new RegExp(a,n);}catch{}r={type:"Literal",start:i,end:s,value:o,raw:t.slice(i,s),regex:{pattern:a,flags:[...n].sort().join("")}};break;}case 9:r={type:"TemplateLiteral",start:i,end:s,quasis:C(y[o+0>>2],y[o+0+4>>2],!1),expressions:C(y[o+8>>2],y[o+8+4>>2],!1)};break;case 10:{let e=y[o+0>>2]===y[o+0+4>>2]?"":y[o+0>>2]<u?t.slice(i,s):w(y[o+0>>2],y[o+0+4>>2]),a=t.slice(i,s),n=0!==c.getUint8(o+8);r={type:"TemplateElement",start:i-1,end:n?s+1:s+2,value:{raw:a,cooked:0!==c.getUint8(o+9)?null:e},tail:n};break;}case 11:case 13:case 14:case 15:r={type:"Identifier",start:i,end:s,name:y[o+0>>2]<u?t.slice(i,s):w(y[o+0>>2],y[o+0+4>>2]),decorators:[],optional:!1,typeAnnotation:null};break;case 12:r={type:"PrivateIdentifier",start:i,end:s,name:y[o+0>>2]<u?t.slice(i+1,s):w(y[o+0>>2],y[o+0+4>>2])};break;case 16:r={type:"AssignmentPattern",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),decorators:[],optional:!1,typeAnnotation:null};break;case 17:r={type:"RestElement",start:i,end:s,argument:L(y[o+0>>2]),value:null,decorators:[],optional:!1,typeAnnotation:null};break;case 18:{let e=C(y[o+0>>2],y[o+0+4>>2],!0),t=P(y[o+8>>2]);null!==t&&e.push(t),r={type:"ArrayPattern",start:i,end:s,elements:e,decorators:[],optional:!1,typeAnnotation:null};break;}case 19:{let e=C(y[o+0>>2],y[o+0+4>>2],!1),t=P(y[o+8>>2]);null!==t&&e.push(t),r={type:"ObjectPattern",start:i,end:s,properties:e,decorators:[],optional:!1,typeAnnotation:null};break;}case 20:r={type:"Property",start:i,end:s,kind:"init",key:L(y[o+0>>2]),value:L(y[o+4>>2]),method:!1,shorthand:0!==c.getUint8(o+8),computed:0!==c.getUint8(o+9),optional:!1};break;case 21:r={type:"BinaryExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(4,c.getUint8(o+8))};break;case 22:r={type:"LogicalExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(5,c.getUint8(o+8))};break;case 23:r={type:"ConditionalExpression",start:i,end:s,test:L(y[o+0>>2]),consequent:L(y[o+4>>2]),alternate:L(y[o+8>>2])};break;case 24:{let e=L(y[o+0>>2]);r={type:"UnaryExpression",start:i,end:s,operator:D(6,c.getUint8(o+4)),prefix:!0,argument:e};break;}case 25:r={type:"UpdateExpression",start:i,end:s,argument:L(y[o+0>>2]),operator:D(7,c.getUint8(o+4)),prefix:0!==c.getUint8(o+5)};break;case 26:r={type:"AssignmentExpression",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),operator:D(8,c.getUint8(o+8))};break;case 27:r={type:"VariableDeclaration",start:i,end:s,kind:D(9,c.getUint8(o+8)),declarations:C(y[o+0>>2],y[o+0+4>>2],!1),declare:0!==c.getUint8(o+9)};break;case 28:{let e=L(y[o+0>>2]),t=P(y[o+4>>2]),a=P(y[o+8>>2]),n=0!==c.getUint8(o+12);e.typeAnnotation=t,e.end=t?.end??e.end,r={type:"VariableDeclarator",start:i,end:s,id:e,init:a,definite:n};break;}case 29:r={type:"IfStatement",start:i,end:s,test:L(y[o+0>>2]),consequent:L(y[o+4>>2]),alternate:P(y[o+8>>2])};break;case 30:r={type:"SwitchStatement",start:i,end:s,discriminant:L(y[o+8>>2]),cases:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 31:r={type:"SwitchCase",start:i,end:s,test:P(y[o+8>>2]),consequent:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 32:r={type:"ForStatement",start:i,end:s,init:P(y[o+0>>2]),test:P(y[o+4>>2]),update:P(y[o+8>>2]),body:L(y[o+12>>2])};break;case 33:r={type:"ForInStatement",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),body:L(y[o+8>>2])};break;case 34:r={type:"ForOfStatement",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2]),body:L(y[o+8>>2]),await:0!==c.getUint8(o+12)};break;case 35:r={type:"TryStatement",start:i,end:s,block:L(y[o+0>>2]),handler:P(y[o+4>>2]),finalizer:P(y[o+8>>2])};break;case 36:{let e=P(y[o+0>>2]),t=P(y[o+4>>2]),a=L(y[o+8>>2]);null!==e&&(e.typeAnnotation=t,e.end=t?.end??e.end),r={type:"CatchClause",start:i,end:s,param:e,body:a};break;}case 37:r={type:"BreakStatement",start:i,end:s,label:P(y[o+0>>2])};break;case 38:r={type:"ContinueStatement",start:i,end:s,label:P(y[o+0>>2])};break;case 39:r={type:"LabeledStatement",start:i,end:s,label:L(y[o+0>>2]),body:L(y[o+4>>2])};break;case 40:r={type:"ExpressionStatement",start:i,end:s,expression:L(y[o+0>>2]),directive:null};break;case 41:r={type:"ReturnStatement",start:i,end:s,argument:P(y[o+0>>2])};break;case 42:r={type:"ThrowStatement",start:i,end:s,argument:L(y[o+0>>2])};break;case 43:r={type:"DebuggerStatement",start:i,end:s};break;case 44:r={type:"EmptyStatement",start:i,end:s};break;case 45:{let e=L(y[o+8>>2]),a=y[o+0>>2]===y[o+0+4>>2]?"":y[o+0>>2]<u?t.slice(e.start+1,e.end-1):w(y[o+0>>2],y[o+0+4>>2]);r={type:"ExpressionStatement",start:i,end:s,expression:e,directive:a};break;}case 46:r={type:"Decorator",start:i,end:s,expression:L(y[o+0>>2])};break;case 47:{let e=y[o+12>>2],t=D(3,c.getUint8(o+8)),a=C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),n=P(y[o+0>>2]),p=P(y[o+4>>2]),l=P(y[x+(e+2)*4>>2]),b=P(y[x+(e+3)*4>>2]),d=C(y[x+(e+4)*4>>2],y[x+(e+4)*4+4>>2],!1);r={type:t,start:i,end:s,decorators:a,id:n,superClass:l,body:L(y[x+(e+6)*4>>2]),typeParameters:p,superTypeArguments:b,implements:d,abstract:0!==c.getUint8(o+9),declare:0!==c.getUint8(o+10)};break;}case 48:r={type:"ClassBody",start:i,end:s,body:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 49:{let e=y[o+12>>2],t=C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),a=L(y[o+0>>2]),n=L(y[x+(e+2)*4>>2]),p=D(2,c.getUint8(o+4)),l=0!==c.getUint8(o+5),b=0!==c.getUint8(o+6),d=0!==c.getUint8(o+7),g=0!==c.getUint8(o+8);r={type:0!==c.getUint8(o+9)?"TSAbstractMethodDefinition":"MethodDefinition",start:i,end:s,decorators:t,key:a,value:n,kind:p,computed:l,static:b,override:d,optional:g,accessibility:D(14,c.getUint8(o+10))};break;}case 50:{let e=y[o+12>>2],t=C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),a=L(y[x+(e+2)*4>>2]),n=P(y[x+(e+3)*4>>2]),p=P(y[x+(e+4)*4>>2]),l=0!==c.getUint8(o+0),b=0!==c.getUint8(o+1),d=0!==c.getUint8(o+2),g=0!==c.getUint8(o+3),u=0!==c.getUint8(o+4),k=0!==c.getUint8(o+5),m=0!==c.getUint8(o+6),S=0!==c.getUint8(o+7);r={type:0!==c.getUint8(o+8)?d?"TSAbstractAccessorProperty":"TSAbstractPropertyDefinition":d?"AccessorProperty":"PropertyDefinition",start:i,end:s,decorators:t,key:a,value:p,computed:l,static:b,typeAnnotation:n,declare:g,override:u,optional:k,definite:m,readonly:S,accessibility:D(14,c.getUint8(o+9))};break;}case 51:r={type:"StaticBlock",start:i,end:s,body:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 52:{let e=y[o+12>>2],t=D(10,c.getUint8(o+8)),a=P(y[o+0>>2]),n=P(y[o+4>>2]),p=P(y[x+(e+0)*4>>2]),l=L(y[x+(e+1)*4>>2]),b=P(y[x+(e+2)*4>>2]),d=L(y[x+(e+3)*4>>2]),g=0!==c.getUint8(o+9),u=0!==c.getUint8(o+10);null!==p&&l.params.unshift(p),r={type:t,start:i,end:s,id:a,generator:g,async:u,params:l.params,body:d,expression:!1,typeParameters:n,returnType:b,declare:!1};break;}case 53:r={type:"BlockStatement",start:i,end:s,body:N(y[o+0>>2],y[o+0+4>>2],y[o+8>>2],y[o+8+4>>2])};break;case 54:r={type:"BlockStatement",start:i,end:s,body:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 55:r={type:"WhileStatement",start:i,end:s,test:L(y[o+0>>2]),body:L(y[o+4>>2])};break;case 56:r={type:"DoWhileStatement",start:i,end:s,body:L(y[o+0>>2]),test:L(y[o+4>>2])};break;case 57:r={type:"WithStatement",start:i,end:s,object:L(y[o+0>>2]),body:L(y[o+4>>2])};break;case 58:{let e=C(y[o+0>>2],y[o+0+4>>2],!1),t=P(y[o+8>>2]);null!==t&&e.push(t),r={params:e};break;}case 59:{let e=y[o+12>>2],t=C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),a=L(y[o+0>>2]),n=P(y[o+4>>2]),i=P(y[x+(e+2)*4>>2]),p=0!==c.getUint8(o+8);null===i?(a.optional=p,a.typeAnnotation=n,a.end=s,a.decorators=t,r=a):(a.optional=p,a.typeAnnotation=n,a.end=n?.end??(p?a.end+1:a.end),r={type:"AssignmentPattern",start:a.start,end:s,left:a,right:i,decorators:t,optional:!1,typeAnnotation:null});break;}case 60:{let e=C(y[o+0>>2],y[o+0+4>>2],!1);r={type:"RestElement",start:i,end:s,argument:L(y[o+8>>2]),decorators:e,optional:!1,typeAnnotation:P(y[o+12>>2]),value:null};break;}case 61:r={type:"ArrayExpression",start:i,end:s,elements:C(y[o+0>>2],y[o+0+4>>2],!0)};break;case 62:r={type:"ObjectExpression",start:i,end:s,properties:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 63:r={type:"SpreadElement",start:i,end:s,argument:L(y[o+0>>2])};break;case 64:r={type:"Property",start:i,end:s,key:L(y[o+0>>2]),value:L(y[o+4>>2]),kind:D(12,c.getUint8(o+8)),method:0!==c.getUint8(o+9),shorthand:0!==c.getUint8(o+10),computed:0!==c.getUint8(o+11),optional:!1};break;case 65:r={type:"ParenthesizedExpression",start:i,end:s,expression:L(y[o+0>>2])};break;case 66:{let e=y[o+12>>2],t=0!==c.getUint8(o+8),a=0!==c.getUint8(o+9),n=P(y[o+0>>2]),p=L(y[o+4>>2]),l=P(y[x+(e+0)*4>>2]),b=L(y[x+(e+1)*4>>2]);r={type:"ArrowFunctionExpression",start:i,end:s,id:null,generator:!1,async:a,params:p.params,body:b,expression:t,typeParameters:n,returnType:l};break;}case 67:r={type:"SequenceExpression",start:i,end:s,expressions:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 68:r={type:"MemberExpression",start:i,end:s,object:L(y[o+0>>2]),property:L(y[o+4>>2]),computed:0!==c.getUint8(o+8),optional:0!==c.getUint8(o+9)};break;case 69:{let e=y[o+12>>2];r={type:"CallExpression",start:i,end:s,callee:L(y[o+0>>2]),typeArguments:P(y[o+4>>2]),arguments:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),optional:0!==c.getUint8(o+8)};break;}case 70:r={type:"ChainExpression",start:i,end:s,expression:L(y[o+0>>2])};break;case 71:r={type:"TaggedTemplateExpression",start:i,end:s,tag:L(y[o+0>>2]),typeArguments:P(y[o+4>>2]),quasi:L(y[o+8>>2])};break;case 72:r={type:"NewExpression",start:i,end:s,callee:L(y[o+8>>2]),typeArguments:P(y[o+12>>2]),arguments:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 73:r={type:"AwaitExpression",start:i,end:s,argument:L(y[o+0>>2])};break;case 74:r={type:"YieldExpression",start:i,end:s,argument:P(y[o+0>>2]),delegate:0!==c.getUint8(o+4)};break;case 75:r={type:"MetaProperty",start:i,end:s,meta:L(y[o+0>>2]),property:L(y[o+4>>2])};break;case 76:{let e=y[o+12>>2];r={type:"ImportExpression",start:i,end:s,source:L(y[o+0>>2]),options:P(y[o+4>>2]),phase:v(13,c.getUint8(x+(e+0)*4))};break;}case 77:{let e=y[o+12>>2];r={type:"ImportDeclaration",start:i,end:s,specifiers:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),source:L(y[o+0>>2]),attributes:C(y[x+(e+2)*4>>2],y[x+(e+2)*4+4>>2],!1),phase:v(13,c.getUint8(x+(e+4)*4)),importKind:D(15,c.getUint8(o+4))};break;}case 78:r={type:"ImportSpecifier",start:i,end:s,imported:L(y[o+0>>2]),local:L(y[o+4>>2]),importKind:D(15,c.getUint8(o+8))};break;case 79:r={type:"ImportDefaultSpecifier",start:i,end:s,local:L(y[o+0>>2])};break;case 80:r={type:"ImportNamespaceSpecifier",start:i,end:s,local:L(y[o+0>>2])};break;case 81:r={type:"ImportAttribute",start:i,end:s,key:L(y[o+0>>2]),value:L(y[o+4>>2])};break;case 82:{let e=y[o+12>>2];r={type:"ExportNamedDeclaration",start:i,end:s,declaration:P(y[o+0>>2]),specifiers:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),source:P(y[o+4>>2]),attributes:C(y[x+(e+2)*4>>2],y[x+(e+2)*4+4>>2],!1),exportKind:D(15,c.getUint8(o+8))};break;}case 83:r={type:"ExportDefaultDeclaration",start:i,end:s,declaration:L(y[o+0>>2]),exportKind:"value"};break;case 84:{let e=y[o+12>>2];r={type:"ExportAllDeclaration",start:i,end:s,exported:P(y[o+0>>2]),source:L(y[o+4>>2]),attributes:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),exportKind:D(15,c.getUint8(o+8))};break;}case 85:r={type:"ExportSpecifier",start:i,end:s,local:L(y[o+0>>2]),exported:L(y[o+4>>2]),exportKind:D(15,c.getUint8(o+8))};break;case 86:r={type:"Hashbang",start:i,end:s,value:y[o+0>>2]===y[o+0+4>>2]?"":y[o+0>>2]<u?t.slice(i+2,s):w(y[o+0>>2],y[o+0+4>>2])};break;case 87:{let e=y[o+12>>2],t=P(y[o+0>>2]),n=P(y[o+4>>2]),p=P(y[x+(e+0)*4>>2]),l=L(y[x+(e+1)*4>>2]),b=P(y[x+(e+2)*4>>2]),d=0!==c.getUint8(o+8),g=0!==c.getUint8(o+9),u=0!==c.getUint8(o+10);null!==p&&l.params.unshift(p),r={type:a??"TSDeclareFunction",start:i,end:s,id:t,generator:d,async:g,params:l.params,body:null,expression:!1,typeParameters:n,returnType:b,declare:u};break;}case 88:{let e=y[o+12>>2],t=C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),a=L(y[o+0>>2]),n=L(y[x+(e+2)*4>>2],"TSEmptyBodyFunctionExpression"),p=D(2,c.getUint8(o+4)),l=0!==c.getUint8(o+5),b=0!==c.getUint8(o+6),d=0!==c.getUint8(o+7),g=0!==c.getUint8(o+8);r={type:0!==c.getUint8(o+9)?"TSAbstractMethodDefinition":"MethodDefinition",start:i,end:s,decorators:t,key:a,value:n,kind:p,computed:l,static:b,override:d,optional:g,accessibility:D(14,c.getUint8(o+10))};break;}case 89:r={type:"TSTypeAnnotation",start:i,end:s,typeAnnotation:L(y[o+0>>2])};break;case 90:r={type:"TSAnyKeyword",start:i,end:s};break;case 91:r={type:"TSUnknownKeyword",start:i,end:s};break;case 92:r={type:"TSNeverKeyword",start:i,end:s};break;case 93:r={type:"TSVoidKeyword",start:i,end:s};break;case 94:r={type:"TSNullKeyword",start:i,end:s};break;case 95:r={type:"TSUndefinedKeyword",start:i,end:s};break;case 96:r={type:"TSStringKeyword",start:i,end:s};break;case 97:r={type:"TSNumberKeyword",start:i,end:s};break;case 98:r={type:"TSBigIntKeyword",start:i,end:s};break;case 99:r={type:"TSBooleanKeyword",start:i,end:s};break;case 100:r={type:"TSSymbolKeyword",start:i,end:s};break;case 101:r={type:"TSObjectKeyword",start:i,end:s};break;case 102:r={type:"TSIntrinsicKeyword",start:i,end:s};break;case 103:r={type:"TSThisType",start:i,end:s};break;case 104:r={type:"TSTypeReference",start:i,end:s,typeName:L(y[o+0>>2]),typeArguments:P(y[o+4>>2])};break;case 105:r={type:"TSQualifiedName",start:i,end:s,left:L(y[o+0>>2]),right:L(y[o+4>>2])};break;case 106:r={type:"TSTypeQuery",start:i,end:s,exprName:L(y[o+0>>2]),typeArguments:P(y[o+4>>2])};break;case 107:r={type:"TSImportType",start:i,end:s,source:L(y[o+0>>2]),options:P(y[o+4>>2]),qualifier:P(y[o+8>>2]),typeArguments:P(y[o+12>>2])};break;case 108:r={type:"TSTypeParameter",start:i,end:s,name:L(y[o+0>>2]),constraint:P(y[o+4>>2]),default:P(y[o+8>>2]),in:0!==c.getUint8(o+12),out:0!==c.getUint8(o+13),const:0!==c.getUint8(o+14)};break;case 109:r={type:"TSTypeParameterDeclaration",start:i,end:s,params:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 110:r={type:"TSTypeParameterInstantiation",start:i,end:s,params:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 111:r={type:"TSLiteralType",start:i,end:s,literal:L(y[o+0>>2])};break;case 112:r={type:"TSTemplateLiteralType",start:i,end:s,quasis:C(y[o+0>>2],y[o+0+4>>2],!1),types:C(y[o+8>>2],y[o+8+4>>2],!1)};break;case 113:r={type:"TSArrayType",start:i,end:s,elementType:L(y[o+0>>2])};break;case 114:r={type:"TSIndexedAccessType",start:i,end:s,objectType:L(y[o+0>>2]),indexType:L(y[o+4>>2])};break;case 115:r={type:"TSTupleType",start:i,end:s,elementTypes:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 116:r={type:"TSNamedTupleMember",start:i,end:s,label:L(y[o+0>>2]),elementType:L(y[o+4>>2]),optional:0!==c.getUint8(o+8)};break;case 117:r={type:"TSOptionalType",start:i,end:s,typeAnnotation:L(y[o+0>>2])};break;case 118:r={type:"TSRestType",start:i,end:s,typeAnnotation:L(y[o+0>>2])};break;case 119:r={type:"TSJSDocNullableType",start:i,end:s,typeAnnotation:L(y[o+0>>2]),postfix:0!==c.getUint8(o+4)};break;case 120:r={type:"TSJSDocNonNullableType",start:i,end:s,typeAnnotation:L(y[o+0>>2]),postfix:0!==c.getUint8(o+4)};break;case 121:r={type:"TSJSDocUnknownType",start:i,end:s};break;case 122:r={type:"TSUnionType",start:i,end:s,types:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 123:r={type:"TSIntersectionType",start:i,end:s,types:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 124:r={type:"TSConditionalType",start:i,end:s,checkType:L(y[o+0>>2]),extendsType:L(y[o+4>>2]),trueType:L(y[o+8>>2]),falseType:L(y[o+12>>2])};break;case 125:r={type:"TSInferType",start:i,end:s,typeParameter:L(y[o+0>>2])};break;case 126:r={type:"TSTypeOperator",start:i,end:s,operator:D(16,c.getUint8(o+4)),typeAnnotation:L(y[o+0>>2])};break;case 127:r={type:"TSParenthesizedType",start:i,end:s,typeAnnotation:L(y[o+0>>2])};break;case 128:{let e=P(y[o+0>>2]),t=P(y[o+4>>2]),a=L(y[o+8>>2]),n=L(y[o+12>>2]);null!==t&&a.params.unshift(t),r={type:"TSFunctionType",start:i,end:s,typeParameters:e,params:a.params,returnType:n};break;}case 129:{let e=P(y[o+0>>2]),t=L(y[o+4>>2]),a=L(y[o+8>>2]);r={type:"TSConstructorType",start:i,end:s,abstract:0!==c.getUint8(o+12),typeParameters:e,params:t.params,returnType:a};break;}case 130:r={type:"TSTypePredicate",start:i,end:s,parameterName:L(y[o+0>>2]),typeAnnotation:P(y[o+4>>2]),asserts:0!==c.getUint8(o+8)};break;case 131:r={type:"TSTypeLiteral",start:i,end:s,members:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 132:{let e=y[o+12>>2],t=L(y[o+0>>2]),a=L(y[o+4>>2]),n=P(y[x+(e+0)*4>>2]),p=P(y[x+(e+1)*4>>2]),l=D(19,c.getUint8(o+8));r={type:"TSMappedType",start:i,end:s,key:t,constraint:a,nameType:n,typeAnnotation:p,optional:null!==l&&l,readonly:D(19,c.getUint8(o+9))};break;}case 133:r={type:"TSPropertySignature",start:i,end:s,key:L(y[o+0>>2]),typeAnnotation:P(y[o+4>>2]),computed:0!==c.getUint8(o+8),optional:0!==c.getUint8(o+9),readonly:0!==c.getUint8(o+10),accessibility:null,static:!1};break;case 134:{let e=y[o+12>>2],t=L(y[o+0>>2]),a=P(y[o+4>>2]),n=P(y[x+(e+0)*4>>2]),p=L(y[x+(e+1)*4>>2]),l=P(y[x+(e+2)*4>>2]),b=D(17,c.getUint8(o+8)),d=0!==c.getUint8(o+9),g=0!==c.getUint8(o+10);null!==n&&p.params.unshift(n),r={type:"TSMethodSignature",start:i,end:s,key:t,computed:d,optional:g,kind:b,typeParameters:a,params:p.params,returnType:l,accessibility:null,readonly:!1,static:!1};break;}case 135:{let e=P(y[o+0>>2]),t=P(y[o+4>>2]),a=L(y[o+8>>2]),n=P(y[o+12>>2]);null!==t&&a.params.unshift(t),r={type:"TSCallSignatureDeclaration",start:i,end:s,typeParameters:e,params:a.params,returnType:n};break;}case 136:{let e=P(y[o+0>>2]),t=L(y[o+4>>2]),a=P(y[o+8>>2]);r={type:"TSConstructSignatureDeclaration",start:i,end:s,typeParameters:e,params:t.params,returnType:a};break;}case 137:r={type:"TSIndexSignature",start:i,end:s,parameters:C(y[o+0>>2],y[o+0+4>>2],!1),typeAnnotation:L(y[o+8>>2]),readonly:0!==c.getUint8(o+12),static:0!==c.getUint8(o+13),accessibility:null};break;case 138:r={type:"TSTypeAliasDeclaration",start:i,end:s,id:L(y[o+0>>2]),typeParameters:P(y[o+4>>2]),typeAnnotation:L(y[o+8>>2]),declare:0!==c.getUint8(o+12)};break;case 139:{let e=y[o+12>>2];r={type:"TSInterfaceDeclaration",start:i,end:s,id:L(y[o+0>>2]),typeParameters:P(y[o+4>>2]),extends:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),body:L(y[x+(e+2)*4>>2]),declare:0!==c.getUint8(o+8)};break;}case 140:r={type:"TSInterfaceBody",start:i,end:s,body:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 141:r={type:"TSInterfaceHeritage",start:i,end:s,expression:L(y[o+0>>2]),typeArguments:P(y[o+4>>2])};break;case 142:r={type:"TSClassImplements",start:i,end:s,expression:L(y[o+0>>2]),typeArguments:P(y[o+4>>2])};break;case 143:r={type:"TSEnumDeclaration",start:i,end:s,id:L(y[o+0>>2]),body:L(y[o+4>>2]),const:0!==c.getUint8(o+8),declare:0!==c.getUint8(o+9)};break;case 144:r={type:"TSEnumBody",start:i,end:s,members:C(y[o+0>>2],y[o+0+4>>2],!1)};break;case 145:r={type:"TSEnumMember",start:i,end:s,id:L(y[o+0>>2]),initializer:P(y[o+4>>2]),computed:0!==c.getUint8(o+8)};break;case 146:{let e=L(y[o+0>>2]),t=P(y[o+4>>2]),a=P(y[o+8>>2]),n=D(18,c.getUint8(o+12)),p=0!==c.getUint8(o+13);r=null===a?{type:"TSModuleDeclaration",start:i,end:s,id:e,kind:n,declare:p,global:!1}:{type:"TSModuleDeclaration",start:i,end:s,id:e,kind:n,declare:p,global:!1,body:a},null!==t&&(r.attributes=t);break;}case 147:r={type:"TSModuleBlock",start:i,end:s,body:N(y[o+0>>2],y[o+0+4>>2],y[o+8>>2],y[o+8+4>>2])};break;case 148:r={type:"TSModuleDeclaration",start:i,end:s,id:L(y[o+0>>2]),body:L(y[o+4>>2]),kind:"global",declare:0!==c.getUint8(o+8),global:!0};break;case 149:r={type:"TSParameterProperty",start:i,end:s,decorators:C(y[o+0>>2],y[o+0+4>>2],!1),parameter:L(y[o+8>>2]),override:0!==c.getUint8(o+12),readonly:0!==c.getUint8(o+13),accessibility:D(14,c.getUint8(o+14)),static:!1};break;case 150:r={type:"Identifier",start:i,end:s,decorators:[],name:"this",optional:!1,typeAnnotation:P(y[o+0>>2])};break;case 151:r={type:"TSAsExpression",start:i,end:s,expression:L(y[o+0>>2]),typeAnnotation:L(y[o+4>>2])};break;case 152:r={type:"TSSatisfiesExpression",start:i,end:s,expression:L(y[o+0>>2]),typeAnnotation:L(y[o+4>>2])};break;case 153:r={type:"TSTypeAssertion",start:i,end:s,typeAnnotation:L(y[o+0>>2]),expression:L(y[o+4>>2])};break;case 154:r={type:"TSNonNullExpression",start:i,end:s,expression:L(y[o+0>>2])};break;case 155:r={type:"TSInstantiationExpression",start:i,end:s,expression:L(y[o+0>>2]),typeArguments:L(y[o+4>>2])};break;case 156:r={type:"TSExportAssignment",start:i,end:s,expression:L(y[o+0>>2])};break;case 157:r={type:"TSNamespaceExportDeclaration",start:i,end:s,id:L(y[o+0>>2])};break;case 158:r={type:"TSImportEqualsDeclaration",start:i,end:s,id:L(y[o+0>>2]),moduleReference:L(y[o+4>>2]),importKind:D(15,c.getUint8(o+8))};break;case 159:r={type:"TSExternalModuleReference",start:i,end:s,expression:L(y[o+0>>2])};break;case 160:{let e=L(y[o+0>>2]),t=L(y[o+4>>2]);e.start=i,e.end=s,e.typeAnnotation=t,r=e;break;}case 161:r={type:"JSXElement",start:i,end:s,openingElement:L(y[o+8>>2]),children:C(y[o+0>>2],y[o+0+4>>2],!1),closingElement:P(y[o+12>>2])};break;case 162:{let e=y[o+12>>2];r={type:"JSXOpeningElement",start:i,end:s,name:L(y[o+0>>2]),typeArguments:P(y[o+4>>2]),attributes:C(y[x+(e+0)*4>>2],y[x+(e+0)*4+4>>2],!1),selfClosing:0!==c.getUint8(o+8)};break;}case 163:r={type:"JSXClosingElement",start:i,end:s,name:L(y[o+0>>2])};break;case 164:r={type:"JSXFragment",start:i,end:s,openingFragment:L(y[o+8>>2]),children:C(y[o+0>>2],y[o+0+4>>2],!1),closingFragment:L(y[o+12>>2])};break;case 165:r={type:"JSXOpeningFragment",start:i,end:s};break;case 166:r={type:"JSXClosingFragment",start:i,end:s};break;case 167:r={type:"JSXIdentifier",start:i,end:s,name:y[o+0>>2]<u?t.slice(i,s):w(y[o+0>>2],y[o+0+4>>2])};break;case 168:r={type:"JSXNamespacedName",start:i,end:s,namespace:L(y[o+0>>2]),name:L(y[o+4>>2])};break;case 169:r={type:"JSXMemberExpression",start:i,end:s,object:L(y[o+0>>2]),property:L(y[o+4>>2])};break;case 170:r={type:"JSXAttribute",start:i,end:s,name:L(y[o+0>>2]),value:P(y[o+4>>2])};break;case 171:r={type:"JSXSpreadAttribute",start:i,end:s,argument:L(y[o+0>>2])};break;case 172:r={type:"JSXExpressionContainer",start:i,end:s,expression:L(y[o+0>>2])};break;case 173:r={type:"JSXEmptyExpression",start:i,end:s};break;case 174:{let e=t.slice(i,s);r={type:"JSXText",start:i,end:s,value:e,raw:e};break;}case 175:r={type:"JSXSpreadChild",start:i,end:s,expression:L(y[o+0>>2])};break;default:throw RangeError(`Unknown AST node kind ${l[f+e]}`);}return r;}return{get program(){if(void 0!==r)return r;try{return r=K(S);}catch(e){if(e!==DEEP_AST)throw e;return L=K,r=K(S);}},get comments(){return void 0!==n?n:n=(()=>{let e=Array(k);for(let a=0;a<k;a++){let r=h+16*a,n=y[r>>2],i=y[(r>>2)+1],s=t.charCodeAt(n),o=+(42===t.charCodeAt(n+1)),p=n+(60===s?4:45===s?3:2),l=i-2*(1===o);e[a]={type:1===o?"Block":"Line",value:t.slice(p,l),start:n,end:i};}return e;})();},get diagnostics(){return void 0!==i?i:i=(()=>{let e=E,t=()=>l[e++],a=()=>{let t=c.getUint32(e,!0);return e+=4,t;},r=()=>{let t=a(),r=utf8Slice.call(l,e,e+t);return e+=t,r;},n=["error","warning","hint","info"],i=Array(m);for(let e=0;e<m;e++){let s=t(),o=n[s];if(void 0===o)throw RangeError(`Unknown diagnostic severity ${s}`);let p=a(),l=a(),c=r(),y=0===t()?void 0:r(),b=a(),d=Array(b);for(let e=0;e<b;e++)d[e]={start:a(),end:a(),message:r()};i[e]={severity:o,message:c,start:p,end:l,help:y,labels:d};}return i;})();}};}
+// generated by tasks/ast_tools, do not edit
+
+const NULL = -1;
+const HEADER_SIZE = 40;
+const NATIVE_LITTLE_ENDIAN =
+  new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
+const utf8Slice = typeof Buffer !== "undefined" &&
+  typeof Buffer.prototype.utf8Slice === "function"
+  ? Buffer.prototype.utf8Slice
+  : (() => {
+      const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+      return function(start, end) {
+        return decoder.decode(this.subarray(start, end));
+      };
+    })();
+const fromCharCode = String.fromCharCode;
+const shortStringChars = Array(65);
+for (let length = 0; length <= 64; length++) {
+  shortStringChars[length] = Array(length).fill(0);
+}
+
+const ENUMS = Object.freeze([
+  ["js", "ts", "jsx", "tsx", "dts"], // Lang
+  ["module", "script", "commonjs", "unambiguous"], // SourceType
+  ["constructor", "method", "get", "set"], // MethodDefinitionKind
+  ["ClassDeclaration", "ClassExpression"], // ClassType
+  ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"], // BinaryOperator
+  ["&&", "||", "??"], // LogicalOperator
+  ["-", "+", "!", "~", "typeof", "void", "delete"], // UnaryOperator
+  ["++", "--"], // UpdateOperator
+  ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="], // AssignmentOperator
+  ["var", "let", "const", "using", "await using"], // VariableKind
+  ["FunctionDeclaration", "FunctionExpression"], // FunctionType
+  ["formal", "unique", "arrow", "signature"], // FormalParameterKind
+  ["init", "get", "set"], // PropertyKind
+  ["source", "defer"], // ImportPhase
+  [null, "public", "private", "protected"], // Accessibility
+  ["value", "type"], // ImportOrExportKind
+  ["keyof", "unique", "readonly"], // TsTypeOperatorKind
+  ["method", "get", "set"], // TsMethodSignatureKind
+  ["namespace", "module"], // TsModuleDeclarationKind
+  [null, true, "+", "-"], // TsMappedTypeModifier
+
+]);
+const DEEP_AST = {};
+
+function decodePool(bytes) {
+  const length = bytes.length;
+  if (length <= 64) {
+    const chars = shortStringChars[length];
+    let i = 0;
+    for (; i < length; i++) {
+      const byte = bytes[i];
+      if (byte >= 0x80) break;
+      chars[i] = byte;
+    }
+    if (i === length) return fromCharCode.apply(null, chars);
+  }
+  let hasSurrogate = false;
+  for (const byte of bytes) {
+    if (byte === 0xed) {
+      hasSurrogate = true;
+      break;
+    }
+  }
+  if (!hasSurrogate) return utf8Slice.call(bytes, 0, length);
+
+  let result = "";
+  for (let i = 0; i < bytes.length;) {
+    const first = bytes[i];
+    if (first < 0x80) {
+      result += String.fromCharCode(first);
+      i++;
+    } else if (first < 0xe0) {
+      result += String.fromCharCode(((first & 0x1f) << 6) | (bytes[i + 1] & 0x3f));
+      i += 2;
+    } else if (first < 0xf0) {
+      result += String.fromCharCode(
+        ((first & 0x0f) << 12) |
+        ((bytes[i + 1] & 0x3f) << 6) |
+        (bytes[i + 2] & 0x3f),
+      );
+      i += 3;
+    } else {
+      result += String.fromCodePoint(
+        ((first & 0x07) << 18) |
+        ((bytes[i + 1] & 0x3f) << 12) |
+        ((bytes[i + 2] & 0x3f) << 6) |
+        (bytes[i + 3] & 0x3f),
+      );
+      i += 4;
+    }
+  }
+  return result;
+}
+
+function copyLittleEndianI32(view) {
+  const i32 = new Int32Array(view.byteLength >> 2);
+  for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
+    i32[offset >> 2] = view.getInt32(offset, true);
+  }
+  return i32;
+}
+export function decodeTs(buffer, source, sourceBuffer) {
+
+  const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
+  const byteOffset = buffer.byteOffset ?? 0;
+  const byteLength = buffer.byteLength;
+  if (byteLength > 0x7fffffff) {
+    throw new RangeError("AST buffer exceeds signed 32-bit range");
+  }
+  const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
+  const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
+  const _i32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
+    ? new Int32Array(arrayBuffer, byteOffset, byteLength >> 2)
+    : copyLittleEndianI32(_dv);
+  const nodeCount = _i32[0];
+  const extraCount = _i32[1];
+  const stringPoolLength = _dv.getUint32(8, true);
+  const sourceLength = _dv.getUint32(12, true);
+  if (sourceLength + stringPoolLength > 0x7fffffff) {
+    throw new RangeError("AST string offsets exceed signed 32-bit range");
+  }
+  const commentCount = _i32[4];
+  const diagnosticCount = _i32[6];
+  const programIndex = _i32[7];
+  const flags = _i32[8];
+
+  const spans = HEADER_SIZE;
+  const kinds = spans + nodeCount * 8;
+  const payloads = (kinds + nodeCount + 7) & ~7;
+  const extra = payloads + nodeCount * 16;
+  const strings = extra + extraCount * 4;
+  const comments = strings + ((stringPoolLength + 3) & ~3);
+  const diagnostics = comments + commentCount * 16;
+  const str = (start, end) => decodePool(bytes.subarray(
+    strings + start - sourceLength,
+    strings + end - sourceLength,
+  ));
+  const enumValue = (index, value) => {
+    const values = ENUMS[index];
+    return values !== undefined && value < values.length ? values[value] : value;
+  };
+  const sourceType = enumValue(1, flags & 3);
+  const optionalEnum = (index, value) =>
+    value === 0xff ? null : enumValue(index, value);
+  const optionalNode = index => index === NULL ? null : node(index);
+  const nodeArray = (start, end, holes) => {
+    const result = new Array(end - start);
+    for (let i = start; i < end; i++) {
+      const index = _i32[(extra >> 2) + i];
+      result[i - start] = holes && index === NULL ? null : node(index);
+    }
+    return result;
+  };
+  const nodeArrayPair = (firstStart, firstEnd, secondStart, secondEnd) => {
+    const result = new Array(firstEnd - firstStart + secondEnd - secondStart);
+    let out = 0;
+    for (let i = firstStart; i < firstEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i]);
+    }
+    for (let i = secondStart; i < secondEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i]);
+    }
+    return result;
+  };
+
+  const _decodeComments = () => {
+    const result = new Array(commentCount);
+    for (let index = 0; index < commentCount; index++) {
+      const offset = comments + index * 16;
+      const start = _i32[offset >> 2];
+      const end = _i32[(offset >> 2) + 1];
+      const first = source.charCodeAt(start);
+      const kind = source.charCodeAt(start + 1) === 0x2a ? 1 : 0;
+      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = end - (kind === 1 ? 2 : 0);
+      result[index] = {
+        type: kind === 1 ? "Block" : "Line",
+        value: source.slice(valueStart, valueEnd),
+        start,
+        end,
+      };
+    }
+    return result;
+  };
+
+  const _decodeDiagnostics = () => {
+    let offset = diagnostics;
+    const readU8 = () => bytes[offset++];
+    const readU32 = () => {
+      const value = _dv.getUint32(offset, true);
+      offset += 4;
+      return value;
+    };
+    const readDiagnosticString = () => {
+      const length = readU32();
+      const value = utf8Slice.call(bytes, offset, offset + length);
+      offset += length;
+      return value;
+    };
+    const severities = ["error", "warning", "hint", "info"];
+    const result = new Array(diagnosticCount);
+    for (let index = 0; index < diagnosticCount; index++) {
+      const severityValue = readU8();
+      const severity = severities[severityValue];
+      if (severity === undefined) {
+        throw new RangeError(`Unknown diagnostic severity ${severityValue}`);
+      }
+      const start = readU32();
+      const end = readU32();
+      const message = readDiagnosticString();
+      const help = readU8() === 0 ? undefined : readDiagnosticString();
+      const labelCount = readU32();
+      const labels = new Array(labelCount);
+      for (let label = 0; label < labelCount; label++) {
+        labels[label] = {
+          start: readU32(),
+          end: readU32(),
+          message: readDiagnosticString(),
+        };
+      }
+      result[index] = { severity, message, start, end, help, labels };
+    }
+    return result;
+  };
+
+  // Each reference is decoded into a fresh value, so parents can finish their
+  // owned children in place before exposing the result.
+  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;
+  let coldDepth = 0;
+  function nodeHot(index, typeOverride) {
+    const span = spans + index * 8;
+    const start = _i32[span >> 2];
+    const end = _i32[(span >> 2) + 1];
+    const payload = payloads + index * 16;
+    let result;
+    switch (bytes[kinds + index]) {
+      case 2: {
+        result = { type: "ThisExpression", start, end,
+        };
+        break;
+      }
+      case 3: {
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
+        result = { type: "Literal", start, end, value: f_value, raw: f_raw };
+        break;
+      }
+      case 4: {
+        const f_value = _dv.getFloat64(payload + 0, true);
+        const f_raw = source.slice(start, end);
+        const value = f_value;
+        result = { type: "Literal", start, end, value, raw: f_raw };
+        break;
+      }
+      case 11: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 13: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 14: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 21: {
+        result = { type: "BinaryExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(4, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 22: {
+        result = { type: "LogicalExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(5, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 24: {
+        const f_argument = node(_i32[(payload + 0) >> 2]);
+        const f_operator = enumValue(6, _dv.getUint8(payload + 4));
+        result = {
+          type: "UnaryExpression", start, end,
+          operator: f_operator, prefix: true, argument: f_argument,
+        };
+        break;
+      }
+      case 26: {
+        result = { type: "AssignmentExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(8, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 27: {
+        result = { type: "VariableDeclaration", start, end,
+          kind: enumValue(9, _dv.getUint8(payload + 8)),
+          declarations: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          declare: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 28: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_definite = _dv.getUint8(payload + 12) !== 0;
+        f_id.typeAnnotation = f_typeAnnotation;
+        f_id.end = f_typeAnnotation?.end ?? f_id.end;
+        result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init, definite: f_definite };
+        break;
+      }
+      case 29: {
+        result = { type: "IfStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 40: {
+        result = { type: "ExpressionStatement", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          directive: null,
+        };
+        break;
+      }
+      case 41: {
+        result = { type: "ReturnStatement", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 53: {
+        result = { type: "BlockStatement", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
+        break;
+      }
+      case 54: {
+        result = { type: "BlockStatement", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 58: {
+        const f_items = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_items.push(f_rest);
+        result = { params: f_items };
+        break;
+      }
+      case 61: {
+        result = { type: "ArrayExpression", start, end,
+          elements: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true),
+        };
+        break;
+      }
+      case 62: {
+        result = { type: "ObjectExpression", start, end,
+          properties: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 64: {
+        result = { type: "Property", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+          kind: enumValue(12, _dv.getUint8(payload + 8)),
+          method: _dv.getUint8(payload + 9) !== 0,
+          shorthand: _dv.getUint8(payload + 10) !== 0,
+          computed: _dv.getUint8(payload + 11) !== 0,
+          optional: false,
+        };
+        break;
+      }
+      case 68: {
+        result = { type: "MemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+          optional: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 69: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "CallExpression", start, end,
+          callee: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+          arguments: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          optional: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 78: {
+        result = { type: "ImportSpecifier", start, end,
+          imported: node(_i32[(payload + 0) >> 2]),
+          local: node(_i32[(payload + 4) >> 2]),
+          importKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 89: {
+        result = { type: "TSTypeAnnotation", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 104: {
+        result = { type: "TSTypeReference", start, end,
+          typeName: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      default:
+        // Retry deep trees without the extra hot-dispatch frames.
+        if (coldDepth === 64) throw DEEP_AST;
+        coldDepth++;
+        try {
+          return /*#__NOINLINE__*/ nodeAll(index, typeOverride);
+        } finally {
+          coldDepth--;
+        }
+    }
+    return result;
+  }
+
+  function nodeAll(index, typeOverride) {
+    const span = spans + index * 8;
+    const start = _i32[span >> 2];
+    const end = _i32[(span >> 2) + 1];
+    const payload = payloads + index * 16;
+    let result;
+    switch (bytes[kinds + index]) {
+      case 0: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_hashbang = optionalNode(_i32[(payload + 8) >> 2]);
+        const body = nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2]);
+        const first = body[0];
+        const declaration = first?.declaration ?? first;
+        const firstStart = first?.start ?? end;
+        const programStart = Math.min(firstStart, declaration?.decorators?.[0]?.start ?? firstStart);
+        result = { type: "Program", start: programStart, end, sourceType, hashbang: f_hashbang, body };
+        break;
+      }
+      case 1: {
+        result = { type: "Super", start, end,
+        };
+        break;
+      }
+      case 2: {
+        result = { type: "ThisExpression", start, end,
+        };
+        break;
+      }
+      case 3: {
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
+        result = { type: "Literal", start, end, value: f_value, raw: f_raw };
+        break;
+      }
+      case 4: {
+        const f_value = _dv.getFloat64(payload + 0, true);
+        const f_raw = source.slice(start, end);
+        const value = f_value;
+        result = { type: "Literal", start, end, value, raw: f_raw };
+        break;
+      }
+      case 5: {
+        const f_raw = source.slice(start, end - 1);
+        const value = BigInt(f_raw.replaceAll("_", ""));
+        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
+        break;
+      }
+      case 6: {
+        const f_value = _dv.getUint8(payload + 0) !== 0;
+        result = {
+          type: "Literal", start, end,
+          value: f_value, raw: f_value ? "true" : "false",
+        };
+        break;
+      }
+      case 7: {
+        result = { type: "Literal", start, end, value: null, raw: "null" };
+        break;
+      }
+      case 8: {
+        const separator = source.lastIndexOf("/", end - 1);
+        const f_pattern = source.slice(start + 1, separator);
+        const f_flags = source.slice(separator + 1, end);
+        let value = null;
+        try {
+          value = new RegExp(f_pattern, f_flags);
+        } catch {}
+        result = {
+          type: "Literal", start, end, value,
+          raw: source.slice(start, end),
+          regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
+        };
+        break;
+      }
+      case 9: {
+        result = { type: "TemplateLiteral", start, end,
+          quasis: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          expressions: nodeArray(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 10: {
+        const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
+        const f_tail = _dv.getUint8(payload + 8) !== 0;
+        const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
+        result = { type: "TemplateElement", start: start - 1, end: f_tail ? end + 1 : end + 2, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
+        break;
+      }
+      case 11: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 12: {
+        result = { type: "PrivateIdentifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 13: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 14: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 15: {
+        result = { type: "Identifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 16: {
+        result = { type: "AssignmentPattern", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 17: {
+        result = { type: "RestElement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+          value: null,
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 18: {
+        const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_elements.push(f_rest);
+        result = { type: "ArrayPattern", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: null };
+        break;
+      }
+      case 19: {
+        const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_properties.push(f_rest);
+        result = { type: "ObjectPattern", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: null };
+        break;
+      }
+      case 20: {
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_value = node(_i32[(payload + 4) >> 2]);
+        const f_shorthand = _dv.getUint8(payload + 8) !== 0;
+        const f_computed = _dv.getUint8(payload + 9) !== 0;
+        result = {
+          type: "Property", start, end, kind: "init",
+          key: f_key, value: f_value,
+          method: false, shorthand: f_shorthand, computed: f_computed,
+          optional: false,
+        };
+        break;
+      }
+      case 21: {
+        result = { type: "BinaryExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(4, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 22: {
+        result = { type: "LogicalExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(5, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 23: {
+        result = { type: "ConditionalExpression", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 24: {
+        const f_argument = node(_i32[(payload + 0) >> 2]);
+        const f_operator = enumValue(6, _dv.getUint8(payload + 4));
+        result = {
+          type: "UnaryExpression", start, end,
+          operator: f_operator, prefix: true, argument: f_argument,
+        };
+        break;
+      }
+      case 25: {
+        result = { type: "UpdateExpression", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+          operator: enumValue(7, _dv.getUint8(payload + 4)),
+          prefix: _dv.getUint8(payload + 5) !== 0,
+        };
+        break;
+      }
+      case 26: {
+        result = { type: "AssignmentExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(8, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 27: {
+        result = { type: "VariableDeclaration", start, end,
+          kind: enumValue(9, _dv.getUint8(payload + 8)),
+          declarations: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          declare: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 28: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_definite = _dv.getUint8(payload + 12) !== 0;
+        f_id.typeAnnotation = f_typeAnnotation;
+        f_id.end = f_typeAnnotation?.end ?? f_id.end;
+        result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init, definite: f_definite };
+        break;
+      }
+      case 29: {
+        result = { type: "IfStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 30: {
+        result = { type: "SwitchStatement", start, end,
+          discriminant: node(_i32[(payload + 8) >> 2]),
+          cases: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 31: {
+        result = { type: "SwitchCase", start, end,
+          test: optionalNode(_i32[(payload + 8) >> 2]),
+          consequent: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 32: {
+        result = { type: "ForStatement", start, end,
+          init: optionalNode(_i32[(payload + 0) >> 2]),
+          test: optionalNode(_i32[(payload + 4) >> 2]),
+          update: optionalNode(_i32[(payload + 8) >> 2]),
+          body: node(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 33: {
+        result = { type: "ForInStatement", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          body: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 34: {
+        result = { type: "ForOfStatement", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          body: node(_i32[(payload + 8) >> 2]),
+          await: _dv.getUint8(payload + 12) !== 0,
+        };
+        break;
+      }
+      case 35: {
+        result = { type: "TryStatement", start, end,
+          block: node(_i32[(payload + 0) >> 2]),
+          handler: optionalNode(_i32[(payload + 4) >> 2]),
+          finalizer: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 36: {
+        const f_param = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_body = node(_i32[(payload + 8) >> 2]);
+        if (f_param !== null) {
+          f_param.typeAnnotation = f_typeAnnotation;
+          f_param.end = f_typeAnnotation?.end ?? f_param.end;
+        }
+        result = { type: "CatchClause", start, end, param: f_param, body: f_body };
+        break;
+      }
+      case 37: {
+        result = { type: "BreakStatement", start, end,
+          label: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 38: {
+        result = { type: "ContinueStatement", start, end,
+          label: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 39: {
+        result = { type: "LabeledStatement", start, end,
+          label: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 40: {
+        result = { type: "ExpressionStatement", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          directive: null,
+        };
+        break;
+      }
+      case 41: {
+        result = { type: "ReturnStatement", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 42: {
+        result = { type: "ThrowStatement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 43: {
+        result = { type: "DebuggerStatement", start, end,
+        };
+        break;
+      }
+      case 44: {
+        result = { type: "EmptyStatement", start, end,
+        };
+        break;
+      }
+      case 45: {
+        const f_expression = node(_i32[(payload + 8) >> 2]);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(f_expression.start + 1, f_expression.end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        result = {
+          type: "ExpressionStatement", start, end,
+          expression: f_expression, directive: f_value,
+        };
+        break;
+      }
+      case 46: {
+        result = { type: "Decorator", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 47: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_classType = enumValue(3, _dv.getUint8(payload + 8));
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeParameters = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_superClass = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_superTypeArguments = optionalNode(_i32[(extra + (extraId + 3) * 4) >> 2]);
+        const f_implements = nodeArray(_i32[(extra + (extraId + 4) * 4) >> 2], _i32[(extra + (extraId + 4) * 4 + 4) >> 2], false);
+        const f_body = node(_i32[(extra + (extraId + 6) * 4) >> 2]);
+        const f_abstract = _dv.getUint8(payload + 9) !== 0;
+        const f_declare = _dv.getUint8(payload + 10) !== 0;
+        result = {
+          type: f_classType, start, end,
+          decorators: f_decorators,
+          id: f_id,
+          superClass: f_superClass,
+          body: f_body,
+          typeParameters: f_typeParameters,
+          superTypeArguments: f_superTypeArguments,
+          implements: f_implements,
+          abstract: f_abstract,
+          declare: f_declare,
+        };
+        break;
+      }
+      case 48: {
+        result = { type: "ClassBody", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 49: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_value = node(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_kind = enumValue(2, _dv.getUint8(payload + 4));
+        const f_computed = _dv.getUint8(payload + 5) !== 0;
+        const f_static = _dv.getUint8(payload + 6) !== 0;
+        const f_override = _dv.getUint8(payload + 7) !== 0;
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
+        const f_abstract = _dv.getUint8(payload + 9) !== 0;
+        const f_accessibility = enumValue(14, _dv.getUint8(payload + 10));
+        result = {
+          type: f_abstract ? "TSAbstractMethodDefinition" : "MethodDefinition",
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          kind: f_kind,
+          computed: f_computed,
+          static: f_static,
+          override: f_override,
+          optional: f_optional,
+          accessibility: f_accessibility,
+        };
+        break;
+      }
+      case 50: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_key = node(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(extra + (extraId + 3) * 4) >> 2]);
+        const f_value = optionalNode(_i32[(extra + (extraId + 4) * 4) >> 2]);
+        const f_computed = _dv.getUint8(payload + 0) !== 0;
+        const f_static = _dv.getUint8(payload + 1) !== 0;
+        const f_accessor = _dv.getUint8(payload + 2) !== 0;
+        const f_declare = _dv.getUint8(payload + 3) !== 0;
+        const f_override = _dv.getUint8(payload + 4) !== 0;
+        const f_optional = _dv.getUint8(payload + 5) !== 0;
+        const f_definite = _dv.getUint8(payload + 6) !== 0;
+        const f_readonly = _dv.getUint8(payload + 7) !== 0;
+        const f_abstract = _dv.getUint8(payload + 8) !== 0;
+        const f_accessibility = enumValue(14, _dv.getUint8(payload + 9));
+        const accessor = f_accessor;
+        result = {
+          type: f_abstract ? (accessor ? "TSAbstractAccessorProperty" : "TSAbstractPropertyDefinition") : (accessor ? "AccessorProperty" : "PropertyDefinition"),
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          computed: f_computed,
+          static: f_static,
+          typeAnnotation: f_typeAnnotation,
+          declare: f_declare,
+          override: f_override,
+          optional: f_optional,
+          definite: f_definite,
+          readonly: f_readonly,
+          accessibility: f_accessibility,
+        };
+        break;
+      }
+      case 51: {
+        result = { type: "StaticBlock", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 52: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_functionType = enumValue(10, _dv.getUint8(payload + 8));
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeParameters = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_thisParam = optionalNode(_i32[(extra + (extraId + 0) * 4) >> 2]);
+        const f_params = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        const f_returnType = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_body = node(_i32[(extra + (extraId + 3) * 4) >> 2]);
+        const f_generator = _dv.getUint8(payload + 9) !== 0;
+        const f_async = _dv.getUint8(payload + 10) !== 0;
+        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
+          type: f_functionType, start, end,
+          id: f_id,
+          generator: f_generator,
+          async: f_async,
+          params: f_params.params,
+          body: f_body,
+          expression: false,
+          typeParameters: f_typeParameters,
+          returnType: f_returnType,
+          declare: false,
+        };
+        break;
+      }
+      case 53: {
+        result = { type: "BlockStatement", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
+        break;
+      }
+      case 54: {
+        result = { type: "BlockStatement", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 55: {
+        result = { type: "WhileStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 56: {
+        result = { type: "DoWhileStatement", start, end,
+          body: node(_i32[(payload + 0) >> 2]),
+          test: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 57: {
+        result = { type: "WithStatement", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 58: {
+        const f_items = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_items.push(f_rest);
+        result = { params: f_items };
+        break;
+      }
+      case 59: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_pattern = node(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_initializer = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
+        if (f_initializer === null) {
+          f_pattern.optional = f_optional;
+          f_pattern.typeAnnotation = f_typeAnnotation;
+          f_pattern.end = end;
+          f_pattern.decorators = f_decorators;
+          result = f_pattern;
+        } else {
+          const left = f_pattern;
+          left.optional = f_optional;
+          left.typeAnnotation = f_typeAnnotation;
+          left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);
+          result = {
+            type: "AssignmentPattern", start: left.start, end,
+            left, right: f_initializer,
+            decorators: f_decorators, optional: false, typeAnnotation: null,
+          };
+        }
+        break;
+      }
+      case 60: {
+        const f_decorators = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_argument = node(_i32[(payload + 8) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 12) >> 2]);
+        result = { type: "RestElement", start, end, argument: f_argument, decorators: f_decorators, optional: false, typeAnnotation: f_typeAnnotation, value: null };
+        break;
+      }
+      case 61: {
+        result = { type: "ArrayExpression", start, end,
+          elements: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true),
+        };
+        break;
+      }
+      case 62: {
+        result = { type: "ObjectExpression", start, end,
+          properties: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 63: {
+        result = { type: "SpreadElement", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 64: {
+        result = { type: "Property", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+          kind: enumValue(12, _dv.getUint8(payload + 8)),
+          method: _dv.getUint8(payload + 9) !== 0,
+          shorthand: _dv.getUint8(payload + 10) !== 0,
+          computed: _dv.getUint8(payload + 11) !== 0,
+          optional: false,
+        };
+        break;
+      }
+      case 65: {
+        result = { type: "ParenthesizedExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 66: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_expression = _dv.getUint8(payload + 8) !== 0;
+        const f_async = _dv.getUint8(payload + 9) !== 0;
+        const f_typeParameters = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_params = node(_i32[(payload + 4) >> 2]);
+        const f_returnType = optionalNode(_i32[(extra + (extraId + 0) * 4) >> 2]);
+        const f_body = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        result = {
+          type: "ArrowFunctionExpression", start, end,
+          id: null, generator: false, async: f_async,
+          params: f_params.params,
+          body: f_body, expression: f_expression,
+          typeParameters: f_typeParameters,
+          returnType: f_returnType,
+        };
+        break;
+      }
+      case 67: {
+        result = { type: "SequenceExpression", start, end,
+          expressions: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 68: {
+        result = { type: "MemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+          optional: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 69: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "CallExpression", start, end,
+          callee: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+          arguments: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          optional: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 70: {
+        result = { type: "ChainExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 71: {
+        result = { type: "TaggedTemplateExpression", start, end,
+          tag: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+          quasi: node(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 72: {
+        result = { type: "NewExpression", start, end,
+          callee: node(_i32[(payload + 8) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 12) >> 2]),
+          arguments: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 73: {
+        result = { type: "AwaitExpression", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 74: {
+        result = { type: "YieldExpression", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+          delegate: _dv.getUint8(payload + 4) !== 0,
+        };
+        break;
+      }
+      case 75: {
+        result = { type: "MetaProperty", start, end,
+          meta: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 76: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ImportExpression", start, end,
+          source: node(_i32[(payload + 0) >> 2]),
+          options: optionalNode(_i32[(payload + 4) >> 2]),
+          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 0) * 4)),
+        };
+        break;
+      }
+      case 77: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ImportDeclaration", start, end,
+          specifiers: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          source: node(_i32[(payload + 0) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 2) * 4) >> 2], _i32[(extra + (extraId + 2) * 4 + 4) >> 2], false),
+          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 4) * 4)),
+          importKind: enumValue(15, _dv.getUint8(payload + 4)),
+        };
+        break;
+      }
+      case 78: {
+        result = { type: "ImportSpecifier", start, end,
+          imported: node(_i32[(payload + 0) >> 2]),
+          local: node(_i32[(payload + 4) >> 2]),
+          importKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 79: {
+        result = { type: "ImportDefaultSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 80: {
+        result = { type: "ImportNamespaceSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 81: {
+        result = { type: "ImportAttribute", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 82: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ExportNamedDeclaration", start, end,
+          declaration: optionalNode(_i32[(payload + 0) >> 2]),
+          specifiers: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          source: optionalNode(_i32[(payload + 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 2) * 4) >> 2], _i32[(extra + (extraId + 2) * 4 + 4) >> 2], false),
+          exportKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 83: {
+        result = { type: "ExportDefaultDeclaration", start, end,
+          declaration: node(_i32[(payload + 0) >> 2]),
+          exportKind: "value",
+        };
+        break;
+      }
+      case 84: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "ExportAllDeclaration", start, end,
+          exported: optionalNode(_i32[(payload + 0) >> 2]),
+          source: node(_i32[(payload + 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          exportKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 85: {
+        result = { type: "ExportSpecifier", start, end,
+          local: node(_i32[(payload + 0) >> 2]),
+          exported: node(_i32[(payload + 4) >> 2]),
+          exportKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 86: {
+        result = { type: "Hashbang", start, end,
+          value: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 2, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 87: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeParameters = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_thisParam = optionalNode(_i32[(extra + (extraId + 0) * 4) >> 2]);
+        const f_params = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        const f_returnType = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_generator = _dv.getUint8(payload + 8) !== 0;
+        const f_async = _dv.getUint8(payload + 9) !== 0;
+        const f_declare = _dv.getUint8(payload + 10) !== 0;
+        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
+          type: typeOverride ?? "TSDeclareFunction",
+          start, end,
+          id: f_id,
+          generator: f_generator,
+          async: f_async,
+          params: f_params.params,
+          body: null,
+          expression: false,
+          typeParameters: f_typeParameters,
+          returnType: f_returnType,
+          declare: f_declare,
+        };
+        break;
+      }
+      case 88: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_value = node(_i32[(extra + (extraId + 2) * 4) >> 2], "TSEmptyBodyFunctionExpression");
+        const f_kind = enumValue(2, _dv.getUint8(payload + 4));
+        const f_computed = _dv.getUint8(payload + 5) !== 0;
+        const f_static = _dv.getUint8(payload + 6) !== 0;
+        const f_override = _dv.getUint8(payload + 7) !== 0;
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
+        const f_abstract = _dv.getUint8(payload + 9) !== 0;
+        const f_accessibility = enumValue(14, _dv.getUint8(payload + 10));
+        result = {
+          type: f_abstract ? "TSAbstractMethodDefinition" : "MethodDefinition",
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          kind: f_kind,
+          computed: f_computed,
+          static: f_static,
+          override: f_override,
+          optional: f_optional,
+          accessibility: f_accessibility,
+        };
+        break;
+      }
+      case 89: {
+        result = { type: "TSTypeAnnotation", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 90: {
+        result = { type: "TSAnyKeyword", start, end,
+        };
+        break;
+      }
+      case 91: {
+        result = { type: "TSUnknownKeyword", start, end,
+        };
+        break;
+      }
+      case 92: {
+        result = { type: "TSNeverKeyword", start, end,
+        };
+        break;
+      }
+      case 93: {
+        result = { type: "TSVoidKeyword", start, end,
+        };
+        break;
+      }
+      case 94: {
+        result = { type: "TSNullKeyword", start, end,
+        };
+        break;
+      }
+      case 95: {
+        result = { type: "TSUndefinedKeyword", start, end,
+        };
+        break;
+      }
+      case 96: {
+        result = { type: "TSStringKeyword", start, end,
+        };
+        break;
+      }
+      case 97: {
+        result = { type: "TSNumberKeyword", start, end,
+        };
+        break;
+      }
+      case 98: {
+        result = { type: "TSBigIntKeyword", start, end,
+        };
+        break;
+      }
+      case 99: {
+        result = { type: "TSBooleanKeyword", start, end,
+        };
+        break;
+      }
+      case 100: {
+        result = { type: "TSSymbolKeyword", start, end,
+        };
+        break;
+      }
+      case 101: {
+        result = { type: "TSObjectKeyword", start, end,
+        };
+        break;
+      }
+      case 102: {
+        result = { type: "TSIntrinsicKeyword", start, end,
+        };
+        break;
+      }
+      case 103: {
+        result = { type: "TSThisType", start, end,
+        };
+        break;
+      }
+      case 104: {
+        result = { type: "TSTypeReference", start, end,
+          typeName: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 105: {
+        result = { type: "TSQualifiedName", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 106: {
+        result = { type: "TSTypeQuery", start, end,
+          exprName: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 107: {
+        result = { type: "TSImportType", start, end,
+          source: node(_i32[(payload + 0) >> 2]),
+          options: optionalNode(_i32[(payload + 4) >> 2]),
+          qualifier: optionalNode(_i32[(payload + 8) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 108: {
+        result = { type: "TSTypeParameter", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+          constraint: optionalNode(_i32[(payload + 4) >> 2]),
+          default: optionalNode(_i32[(payload + 8) >> 2]),
+          in: _dv.getUint8(payload + 12) !== 0,
+          out: _dv.getUint8(payload + 13) !== 0,
+          const: _dv.getUint8(payload + 14) !== 0,
+        };
+        break;
+      }
+      case 109: {
+        result = { type: "TSTypeParameterDeclaration", start, end,
+          params: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 110: {
+        result = { type: "TSTypeParameterInstantiation", start, end,
+          params: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 111: {
+        result = { type: "TSLiteralType", start, end,
+          literal: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 112: {
+        result = { type: "TSTemplateLiteralType", start, end,
+          quasis: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          types: nodeArray(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 113: {
+        result = { type: "TSArrayType", start, end,
+          elementType: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 114: {
+        result = { type: "TSIndexedAccessType", start, end,
+          objectType: node(_i32[(payload + 0) >> 2]),
+          indexType: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 115: {
+        result = { type: "TSTupleType", start, end,
+          elementTypes: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 116: {
+        result = { type: "TSNamedTupleMember", start, end,
+          label: node(_i32[(payload + 0) >> 2]),
+          elementType: node(_i32[(payload + 4) >> 2]),
+          optional: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 117: {
+        result = { type: "TSOptionalType", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 118: {
+        result = { type: "TSRestType", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 119: {
+        result = { type: "TSJSDocNullableType", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+          postfix: _dv.getUint8(payload + 4) !== 0,
+        };
+        break;
+      }
+      case 120: {
+        result = { type: "TSJSDocNonNullableType", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+          postfix: _dv.getUint8(payload + 4) !== 0,
+        };
+        break;
+      }
+      case 121: {
+        result = { type: "TSJSDocUnknownType", start, end,
+        };
+        break;
+      }
+      case 122: {
+        result = { type: "TSUnionType", start, end,
+          types: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 123: {
+        result = { type: "TSIntersectionType", start, end,
+          types: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 124: {
+        result = { type: "TSConditionalType", start, end,
+          checkType: node(_i32[(payload + 0) >> 2]),
+          extendsType: node(_i32[(payload + 4) >> 2]),
+          trueType: node(_i32[(payload + 8) >> 2]),
+          falseType: node(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 125: {
+        result = { type: "TSInferType", start, end,
+          typeParameter: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 126: {
+        result = { type: "TSTypeOperator", start, end,
+          operator: enumValue(16, _dv.getUint8(payload + 4)),
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 127: {
+        result = { type: "TSParenthesizedType", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 128: {
+        const f_typeParameters = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_thisParam = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_params = node(_i32[(payload + 8) >> 2]);
+        const f_returnType = node(_i32[(payload + 12) >> 2]);
+        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
+          type: "TSFunctionType", start, end,
+          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+        };
+        break;
+      }
+      case 129: {
+        const f_typeParameters = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_params = node(_i32[(payload + 4) >> 2]);
+        const f_returnType = node(_i32[(payload + 8) >> 2]);
+        const f_abstract = _dv.getUint8(payload + 12) !== 0;
+        result = {
+          type: "TSConstructorType", start, end,
+          abstract: f_abstract,
+          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+        };
+        break;
+      }
+      case 130: {
+        result = { type: "TSTypePredicate", start, end,
+          parameterName: node(_i32[(payload + 0) >> 2]),
+          typeAnnotation: optionalNode(_i32[(payload + 4) >> 2]),
+          asserts: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 131: {
+        result = { type: "TSTypeLiteral", start, end,
+          members: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 132: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_constraint = node(_i32[(payload + 4) >> 2]);
+        const f_nameType = optionalNode(_i32[(extra + (extraId + 0) * 4) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        const f_optional = enumValue(19, _dv.getUint8(payload + 8));
+        const f_readonly = enumValue(19, _dv.getUint8(payload + 9));
+        result = {
+          type: "TSMappedType", start, end,
+          key: f_key, constraint: f_constraint,
+          nameType: f_nameType, typeAnnotation: f_typeAnnotation,
+          optional: f_optional === null ? false : f_optional,
+          readonly: f_readonly,
+        };
+        break;
+      }
+      case 133: {
+        result = { type: "TSPropertySignature", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          typeAnnotation: optionalNode(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+          optional: _dv.getUint8(payload + 9) !== 0,
+          readonly: _dv.getUint8(payload + 10) !== 0,
+          accessibility: null,
+          static: false,
+        };
+        break;
+      }
+      case 134: {
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_key = node(_i32[(payload + 0) >> 2]);
+        const f_typeParameters = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_thisParam = optionalNode(_i32[(extra + (extraId + 0) * 4) >> 2]);
+        const f_params = node(_i32[(extra + (extraId + 1) * 4) >> 2]);
+        const f_returnType = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_kind = enumValue(17, _dv.getUint8(payload + 8));
+        const f_computed = _dv.getUint8(payload + 9) !== 0;
+        const f_optional = _dv.getUint8(payload + 10) !== 0;
+        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
+          type: "TSMethodSignature", start, end,
+          key: f_key,
+          computed: f_computed,
+          optional: f_optional,
+          kind: f_kind,
+          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+          accessibility: null,
+          readonly: false,
+          static: false,
+        };
+        break;
+      }
+      case 135: {
+        const f_typeParameters = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_thisParam = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_params = node(_i32[(payload + 8) >> 2]);
+        const f_returnType = optionalNode(_i32[(payload + 12) >> 2]);
+        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
+          type: "TSCallSignatureDeclaration", start, end,
+          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+        };
+        break;
+      }
+      case 136: {
+        const f_typeParameters = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_params = node(_i32[(payload + 4) >> 2]);
+        const f_returnType = optionalNode(_i32[(payload + 8) >> 2]);
+        result = {
+          type: "TSConstructSignatureDeclaration", start, end,
+          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+        };
+        break;
+      }
+      case 137: {
+        result = { type: "TSIndexSignature", start, end,
+          parameters: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          typeAnnotation: node(_i32[(payload + 8) >> 2]),
+          readonly: _dv.getUint8(payload + 12) !== 0,
+          static: _dv.getUint8(payload + 13) !== 0,
+          accessibility: null,
+        };
+        break;
+      }
+      case 138: {
+        result = { type: "TSTypeAliasDeclaration", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+          typeParameters: optionalNode(_i32[(payload + 4) >> 2]),
+          typeAnnotation: node(_i32[(payload + 8) >> 2]),
+          declare: _dv.getUint8(payload + 12) !== 0,
+        };
+        break;
+      }
+      case 139: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "TSInterfaceDeclaration", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+          typeParameters: optionalNode(_i32[(payload + 4) >> 2]),
+          extends: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          body: node(_i32[(extra + (extraId + 2) * 4) >> 2]),
+          declare: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 140: {
+        result = { type: "TSInterfaceBody", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 141: {
+        result = { type: "TSInterfaceHeritage", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 142: {
+        result = { type: "TSClassImplements", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 143: {
+        result = { type: "TSEnumDeclaration", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+          body: node(_i32[(payload + 4) >> 2]),
+          const: _dv.getUint8(payload + 8) !== 0,
+          declare: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 144: {
+        result = { type: "TSEnumBody", start, end,
+          members: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 145: {
+        result = { type: "TSEnumMember", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+          initializer: optionalNode(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 146: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_attributes = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_body = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_kind = enumValue(18, _dv.getUint8(payload + 12));
+        const f_declare = _dv.getUint8(payload + 13) !== 0;
+        result = f_body === null
+          ? { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false }
+          : { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false, body: f_body };
+        if (f_attributes !== null) result.attributes = f_attributes;
+        break;
+      }
+      case 147: {
+        result = { type: "TSModuleBlock", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
+        break;
+      }
+      case 148: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_body = node(_i32[(payload + 4) >> 2]);
+        const f_declare = _dv.getUint8(payload + 8) !== 0;
+        result = {
+          type: "TSModuleDeclaration", start, end,
+          id: f_id, body: f_body, kind: "global",
+          declare: f_declare, global: true,
+        };
+        break;
+      }
+      case 149: {
+        result = { type: "TSParameterProperty", start, end,
+          decorators: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          parameter: node(_i32[(payload + 8) >> 2]),
+          override: _dv.getUint8(payload + 12) !== 0,
+          readonly: _dv.getUint8(payload + 13) !== 0,
+          accessibility: enumValue(14, _dv.getUint8(payload + 14)),
+          static: false,
+        };
+        break;
+      }
+      case 150: {
+        const f_typeAnnotation = optionalNode(_i32[(payload + 0) >> 2]);
+        result = {
+          type: "Identifier", start, end,
+          decorators: [], name: "this", optional: false,
+          typeAnnotation: f_typeAnnotation,
+        };
+        break;
+      }
+      case 151: {
+        result = { type: "TSAsExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          typeAnnotation: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 152: {
+        result = { type: "TSSatisfiesExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          typeAnnotation: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 153: {
+        result = { type: "TSTypeAssertion", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+          expression: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 154: {
+        result = { type: "TSNonNullExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 155: {
+        result = { type: "TSInstantiationExpression", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          typeArguments: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 156: {
+        result = { type: "TSExportAssignment", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 157: {
+        result = { type: "TSNamespaceExportDeclaration", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 158: {
+        result = { type: "TSImportEqualsDeclaration", start, end,
+          id: node(_i32[(payload + 0) >> 2]),
+          moduleReference: node(_i32[(payload + 4) >> 2]),
+          importKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 159: {
+        result = { type: "TSExternalModuleReference", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 160: {
+        const f_name = node(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = node(_i32[(payload + 4) >> 2]);
+        f_name.start = start;
+        f_name.end = end;
+        f_name.typeAnnotation = f_typeAnnotation;
+        result = f_name;
+        break;
+      }
+      case 161: {
+        result = { type: "JSXElement", start, end,
+          openingElement: node(_i32[(payload + 8) >> 2]),
+          children: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          closingElement: optionalNode(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 162: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "JSXOpeningElement", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
+          selfClosing: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 163: {
+        result = { type: "JSXClosingElement", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 164: {
+        result = { type: "JSXFragment", start, end,
+          openingFragment: node(_i32[(payload + 8) >> 2]),
+          children: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          closingFragment: node(_i32[(payload + 12) >> 2]),
+        };
+        break;
+      }
+      case 165: {
+        result = { type: "JSXOpeningFragment", start, end,
+        };
+        break;
+      }
+      case 166: {
+        result = { type: "JSXClosingFragment", start, end,
+        };
+        break;
+      }
+      case 167: {
+        result = { type: "JSXIdentifier", start, end,
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+        };
+        break;
+      }
+      case 168: {
+        result = { type: "JSXNamespacedName", start, end,
+          namespace: node(_i32[(payload + 0) >> 2]),
+          name: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 169: {
+        result = { type: "JSXMemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 170: {
+        result = { type: "JSXAttribute", start, end,
+          name: node(_i32[(payload + 0) >> 2]),
+          value: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      case 171: {
+        result = { type: "JSXSpreadAttribute", start, end,
+          argument: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 172: {
+        result = { type: "JSXExpressionContainer", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 173: {
+        result = { type: "JSXEmptyExpression", start, end,
+        };
+        break;
+      }
+      case 174: {
+        const f_value = source.slice(start, end);
+        result = { type: "JSXText", start, end, value: f_value, raw: f_value };
+        break;
+      }
+      case 175: {
+        result = { type: "JSXSpreadChild", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      default:
+        throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);
+    }
+    return result;
+  }
+
+  let _program, _comments, _diagnostics;
+  return {
+    get program() {
+      if (_program !== undefined) return _program;
+      try {
+        return (_program = nodeAll(programIndex));
+      } catch (error) {
+        if (error !== DEEP_AST) throw error;
+        node = nodeAll;
+        return (_program = nodeAll(programIndex));
+      }
+    },
+    get comments() {
+      return _comments !== undefined
+        ? _comments
+        : (_comments = _decodeComments());
+    },
+    get diagnostics() {
+      return _diagnostics !== undefined
+        ? _diagnostics
+        : (_diagnostics = _decodeDiagnostics());
+    },
+  };
+}

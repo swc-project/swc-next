@@ -10,7 +10,7 @@ use crate::{
     schema::{AstStruct, AstType, FieldLocation, Schema, TypeId},
 };
 
-use super::{estree::ENUMS, js_minifier::minify_encoder};
+use super::estree::ENUMS;
 
 const OUTPUT_DIR: &str = "packages/protocol/ast";
 
@@ -163,17 +163,9 @@ const ESTREE_TYPE_ORDER: &[&str] = &[
 pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
     let mut outputs = Vec::new();
     for (is_ts, suffix, name) in [(false, "js", "encodeJs"), (true, "ts", "encodeTs")] {
-        let pretty_path = format!("{OUTPUT_DIR}/encode-{suffix}.pretty.js");
-        let minified_path = format!("{OUTPUT_DIR}/encode-{suffix}.js");
-        let output = encoder_source(schema, is_ts, name);
-        let minified = minify_encoder(&output, &pretty_path);
         outputs.push(RawOutput {
-            path: pretty_path,
-            content: output.into_bytes(),
-        });
-        outputs.push(RawOutput {
-            path: minified_path,
-            content: minified.into_bytes(),
+            path: format!("{OUTPUT_DIR}/encode-{suffix}.js"),
+            content: encoder_source(schema, is_ts, name).into_bytes(),
         });
     }
     outputs
