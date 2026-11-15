@@ -27,7 +27,7 @@ export default defineConfig({
         ],
         autoExternal: false,
         externals: ["./binding.js", "./swc-next-core.browser.mjs", "@swc-next/walker"],
-        minify: false,
+        minify: true,
       },
     };
   }),
