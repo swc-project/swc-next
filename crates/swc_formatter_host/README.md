@@ -1,19 +1,15 @@
-# SWC Next Formatter Host
+# swc_formatter_host
 
-**Experimental and unstable.** APIs, document formats, and formatting output may
-change without notice.
+Formatting sessions for SWC Next document producers. Provides shared layout options, document decoding, and embedded-language dispatch.
 
-Language-independent formatting sessions for typed source-to-document producers
-and encoded documents. Sessions own an arena and shared layout options; language
-crates provide parsing, syntax options, and errors.
+**Experimental and unstable.** APIs and document formats may change.
 
-Applications supply synchronous embedded-language dispatch. Child contexts share
-storage, inherit layout and carry a bounded recursion depth. Deliberate fallback
-leaves the original syntax with its parent; execution failures remain errors.
-The host has no language dependencies or runtime plugin loader.
+Use `FormatSession` with a language-specific producer or an encoded document. Language formatters provide parsing and syntax options; applications provide embedded-language dispatch. See the [crate API](src/lib.rs) for session usage and document lifetimes.
 
-Documents borrow session storage and their inputs. Print or encode them before
-releasing either. Use `Writer::import_doc` or `Writer::write_doc` to compose
-independent documents with separate named-group scopes.
+## Testing
 
-Run the crate tests with `cargo test -p swc_next_formatter_host`.
+Unit tests cover formatting sessions, embedded-language dispatch, and error handling.
+
+```sh
+cargo test -p swc_next_formatter_host --locked
+```

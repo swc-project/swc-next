@@ -1,34 +1,25 @@
 # @swc-next/formatter
 
-**Experimental and unstable.** APIs, document formats, and formatting output may
-change without notice.
+Document encoding and printing for SWC Next, with native and WebAssembly bindings for Node.js. Supports Prettier Docs, layout options, and cursor positions.
 
-Language-independent document encoding and Rust layout printing for native and
-Wasm runtimes. The package consumes SWCD documents using the shared formatter
-core. For JavaScript and TypeScript source formatting, use
-`@swc-next/formatter-js` or the SWCFMT Prettier plugin.
+**Experimental and unstable.** APIs, document formats, and output may change.
+
+## Usage
 
 ```js
 import { encodeDoc } from "@swc-next/formatter/document";
 import { printDocBufferSync } from "@swc-next/formatter";
 
 const { buffer } = encodeDoc(["hello", { type: "line", hard: true }, "world"]);
-const text = printDocBufferSync(buffer, { printWidth: 80 });
+console.log(printDocBufferSync(buffer));
 ```
 
-The document subpath is pure JavaScript and can be imported without loading a
-native or Wasm binding. Label values remain in the encoder's caller-owned
-sidecar. The printing API also supports cursor ranges, indentation, and output
-line endings.
+Document buffers require matching package versions. The document encoder can be used without loading a native or WebAssembly binding. See the [printing API](src-js/index.d.ts) and [encoder API](src-js/document.d.ts).
 
-Document printing uses the native printer's existing resource behavior.
+For JavaScript and TypeScript source formatting, use the [Prettier plugin](../formatter-prettier-plugin).
 
-Build native: `pnpm --filter @swc-next/formatter build`.
-Build Wasm: `pnpm --filter @swc-next/formatter build:wasm`.
+## Testing
 
-Then run `pnpm --filter @swc-next/formatter build:js` to bundle the JavaScript
-entry points into `dist`. Sources live in `src-js`; native and Wasm artifacts
-also go to `dist`.
+API tests cover document encoding, layout options, string handling, errors, and cursor positions.
 
-Run JavaScript API tests with `pnpm --filter @swc-next/formatter test`, or
-`pnpm --filter @swc-next/formatter test:wasm` for the Wasm bindings.
+From the workspace root, run `pnpm --filter @swc-next/formatter test` for native API tests, or `pnpm --filter @swc-next/formatter test:wasm` with WebAssembly bindings built.

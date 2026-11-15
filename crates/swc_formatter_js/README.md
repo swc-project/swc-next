@@ -1,13 +1,10 @@
-# SWC Next JavaScript Formatter
+# swc_formatter_js
 
-**Experimental and unstable.** APIs, document formats, and formatting output may
-change without notice.
+JavaScript, JSX, TypeScript, and TSX formatting for SWC Next. Formats source text or an existing program AST and produces documents for shared formatting sessions.
 
-Source-aware JavaScript, JSX, TypeScript, and TSX formatting for the SWC Next AST.
-Formats source text or an existing program AST and produces layout documents for
-shared formatter sessions. Syntax support is incomplete; unsupported programs
-return an error. See the crate documentation for formatting options and AST
-parsing prerequisites.
+**Experimental and unstable.** Syntax support is incomplete, and output can differ from Prettier. Unsupported syntax returns an error.
+
+## Usage
 
 ```rust
 let output = swc_next_formatter_js::format(
@@ -17,4 +14,14 @@ let output = swc_next_formatter_js::format(
 )?;
 ```
 
-Run the crate tests with `cargo test -p swc_next_formatter_js`.
+See the [crate API](src/lib.rs) for formatting options and AST input requirements.
+
+## Testing
+
+API and fixture tests cover options, source and AST entry points, document serialization, and idempotency.
+
+```sh
+cargo test -p swc_next_formatter_js --locked
+```
+
+See the [test documentation](tests) for fixtures and Prettier conformance coverage.

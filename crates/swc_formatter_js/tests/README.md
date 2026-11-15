@@ -1,36 +1,11 @@
 # Formatter tests
 
-`api.rs` checks public option values, parser options, and error handling.
+`api.rs` covers public options, parser configuration, and errors. Local fixtures live under `fixtures/<language>/<syntax>/`, with expected output in adjacent `.snap` files. The nearest `options.json` supplies formatting option sets.
 
-Local inputs live under `fixtures/<language>/<syntax>/`. `build.rs` discovers
-supported source files and generates one test per input. Each input has an
-adjacent `.snap` containing its source, option sets, and formatted output.
-An `options.json` array selects Prettier-style options; the nearest ancestor
-file wins, and absent options use Prettier defaults.
-
-The fixture runner formats twice. Both passes must parse, retain the comment
-count, agree between the source and AST entry points, and retain the same output
-after document encoding and decoding. Non-idempotent output
-fails the test rather than being accepted in a snapshot. Comment counts and parsing
-alone do not prove that formatting preserved semantics.
-
-Run the local tests with:
+Fixtures check source and AST entry-point consistency, document encoding and decoding, output parsing, comment counts, and second-pass idempotency. Parsing and comment counts alone do not establish semantic equivalence.
 
 ```sh
 cargo test -p swc_next_formatter_js --locked
 ```
 
-Generate snapshots after adding an input or intentionally changing output:
-
-```sh
-INSTA_UPDATE=always cargo test -p swc_next_formatter_js --test fixtures --locked
-```
-
-Review the output before accepting a snapshot. Keep each input small and place
-comment boundaries beside the syntax they exercise. Use a few representative
-widths and options for relevant layout branches.
-
-The full Prettier 3.9.9 conformance matrix lives in `tasks/testsuite`. It reads
-upstream fixture specifications and committed outputs independently of local
-snapshots. Unsupported syntax remains a reported failure while support grows.
-Local and upstream tests share option decoding in `support/prettier_options.rs`.
+Upstream Prettier compatibility is covered by the [testsuite conformance runner](../../../tasks/testsuite).

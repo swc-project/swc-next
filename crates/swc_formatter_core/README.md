@@ -1,14 +1,29 @@
-# SWC Next Formatter Core
+# swc_formatter_core
 
-**Experimental and unstable.** APIs, document formats, and formatting output may
-change without notice.
+Language-independent document construction and layout printing for SWC Next. Supports groups, indentation, conditional layouts, line suffixes, and document encoding.
 
-Language-independent document construction and layout printing. Documents use
-borrowed text, shared fragments, groups, conditional layouts, Fill and line suffixes.
-The formatting arena and input text must outlive printing or document encoding.
-Display widths use `unicode-width`; Unicode layout can differ from Prettier.
+**Experimental and unstable.** APIs, document formats, and output may change. Unicode width measurement can produce different line breaks from Prettier.
 
-The document model currently covers the JavaScript and TypeScript formatter's
-needs; support for the full Prettier Doc API is still being expanded.
+## Usage
 
-Run the crate tests with `cargo test -p swc_next_formatter_core`.
+```rust
+use swc_next_allocator::Allocator;
+use swc_next_formatter_core::{PrintOptions, Writer};
+
+let allocator = Allocator::new();
+let mut writer = Writer::new(&allocator);
+writer.text("hello");
+writer.hard_line();
+writer.text("world");
+let output = writer.finish().print(PrintOptions::default());
+```
+
+See the [crate API](src/lib.rs) for document operations and storage requirements. For JavaScript and TypeScript source formatting, use [swc_formatter_js](../swc_formatter_js).
+
+## Testing
+
+Unit tests cover document construction, layout, and binary encoding and decoding.
+
+```sh
+cargo test -p swc_next_formatter_core --locked
+```
