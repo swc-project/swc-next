@@ -1,5 +1,4 @@
 /target
-/npm/formatter-js/test/binding/
 *.json.gz
 callgrind*
 input.*

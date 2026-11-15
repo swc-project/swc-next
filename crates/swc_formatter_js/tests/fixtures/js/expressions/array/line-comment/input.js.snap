@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = [1, // comment
+ 2];
+---------- Options ----------
+{}
+---------- Output ----------
+const x = [
+  1, // comment
+  2,
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+const x = [
+  1, // comment
+  2
+];

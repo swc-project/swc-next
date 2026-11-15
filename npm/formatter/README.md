@@ -29,3 +29,6 @@ Build Wasm: `pnpm --filter @swc-next/formatter build:wasm`.
 Then run `pnpm --filter @swc-next/formatter build:js` to bundle the JavaScript
 entry points into `dist`. Sources live in `src-js`; native and Wasm artifacts
 also go to `dist`.
+
+Run JavaScript API tests with `pnpm --filter @swc-next/formatter test`, or
+`pnpm --filter @swc-next/formatter test:wasm` for the Wasm bindings.

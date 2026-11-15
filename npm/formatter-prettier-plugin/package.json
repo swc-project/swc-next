@@ -20,7 +20,7 @@
     "@swc-next/formatter-js": "workspace:*"
   },
   "peerDependencies": {
-    "prettier": "3.9.9"
+    "prettier": "catalog:"
   },
   "description": "Experimental and unstable JavaScript and TypeScript formatting through SWC and Prettier",
   "repository": {
@@ -39,7 +39,8 @@
     "prepack": "pnpm build:js"
   },
   "devDependencies": {
+    "@swc-next/formatter": "workspace:*",
     "cross-env": "catalog:",
-    "prettier": "3.9.9"
+    "prettier": "catalog:"
   }
 }

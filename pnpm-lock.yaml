@@ -241,6 +241,9 @@ catalogs:
     playwright:
       specifier: ^1.62.1
       version: 1.62.1
+    prettier:
+      specifier: 3.9.9
+      version: 3.9.9
     rsbuild-plugin-open-graph:
       specifier: ^1.1.3
       version: 1.1.3
@@ -325,9 +328,6 @@ importers:
       oxc-parser:
         specifier: 'catalog:'
         version: 0.142.0
-      prettier:
-        specifier: 3.9.9
-        version: 3.9.9
       tinybench:
         specifier: 'catalog:'
         version: 6.1.2
@@ -359,6 +359,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
 
   npm/formatter-js:
     devDependencies:
@@ -375,11 +378,14 @@ importers:
         specifier: workspace:*
         version: link:../formatter-js
     devDependencies:
+      '@swc-next/formatter':
+        specifier: workspace:*
+        version: link:../formatter
       cross-env:
         specifier: 'catalog:'
         version: 10.1.0
       prettier:
-        specifier: 3.9.9
+        specifier: 'catalog:'
         version: 3.9.9
 
   npm/generator:
