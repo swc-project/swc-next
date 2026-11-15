@@ -39,7 +39,7 @@ function checkUnit(file, unit, suite, sourceType) {
   });
   let parsed;
   try {
-    parsed = decode(binding.parseSync(sourceBytes, source.length, options), source, sourceBytes);
+    parsed = decode(binding.parseSync(sourceBytes, source.length, options), source);
     if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) return result;
   } catch (error) {
     return { ...result, error: String(error) };
@@ -47,7 +47,7 @@ function checkUnit(file, unit, suite, sourceType) {
   result.parsed = true;
   try {
     const buffer = encodeBuffer(parsed.program);
-    const decoded = decode(buffer, source, sourceBytes);
+    const decoded = decode(buffer, source);
     const roundtrip = encodeBuffer(decoded.program);
     if (!buffer.equals(roundtrip)) {
       return { ...result, error: "Codec buffer differs after decode/encode" };

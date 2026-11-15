@@ -21,7 +21,7 @@ export function parseSync(source, options) {
   // so this scratch buffer can be overwritten by the next parse.
   const sourceBytes = sourceBuffer.subarray(0, written);
   const buffer = __parseSync(sourceBytes, source.length, parserConfig);
-  const result = decode(buffer, source, sourceBytes);
+  const result = decode(buffer, source);
   if (!options?.errorRecovery) {
     const diagnostics = result.diagnostics;
     if (diagnostics.length) throw diagnostics[0];

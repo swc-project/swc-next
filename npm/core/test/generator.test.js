@@ -33,7 +33,7 @@ function decodeEncoded(program, source) {
   buffer.writeUInt32LE(strings.length, 8);
   buffer.writeUInt32LE(0, 12);
   buffer.writeUInt32LE(0, 36);
-  return decodeJs(buffer, source, new TextEncoder().encode(source)).program;
+  return decodeJs(buffer, source).program;
 }
 
 function assertEncodedRoundtrip(source) {

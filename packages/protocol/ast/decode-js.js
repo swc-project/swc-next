@@ -94,7 +94,7 @@ function copyLittleEndianI32(view) {
   }
   return i32;
 }
-export function decodeJs(buffer, source, sourceBuffer) {
+export function decodeJs(buffer, source) {
 
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;

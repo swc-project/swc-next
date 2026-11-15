@@ -5,7 +5,6 @@ import type { CompileRequest, CompileResponse } from "./types";
 const ready = init();
 // Attach a rejection handler immediately; each request still receives the error.
 void ready.catch(() => {});
-const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 self.onmessage = async ({ data }: MessageEvent<CompileRequest>) => {
@@ -21,7 +20,6 @@ self.onmessage = async ({ data }: MessageEvent<CompileRequest>) => {
     const { program, diagnostics } = decode(
       buffer.subarray(4, 4 + astLength),
       data.source,
-      encoder.encode(data.source),
     );
     // Materialize the decoder's lazy getters before crossing the Worker boundary.
     response = {

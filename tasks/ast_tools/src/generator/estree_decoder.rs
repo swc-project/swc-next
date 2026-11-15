@@ -75,11 +75,7 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         output.push_str("const DEEP_AST = {};\n");
     }
     output.push_str(DECODE_HELPERS);
-    writeln!(
-        output,
-        "export function {name}(buffer, source, sourceBuffer) {{"
-    )
-    .unwrap();
+    writeln!(output, "export function {name}(buffer, source) {{").unwrap();
     output.push_str(DECODE_PREAMBLE);
     if is_ts {
         output.push_str(
