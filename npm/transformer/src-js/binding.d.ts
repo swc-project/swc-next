@@ -123,6 +123,8 @@ export interface TransformApiOptions {
   generator?: GeneratorConfig
 }
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */

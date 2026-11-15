@@ -20,6 +20,8 @@ export interface GeneratorConfig {
   minify?: boolean
 }
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * Sections must be produced by the matching JavaScript encoder and satisfy

@@ -7,6 +7,8 @@ use swc_next_core::js::transformer::bridge::{TransformApiOptions, transform_to_b
 
 #[cfg(target_family = "wasm")]
 #[bridge]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+///
 /// # Safety
 /// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
 pub unsafe fn transform_sync(
@@ -23,6 +25,8 @@ pub unsafe fn transform_sync(
     ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null",
     ts_return_type = "string | Uint8Array"
 )]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+///
 /// # Safety
 /// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
 pub unsafe fn transform_sync(

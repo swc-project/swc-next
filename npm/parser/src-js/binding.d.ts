@@ -75,6 +75,8 @@ export type SourceType =  'module'|
 export declare function langFromPath(path: string): Lang
 
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * The caller must ensure that `source` contains valid UTF-8.

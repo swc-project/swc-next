@@ -8,6 +8,8 @@ use swc_next_ecma_ast::{Lang, SourceType};
 
 #[cfg(target_family = "wasm")]
 #[bridge]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+///
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
@@ -26,6 +28,8 @@ pub unsafe fn parse_sync(
     ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options?: ParserConfig | undefined | null",
     ts_return_type = "Uint8Array"
 )]
+/// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+///
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
