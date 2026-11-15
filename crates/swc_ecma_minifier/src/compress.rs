@@ -466,8 +466,7 @@ impl Compressor {
     /// receiver stays `undefined`, `delete` still sees a value, and `typeof`
     /// still throws for an undeclared name.
     fn kept_branch(&mut self, ast: &mut Ast<'_>, node: Expr, kept: Expr) -> Expr {
-        if !self.reference_positions.remove(node.node_id()) || !dead_code::is_reference(ast, kept)
-        {
+        if !self.reference_positions.remove(node.node_id()) || !dead_code::is_reference(ast, kept) {
             return kept;
         }
         let span = node.span(ast);
