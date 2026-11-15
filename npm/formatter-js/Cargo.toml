@@ -21,8 +21,8 @@ test-native = [
 ]
 
 [dependencies]
-swc_next_bridge = { workspace = true, features = ["formatter-js"] }
-swc_next_core   = { workspace = true, features = ["bridge", "js_parser"] }
+swc_next_bridge = { workspace = true }
+swc_next_core   = { workspace = true, features = ["bridge", "js_formatter"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 napi                    = { workspace = true, optional = true, features = ["serde-json"] }

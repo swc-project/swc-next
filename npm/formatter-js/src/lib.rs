@@ -16,5 +16,5 @@ pub fn format_doc_buffer_sync(
     parser: Option<ParserConfig>,
     options: &[u8],
 ) -> Result<Vec<u8>, String> {
-    swc_next_bridge::format_doc(source, parser.map(Into::into), options)
+    swc_next_core::js::formatter::bridge::format_doc(source, parser.map(Into::into), options)
 }

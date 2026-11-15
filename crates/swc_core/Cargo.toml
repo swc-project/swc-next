@@ -9,10 +9,12 @@ repository.workspace  = true
 version               = "0.5.0"
 
 [features]
-bridge = ["dep:swc_next_bridge"]
-serde  = ["dep:serde"]
+bridge    = ["dep:swc_next_bridge"]
+formatter = ["dep:swc_next_formatter_core", "dep:swc_next_formatter_host"]
+serde     = ["dep:serde"]
 
 js             = ["dep:swc_next_allocator", "dep:swc_next_ecma_ast"]
+js_formatter   = ["js", "js_parser", "formatter", "dep:swc_next_formatter_js"]
 js_generator   = ["js", "dep:swc_next_ecma_codegen"]
 js_minifier    = ["js", "js_parser", "js_generator", "dep:swc_next_ecma_minifier", "dep:serde_json"]
 js_parser      = ["js", "dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
@@ -29,6 +31,9 @@ swc_next_ecma_minifier    = { workspace = true, optional = true }
 swc_next_ecma_parser      = { workspace = true, optional = true }
 swc_next_ecma_semantic    = { workspace = true, optional = true }
 swc_next_ecma_transformer = { workspace = true, optional = true }
+swc_next_formatter_core   = { workspace = true, optional = true }
+swc_next_formatter_host   = { workspace = true, optional = true }
+swc_next_formatter_js     = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

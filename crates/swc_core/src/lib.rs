@@ -1,12 +1,18 @@
 //! Core APIs for swc-next.
 //!
 //! Enable `js` for JavaScript configuration types, and select stages with
-//! `js_parser`, `js_generator`, `js_transformer`, and `js_minifier`. The transformer
-//! and minifier features include parsing and code generation.
+//! `js_parser`, `js_generator`, `js_formatter`, `js_transformer`, and `js_minifier`.
+//! The transformer and minifier features include parsing and code generation.
+//! Enable `formatter` for language-independent document printing without the
+//! JavaScript and TypeScript stages.
+//! Binary formatter transport requires the `bridge` feature.
 //! The optional `bridge` feature enables FFI conversions and type generation for
 //! the enabled APIs.
 //! Enable `serde` to deserialize configuration types. JSON uses camelCase fields
 //! and rejects unknown fields.
+
+#[cfg(feature = "formatter")]
+pub mod formatter;
 
 #[cfg(feature = "js")]
 pub mod js;
