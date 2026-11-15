@@ -13,6 +13,9 @@ use crate::{
     sourcemap::{ChunkBuilder, generate_line_offset_tables, make_chunk_builder},
 };
 
+#[path = "ts_grouping.rs"]
+mod ts_grouping;
+
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum NumberFormat {
     #[default]
@@ -113,7 +116,40 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
     if was_negative { -n } else { n }
 }
 
-struct Printer<'a> {
+#[derive(Default)]
+struct Plain;
+
+#[derive(Default)]
+struct Typed;
+
+// Typed printing selects its expression layout and optional syntax trace
+// together. The untraced mode retains ordinary JavaScript formatting.
+trait PrinterMode<'a>: Default {
+    const STYLE: bool = false;
+
+    const CAPTURE: bool = false;
+
+    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
+        unreachable!("this printer mode has no syntax trace")
+    }
+}
+
+impl PrinterMode<'_> for Plain {}
+
+impl PrinterMode<'_> for Typed {
+    const STYLE: bool = true;
+}
+
+impl<'a> PrinterMode<'a> for ts_grouping::State<'a> {
+    const STYLE: bool = true;
+    const CAPTURE: bool = true;
+    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
+        self
+    }
+}
+
+// Untraced modes are zero sized and keep the ordinary binary-stack layout.
+struct Printer<'a, M: PrinterMode<'a>> {
     ast: &'a Ast<'a>,
     options: Options,
     js: Vec<u8>,
@@ -140,6 +176,7 @@ struct Printer<'a> {
     prev_reg_exp_end: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
+    trace: M,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -187,11 +224,16 @@ impl TsTypeContext {
 /// Prints an AST without exposing its unbranded handles.
 pub fn generate<'a>(tree: &'a AstCtx<'a>, options: Options) -> GenerateResult<'a> {
     // SAFETY: The printer only reads handles obtained from this AST.
-    Printer::init(unsafe { tree.ast() }, options).generate()
+    let ast = unsafe { tree.ast() };
+    if tree.is_ts() {
+        ts_grouping::generate(ast, options)
+    } else {
+        Printer::<Plain>::init(ast, options).generate()
+    }
 }
 
 impl BinaryExprVisitor {
-    fn prepare(&mut self, p: &mut Printer<'_>) {
+    fn prepare<'a, M: PrinterMode<'a>>(&mut self, p: &mut Printer<'a, M>) {
         let e = self.e;
 
         let operator = e.operator(p.ast);
@@ -200,6 +242,30 @@ impl BinaryExprVisitor {
         self.operator = operator;
         self.wrap = self.level > precedence
             || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In));
+
+        let syntax_rejects = M::CAPTURE
+            && matches!(
+                operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+            && p.syntax_rejects_type(e.right(p.ast));
+
+        let syntax_explicit = self.context.contains(ExprContext::EXPLICIT_GROUP);
+
+        if M::CAPTURE
+            && matches!(
+                operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+        {
+            p.trace.state_mut().begin_binary(
+                ts_grouping::Shape {
+                    wrapped: self.wrap || syntax_explicit,
+                    rejects: syntax_rejects,
+                },
+                p.js.len(),
+            );
+        }
 
         if self.wrap {
             p.print("(");
@@ -295,7 +361,8 @@ impl BinaryExprVisitor {
         }
     }
 
-    fn visit_right_and_finish(self, p: &mut Printer<'_>) {
+    fn visit_right_and_finish<'a, M: PrinterMode<'a>>(self, p: &mut Printer<'a, M>) {
+        let syntax_left_end = p.js.len();
         p.print_space();
         if self.operator.is_keyword() {
             p.print_space_before_identifier();
@@ -306,6 +373,20 @@ impl BinaryExprVisitor {
                 BinaryishOperator::Binary(operator) => {
                     let operator_code = OperatorCode::Binary(operator);
                     p.print_operator(operator_code, operator.as_str());
+
+                    if M::CAPTURE {
+                        match operator {
+                            BinaryOperator::LessThan => {
+                                p.trace.state_mut().operator(1, syntax_left_end)
+                            }
+                            // The second `<` of a shift would have to begin a
+                            // generic function type with parameters and a real
+                            // `=>`. Value precedence groups an arrow operand,
+                            // so a complete such head cannot come from `<<`.
+                            BinaryOperator::LeftShift => p.trace.state_mut().type_break(),
+                            _ => {}
+                        }
+                    }
                 }
                 BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
             }
@@ -320,21 +401,266 @@ impl BinaryExprVisitor {
         if self.wrap {
             p.print(")");
         }
+
+        if M::CAPTURE
+            && matches!(
+                self.operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+        {
+            p.trace.state_mut().end_binary(p.js.len());
+        }
         p.forbid_in = self.flags;
     }
 }
 
-impl<'a> Printer<'a> {
+impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
+    #[inline]
+    fn syntax_value_container(&mut self, expression: Expr) -> bool {
+        M::CAPTURE
+            && self.trace.state_mut().has_pending_here()
+            && self.syntax_rejects_type(expression)
+            && self.trace.state_mut().begin_value()
+    }
+
+    fn syntax_rejects_type(&self, mut expr: Expr) -> bool {
+        // Complete type forms compose through tuple elements, property types,
+        // template holes, type operators and function returns. Computed keys
+        // and parameter initializers use value grammar, so do not inspect them.
+        // Keep the worklist iterative: a value bitwise chain can be arbitrarily
+        // deep even though the ordinary binary printer uses a heap stack.
+        #[derive(Clone, Copy, PartialEq, Eq)]
+        enum TypeEnd {
+            Delimiter,
+            Member,
+        }
+        let mut remaining = Vec::new();
+        let mut end = TypeEnd::Delimiter;
+        loop {
+            match self.ast.expr_data(expr) {
+                ExprData::ParenthesizedExpression(e) => {
+                    expr = e.expression(self.ast);
+                    end = TypeEnd::Delimiter;
+                    continue;
+                }
+                ExprData::CallExpression(call) => {
+                    if self.call_has_value_head(call) {
+                        // print_call writes `(` immediately after the callee.
+                        // It cannot become a separate type call signature by
+                        // ASI, even when the source had a line break there.
+                        return true;
+                    } else if let ArgumentData::Expr(argument) = self
+                        .ast
+                        .argument_data(call.arguments(self.ast).get_node(self.ast, 0).unwrap())
+                    {
+                        expr = argument;
+                        end = TypeEnd::Delimiter;
+                        continue;
+                    }
+                }
+                ExprData::TaggedTemplateExpression(tagged) => {
+                    if tagged.type_arguments(self.ast).is_some()
+                        || !self.is_type_operator_head(tagged.tag(self.ast))
+                    {
+                        return true;
+                    }
+                    expr = Expr::TemplateLiteral(tagged.quasi(self.ast));
+                    continue;
+                }
+                ExprData::ArrayExpression(array) => {
+                    for slot in array.elements(self.ast).iter() {
+                        let Some(argument) = self.ast.get_node_in_sub_range(slot) else {
+                            // A tuple type cannot contain an omitted element.
+                            return true;
+                        };
+                        remaining.push((
+                            match self.ast.argument_data(argument) {
+                                ArgumentData::Expr(value) => value,
+                                ArgumentData::SpreadElement(spread) => spread.argument(self.ast),
+                            },
+                            TypeEnd::Delimiter,
+                        ));
+                    }
+                }
+                ExprData::ObjectExpression(object) => {
+                    for slot in object.properties(self.ast).iter() {
+                        let ObjectPropertyKindData::ObjectProperty(property) = self
+                            .ast
+                            .object_property_kind_data(self.ast.get_node_in_sub_range(slot))
+                        else {
+                            // Type literals have no object spread member.
+                            return true;
+                        };
+                        if property.kind(self.ast) != PropertyKind::Init {
+                            // TS type members retain accessor bodies and parse
+                            // their contents using value grammar.
+                            continue;
+                        }
+                        if property.method(self.ast) {
+                            // A method signature cannot consume a value body.
+                            return true;
+                        }
+                        if !self.can_use_shorthand_property(property) {
+                            remaining.push((property.value(self.ast), TypeEnd::Member));
+                        }
+                    }
+                }
+                ExprData::TemplateLiteral(template) => {
+                    remaining.extend(
+                        template
+                            .expressions(self.ast)
+                            .iter()
+                            .map(|slot| (self.ast.get_node_in_sub_range(slot), TypeEnd::Delimiter)),
+                    );
+                }
+                ExprData::Function(_)
+                | ExprData::Class(_)
+                | ExprData::NewExpression(_)
+                | ExprData::RegExpLiteral(_)
+                | ExprData::UpdateExpression(_)
+                | ExprData::SequenceExpression(_)
+                | ExprData::TsAsExpression(_)
+                | ExprData::TsSatisfiesExpression(_)
+                | ExprData::TsTypeAssertion(_)
+                | ExprData::JsxElement(_)
+                | ExprData::JsxFragment(_) => return true,
+                ExprData::AssignmentExpression(_) => {
+                    // A property signature can retain `p: T = value`; its
+                    // initializer is value grammar, not another type.
+                    if end != TypeEnd::Member {
+                        return true;
+                    }
+                }
+                ExprData::AwaitExpression(_) | ExprData::ConditionalExpression(_) => {
+                    // Keyword tokens can become following property names
+                    // across emitted line breaks. Preserve that possibility.
+                    if end != TypeEnd::Member {
+                        return true;
+                    }
+                }
+                ExprData::LogicalExpression(_) => return true,
+                ExprData::UnaryExpression(e) => {
+                    match e.operator(self.ast) {
+                        UnaryOperator::Positive | UnaryOperator::BitwiseNot => return true,
+                        UnaryOperator::Delete | UnaryOperator::Void => {
+                            if end != TypeEnd::Member {
+                                return true;
+                            }
+                        }
+                        UnaryOperator::LogicalNot => {
+                            expr = e.argument(self.ast);
+                            continue;
+                        }
+                        UnaryOperator::Negate => {
+                            let mut argument = e.argument(self.ast);
+                            while let ExprData::TsNonNullExpression(non_null) =
+                                self.ast.expr_data(argument)
+                            {
+                                argument = non_null.expression(self.ast);
+                            }
+                            if !matches!(
+                                self.ast.expr_data(argument),
+                                ExprData::NumericLiteral(_) | ExprData::BigIntLiteral(_)
+                            ) {
+                                return true;
+                            }
+                        }
+                        // Type queries retain the conservative entity-name
+                        // interpretation until their operand is summarized.
+                        _ => {}
+                    }
+                }
+                ExprData::BinaryExpression(binary) => match binary.operator(self.ast) {
+                    BinaryOperator::BitwiseAnd | BinaryOperator::BitwiseOr => {
+                        remaining.push((binary.right(self.ast), end));
+                        expr = binary.left(self.ast);
+                        end = TypeEnd::Delimiter;
+                        continue;
+                    }
+                    BinaryOperator::In | BinaryOperator::Instanceof if end == TypeEnd::Member => {}
+                    _ => return true,
+                },
+                ExprData::TsNonNullExpression(non_null) => {
+                    expr = non_null.expression(self.ast);
+                    continue;
+                }
+                ExprData::ChainExpression(chain) => {
+                    expr = chain.expression(self.ast);
+                    continue;
+                }
+                ExprData::ArrowFunctionExpression(arrow) => {
+                    if arrow.r#async(self.ast)
+                        || arrow.return_type(self.ast).is_some()
+                        || arrow.type_parameters(self.ast).is_none()
+                            && self.bare_arrow_parameter(arrow.params(self.ast)).is_some()
+                    {
+                        return true;
+                    }
+                    if let ArrowFunctionBodyData::Expr(body) =
+                        self.ast.arrow_function_body_data(arrow.body(self.ast))
+                    {
+                        expr = body;
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+            let Some((next, tail)) = remaining.pop() else {
+                return false;
+            };
+            expr = next;
+            end = tail;
+        }
+    }
+
+    fn call_has_value_head(&self, call: CallExpression) -> bool {
+        call.optional(self.ast)
+            || call.type_arguments(self.ast).is_some()
+            || call.arguments(self.ast).len() != 1
+            || !self.is_type_operator_head(call.callee(self.ast))
+    }
+
+    fn call_rejects_type(&self, call: CallExpression) -> bool {
+        self.call_has_value_head(call)
+            || match self
+                .ast
+                .argument_data(call.arguments(self.ast).get_node(self.ast, 0).unwrap())
+            {
+                ArgumentData::Expr(argument) => self.syntax_rejects_type(argument),
+                ArgumentData::SpreadElement(_) => false,
+            }
+    }
+
+    fn is_type_operator_head(&self, mut callee: Expr) -> bool {
+        loop {
+            match self.ast.expr_data(callee) {
+                ExprData::IdentifierReference(identifier) => {
+                    // `keyof(b)` is both a value call and a valid type operator.
+                    return matches!(
+                        self.ast.get_utf8(identifier.name(self.ast)),
+                        "keyof" | "readonly" | "unique"
+                    );
+                }
+                ExprData::TsNonNullExpression(expression) => {
+                    callee = expression.expression(self.ast);
+                }
+                _ => return false,
+            }
+        }
+    }
+
     fn init(ast: &'a Ast<'a>, options: Options) -> Self {
-        let line_offset_tables = if options.source_map_path.is_some() {
-            generate_line_offset_tables(ast.source().as_bytes())
-        } else {
-            Vec::new()
-        };
+        // Formatting must use the comments that will actually be emitted.
+        // Keep legal-comment metadata independent of this printing view.
         let comments = if options.comments {
             ast.comments()
         } else {
             &[]
+        };
+        let line_offset_tables = if options.source_map_path.is_some() {
+            generate_line_offset_tables(ast.source().as_bytes())
+        } else {
+            Vec::new()
         };
         Self {
             ast,
@@ -358,18 +684,25 @@ impl<'a> Printer<'a> {
             prev_reg_exp_end: usize::MAX,
             forbid_in: false,
             int_to_bytes_buffer: [0; 64],
+            trace: M::default(),
         }
     }
 
     fn generate(mut self) -> GenerateResult<'a> {
         self.print_program(self.ast.root_program());
+        self.finish()
+    }
+
+    fn finish(self) -> GenerateResult<'a> {
         let Self {
             ast,
             options,
             js,
             builder,
+            trace,
             ..
         } = self;
+        drop(trace);
         let map = if let Some(path) = options.source_map_path {
             let path = path.into_os_string().into_encoded_bytes();
             let chunk = builder.generate_chunk(js.as_slice());
@@ -396,6 +729,11 @@ impl<'a> Printer<'a> {
     #[inline]
     fn add_source_mapping(&mut self, original_offset: u32) {
         if self.options.source_map_path.is_some() {
+            if M::CAPTURE && self.trace.state_mut().has_records() {
+                let state = self.trace.state_mut();
+                state.mapping(self.js.len(), original_offset, &[]);
+                return;
+            }
             self.builder
                 .add_source_mapping(original_offset, &[], self.js.as_slice());
         }
@@ -404,6 +742,11 @@ impl<'a> Printer<'a> {
     #[inline]
     fn add_source_mapping_for_name(&mut self, original_offset: u32, original_name: &'a str) {
         if self.options.source_map_path.is_some() {
+            if M::CAPTURE && self.trace.state_mut().has_records() {
+                let state = self.trace.state_mut();
+                state.mapping(self.js.len(), original_offset, original_name.as_bytes());
+                return;
+            }
             self.builder.add_source_mapping(
                 original_offset,
                 original_name.as_bytes(),
@@ -412,8 +755,12 @@ impl<'a> Printer<'a> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn print(&mut self, text: &str) {
+        if M::CAPTURE {
+            let state = self.trace.state_mut();
+            state.syntax(text.as_bytes(), self.js.len());
+        }
         self.js.extend_from_slice(text.as_bytes());
     }
 
@@ -969,7 +1316,7 @@ impl<'a> Printer<'a> {
                 }
                 self.print_indent();
                 self.stmt_start = self.js.len();
-                // A template literal cannot become a directive, even after quote selection.
+                // A template literal cannot become a directive after quote selection.
                 let wrap = prevent_directive
                     && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(literal)
                         if self.string_quote(self.ast.get_wtf8(literal.value(self.ast)), true) != b'`');
@@ -1556,6 +1903,8 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
+
+        let syntax_body = M::CAPTURE && self.trace.state_mut().begin_value();
         self.print_space_before_identifier();
         self.add_source_mapping(f.span(self.ast).start);
         if f.r#async(self.ast) {
@@ -1580,6 +1929,10 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print_function_body(f.body(self.ast));
         self.print_attached_trailing_comments(f.body(self.ast).span(self.ast).end);
+
+        if syntax_body {
+            self.trace.state_mut().end_value();
+        }
         if wrap {
             self.print(")");
         }
@@ -1669,6 +2022,12 @@ impl<'a> Printer<'a> {
         if let Some(initializer) = parameter.initializer(self.ast) {
             let old_forbid_in = self.forbid_in;
             self.forbid_in = false;
+
+            if M::CAPTURE {
+                // A value-parameter initializer cannot continue a type-argument
+                // list begun in this parameter frame. Ancestor trials remain.
+                self.trace.state_mut().type_break();
+            }
             self.print_space();
             self.print("=");
             self.print_space();
@@ -2146,6 +2505,10 @@ impl<'a> Printer<'a> {
                 self.print_assignment_target(e.left(self.ast));
                 self.print_space();
                 let operator = e.operator(self.ast);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print_operator(OperatorCode::Assignment, operator.as_str());
                 self.print_space();
                 self.print_expr(e.right(self.ast), Precedence::Assignment);
@@ -2173,11 +2536,19 @@ impl<'a> Printer<'a> {
                 );
                 self.print_expr_with_context(test, Precedence::Conditional.next(), test_context);
                 self.print_space();
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print("?");
                 self.print_space();
                 self.forbid_in = false;
                 self.print_expr(consequent, Precedence::Yield);
                 self.print_space();
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(":");
                 self.print_space();
                 self.forbid_in = old_forbid_in && !wrap;
@@ -2201,6 +2572,12 @@ impl<'a> Printer<'a> {
                         Precedence::Lowest
                     } else {
                         Precedence::Assignment
+                    };
+
+                    let member_level = if M::STYLE {
+                        Precedence::Assignment
+                    } else {
+                        member_level
                     };
                     self.print_expr(self.ast.get_node_in_sub_range(id), member_level);
                 }
@@ -2234,6 +2611,11 @@ impl<'a> Printer<'a> {
             ExprData::TaggedTemplateExpression(e) => {
                 let tag = e.tag(self.ast);
                 let type_arguments = e.type_arguments(self.ast);
+
+                let syntax_value = M::CAPTURE
+                    && self.trace.state_mut().is_active()
+                    && (type_arguments.is_some() || !self.is_type_operator_head(tag))
+                    && self.trace.state_mut().begin_value();
                 let tag_level = if type_arguments.is_some() {
                     Precedence::Call
                 } else {
@@ -2252,15 +2634,33 @@ impl<'a> Printer<'a> {
                     self.print_ts_type_args(args);
                 }
                 self.print_template(e.quasi(self.ast), true);
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::ArrowFunctionExpression(e) => self.print_arrow(e, level),
             ExprData::ArrayExpression(e) => self.print_array(e),
             ExprData::ObjectExpression(e) => self.print_object(e, level),
             ExprData::ParenthesizedExpression(e) => {
+                let syntax_value = self.syntax_value_container(e.expression(self.ast));
                 self.print("(");
-                self.print_expr(e.expression(self.ast), Precedence::Lowest);
+
+                self.print_expr_with_context(
+                    e.expression(self.ast),
+                    Precedence::Lowest,
+                    if M::CAPTURE {
+                        ExprContext::EXPLICIT_GROUP
+                    } else {
+                        ExprContext::empty()
+                    },
+                );
                 self.print_comments_before(e.span(self.ast).end, false, true);
                 self.print(")");
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
@@ -2357,27 +2757,53 @@ impl<'a> Printer<'a> {
             ExprData::TsAsExpression(e) => {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
+
+                let syntax_value = M::CAPTURE
+                    && wrap
+                    && self.trace.state_mut().has_pending_here()
+                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(" as ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
                 }
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::TsSatisfiesExpression(e) => {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
+
+                let syntax_value = M::CAPTURE
+                    && wrap
+                    && self.trace.state_mut().has_pending_here()
+                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(" satisfies ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
+                }
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
                 }
             }
             ExprData::TsTypeAssertion(e) => self.print_ts_type_assertion(e, level, context),
@@ -2645,6 +3071,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
+        let syntax_value = M::CAPTURE
+            && self.trace.state_mut().has_pending_here()
+            && self.call_rejects_type(e)
+            && self.trace.state_mut().begin_value();
         let print_pure = self.options.comments && e.pure(self.ast);
         let wrap = level > Precedence::Call
             || in_new_callee
@@ -2693,6 +3123,10 @@ impl<'a> Printer<'a> {
         );
         if wrap {
             self.print(")");
+        }
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
         }
     }
 
@@ -2780,6 +3214,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_array(&mut self, e: ArrayExpression) {
+        let syntax_value = self.syntax_value_container(Expr::ArrayExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.add_source_mapping(e.span(self.ast).start);
@@ -2813,9 +3248,14 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(close_offset);
         self.print("]");
         self.forbid_in = old_forbid_in;
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_object(&mut self, e: ObjectExpression, _level: Precedence) {
+        let syntax_value = self.syntax_value_container(Expr::ObjectExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         let wrap = self.js.len() == self.stmt_start || self.js.len() == self.arrow_expr_start;
@@ -2877,6 +3317,10 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
         self.forbid_in = old_forbid_in;
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_object_property(&mut self, p: ObjectProperty) {
@@ -3021,6 +3465,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_template(&mut self, e: TemplateLiteral, is_tagged: bool) {
+        let syntax_value = self.syntax_value_container(Expr::TemplateLiteral(e));
         if !is_tagged {
             self.add_source_mapping(e.span(self.ast).start);
         }
@@ -3060,6 +3505,10 @@ impl<'a> Printer<'a> {
             }
         }
         self.print("`");
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Precedence) {
@@ -3089,14 +3538,21 @@ impl<'a> Printer<'a> {
         }
         let params = e.params(self.ast);
         let return_type = e.return_type(self.ast);
-        let bare_parameter =
-            if self.options.minify && type_parameters.is_none() && return_type.is_none() {
-                self.bare_arrow_parameter(params)
-            } else {
-                None
-            };
+        let prefer_bare = self.options.minify;
+
+        let prefer_bare = prefer_bare || M::STYLE;
+        let bare_parameter = if prefer_bare && type_parameters.is_none() && return_type.is_none() {
+            self.bare_arrow_parameter(params)
+        } else {
+            None
+        };
         if let Some(identifier) = bare_parameter {
             self.print_binding_identifier(identifier);
+
+            if M::CAPTURE {
+                let state = self.trace.state_mut();
+                state.type_break();
+            }
         } else {
             self.print_formal_parameters(params, None);
         }
@@ -3150,6 +3606,8 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
+
+        let syntax_class = M::CAPTURE && self.trace.state_mut().begin_value();
         if declaration {
             self.print_indent();
         }
@@ -3219,6 +3677,10 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
         self.print("}");
         self.forbid_in = old_forbid_in;
+
+        if syntax_class {
+            self.trace.state_mut().end_value();
+        }
         if wrap {
             self.print(")");
         }
@@ -4151,6 +4613,7 @@ impl<'a> Printer<'a> {
         d: TsTypeParameterDeclaration,
         trailing_comma: bool,
     ) {
+        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4183,9 +4646,14 @@ impl<'a> Printer<'a> {
             self.print(",");
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
+
+        if syntax_type {
+            self.trace.state_mut().end_type();
+        }
     }
 
     fn print_ts_type_args(&mut self, d: TsTypeParameterInstantiation) {
+        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4195,6 +4663,10 @@ impl<'a> Printer<'a> {
             self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
+
+        if syntax_type {
+            self.trace.state_mut().end_type();
+        }
     }
 
     fn print_ts_type_assertion_prefix(&mut self, ty: TsType, source_offset: u32) {
@@ -5186,6 +5658,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_jsx_element(&mut self, e: JsxElement) {
+        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         let o = e.opening_element(self.ast);
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
@@ -5221,6 +5694,10 @@ impl<'a> Printer<'a> {
             self.print_space();
             self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
             self.print("/>");
+
+            if syntax_value {
+                self.trace.state_mut().end_value();
+            }
             return;
         }
         self.print(">");
@@ -5234,15 +5711,25 @@ impl<'a> Printer<'a> {
             self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
         }
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
     fn print_jsx_fragment(&mut self, e: JsxFragment) {
+        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         self.add_source_mapping(e.span(self.ast).start);
-        self.print("<>");
+        self.print("<");
+        self.print(">");
         for id in e.children(self.ast).iter() {
             self.print_jsx_child(self.ast.get_node_in_sub_range(id));
         }
         self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
         self.print("</>");
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
     fn print_jsx_name(&mut self, n: JsxElementName) {
         self.print_comments_before(n.span(self.ast).start, false, false);
@@ -5363,7 +5850,7 @@ impl<'a> Printer<'a> {
     }
 }
 
-impl Printer<'_> {
+impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<&str> {
         match self.ast.binding_pattern_data(binding) {
             BindingPatternData::BindingIdentifier(identifier) => {
