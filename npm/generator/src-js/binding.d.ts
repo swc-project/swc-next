@@ -20,10 +20,12 @@ export interface GeneratorConfig {
   minify?: boolean
 }
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * Sections must be produced by the matching JavaScript encoder and satisfy
  * the validity, alignment, and immutability contracts of
  * `swc_next_core::js::generator::generate_from_parts`.
  */
-export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
+export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: GeneratorConfig | undefined | null): GenerateOutput

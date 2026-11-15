@@ -22,7 +22,7 @@ import {
   langFromPath,
   parseSync,
   sourceTypeFromPath,
-} from "../src-js/index.js";
+} from "@swc-next/core";
 
 const BENCHES = path.resolve(
   import.meta.dirname,

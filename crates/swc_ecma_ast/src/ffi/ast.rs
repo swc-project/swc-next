@@ -370,7 +370,7 @@ impl<'a> Deref for BorrowedAst<'a> {
 ///
 /// # Safety
 ///
-/// `buf` must be produced by `@swc-next/encoder` matching the version of this
+/// `buf` must be produced by `@swc-next/protocol/ast/encode` matching the version of this
 /// crate and follow the [AST transfer protocol](crate::ffi::ast). It must contain
 /// valid node kinds, typed payloads, indices, ranges, string encodings, and source
 /// metadata. Comment and diagnostic sections must be empty. On little-endian

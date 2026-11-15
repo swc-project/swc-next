@@ -14,11 +14,13 @@ test("browser exposes parsing and generation", async () => {
   expect("CommentMode" in core).toBe(false);
   expect(core.langFromPath("input.ts")).toBe("ts");
   expect(core.sourceTypeFromPath("input.cjs")).toBe("commonjs");
-  const { program } = parseSync("/* 😀 */ const value = 1;", {
+  const result = parseSync("/* 😀 */ const value = 1;", {
     lang: "ts",
     sourceType: "script",
     comments: "none",
   });
+  parseSync("const other = 0;");
+  const { program } = result;
   expect(program.body[0].declarations[0].id.name).toBe("value");
   program.body[0].declarations[0].init.value = 2;
 

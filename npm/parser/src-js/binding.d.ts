@@ -75,11 +75,13 @@ export type SourceType =  'module'|
 export declare function langFromPath(path: string): Lang
 
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Buffer
+export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Uint8Array
 
 export declare function sourceTypeFromPath(path: string): SourceType

@@ -5,12 +5,12 @@ description: Compare the JavaScript API parser performance of two swc-experiment
 
 # JS parser benchmark
 
-Build both revisions with the same release profile and Node.js version. Give the script the absolute path to each revision's `npm/core/src-js/index.js`. Run it from the workspace root, using one shared fixture directory for both builds.
+Build both revisions with the same release profile and Node.js version. Give the script the absolute path to each revision's `npm/core/dist/index.js`. Run it from the workspace root, using one shared fixture directory for both builds.
 
 ```sh
 node .agents/skills/js-parser-benchmark/scripts/bench.mjs \
-  --baseline /absolute/path/to/main/npm/core/src-js/index.js \
-  --candidate "$PWD/npm/core/src-js/index.js" \
+  --baseline /absolute/path/to/main/npm/core/dist/index.js \
+  --candidate "$PWD/npm/core/dist/index.js" \
   --file underscore-1.5.2.js \
   --file jquery-1.9.1.js
 ```

@@ -7,7 +7,9 @@ import { REPOSITORY_ROOT } from "../constants.mjs";
 export default function register(cli) {
   cli
     .command("prepare-browser", "Assemble the browser package")
-    .option("--source-dir <directory>", "Browser binding source directory")
+    .option("--source-dir <directory>", "Browser binding source directory", {
+      default: "dist",
+    })
     .action(prepareBrowserPackage);
 }
 
@@ -20,7 +22,7 @@ async function prepareBrowserPackage({
   if (dryRun) throw new Error("prepare-browser does not support --dry-run");
   const sourceDirectory = path.resolve(cwd, sourceDir);
   const packageDirectory = path.join(REPOSITORY_ROOT, "npm/core-browser");
-  const directory = path.join(packageDirectory, "src");
+  const directory = path.join(packageDirectory, "dist");
   await mkdir(directory, { recursive: true });
   const manifest = JSON.parse(
     await readFile(path.join(packageDirectory, "package.json"), "utf8"),
@@ -44,8 +46,6 @@ async function prepareBrowserPackage({
     path.join(REPOSITORY_ROOT, "npm/core/src-js/binding.d.ts"),
     "utf8",
   );
-  await writeFile(
-    path.join(directory, "binding.d.ts"),
-    declaration.replaceAll("Buffer", "Uint8Array"),
-  );
+  await writeFile(path.join(packageDirectory, "src-js/binding.d.ts"), declaration);
+  await writeFile(path.join(directory, "binding.d.ts"), declaration);
 }

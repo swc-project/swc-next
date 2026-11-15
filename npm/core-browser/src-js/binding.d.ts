@@ -123,6 +123,8 @@ export interface TransformApiOptions {
   generator?: GeneratorConfig
 }
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * Sections must be produced by the matching JavaScript encoder and satisfy
@@ -134,6 +136,8 @@ export declare function generateSync(header: Uint8Array, spans: Uint8Array, kind
 export declare function langFromPath(path: string): Lang
 
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  *
  * The caller must ensure that `source` contains valid UTF-8.
@@ -144,6 +148,8 @@ export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, op
 export declare function sourceTypeFromPath(path: string): SourceType
 
 /**
+ * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
+ *
  * # Safety
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */

@@ -28,16 +28,21 @@ Run from the workspace root:
 pnpm install
 rustup target add wasm32-unknown-unknown
 pnpm build:browser --profile wasm-release
-node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core
+pnpm prepare:browser
+pnpm --filter @swc-next/core-browser build:js
 ```
 
-The build produces core Wasm artifacts; the assembly step copies them into
-this package. Omit `--profile wasm-release` for a debug build. To assemble
-from an existing Node.js core Wasm build instead:
+These commands build the Wasm binding, assemble its browser assets, and build
+the JavaScript API in this package's `dist` directory. Omit
+`--profile wasm-release` for a debug build. To assemble from an existing Node.js
+core Wasm build instead:
 
 ```sh
-node scripts/wasm-package/cli.mjs prepare-browser --source-dir npm/core/src-js
+pnpm prepare:browser --source-dir ../core/dist
+pnpm --filter @swc-next/core-browser build:js
 ```
+
+`--source-dir` is relative to `npm/core-browser`; it defaults to `dist`.
 
 ## Testing
 

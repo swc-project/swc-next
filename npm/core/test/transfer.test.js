@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encode, encodeGeneratorConfig } from "@swc-next/encoder";
-import { generateSync as generateStandalone } from "../../generator/src-js/index.js";
-import * as binding from "../src-js/binding.js";
-import { parseSync, generateSync } from "../src-js/index.js";
+import { encode } from "@swc-next/protocol/ast/encode";
+import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
+import { generateSync as generateStandalone } from "@swc-next/generator";
+import * as binding from "../dist/binding.js";
+import { parseSync, generateSync } from "@swc-next/core";
 
 function assertTransfer(program, options, expected) {
   const parts = encode(program);
