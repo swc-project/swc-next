@@ -338,6 +338,8 @@ fn test_expression_token_boundary_controls() {
 
 #[test]
 fn test_expression_token_boundary_mappings() {
+    expect_token_boundary_mapping("await value", b"AAAA,MAAMA");
+
     // VLQ segments map each token after its inserted separator.
     expect_token_boundary_mapping("await true", b"AAAA,MAAM");
 
