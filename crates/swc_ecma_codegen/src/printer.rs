@@ -2078,10 +2078,11 @@ impl<'a> Printer<'a> {
                 self.print("null");
             }
             ExprData::RegExpLiteral(e) => {
-                // Avoid forming a single-line comment or a "</script"
-                // sequence across the token boundary.
+                // JSX scanners recognize `</` as one token even outside a tag.
+                // Also avoid comments and inline-script closing sequences.
                 if let Some(&last) = self.js.last()
                     && (last == b'/'
+                        || last == b'<' && self.ast.is_jsx()
                         || (self.options.inline_script
                             && last == b'<'
                             && self
@@ -2393,8 +2394,14 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::JsxElement(e) => self.print_jsx_element(e),
-            ExprData::JsxFragment(e) => self.print_jsx_fragment(e),
+            ExprData::JsxElement(e) => {
+                self.print_space_before_operator(OperatorCode::TsTypeOpen, "<");
+                self.print_jsx_element(e);
+            }
+            ExprData::JsxFragment(e) => {
+                self.print_space_before_operator(OperatorCode::TsTypeOpen, "<");
+                self.print_jsx_fragment(e);
+            }
         }
     }
 

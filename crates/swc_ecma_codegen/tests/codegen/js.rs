@@ -957,6 +957,17 @@ fn test_computed_key_comments() {
 }
 
 #[test]
+fn test_jsx_tokens() {
+    expect_generated_jsx_minify("a < <A/>;", "a< <A/>;");
+
+    expect_generated_jsx_minify("a < <>x</>;", "a< <>x</>;");
+
+    expect_generated_jsx_minify("<><A/></>;", "<><A/></>;");
+
+    expect_generated_jsx_minify("a < /x/;", "a< /x/;");
+}
+
+#[test]
 fn test_jsx_spread_attributes() {
     expect_generated_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
 
