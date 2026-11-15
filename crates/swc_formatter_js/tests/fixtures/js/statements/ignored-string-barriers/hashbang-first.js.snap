@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/usr/bin/env node
+;
+// prettier-ignore
+"use strict";
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+#!/usr/bin/env node
+// prettier-ignore
+;"use strict"
+
+---------- Options ----------
+{}
+---------- Output ----------
+#!/usr/bin/env node
+// prettier-ignore
+;"use strict";

@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@a /* tail */
+/* lead */ @b class C {}---------- Options ----------
+{}
+---------- Output ----------
+@a /* tail */
+/* lead */ @b
+class C {}

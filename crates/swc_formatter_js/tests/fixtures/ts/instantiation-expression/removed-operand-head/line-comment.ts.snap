@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let o = ( //c
+f)<number>;
+---------- Options ----------
+{}
+---------- Output ----------
+let o = f<number>; //c

@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import "x" assert // c
+{ type: "json" };
+---------- Options ----------
+{}
+---------- Output ----------
+import "x" assert // c
+{ type: "json" };

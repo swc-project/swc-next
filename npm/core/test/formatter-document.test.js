@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { builders as b, printer } from "prettier/doc";
-import { decode } from "../../../packages/prettier-plugin/decode.js";
+import { decode } from "../../formatter-prettier-plugin/decode.js";
 import {
   printDocBufferSync,
   printDocBufferWithCursorSync,
 } from "../../formatter/src-js/index.js";
-import { formatDocBufferSync } from "../../ecma-formatter/src-js/index.js";
+import { formatDocBufferSync } from "../../formatter-js/src-js/index.js";
 import { encodeDoc } from "../../formatter/src-js/document.js";
 
 const word = (value) => [

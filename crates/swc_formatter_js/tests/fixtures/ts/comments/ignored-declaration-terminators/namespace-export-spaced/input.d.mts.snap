@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+export as namespace Foo  ;
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+export as namespace Foo  ;

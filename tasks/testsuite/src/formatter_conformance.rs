@@ -18,7 +18,7 @@ use std::{
     },
 };
 
-#[path = "../../../crates/swc_ecma_formatter/tests/support/prettier_options.rs"]
+#[path = "../../../crates/swc_formatter_js/tests/support/prettier_options.rs"]
 mod prettier_options;
 
 use prettier_options::{apply_prettier_option, format_options};
@@ -29,10 +29,10 @@ use swc_next_ecma_ast::{
     Ast, CallExpression, Expr, GetSpan, IdentifierName, Lang, NodeKind, ObjectExpression,
     PropertyKey, Severity, SourceType, StringLiteral, VariableDeclarator, Visit, VisitWith,
 };
-use swc_next_ecma_formatter::{
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_formatter_js::{
     FormatError, FormatOptions, PRETTIER_COMPATIBILITY_VERSION, format, format_ast,
 };
-use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 use crate::util::crate_root;
 

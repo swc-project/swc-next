@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x satisfies ?;
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+x satisfies (?)
+b

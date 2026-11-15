@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { f(): ?; x: number; }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+interface I {
+  f(): ?;
+  x: number
+}

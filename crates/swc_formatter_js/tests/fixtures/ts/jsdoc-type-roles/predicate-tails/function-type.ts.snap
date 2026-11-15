@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (x) => x is ?;
+a;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = (x) => x is ?;
+a

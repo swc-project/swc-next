@@ -3,7 +3,7 @@
 Language-independent document encoding and Rust layout printing for native and
 Wasm runtimes. The package consumes SWCD documents using the shared formatter
 core. For JavaScript and TypeScript source formatting, use
-`@swc-next/ecma-formatter` or the SWCFMT Prettier plugin.
+`@swc-next/formatter-js` or the SWCFMT Prettier plugin.
 
 ```js
 import { encodeDoc } from "@swc-next/formatter/document";

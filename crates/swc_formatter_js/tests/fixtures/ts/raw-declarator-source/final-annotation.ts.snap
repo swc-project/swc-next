@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let /* prettier-ignore */ x: A | ?;
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let /* prettier-ignore */ x: A | ?;
+b

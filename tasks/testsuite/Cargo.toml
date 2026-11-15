@@ -19,10 +19,10 @@ swc_next_core             = { workspace = true, features = ["js_transformer", "s
 swc_next_allocator        = { workspace = true }
 swc_next_ecma_ast         = { workspace = true }
 swc_next_ecma_codegen     = { workspace = true }
-swc_next_ecma_formatter   = { workspace = true }
 swc_next_ecma_minifier    = { workspace = true }
 swc_next_ecma_parser      = { workspace = true }
 swc_next_ecma_semantic    = { workspace = true }
+swc_next_formatter_js     = { workspace = true }
 
 [[bin]]
 name = "conformance"

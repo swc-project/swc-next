@@ -351,15 +351,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/protocol
 
-  npm/ecma-formatter:
-    devDependencies:
-      '@napi-rs/cli':
-        specifier: 'catalog:'
-        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.1.1
-
   npm/formatter:
     devDependencies:
       '@napi-rs/cli':
@@ -368,6 +359,28 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
+
+  npm/formatter-js:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
+  npm/formatter-prettier-plugin:
+    dependencies:
+      '@swc-next/formatter-js':
+        specifier: workspace:*
+        version: link:../formatter-js
+    devDependencies:
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
+      prettier:
+        specifier: 3.9.9
+        version: 3.9.9
 
   npm/generator:
     dependencies:
@@ -418,19 +431,6 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
-
-  packages/prettier-plugin:
-    dependencies:
-      '@swc-next/ecma-formatter':
-        specifier: workspace:*
-        version: link:../../npm/ecma-formatter
-    devDependencies:
-      cross-env:
-        specifier: 'catalog:'
-        version: 10.1.0
-      prettier:
-        specifier: 3.9.9
-        version: 3.9.9
 
   packages/types: {}
 

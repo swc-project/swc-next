@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ /** @type {number} */ (first)) + fourth;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/*#__PURE__*/ /** @type {number} */ (
+  first
+) + fourth;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/*#__PURE__*/ /** @type {number} */ (first) + fourth;

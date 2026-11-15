@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/* before */: value });
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({ key: /* before */ value });

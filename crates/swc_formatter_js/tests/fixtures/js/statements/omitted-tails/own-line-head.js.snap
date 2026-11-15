@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a;
+
+/* head */
+;
+
+b;
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+a;
+
+/* head */
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+a
+
+/* head */
+b

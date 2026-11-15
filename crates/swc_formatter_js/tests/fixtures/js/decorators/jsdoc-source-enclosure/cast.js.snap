@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@/** @type {any} */ (first + second) class A {}
+---------- Options ----------
+{}
+---------- Output ----------
+@(/** @type {any} */ (first + second))
+class A {}

@@ -1,10 +1,11 @@
 /target
-/npm/ecma-formatter/test/binding/
+/npm/formatter-js/test/binding/
+/npm/formatter-js/src-js/swc-next-formatter-js.*.mjs
 *.json.gz
 callgrind*
 input.*
 !crates/swc_ecma_minifier/tests/fixtures/**/input.js
-!/crates/swc_ecma_formatter/tests/**/input.*
+!/crates/swc_formatter_js/tests/**/input.*
 !/crates/swc_ecma_transformer/tests/compile/**/input.*
 profile.json
 local

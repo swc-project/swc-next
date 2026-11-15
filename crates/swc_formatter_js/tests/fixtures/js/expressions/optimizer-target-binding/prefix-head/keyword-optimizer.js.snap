@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void (/*#__PURE__*/ value).method();
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+void (
+  /*#__PURE__*/ value.method()
+);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+void (
+  /*#__PURE__*/ value.method()
+)

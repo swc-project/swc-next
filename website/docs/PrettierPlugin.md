@@ -17,12 +17,12 @@ plugin. The document model and native printer live in the language-independent f
 
 #### Plugin API
 
-`@swc-next/prettier-plugin-swcfmt` formats source into a Doc. It exports
+`@swc-next/formatter-prettier-plugin` formats source into a Doc. It exports
 `languages`, `parsers`, `printers`, and `options` through an ESM entry point.
 
 ```js
 import * as prettier from "prettier";
-import * as swc from "@swc-next/prettier-plugin-swcfmt";
+import * as swc from "@swc-next/formatter-prettier-plugin";
 
 const code = await prettier.format(source, {
   plugins: [swc],
@@ -47,7 +47,7 @@ that supplies an AST to Prettier's AST printer. It is not implemented.
 
 #### Formatting Pipeline
 
-The parser calls Rust through `@swc-next/ecma-formatter`, an independent source-to-Doc
+The parser calls Rust through `@swc-next/formatter-js`, an independent source-to-Doc
 binding with native and Wasm support. The plugin and producer do not depend on
 `@swc-next/core`.
 
@@ -190,13 +190,13 @@ decoding, allocation, and layout costs.
 
 ```sh
 pnpm install
-pnpm --filter @swc-next/ecma-formatter build
-pnpm --filter @swc-next/prettier-plugin-swcfmt test
-pnpm --filter @swc-next/ecma-formatter build:wasm
-pnpm --filter @swc-next/prettier-plugin-swcfmt test:wasm
+pnpm --filter @swc-next/formatter-js build
+pnpm --filter @swc-next/formatter-prettier-plugin test
+pnpm --filter @swc-next/formatter-js build:wasm
+pnpm --filter @swc-next/formatter-prettier-plugin test:wasm
 ```
 
-Tests live in `packages/prettier-plugin/test`. They cover formatting, options,
+Tests live in `npm/formatter-prettier-plugin/test`. They cover formatting, options,
 source locations, malformed buffers, and whitespace across shared fragments.
 The same tests run against native and Wasm bindings.
 They discover every local Rust formatter fixture and its nearest `options.json`,
@@ -207,5 +207,5 @@ transport and returns formatted strings directly. No output EOL or EOF
 normalization is applied, and presentation snapshots are not used as an oracle.
 Tests also check the input-normalization boundary against Prettier itself.
 The native oracle addon is built automatically with the `test-native` feature
-into `npm/ecma-formatter/test/binding`. Tests load that `.node` file directly,
+into `npm/formatter-js/test/binding`. Tests load that `.node` file directly,
 including when the plugin binding is forced to Wasm.

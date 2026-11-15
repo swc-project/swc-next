@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? condition
+/* inner */ /* before */ /* prettier-ignore */ : /* after */ next  +value;---------- Options ----------
+{}
+---------- Output ----------
+test
+  ? condition
+  : /* inner */ /* before */ /* prettier-ignore */ /* after */ next  +value;

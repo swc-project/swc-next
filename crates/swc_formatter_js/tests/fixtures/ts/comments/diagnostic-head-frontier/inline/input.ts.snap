@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* @ts-expect-error */ first +
+second);
+---------- Options ----------
+{}
+---------- Output ----------
+(/* @ts-expect-error */ first +
+  second);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(/* @ts-expect-error */ first +
+  second)

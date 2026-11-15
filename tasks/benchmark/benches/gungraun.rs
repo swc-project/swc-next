@@ -12,7 +12,6 @@ use swc_next_ecma_ast::{
     TsTypeAnnotation, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
-use swc_next_ecma_formatter::{FormatOptions, format_ast};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
@@ -25,6 +24,7 @@ use swc_next_ecma_transformer::{
     proposal::ProposalOptions,
     typescript::TypeScriptOptions,
 };
+use swc_next_formatter_js::{FormatOptions, format_ast};
 use swc_next_type_strip::{Options as StripOptions, strip_types};
 
 const MINIFIER_SEMANTIC: &str =

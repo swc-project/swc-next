@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(first,
+// @ts-ignore
+second); // )
+---------- Options ----------
+{}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second); // )
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second) // )

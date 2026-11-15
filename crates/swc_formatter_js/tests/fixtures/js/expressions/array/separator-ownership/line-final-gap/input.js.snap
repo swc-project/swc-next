@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first,
+// hole
+
+, last];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first,
+  // hole
+
+  ,
+  last,
+];

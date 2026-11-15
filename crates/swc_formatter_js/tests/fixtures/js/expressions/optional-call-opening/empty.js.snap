@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+foo?. /* note */
+();
+---------- Options ----------
+{}
+---------- Output ----------
+foo /* note */?.();

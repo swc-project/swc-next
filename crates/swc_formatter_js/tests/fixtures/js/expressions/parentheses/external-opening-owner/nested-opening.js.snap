@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = // @ts-expect-error
+((
+first
+));---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = // @ts-expect-error
+  first;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+target = // @ts-expect-error
+  first

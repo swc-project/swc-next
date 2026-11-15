@@ -1,9 +1,0 @@
----
-source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
----
----------- Input ----------
-type T = \u006beyof;
----------- Options ----------
-{}
----------- Output ----------
-type T = \u006beyof;

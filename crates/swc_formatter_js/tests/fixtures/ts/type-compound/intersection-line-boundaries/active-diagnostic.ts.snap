@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Known = {};
+type T = (Known
+// @ts-ignore
+) & Missing;
+---------- Options ----------
+{}
+---------- Output ----------
+type Known = {};
+type T = (Known
+// @ts-ignore
+) & Missing;

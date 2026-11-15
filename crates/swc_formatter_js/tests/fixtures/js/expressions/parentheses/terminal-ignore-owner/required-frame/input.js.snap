@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = first * (second  +third
+// prettier-ignore
+);---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target =
+  first *
+  (
+    second  +third
+    // prettier-ignore
+  );
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+target =
+  first *
+  (
+    second  +third
+    // prettier-ignore
+  )

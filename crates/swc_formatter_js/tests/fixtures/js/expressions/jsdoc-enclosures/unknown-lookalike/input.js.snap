@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @typedefExtra {number} N */ (first);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @typedefExtra {number} N */ first;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @typedefExtra {number} N */ first
