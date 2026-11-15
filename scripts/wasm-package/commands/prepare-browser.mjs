@@ -46,7 +46,6 @@ async function prepareBrowserPackage({
     path.join(REPOSITORY_ROOT, "npm/core/src-js/binding.d.ts"),
     "utf8",
   );
-  const browserDeclaration = declaration.replaceAll("Buffer", "Uint8Array");
-  await writeFile(path.join(packageDirectory, "src-js/binding.d.ts"), browserDeclaration);
-  await writeFile(path.join(directory, "binding.d.ts"), browserDeclaration);
+  await writeFile(path.join(packageDirectory, "src-js/binding.d.ts"), declaration);
+  await writeFile(path.join(directory, "binding.d.ts"), declaration);
 }

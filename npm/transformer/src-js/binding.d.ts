@@ -126,4 +126,4 @@ export interface TransformApiOptions {
  * # Safety
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */
-export declare function transformSync(source: Buffer, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Buffer
+export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Uint8Array

@@ -129,7 +129,7 @@ export interface TransformApiOptions {
  * the validity, alignment, and immutability contracts of
  * `swc_next_core::js::generator::generate_from_parts`.
  */
-export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
+export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: GeneratorConfig | undefined | null): GenerateOutput
 
 export declare function langFromPath(path: string): Lang
 
@@ -139,7 +139,7 @@ export declare function langFromPath(path: string): Lang
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Buffer
+export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options?: ParserConfig | undefined | null): Uint8Array
 
 export declare function sourceTypeFromPath(path: string): SourceType
 
@@ -147,4 +147,4 @@ export declare function sourceTypeFromPath(path: string): SourceType
  * # Safety
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */
-export declare function transformSync(source: Buffer, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Buffer
+export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null): string | Uint8Array

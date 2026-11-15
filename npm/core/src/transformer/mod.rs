@@ -20,8 +20,8 @@ pub unsafe fn transform_sync(
 #[cfg(not(target_family = "wasm"))]
 #[napi(
     js_name = "transformSync",
-    ts_args_type = "source: Buffer, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null",
-    ts_return_type = "string | Buffer"
+    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options?: TransformApiOptions | undefined | null",
+    ts_return_type = "string | Uint8Array"
 )]
 /// # Safety
 /// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
