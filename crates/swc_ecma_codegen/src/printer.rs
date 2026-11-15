@@ -117,15 +117,15 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
 }
 
 #[derive(Default)]
-struct Plain;
+struct JavaScript;
 
 #[derive(Default)]
 struct Typed;
 
-// Typed printing selects its expression layout and optional syntax trace
-// together. The untraced mode retains ordinary JavaScript formatting.
+// A compile-time mode selects typed expression context, layout and tracing.
+// JavaScript retains its formatting without TS context or syntax capture.
 trait PrinterMode<'a>: Default {
-    const STYLE: bool = false;
+    const TYPESCRIPT: bool;
 
     const CAPTURE: bool = false;
 
@@ -134,14 +134,16 @@ trait PrinterMode<'a>: Default {
     }
 }
 
-impl PrinterMode<'_> for Plain {}
+impl PrinterMode<'_> for JavaScript {
+    const TYPESCRIPT: bool = false;
+}
 
 impl PrinterMode<'_> for Typed {
-    const STYLE: bool = true;
+    const TYPESCRIPT: bool = true;
 }
 
 impl<'a> PrinterMode<'a> for ts_grouping::State<'a> {
-    const STYLE: bool = true;
+    const TYPESCRIPT: bool = true;
     const CAPTURE: bool = true;
     fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
         self
@@ -228,7 +230,7 @@ pub fn generate<'a>(tree: &'a AstCtx<'a>, options: Options) -> GenerateResult<'a
     if tree.is_ts() {
         ts_grouping::generate(ast, options)
     } else {
-        Printer::<Plain>::init(ast, options).generate()
+        Printer::<JavaScript>::init(ast, options).generate()
     }
 }
 
@@ -285,9 +287,17 @@ impl BinaryExprVisitor {
             precedence.next()
         };
         self.left_flags = local_forbid_in;
-        self.left_context = operator.following_context();
-        self.right_context = self.context.inside_group(self.wrap)
-            & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION);
+        self.left_context = if M::TYPESCRIPT {
+            operator.following_context()
+        } else {
+            ExprContext::empty()
+        };
+        self.right_context = if M::TYPESCRIPT {
+            self.context.inside_group(self.wrap)
+                & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION)
+        } else {
+            ExprContext::empty()
+        };
 
         match operator {
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
@@ -322,7 +332,7 @@ impl BinaryExprVisitor {
                     self.left_level = Precedence::Call;
                 }
             }
-            BinaryishOperator::Binary(BinaryOperator::LeftShift) => {
+            BinaryishOperator::Binary(BinaryOperator::LeftShift) if M::TYPESCRIPT => {
                 let (mut expression, type_annotation) = match p.ast.expr_data(e.left(p.ast)) {
                     ExprData::TsAsExpression(assertion) => (
                         assertion.expression(p.ast),
@@ -2482,7 +2492,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             }
             ExprData::UnaryExpression(e) => {
                 // Select the operand mode before printing to shorten the context live range.
-                if context.contains(ExprContext::NO_INSTANTIATION) {
+                if M::TYPESCRIPT && context.contains(ExprContext::NO_INSTANTIATION) {
                     self.print_unary::<true>(e, level);
                 } else {
                     self.print_unary::<false>(e, level);
@@ -2530,7 +2540,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                 let mut test_context = ExprContext::empty();
                 test_context.set(
                     ExprContext::WRAP_TS_CAST,
-                    self.ast.is_ts()
+                    M::TYPESCRIPT
                         && self.expr_ends_with_ts_cast(test)
                         && !self.expr_can_start_ts_type(consequent),
                 );
@@ -2574,7 +2584,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                         Precedence::Assignment
                     };
 
-                    let member_level = if M::STYLE {
+                    let member_level = if M::TYPESCRIPT {
                         Precedence::Assignment
                     } else {
                         member_level
@@ -3028,7 +3038,10 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         }
         let mut context = ExprContext::empty();
         context.set(ExprContext::IN_NEW_CALLEE, in_new_callee && !wrap_object);
-        context.set(ExprContext::NO_INSTANTIATION, !optional || !computed);
+        context.set(
+            ExprContext::NO_INSTANTIATION,
+            M::TYPESCRIPT && (!optional || !computed),
+        );
         self.print_expr_with_context(
             object,
             if matches!(object_data, ExprData::NewExpression(_)) {
@@ -3109,7 +3122,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         };
         let type_arguments = e.type_arguments(self.ast);
         let mut context = ExprContext::empty();
-        context.set(ExprContext::NO_INSTANTIATION, !optional);
+        context.set(ExprContext::NO_INSTANTIATION, M::TYPESCRIPT && !optional);
         self.print_expr_with_context(callee, callee_level, context);
         if optional {
             self.print("?.");
@@ -3540,7 +3553,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         let return_type = e.return_type(self.ast);
         let prefer_bare = self.options.minify;
 
-        let prefer_bare = prefer_bare || M::STYLE;
+        let prefer_bare = prefer_bare || M::TYPESCRIPT;
         let bare_parameter = if prefer_bare && type_parameters.is_none() && return_type.is_none() {
             self.bare_arrow_parameter(params)
         } else {
@@ -5663,7 +5676,9 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
         self.print_jsx_name(o.name(self.ast));
-        if let Some(type_arguments) = o.type_arguments(self.ast) {
+        if M::TYPESCRIPT
+            && let Some(type_arguments) = o.type_arguments(self.ast)
+        {
             self.print_ts_type_args(type_arguments);
         }
         for id in o.attributes(self.ast).iter() {
