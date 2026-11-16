@@ -10,8 +10,6 @@ pub enum Helper {
 }
 
 impl Helper {
-    pub const ALL: [Self; 2] = [Self::ToPropertyKey, Self::SetFunctionName];
-
     pub const fn name(self) -> &'static str {
         match self {
             Self::ToPropertyKey => "_to_property_key",
