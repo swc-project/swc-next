@@ -1,7 +1,7 @@
 use std::{fs, process::ExitCode};
 
 use testsuite::{
-    formatter_conformance::{ConformanceConfig, JAVASCRIPT, TYPESCRIPT, run_conformance},
+    formatter::{ConformanceConfig, JAVASCRIPT, TYPESCRIPT, run_conformance},
     util::crate_root,
 };
 

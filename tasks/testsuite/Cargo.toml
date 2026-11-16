@@ -28,7 +28,7 @@ swc_next_formatter_js     = { workspace = true }
 name = "conformance"
 
 [[bin]]
-name = "formatter_conformance"
+name = "formatter"
 
 [[bin]]
 name = "debug"

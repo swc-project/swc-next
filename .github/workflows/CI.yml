@@ -135,7 +135,7 @@ jobs:
       - name: Run conformance
         run: cargo run --locked -p testsuite --bin conformance --profile conformance
       - name: Run formatter conformance
-        run: cargo run --locked -p testsuite --bin formatter_conformance --profile conformance
+        run: cargo run --locked -p testsuite --bin formatter --profile conformance
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Build JavaScript APIs
