@@ -6,7 +6,7 @@ schedule(first,
 // @ts-expect-error
 function () { return run(); });
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 schedule(
   first,

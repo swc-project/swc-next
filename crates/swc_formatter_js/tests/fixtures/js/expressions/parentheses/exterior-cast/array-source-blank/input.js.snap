@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 
 /** @type {number} */ (first)
 )];---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   // @ts-expect-error
@@ -15,7 +15,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 [
   // @ts-expect-error
@@ -25,7 +25,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   // @ts-expect-error

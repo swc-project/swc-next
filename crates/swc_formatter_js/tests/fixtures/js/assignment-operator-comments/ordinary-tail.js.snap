@@ -5,16 +5,16 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 value = // explanation
   "left" + "right";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 value = "left" + "right"; // explanation
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 value = "left" + "right"; // explanation
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 value = "left" + "right" // explanation

@@ -7,7 +7,7 @@ type F= (x:number,
 )=> MissingType;
 type Outside= OutsideMissing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type F = (
   x: number,
@@ -16,7 +16,7 @@ type F = (
 type Outside = OutsideMissing;
 
 ---------- Options ----------
-{"printWidth":36,"semi":false}
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
 ---------- Output ----------
 type F = (
   x: number,

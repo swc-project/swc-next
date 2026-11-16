@@ -7,19 +7,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /** @type {number} */ (first), missing
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (first), missing);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
 ;(/** @type {number} */ (first), missing)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (
@@ -28,7 +28,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
   missing);
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (
@@ -37,7 +37,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
   missing);
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (
@@ -46,13 +46,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 	missing);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (first), missing);
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 // @ts-ignore
 (/** @type {number} */ (first), missing);

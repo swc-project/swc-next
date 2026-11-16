@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 [first, /* @ts-ignore */ second, third];---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 [
   first,
@@ -11,7 +11,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   first,

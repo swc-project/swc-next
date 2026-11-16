@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 f(first
 // @ts-ignore
 , second);---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 f(
   first
@@ -14,7 +14,7 @@ f(
 );
 
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 f(
   first

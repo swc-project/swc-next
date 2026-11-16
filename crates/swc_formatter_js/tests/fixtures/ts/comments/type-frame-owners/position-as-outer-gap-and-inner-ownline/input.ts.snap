@@ -6,7 +6,7 @@ const x = \u0076alue as /* prettier-ignore */
 (
 /* frame */ (\u0041  |  \u0042));
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const x = \u0076alue as /* prettier-ignore */
 (

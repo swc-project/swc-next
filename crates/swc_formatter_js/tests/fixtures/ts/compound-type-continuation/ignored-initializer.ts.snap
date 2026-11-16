@@ -6,21 +6,21 @@ let v: /* prettier-ignore */ A & (B
 // c
 ) = 1;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let v: /* prettier-ignore */ A & (B
 // c
 ) = 1;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 let v: /* prettier-ignore */ A & (B
 // c
 ) = 1;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 let v: /* prettier-ignore */ A & (B
 // c

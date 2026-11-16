@@ -6,12 +6,12 @@ const t = `a${
 receiver.method(first, second)
 }`;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const t = `a${receiver.method(first, second)}`;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 const t = `a${receiver.method(
   first,
@@ -19,7 +19,7 @@ const t = `a${receiver.method(
 )}`
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 const t = `a${receiver.method(
   first,

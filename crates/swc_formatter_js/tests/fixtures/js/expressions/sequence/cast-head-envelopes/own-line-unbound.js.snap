@@ -6,25 +6,25 @@ assertion_line: 58
 /** @type {number} */
 first, third;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** @type {number} */
 (first, third);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 /** @type {number} */
 (first, third);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 /** @type {number} */
 (first, third);
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 /** @type {number} */
 (
@@ -33,25 +33,25 @@ first, third;
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;/** @type {number} */
 (first, third)
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;/** @type {number} */
 (first, third)
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 /** @type {number} */
 (first, third);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 /** @type {number} */
 (first, third);

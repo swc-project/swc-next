@@ -10,7 +10,7 @@ function f(): void {
  const outside: number = "outside";
 }
 ---------- Options ----------
-{"printWidth":25}
+{"indentStyle":"space","lineWidth":25}
 ---------- Output ----------
 function f(): void {
   for (
@@ -24,7 +24,7 @@ function f(): void {
 }
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(): void {
   for (
@@ -37,7 +37,7 @@ function f(): void {
 }
 
 ---------- Options ----------
-{"printWidth":25,"semi":false}
+{"indentStyle":"space","lineWidth":25,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(): void {
   for (

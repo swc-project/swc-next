@@ -8,7 +8,7 @@ type T = (A & (B
 // prettier-ignore
 const x = { a:1,b:2 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = (
   A & B

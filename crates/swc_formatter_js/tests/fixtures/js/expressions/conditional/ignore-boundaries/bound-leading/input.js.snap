@@ -6,7 +6,7 @@ test ? (
 \u0066irst // boundary
 ) /* prettier-ignore */ /* @ts-expect-error */
 : third;---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? first // boundary

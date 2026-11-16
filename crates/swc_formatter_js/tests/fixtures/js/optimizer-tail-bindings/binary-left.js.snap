@@ -4,14 +4,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 (first || second /* @__PURE__ */) + third;
 ---------- Options ----------
-{"printWidth":30,"semi":false}
+{"indentStyle":"space","lineWidth":30,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(first ||
   second) /* @__PURE__ */ +
   third
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 (first ||
   second) /* @__PURE__ */ +

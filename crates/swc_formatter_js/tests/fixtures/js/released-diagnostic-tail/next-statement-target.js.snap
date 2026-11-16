@@ -5,13 +5,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 (a /* @ts-ignore */
 ) /* x */; b.c = 1;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a; /* @ts-ignore */
 /* x */ b.c = 1;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a /* @ts-ignore */
 /* x */ b.c = 1

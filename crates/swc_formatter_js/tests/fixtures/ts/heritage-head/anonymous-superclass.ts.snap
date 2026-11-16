@@ -6,7 +6,7 @@ const Value = class extends
 /* prettier-ignore */
 Namespace . Base { value =  1 ; };
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const Value = class
   extends
@@ -16,7 +16,7 @@ const Value = class
 };
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const Value = class
   extends
@@ -26,7 +26,7 @@ const Value = class
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 const Value = class
 	extends

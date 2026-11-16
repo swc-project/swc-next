@@ -7,7 +7,7 @@ f(first /* @ts-ignore */
 );
 bad;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   first /* @ts-ignore */,

@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 class C extends (ready ? First : Second) {m(){return super.m();}}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C extends (ready ? First : Second) {
   m() {
@@ -13,7 +13,7 @@ class C extends (ready ? First : Second) {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C extends (ready
   ? First
@@ -24,7 +24,7 @@ class C extends (ready
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C extends (ready ? First : Second) {
   m() {
@@ -33,7 +33,7 @@ class C extends (ready ? First : Second) {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class C extends (ready
   ? First
@@ -44,7 +44,7 @@ class C extends (ready
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":2,"useTabs":true}
+{"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
 class C extends (ready
 	? First
@@ -55,7 +55,7 @@ class C extends (ready
 }
 
 ---------- Options ----------
-{"quoteProps":"preserve","semi":false}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
 class C extends (ready ? First : Second) {
   m() {

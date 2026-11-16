@@ -6,7 +6,7 @@ type T = Box<A,
 
 B>;
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 type T =
   Box<

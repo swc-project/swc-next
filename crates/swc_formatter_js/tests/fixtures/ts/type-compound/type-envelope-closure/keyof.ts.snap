@@ -6,7 +6,7 @@ type T = keyof (A & (B
 // comment
 ));
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = keyof (
   A & B

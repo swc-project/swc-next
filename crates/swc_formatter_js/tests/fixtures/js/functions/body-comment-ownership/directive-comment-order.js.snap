@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 function f() // outer
 { /* inner */ "use strict"; return 42; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() // outer
 {
@@ -14,7 +14,7 @@ function f() // outer
 }
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function f() // outer
 {
@@ -23,7 +23,7 @@ function f() // outer
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() // outer
 {

@@ -6,7 +6,7 @@ test
 // tail
  ? /* prettier-ignore */ a  +b : c;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? // tail
@@ -14,7 +14,7 @@ test
   : c;
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 test
   ? // tail

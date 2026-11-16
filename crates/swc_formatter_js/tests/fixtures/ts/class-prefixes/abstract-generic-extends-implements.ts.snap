@@ -7,7 +7,7 @@ interface I { value: number; }
 abstract class A<T = number> extends Base<T> implements I {}
 class B extends A<number> {}
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Base<T> {
   value = 7;
@@ -19,7 +19,7 @@ abstract class A<T = number> extends Base<T> implements I {}
 class B extends A<number> {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Base<T> {
   value = 7;

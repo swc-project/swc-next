@@ -7,7 +7,7 @@ test ? (
 missing
 ) : other;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? // @ts-ignore
@@ -15,7 +15,7 @@ test
   : other;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 test
   ? // @ts-ignore

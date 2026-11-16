@@ -8,7 +8,7 @@ const result = (
   invalid() ?? 0 ? 0 : 0
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const invalid: string;
 const result =

@@ -8,7 +8,7 @@ type T = Box<A, /* left */
 /* two */ // line
 B>;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = Box<
   A /* left */,

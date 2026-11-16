@@ -8,7 +8,7 @@ f(value,
 
 second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** @type {string} */
 let value = 1;
@@ -19,7 +19,7 @@ f(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 /** @type {string} */
 let value = 1

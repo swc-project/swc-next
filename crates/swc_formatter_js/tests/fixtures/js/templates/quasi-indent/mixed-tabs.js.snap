@@ -8,7 +8,7 @@ function render() { return `
    ${() => {c}}
 `; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function render() {
   return `
@@ -25,7 +25,7 @@ function render() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 function render() {
   return `
@@ -42,7 +42,7 @@ function render() {
 }
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":2,"useTabs":true}
+{"indentStyle":"tab","indentWidth":2,"lineWidth":40}
 ---------- Output ----------
 function render() {
 	return `
@@ -59,7 +59,7 @@ function render() {
 }
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":8,"useTabs":true}
+{"indentStyle":"tab","indentWidth":8,"lineWidth":40}
 ---------- Output ----------
 function render() {
 	return `
@@ -76,7 +76,7 @@ function render() {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 function render() {
   return `

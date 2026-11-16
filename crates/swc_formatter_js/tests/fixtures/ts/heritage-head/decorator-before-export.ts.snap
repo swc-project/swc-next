@@ -7,7 +7,7 @@ export class Name extends
 // prettier-ignore
 Base { value =  1 ; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 @decorate(  1  )
 export class Name extends
@@ -15,7 +15,7 @@ export class Name extends
 Base { value =  1 ; }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 @decorate(  1  )
 export class Name extends
@@ -23,7 +23,7 @@ export class Name extends
 Base { value =  1 ; }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 @decorate(  1  )
 export class Name extends

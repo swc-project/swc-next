@@ -10,7 +10,7 @@ fn
 )();
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const fn: number;
 function f() {
@@ -21,7 +21,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const fn: number
 function f() {

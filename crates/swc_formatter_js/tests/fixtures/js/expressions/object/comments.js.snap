@@ -15,7 +15,7 @@ b: 2,
 // dangling
 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({/*empty*/});
 ({
@@ -35,7 +35,7 @@ b: 2,
 });
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 ({/*empty*/});
 ({
@@ -61,7 +61,7 @@ b: 2,
 });
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 ;({/*empty*/})
 ;({
@@ -87,7 +87,7 @@ b: 2,
 })
 
 ---------- Options ----------
-{"quoteProps":"preserve","singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","quoteStyle":"single"}
 ---------- Output ----------
 ({/*empty*/});
 ({

@@ -9,7 +9,7 @@ class A {
   accessor x = 1;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class A {
   static // c
@@ -19,7 +19,7 @@ class A {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class A {
   static // c

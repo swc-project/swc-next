@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ,
 /* @ts-expect-error */
 second];---------- Options ----------
-{"endOfLine":"crlf","printWidth":10}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
 ---------- Output ----------
 [
   first,
@@ -17,7 +17,7 @@ second];---------- Options ----------
 ];
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 [
   first,

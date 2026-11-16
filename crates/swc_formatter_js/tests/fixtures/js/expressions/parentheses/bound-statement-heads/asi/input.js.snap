@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 previous();
 (/** @param {number} value */ function (value) { return value; }).name;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 previous();
 (
@@ -15,7 +15,7 @@ previous();
 ).name;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 previous()
 ;(

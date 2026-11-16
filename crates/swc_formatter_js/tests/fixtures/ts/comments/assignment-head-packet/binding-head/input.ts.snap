@@ -6,19 +6,19 @@ const result: unknown = (
 /* own */
 !left)(arg);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const result: unknown = /* own */ (!left)(arg);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const result: unknown =
   /* own */
   (!left)(arg);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const result: unknown =
   /* own */

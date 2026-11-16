@@ -6,7 +6,7 @@ f
 /* prettier-ignore */ (// leading
 first(  ));
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 f(
   /* prettier-ignore */ // leading
@@ -14,7 +14,7 @@ f(
 )
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 f(
   /* prettier-ignore */ // leading

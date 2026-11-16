@@ -5,25 +5,25 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 class ConstructedBase extends (new Base()) {}
 class TaggedBase extends (make`base`) {}
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 class ConstructedBase extends (new Base()) {}
 class TaggedBase extends (make`base`) {}
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 class ConstructedBase extends (new Base()) {}
 class TaggedBase extends (make`base`) {}
 
 ---------- Options ----------
-{"printWidth":80,"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 class ConstructedBase extends (new Base()) {}
 class TaggedBase extends (make`base`) {}
 
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 class ConstructedBase extends (new Base()) {}
 class TaggedBase extends (make`base`) {}

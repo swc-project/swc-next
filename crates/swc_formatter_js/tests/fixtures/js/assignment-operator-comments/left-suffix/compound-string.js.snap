@@ -5,28 +5,28 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 target // left
 += "long string content";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 target += "long string content"; // left
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 target += // left
   "long string content";
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 target += "long string content"; // left
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 target += "long string content" // left
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 target += // left
 	"long string content";

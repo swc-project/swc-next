@@ -1,1 +1,10 @@
-[{"printWidth":20},{"printWidth":80}]
+[
+  {
+    "lineWidth": 20,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  }
+]

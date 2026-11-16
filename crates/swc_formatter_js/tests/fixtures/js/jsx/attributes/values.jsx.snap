@@ -15,7 +15,7 @@ const a4=<Box title=
 const a5=<Box title=// value
 "foo"/>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const a1 = (
   <Box
@@ -47,7 +47,7 @@ const a5 = (
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const a1 = (
   <Box
@@ -81,7 +81,7 @@ const a5 = (
 );
 
 ---------- Options ----------
-{"jsxSingleQuote":true}
+{"indentStyle":"space","jsxQuoteStyle":"single","lineWidth":80}
 ---------- Output ----------
 const a1 = (
   <Box
@@ -113,7 +113,7 @@ const a5 = (
 );
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 const a1 = (
   <Box
@@ -144,6 +144,6 @@ const a5 = (
 );
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 const a1 = (  <Box    title='a\b "c" &amp; d'    other="'x' &quot;y&quot;"    active    data={value + 1}    {...props}  />);const a2 = (  <Box    title="first&#10;  second	line &nbsp;&#10;last"  />);const a3 = (  <div    title="a&#13;&#10;b"  >    first second  </div>);const a4 = <Box title=/* value */ "foo" />;const a5 = (  <Box title=// value  "foo" />);

@@ -7,7 +7,7 @@ async function f() {
 await /* first */ using /* second */ resource = acquire();
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 async function f() {
   // @ts-ignore
@@ -15,7 +15,7 @@ async function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 async function f() {
   // @ts-ignore
@@ -23,7 +23,7 @@ async function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 async function f() {
   // @ts-ignore

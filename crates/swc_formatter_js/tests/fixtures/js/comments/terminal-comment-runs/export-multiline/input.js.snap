@@ -7,7 +7,7 @@ export {first,
  * c */ // d
 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export {
   first,
@@ -16,7 +16,7 @@ export {
 };
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 export {
   first

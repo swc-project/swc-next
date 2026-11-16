@@ -6,7 +6,7 @@ KEYPAD_NUMBERS.map(num => ( // Buttons 0-9
   <div />
 ));
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 KEYPAD_NUMBERS.map((num) => (
   // Buttons 0-9
@@ -14,7 +14,7 @@ KEYPAD_NUMBERS.map((num) => (
 ));
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 KEYPAD_NUMBERS.map(
   (num) => (
@@ -24,7 +24,7 @@ KEYPAD_NUMBERS.map(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 KEYPAD_NUMBERS.map((num) => (
   // Buttons 0-9
@@ -32,7 +32,7 @@ KEYPAD_NUMBERS.map((num) => (
 ))
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 KEYPAD_NUMBERS.map(num => (
   // Buttons 0-9

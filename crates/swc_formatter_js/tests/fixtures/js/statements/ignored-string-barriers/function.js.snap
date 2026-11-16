@@ -6,7 +6,7 @@ function f() { ;
 // prettier-ignore
 "use asm"; return this; }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   // prettier-ignore
@@ -15,7 +15,7 @@ function f() {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   // prettier-ignore

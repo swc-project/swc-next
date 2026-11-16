@@ -4,21 +4,21 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 /* leading */ value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /* leading */ value;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 /* leading */ value
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 /* leading */ value;
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 /* leading */ value;

@@ -8,7 +8,7 @@ loop: for(;;) continue loop
 
 next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 loop: for (;;) continue loop;
 /* tail */
@@ -16,7 +16,7 @@ loop: for (;;) continue loop;
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 loop: for (;;) continue loop
 /* tail */
@@ -24,7 +24,7 @@ loop: for (;;) continue loop
 next()
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 loop: for (;;) continue loop
 /* tail */

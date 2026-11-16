@@ -5,14 +5,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 a ? (/** @type {number} */ (1)
 /* tail */) /* prettier-ignore */ : b  +c;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a
   ? (/** @type {number} */ (1)
 /* tail */) /* prettier-ignore */ : b + c;
 
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 a
   ? (/** @type {number} */ (1)
@@ -20,7 +20,7 @@ a
     c;
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 a
   ? (/** @type {number} */ (1)

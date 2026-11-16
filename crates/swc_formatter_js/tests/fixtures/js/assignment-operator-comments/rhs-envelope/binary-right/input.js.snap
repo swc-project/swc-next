@@ -6,14 +6,14 @@ target
 /* own left */
 += // right
 first + second;---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target += // right
   /* own left */
   first + second;
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 target += // right
   /* own left */

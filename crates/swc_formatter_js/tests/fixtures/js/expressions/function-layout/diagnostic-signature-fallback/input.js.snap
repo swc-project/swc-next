@@ -6,7 +6,7 @@ consume("diagnostic", (value =
 // @ts-expect-error
 missing()) => { return value; }); second();
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 consume(
   "diagnostic",

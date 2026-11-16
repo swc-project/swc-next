@@ -6,14 +6,14 @@ target
 /* own left */
 = // right
 value;---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = // right
   /* own left */
   value;
 
 ---------- Options ----------
-{"printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20}
 ---------- Output ----------
 target = // right
 	/* own left */

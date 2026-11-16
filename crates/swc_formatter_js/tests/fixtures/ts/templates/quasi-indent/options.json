@@ -1,36 +1,41 @@
 [
   {
-    "printWidth": 80
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20,
-    "semi": false,
-    "trailingComma": "none"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none"
   },
   {
-    "printWidth": 40,
-    "useTabs": true,
-    "tabWidth": 2
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 2
   },
   {
-    "printWidth": 40,
-    "useTabs": true,
-    "tabWidth": 8
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 8
   },
   {
-    "printWidth": 40,
-    "tabWidth": 4
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "indentWidth": 4
   },
   {
-    "printWidth": 40,
-    "semi": false,
-    "trailingComma": "none",
-    "endOfLine": "crlf"
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none",
+    "lineEnding": "crlf"
   },
   {
-    "printWidth": 40,
-    "semi": true,
-    "trailingComma": "none",
-    "endOfLine": "crlf"
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "semicolons": "always",
+    "trailingCommas": "none",
+    "lineEnding": "crlf"
   }
 ]

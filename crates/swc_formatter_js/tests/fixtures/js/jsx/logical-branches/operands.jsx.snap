@@ -18,7 +18,7 @@ first && (/* prefix */ second && <Box><Item /><Item /></Box>);
 first && second // trailing prefix
 && <Box><Item /><Item /></Box>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 flag && (
   <Box>
@@ -107,7 +107,7 @@ first &&
   );
 
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 flag && (
   <Box>
@@ -200,7 +200,7 @@ first &&
   );
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 flag && (
 	<Box>

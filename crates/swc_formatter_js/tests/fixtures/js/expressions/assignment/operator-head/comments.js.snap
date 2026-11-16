@@ -6,7 +6,7 @@ value = /* first */
 // second
 () => {};
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 value =
   /* first */
@@ -14,7 +14,7 @@ value =
   () => {};
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 value =
   /* first */
@@ -22,7 +22,7 @@ value =
   () => {};
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 value =
   /* first */

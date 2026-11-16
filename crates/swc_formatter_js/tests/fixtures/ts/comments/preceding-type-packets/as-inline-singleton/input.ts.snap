@@ -4,6 +4,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 \u0078 as /* prettier-ignore */ | \u0041;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 \u0078 /* prettier-ignore */ as A;

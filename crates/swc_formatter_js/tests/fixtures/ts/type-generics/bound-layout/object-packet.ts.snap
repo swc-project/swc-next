@@ -8,7 +8,7 @@ value: Value; extra: Extra
 value: Value; extra: Extra
 }> = T;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Result<
   T extends /* constraint */ {
@@ -21,7 +21,7 @@ type Result<
 > = T;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type Result<
   T extends /* constraint */ {
@@ -35,7 +35,7 @@ type Result<
 > = T;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Result<
   T extends
@@ -50,7 +50,7 @@ type Result<
 > = T;
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 type Result<
 	T extends

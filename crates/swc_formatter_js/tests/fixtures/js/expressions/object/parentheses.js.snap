@@ -9,7 +9,7 @@ a ? { b: 1 } : { c: 2 };
 ({ a: b = c });
 ({ [(a = b)]: c });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({ a: 1 }) + b;
 ({ a: 1 }) ? b : c;
@@ -19,7 +19,7 @@ a ? { b: 1 } : { c: 2 };
 ({ [(a = b)]: c });
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 ({ a: 1 }) + b;
 ({ a: 1 }) ? b : c;
@@ -29,7 +29,7 @@ a ? { b: 1 } : { c: 2 };
 ({ [(a = b)]: c });
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 ;({a: 1}) + b
 ;({a: 1}) ? b : c
@@ -39,7 +39,7 @@ a ? {b: 1} : {c: 2}
 ;({[(a = b)]: c})
 
 ---------- Options ----------
-{"quoteProps":"preserve","singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","quoteStyle":"single"}
 ---------- Output ----------
 ({ a: 1 }) + b;
 ({ a: 1 }) ? b : c;

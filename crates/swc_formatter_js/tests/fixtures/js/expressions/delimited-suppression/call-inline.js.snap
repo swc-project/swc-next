@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 foo([1,2], /* prettier-ignore */ ()=>{});
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 foo([1, 2], /* prettier-ignore */ ()=>{});
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 foo(
   [1, 2],
@@ -17,7 +17,7 @@ foo(
 );
 
 ---------- Options ----------
-{"printWidth":1}
+{"indentStyle":"space","lineWidth":1}
 ---------- Output ----------
 foo(
   [
@@ -28,7 +28,7 @@ foo(
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 foo(
   [1, 2],
@@ -36,7 +36,7 @@ foo(
 )
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 foo(
 	[1, 2],

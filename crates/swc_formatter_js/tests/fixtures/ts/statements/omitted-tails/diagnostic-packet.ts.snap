@@ -7,7 +7,7 @@ const before = 0;
 
 const value: string = 1;
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 const before = 0;
 /* ordinary */ // @ts-expect-error
@@ -15,7 +15,7 @@ const before = 0;
 const value: string = 1;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const before = 0
 /* ordinary */ // @ts-expect-error

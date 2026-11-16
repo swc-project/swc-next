@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 interface A { a: ?; b: B }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 interface A {
   a: ?;

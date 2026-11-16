@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 
 second());
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /*#__PURE__*/ f(
   first,
@@ -15,7 +15,7 @@ second());
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 /*#__PURE__*/ f(
   first,

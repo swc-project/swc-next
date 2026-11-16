@@ -1,6 +1,22 @@
 [
-  { "printWidth": 24, "arrowParens": "always" },
-  { "printWidth": 24, "arrowParens": "avoid" },
-  { "printWidth": 80, "arrowParens": "always" },
-  { "printWidth": 80, "arrowParens": "avoid" }
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "arrowParentheses": "always"
+  },
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "arrowParentheses": "always"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  }
 ]

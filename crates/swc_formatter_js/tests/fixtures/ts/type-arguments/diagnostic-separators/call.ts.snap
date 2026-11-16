@@ -7,7 +7,7 @@ call<First
 ,
 Second>();
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 call<
   First,
@@ -16,7 +16,7 @@ call<
 >()
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 call<
   First,

@@ -4,36 +4,36 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 /[a-z]/v;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /[a-z]/v;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;/[a-z]/v
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 /[a-z]/v;
 
 ---------- Options ----------
-{"printWidth":19}
+{"indentStyle":"space","lineWidth":19}
 ---------- Output ----------
 /[a-z]/v;
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 /[a-z]/v;
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
 ---------- Output ----------
 /[a-z]/v;
 
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 /[a-z]/v;

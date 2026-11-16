@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type T<A /* prettier-ignore */ // c
 extends B> = A;---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 type T<
   A /* prettier-ignore */ // c

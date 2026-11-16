@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const /* prefix */ enum E { A = 1, B = A + 2 }
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 const enum /* prefix */ E {
   A = 1,
@@ -12,7 +12,7 @@ const enum /* prefix */ E {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const enum /* prefix */ E {
   A = 1,
@@ -20,7 +20,7 @@ const enum /* prefix */ E {
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 const enum /* prefix */ E {
   A = 1,
@@ -28,7 +28,7 @@ const enum /* prefix */ E {
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const enum /* prefix */ E {
   A = 1,

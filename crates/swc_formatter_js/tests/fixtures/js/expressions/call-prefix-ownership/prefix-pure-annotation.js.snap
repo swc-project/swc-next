@@ -4,14 +4,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 object.method /* prettier-ignore */ /*#__PURE__*/ ( first(  ) );
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 object.method(
   /* prettier-ignore */ /*#__PURE__*/ first(  ),
 )
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 object.method(
   /* prettier-ignore */ /*#__PURE__*/ first(  ),

@@ -7,7 +7,7 @@ Implementation = class extends
 MissingBaseFactory(unknownValue)
 {};
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 Implementation = class extends
 // @ts-expect-error

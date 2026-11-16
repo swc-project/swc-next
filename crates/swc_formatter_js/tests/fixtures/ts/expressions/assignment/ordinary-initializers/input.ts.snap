@@ -8,7 +8,7 @@ function withDefault(veryLongDefaultParameterName: number = buildSomethingMeanin
 class Example { veryLongInitializedFieldName: number = buildSomethingMeaningful(1, 2); }
 enum Value { veryLongComputedEnumMemberName = buildSomethingMeaningful(1, 2), literal = 1 }
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function buildSomethingMeaningful(
   first: number,
@@ -39,7 +39,7 @@ enum Value {
 }
 
 ---------- Options ----------
-{"printWidth":60,"semi":false,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":60,"semicolons":"as-needed"}
 ---------- Output ----------
 function buildSomethingMeaningful(
 	first: number,
@@ -70,7 +70,7 @@ enum Value {
 }
 
 ---------- Options ----------
-{"printWidth":120}
+{"indentStyle":"space","lineWidth":120}
 ---------- Output ----------
 function buildSomethingMeaningful(first: number, second: number): number {
   return first + second;

@@ -8,7 +8,7 @@ in const T extends Array < number > = number[],
 U
 > {}
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Collection<
   // prettier-ignore
@@ -17,7 +17,7 @@ class Collection<
 > {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Collection<
   // prettier-ignore
@@ -26,7 +26,7 @@ class Collection<
 > {}
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 class Collection<
   // prettier-ignore
@@ -35,7 +35,7 @@ class Collection<
 > {}
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 class Collection<
   // prettier-ignore

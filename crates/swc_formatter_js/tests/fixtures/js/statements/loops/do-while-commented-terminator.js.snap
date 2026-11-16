@@ -6,28 +6,28 @@ do a
 // c
 ;while(x)
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 do a;
 // c
 while (x);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 do a
 // c
 while (x)
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 do a;
 // c
 while (x);
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 do a;
 // c

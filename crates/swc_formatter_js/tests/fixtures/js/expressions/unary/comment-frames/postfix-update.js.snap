@@ -4,14 +4,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 + (/* head */ item++);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 +(
   /* head */ item++
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;+(
   /* head */ item++

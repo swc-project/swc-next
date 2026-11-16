@@ -6,7 +6,7 @@ const view = value => (
   /* note */
   <Panel />);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const view = (value) => (
   /* note */
@@ -14,7 +14,7 @@ const view = (value) => (
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const view = (
   value,
@@ -24,7 +24,7 @@ const view = (
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const view = (value) => (
   /* note */
@@ -32,7 +32,7 @@ const view = (value) => (
 )
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const view = value => (
   /* note */

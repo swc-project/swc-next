@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 [[first, second] // @ts-expect-error
 , [third, fourth]];
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   [
@@ -16,7 +16,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ]
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 [
   [

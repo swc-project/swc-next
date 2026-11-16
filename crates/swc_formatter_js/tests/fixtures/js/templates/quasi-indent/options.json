@@ -1,24 +1,27 @@
 [
   {
-    "printWidth": 80
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20,
-    "semi": false,
-    "trailingComma": "none"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none"
   },
   {
-    "printWidth": 40,
-    "useTabs": true,
-    "tabWidth": 2
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 2
   },
   {
-    "printWidth": 40,
-    "useTabs": true,
-    "tabWidth": 8
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 8
   },
   {
-    "printWidth": 40,
-    "endOfLine": "crlf"
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   }
 ]

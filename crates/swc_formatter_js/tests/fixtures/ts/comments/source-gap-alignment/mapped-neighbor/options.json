@@ -1,10 +1,16 @@
 [
-  {},
   {
-    "useTabs": true,
-    "tabWidth": 4
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "semi": false
+    "lineWidth": 80,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   }
 ]

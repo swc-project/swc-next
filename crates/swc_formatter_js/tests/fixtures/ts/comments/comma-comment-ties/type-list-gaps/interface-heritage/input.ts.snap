@@ -7,7 +7,7 @@ interface T extends First, /* block */
 // line
 Last {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 interface T
   extends

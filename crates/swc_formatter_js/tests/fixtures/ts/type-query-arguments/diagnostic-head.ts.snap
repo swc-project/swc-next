@@ -8,7 +8,7 @@ type C = typeof f<
   <T>(v: Missing) => T
 >;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function f<F>(): void;
 type C = typeof f<
@@ -17,7 +17,7 @@ type C = typeof f<
 >;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 declare function f<
   F,
@@ -28,7 +28,7 @@ type C = typeof f<
 >;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 declare function f<
   F,
@@ -39,7 +39,7 @@ type C = typeof f<
 >
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 declare function f<
   F,
@@ -51,7 +51,7 @@ type C =
   >
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 declare function f<
 	F

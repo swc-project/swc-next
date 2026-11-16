@@ -1,10 +1,12 @@
 [
   {
-    "printWidth": 24,
-    "semi": false
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   },
   {
-    "printWidth": 24,
-    "semi": true
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "semicolons": "always"
   }
 ]

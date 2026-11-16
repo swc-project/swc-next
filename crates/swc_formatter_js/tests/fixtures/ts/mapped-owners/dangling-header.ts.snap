@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type M<T> = { readonly /* a */ /* b */ [K in keyof T]: T[K] };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type M<T> = {
   /* a */
@@ -12,7 +12,7 @@ type M<T> = {
 };
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 type M<T> = {
   /* a */
@@ -22,7 +22,7 @@ type M<T> = {
 };
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":18,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 type M<T> = {
   /* a */

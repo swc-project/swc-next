@@ -7,7 +7,7 @@ class C { static { // first
 /* second */
 } }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   static {
@@ -17,7 +17,7 @@ class C {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static {
@@ -27,7 +27,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static {

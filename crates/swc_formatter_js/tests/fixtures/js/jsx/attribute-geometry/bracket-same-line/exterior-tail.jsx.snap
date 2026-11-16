@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const view = <Box title="message" // attribute
 />;
 ---------- Options ----------
-{"bracketSameLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const view = (
   <Box

@@ -6,7 +6,7 @@ type X = (A
 // c
 ) & B;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type X = A &
   // c

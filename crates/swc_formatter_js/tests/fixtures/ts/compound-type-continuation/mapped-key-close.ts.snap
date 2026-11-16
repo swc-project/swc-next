@@ -6,7 +6,7 @@ type T = { [K in A | (B
 // c
 )]: V };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = {
   [
@@ -19,7 +19,7 @@ type T = {
 };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = {
   [
@@ -32,7 +32,7 @@ type T = {
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = {
   [

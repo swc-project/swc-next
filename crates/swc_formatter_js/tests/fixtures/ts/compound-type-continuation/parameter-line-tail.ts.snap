@@ -6,7 +6,7 @@ function g({a}: A | (B
 // c
 )) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function g({
   a,
@@ -17,7 +17,7 @@ function g({
 )) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function g({
   a,
@@ -28,7 +28,7 @@ function g({
 )) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function g({
   a,

@@ -6,16 +6,16 @@ type F = (x: {
   a: string;
 }) => void;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type F = (x: { a: string }) => void;
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type F = (x: { a: string }) => void;
 
 ---------- Options ----------
-{"printWidth":40,"semi":false,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 type F = (x: { a: string }) => void

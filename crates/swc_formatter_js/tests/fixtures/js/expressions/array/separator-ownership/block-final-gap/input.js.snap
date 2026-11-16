@@ -6,7 +6,7 @@ void [/* hole */
 
 , last];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 void [
   /* hole */

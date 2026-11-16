@@ -4,29 +4,29 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type A = OtherType;
 ---------- Options ----------
-{"printWidth":17}
+{"indentStyle":"space","lineWidth":17}
 ---------- Output ----------
 type A =
   OtherType;
 
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 type A =
   OtherType;
 
 ---------- Options ----------
-{"printWidth":19}
+{"indentStyle":"space","lineWidth":19}
 ---------- Output ----------
 type A = OtherType;
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 type A = OtherType
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":18,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":18}
 ---------- Output ----------
 type A =
 	OtherType;

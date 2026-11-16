@@ -7,7 +7,7 @@ if(c) label:
 x = y as ?; else z();
 b;
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (c)
   label:

@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 [[first, last], [next, end]];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   [first, last],
@@ -12,7 +12,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":14}
+{"indentStyle":"space","lineWidth":14}
 ---------- Output ----------
 [
   [
@@ -23,7 +23,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":13}
+{"indentStyle":"space","lineWidth":13}
 ---------- Output ----------
 [
   [
@@ -37,7 +37,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 [
   [
@@ -51,7 +51,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":0}
+{"indentStyle":"space","lineWidth":0}
 ---------- Output ----------
 [
   [
@@ -65,7 +65,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   [first, last],
@@ -73,7 +73,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ]
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
 ---------- Output ----------
 [
   [
@@ -87,7 +87,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"es5"}
 ---------- Output ----------
 [
   [
@@ -101,7 +101,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 [
 	[
@@ -115,7 +115,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":10}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
 ---------- Output ----------
 [
   [

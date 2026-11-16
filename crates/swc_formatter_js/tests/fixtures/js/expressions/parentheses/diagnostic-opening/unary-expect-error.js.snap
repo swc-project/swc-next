@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 x = !(a1 +
 b2);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 x = !(a1 +
@@ -14,7 +14,7 @@ x = !(a1 +
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 x = !(a1 +
@@ -22,7 +22,7 @@ x = !(a1 +
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-expect-error
 x = !(a1 +

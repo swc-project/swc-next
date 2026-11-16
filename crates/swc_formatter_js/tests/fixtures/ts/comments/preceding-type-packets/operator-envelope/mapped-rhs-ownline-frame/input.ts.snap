@@ -6,7 +6,7 @@ type T = { [\u004b in /* prettier-ignore */ (
 
  /* head */
  \u0041 | \u0042)]: X };---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 type T = {
   [

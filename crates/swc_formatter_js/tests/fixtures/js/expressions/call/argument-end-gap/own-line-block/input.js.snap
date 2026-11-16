@@ -8,7 +8,7 @@ f(a
 
 b);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   a,

@@ -6,14 +6,14 @@ const value = {};
 (// @ts-ignore
 value) + 1;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = {};
 (// @ts-ignore
   value) + 1;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = {}
 ;(// @ts-ignore

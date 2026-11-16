@@ -7,14 +7,14 @@ while (condition); // first
 
 next();
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 while (condition); // first
 // second
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 while (condition); // first
 // second

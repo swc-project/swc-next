@@ -1,18 +1,22 @@
 [
   {
-    "printWidth": 80
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20
+    "lineWidth": 20,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20,
-    "semi": false,
-    "trailingComma": "none",
-    "arrowParens": "avoid"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none",
+    "arrowParentheses": "as-needed"
   },
   {
-    "printWidth": 20,
-    "endOfLine": "crlf"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   }
 ]

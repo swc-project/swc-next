@@ -1,5 +1,6 @@
 [
   {
-    "printWidth": 36
+    "lineWidth": 36,
+    "indentStyle": "space"
   }
 ]

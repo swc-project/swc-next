@@ -6,7 +6,7 @@ callee(
 // prettier-ignore
 first  +  second, third);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 callee(
   // prettier-ignore
@@ -15,7 +15,7 @@ callee(
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 callee(
   // prettier-ignore
@@ -24,7 +24,7 @@ callee(
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 callee(
   // prettier-ignore
@@ -33,7 +33,7 @@ callee(
 )
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
 ---------- Output ----------
 callee(
   // prettier-ignore

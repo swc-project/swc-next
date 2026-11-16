@@ -7,7 +7,7 @@ first, /* ordinary */ // @ts-ignore
 missing
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (first /* ordinary */, // @ts-ignore
   missing);

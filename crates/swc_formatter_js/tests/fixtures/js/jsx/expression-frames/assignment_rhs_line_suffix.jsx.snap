@@ -11,7 +11,7 @@ const element // marker
 const fragment // marker
 = <>word<Foo /></>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const comment = // marker
   <Foo>{/* existing */}</Foo>;
@@ -33,7 +33,7 @@ const fragment = // marker
   );
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const comment = // marker
   (

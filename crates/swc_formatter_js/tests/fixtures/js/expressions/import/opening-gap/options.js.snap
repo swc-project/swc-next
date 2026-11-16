@@ -6,6 +6,6 @@ import(
 
   a, { with: { type: "json" } });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import(a, { with: { type: "json" } });

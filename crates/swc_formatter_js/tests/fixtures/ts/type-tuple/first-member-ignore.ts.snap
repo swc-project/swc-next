@@ -6,7 +6,7 @@ type Values=[
 /* prettier-ignore */
 12.00|13.00];
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Values = [
   /* prettier-ignore */
@@ -14,7 +14,7 @@ type Values = [
 ];
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Values = [
   /* prettier-ignore */
@@ -22,7 +22,7 @@ type Values = [
 ];
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Values =
   [
@@ -32,7 +32,7 @@ type Values =
   ]
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 type Values = [
 	/* prettier-ignore */

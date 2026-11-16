@@ -7,7 +7,7 @@ const create = () => `
   ${value}
 `;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `
   first
@@ -15,7 +15,7 @@ const create = () => `
 `;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const create = () => `
   first
@@ -23,7 +23,7 @@ const create = () => `
 `;
 
 ---------- Options ----------
-{"arrowParens":"avoid"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `
   first

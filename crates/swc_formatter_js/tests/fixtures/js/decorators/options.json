@@ -1,12 +1,17 @@
 [
-  {},
   {
-    "printWidth": 20,
-    "semi": false,
-    "trailingComma": "none"
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 40,
-    "endOfLine": "crlf"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   }
 ]

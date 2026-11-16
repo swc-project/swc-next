@@ -6,7 +6,7 @@ x = `${a // @ts-ignore
 } ${/* c
  d */ b}`;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = `${
   a // @ts-ignore

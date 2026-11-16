@@ -1,19 +1,24 @@
 [
   {
-    "printWidth": 88
+    "lineWidth": 88,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 89
+    "lineWidth": 89,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 90
+    "lineWidth": 90,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 96
+    "lineWidth": 96,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 88,
-    "trailingComma": "none",
-    "semi": false
+    "lineWidth": 88,
+    "indentStyle": "space",
+    "trailingCommas": "none",
+    "semicolons": "as-needed"
   }
 ]

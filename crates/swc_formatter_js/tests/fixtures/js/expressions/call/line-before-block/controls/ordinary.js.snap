@@ -6,7 +6,7 @@ f(first // note
 , /* c
  d */ second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   first, // note

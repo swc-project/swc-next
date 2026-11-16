@@ -6,19 +6,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
   continues */
 const;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 1 as const /* explanation
   continues */;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 1 as const /* explanation
   continues */;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 1 as const /* explanation
   continues */

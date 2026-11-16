@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const result = (await loadSomething((await loadSomething(param)).value)).value;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const result = (
   await loadSomething(
@@ -13,12 +13,12 @@ const result = (
 ).value;
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const result = (await loadSomething((await loadSomething(param)).value)).value;
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const result = (
   await loadSomething(

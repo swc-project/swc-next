@@ -5,17 +5,17 @@ assertion_line: 58
 ---------- Input ----------
 x = (/* head */ (/** @type {X} */ t), y);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = /* head */ /** @type {X} */ (t, y);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x = /* head */ /** @type {X} */ (t, y)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 x =
   /* head */ /** @type {X} */ (

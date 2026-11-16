@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 abc.b().c(() => { d(); });
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 abc
   .b()
@@ -15,7 +15,7 @@ abc
   );
 
 ---------- Options ----------
-{"printWidth":16}
+{"indentStyle":"space","lineWidth":16}
 ---------- Output ----------
 abc
   .b()
@@ -24,7 +24,7 @@ abc
   });
 
 ---------- Options ----------
-{"printWidth":17}
+{"indentStyle":"space","lineWidth":17}
 ---------- Output ----------
 abc.b().c(() => {
   d();

@@ -7,11 +7,11 @@ f(first /* @ts-ignore */
 
 second, third);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(first /* @ts-ignore */, second, third);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 f(first /* @ts-ignore */, second, third)

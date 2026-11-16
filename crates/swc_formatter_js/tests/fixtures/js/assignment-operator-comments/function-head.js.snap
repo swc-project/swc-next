@@ -8,7 +8,7 @@ let make = /* first */
 
   () => {};
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let make =
   /* first */
@@ -18,7 +18,7 @@ let make =
   () => {};
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 let make =
   /* first */
@@ -28,7 +28,7 @@ let make =
   () => {};
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 let make =
   /* first */

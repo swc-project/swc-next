@@ -8,7 +8,7 @@ let value = 1;
 ) /* next */
 b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** @type {string} */
 let value = 1;
@@ -17,7 +17,7 @@ a; // tail
 b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 /** @type {string} */
 let value = 1

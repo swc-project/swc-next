@@ -9,7 +9,7 @@ async function run() {
   ).property;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 async function run() {
   (
@@ -19,7 +19,7 @@ async function run() {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 async function run() {
   ;(

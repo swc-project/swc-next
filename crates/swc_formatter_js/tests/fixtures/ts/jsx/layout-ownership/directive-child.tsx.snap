@@ -6,7 +6,7 @@ declare function consumeString(value: string): void;
 const view=<Panel>{(value: number)=>// @ts-expect-error
 consumeString(value)}</Panel>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function consumeString(value: string): void;
 const view = (
@@ -16,7 +16,7 @@ const view = (
       consumeString(value)}</Panel>);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 declare function consumeString(
   value: string,
@@ -28,7 +28,7 @@ const view = (
       consumeString(value)}</Panel>);
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":40}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 declare function consumeString(
   value: string,

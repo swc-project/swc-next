@@ -6,7 +6,7 @@ call(first,
 // @ts-ignore
 second); // )
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 call(
   first,
@@ -14,7 +14,7 @@ call(
   second); // )
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 call(
   first,

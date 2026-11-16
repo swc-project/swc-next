@@ -7,7 +7,7 @@ test ? first : // @ts-ignore
 second + third
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? first // @ts-ignore

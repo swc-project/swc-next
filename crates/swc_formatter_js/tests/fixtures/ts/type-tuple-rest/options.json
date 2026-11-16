@@ -1,15 +1,20 @@
 [
-  {},
   {
-    "printWidth": 32
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 120,
-    "semi": false
+    "lineWidth": 32,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 40,
-    "useTabs": true,
-    "trailingComma": "none"
+    "lineWidth": 120,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "trailingCommas": "none"
   }
 ]

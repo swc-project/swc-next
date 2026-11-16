@@ -1,5 +1,16 @@
 [
-  { "printWidth": 40 },
-  { "printWidth": 80 },
-  { "printWidth": 40, "useTabs": true, "semi": false, "trailingComma": "none" }
+  {
+    "lineWidth": 40,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "semicolons": "as-needed",
+    "trailingCommas": "none"
+  }
 ]

@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // before closing
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 {
   /* opening */ value; // trailing
@@ -14,7 +14,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 {
   /* opening */ value // trailing
@@ -22,7 +22,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 {
   /* opening */ value; // trailing
@@ -30,7 +30,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 {
 	/* opening */ value; // trailing

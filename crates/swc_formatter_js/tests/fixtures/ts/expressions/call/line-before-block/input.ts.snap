@@ -10,7 +10,7 @@ f(first // @ts-ignore
 , /* c
  d */ second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function f(a: number, b: number): void;
 declare const first: number, second: number;

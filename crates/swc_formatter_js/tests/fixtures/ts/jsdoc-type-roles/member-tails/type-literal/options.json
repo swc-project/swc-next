@@ -1,6 +1,7 @@
 [
   {
-    "semi": false,
-    "printWidth": 1
+    "lineWidth": 1,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   }
 ]

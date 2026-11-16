@@ -7,7 +7,7 @@ result = ({ [name /* key end */]
 : /* multiline
 value */ value, next: other });
 ---------- Options ----------
-{"printWidth":14}
+{"indentStyle":"space","lineWidth":14}
 ---------- Output ----------
 result = {
   [name /* key end */]:

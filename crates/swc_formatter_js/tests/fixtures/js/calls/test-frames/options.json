@@ -1,1 +1,11 @@
-[{}, {"printWidth":40,"arrowParens":"avoid"}]
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  }
+]

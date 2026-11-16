@@ -1,10 +1,38 @@
 [
-  {},
-  { "printWidth": 40 },
-  { "printWidth": 20 },
-  { "printWidth": 8 },
-  { "semi": false },
-  { "printWidth": 20, "semi": false },
-  { "printWidth": 20, "useTabs": true, "tabWidth": 4 },
-  { "endOfLine": "crlf" }
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 8,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  }
 ]

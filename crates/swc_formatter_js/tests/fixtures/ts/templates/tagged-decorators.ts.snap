@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 tag<string>`x${value}`; (tag<string>)`x`; (value as typeof tag)`x`; @(tag`x`) class C<const T>{ @(factory()<string>`x${value}`) method(){} }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 tag<string>`x${value}`;
 (tag<string>)`x`;
@@ -15,7 +15,7 @@ class C<const T> {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 tag<string>`x${value}`
 ;(tag<string>)`x`
@@ -27,7 +27,7 @@ class C<const T> {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 tag<string>`x${value}`;
 (tag<string>)`x`;

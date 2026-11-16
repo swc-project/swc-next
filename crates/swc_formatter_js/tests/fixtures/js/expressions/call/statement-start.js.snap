@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 value;
 (left + right)(argument);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 value;
 (left + right)(
@@ -13,13 +13,13 @@ value;
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 value;
 (left + right)(argument);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 value
 ;(left + right)(
@@ -27,7 +27,7 @@ value
 )
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
 ---------- Output ----------
 value;
 (left + right)(

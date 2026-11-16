@@ -1,14 +1,23 @@
 [
-  {},
   {
-    "quoteProps": "preserve"
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "quoteProps": "consistent"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "quoteProperties": "preserve"
   },
   {
-    "quoteProps": "consistent",
-    "singleQuote": true,
-    "semi": false
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "quoteProperties": "consistent"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "quoteProperties": "consistent",
+    "quoteStyle": "single",
+    "semicolons": "as-needed"
   }
 ]

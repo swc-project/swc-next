@@ -7,28 +7,28 @@ const probe=(
 @factory.make() class  Named {static m ( ) { return this .stamp; }} /* terminal */
 );
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 const probe =
   /* prettier-ignore */
   @factory.make() class  Named {static m ( ) { return this .stamp; }}; /* terminal */
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const probe =
   /* prettier-ignore */
   @factory.make() class  Named {static m ( ) { return this .stamp; }} /* terminal */
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 const probe =
   /* prettier-ignore */
   @factory.make() class  Named {static m ( ) { return this .stamp; }}; /* terminal */
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const probe =
   /* prettier-ignore */

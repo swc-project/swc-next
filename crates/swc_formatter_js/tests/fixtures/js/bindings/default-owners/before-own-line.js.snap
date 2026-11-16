@@ -6,7 +6,7 @@ function f(\u0076
 /* prettier-ignore */
 =1+2){}
 ---------- Options ----------
-{"printWidth":1}
+{"indentStyle":"space","lineWidth":1}
 ---------- Output ----------
 function f(
   \u0076
@@ -15,7 +15,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   \u0076
@@ -24,7 +24,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(
   \u0076
@@ -33,7 +33,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   \u0076

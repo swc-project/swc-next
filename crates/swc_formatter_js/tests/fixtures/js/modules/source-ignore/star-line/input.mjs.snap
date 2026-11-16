@@ -6,7 +6,7 @@ export *
 // prettier-ignore
 from 'm';
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 export * from // prettier-ignore
 'm';

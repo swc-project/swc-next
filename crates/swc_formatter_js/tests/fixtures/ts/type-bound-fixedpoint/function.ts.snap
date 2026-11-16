@@ -6,12 +6,12 @@ declare function f<T extends
 /* a */
 B>(): void;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function f<T extends /* a */ B>(): void;
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 declare function f<
   T extends

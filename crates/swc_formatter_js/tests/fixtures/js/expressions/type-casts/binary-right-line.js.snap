@@ -5,23 +5,23 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 left || /** @satisfies {number} */
 (right);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 left || /** @satisfies {number} */ (right);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 left || /** @satisfies {number} */ (right)
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 left ||
   /** @satisfies {number} */ (right);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 left ||
   /** @satisfies {number} */ (
@@ -29,7 +29,7 @@ left ||
   );
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 left ||
   /** @satisfies {number} */ (
@@ -37,7 +37,7 @@ left ||
   );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 left ||
 	/** @satisfies {number} */ (
@@ -45,11 +45,11 @@ left ||
 	);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 left || /** @satisfies {number} */ (right);
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 left || /** @satisfies {number} */ (right);

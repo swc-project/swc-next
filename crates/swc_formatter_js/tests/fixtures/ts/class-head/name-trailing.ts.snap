@@ -5,13 +5,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 class A // name
 <FirstParameterName,SecondParameterName> extends Base {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class A<FirstParameterName, SecondParameterName> // name
   extends Base {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class A<
   FirstParameterName,
@@ -20,7 +20,7 @@ class A<
   extends Base {}
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class A<
 	FirstParameterName,

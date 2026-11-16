@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 x satisfies /* prettier-ignore */ (A | ?);
 b;
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x satisfies /* prettier-ignore */ (A | ?)
 b

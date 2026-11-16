@@ -6,7 +6,7 @@ type T = [First
 /* b */, /* c */ // d
 ];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = [
   First,
@@ -14,7 +14,7 @@ type T = [
 ];
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 type T = [
   First

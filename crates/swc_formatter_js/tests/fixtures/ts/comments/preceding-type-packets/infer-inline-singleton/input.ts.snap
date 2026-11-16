@@ -4,6 +4,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type T = X extends infer \u004b extends /* prettier-ignore */ | \u0041 ? Y : Z;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = X extends infer \u004b /* prettier-ignore */ extends A ? Y : Z;

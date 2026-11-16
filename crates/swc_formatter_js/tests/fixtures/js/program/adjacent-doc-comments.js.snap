@@ -8,7 +8,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
  * fourth
  */
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** first
  * second
@@ -17,7 +17,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
  */
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 /** first
  * second
@@ -26,6 +26,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
  */
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 /** first * second *//** third * fourth */

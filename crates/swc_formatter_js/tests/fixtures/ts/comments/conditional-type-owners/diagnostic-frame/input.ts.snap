@@ -6,7 +6,7 @@ type T = string extends
 // @ts-ignore
 /* prettier-ignore */ ( Missing |  number ) ? 1 : 2;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = string extends
 // @ts-ignore

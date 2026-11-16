@@ -6,7 +6,7 @@ first
 // prettier-ignore
 ? 1.0e+00 : third;
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 first
   ? // prettier-ignore
@@ -14,7 +14,7 @@ first
   : third
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 first
   ? // prettier-ignore

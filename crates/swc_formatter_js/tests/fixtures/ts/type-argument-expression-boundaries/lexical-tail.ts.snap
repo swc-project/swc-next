@@ -14,7 +14,7 @@ const called = ((callee<Type>)()) + suffix;
 const ignoredTail = (factor * (/* prettier-ignore */callee  < Type >)) + suffix;
 const enclosedTail = (!(/* prettier-ignore */callee  < Type >)) + suffix;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const remainder = (!callee<Type>) % suffix;
 const less = (!callee<Type>) < suffix;
@@ -29,7 +29,7 @@ const ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;
 const enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const remainder = (!callee<Type>) % suffix
 const less = (!callee<Type>) < suffix
@@ -44,7 +44,7 @@ const ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix
 const enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const remainder =
   (!callee<Type>) %
@@ -82,7 +82,7 @@ const enclosedTail =
   ) + suffix;
 
 ---------- Options ----------
-{"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 const remainder = (!callee<Type>) % suffix;
 const less = (!callee<Type>) < suffix;

@@ -6,7 +6,7 @@ const message=`a${left,right}b${key in object}c${`nested ${value}`}`; const comm
 }c${//leading
  value}`;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
 const comments = `a${/*head*/ value /*block*/}b${
@@ -17,7 +17,7 @@ const comments = `a${/*head*/ value /*block*/}b${
 }`;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`
 const comments = `a${/*head*/ value /*block*/}b${
@@ -28,7 +28,7 @@ const comments = `a${/*head*/ value /*block*/}b${
 }`
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
 const comments = `a${/*head*/ value /*block*/}b${

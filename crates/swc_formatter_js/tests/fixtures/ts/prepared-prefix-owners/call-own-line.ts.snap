@@ -6,7 +6,7 @@ consume<string>
 // argument
 ({ value: 1 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 consume<string>(
   // argument
@@ -14,7 +14,7 @@ consume<string>(
 );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 consume<string>(
   // argument
@@ -22,7 +22,7 @@ consume<string>(
 );
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 consume<string>(
   // argument

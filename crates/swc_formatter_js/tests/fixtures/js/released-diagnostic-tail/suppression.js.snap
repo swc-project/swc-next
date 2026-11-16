@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ) /** @type {x} */
 b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (a /* prettier-ignore */
 );
@@ -14,7 +14,7 @@ b;
 b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(a /* prettier-ignore */
 )

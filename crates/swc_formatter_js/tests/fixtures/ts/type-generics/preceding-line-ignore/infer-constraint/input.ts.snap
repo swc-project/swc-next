@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 type T<X> = X extends infer \u004b extends // prettier-ignore
 \u0041 ? K : never;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T<X> = X extends infer \u004b extends // prettier-ignore
   A

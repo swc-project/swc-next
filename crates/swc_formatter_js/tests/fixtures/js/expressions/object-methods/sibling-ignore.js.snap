@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 , /* prettier-ignore */
 second(){return 3+4;} });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   first(){return 1+2;}
@@ -17,7 +17,7 @@ second(){return 3+4;} });
 });
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   first(){return 1+2;}
@@ -27,7 +27,7 @@ second(){return 3+4;} });
 });
 
 ---------- Options ----------
-{"printWidth":1,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 ;({
   first(){return 1+2;}
@@ -37,7 +37,7 @@ second(){return 3+4;} });
 })
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   first(){return 1+2;}

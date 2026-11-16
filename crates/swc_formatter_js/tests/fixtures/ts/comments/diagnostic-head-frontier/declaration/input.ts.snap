@@ -8,7 +8,7 @@ const value = (
 fn
 )();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const fn: number;
 // @ts-expect-error
@@ -17,7 +17,7 @@ const value = (
 )();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const fn: number
 // @ts-expect-error

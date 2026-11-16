@@ -6,7 +6,7 @@ interface A // body
 { // prettier-ignore
 method( ) :  void }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 interface A {
   // body
@@ -15,7 +15,7 @@ interface A {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 interface A {
   // body
@@ -24,7 +24,7 @@ interface A {
 }
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 interface A {
   // body
@@ -33,7 +33,7 @@ interface A {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 interface A {
 	// body

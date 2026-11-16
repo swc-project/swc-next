@@ -8,7 +8,7 @@ test ? ((value
 /* prettier-ignore */
 : next  +last;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? value
@@ -18,7 +18,7 @@ test
     next  +last;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 test
   ? value

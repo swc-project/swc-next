@@ -8,7 +8,7 @@ test ? (
 fn
 )() : other;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const test: boolean, other: number, fn: number;
 // @ts-expect-error
@@ -18,7 +18,7 @@ test ? (
   : other;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const test: boolean, other: number, fn: number
 // @ts-expect-error

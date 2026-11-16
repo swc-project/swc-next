@@ -4,31 +4,31 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 /** @type {number[]} */ ([/* inside */]);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** @type {number[]} */ ([/* inside */]);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;/** @type {number[]} */ ([/* inside */])
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 /** @type {number[]} */ (
   [/* inside */]
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 /** @type {number[]} */ (
   [/* inside */]
 );
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 /** @type {number[]} */ (
   [
@@ -37,18 +37,18 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 /** @type {number[]} */ (
 	[/* inside */]
 );
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 /** @type {number[]} */ ([/* inside */]);
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 /** @type {number[]} */ ([/* inside */]);

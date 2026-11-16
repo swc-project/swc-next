@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /* prettier-ignore */
 false });
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   key:
@@ -15,7 +15,7 @@ false });
 });
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   key:

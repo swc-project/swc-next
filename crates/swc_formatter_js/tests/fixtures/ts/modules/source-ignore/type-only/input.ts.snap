@@ -6,7 +6,7 @@ import type {First,
 /* prettier-ignore */ // tail
 } from 'module';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import type {
   First, // tail

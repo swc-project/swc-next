@@ -5,19 +5,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 x as readonly ?;
 b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x as readonly (?);
 b;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 x as readonly (?);
 b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x as readonly (?)
 b

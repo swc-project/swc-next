@@ -6,7 +6,7 @@ const veryLongInitializedVariableName = buildSomethingMeaningful(firstArgument, 
 function withDefault(veryLongDefaultParameterName = buildSomethingMeaningful(firstArgument, secondArgument)) { return veryLongDefaultParameterName; }
 class Example { veryLongInitializedFieldName = buildSomethingMeaningful(firstArgument, secondArgument); literal = true; }
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const veryLongInitializedVariableName =
   buildSomethingMeaningful(
@@ -31,7 +31,7 @@ class Example {
 }
 
 ---------- Options ----------
-{"printWidth":60,"semi":false,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":60,"semicolons":"as-needed"}
 ---------- Output ----------
 const veryLongInitializedVariableName =
 	buildSomethingMeaningful(firstArgument, secondArgument)
@@ -52,7 +52,7 @@ class Example {
 }
 
 ---------- Options ----------
-{"printWidth":120}
+{"indentStyle":"space","lineWidth":120}
 ---------- Output ----------
 const veryLongInitializedVariableName = buildSomethingMeaningful(firstArgument, secondArgument);
 function withDefault(veryLongDefaultParameterName = buildSomethingMeaningful(firstArgument, secondArgument)) {

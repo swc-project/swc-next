@@ -5,19 +5,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 previous();
 ( /* head */ /** @type {number} */ (object.property) )++;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 previous();
 /* head */ /** @type {number} */ (object.property)++;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 previous()
 /* head */ ;/** @type {number} */ (object.property)++
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 previous()
 /* head */ ;/** @type {number} */ (
@@ -25,7 +25,7 @@ previous()
 )++
 
 ---------- Options ----------
-{"printWidth":40,"semi":false,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 previous()
 /* head */ ;/** @type {number} */ (

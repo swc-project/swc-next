@@ -6,7 +6,7 @@ type A = X
  & // c
  Y;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A = X &
   // c

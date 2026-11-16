@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
  * next
  */ }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 {
   /**
@@ -17,7 +17,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 {
   /**
@@ -27,7 +27,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 {
   /**
@@ -37,7 +37,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 {
 	/**

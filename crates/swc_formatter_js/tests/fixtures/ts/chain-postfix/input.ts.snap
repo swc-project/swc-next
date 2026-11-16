@@ -17,7 +17,7 @@ result = collection.read(1).select(2)[0] /* prettier-ignore */ !. property  .fin
 consume(collection.read(1).select(2)[0]! // @ts-expect-error
   .missing.value);
 ---------- Options ----------
-{"printWidth":52}
+{"indentStyle":"space","lineWidth":52}
 ---------- Output ----------
 result = collection
   .read(1)
@@ -60,7 +60,7 @@ consume(
     .missing.value);
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = collection.read(1).select(2)[0]!.property.final;
 result = collection.read(1).select(2)[0]!.read!().select()!.property.final;
@@ -81,7 +81,7 @@ consume(
     .missing.value);
 
 ---------- Options ----------
-{"printWidth":52,"semi":false}
+{"indentStyle":"space","lineWidth":52,"semicolons":"as-needed"}
 ---------- Output ----------
 result = collection
   .read(1)

@@ -9,7 +9,7 @@ a;
 next(  left,
  right  );
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 a; /* tail */
 // prettier-ignore
@@ -17,7 +17,7 @@ next(  left,
  right  );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a /* tail */
 // prettier-ignore

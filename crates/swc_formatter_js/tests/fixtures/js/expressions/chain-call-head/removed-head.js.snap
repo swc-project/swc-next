@@ -7,7 +7,7 @@ function read() { return (
 create.read()
 ).next.finish(); }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function read() {
   return (
@@ -19,7 +19,7 @@ function read() {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function read() {
   return (

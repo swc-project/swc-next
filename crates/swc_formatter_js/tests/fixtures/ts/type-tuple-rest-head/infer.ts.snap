@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type Tail<T extends unknown[]> = T extends [...( /* head */ infer R )] ? R : never;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Tail<T extends unknown[]> = T extends [.../* head */ infer R] ? R : never;
 
 ---------- Options ----------
-{"printWidth":32}
+{"indentStyle":"space","lineWidth":32}
 ---------- Output ----------
 type Tail<T extends unknown[]> =
   T extends [
@@ -19,12 +19,12 @@ type Tail<T extends unknown[]> =
     : never;
 
 ---------- Options ----------
-{"printWidth":120,"semi":false}
+{"indentStyle":"space","lineWidth":120,"semicolons":"as-needed"}
 ---------- Output ----------
 type Tail<T extends unknown[]> = T extends [.../* head */ infer R] ? R : never
 
 ---------- Options ----------
-{"printWidth":40,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":40,"trailingCommas":"none"}
 ---------- Output ----------
 type Tail<T extends unknown[]> =
 	T extends [.../* head */ infer R]

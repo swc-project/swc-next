@@ -46,7 +46,7 @@ consume(function active(firstValue: { amount: number }, secondValue: number) {
   return [firstValue.amount, rejected];
 });
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export const observed: unknown[] = [];
 
@@ -119,7 +119,7 @@ consume(function active(firstValue: { amount: number }, secondValue: number) {
 });
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 export const observed: unknown[] =
   [];

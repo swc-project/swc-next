@@ -6,14 +6,14 @@ if (flag)
 // prettier-ignore
 "use strict";
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (flag)
   // prettier-ignore
   "use strict"
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 if (flag)
   // prettier-ignore

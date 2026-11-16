@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 function echo(value:   number) // prettier-ignore
 : number { return value; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function echo(value:   number) // prettier-ignore
 : number {
@@ -13,7 +13,7 @@ function echo(value:   number) // prettier-ignore
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function echo(
   value:   number,
@@ -23,7 +23,7 @@ function echo(
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 function echo(
   value:   number
@@ -33,7 +33,7 @@ function echo(
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 function echo(
   value:   number,

@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 [first /* @ts-ignore */ ,  ];---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   first,

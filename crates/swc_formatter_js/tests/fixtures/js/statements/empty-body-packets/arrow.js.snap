@@ -7,7 +7,7 @@ const f = () => { // first
 /* second */
 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f = () => {
   // first
@@ -15,7 +15,7 @@ const f = () => {
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = () => {
   // first
@@ -23,7 +23,7 @@ const f = () => {
 }
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = () => {
   // first

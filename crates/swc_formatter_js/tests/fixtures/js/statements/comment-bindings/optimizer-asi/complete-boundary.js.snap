@@ -6,7 +6,7 @@ if (ready) {}
 // boundary
 /* @__PURE__ */ next()
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 if (ready) {
 }
@@ -14,7 +14,7 @@ if (ready) {
 /* @__PURE__ */ next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (ready) {
 }

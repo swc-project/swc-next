@@ -8,7 +8,7 @@ class RecordValue {
   other = { untouched :  2 };
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const configuration = { branch: { value: 3 } };
 class RecordValue {
@@ -18,7 +18,7 @@ class RecordValue {
 }
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 const configuration = {
   branch: { value: 3 },
@@ -32,7 +32,7 @@ class RecordValue {
 }
 
 ---------- Options ----------
-{"printWidth":24,"useTabs":true}
+{"indentStyle":"tab","lineWidth":24}
 ---------- Output ----------
 const configuration = {
 	branch: { value: 3 },

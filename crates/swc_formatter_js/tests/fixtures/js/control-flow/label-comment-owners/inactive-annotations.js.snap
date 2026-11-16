@@ -6,14 +6,14 @@ outer /* @__PURE__ */:
 /** @type {number} */
 for (;;) break outer;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 outer /* @__PURE__ */:
   /** @type {number} */
   for (;;) break outer;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 outer /* @__PURE__ */:
   /** @type {number} */
@@ -21,7 +21,7 @@ outer /* @__PURE__ */:
     break outer;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 outer /* @__PURE__ */:
   /** @type {number} */

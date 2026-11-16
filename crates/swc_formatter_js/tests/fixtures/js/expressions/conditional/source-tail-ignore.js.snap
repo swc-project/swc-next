@@ -6,7 +6,7 @@ outer ? (test ? first( 3,  4 ) : (value( 1,  2 )
 // prettier-ignore
 )) /* outside */ : third( 5,  6 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 outer
   ? test
@@ -18,7 +18,7 @@ outer
   : third(5, 6);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 outer
   ? test
@@ -30,7 +30,7 @@ outer
   : third(5, 6)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 outer
   ? test
@@ -42,7 +42,7 @@ outer
   : third(5, 6);
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 outer
   ? test
@@ -60,7 +60,7 @@ outer
     );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 outer
     ? test
@@ -75,7 +75,7 @@ outer
     : third(5, 6);
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 outer
 	? test
@@ -90,7 +90,7 @@ outer
 	: third(5, 6);
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 outer
  ? test
@@ -102,7 +102,7 @@ outer
  : third(5, 6);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 outer
   ? test

@@ -7,7 +7,7 @@ target = ({ [object.method(first()) /* key end */]
 : /* multiline
 comment */ (/* ordinary */ object).method(second()) });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 target = {
   [object.method(first()) /* key end */]:
@@ -17,7 +17,7 @@ comment */ /* ordinary */ object.method(second()),
 };
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 target = {
   [object.method(
@@ -31,7 +31,7 @@ comment */ /* ordinary */ object.method(
 };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = {
   [object.method(
@@ -45,7 +45,7 @@ comment */ /* ordinary */ object.method(
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 target = {
   [object.method(first()) /* key end */]:
@@ -55,7 +55,7 @@ comment */ /* ordinary */ object.method(second()),
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 target = {
 	[object.method(

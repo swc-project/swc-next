@@ -10,7 +10,7 @@ class Value {
   second() {}
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Value {
   first() {} /* trailing */
@@ -21,7 +21,7 @@ class Value {
 }
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 class Value {
   first() {} /* trailing */
@@ -32,7 +32,7 @@ class Value {
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class Value {
   first() {} /* trailing */

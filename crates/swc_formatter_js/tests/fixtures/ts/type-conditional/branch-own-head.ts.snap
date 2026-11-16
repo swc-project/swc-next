@@ -8,7 +8,7 @@ type Choice<T> = T extends string
   */
  ? One | Two : Three;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Choice<T> = T extends string
   ? /**
@@ -18,7 +18,7 @@ type Choice<T> = T extends string
   : Three;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Choice<T> =
   T extends string
@@ -29,7 +29,7 @@ type Choice<T> =
     : Three;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Choice<
   T,
@@ -43,7 +43,7 @@ type Choice<
     : Three
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 type Choice<T> =
 	T extends string

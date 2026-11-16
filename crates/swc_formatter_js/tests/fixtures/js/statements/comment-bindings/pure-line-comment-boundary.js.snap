@@ -6,28 +6,28 @@ call() // ordinary
 ; // #__PURE__
 (() => call())();
 ---------- Options ----------
-{"printWidth":24,"semi":true}
+{"indentStyle":"space","lineWidth":24,"semicolons":"always"}
 ---------- Output ----------
 call() // ordinary
 ; // #__PURE__
 (() => call())();
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 call() // ordinary
 ; // #__PURE__
 (() => call())()
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 call() // ordinary
 ; // #__PURE__
 (() => call())();
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 call() // ordinary
 ; // #__PURE__

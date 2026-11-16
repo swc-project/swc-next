@@ -14,7 +14,7 @@ type Callable = [...(() => unknown[])];
 
 type Optional<T extends unknown[]> = [...(T[])?];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Elements<T> = T extends [unknown, ...(infer R)[]] ? R : never;
 
@@ -29,7 +29,7 @@ type Callable = [...(() => unknown[])];
 type Optional<T extends unknown[]> = [...T[]?];
 
 ---------- Options ----------
-{"printWidth":32}
+{"indentStyle":"space","lineWidth":32}
 ---------- Output ----------
 type Elements<T> = T extends [
   unknown,
@@ -61,7 +61,7 @@ type Optional<
 > = [...T[]?];
 
 ---------- Options ----------
-{"printWidth":120,"semi":false}
+{"indentStyle":"space","lineWidth":120,"semicolons":"as-needed"}
 ---------- Output ----------
 type Elements<T> = T extends [unknown, ...(infer R)[]] ? R : never
 
@@ -76,7 +76,7 @@ type Callable = [...(() => unknown[])]
 type Optional<T extends unknown[]> = [...T[]?]
 
 ---------- Options ----------
-{"printWidth":40,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":40,"trailingCommas":"none"}
 ---------- Output ----------
 type Elements<T> = T extends [
 	unknown,

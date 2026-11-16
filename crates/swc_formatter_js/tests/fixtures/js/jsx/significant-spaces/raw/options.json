@@ -1,10 +1,15 @@
 [
-  {},
   {
-    "printWidth": 12
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 12,
-    "singleQuote": true
+    "lineWidth": 12,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 12,
+    "indentStyle": "space",
+    "quoteStyle": "single"
   }
 ]

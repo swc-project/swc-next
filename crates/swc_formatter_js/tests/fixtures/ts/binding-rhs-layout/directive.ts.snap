@@ -5,19 +5,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // @ts-expect-error
 const data: Store<Context, Entry<Value>> = produce();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 const data: Store<Context, Entry<Value>> = produce();
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 // @ts-expect-error
 const data: Store<Context, Entry<Value>> = produce();
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 const data: Store<Context, Entry<Value>> = produce()

@@ -6,7 +6,7 @@ namespace N { "custom"; ;
 // prettier-ignore
 "use strict"; }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 namespace N {
   "custom"
@@ -15,7 +15,7 @@ namespace N {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 namespace N {
   "custom";

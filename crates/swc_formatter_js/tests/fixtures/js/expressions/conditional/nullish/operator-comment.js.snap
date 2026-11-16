@@ -6,7 +6,7 @@ condition ? first ??
   // fallback
   second : alternate;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 condition
   ? (first ??
@@ -15,7 +15,7 @@ condition
   : alternate;
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 condition
   ? (first ??
@@ -24,7 +24,7 @@ condition
   : alternate;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 condition
   ? (first ??

@@ -1,10 +1,11 @@
 [
   {
-    "printWidth": 20,
-    "tabWidth": 4,
-    "useTabs": true
+    "lineWidth": 20,
+    "indentStyle": "tab",
+    "indentWidth": 4
   },
   {
-    "printWidth": 20
+    "lineWidth": 20,
+    "indentStyle": "space"
   }
 ]

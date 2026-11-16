@@ -6,7 +6,7 @@ class Subject<T> extends Base<T> implements
 // head
 First<  T  >, /* prettier-ignore */ Second<  T  >, Third<  T  > { value : T; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Subject<T>
   extends Base<T>
@@ -17,7 +17,7 @@ class Subject<T>
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class Subject<T>
   extends Base<T>
@@ -31,7 +31,7 @@ class Subject<T>
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
 ---------- Output ----------
 class Subject<T>
 	extends Base<T>

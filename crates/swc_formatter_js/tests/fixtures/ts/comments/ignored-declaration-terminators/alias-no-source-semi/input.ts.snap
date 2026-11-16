@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // prettier-ignore
 type T = (( A |  B ))
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // prettier-ignore
 type T = (( A |  B ))

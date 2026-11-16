@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // marker
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 !(
   item
@@ -14,7 +14,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 !(
   item
@@ -22,7 +22,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 !(
   item
@@ -30,7 +30,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 !(
   item
@@ -38,7 +38,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 !(
 	item
@@ -46,7 +46,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 !(
   item
@@ -54,7 +54,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 !(
   item

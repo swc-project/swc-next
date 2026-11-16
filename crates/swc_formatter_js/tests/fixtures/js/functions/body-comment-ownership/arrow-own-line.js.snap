@@ -6,7 +6,7 @@ const f = (x) =>
 // note
 { return x; };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f = (x) =>
   // note
@@ -15,7 +15,7 @@ const f = (x) =>
   };
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const f = (x) =>
   // note
@@ -24,7 +24,7 @@ const f = (x) =>
   };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = (x) =>
   // note

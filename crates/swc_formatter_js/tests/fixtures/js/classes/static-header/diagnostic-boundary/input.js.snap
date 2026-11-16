@@ -6,7 +6,7 @@ class C { static /* header */ {
 // @ts-ignore
 missing; } }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   static /* header */ {

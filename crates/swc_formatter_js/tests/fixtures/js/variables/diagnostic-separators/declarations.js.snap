@@ -7,14 +7,14 @@ let first
 ,
 second;
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 let first,
   // @ts-ignore
   second
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 let first,
   // @ts-ignore

@@ -6,7 +6,7 @@ const {first, /* multiple
  * lines */ // line
 last} = value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const {
   first /* multiple
@@ -15,7 +15,7 @@ const {
 } = value;
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 const {
   first /* multiple

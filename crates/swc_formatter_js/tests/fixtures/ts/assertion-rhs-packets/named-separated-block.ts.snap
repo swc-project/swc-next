@@ -6,21 +6,21 @@ value as /* explanation
   continues */
 Result;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 value as /* explanation
   continues */
 Result;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 value as /* explanation
   continues */
 Result;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 value as /* explanation
   continues */

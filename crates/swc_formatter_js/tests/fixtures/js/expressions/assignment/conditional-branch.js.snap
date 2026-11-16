@@ -4,24 +4,24 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 condition ? (target = other) : alternate;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 condition ? (target = other) : alternate;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 condition ? (target = other) : alternate
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 condition
   ? (target = other)
   : alternate;
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 condition
   ? (target =
@@ -29,7 +29,7 @@ condition
   : alternate;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 condition
     ? (target =
@@ -37,7 +37,7 @@ condition
     : alternate;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 condition
 	? (target =
@@ -45,13 +45,13 @@ condition
 	: alternate;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 condition
  ? (target = other)
  : alternate;
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 condition ? (target = other) : alternate;

@@ -6,7 +6,7 @@ export { a // @ts-ignore
 , /* c
  d */ b } from "m";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export {
   a // @ts-ignore

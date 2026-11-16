@@ -5,6 +5,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 export {first,
 /* prettier-ignore */ } from 'module';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export { first } from /* prettier-ignore */ 'module';

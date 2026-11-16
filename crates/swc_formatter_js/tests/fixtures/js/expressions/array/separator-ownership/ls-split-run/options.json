@@ -1,6 +1,7 @@
 [
   {
-    "printWidth": 10,
-    "endOfLine": "crlf"
+    "lineWidth": 10,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   }
 ]

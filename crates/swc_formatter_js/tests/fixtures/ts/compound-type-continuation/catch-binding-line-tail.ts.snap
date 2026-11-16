@@ -6,7 +6,7 @@ try {} catch (e: A | (B
 // c
 )) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 try {
 } catch (e: (
@@ -16,7 +16,7 @@ try {
 )) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 try {
 } catch (e: (
@@ -26,7 +26,7 @@ try {
 )) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 try {
 } catch (e: (

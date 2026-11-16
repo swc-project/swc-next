@@ -6,7 +6,7 @@ import {a,
 /* prettier-ignore */
 } from 'm';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import {
   a,

@@ -6,7 +6,7 @@ type T<X extends A & (B
 // c
 ) = C> = X;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T<
   X extends (
@@ -16,7 +16,7 @@ type T<
 > = X;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T<
   X extends (
@@ -26,7 +26,7 @@ type T<
 > = X;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T<
   X extends (

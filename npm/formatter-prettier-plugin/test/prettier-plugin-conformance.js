@@ -10,10 +10,6 @@ import * as plugin from "../dist/index.js";
 const workspace = fileURLToPath(new URL("../../../", import.meta.url));
 const fixtureRoot = join(workspace, "crates/swc_formatter_js/tests/fixtures");
 
-const { options: declarations } = await prettier.getSupportInfo();
-const defaults = Object.fromEntries(
-  declarations.map(({ name, default: value }) => [name, value]),
-);
 const reportFile = new URL(
   "./prettier-plugin-conformance.json",
   import.meta.url,
@@ -102,8 +98,43 @@ function parserOptions(filepath) {
   return 1 | (sourceType << 1) | (language << 4);
 }
 
+// Convert SWC fixture configuration only at the Prettier conformance boundary.
+function prettierOptions(options) {
+  const config = {
+    lineWidth: 120,
+    indentStyle: "tab",
+    indentWidth: 2,
+    lineEnding: "lf",
+    semicolons: "always",
+    quoteStyle: "double",
+    jsxQuoteStyle: "double",
+    quoteProperties: "as-needed",
+    trailingCommas: "all",
+    arrowParentheses: "always",
+    bracketSpacing: true,
+    bracketSameLine: false,
+    singleAttributePerLine: false,
+    ...options,
+  };
+  return {
+    printWidth: config.lineWidth,
+    useTabs: config.indentStyle === "tab",
+    tabWidth: config.indentWidth,
+    endOfLine: config.lineEnding,
+    semi: config.semicolons === "always",
+    singleQuote: config.quoteStyle === "single",
+    jsxSingleQuote: config.jsxQuoteStyle === "single",
+    quoteProps: config.quoteProperties,
+    trailingComma: config.trailingCommas,
+    arrowParens: config.arrowParentheses === "always" ? "always" : "avoid",
+    bracketSpacing: config.bracketSpacing,
+    bracketSameLine: config.bracketSameLine,
+    singleAttributePerLine: config.singleAttributePerLine,
+  };
+}
+
 function formatSwcWithSwcFormatter(source, filepath, options) {
-  const normalized = normalizeInput(source, { ...defaults, ...options });
+  const normalized = normalizeInput(source, options);
   const buffer = formatDocBufferSync(
     normalized.source,
     parserOptions(filepath),
@@ -142,12 +173,13 @@ function recordDifference(comparison, fixture, options, outputs) {
 const printerComparison = {};
 const pluginComparison = {};
 for (const { relative, filepath, source, options } of await fixtureCases()) {
+  const prettierConfig = prettierOptions(options);
   const swcWithSwcFormatter = await format(() =>
-    formatSwcWithSwcFormatter(source, filepath, options),
+    formatSwcWithSwcFormatter(source, filepath, prettierConfig),
   );
   const swcWithPrettierFormatter = await format(() =>
     prettier.format(source, {
-      ...options,
+      ...prettierConfig,
       filepath,
       plugins: [plugin],
     }),
@@ -156,7 +188,7 @@ for (const { relative, filepath, source, options } of await fixtureCases()) {
     ? "typescript"
     : "babel";
   const prettierWithPrettierFormatter = await format(() =>
-    prettier.format(source, { ...options, filepath, parser }),
+    prettier.format(source, { ...prettierConfig, filepath, parser }),
   );
 
   // Keep SWC document construction fixed and compare the two printers.

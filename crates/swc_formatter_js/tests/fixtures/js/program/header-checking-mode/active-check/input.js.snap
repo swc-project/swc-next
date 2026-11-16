@@ -6,14 +6,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ; // @ts-nocheck
 missing;
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-check
 ; // @ts-nocheck
 missing
 
 ---------- Options ----------
-{"printWidth":24,"semi":true}
+{"indentStyle":"space","lineWidth":24,"semicolons":"always"}
 ---------- Output ----------
 // @ts-check
 ; // @ts-nocheck

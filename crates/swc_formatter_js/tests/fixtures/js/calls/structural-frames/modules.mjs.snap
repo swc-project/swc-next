@@ -13,7 +13,7 @@ define("name", ["first/dependency/with/a/long/name", "second/dependency"], funct
 const nested = define(["first/dependency/with/a/long/name", "second/dependency"], function (first, second) { work(first, second); });
 define(["dependency"], /* factory */ function (dependency) { work(dependency); });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 require.resolve("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
 require.resolve
@@ -52,7 +52,7 @@ define(["dependency"], /* factory */ function (dependency) {
 });
 
 ---------- Options ----------
-{"printWidth":40,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":40,"trailingCommas":"none"}
 ---------- Output ----------
 require.resolve("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
 require.resolve

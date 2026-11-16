@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ({ c = // c
 1 /* d */ } = x);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   c = // c
@@ -13,7 +13,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 } = x);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   c = // c
@@ -21,7 +21,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 } = x)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   c = // c

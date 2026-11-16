@@ -4,17 +4,17 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const create = () => `escaped\n ${value}`;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `escaped\n ${value}`;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const create = () =>
   `escaped\n ${value}`;
 
 ---------- Options ----------
-{"arrowParens":"avoid"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `escaped\n ${value}`;

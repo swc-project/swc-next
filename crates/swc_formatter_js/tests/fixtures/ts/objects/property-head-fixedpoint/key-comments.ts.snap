@@ -6,7 +6,7 @@ let first: number; let second: string;
 ({ [key /* key */]: (// @ts-ignore
 first = second) });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let first: number;
 let second: string;

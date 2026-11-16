@@ -11,7 +11,7 @@ const enclosed = (
   // @ts-expect-error
   @make(1) class Item { static value: string = 1; }).missing();
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function make(argument: string) {
   return (value: any, context: any) =>
@@ -25,7 +25,7 @@ const enclosed =
     @make(1) class Item { static value: string = 1; }).missing();
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 function make(argument: string) {
   return (value: any, context: any) =>

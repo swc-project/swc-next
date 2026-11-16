@@ -6,7 +6,7 @@ const read = () => ((// member
 1, 2), 3);
 read();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const read = () => (
   (
@@ -18,7 +18,7 @@ const read = () => (
 read();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const read = () => (
   (
@@ -30,7 +30,7 @@ const read = () => (
 read()
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const read = () => (
   (

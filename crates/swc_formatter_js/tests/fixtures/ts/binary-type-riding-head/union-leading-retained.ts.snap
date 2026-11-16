@@ -5,25 +5,25 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // @ts-expect-error
 type Choice = | /* first */ Missing | number;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-expect-error
 type Choice = | /* first */ Missing | number;
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 // @ts-expect-error
 type Choice = | /* first */ Missing | number;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 type Choice = | /* first */ Missing | number
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 type Choice = | /* first */ Missing | number;

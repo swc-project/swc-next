@@ -6,7 +6,7 @@ left << <T>receiver.
 /* prettier-ignore */
 field;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 left <<
   (<T>receiver.
@@ -14,7 +14,7 @@ left <<
 field);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 left <<
   (<T>receiver.
@@ -22,7 +22,7 @@ left <<
 field);
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 left <<
   (<
@@ -32,7 +32,7 @@ left <<
 field)
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 left <<
 	(<T>receiver.

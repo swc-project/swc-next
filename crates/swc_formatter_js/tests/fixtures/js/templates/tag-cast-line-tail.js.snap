@@ -6,14 +6,14 @@ w = (/** @type {T} */ (a)
 // t
 )`x`;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 w = /** @type {T} */ (a)
 // t
 `x`;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 w = /** @type {T} */ (
   a
@@ -22,7 +22,7 @@ w = /** @type {T} */ (
 `x`
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 w = /** @type {T} */ (a)
 // t

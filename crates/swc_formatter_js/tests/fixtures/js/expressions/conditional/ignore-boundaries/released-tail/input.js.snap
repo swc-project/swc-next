@@ -5,12 +5,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 test ? (
 \u0066irst /* boundary */
 ) /* prettier-ignore */ : third;---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test ? \u0066irst /* boundary */ /* prettier-ignore */ : third;
 
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 test
   ? \u0066irst /* boundary */ /* prettier-ignore */

@@ -4,28 +4,28 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 class C { get value(/* prettier-ignore */): number { return 1+  2; } }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   get value(/* prettier-ignore */): number { return 1+  2; }
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C {
   get value(/* prettier-ignore */): number { return 1+  2; }
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 class C {
   get value(/* prettier-ignore */): number { return 1+  2; }
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 class C {
   get value(/* prettier-ignore */): number { return 1+  2; }

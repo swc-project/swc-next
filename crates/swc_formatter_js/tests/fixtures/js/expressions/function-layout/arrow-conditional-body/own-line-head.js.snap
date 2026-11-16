@@ -6,21 +6,21 @@ const pick = value =>
 // choose
 value ? 11 : 23;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const pick = (value) =>
   // choose
   value ? 11 : 23;
 
 ---------- Options ----------
-{"printWidth":28}
+{"indentStyle":"space","lineWidth":28}
 ---------- Output ----------
 const pick = (value) =>
   // choose
   value ? 11 : 23;
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const pick =
   value =>
@@ -28,7 +28,7 @@ const pick =
     value ? 11 : 23
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+{"arrowParentheses":"as-needed","indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const pick = value =>
 	// choose

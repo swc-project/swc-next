@@ -6,7 +6,7 @@ const value = f(first,
 
 second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = f(
   first,
@@ -15,7 +15,7 @@ const value = f(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = f(
   first,

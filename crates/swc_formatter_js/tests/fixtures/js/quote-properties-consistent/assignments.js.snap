@@ -5,17 +5,17 @@ assertion_line: 58
 ---------- Input ----------
 ({ plain: target, "quoted-key": other, shorthand, [computed]: value } = source);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({ plain: target, "quoted-key": other, shorthand, [computed]: value } = source);
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 ({ plain: target, "quoted-key": other, shorthand, [computed]: value } = source);
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 ({
   "plain": target,
@@ -25,7 +25,7 @@ assertion_line: 58
 } = source);
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   'plain': target,

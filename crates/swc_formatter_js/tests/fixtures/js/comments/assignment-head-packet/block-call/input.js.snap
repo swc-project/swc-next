@@ -6,12 +6,12 @@ result = (
 /* own */
 !left)(arg);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = /* own */ (!left)(arg);
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 result =
   /* own */
@@ -20,7 +20,7 @@ result =
   );
 
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 result =
   /* own */

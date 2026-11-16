@@ -4,11 +4,11 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 /* @__PURE__ */ (object /* #__PURE__ */).method();
 ---------- Options ----------
-{"printWidth":30,"semi":false}
+{"indentStyle":"space","lineWidth":30,"semicolons":"as-needed"}
 ---------- Output ----------
 /* @__PURE__ */ object /* #__PURE__ */.method()
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 /* @__PURE__ */ object /* #__PURE__ */.method();

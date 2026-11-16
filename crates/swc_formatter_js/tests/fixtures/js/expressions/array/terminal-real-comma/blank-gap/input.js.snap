@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ,
 
 ];---------- Options ----------
-{"endOfLine":"crlf","printWidth":10}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
 ---------- Output ----------
 [
   first,

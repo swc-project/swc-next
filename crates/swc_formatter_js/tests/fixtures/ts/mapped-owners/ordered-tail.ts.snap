@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 type M<T> = { [K in keyof T] /* before */; // after
 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type M<T> = {
   [
@@ -14,7 +14,7 @@ type M<T> = {
 };
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 type M<T> = {
   [
@@ -23,7 +23,7 @@ type M<T> = {
 };
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":18,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 type M<T> = {
   [

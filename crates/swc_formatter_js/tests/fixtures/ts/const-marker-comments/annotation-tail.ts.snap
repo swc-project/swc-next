@@ -7,7 +7,7 @@ const value = 1 as /*
 */ const;
 call();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = 1 as /*
  @__PURE__
@@ -15,7 +15,7 @@ const value = 1 as /*
 call();
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value = 1 as /*
  @__PURE__
@@ -23,7 +23,7 @@ const value = 1 as /*
 call();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = 1 as /*
  @__PURE__

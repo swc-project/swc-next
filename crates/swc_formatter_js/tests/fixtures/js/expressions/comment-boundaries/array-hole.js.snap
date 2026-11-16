@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 x = /* @ts-ignore */ [
  ,null, g1 ];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = /* @ts-ignore */ [
   , null, g1,

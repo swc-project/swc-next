@@ -7,7 +7,7 @@ const x = <
 // @ts-expect-error
 Missing | string>y;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 declare const y: unknown;
 const x = <

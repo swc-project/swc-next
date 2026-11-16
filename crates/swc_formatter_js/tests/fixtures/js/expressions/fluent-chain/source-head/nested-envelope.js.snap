@@ -7,7 +7,7 @@ consume((/* outer */ (
 aFunction.b()
 ) /* tail */).c.d());
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 consume(
   /* outer */ /* head */
@@ -18,7 +18,7 @@ consume(
 );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 consume(
   /* outer */ /* head */
@@ -29,7 +29,7 @@ consume(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 consume(
   /* outer */ /* head */
@@ -40,7 +40,7 @@ consume(
 )
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 consume(
   /* outer */ /* head */

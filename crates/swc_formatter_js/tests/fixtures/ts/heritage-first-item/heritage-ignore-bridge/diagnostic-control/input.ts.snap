@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 class C extends B<T>
 // @ts-ignore
 implements Missing { value : T; }---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C
   extends B<T>
@@ -13,7 +13,7 @@ class C
 implements Missing { value: T; }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class C
   extends B<T>

@@ -8,7 +8,7 @@ type T = (A
 
 /* @ts-ignore */ & B;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = A
 // c

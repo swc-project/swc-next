@@ -4,17 +4,17 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const result = (factor * callee<Type>) + suffix;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const result = (factor * callee<Type>) + suffix;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const result = (factor * callee<Type>) + suffix
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const result =
   (factor *
@@ -22,6 +22,6 @@ const result =
   suffix;
 
 ---------- Options ----------
-{"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 const result = (factor * callee<Type>) + suffix;

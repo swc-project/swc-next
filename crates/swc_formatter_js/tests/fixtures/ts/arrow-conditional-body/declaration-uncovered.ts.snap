@@ -7,7 +7,7 @@ const fn = (foo: boolean) => foo ? missingA :
 missingB;
 const outsideSentinel: number = "x";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) => foo ? missingA :
@@ -15,7 +15,7 @@ const fn = (foo: boolean) => foo ? missingA :
 const outsideSentinel: number = "x";
 
 ---------- Options ----------
-{"printWidth":28}
+{"indentStyle":"space","lineWidth":28}
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) => foo ? missingA :
@@ -24,7 +24,7 @@ const outsideSentinel: number =
   "x";
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) => foo ? missingA :
@@ -33,7 +33,7 @@ const outsideSentinel: number =
   "x"
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+{"arrowParentheses":"as-needed","indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 // @ts-expect-error
 const fn = (foo: boolean) => foo ? missingA :

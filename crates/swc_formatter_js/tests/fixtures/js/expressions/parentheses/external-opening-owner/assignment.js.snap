@@ -6,13 +6,13 @@ target = // @ts-ignore
 (
 first
 );---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = // @ts-ignore
   first;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target = // @ts-ignore
   first

@@ -6,28 +6,28 @@ do /* first */
 // second
 {} while(false);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 do /* first */
 // second
 {} while (false);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 do /* first */
 // second
 {} while (false)
 
 ---------- Options ----------
-{"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 do /* first */
 // second
 {} while (false);
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 do /* first */
 // second

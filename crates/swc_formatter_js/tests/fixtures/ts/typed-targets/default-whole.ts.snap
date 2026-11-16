@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 object  ['field'] as  T
 ) = compute(   1,2 )} = source);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   p: (
@@ -17,7 +17,7 @@ object  ['field'] as  T
 } = source);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   p: (
@@ -27,7 +27,7 @@ object  ['field'] as  T
 } = source);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   p: (

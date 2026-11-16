@@ -6,7 +6,7 @@ let value = /* first */
   /* second */
   3;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let value =
   /* first */
@@ -14,7 +14,7 @@ let value =
   3;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 let value =
   /* first */
@@ -22,7 +22,7 @@ let value =
   3;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 let value =
   /* first */

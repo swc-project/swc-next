@@ -6,7 +6,7 @@ type T = First
 // left tail
 | Second;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type T =
   | First

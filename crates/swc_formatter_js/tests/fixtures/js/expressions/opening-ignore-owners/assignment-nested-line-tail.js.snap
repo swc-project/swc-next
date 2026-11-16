@@ -6,7 +6,7 @@ target = (// prettier-ignore
 left + (right /* block */ // tail
 ));
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target = (// prettier-ignore
 left +
@@ -14,7 +14,7 @@ left +
 )
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 target = (// prettier-ignore
 left +

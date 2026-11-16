@@ -5,43 +5,43 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 first;
 /pattern/yi;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 first;
 /pattern/iy;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 first
 ;/pattern/iy
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 first;
 /pattern/iy;
 
 ---------- Options ----------
-{"printWidth":19}
+{"indentStyle":"space","lineWidth":19}
 ---------- Output ----------
 first;
 /pattern/iy;
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 first;
 /pattern/iy;
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
 ---------- Output ----------
 first;
 /pattern/iy;
 
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 first;
 /pattern/iy;

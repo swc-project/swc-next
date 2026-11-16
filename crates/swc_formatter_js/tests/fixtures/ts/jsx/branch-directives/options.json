@@ -1,13 +1,15 @@
 [
   {
-    "printWidth": 80
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 35
+    "lineWidth": 35,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 35,
-    "tabWidth": 4,
-    "useTabs": true
+    "lineWidth": 35,
+    "indentStyle": "tab",
+    "indentWidth": 4
   }
 ]

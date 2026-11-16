@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /* b */ /* c */
 /* d */ <Component first={first} second={second} /> });
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   // h
@@ -23,7 +23,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 });
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   // h

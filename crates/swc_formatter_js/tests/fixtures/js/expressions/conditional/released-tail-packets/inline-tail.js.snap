@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 v = a ? (b // c
 ) /* @ts-ignore */ : /* prettier-ignore */ c;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 v = a
   ? b // c

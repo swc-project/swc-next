@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 function f(){return (y as /* prettier-ignore */ T?)
 b;}
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return y as /* prettier-ignore */ T?;

@@ -6,14 +6,14 @@ class Base<T> {}
 const ns = { Base };
 class Derived extends /* prettier-ignore */ ns . Base <  number  > {}
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Base<T> {}
 const ns = { Base };
 class Derived extends /* prettier-ignore */ ns . Base<number> {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Base<T> {}
 const ns = { Base };

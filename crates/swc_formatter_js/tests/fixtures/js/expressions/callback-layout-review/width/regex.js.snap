@@ -6,14 +6,14 @@ foo({ filter: /x/ }, () => {
   return 1;
 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 foo({ filter: /x/ }, () => {
   return 1;
 });
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 foo(
   { filter: /x/ },

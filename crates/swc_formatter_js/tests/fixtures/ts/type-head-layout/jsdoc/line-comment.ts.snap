@@ -6,7 +6,7 @@ type A<T extends
 // keep
 B | C> = 1;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type A<
   T extends
@@ -15,7 +15,7 @@ type A<
 > = 1;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 type A<
 	T extends
@@ -24,7 +24,7 @@ type A<
 > = 1;
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A<
   T extends
@@ -33,7 +33,7 @@ type A<
 > = 1;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type A<
   T extends

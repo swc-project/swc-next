@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /** @type {number} */
 ("x") ? a : b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-check
 // note
@@ -15,7 +15,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ("x") ? a : b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-check
 // note

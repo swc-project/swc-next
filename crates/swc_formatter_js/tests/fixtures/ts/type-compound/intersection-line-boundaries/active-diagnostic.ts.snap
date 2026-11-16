@@ -7,7 +7,7 @@ type T = (Known
 // @ts-ignore
 ) & Missing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Known = {};
 type T = (Known

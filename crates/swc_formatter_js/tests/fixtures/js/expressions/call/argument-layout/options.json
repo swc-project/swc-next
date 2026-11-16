@@ -1,17 +1,21 @@
 [
   {
-    "printWidth": 80,
-    "trailingComma": "all"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "all"
   },
   {
-    "printWidth": 80,
-    "trailingComma": "es5"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "es5"
   },
   {
-    "printWidth": 80,
-    "trailingComma": "none"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "none"
   },
   {
-    "printWidth": 20
+    "lineWidth": 20,
+    "indentStyle": "space"
   }
 ]

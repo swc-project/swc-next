@@ -7,17 +7,17 @@ result = (
 /** @type {number} */
 left, right).property;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = /** @type {number} */ (left, right).property;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 result = /** @type {number} */ (left, right).property
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result =
   /** @type {number} */

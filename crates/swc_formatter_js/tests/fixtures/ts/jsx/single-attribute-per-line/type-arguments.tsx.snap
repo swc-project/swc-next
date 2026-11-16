@@ -7,7 +7,7 @@ const single=<Widget<string, number> value={value}/>;
 const attributes=<Widget<string, number> first second/>;
 const child=<Widget<{ first: number; second: string }> {...properties} active>child</Widget>;
 ---------- Options ----------
-{"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
 ---------- Output ----------
 const single = <Widget<string, number> value={value} />;
 const attributes = <Widget<string, number> first second />;
@@ -18,7 +18,7 @@ const child = (
 );
 
 ---------- Options ----------
-{"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const single = <Widget<string, number> value={value} />;
 const attributes = (
@@ -37,7 +37,7 @@ const child = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
 ---------- Output ----------
 const single = (
   <Widget<
@@ -69,7 +69,7 @@ const child = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const single = (
   <Widget<
@@ -101,7 +101,7 @@ const child = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const single = <Widget<string, number> value={value} />;
 const attributes = (
@@ -119,7 +119,7 @@ const child = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const single = (
   <Widget<

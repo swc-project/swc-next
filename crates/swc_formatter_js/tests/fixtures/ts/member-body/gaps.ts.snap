@@ -19,7 +19,7 @@ third: boolean; };
 interface InlinePacket { first(): void; /* leading */ second(): void; }
 type InlinePacket = { firstLongProperty: number; /* leading */ secondLongProperty: string };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 interface Calls {
   first(): void;
@@ -49,7 +49,7 @@ type InlinePacket = {
 };
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 interface Calls {
   first(): void

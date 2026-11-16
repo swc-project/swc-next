@@ -6,21 +6,21 @@ type T = C & (
 // prettier-ignore
 { x  :  1 } | A);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = C &
   // prettier-ignore
   ({ x  :  1 } | A);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type T = C &
   // prettier-ignore
   ({ x  :  1 } | A);
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = C &
   // prettier-ignore

@@ -6,7 +6,7 @@ function f() // outer
 { // inner
 return 42; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   // outer
@@ -15,7 +15,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function f() {
   // outer
@@ -24,7 +24,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   // outer

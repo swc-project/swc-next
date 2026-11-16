@@ -28,7 +28,7 @@ type Value = | number;
 const invalid: Value = "wrong";
 type LongAliasName = | (string | number | boolean);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Ordinary = /* inline */ { key: string };
 type OwnLine =
@@ -58,7 +58,7 @@ const invalid: Value = "wrong";
 type LongAliasName = string | number | boolean;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Ordinary = /* inline */ {
   key: string;
@@ -100,7 +100,7 @@ type LongAliasName =
   | boolean;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Ordinary = /* inline */ {
   key: string
@@ -144,7 +144,7 @@ type LongAliasName =
   | boolean
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 type Ordinary = /* inline */ {
 	key: string;

@@ -6,12 +6,12 @@ left << <T>(
 /* head */
 receiver).method();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 left << (<T> /* head */ receiver.method());
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 left <<
   (<
@@ -19,7 +19,7 @@ left <<
   > /* head */ receiver.method());
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 left <<
   (<
@@ -27,7 +27,7 @@ left <<
   > /* head */ receiver.method())
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 left <<
 	(<

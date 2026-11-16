@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 function f<\u004b extends // prettier-ignore
 \u0041>() {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f<
   \u004b extends // prettier-ignore

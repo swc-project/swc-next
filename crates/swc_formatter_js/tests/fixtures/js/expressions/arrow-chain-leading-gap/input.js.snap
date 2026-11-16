@@ -8,7 +8,7 @@ const f =
   /** @param {any} s */
   (s) => s.id === id;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const f =
   /** @param {string} id */
@@ -18,7 +18,7 @@ const f =
       s.id === id;
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f =
   /** @param {string} id */
@@ -28,7 +28,7 @@ const f =
       s.id === id;
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const f =
   /** @param {string} id */

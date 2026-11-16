@@ -7,13 +7,13 @@ first + // @ts-expect-error
 second
 );
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 first + // @ts-expect-error
   second
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 first + // @ts-expect-error
   second;

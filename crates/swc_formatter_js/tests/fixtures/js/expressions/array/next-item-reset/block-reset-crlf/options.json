@@ -1,10 +1,12 @@
 [
   {
-    "endOfLine": "crlf",
-    "printWidth": 10
+    "lineWidth": 10,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   },
   {
-    "printWidth": 20,
-    "trailingComma": "none"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "trailingCommas": "none"
   }
 ]

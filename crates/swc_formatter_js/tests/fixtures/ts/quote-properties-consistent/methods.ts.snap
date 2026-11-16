@@ -17,7 +17,7 @@ abstract class QuotedOptionalConstructorMethod { abstract plain(): void; static 
 class OrdinaryConstructor { "quoted-key"() {} constructor() {} }
 abstract class OptionalConstructorMethod { abstract "quoted-key"(): void; static constructor?<T>(): void; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 abstract class RecordType {
   abstract plain(): void;
@@ -60,7 +60,7 @@ abstract class OptionalConstructorMethod {
 }
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 abstract class RecordType {
   abstract plain(): void;
@@ -103,7 +103,7 @@ abstract class OptionalConstructorMethod {
 }
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 abstract class RecordType {
   abstract "plain"(): void;
@@ -146,7 +146,7 @@ abstract class OptionalConstructorMethod {
 }
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 abstract class RecordType {
   abstract 'plain'(): void

@@ -7,7 +7,7 @@ type A = /* before */ &
   /* after */
   "value";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A =
   /* before */ /* middle */
@@ -15,7 +15,7 @@ type A =
   "value";
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type A =
   /* before */ /* middle */
@@ -23,7 +23,7 @@ type A =
   "value"
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type A =
   /* before */ /* middle */

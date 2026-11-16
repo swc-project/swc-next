@@ -7,7 +7,7 @@ const o = { [
 a
 ]: veryVeryVeryVeryLongReceiver.longProperty.longProperty.longProperty };
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 const o = {
   [
@@ -20,7 +20,7 @@ const o = {
 };
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 const o = {
     [
@@ -34,7 +34,7 @@ const o = {
 };
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":8,"useTabs":true}
+{"indentStyle":"tab","indentWidth":8,"lineWidth":35}
 ---------- Output ----------
 const o = {
 	[

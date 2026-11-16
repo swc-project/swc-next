@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 [/* before */true/* between */,false// after
 ];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   /* before */ true /* between */,
@@ -13,7 +13,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   /* before */ true /* between */,
@@ -21,7 +21,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ]
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 [
   /* before */ true /* between */,
@@ -29,7 +29,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":19}
+{"indentStyle":"space","lineWidth":19}
 ---------- Output ----------
 [
   /* before */ true /* between */,
@@ -37,7 +37,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 [
   /* before */ true /* between */,
@@ -45,7 +45,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
 ---------- Output ----------
 [
   /* before */ true /* between */,
@@ -53,7 +53,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 [
 	/* before */ true /* between */,

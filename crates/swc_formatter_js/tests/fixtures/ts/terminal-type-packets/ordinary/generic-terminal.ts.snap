@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 type T = F<A, B // @ts-ignore
 , /* d */ >;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = F<
   A,
@@ -13,7 +13,7 @@ type T = F<
   /* d */>;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = F<
   A,
@@ -21,7 +21,7 @@ type T = F<
   /* d */>;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = F<
   A,

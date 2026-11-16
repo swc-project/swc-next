@@ -6,7 +6,7 @@ type T = keyof (A | (B
 // c
 ));
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = keyof (
   | A
@@ -15,7 +15,7 @@ type T = keyof (
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = keyof (
   | A
@@ -24,7 +24,7 @@ type T = keyof (
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = keyof (
   | A

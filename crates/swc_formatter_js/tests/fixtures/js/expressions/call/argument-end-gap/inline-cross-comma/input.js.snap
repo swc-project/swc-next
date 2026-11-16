@@ -6,7 +6,7 @@ f(a /* first */, /* second */
 
 b);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   a /* first */ /* second */,

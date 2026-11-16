@@ -9,7 +9,7 @@ MissingFirst,
 MissingSecond {}
 const outsideSentinel: number = "outside";
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Base<T> {}
 class Subject
@@ -20,7 +20,7 @@ MissingFirst,
 const outsideSentinel: number = "outside";
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class Base<T> {}
 class Subject
@@ -32,7 +32,7 @@ const outsideSentinel: number =
   "outside"
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
 ---------- Output ----------
 class Base<T> {}
 class Subject

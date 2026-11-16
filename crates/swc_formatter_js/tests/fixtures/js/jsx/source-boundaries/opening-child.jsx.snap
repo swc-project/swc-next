@@ -14,7 +14,7 @@ const value1=<MissingPanel>
 const value2=<MissingPanel>
  	{uncoveredAfterPrefix}</MissingPanel>;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{coveredFirst}{coveredSecond}</MissingPanel>;
@@ -39,7 +39,7 @@ const value2 = (<MissingPanel>
   );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{coveredFirst}{coveredSecond}</MissingPanel>;
@@ -58,7 +58,7 @@ const value2 = (<MissingPanel>
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{coveredFirst}{coveredSecond}</MissingPanel>;
@@ -77,7 +77,7 @@ const value2 = (<MissingPanel>
 );
 
 ---------- Options ----------
-{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{coveredFirst}{coveredSecond}</MissingPanel>
@@ -102,7 +102,7 @@ const value2 = (<MissingPanel>
 	)
 
 ---------- Options ----------
-{"printWidth":100,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{coveredFirst}{coveredSecond}</MissingPanel>;

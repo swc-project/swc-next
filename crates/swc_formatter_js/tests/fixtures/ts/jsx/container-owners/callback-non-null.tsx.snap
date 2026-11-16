@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const view = <Panel>{items?.map(value => <Cell value={value} />)!}</Panel>;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const view = (
   <Panel>
@@ -20,6 +20,6 @@ const view = (
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>

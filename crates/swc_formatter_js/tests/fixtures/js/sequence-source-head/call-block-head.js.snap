@@ -7,7 +7,7 @@ first,
 /* next */
 last));
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 call(
   /* head */
@@ -17,7 +17,7 @@ call(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 call(
   /* head */
@@ -27,7 +27,7 @@ call(
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 call(
   /* head */

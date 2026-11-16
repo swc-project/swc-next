@@ -4,53 +4,53 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 "use strict"; item;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 "use strict";
 item;
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 'use strict';
 item;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 "use strict"
 item
 
 ---------- Options ----------
-{"semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 'use strict'
 item
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 "use strict";
 item;
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 "use strict";
 item;
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 "use strict";
 item;
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 "use strict";item;
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 "use strict";
 item;

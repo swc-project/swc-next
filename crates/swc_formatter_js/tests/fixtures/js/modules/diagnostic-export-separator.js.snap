@@ -7,7 +7,7 @@ export { /* @ts-ignore */ a
 
  t };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export {
   /* @ts-ignore */ a
@@ -17,7 +17,7 @@ export {
 };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 export {
   /* @ts-ignore */ a
@@ -27,7 +27,7 @@ export {
 };
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 export {
   /* @ts-ignore */ a

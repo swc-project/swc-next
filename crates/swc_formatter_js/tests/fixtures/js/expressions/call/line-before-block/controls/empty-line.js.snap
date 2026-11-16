@@ -8,7 +8,7 @@ f(first // @ts-ignore
 /* c
  d */ second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   first, // @ts-ignore

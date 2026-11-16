@@ -7,7 +7,7 @@ first, /** @type {number} */ // @ts-expect-error
 "wrong"
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (first,
   /** @type {number} */ // @ts-expect-error

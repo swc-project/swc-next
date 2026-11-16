@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 call(`a	b`, foo, bar);
 ---------- Options ----------
-{"printWidth":21,"tabWidth":0,"useTabs":true}
+{"indentStyle":"tab","indentWidth":0,"lineWidth":21}
 ---------- Output ----------
 call(
 	`a	b`,
@@ -13,7 +13,7 @@ call(
 );
 
 ---------- Options ----------
-{"printWidth":21,"tabWidth":0,"useTabs":false}
+{"indentStyle":"space","indentWidth":0,"lineWidth":21}
 ---------- Output ----------
 call(
 `a	b`,
@@ -22,7 +22,7 @@ bar,
 );
 
 ---------- Options ----------
-{"printWidth":21,"tabWidth":1,"useTabs":true}
+{"indentStyle":"tab","indentWidth":1,"lineWidth":21}
 ---------- Output ----------
 call(
 	`a	b`,
@@ -31,7 +31,7 @@ call(
 );
 
 ---------- Options ----------
-{"printWidth":21,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":21}
 ---------- Output ----------
 call(
 	`a	b`,

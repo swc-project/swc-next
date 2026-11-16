@@ -1,1 +1,6 @@
-[{ "printWidth": 10 }]
+[
+  {
+    "lineWidth": 10,
+    "indentStyle": "space"
+  }
+]

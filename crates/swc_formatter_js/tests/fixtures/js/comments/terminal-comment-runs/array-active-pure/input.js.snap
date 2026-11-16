@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /* b */ // c
 ];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   /* @__PURE__ */ effect(),
@@ -14,7 +14,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 [
   /* @__PURE__ */ effect()

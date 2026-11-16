@@ -6,7 +6,7 @@ type Outcome<T> = T extends string ?
 /* prettier-ignore */
 ( 1  | 2 ) : 3;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Outcome<T> = T extends string ?
 /* prettier-ignore */
@@ -14,7 +14,7 @@ type Outcome<T> = T extends string ?
   : 3;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Outcome<T> =
   T extends string ?
@@ -23,7 +23,7 @@ type Outcome<T> =
     : 3;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Outcome<
   T,
@@ -34,7 +34,7 @@ type Outcome<
     : 3
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 type Outcome<T> =
 	T extends string ?

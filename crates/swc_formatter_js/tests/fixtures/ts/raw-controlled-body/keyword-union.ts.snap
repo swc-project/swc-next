@@ -6,7 +6,7 @@ if(c) (y as /* prettier-ignore */ A | ?)
 else z();
 b;
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (c) y as /* prettier-ignore */ A | ?;
 else z()

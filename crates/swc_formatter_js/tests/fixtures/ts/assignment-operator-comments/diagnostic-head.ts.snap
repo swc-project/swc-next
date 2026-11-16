@@ -6,7 +6,7 @@ const value = /* explanation */
   // @ts-ignore
   missing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value =
   /* explanation */
@@ -14,7 +14,7 @@ const value =
   missing;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const value =
   /* explanation */
@@ -22,7 +22,7 @@ const value =
   missing;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value =
   /* explanation */

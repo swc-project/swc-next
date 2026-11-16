@@ -11,7 +11,7 @@ for (const make = () => {
 }; false;) {}
 "x" in owner;
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 for (
   const make =
@@ -60,7 +60,7 @@ for (
 "x" in owner;
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 for (
   const make = () => {
@@ -83,7 +83,7 @@ for (
 "x" in owner;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 for (
   const make =
@@ -130,7 +130,7 @@ for (
 "x" in owner
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 for (
   const make = () => {

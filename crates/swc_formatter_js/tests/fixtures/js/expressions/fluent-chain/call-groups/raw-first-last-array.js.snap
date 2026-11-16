@@ -6,7 +6,7 @@ result = Factory.first
 // prettier-ignore
  ({ one :1, two:2 }, [(arg) => { trace.push(arg); return arg; }]).second(other);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = Factory
   .first
@@ -20,7 +20,7 @@ result = Factory
   .second(other);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result = Factory
   .first
@@ -39,7 +39,7 @@ result = Factory
   .second(other);
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 result =
   Factory
@@ -63,7 +63,7 @@ result =
     )
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 result = Factory
 	.first

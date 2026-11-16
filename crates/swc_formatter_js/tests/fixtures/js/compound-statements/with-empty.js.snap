@@ -4,22 +4,22 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 with (object) ;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 with (object);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 with (object);
 
 ---------- Options ----------
-{"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 with (object);
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 with (
   object

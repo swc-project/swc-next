@@ -17,7 +17,7 @@ const packet = (
   <Foo />
 );
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const element = (
   /* element */
@@ -32,7 +32,7 @@ const fragment = (
 const packet = /* first */ /* second */ <Foo />;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const element = (
   /* element */

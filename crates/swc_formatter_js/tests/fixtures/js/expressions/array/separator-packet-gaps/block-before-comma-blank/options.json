@@ -1,11 +1,12 @@
 [
   {
-    "endOfLine": "crlf",
-    "printWidth": 10
+    "lineWidth": 10,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   },
   {
-    "printWidth": 10,
-    "tabWidth": 4,
-    "useTabs": true
+    "lineWidth": 10,
+    "indentStyle": "tab",
+    "indentWidth": 4
   }
 ]

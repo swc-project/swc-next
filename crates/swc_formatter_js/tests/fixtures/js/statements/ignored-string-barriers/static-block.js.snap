@@ -6,7 +6,7 @@ class C { static { ;
 // prettier-ignore
 "use strict"; } }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static {
@@ -16,7 +16,7 @@ class C {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   static {

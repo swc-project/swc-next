@@ -6,7 +6,7 @@ var value=/* first */
 /* second */
 3;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 var value =
   /* first */
@@ -14,7 +14,7 @@ var value =
   3;
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 var value =
   /* first */
@@ -22,7 +22,7 @@ var value =
   3;
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 var value =
   /* first */

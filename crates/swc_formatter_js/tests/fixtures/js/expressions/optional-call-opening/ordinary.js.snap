@@ -5,6 +5,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 foo?. /* comment */
 (y  +  1);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 foo?.(/* comment */ y + 1);

@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
     b', 'c\d', 'e\
 f'];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   "a\
@@ -18,7 +18,7 @@ f",
 ];
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 [
   'a\
@@ -30,7 +30,7 @@ f',
 ];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   "a\
@@ -42,7 +42,7 @@ f",
 ]
 
 ---------- Options ----------
-{"semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   'a\
@@ -54,7 +54,7 @@ f',
 ]
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 [
   "a\
@@ -66,7 +66,7 @@ f",
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 [
   "a\
@@ -78,7 +78,7 @@ f",
 ];
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 [
   "a\
@@ -90,11 +90,11 @@ f",
 ];
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 [  "a\    b",  "c\d",  "e\f",];
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 [
 	"a\

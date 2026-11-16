@@ -10,7 +10,7 @@ class Owners {
   : Box < number >;
 }
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 class Owners {
   accessor [
@@ -22,7 +22,7 @@ class Owners {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class Owners {
   accessor [

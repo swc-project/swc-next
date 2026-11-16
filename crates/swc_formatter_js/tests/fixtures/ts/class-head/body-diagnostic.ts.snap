@@ -6,21 +6,21 @@ declare class A
 // @ts-expect-error
 { property: Missing; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare class A
 // @ts-expect-error
 { property: Missing; }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 declare class A
 // @ts-expect-error
 { property: Missing; }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 declare class A
 // @ts-expect-error

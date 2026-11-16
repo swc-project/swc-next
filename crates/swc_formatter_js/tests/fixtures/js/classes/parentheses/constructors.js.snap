@@ -6,28 +6,28 @@ new (class {})();
 new (class Named {})();
 new Factory(class {});
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 new (class {})();
 new (class Named {})();
 new Factory(class {});
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 new (class {})()
 new (class Named {})()
 new Factory(class {})
 
 ---------- Options ----------
-{"printWidth":80,"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 new (class {})();
 new (class Named {})();
 new Factory(class {});
 
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 new (class {})();
 new (class Named {})();

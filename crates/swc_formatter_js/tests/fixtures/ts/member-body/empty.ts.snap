@@ -14,7 +14,7 @@ type Callback = (value: { /* parameter */ }) => void;
 declare function f(value: { // parameter
 }): void;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Empty = {/* block */};
 type Lines = {
@@ -37,7 +37,7 @@ declare function f(value: {
 }): void;
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 type Empty = {/* block */}
 type Lines = {

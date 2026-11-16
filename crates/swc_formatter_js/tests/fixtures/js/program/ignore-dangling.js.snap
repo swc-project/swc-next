@@ -3,14 +3,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 /* prettier-ignore */---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /* prettier-ignore */
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 /* prettier-ignore */
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 /* prettier-ignore */

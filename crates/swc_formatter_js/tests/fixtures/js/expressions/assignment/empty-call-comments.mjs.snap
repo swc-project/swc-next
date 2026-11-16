@@ -15,7 +15,7 @@ result = invoke(
   value
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result =
   source.create(/* empty frame (with punctuation) remains part of this call */)
@@ -32,7 +32,7 @@ result = invoke(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 result =
   source.create(/* empty frame (with punctuation) remains part of this call */)
@@ -49,7 +49,7 @@ result = invoke(
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result =
   source.create(
@@ -67,7 +67,7 @@ result = invoke(
 );
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 result =
   source.create(
@@ -87,7 +87,7 @@ result =
   );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 result =
     source.create(
@@ -105,7 +105,7 @@ result = invoke(
 );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 result =
 	source.create(
@@ -123,7 +123,7 @@ result = invoke(
 );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 result =
  source.create(
@@ -141,7 +141,7 @@ result = invoke(
 );
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 result =
   source.create(/* empty frame (with punctuation) remains part of this call */)

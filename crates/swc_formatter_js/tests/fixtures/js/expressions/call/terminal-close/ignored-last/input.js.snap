@@ -7,7 +7,7 @@ schedule(function () { return run(); },
 // prettier-ignore
 missing.value);
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 schedule(
   function () {

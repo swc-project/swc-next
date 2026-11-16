@@ -1,35 +1,48 @@
 [
-  {},
   {
-    "printWidth": 40
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 30
+    "lineWidth": 40,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20
+    "lineWidth": 30,
+    "indentStyle": "space"
   },
   {
-    "semi": false
+    "lineWidth": 20,
+    "indentStyle": "space"
   },
   {
-    "useTabs": true,
-    "tabWidth": 4,
-    "printWidth": 40
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   },
   {
-    "endOfLine": "crlf"
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 4
   },
   {
-    "trailingComma": "none",
-    "printWidth": 30
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   },
   {
-    "arrowParens": "avoid",
-    "printWidth": 30
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "trailingCommas": "none"
   },
   {
-    "bracketSpacing": false,
-    "printWidth": 30
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  },
+  {
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "bracketSpacing": false
   }
 ]

@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const result = { key: /* ordinary */ // @ts-ignore
 /** @type {number} */ ("wrong") };
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const result = {
   key: /* ordinary */ // @ts-ignore

@@ -6,7 +6,7 @@ class C { a = 1
 // @ts-ignore
 ; b = Missing }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   a = 1

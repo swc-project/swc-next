@@ -9,7 +9,7 @@ assignedResult = (conditionLong ? consequentLong : alternateLong)[keyLong];
 assignedResult = (conditionLong ? consequentLong : alternateLong)(argumentLong);
 assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(argumentLong);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 !(firstLong ? secondLong : thirdLong) + fourthLong;
 
@@ -21,7 +21,7 @@ assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 !(firstLong ? secondLong : thirdLong) + fourthLong
 
@@ -33,7 +33,7 @@ assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 !(firstLong
   ? secondLong
@@ -63,7 +63,7 @@ assignedResult =
   )(argumentLong);
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 !(firstLong
   ? secondLong
@@ -103,7 +103,7 @@ assignedResult =
   );
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 !(firstLong
     ? secondLong
@@ -133,7 +133,7 @@ assignedResult =
     )(argumentLong);
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 !(firstLong
 	? secondLong
@@ -163,7 +163,7 @@ assignedResult =
 	)(argumentLong);
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 !(firstLong
  ? secondLong
@@ -193,7 +193,7 @@ assignedResult =
  )(argumentLong);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 !(firstLong ? secondLong : thirdLong) + fourthLong;
 

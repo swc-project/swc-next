@@ -6,21 +6,21 @@ function f(): /* prettier-ignore */ A & (B
 // c
 ) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(): /* prettier-ignore */ A & (B
 // c
 ) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(): /* prettier-ignore */ A & (B
 // c
 ) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(): /* prettier-ignore */ A & (B
 // c

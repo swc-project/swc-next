@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 ({ [key()]: (/** @type {number} */ (value  +  other) /* prettier-ignore */), next:  3 });
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   [key()]:
@@ -13,7 +13,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 });
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   [key()]: (/** @type {number} */ (value  +  other) /* prettier-ignore */),
@@ -21,7 +21,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 });
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   [key()]:
@@ -30,7 +30,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 })
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;({
   [key()]: (/** @type {number} */ (value  +  other) /* prettier-ignore */),

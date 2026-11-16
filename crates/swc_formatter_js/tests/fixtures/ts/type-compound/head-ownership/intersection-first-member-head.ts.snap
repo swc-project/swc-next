@@ -6,7 +6,7 @@ type T = (/* outer */ (
 /* inner */
 A) & B);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T =
   /* outer */
@@ -14,7 +14,7 @@ type T =
   A & B;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 type T =
   /* outer */
@@ -22,7 +22,7 @@ type T =
   A & B;
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":24,"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 type T =
 	/* outer */

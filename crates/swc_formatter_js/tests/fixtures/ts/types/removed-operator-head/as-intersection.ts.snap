@@ -5,6 +5,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 a as // c
 & B;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a as B; // c

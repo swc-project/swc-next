@@ -1,6 +1,7 @@
 [
   {
-    "printWidth": 20,
-    "trailingComma": "none"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "trailingCommas": "none"
   }
 ]

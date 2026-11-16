@@ -7,7 +7,7 @@ receiver.start().finish((
   value
 ) => {});
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 receiver.start().finish(
   (
@@ -17,7 +17,7 @@ receiver.start().finish(
 );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 receiver.start().finish(
   (

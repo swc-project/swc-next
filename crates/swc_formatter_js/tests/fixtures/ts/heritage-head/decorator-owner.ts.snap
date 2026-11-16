@@ -6,21 +6,21 @@ export default @dec(  1 , 2  ) class Name<T> extends Base<T>
 // prettier-ignore
 implements Other<T> { value =  1 ; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export default @dec(  1 , 2  ) class Name<T> extends Base<T>
 // prettier-ignore
 implements Other<T> { value =  1 ; }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 export default @dec(  1 , 2  ) class Name<T> extends Base<T>
 // prettier-ignore
 implements Other<T> { value =  1 ; }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 export default @dec(  1 , 2  ) class Name<T> extends Base<T>
 // prettier-ignore

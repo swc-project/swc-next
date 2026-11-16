@@ -7,7 +7,7 @@ declare const first: number;
 f(first, /*#__PURE__*/ // @ts-expect-error
 missing());
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function f(a: number, b: number): void;
 declare const first: number;

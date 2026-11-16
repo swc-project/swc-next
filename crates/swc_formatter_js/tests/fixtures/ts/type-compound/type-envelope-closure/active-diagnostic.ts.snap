@@ -7,7 +7,7 @@ type T = (Known & (Known
 // @ts-ignore
 ))[]; const bad: number = "x";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Known = {};
 type T = (Known &

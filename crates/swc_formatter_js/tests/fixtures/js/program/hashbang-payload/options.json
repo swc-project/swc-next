@@ -1,4 +1,12 @@
 [
-  { "endOfLine": "lf" },
-  { "endOfLine": "crlf" }
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "lf"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  }
 ]

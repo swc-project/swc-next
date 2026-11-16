@@ -6,7 +6,7 @@ const x = (foo
 /* before */
 ) as Foo;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const x = (
   foo
@@ -14,7 +14,7 @@ const x = (
 ) as Foo;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const x = (
   foo
@@ -22,7 +22,7 @@ const x = (
 ) as Foo
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const x = (
   foo
@@ -30,7 +30,7 @@ const x = (
 ) as Foo;
 
 ---------- Options ----------
-{"printWidth":120}
+{"indentStyle":"space","lineWidth":120}
 ---------- Output ----------
 const x = (
   foo
@@ -38,7 +38,7 @@ const x = (
 ) as Foo;
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const x = (
   foo

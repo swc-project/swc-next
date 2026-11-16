@@ -6,7 +6,7 @@ import {first,
 // @ts-ignore
 second as local} from "missing";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import {
   first,
@@ -14,7 +14,7 @@ import {
   second as local } from "missing";
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 import {
   first,
@@ -22,7 +22,7 @@ import {
   second as local } from "missing";
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 import {
   first,

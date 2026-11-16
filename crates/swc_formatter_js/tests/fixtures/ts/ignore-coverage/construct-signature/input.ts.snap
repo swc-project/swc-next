@@ -7,7 +7,7 @@ interface T {
   new ( ):   T;
 }
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 interface T {
   // prettier-ignore

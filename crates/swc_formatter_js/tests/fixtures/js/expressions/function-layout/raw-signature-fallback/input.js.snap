@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 consume("raw", (/* prettier-ignore */ value = first(
   )) => { return second(value); }); third();
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 consume(
   "raw",

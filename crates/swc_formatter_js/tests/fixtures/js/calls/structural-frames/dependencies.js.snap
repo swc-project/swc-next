@@ -11,7 +11,7 @@ subscribe(object.ref, () => { work(); }, [firstDependency, secondDependency]);
 subscribe(() => { work(); }, /* boundary */ [firstDependency, secondDependency]);
 subscribe((() => { work(); }) /* callback tail */, [firstDependency, secondDependency]);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 subscribe(() => {
   /* body */ work();
@@ -50,7 +50,7 @@ subscribe(
 );
 
 ---------- Options ----------
-{"printWidth":40,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":40,"trailingCommas":"none"}
 ---------- Output ----------
 subscribe(() => {
   /* body */ work();

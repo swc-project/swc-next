@@ -6,7 +6,7 @@ test ? ([  value  ]) : // prettier-ignore
 // @ts-ignore
 [  missing  ];
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 test
   ? [  value  ] : // prettier-ignore

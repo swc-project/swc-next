@@ -1,8 +1,12 @@
 [
   {
-    "trailingComma": "none"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "none"
   },
   {
-    "endOfLine": "crlf"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   }
 ]

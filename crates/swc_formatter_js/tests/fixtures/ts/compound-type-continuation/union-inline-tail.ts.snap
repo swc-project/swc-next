@@ -5,16 +5,16 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 let v: A | (B // c
 ) = 1;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let v: A | B = 1; // c
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 let v: A | B = 1; // c
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 let v: A | B = 1 // c

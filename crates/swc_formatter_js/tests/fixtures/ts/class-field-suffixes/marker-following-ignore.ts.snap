@@ -8,7 +8,7 @@ class Following { typed
 /* prettier-ignore */
 ? = { a:1,b:2 }; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Following {
   typed
@@ -18,7 +18,7 @@ class Following {
 }
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 class Following {
   typed
@@ -29,7 +29,7 @@ class Following {
 }
 
 ---------- Options ----------
-{"printWidth":24,"useTabs":true}
+{"indentStyle":"tab","lineWidth":24}
 ---------- Output ----------
 class Following {
 	typed

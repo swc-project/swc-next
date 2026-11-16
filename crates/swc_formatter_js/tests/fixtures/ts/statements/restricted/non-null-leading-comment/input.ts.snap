@@ -9,7 +9,7 @@ function f() {
   )!;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   return (
@@ -19,7 +19,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return (
@@ -29,7 +29,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f() {
   return (
@@ -39,7 +39,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 function f() {
 	return (

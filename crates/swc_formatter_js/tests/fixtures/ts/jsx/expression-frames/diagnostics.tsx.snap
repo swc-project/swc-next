@@ -12,7 +12,7 @@ async function view(){return await (
 // @ts-expect-error
 first || second)} />;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 async function view() {
   return await // @ts-expect-error
@@ -26,7 +26,7 @@ async function view() {
     (first || second)}/>;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 async function view() {
   return await // @ts-expect-error

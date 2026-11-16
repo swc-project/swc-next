@@ -6,7 +6,7 @@ function f() { return [first,
 // @ts-ignore
 second]; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   return [
@@ -15,7 +15,7 @@ function f() {
     second,]; }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return [

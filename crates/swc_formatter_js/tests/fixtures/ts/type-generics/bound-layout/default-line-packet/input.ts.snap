@@ -8,7 +8,7 @@ type A<
   C
 > = R;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A<
   B = // Inline comment about void.

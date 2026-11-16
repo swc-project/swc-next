@@ -7,12 +7,12 @@ const create = () => `${foo(
   second,
 )}`;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `${foo(first, second)}`;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const create = () =>
   `${foo(
@@ -21,6 +21,6 @@ const create = () =>
   )}`;
 
 ---------- Options ----------
-{"arrowParens":"avoid"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () => `${foo(first, second)}`;

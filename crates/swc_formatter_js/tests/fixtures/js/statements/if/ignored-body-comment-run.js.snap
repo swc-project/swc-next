@@ -6,7 +6,7 @@ if (enabled) /* prettier-ignore */
 /* body */
 consume  ( 1 , 2 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 if (enabled)
   /* prettier-ignore */
@@ -14,7 +14,7 @@ if (enabled)
   consume  ( 1 , 2 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (enabled)
   /* prettier-ignore */
@@ -22,7 +22,7 @@ if (enabled)
   consume  ( 1 , 2 )
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 if (enabled)
   /* prettier-ignore */
@@ -30,7 +30,7 @@ if (enabled)
   consume  ( 1 , 2 )
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 if (enabled)
 	/* prettier-ignore */

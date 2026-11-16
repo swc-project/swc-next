@@ -6,7 +6,7 @@ function f(x:number
 /* prettier-ignore */
 =1+  2):void;
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 function f(
   x:number
@@ -15,7 +15,7 @@ function f(
 ): void;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   x:number
@@ -24,7 +24,7 @@ function f(
 ): void
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 function f(
   x:number
@@ -33,7 +33,7 @@ function f(
 ): void;
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   x:number

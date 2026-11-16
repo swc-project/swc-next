@@ -7,14 +7,14 @@ a; /* first */ // second
 
 b;
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 a; /* first */ // second
 /* third */
 b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a /* first */ // second
 /* third */

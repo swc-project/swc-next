@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 import {a} from /* prettier-ignore */ // c
 'm';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import { a } from /* prettier-ignore */ // c
 'm';

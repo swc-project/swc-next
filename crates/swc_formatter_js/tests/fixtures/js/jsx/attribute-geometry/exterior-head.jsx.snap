@@ -6,7 +6,7 @@ const view = <Box
 // attribute
 title="message" />;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const view = (
   <Box
@@ -16,7 +16,7 @@ const view = (
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const view = (
   <Box

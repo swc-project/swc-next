@@ -6,7 +6,7 @@ declare const a: number;
 const z = [a /* #__PURE__ */ // @ts-ignore
 , , missing];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const a: number;
 const z = [

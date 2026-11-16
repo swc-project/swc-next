@@ -7,7 +7,7 @@ type T = X extends
 (
 A) ? 1 : 2;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = X extends
 // prettier-ignore

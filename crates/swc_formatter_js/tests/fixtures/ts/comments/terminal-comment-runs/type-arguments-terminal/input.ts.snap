@@ -6,7 +6,7 @@ type T = Ref<First,
 /* b */ // c
 >;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = Ref<
   First
@@ -14,7 +14,7 @@ type T = Ref<
 >;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = Ref<
   First

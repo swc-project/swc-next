@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const pick = firstLongParameterName => second => ready ? 11 : 23;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const pick = (firstLongParameterName) => (second) => (ready ? 11 : 23);
 
 ---------- Options ----------
-{"printWidth":28}
+{"indentStyle":"space","lineWidth":28}
 ---------- Output ----------
 const pick =
   (
@@ -19,7 +19,7 @@ const pick =
     ready ? 11 : 23;
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const pick =
   firstLongParameterName =>
@@ -27,7 +27,7 @@ const pick =
     ready ? 11 : 23
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+{"arrowParentheses":"as-needed","indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const pick =
 	firstLongParameterName => second =>

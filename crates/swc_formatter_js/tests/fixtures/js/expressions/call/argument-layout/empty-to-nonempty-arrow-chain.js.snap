@@ -7,7 +7,7 @@ execute((
 ) => (value // inner parameters
 ) => {});
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"all"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"all"}
 ---------- Output ----------
 execute(
   (
@@ -19,7 +19,7 @@ execute(
 );
 
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
 ---------- Output ----------
 execute(
   (
@@ -31,7 +31,7 @@ execute(
 );
 
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 execute(
   (
@@ -43,7 +43,7 @@ execute(
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 execute(
   (

@@ -8,7 +8,7 @@ first
 );
 // @ts-expect-error
 missing;---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
 first
@@ -16,7 +16,7 @@ first
 missing
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 // @ts-ignore
 first;

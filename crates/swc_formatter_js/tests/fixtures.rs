@@ -1,6 +1,3 @@
-#[path = "support/prettier_options.rs"]
-mod prettier_options;
-
 #[path = "fixtures/mod.rs"]
 mod fixtures;
 

@@ -6,14 +6,14 @@ type F=<T extends 12.00>
 /* prettier-ignore */
 ()=>13.00;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type F = <T extends 12.0>
 /* prettier-ignore */
 ()=>13.00;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type F = <
   T extends 12.0,
@@ -22,7 +22,7 @@ type F = <
 ()=>13.00;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type F =
   <
@@ -33,7 +33,7 @@ type F =
 ()=>13.00
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 type F = <
 	T extends 12.0

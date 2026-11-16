@@ -6,28 +6,28 @@ type A
 /* prettier-ignore */
 = ( Tools . Member );
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 type A
 /* prettier-ignore */
 = Tools . Member;
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 type A
 /* prettier-ignore */
 = Tools . Member;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 type A
 /* prettier-ignore */
 = Tools . Member
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type A
 /* prettier-ignore */

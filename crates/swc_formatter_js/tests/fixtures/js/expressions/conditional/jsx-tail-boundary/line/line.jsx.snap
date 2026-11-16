@@ -6,7 +6,7 @@ condition ? <Item />
 // note
 : next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 condition ? (
   <Item />

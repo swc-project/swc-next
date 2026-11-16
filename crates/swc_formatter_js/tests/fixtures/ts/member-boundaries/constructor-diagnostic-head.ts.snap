@@ -6,7 +6,7 @@ interface I { new /* header */ (
 // @ts-expect-error
 value: Missing): I; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 interface I {
   new /* header */ (
@@ -14,7 +14,7 @@ interface I {
     value: Missing,): I; }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 interface I {
   new /* header */ (
@@ -22,7 +22,7 @@ interface I {
     value: Missing,): I; }
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 interface I {
   new /* header */ (
@@ -30,7 +30,7 @@ interface I {
     value: Missing,): I }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 interface I {
 	new /* header */ (

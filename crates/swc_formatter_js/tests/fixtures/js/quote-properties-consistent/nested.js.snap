@@ -5,7 +5,7 @@ assertion_line: 58
 ---------- Input ----------
 const record = { "quoted-key": { plain: 1, "simple": 2 }, plain: { "quoted-key": 3, nested: 4 }, after: 5 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const record = {
   "quoted-key": { plain: 1, simple: 2 },
@@ -14,7 +14,7 @@ const record = {
 };
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 const record = {
   "quoted-key": { plain: 1, "simple": 2 },
@@ -23,7 +23,7 @@ const record = {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 const record = {
   "quoted-key": { plain: 1, simple: 2 },
@@ -32,7 +32,7 @@ const record = {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 const record = {
   'quoted-key': { plain: 1, simple: 2 },

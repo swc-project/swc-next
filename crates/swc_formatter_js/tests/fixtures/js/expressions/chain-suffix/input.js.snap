@@ -16,7 +16,7 @@ const ignored = collection.read( first ).select( second ) /* prettier-ignore */ 
 collection.read(first).select(second)[0].record;
 [entry].map(consume);
 ---------- Options ----------
-{"printWidth":52}
+{"indentStyle":"space","lineWidth":52}
 ---------- Output ----------
 const entry = collection
   .read(first)
@@ -48,7 +48,7 @@ collection.read(first).select(second)[0].record;
 [entry].map(consume);
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const entry = collection.read(first).select(second)[0].record;
 consume(collection.read(first).select(second)[0].record.value);
@@ -71,7 +71,7 @@ collection.read(first).select(second)[0].record;
 [entry].map(consume);
 
 ---------- Options ----------
-{"printWidth":52,"semi":false}
+{"indentStyle":"space","lineWidth":52,"semicolons":"as-needed"}
 ---------- Output ----------
 const entry = collection
   .read(first)

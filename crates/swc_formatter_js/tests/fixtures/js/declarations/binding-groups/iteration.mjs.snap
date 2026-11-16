@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 for ({ alpha, beta: renamed, gamma } of configurations) {}
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 for ({
   alpha,
@@ -14,13 +14,13 @@ for ({
 }
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 for ({ alpha, beta: renamed, gamma } of configurations) {
 }
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 for ({
   alpha,

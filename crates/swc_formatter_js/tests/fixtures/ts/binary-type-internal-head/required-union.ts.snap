@@ -6,7 +6,7 @@ const chosen = input as(
 // choose type
 First | Second | Third)[];
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = input as (
 	// choose type
@@ -14,7 +14,7 @@ const chosen = input as (
 )[];
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen =
   input as (
@@ -25,7 +25,7 @@ const chosen =
   )[]
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = input as (
   // choose type

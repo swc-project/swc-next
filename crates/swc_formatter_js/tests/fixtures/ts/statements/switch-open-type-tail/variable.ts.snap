@@ -9,7 +9,7 @@ switch (s) {
     z();
 }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (s) {
   case 1:
@@ -19,7 +19,7 @@ switch (s) {
 }
 
 ---------- Options ----------
-{"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (s) {
 	case 1:

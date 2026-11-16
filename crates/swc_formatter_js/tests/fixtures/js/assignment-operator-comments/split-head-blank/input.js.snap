@@ -6,7 +6,7 @@ target = // @ts-expect-error
 
   /** @type {number} */ (first);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 target = // @ts-expect-error
 

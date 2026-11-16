@@ -6,7 +6,7 @@ type T = A & (B
 // comment
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = A & B;
 // comment

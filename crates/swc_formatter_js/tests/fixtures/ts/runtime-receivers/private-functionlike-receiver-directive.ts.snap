@@ -14,7 +14,7 @@ class Counter {
   }
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Counter {
   #value(this: Counter, value: number): number {
@@ -28,7 +28,7 @@ class Counter {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Counter {
   #value(
@@ -47,7 +47,7 @@ class Counter {
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 class Counter {
   #value(
@@ -66,7 +66,7 @@ class Counter {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 class Counter {
   #value(

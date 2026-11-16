@@ -6,7 +6,7 @@ class C { constructor(
 /* prettier-ignore */
 public readonly readonly value : number, other: number) {} }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   constructor(
@@ -17,7 +17,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C {
   constructor(

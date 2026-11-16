@@ -6,7 +6,7 @@ const object={first:1,
 /* b */ /* c */
 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const object = {
   first: 1,

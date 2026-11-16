@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 pipe(
   map(
@@ -21,7 +21,7 @@ pipe(
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 pipe(
   map(
@@ -33,26 +33,26 @@ pipe(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second)
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
 
 ---------- Options ----------
-{"bracketSpacing":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);

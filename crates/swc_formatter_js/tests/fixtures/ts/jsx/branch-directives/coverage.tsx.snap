@@ -15,7 +15,7 @@ const sourcePair = flag ? (// @ts-expect-error
 const ignored = flag ? // prettier-ignore
 <Missing   value = {  1  } ><Child/><Other/></Missing> : null;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const flag: boolean;
 declare const React: any;
@@ -36,7 +36,7 @@ const ignored = flag // prettier-ignore
 ) : null;
 
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 declare const flag: boolean;
 declare const React: any;
@@ -63,7 +63,7 @@ const ignored = flag // prettier-ignore
 ) : null;
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 declare const flag: boolean;
 declare const React: any;

@@ -6,7 +6,7 @@ call(first
 /* @ts-expect-error */
 ,
 second);---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 call(
   first,
@@ -15,7 +15,7 @@ call(
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 call(
   first,

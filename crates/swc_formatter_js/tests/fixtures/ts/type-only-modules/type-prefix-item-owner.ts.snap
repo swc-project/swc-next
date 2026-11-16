@@ -6,7 +6,7 @@ export {type
 // prettier-ignore
 "\u006dodel"   as    Record, Other} from "m";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export {
   type
@@ -16,7 +16,7 @@ export {
 } from "m";
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 export {
   type
@@ -26,7 +26,7 @@ export {
 } from "m";
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 export {
   type

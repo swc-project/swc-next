@@ -6,7 +6,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 /* b */, /* c */ // d
 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   first: 1,
@@ -14,7 +14,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 });
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 ({
   first: 1

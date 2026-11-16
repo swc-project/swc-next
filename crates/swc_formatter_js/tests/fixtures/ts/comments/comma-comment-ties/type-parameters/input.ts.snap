@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 type T<First /* before */ , /* after */ // line
 Last> = First;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T<
   First /* before */ /* after */, // line
@@ -13,7 +13,7 @@ type T<
 > = First;
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 type T<
   First /* before */ /* after */, // line

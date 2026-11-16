@@ -7,7 +7,7 @@ class ConstructedBase extends (new Base()!) {}
 class TaggedBase extends (make`base`!) {}
 class IdentifierBase extends Base! {}
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 class ObjectBase extends ({}!) {}
 class ConstructedBase extends (new Base()!) {}
@@ -15,7 +15,7 @@ class TaggedBase extends (make`base`!) {}
 class IdentifierBase extends Base! {}
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 class ObjectBase extends ({}!) {}
 class ConstructedBase extends (new Base()!) {}
@@ -23,7 +23,7 @@ class TaggedBase extends (make`base`!) {}
 class IdentifierBase extends Base! {}
 
 ---------- Options ----------
-{"printWidth":80,"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 class ObjectBase extends ({}!) {}
 class ConstructedBase extends (new Base()!) {}
@@ -31,7 +31,7 @@ class TaggedBase extends (make`base`!) {}
 class IdentifierBase extends Base! {}
 
 ---------- Options ----------
-{"printWidth":80,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 class ObjectBase extends ({}!) {}
 class ConstructedBase extends (new Base()!) {}

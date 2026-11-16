@@ -6,7 +6,7 @@ for (initialize();
 /* own line */
 ;) consume();
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 for (
   initialize();
@@ -16,7 +16,7 @@ for (
   consume();
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 for (
   initialize();
@@ -26,7 +26,7 @@ for (
   consume();
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 for (
   initialize();

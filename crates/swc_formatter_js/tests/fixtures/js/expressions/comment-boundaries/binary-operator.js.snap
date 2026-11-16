@@ -7,7 +7,7 @@ e
 // c
 & bb;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 e

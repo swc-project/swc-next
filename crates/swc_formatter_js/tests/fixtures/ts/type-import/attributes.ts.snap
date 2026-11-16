@@ -18,7 +18,7 @@ type IgnoredOptions=import("./m",
 ).Value;
 type EmptyOptions=import("./m",{});
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type A = import(
   "./m",
@@ -74,7 +74,7 @@ type EmptyOptions =
   import("./m", {});
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A = import("./m", { with: { "resolution-mode": "import" } }).Value;
 
@@ -101,7 +101,7 @@ type IgnoredOptions = import(
 type EmptyOptions = import("./m", {});
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type A = import("./m", { with: { "resolution-mode": "import" } }).Value
 

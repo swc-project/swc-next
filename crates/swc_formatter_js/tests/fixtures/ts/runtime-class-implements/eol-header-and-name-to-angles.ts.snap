@@ -8,7 +8,7 @@ implements N.I<number> { x = 7; }
 class Eol implements N . I // prettier-ignore
 <  number  > { x = 7; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 namespace N {
   export interface I<T> {
@@ -26,7 +26,7 @@ class Eol implements N . I // prettier-ignore
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 namespace N {
   export interface I<

@@ -6,7 +6,7 @@ a ? (b, c
 // tail
 ) : /* prettier-ignore */ d  +e;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a
   ? (b, c)
@@ -14,7 +14,7 @@ a
     /* prettier-ignore */ d  +e;
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 a
   ? (b, c)

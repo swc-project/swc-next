@@ -6,7 +6,7 @@ type T = X extends Y ? A | (B
 // c
 ) : Z;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = X extends Y
   ? (
@@ -17,7 +17,7 @@ type T = X extends Y
   : Z;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = X extends Y
   ? (
@@ -28,7 +28,7 @@ type T = X extends Y
   : Z;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = X extends Y
   ? (

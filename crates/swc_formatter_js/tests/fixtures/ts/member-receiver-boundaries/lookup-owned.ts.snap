@@ -6,14 +6,14 @@ const value = (source as Shape)
 // lookup
 .field;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = (source as Shape)
   // lookup
   .field;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value = (
   source as Shape
@@ -22,7 +22,7 @@ const value = (
   .field;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = (source as Shape)
   // lookup

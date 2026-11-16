@@ -6,7 +6,7 @@ class RecordValue { value   =
   /* prettier-ignore */
   configuration . branch . value; other = { untouched :  2 }; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class RecordValue {
   value =
@@ -16,7 +16,7 @@ class RecordValue {
 }
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 class RecordValue {
   value =
@@ -28,7 +28,7 @@ class RecordValue {
 }
 
 ---------- Options ----------
-{"printWidth":24,"useTabs":true}
+{"indentStyle":"tab","lineWidth":24}
 ---------- Output ----------
 class RecordValue {
 	value =

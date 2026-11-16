@@ -6,7 +6,7 @@ class Base {}
 class Box<T extends string|number> // prettier-ignore
 extends Base {}
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Base {}
 class Box<T extends string|number> // prettier-ignore

@@ -6,14 +6,14 @@ target = (
 // @ts-expect-error
 first + second); third;
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target =
   // @ts-expect-error
   first + second; third
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 target =
   // @ts-expect-error

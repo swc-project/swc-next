@@ -9,7 +9,7 @@ missing()
 
 next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 missing();
@@ -18,7 +18,7 @@ missing();
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 missing()
@@ -27,7 +27,7 @@ missing()
 next()
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 missing()

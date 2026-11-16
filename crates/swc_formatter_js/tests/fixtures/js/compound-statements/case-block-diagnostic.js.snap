@@ -6,7 +6,7 @@ switch(value){case 1:
 // @ts-expect-error
 {missing();}break;default:break;}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 switch (value) {
   case 1:
@@ -14,7 +14,7 @@ switch (value) {
     { missing(); } break; default: break; }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (value) {
   case 1:
@@ -22,7 +22,7 @@ switch (value) {
     { missing() }; break; default: break }
 
 ---------- Options ----------
-{"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 switch (value) {
 	case 1:
@@ -30,7 +30,7 @@ switch (value) {
 		{ missing(); } break; default: break; }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (
   value

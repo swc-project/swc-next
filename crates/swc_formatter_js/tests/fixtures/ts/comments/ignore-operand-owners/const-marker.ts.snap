@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const x = [ 1, 2 ] as
 /* prettier-ignore */
 const;---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 const x =
   [ 1, 2 ] as
@@ -13,7 +13,7 @@ const x =
 const;
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 const x =
   [ 1, 2 ] as

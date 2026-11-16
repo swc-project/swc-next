@@ -6,28 +6,28 @@ export /* note */ as
 /* prettier-ignore */
 namespace n\u0061me;
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 export /* note */ as
 /* prettier-ignore */
 namespace n\u0061me;
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 export /* note */ as
 /* prettier-ignore */
 namespace n\u0061me;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 export /* note */ as
 /* prettier-ignore */
 namespace n\u0061me
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 export /* note */ as
 /* prettier-ignore */

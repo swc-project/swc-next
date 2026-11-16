@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const node = (0, owner.node = (/* ordinary */ <Item value={61} /> /* JSX tail */) /* sequence tail */);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const node =
   (0,
@@ -13,7 +13,7 @@ const node =
   )) /* sequence tail */);
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const node =
   (0,
@@ -22,7 +22,7 @@ const node =
   )) /* sequence tail */)
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 const node =
   (0,
@@ -33,7 +33,7 @@ const node =
   )) /* sequence tail */);
 
 ---------- Options ----------
-{"printWidth":36,"semi":false}
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
 ---------- Output ----------
 const node =
   (0,

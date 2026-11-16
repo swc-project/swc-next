@@ -10,7 +10,7 @@ const attribute=<panel first // @ts-expect-error
 invalid second/>;
 const child=<panel first second>{/* @ts-expect-error */ missingValue}</panel>;
 ---------- Options ----------
-{"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -29,7 +29,7 @@ const child = (
     {/* @ts-expect-error */ missingValue}</panel>);
 
 ---------- Options ----------
-{"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -51,7 +51,7 @@ const child = (
     {/* @ts-expect-error */ missingValue}</panel>);
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -75,7 +75,7 @@ const child = (
       /* @ts-expect-error */ missingValue}</panel>);
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -102,7 +102,7 @@ const child = (
       /* @ts-expect-error */ missingValue}</panel>);
 
 ---------- Options ----------
-{"bracketSameLine":true,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -123,7 +123,7 @@ const child = (
     {/* @ts-expect-error */ missingValue}</panel>);
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {

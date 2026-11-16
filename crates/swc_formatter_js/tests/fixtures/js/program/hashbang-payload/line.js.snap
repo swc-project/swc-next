@@ -5,13 +5,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 #!/usr/bin/env node 	 
 run()
 ---------- Options ----------
-{"endOfLine":"lf"}
+{"indentStyle":"space","lineEnding":"lf","lineWidth":80}
 ---------- Output ----------
 #!/usr/bin/env node 	 
 run();
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 #!/usr/bin/env node 	 
 run();

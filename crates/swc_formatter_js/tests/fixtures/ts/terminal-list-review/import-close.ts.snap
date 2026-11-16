@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 import { a, b // @ts-ignore
 , /* d */ } from "missing";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import {
   a,
@@ -13,7 +13,7 @@ import {
   /* d */ } from "missing";
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 import {
   a,
@@ -21,7 +21,7 @@ import {
   /* d */ } from "missing";
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 import {
   a,

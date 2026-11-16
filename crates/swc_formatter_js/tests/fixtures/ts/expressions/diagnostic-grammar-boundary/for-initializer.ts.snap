@@ -9,7 +9,7 @@ export function evaluate(first: string): void {
   const outsideSentinel: number = "outside";
 }
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 export function evaluate(
   first: string,

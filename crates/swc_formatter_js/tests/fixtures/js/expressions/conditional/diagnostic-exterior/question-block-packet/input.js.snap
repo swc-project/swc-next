@@ -7,7 +7,7 @@ test ? /* note */ // @ts-ignore
 first + second
 ) : other;
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 test /* note */ // @ts-ignore
   ? (

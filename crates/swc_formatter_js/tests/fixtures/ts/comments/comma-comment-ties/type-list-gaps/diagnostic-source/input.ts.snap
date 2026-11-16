@@ -7,7 +7,7 @@ type T<A,
 // @ts-expect-error
 B extends number = "wrong"> = A;
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 type T<
   A,

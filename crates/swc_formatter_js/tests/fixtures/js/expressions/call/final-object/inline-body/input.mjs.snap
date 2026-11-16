@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 f(first,{one:1,two:2,three:3});---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 f(first, {
   one: 1,
@@ -12,7 +12,7 @@ f(first, {
 });
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 f(first, {
   one: 1,
@@ -21,7 +21,7 @@ f(first, {
 })
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 f(first, {
   one: 1,
@@ -30,7 +30,7 @@ f(first, {
 });
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
 ---------- Output ----------
 f(first, {
   one: 1,

@@ -5,13 +5,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 (a++) // prettier-ignore
 (...items);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 (a++) // prettier-ignore
 (...items);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(a++) // prettier-ignore
 (...items)

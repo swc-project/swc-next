@@ -6,7 +6,7 @@ import {first}
 /* prettier-ignore */ // tail
 from 'module';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import { first }
 /* prettier-ignore */ // tail

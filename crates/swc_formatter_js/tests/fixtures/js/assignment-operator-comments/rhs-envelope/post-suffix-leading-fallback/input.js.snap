@@ -7,7 +7,7 @@ target
 = // right
 /* next */
 value;---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target =
   /* own left */

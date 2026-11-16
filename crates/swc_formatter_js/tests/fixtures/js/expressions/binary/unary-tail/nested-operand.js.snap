@@ -6,7 +6,7 @@ function isValidIndexKeyType(type) {
   return !!(type.flags & (4 /* String */ | 8 /* Number */ | 4096 /* ESSymbol */));
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function isValidIndexKeyType(type) {
   return !!(

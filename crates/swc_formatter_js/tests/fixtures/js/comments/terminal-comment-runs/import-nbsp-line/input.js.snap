@@ -7,7 +7,7 @@ import {first,
  // c
 } from 'm';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import {
   first,
@@ -15,7 +15,7 @@ import {
 } from "m";
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 import {
   first

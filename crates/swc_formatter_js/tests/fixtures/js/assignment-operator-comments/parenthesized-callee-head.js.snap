@@ -6,19 +6,19 @@ a=(//
 b)(r());
 //@ts-expect-error
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a = b(r()); //
 //@ts-expect-error
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 a = b(r()); //
 //@ts-expect-error
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a = b(r()) //
 //@ts-expect-error

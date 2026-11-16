@@ -6,7 +6,7 @@ const build = () => (@decorate class Item { static value = 1; });
 const ordinary = () => (class Item { static value = 2; });
 const value = build().value + ordinary().value;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const build = () =>
   (
@@ -23,7 +23,7 @@ const value =
   build().value + ordinary().value;
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const build = () =>
   (

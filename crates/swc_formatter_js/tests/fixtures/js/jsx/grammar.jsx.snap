@@ -9,7 +9,7 @@ const jsxTag=(<Tag enabled/>)`head ${value+1} tail`;
 const fragmentTag=(<>head {value}</>)`tail`;
 const joined=<Box title={`before ${value+1} after`}>{tag`head ${<Inner/>} tail`}</Box>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let a = 0,
   b = 1;
@@ -41,7 +41,7 @@ const joined = (
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 let a = 0,
   b = 1;

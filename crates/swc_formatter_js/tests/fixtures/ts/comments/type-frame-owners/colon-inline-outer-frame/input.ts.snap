@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type T = X extends Y ? Z : /* prettier-ignore */ (/* frame */ (\u0041  |  \u0042));
 ---------- Options ----------
-{"printWidth":18,"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 type T =
 	X extends Y

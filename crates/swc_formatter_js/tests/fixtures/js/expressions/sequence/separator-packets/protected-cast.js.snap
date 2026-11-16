@@ -4,11 +4,11 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 first, /** @type {number} */
 ("wrong");---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (first, /** @type {number} */ ("wrong"));
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(first, /** @type {number} */ ("wrong"))

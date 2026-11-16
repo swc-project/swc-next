@@ -7,21 +7,21 @@ x = (
 /** @type {number} */
 a, y);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x =
   /** @type {number} */
   (a, y);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x =
   /** @type {number} */
   (a, y)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 x =
   /** @type {number} */

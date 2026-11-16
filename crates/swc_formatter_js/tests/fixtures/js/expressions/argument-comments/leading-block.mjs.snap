@@ -6,7 +6,7 @@ f("first-long-module-name"
  /* block */
  , "second-long-module-name");
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 f(
   "first-long-module-name",
@@ -15,7 +15,7 @@ f(
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   "first-long-module-name",
@@ -24,7 +24,7 @@ f(
 );
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 f(
   "first-long-module-name",

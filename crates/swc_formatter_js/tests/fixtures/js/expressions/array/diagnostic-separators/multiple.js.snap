@@ -9,7 +9,7 @@ second,
 // @ts-ignore
 third + fourth];
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[
   first,
@@ -20,7 +20,7 @@ third + fourth];
 ]
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 [
   first,

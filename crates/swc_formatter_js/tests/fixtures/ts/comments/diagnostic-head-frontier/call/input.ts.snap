@@ -8,7 +8,7 @@ use((
 fn
 )());
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const use: (x: any) => void;
 declare const fn: number;
@@ -19,7 +19,7 @@ use((
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const use: (x: any) => void
 declare const fn: number

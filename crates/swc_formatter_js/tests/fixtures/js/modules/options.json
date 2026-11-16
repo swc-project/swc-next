@@ -1,12 +1,17 @@
 [
-  {},
   {
-    "printWidth": 20
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "semi": false,
-    "singleQuote": true,
-    "bracketSpacing": false,
-    "printWidth": 20
+    "lineWidth": 20,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "quoteStyle": "single",
+    "bracketSpacing": false
   }
 ]

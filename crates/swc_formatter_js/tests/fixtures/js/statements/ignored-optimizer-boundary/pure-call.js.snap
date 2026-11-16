@@ -6,7 +6,7 @@ a
 // prettier-ignore
 /* @__PURE__ */f()
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a
 // prettier-ignore

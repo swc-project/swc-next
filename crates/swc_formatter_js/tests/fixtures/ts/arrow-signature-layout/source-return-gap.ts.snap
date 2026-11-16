@@ -5,31 +5,31 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value;
 ---------- Options ----------
-{"printWidth":88}
+{"indentStyle":"space","lineWidth":88}
 ---------- Output ----------
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value;
 
 ---------- Options ----------
-{"printWidth":89}
+{"indentStyle":"space","lineWidth":89}
 ---------- Output ----------
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value;
 
 ---------- Options ----------
-{"printWidth":90}
+{"indentStyle":"space","lineWidth":90}
 ---------- Output ----------
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value;
 
 ---------- Options ----------
-{"printWidth":96}
+{"indentStyle":"space","lineWidth":96}
 ---------- Output ----------
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value;
 
 ---------- Options ----------
-{"printWidth":88,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":88,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 const select = (value  :Entry) // prettier-ignore
 : Promise<Entry> => value

@@ -6,7 +6,7 @@ f(a, // c
 // @ts-ignore
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   a, // c
@@ -14,7 +14,7 @@ f(
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 f(
   a, // c
@@ -22,7 +22,7 @@ f(
 );
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 f(
   a // c

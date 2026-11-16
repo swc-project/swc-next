@@ -6,7 +6,7 @@ x as () => ? // terminal
 ;
 b;
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x as (() => ?) // terminal
 b

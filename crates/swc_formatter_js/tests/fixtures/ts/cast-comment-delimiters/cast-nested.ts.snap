@@ -6,7 +6,7 @@ const value = ((1
 /* c */
 )) as number;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = (
   1
@@ -14,7 +14,7 @@ const value = (
 ) as number;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = (
   1
@@ -22,7 +22,7 @@ const value = (
 ) as number
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const value = (
   1
@@ -30,7 +30,7 @@ const value = (
 ) as number;
 
 ---------- Options ----------
-{"printWidth":120}
+{"indentStyle":"space","lineWidth":120}
 ---------- Output ----------
 const value = (
   1
@@ -38,7 +38,7 @@ const value = (
 ) as number;
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = (
   1

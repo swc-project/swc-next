@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH).pipe(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = (
   isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH
@@ -22,7 +22,7 @@ x = (
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 x = (
   isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH
@@ -40,7 +40,7 @@ x = (
 )
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 x = (
   isSomethingTrue

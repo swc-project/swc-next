@@ -10,7 +10,7 @@ const values = [tag /* inline */
 consume(tag /* first */ // last
 /* quasi */`first ${left+right} last`);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const values = [tag /* inline */ `one`, tag /* own */ `two`];
 
@@ -20,7 +20,7 @@ consume(
 );
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 const values = [
   tag /* inline */
@@ -34,7 +34,7 @@ consume(
 )
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 const values = [
 	tag /* inline */ `one`,

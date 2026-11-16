@@ -9,7 +9,7 @@ type T = {
   ]: X;
 };
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 type T = {
   [

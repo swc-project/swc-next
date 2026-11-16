@@ -6,14 +6,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // prettier-ignore
 "use asm";
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 "use strict"
 // prettier-ignore
 ;;"use asm"
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 "use strict";
 // prettier-ignore

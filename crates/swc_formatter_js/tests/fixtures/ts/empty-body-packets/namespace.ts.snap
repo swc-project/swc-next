@@ -7,7 +7,7 @@ namespace N{ // first
 /* second */
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 namespace N {
   // first
@@ -15,7 +15,7 @@ namespace N {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 namespace N {
   // first
@@ -23,7 +23,7 @@ namespace N {
 }
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 namespace N {
   // first

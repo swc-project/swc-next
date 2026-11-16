@@ -7,7 +7,7 @@ type X<T> = {
   // trailing own-line comment
 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type X<T> = {
   [K in keyof T]: T[K];

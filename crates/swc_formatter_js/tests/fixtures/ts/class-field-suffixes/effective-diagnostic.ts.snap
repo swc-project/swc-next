@@ -7,7 +7,7 @@ class Directive {
 value: number = "wrong";
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Directive {
   // @ts-expect-error
@@ -15,7 +15,7 @@ class Directive {
 }
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 class Directive {
   // @ts-expect-error
@@ -23,7 +23,7 @@ class Directive {
 }
 
 ---------- Options ----------
-{"printWidth":24,"useTabs":true}
+{"indentStyle":"tab","lineWidth":24}
 ---------- Output ----------
 class Directive {
 	// @ts-expect-error

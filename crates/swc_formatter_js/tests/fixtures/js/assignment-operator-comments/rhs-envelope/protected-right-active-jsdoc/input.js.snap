@@ -7,7 +7,7 @@ target
 /* own left */
 = /** @type {number} */ // right
 ("bad");---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 let target;
 target =

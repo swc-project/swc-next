@@ -8,7 +8,7 @@ switch (v) {
   // prettier-ignore
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 switch (v) {
   case 0:
@@ -17,7 +17,7 @@ switch (v) {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (v) {
   case 0:

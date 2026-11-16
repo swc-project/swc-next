@@ -6,7 +6,7 @@ try{}catch(error:
 // type lead
 unknown){use(error);}
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 try {
 } catch (error: // type lead
@@ -15,7 +15,7 @@ unknown) {
 }
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 try {
 } catch (error: // type lead
@@ -24,7 +24,7 @@ unknown) {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 try {
 } catch (error: // type lead

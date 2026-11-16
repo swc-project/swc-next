@@ -6,7 +6,7 @@ schedule(() => { return run(); },
 // prettier-ignore
 ( state [ key ] ));
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 schedule(
   () => {
@@ -17,7 +17,7 @@ schedule(
 );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 schedule(
   () => {
@@ -28,7 +28,7 @@ schedule(
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 schedule(
   () => {
@@ -39,7 +39,7 @@ schedule(
 );
 
 ---------- Options ----------
-{"printWidth":40,"semi":false,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 schedule(
   () => {
@@ -50,7 +50,7 @@ schedule(
 )
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"useTabs":true}
+{"arrowParentheses":"as-needed","indentStyle":"tab","lineWidth":40}
 ---------- Output ----------
 schedule(
 	() => {

@@ -4,11 +4,11 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 /** @typedef {number} N */ (first).value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /** @typedef {number} N */ (first).value;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 /** @typedef {number} N */ (first).value

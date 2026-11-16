@@ -6,7 +6,7 @@ x = { g1 // @ts-ignore
 , [ // @ts-expect-error
 (null) ]: 1 };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = {
   g1 // @ts-ignore

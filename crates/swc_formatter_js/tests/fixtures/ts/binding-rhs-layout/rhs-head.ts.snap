@@ -6,14 +6,14 @@ const data: Store<Context, Entry<Value>> =
 // note
 produce();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const data: Store<Context, Entry<Value>> =
   // note
   produce();
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 const data: Store<
   Context,
@@ -23,7 +23,7 @@ const data: Store<
   produce();
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 const data: Store<
   Context,

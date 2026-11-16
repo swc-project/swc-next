@@ -5,7 +5,7 @@ assertion_line: 58
 ---------- Input ----------
 const { plain: local, "quoted-key": other, shorthand, [computed]: value, 1: numeric } = source;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const {
   plain: local,
@@ -16,7 +16,7 @@ const {
 } = source;
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 const {
   plain: local,
@@ -27,7 +27,7 @@ const {
 } = source;
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 const {
   "plain": local,
@@ -38,7 +38,7 @@ const {
 } = source;
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 const {
   'plain': local,

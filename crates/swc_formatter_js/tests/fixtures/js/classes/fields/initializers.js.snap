@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 class C {a;b=1+2;static #c=3+4;[key+suffix]=call(1+2);}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   a;
@@ -14,7 +14,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C {
   a;
@@ -25,7 +25,7 @@ class C {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   a
@@ -35,7 +35,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   a
@@ -46,7 +46,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":2,"useTabs":true}
+{"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
 class C {
 	a;
@@ -57,7 +57,7 @@ class C {
 }
 
 ---------- Options ----------
-{"quoteProps":"preserve","semi":false}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   a

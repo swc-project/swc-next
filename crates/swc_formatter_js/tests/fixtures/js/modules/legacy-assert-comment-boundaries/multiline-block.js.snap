@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 export * from "m" assert /* c
 */ {type:"json"};
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export * from "m" assert /* c
  */ { type: "json" };

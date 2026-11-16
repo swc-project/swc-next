@@ -6,7 +6,7 @@ run("an intentionally long test description for parameter ownership", function(d
 
 result) { return done(result); });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 run(
   "an intentionally long test description for parameter ownership",
@@ -20,7 +20,7 @@ run(
 );
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 run(
   "an intentionally long test description for parameter ownership",
@@ -34,7 +34,7 @@ run(
 );
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 run(
   "an intentionally long test description for parameter ownership",

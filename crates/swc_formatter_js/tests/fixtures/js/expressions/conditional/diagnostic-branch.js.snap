@@ -6,56 +6,56 @@ first ?
 // @ts-expect-error
 missingLong + otherLong : thirdLong;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 first
   ? // @ts-expect-error
     missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 first
   ? // @ts-expect-error
     missingLong + otherLong : thirdLong
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 first
   ? // @ts-expect-error
     missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 first
   ? // @ts-expect-error
     missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 first
     ? // @ts-expect-error
       missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 first
 	? // @ts-expect-error
 		missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 first
  ? // @ts-expect-error
    missingLong + otherLong : thirdLong;
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 first
   ? // @ts-expect-error

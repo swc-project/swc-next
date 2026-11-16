@@ -7,7 +7,7 @@ const element = <div {...{} /*
  // @ts-ignore */ /* prettier-ignore */}
  invalidProp="invalid" />;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -22,7 +22,7 @@ const element = (
     invalidProp="invalid"/>);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {
@@ -40,7 +40,7 @@ const element = (
     invalidProp="invalid"/>);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare namespace JSX {
   interface IntrinsicElements {

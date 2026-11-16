@@ -7,7 +7,7 @@ class Holder { static probe: unknown=(
 @factory.make() class  Named {static m ( ) { return this .stamp; }}
 ); after=2; }
 ---------- Options ----------
-{"printWidth":40,"semi":true}
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 class Holder {
   static probe: unknown =
@@ -17,7 +17,7 @@ class Holder {
 }
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 class Holder {
   static probe: unknown =
@@ -27,7 +27,7 @@ class Holder {
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 class Holder {
   static probe: unknown =
@@ -37,7 +37,7 @@ class Holder {
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class Holder {
   static probe: unknown =

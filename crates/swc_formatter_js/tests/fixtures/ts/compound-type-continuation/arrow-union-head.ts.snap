@@ -6,7 +6,7 @@ const f = (): /* head */ A | (B
 // c
 ) => ({});
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f = (): /* head */ (
   | A
@@ -15,7 +15,7 @@ const f = (): /* head */ (
 ) => ({});
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const f =
   (): /* head */ (
@@ -25,7 +25,7 @@ const f =
   ) => ({});
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = (): /* head */ (
   | A

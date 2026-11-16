@@ -15,7 +15,7 @@ uncovered: Unknown;
 interface Covered { /* leading */ value: Missing; sameLine: Other }
 type EmptyCoverage = { /* @ts-expect-error */ };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Ignored = {
   // prettier-ignore
@@ -32,7 +32,7 @@ interface Covered { /* leading */ value: Missing; sameLine: Other; }
 type EmptyCoverage = {/* @ts-expect-error */};
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 type Ignored = {
   // prettier-ignore

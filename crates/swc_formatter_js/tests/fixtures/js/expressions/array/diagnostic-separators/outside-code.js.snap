@@ -7,7 +7,7 @@ before + [first
 ,
 second] + after;
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 before +
   [
@@ -18,7 +18,7 @@ before +
   after
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 before +
   [

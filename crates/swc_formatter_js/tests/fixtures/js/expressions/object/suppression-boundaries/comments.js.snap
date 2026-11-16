@@ -13,7 +13,7 @@ c: [ 3,4 ]});
 ({a:[ 1,2 ]
 /* prettier-ignore */,b:[ 3,4 ]});
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   a: [1, 2],
@@ -38,7 +38,7 @@ c: [ 3,4 ]});
 });
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({ a: [1, 2], /* prettier-ignore */ c: [ 3,4 ] });
 ({

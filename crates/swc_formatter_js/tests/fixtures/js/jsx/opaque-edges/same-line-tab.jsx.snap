@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 <div><b>a</b>{" "}bbb	ccc
 next</div>;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 <div>
   <b>a</b> bbb	ccc

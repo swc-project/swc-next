@@ -6,18 +6,18 @@ import {a,
 /* prettier-ignore */ /* c */
 } from 'm';
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import { a /* c */ } from /* prettier-ignore */ 'm';
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 import {
   a /* c */,
 } from /* prettier-ignore */ 'm';
 
 ---------- Options ----------
-{"bracketSpacing":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import {a /* c */} from /* prettier-ignore */ 'm';

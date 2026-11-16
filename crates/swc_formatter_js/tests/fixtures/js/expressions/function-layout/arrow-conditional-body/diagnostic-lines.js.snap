@@ -6,7 +6,7 @@ const pick = value => // @ts-expect-error
 value ? missingFirst :
 missingSecond;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const pick = (value) =>
   // @ts-expect-error
@@ -14,7 +14,7 @@ const pick = (value) =>
       missingSecond;
 
 ---------- Options ----------
-{"printWidth":28}
+{"indentStyle":"space","lineWidth":28}
 ---------- Output ----------
 const pick = (value) =>
   // @ts-expect-error
@@ -22,7 +22,7 @@ const pick = (value) =>
       missingSecond;
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const pick =
   value =>
@@ -31,7 +31,7 @@ const pick =
         missingSecond
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+{"arrowParentheses":"as-needed","indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const pick = value =>
 	// @ts-expect-error

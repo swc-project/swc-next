@@ -6,14 +6,14 @@ declare function tag(template: TemplateStringsArray, value: number): string;
 const value = tag /* @ts-expect-error */
 `${"invalid"}`;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function tag(template: TemplateStringsArray, value: number): string;
 const value = tag /* @ts-expect-error */
 `${"invalid"}`;
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 declare function tag(
   template: TemplateStringsArray,
@@ -23,7 +23,7 @@ const value = tag /* @ts-expect-error */
 `${"invalid"}`
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 declare function tag(
 	template: TemplateStringsArray,

@@ -4,21 +4,21 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const dependency = load("a-long-module-identifier-with-an-existing-module-call-frame");
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const dependency = load(
   "a-long-module-identifier-with-an-existing-module-call-frame",
 );
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 const dependency = load(
   "a-long-module-identifier-with-an-existing-module-call-frame",
 );
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 const dependency =
   load(

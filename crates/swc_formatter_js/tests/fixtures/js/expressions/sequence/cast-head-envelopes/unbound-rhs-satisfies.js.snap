@@ -5,19 +5,19 @@ assertion_line: 58
 ---------- Input ----------
 target = (/** @satisfies {number} */ first, third);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 target = /** @satisfies {number} */ (first, third);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 target = /** @satisfies {number} */ (
   first, third
 );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target =
   /** @satisfies {number} */ (
@@ -25,7 +25,7 @@ target =
   );
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 target =
   /** @satisfies {number} */ (
@@ -34,12 +34,12 @@ target =
   );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 target = /** @satisfies {number} */ (first, third)
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target =
   /** @satisfies {number} */ (
@@ -47,7 +47,7 @@ target =
   )
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 target =
 	/** @satisfies {number} */ (
@@ -55,6 +55,6 @@ target =
 	);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 target = /** @satisfies {number} */ (first, third);

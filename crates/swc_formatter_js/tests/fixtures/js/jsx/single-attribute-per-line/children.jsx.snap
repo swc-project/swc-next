@@ -8,7 +8,7 @@ const nested=<Box first second><Child active focus/></Box>;
 const template=<Box first second>{`first
   second`}</Box>;
 ---------- Options ----------
-{"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
 ---------- Output ----------
 const text = (
   <Box first second>
@@ -26,7 +26,7 @@ const template = (
 );
 
 ---------- Options ----------
-{"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const text = (
   <Box
@@ -56,7 +56,7 @@ const template = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
 ---------- Output ----------
 const text = (
   <Box first second>
@@ -80,7 +80,7 @@ const template = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const text = (
   <Box
@@ -110,7 +110,7 @@ const template = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const text = (
   <Box
@@ -137,7 +137,7 @@ const template = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const text = (
   <Box

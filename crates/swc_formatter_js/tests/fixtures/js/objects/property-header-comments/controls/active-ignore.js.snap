@@ -7,7 +7,7 @@ result = { key /* first */ // second
 // prettier-ignore
 foo(  1,2 ) };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = {
   /* first */ // second

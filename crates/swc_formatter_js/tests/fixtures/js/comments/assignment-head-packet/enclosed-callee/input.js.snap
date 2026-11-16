@@ -6,14 +6,14 @@ result = (
 /** @type {number} */
 !left)(arg);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result = (
   /** @type {number} */ !left
 )(arg);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 result = (
   /** @type {number} */ !left

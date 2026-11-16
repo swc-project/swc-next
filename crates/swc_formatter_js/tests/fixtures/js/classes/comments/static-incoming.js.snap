@@ -6,7 +6,7 @@ class C {static
 // prettier-ignore
 {call(1+2);other(3+4);}}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   static
@@ -18,7 +18,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C {
   static
@@ -30,7 +30,7 @@ class C {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static
@@ -42,7 +42,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static
@@ -54,7 +54,7 @@ class C {
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":2,"useTabs":true}
+{"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
 class C {
 	static
@@ -66,7 +66,7 @@ class C {
 }
 
 ---------- Options ----------
-{"quoteProps":"preserve","semi":false}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
 class C {
   static

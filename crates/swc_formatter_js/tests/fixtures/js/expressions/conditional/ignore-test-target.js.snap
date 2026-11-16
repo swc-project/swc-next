@@ -4,21 +4,21 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 function f() { return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2;
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f() {
   return (/* prettier-ignore */ value( 1,  2 )
@@ -28,7 +28,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 function f() {
   return (/* prettier-ignore */ value( 1,  2 )
@@ -38,7 +38,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 function f() {
     return (/* prettier-ignore */ value( 1,  2 )
@@ -48,7 +48,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 function f() {
 	return (/* prettier-ignore */ value( 1,  2 )
@@ -58,7 +58,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 function f() {
  return (/* prettier-ignore */ value( 1,  2 )
@@ -68,7 +68,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 function f() {
   return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2;

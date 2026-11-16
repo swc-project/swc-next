@@ -5,7 +5,7 @@ assertion_line: 58
 ---------- Input ----------
 import value from "module" with { type: "json", "quoted-key": "value", "1": "numeric" };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import value from "module" with {
   type: "json",
@@ -14,7 +14,7 @@ import value from "module" with {
 };
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 import value from "module" with {
   type: "json",
@@ -23,7 +23,7 @@ import value from "module" with {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 import value from "module" with {
   "type": "json",
@@ -32,7 +32,7 @@ import value from "module" with {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 import value from 'module' with {
   'type': 'json',

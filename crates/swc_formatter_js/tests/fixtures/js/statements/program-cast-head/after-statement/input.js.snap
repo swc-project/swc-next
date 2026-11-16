@@ -6,21 +6,21 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // @ts-check
 (/** @type {number} */ ("x")) ? a : b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 0;
 // @ts-check
 /** @type {number} */ ("x") ? a : b;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 0
 // @ts-check
 ;/** @type {number} */ ("x") ? a : b
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 0
 // @ts-check

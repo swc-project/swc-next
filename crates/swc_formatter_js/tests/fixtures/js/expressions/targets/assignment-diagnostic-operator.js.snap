@@ -7,7 +7,7 @@ object.missing
 // c
 = value;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-expect-error
 object.missing
@@ -16,7 +16,7 @@ object.missing
   value;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-expect-error
 object.missing
@@ -25,7 +25,7 @@ object.missing
   value;
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-expect-error
 object.missing
@@ -34,7 +34,7 @@ object.missing
   value;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-expect-error
 object.missing

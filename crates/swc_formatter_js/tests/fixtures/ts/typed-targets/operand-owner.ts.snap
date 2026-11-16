@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 (<T>(object ['field'] /* prettier-ignore */)) = compute(   1,2 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (<T>(object ['field'] /* prettier-ignore */)) = compute(1, 2);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 (
   <
@@ -18,7 +18,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ) = compute(1, 2);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(
   <

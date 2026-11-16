@@ -6,7 +6,7 @@ type T = \u0058 extends /* prettier-ignore */ (
 (// prettier-ignore
 /* frame */ (\u0041  |  \u0042))) ? Yes : No;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = \u0058 extends /* prettier-ignore */ (
 (// prettier-ignore
@@ -15,7 +15,7 @@ type T = \u0058 extends /* prettier-ignore */ (
   : No;
 
 ---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 type T =
   \u0058 extends /* prettier-ignore */ (

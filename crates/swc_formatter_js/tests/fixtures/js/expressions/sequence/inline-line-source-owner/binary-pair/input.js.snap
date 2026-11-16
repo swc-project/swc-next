@@ -6,7 +6,7 @@ third, // @ts-ignore
 (
 first + second
 );---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 (third, // @ts-ignore
   first +

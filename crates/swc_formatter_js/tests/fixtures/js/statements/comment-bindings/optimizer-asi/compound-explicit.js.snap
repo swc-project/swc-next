@@ -6,7 +6,7 @@ while (ready) if (enabled) work();
 // boundary
 /* @__PURE__ */ next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 while (ready) if (enabled) work();
 // boundary
@@ -14,7 +14,7 @@ while (ready) if (enabled) work();
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 while (ready) if (enabled) work();
 // boundary

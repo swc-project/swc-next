@@ -6,14 +6,14 @@ test ? // @ts-ignore
 (
 first
 ) : other;---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 test // @ts-ignore
   ? first
   : other;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 test // @ts-ignore
   ? first

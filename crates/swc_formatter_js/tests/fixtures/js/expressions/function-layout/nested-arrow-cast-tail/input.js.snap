@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 consume("cast", outer => inner => /** @type {number} */ (first(outer + inner))) /* caller tail */; third();
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 consume(
   "cast",

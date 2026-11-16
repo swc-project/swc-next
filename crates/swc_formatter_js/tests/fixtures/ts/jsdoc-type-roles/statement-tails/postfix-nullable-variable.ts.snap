@@ -5,19 +5,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 let e: unknown?;
 let f = 1;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 let e: unknown?;
 let f = 1;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 let e: unknown?;
 let f = 1
 
 ---------- Options ----------
-{"printWidth":16,"semi":false}
+{"indentStyle":"space","lineWidth":16,"semicolons":"as-needed"}
 ---------- Output ----------
 let e: unknown?;
 let f = 1

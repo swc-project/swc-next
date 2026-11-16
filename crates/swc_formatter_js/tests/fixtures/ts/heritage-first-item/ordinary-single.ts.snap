@@ -6,17 +6,17 @@ class Subject implements
 /* head */
 First {}
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Subject implements /* head */ First {}
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class Subject
   implements /* head */ First {}
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
 ---------- Output ----------
 class Subject implements /* head */ First {}

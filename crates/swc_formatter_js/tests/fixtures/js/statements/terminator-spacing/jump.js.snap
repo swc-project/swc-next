@@ -8,7 +8,7 @@ for(;;) continue
 
 next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 for (;;) continue;
 // tail
@@ -16,7 +16,7 @@ for (;;) continue;
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 for (;;) continue
 // tail
@@ -24,7 +24,7 @@ for (;;) continue
 next()
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 for (;;) continue
 // tail

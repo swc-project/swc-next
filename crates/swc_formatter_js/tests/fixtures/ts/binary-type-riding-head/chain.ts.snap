@@ -6,21 +6,21 @@ const chosen = input as (// first
 number) satisfies (// second
 number);
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const chosen = input as // first
   number satisfies // second
   number;
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = input as // first
 	number satisfies // second
 	number;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen =
   input as // first
@@ -28,7 +28,7 @@ const chosen =
     number
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = input as // first
   number satisfies // second

@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 !(/* ordinary */ // @__PURE__
 /** @type {number} */ (first));
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 !(
   /* ordinary */ // @__PURE__
@@ -15,7 +15,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 !(
   /* ordinary */ // @__PURE__

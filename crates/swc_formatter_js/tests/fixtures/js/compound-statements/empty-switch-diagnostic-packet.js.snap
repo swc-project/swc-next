@@ -6,14 +6,14 @@ switch(0){/* @ts-expect-error */ /* packet */
 } insideMissing;
 outsideMissing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 switch (0) { /* @ts-expect-error */ /* packet */
 } insideMissing;
 outsideMissing;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (
   0
@@ -22,14 +22,14 @@ switch (
 outsideMissing
 
 ---------- Options ----------
-{"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 switch (0) { /* @ts-expect-error */ /* packet */
 } insideMissing;
 outsideMissing;
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":1,"semi":false}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (
   0

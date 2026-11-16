@@ -6,7 +6,7 @@ function f(v: unknown): v is A & (B
 // c
 ) { return true; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(v: unknown): v is (
   A & B
@@ -16,7 +16,7 @@ function f(v: unknown): v is (
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(
   v: unknown,
@@ -28,7 +28,7 @@ function f(
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(v: unknown): v is (
   A & B

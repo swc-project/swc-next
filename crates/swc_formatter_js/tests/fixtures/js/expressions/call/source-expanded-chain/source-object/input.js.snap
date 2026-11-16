@@ -8,7 +8,7 @@ expect(pet).to.have.property("address").that.deep.equals({
   country: "Germany",
 });
 ---------- Options ----------
-{"printWidth":57}
+{"indentStyle":"space","lineWidth":57}
 ---------- Output ----------
 expect(pet)
   .to.have.property("address")
@@ -19,7 +19,7 @@ expect(pet)
   });
 
 ---------- Options ----------
-{"printWidth":58}
+{"indentStyle":"space","lineWidth":58}
 ---------- Output ----------
 expect(pet)
   .to.have.property("address")

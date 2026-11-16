@@ -6,7 +6,7 @@ type T = (AlphaLongType & (BetaLongType
 // c
 ))[];
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = (
   AlphaLongType &
@@ -15,7 +15,7 @@ type T = (
 )[];
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = (
   AlphaLongType & BetaLongType

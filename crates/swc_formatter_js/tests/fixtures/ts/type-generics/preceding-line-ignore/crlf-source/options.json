@@ -1,8 +1,8 @@
 [
   {
-    "printWidth": 24,
-    "useTabs": true,
-    "semi": false,
-    "endOfLine": "crlf"
+    "lineWidth": 24,
+    "indentStyle": "tab",
+    "semicolons": "as-needed",
+    "lineEnding": "crlf"
   }
 ]

@@ -1,7 +1,10 @@
 [
-  {},
   {
-    "printWidth": 18,
-    "useTabs": true
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 18,
+    "indentStyle": "tab"
   }
 ]

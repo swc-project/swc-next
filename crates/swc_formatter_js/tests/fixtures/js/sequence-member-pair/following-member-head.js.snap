@@ -6,7 +6,7 @@ function read() { return (1, (// member
 2, 3)); }
 read();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function read() {
   return (
@@ -20,7 +20,7 @@ function read() {
 read();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function read() {
   return (
@@ -34,7 +34,7 @@ function read() {
 read()
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function read() {
   return (

@@ -6,7 +6,7 @@ function f(
 // prettier-ignore
 first : {key  : number}, second: number) { return second; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(
   // prettier-ignore
@@ -17,7 +17,7 @@ function f(
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(
   // prettier-ignore
@@ -28,7 +28,7 @@ function f(
 }
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   // prettier-ignore
@@ -39,7 +39,7 @@ function f(
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 function f(
 	// prettier-ignore

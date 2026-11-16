@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 class C extends B<T>
 // prettier-ignore
 implements I { value : T; }---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C extends B<T>
 // prettier-ignore

@@ -5,14 +5,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const result = /* multiline
 comment */ (/* ordinary */ object).method(second());
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const result =
   /* multiline
 comment */ /* ordinary */ object.method(second());
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const result =
   /* multiline
@@ -21,7 +21,7 @@ comment */ /* ordinary */ object.method(
   );
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const result =
   /* multiline
@@ -30,14 +30,14 @@ comment */ /* ordinary */ object.method(
   );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const result =
   /* multiline
 comment */ /* ordinary */ object.method(second())
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 const result =
 	/* multiline

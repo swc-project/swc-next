@@ -6,13 +6,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 
 ( first(  ) );
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(a+b) /* prettier-ignore */
 (first())
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 (a+b) /* prettier-ignore */
 (first());

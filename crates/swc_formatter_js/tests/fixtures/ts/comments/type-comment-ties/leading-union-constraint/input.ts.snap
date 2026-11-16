@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 type T<\u004b extends /* prettier-ignore */ | \u0041> = K;---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 type T<
   \u004b /* prettier-ignore */ extends
@@ -11,6 +11,6 @@ type T<
 > = K;
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T<\u004b /* prettier-ignore */ extends A> = K;

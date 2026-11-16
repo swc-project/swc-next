@@ -1,9 +1,11 @@
 [
   {
-    "printWidth": 8
+    "lineWidth": 8,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 8,
-    "semi": false
+    "lineWidth": 8,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   }
 ]

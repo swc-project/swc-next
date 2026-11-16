@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type Outcome<T> = T extends infer /* prettier-ignore */ R   extends   (string | number) ? R : never;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Outcome<T> =
   T extends infer /* prettier-ignore */ R   extends   (string | number)
@@ -12,7 +12,7 @@ type Outcome<T> =
     : never;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Outcome<T> =
   T extends infer /* prettier-ignore */ R   extends   (string | number)
@@ -20,7 +20,7 @@ type Outcome<T> =
     : never;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Outcome<
   T,
@@ -30,7 +30,7 @@ type Outcome<
     : never
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 type Outcome<T> =
 	T extends infer /* prettier-ignore */ R   extends   (string | number)

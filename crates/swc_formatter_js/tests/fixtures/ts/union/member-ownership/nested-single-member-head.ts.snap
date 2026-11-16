@@ -10,7 +10,7 @@ type T = | (
   )
 );
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type T =
   | /* head */ First

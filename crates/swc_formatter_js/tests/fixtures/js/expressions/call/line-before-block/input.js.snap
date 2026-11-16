@@ -6,7 +6,7 @@ f(first // @ts-ignore
 , /* c
  d */ second);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   first, // @ts-ignore
@@ -15,7 +15,7 @@ f(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 f(
   first, // @ts-ignore
@@ -24,7 +24,7 @@ f(
 )
 
 ---------- Options ----------
-{"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
 ---------- Output ----------
 f(
   first, // @ts-ignore

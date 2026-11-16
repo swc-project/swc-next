@@ -5,6 +5,6 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ({ key: /* after */
 value });
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 ({ /* after */ key: value });

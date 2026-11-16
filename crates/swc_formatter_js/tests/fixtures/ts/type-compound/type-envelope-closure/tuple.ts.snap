@@ -6,7 +6,7 @@ type T = [first: A & (B
 // comment
 ), second: C];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = [
   first: A & B,

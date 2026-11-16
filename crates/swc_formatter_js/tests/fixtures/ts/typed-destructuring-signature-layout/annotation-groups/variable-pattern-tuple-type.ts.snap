@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const [aaaa, bbbb, cccc]: [aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb] = props;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const [aaaa, bbbb, cccc]: [
   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
@@ -12,7 +12,7 @@ const [aaaa, bbbb, cccc]: [
 ] = props;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const [aaaa, bbbb, cccc]: [
   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
@@ -20,7 +20,7 @@ const [aaaa, bbbb, cccc]: [
 ] = props;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const [aaaa, bbbb, cccc]: [
   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
@@ -28,7 +28,7 @@ const [aaaa, bbbb, cccc]: [
 ] = props
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 const [aaaa, bbbb, cccc]: [
 	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,

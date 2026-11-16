@@ -1,17 +1,22 @@
 [
-  {},
   {
-    "printWidth": 28
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20,
-    "arrowParens": "avoid",
-    "semi": false
+    "lineWidth": 28,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 40,
-    "tabWidth": 4,
-    "useTabs": true,
-    "arrowParens": "avoid"
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 4,
+    "arrowParentheses": "as-needed"
   }
 ]

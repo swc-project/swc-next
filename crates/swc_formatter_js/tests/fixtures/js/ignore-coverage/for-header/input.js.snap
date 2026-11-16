@@ -6,7 +6,7 @@ for (a(); (a () // inner
 ) // prettier-ignore
 ; c()) { body(); }
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 for (
   a();
@@ -19,7 +19,7 @@ for (
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 for (
   a();

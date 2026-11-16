@@ -1,6 +1,21 @@
 [
-  { "printWidth": 40 },
-  { "printWidth": 20, "semi": false, "useTabs": true, "tabWidth": 4 },
-  { "printWidth": 40, "endOfLine": "crlf" },
-  { "printWidth": 120 }
+  {
+    "lineWidth": 40,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "tab",
+    "semicolons": "as-needed",
+    "indentWidth": 4
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 120,
+    "indentStyle": "space"
+  }
 ]

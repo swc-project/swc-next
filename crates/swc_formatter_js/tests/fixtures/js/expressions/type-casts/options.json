@@ -1,26 +1,38 @@
 [
-  {},
   {
-    "semi": false
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 40
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   },
   {
-    "printWidth": 20
+    "lineWidth": 40,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 10
+    "lineWidth": 20,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20,
-    "useTabs": true,
-    "tabWidth": 4
+    "lineWidth": 10,
+    "indentStyle": "space"
   },
   {
-    "endOfLine": "crlf"
+    "lineWidth": 20,
+    "indentStyle": "tab",
+    "indentWidth": 4
   },
   {
-    "singleQuote": true
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "quoteStyle": "single"
   }
 ]

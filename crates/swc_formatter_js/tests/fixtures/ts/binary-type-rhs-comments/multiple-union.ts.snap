@@ -6,14 +6,14 @@ const chosen = input as
 // choose type
 First | Second | Third;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = input as
   // choose type
   First | Second | Third;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen =
   input as
@@ -23,14 +23,14 @@ const chosen =
     | Third
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = input as
 	// choose type
 	First | Second | Third;
 
 ---------- Options ----------
-{"printWidth":100,"semi":false}
+{"indentStyle":"space","lineWidth":100,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen = input as
   // choose type

@@ -7,7 +7,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // prettier-ignore
 "custom";
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 "use strict"
 ;;
@@ -16,7 +16,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 "custom"
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 "use strict";
 ;

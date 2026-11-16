@@ -7,7 +7,7 @@ max(1+2
 
 ,3+4);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 Math. // prettier-ignore
 max(
@@ -17,7 +17,7 @@ max(
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 Math. // prettier-ignore
 max(

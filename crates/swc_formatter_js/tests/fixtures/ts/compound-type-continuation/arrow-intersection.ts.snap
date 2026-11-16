@@ -6,7 +6,7 @@ const f = (): A & (B
 // c
 ) => ({});
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f = (): (
   A & B
@@ -14,7 +14,7 @@ const f = (): (
 ) => ({});
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const f = (): (
   A & B
@@ -22,7 +22,7 @@ const f = (): (
 ) => ({});
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = (): (
   A & B

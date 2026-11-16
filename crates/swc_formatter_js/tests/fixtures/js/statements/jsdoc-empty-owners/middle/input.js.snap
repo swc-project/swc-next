@@ -5,14 +5,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 Math.random();
 /** @type {Missing} */; Math.random();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 Math.random();
 /** @type {Missing} */ ;
 Math.random();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 Math.random();
 /** @type {Missing} */ ;

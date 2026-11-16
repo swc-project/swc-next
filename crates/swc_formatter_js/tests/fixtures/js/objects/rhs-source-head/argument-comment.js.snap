@@ -4,14 +4,14 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 target = {longPropertyName: (/* ordinary */ object).method(/* argument */ second())};
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 target = {
   longPropertyName: /* ordinary */ object.method(/* argument */ second()),
 };
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 target = {
   longPropertyName:
@@ -21,7 +21,7 @@ target = {
 };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = {
   longPropertyName:
@@ -31,14 +31,14 @@ target = {
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 target = {
   longPropertyName: /* ordinary */ object.method(/* argument */ second()),
 }
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 target = {
 	longPropertyName:

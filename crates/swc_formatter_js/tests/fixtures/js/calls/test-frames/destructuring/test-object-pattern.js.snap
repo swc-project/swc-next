@@ -6,7 +6,7 @@ test("navigates to the settings page and verifies the profile heading text", asy
   await page.goto("/settings");
 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test("navigates to the settings page and verifies the profile heading text", async ({
   page,
@@ -17,7 +17,7 @@ test("navigates to the settings page and verifies the profile heading text", asy
 });
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 test("navigates to the settings page and verifies the profile heading text", async ({
   page,

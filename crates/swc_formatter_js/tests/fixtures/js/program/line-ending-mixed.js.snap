@@ -6,7 +6,7 @@ const first=1;
 // second
 const second=2;const third=3;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const first = 1;
 // second
@@ -14,7 +14,7 @@ const second = 2;
 const third = 3;
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 const first = 1;
 // second
@@ -22,6 +22,6 @@ const second = 2;
 const third = 3;
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 const first = 1;// secondconst second = 2;const third = 3;

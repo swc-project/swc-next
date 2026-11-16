@@ -7,13 +7,13 @@ a;
 
 /*#__PURE__*/ next();
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 a; /* tail */
 /*#__PURE__*/ next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a /* tail */
 /*#__PURE__*/ next()

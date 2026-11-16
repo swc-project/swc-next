@@ -7,7 +7,7 @@ const [first
 ,
 second] = source;
 ---------- Options ----------
-{"printWidth":10,"semi":false}
+{"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
 const [
   first,
@@ -16,7 +16,7 @@ const [
 ] = source
 
 ---------- Options ----------
-{"printWidth":10,"semi":true}
+{"indentStyle":"space","lineWidth":10,"semicolons":"always"}
 ---------- Output ----------
 const [
   first,

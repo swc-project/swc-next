@@ -6,7 +6,7 @@ import data from "data" with { type:
   /* format */
   "json" };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import data from "data" with {
   type:
@@ -15,7 +15,7 @@ import data from "data" with {
 };
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 import data from "data" with {
   type:
@@ -24,7 +24,7 @@ import data from "data" with {
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 import data from "data" with {
   type:

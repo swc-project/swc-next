@@ -1,1 +1,6 @@
-[{}]
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  }
+]

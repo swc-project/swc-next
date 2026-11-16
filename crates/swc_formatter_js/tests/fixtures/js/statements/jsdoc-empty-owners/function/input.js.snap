@@ -6,7 +6,7 @@ function f() {
 /** @type {Missing} */;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   /** @type {Missing} */ ;

@@ -6,7 +6,7 @@ result = { key /* first
 second */ // third
 : value };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = {
   /* first

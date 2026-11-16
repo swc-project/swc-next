@@ -7,7 +7,7 @@ const f=(
 )=>insideMissing;
 outsideMissing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const f = (
   /* @ts-expect-error */ /* packet */
@@ -15,7 +15,7 @@ const f = (
 outsideMissing;
 
 ---------- Options ----------
-{"printWidth":36,"semi":false}
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
 ---------- Output ----------
 const f = (
   /* @ts-expect-error */ /* packet */

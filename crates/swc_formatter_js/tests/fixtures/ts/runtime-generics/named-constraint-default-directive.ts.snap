@@ -7,7 +7,7 @@ function identity<
 T extends Missing = number
 >(value: T): T { return value; }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function identity<
   // @ts-expect-error
@@ -17,7 +17,7 @@ function identity<
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function identity<
   // @ts-expect-error
@@ -27,7 +27,7 @@ function identity<
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 function identity<
   // @ts-expect-error
@@ -37,7 +37,7 @@ function identity<
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 function identity<
   // @ts-expect-error

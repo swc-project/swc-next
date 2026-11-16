@@ -1,17 +1,25 @@
 [
   {
-    "printWidth": 80
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 20
+    "lineWidth": 20,
+    "indentStyle": "space"
   },
   {
-    "jsxSingleQuote": true
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "jsxQuoteStyle": "single"
   },
   {
-    "endOfLine": "crlf"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
   },
   {
-    "endOfLine": "cr"
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "cr"
   }
 ]

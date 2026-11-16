@@ -7,7 +7,7 @@ class T implements First, /* a */
 /* b */ // line
 Last {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class T
   implements

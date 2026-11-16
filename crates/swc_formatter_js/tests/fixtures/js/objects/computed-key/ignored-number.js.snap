@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const o = { [/* prettier-ignore */1.000]: veryVeryVeryVeryLongReceiver.longProperty.longProperty.longProperty };
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 const o = {
   [/* prettier-ignore */ 1.000]:
@@ -14,7 +14,7 @@ const o = {
 };
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 const o = {
     [/* prettier-ignore */ 1.000]:
@@ -25,7 +25,7 @@ const o = {
 };
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":8,"useTabs":true}
+{"indentStyle":"tab","indentWidth":8,"lineWidth":35}
 ---------- Output ----------
 const o = {
 	[

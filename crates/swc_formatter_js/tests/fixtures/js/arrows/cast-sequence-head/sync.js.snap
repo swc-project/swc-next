@@ -7,7 +7,7 @@ assertion_line: 58
 /** @type {number} */
 a, b);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 () =>
   /** @type {number} */

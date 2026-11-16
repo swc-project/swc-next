@@ -6,7 +6,7 @@ it("test", function(done, // note
 
 result) { return done(result); });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 it("test", function (
   done, // note
@@ -17,7 +17,7 @@ it("test", function (
 });
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 it("test", function (
   done, // note
@@ -28,7 +28,7 @@ it("test", function (
 });
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 it("test", function (
   done, // note

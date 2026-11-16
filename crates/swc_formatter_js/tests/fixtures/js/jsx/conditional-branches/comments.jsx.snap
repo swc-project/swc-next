@@ -13,7 +13,7 @@ flag ? (/*#__PURE__*/ factory()) : <Box><Item /><Item /></Box>;
 flag ? // prettier-ignore
 factory(  first,second ) : <Box><Item /><Item /></Box>;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 flag ? (
   /* head */ <Box>
@@ -74,7 +74,7 @@ flag // prettier-ignore
 );
 
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 flag ? (
   /* head */ <Box>
@@ -136,7 +136,7 @@ flag // prettier-ignore
 );
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 flag ? (
 	/* head */ <Box>

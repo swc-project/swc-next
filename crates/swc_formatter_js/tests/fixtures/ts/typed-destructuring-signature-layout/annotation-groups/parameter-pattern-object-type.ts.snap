@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 function f(a: number, { enabled, onChange }: { enabled?: boolean; onChange?: (value: string) => void; label: string }) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(
   a: number,
@@ -15,7 +15,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function f(
   a: number,
@@ -30,7 +30,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   a: number,
@@ -41,7 +41,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 function f(
 	a: number,

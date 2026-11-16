@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 type T = (a:A, /* prettier-ignore */ b:B // @ts-ignore
 , /* d */ ) => A;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = (
   a: A,
@@ -13,7 +13,7 @@ type T = (
   , /* d */) => A;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 type T = (
 	a: A,
@@ -21,7 +21,7 @@ type T = (
 	, /* d */) => A;
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = (
   a: A,
@@ -29,7 +29,7 @@ type T = (
   , /* d */) => A;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = (
   a: A,

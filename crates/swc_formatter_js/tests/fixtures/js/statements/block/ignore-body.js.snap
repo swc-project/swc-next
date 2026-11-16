@@ -5,25 +5,25 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 // prettier-ignore
 { first( 1,  2 ); }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // prettier-ignore
 { first( 1,  2 ); }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // prettier-ignore
 { first( 1,  2 ); }
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 // prettier-ignore
 { first( 1,  2 ); }
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 // prettier-ignore
 { first( 1,  2 ); }

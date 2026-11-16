@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 switch (s) { default: /* prettier-ignore */ (a , b); }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (s) {
   default:
@@ -12,7 +12,7 @@ switch (s) {
 }
 
 ---------- Options ----------
-{"semi":false,"useTabs":true}
+{"indentStyle":"tab","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 switch (s) {
 	default:

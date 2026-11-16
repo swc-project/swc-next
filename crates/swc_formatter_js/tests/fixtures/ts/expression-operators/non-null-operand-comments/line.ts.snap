@@ -6,7 +6,7 @@ const a = (b as any
 // c
 )!.c;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const a = (
   b as any

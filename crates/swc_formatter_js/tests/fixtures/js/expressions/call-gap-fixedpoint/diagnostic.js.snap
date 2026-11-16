@@ -6,11 +6,11 @@ f(first
 
 , /* @ts-ignore */ second /* z */);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(first, /* @ts-ignore */ second /* z */);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 f(first, /* @ts-ignore */ second /* z */)

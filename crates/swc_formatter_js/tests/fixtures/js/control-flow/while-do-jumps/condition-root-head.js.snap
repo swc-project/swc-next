@@ -7,7 +7,7 @@ if ((
 !(firstConditionWithLongName || secondConditionWithLongName)
 )) { run(); }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 if (
   // root head
@@ -17,7 +17,7 @@ if (
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 if (
   // root head
@@ -30,7 +30,7 @@ if (
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (
   // root head
@@ -40,7 +40,7 @@ if (
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 if (
   // root head
@@ -53,7 +53,7 @@ if (
 }
 
 ---------- Options ----------
-{"printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20}
 ---------- Output ----------
 if (
 	// root head
@@ -66,7 +66,7 @@ if (
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 if (
   // root head

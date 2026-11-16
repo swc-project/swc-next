@@ -6,7 +6,7 @@ type X = T extends U ? A & (B
 // c
 ) : D;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type X = T extends U
   ? (
@@ -16,7 +16,7 @@ type X = T extends U
   : D;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type X = T extends U
   ? (
@@ -26,7 +26,7 @@ type X = T extends U
   : D;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type X = T extends U
   ? (

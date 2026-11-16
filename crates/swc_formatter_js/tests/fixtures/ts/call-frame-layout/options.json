@@ -1,1 +1,15 @@
-[{}, {"printWidth":36}, {"printWidth":18,"semi":false}]
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 36,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 18,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  }
+]

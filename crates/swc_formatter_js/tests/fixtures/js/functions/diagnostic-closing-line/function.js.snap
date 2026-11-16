@@ -7,7 +7,7 @@ function f(
 ) {insideMissing;}
 outsideMissing;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(
   /* @ts-expect-error */ /* packet */
@@ -15,7 +15,7 @@ function f(
 outsideMissing;
 
 ---------- Options ----------
-{"printWidth":36,"semi":false}
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   /* @ts-expect-error */ /* packet */

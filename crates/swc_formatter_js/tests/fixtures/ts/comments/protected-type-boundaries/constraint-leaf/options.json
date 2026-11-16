@@ -1,9 +1,14 @@
 [
-  {},
   {
-    "printWidth": 45
+    "lineWidth": 80,
+    "indentStyle": "space"
   },
   {
-    "printWidth": 18
+    "lineWidth": 45,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 18,
+    "indentStyle": "space"
   }
 ]

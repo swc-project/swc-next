@@ -15,7 +15,7 @@ first: number;
 second: string;
 }) => void;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Inline = { /* inline */ value: number };
 type Line = {
@@ -36,7 +36,7 @@ type Callback = (value: {
 }) => void;
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 type Inline = {
   /* inline */ value: number

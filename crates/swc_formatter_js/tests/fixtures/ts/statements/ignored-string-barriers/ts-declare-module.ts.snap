@@ -6,7 +6,7 @@ declare module "pkg" { ;
 // prettier-ignore
 "use strict"; }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare module "pkg" {
   // prettier-ignore
@@ -14,7 +14,7 @@ declare module "pkg" {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare module "pkg" {
   // prettier-ignore

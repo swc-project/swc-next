@@ -1,5 +1,16 @@
 [
-  { "printWidth": 24 },
-  { "printWidth": 80 },
-  { "printWidth": 24, "semi": false, "trailingComma": "none" }
+  {
+    "lineWidth": 24,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "semicolons": "as-needed",
+    "trailingCommas": "none"
+  }
 ]

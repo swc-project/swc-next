@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 const x=<div>gamma {" "}<i/></div>;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const x = (
   <div>
@@ -14,7 +14,7 @@ const x = (
 );
 
 ---------- Options ----------
-{"printWidth":12}
+{"indentStyle":"space","lineWidth":12}
 ---------- Output ----------
 const x = (
   <div>
@@ -24,7 +24,7 @@ const x = (
 );
 
 ---------- Options ----------
-{"printWidth":12,"singleQuote":true}
+{"indentStyle":"space","lineWidth":12,"quoteStyle":"single"}
 ---------- Output ----------
 const x = (
   <div>

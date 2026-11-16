@@ -6,7 +6,7 @@ const value = ((source as Shape) // receiver
 .field as Shape) // outer receiver
 ?.field;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = (
   (source as Shape) // receiver
@@ -15,7 +15,7 @@ const value = (
 ?.field;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value = (
   (source as Shape) // receiver
@@ -24,7 +24,7 @@ const value = (
 ?.field;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = (
   (source as Shape) // receiver

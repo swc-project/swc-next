@@ -6,7 +6,7 @@ declare namespace N { ;
 // prettier-ignore
 "use strict"; }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare namespace N {
   // prettier-ignore
@@ -14,7 +14,7 @@ declare namespace N {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare namespace N {
   // prettier-ignore

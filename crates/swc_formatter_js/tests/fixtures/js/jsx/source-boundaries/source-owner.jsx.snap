@@ -14,7 +14,7 @@ missingIgnored(1)).b(2).c(3)}</MissingPanel>;
 const value3=<MissingPanel>{(receiver.a(// @ts-ignore
 missingPaired(1)).b(2).c(3))}</MissingPanel>;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
@@ -36,7 +36,7 @@ const value3 = (
         missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
@@ -58,7 +58,7 @@ const value3 = (
         missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
@@ -80,7 +80,7 @@ const value3 = (
         missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>
@@ -104,7 +104,7 @@ const value3 =
 					missingPaired(1)).b(2).c(3)}</MissingPanel>)
 
 ---------- Options ----------
-{"printWidth":100,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;

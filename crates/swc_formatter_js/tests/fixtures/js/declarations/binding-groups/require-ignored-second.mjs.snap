@@ -6,7 +6,7 @@ const { alpha, beta: renamed, gamma } = require("first-long-module-name",
  // prettier-ignore
  (( "second-long-module-name" )));
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const {
   alpha,
@@ -17,14 +17,14 @@ const {
 "second-long-module-name");
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const { alpha, beta: renamed, gamma } = require("first-long-module-name",
 // prettier-ignore
 "second-long-module-name");
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 const {
   alpha,

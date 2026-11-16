@@ -11,7 +11,7 @@ coveredTemplate}`}</></MissingPanel>;
 const value2=<MissingPanel>{tag`before ${// @ts-ignore
 coveredTemplate}`}</MissingPanel>;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const value0 = (
   <MissingPanel>{`before ${
@@ -30,7 +30,7 @@ const value2 = (
     coveredTemplate}`}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const value0 = (
   <MissingPanel>{`before ${
@@ -49,7 +49,7 @@ const value2 = (
     coveredTemplate}`}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value0 = (
   <MissingPanel>{`before ${
@@ -68,7 +68,7 @@ const value2 = (
     coveredTemplate}`}</MissingPanel>);
 
 ---------- Options ----------
-{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
 ---------- Output ----------
 const value0 =
 	(
@@ -90,7 +90,7 @@ const value2 =
 			coveredTemplate}`}</MissingPanel>)
 
 ---------- Options ----------
-{"printWidth":100,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
 ---------- Output ----------
 const value0 = (
   <MissingPanel>{`before ${

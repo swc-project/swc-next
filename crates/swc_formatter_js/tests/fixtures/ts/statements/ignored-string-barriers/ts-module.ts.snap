@@ -6,7 +6,7 @@ module N { ;
 // prettier-ignore
 "use strict"; }
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 module N {
   // prettier-ignore
@@ -14,7 +14,7 @@ module N {
 }
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 module N {
   // prettier-ignore

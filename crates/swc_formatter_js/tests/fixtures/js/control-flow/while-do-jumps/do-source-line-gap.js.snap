@@ -6,7 +6,7 @@ do {call(1+2);}
 // prettier-ignore
 while (a+b);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 do {
   call(1 + 2);
@@ -15,7 +15,7 @@ do {
 while (a+b);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 do {
   call(1 + 2);
@@ -24,7 +24,7 @@ do {
 while (a+b);
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 do {
   call(1 + 2)
@@ -33,7 +33,7 @@ do {
 while (a+b)
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 do {
   call(1 + 2)
@@ -42,7 +42,7 @@ do {
 while (a+b)
 
 ---------- Options ----------
-{"printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20}
 ---------- Output ----------
 do {
 	call(1 + 2);
@@ -51,7 +51,7 @@ do {
 while (a+b);
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 do {
   call(1 + 2);

@@ -12,7 +12,7 @@ class A {
   [next] = other;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class A {
   value = foo()
@@ -23,7 +23,7 @@ class A {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class A {
   value = foo()

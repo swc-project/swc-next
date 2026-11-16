@@ -10,7 +10,7 @@ const receiver = (flag ? <Box><Item /><Item /></Box> : null).value;
 (flag ? <Box><Item /><Item /></Box> : null)();
 const plain = first && second && third ? value : fallback;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const direct = flag ? (
   <Box>
@@ -63,7 +63,7 @@ const receiver = (
 const plain = first && second && third ? value : fallback;
 
 ---------- Options ----------
-{"printWidth":35}
+{"indentStyle":"space","lineWidth":35}
 ---------- Output ----------
 const direct = flag ? (
   <Box>
@@ -120,7 +120,7 @@ const plain =
     : fallback;
 
 ---------- Options ----------
-{"printWidth":35,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":35}
 ---------- Output ----------
 const direct = flag ? (
 	<Box>

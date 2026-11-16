@@ -11,7 +11,7 @@ run();
 /*#__PURE__*/ (<Box/>).factory();
 (<Tag/>)`head ${<Inner/>}`;
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 run()
 ;<A />
@@ -25,7 +25,7 @@ run()
 ;(<Tag />)`head ${(<Inner />)}`
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 run()
 ;<A />

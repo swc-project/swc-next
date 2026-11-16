@@ -6,7 +6,7 @@ a // c
 + // @ts-ignore
 b;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 a // c
   + // @ts-ignore

@@ -7,7 +7,7 @@ loop: for (;;) {
   continue    loop;
 }
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 loop: for (;;) {
   // prettier-ignore
@@ -15,7 +15,7 @@ loop: for (;;) {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 loop: for (;;) {
   // prettier-ignore

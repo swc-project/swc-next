@@ -4,24 +4,24 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 first && /* before */ [1, 2, 3, 4, 5];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 first && /* before */ [1, 2, 3, 4, 5];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 first && /* before */ [1, 2, 3, 4, 5]
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 first && /* before */ [
   1, 2, 3, 4, 5,
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 first && /* before */ [
   1, 2, 3,
@@ -29,18 +29,18 @@ first && /* before */ [
 ];
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 first && /* before */ [
 	1, 2, 3, 4, 5,
 ];
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 first && /* before */ [1, 2, 3, 4, 5];
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 first && /* before */ [1, 2, 3, 4, 5];

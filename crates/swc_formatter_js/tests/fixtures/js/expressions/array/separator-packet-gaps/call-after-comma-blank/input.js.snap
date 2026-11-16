@@ -7,7 +7,7 @@ f(first
 ,
 
 second);---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 f(
   first,
@@ -16,7 +16,7 @@ f(
 )
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 f(
   first,

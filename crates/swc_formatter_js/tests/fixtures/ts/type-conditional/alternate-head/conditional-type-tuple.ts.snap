@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 type X<T> = T extends A ? B : T extends [aaaaaaaaaaaaaa, bbbbbbbbbbbbb, cccccccccccccc, dddddddddddddddddd, eeeeeeeeeeeeeeeeeeee] ? C : D;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type X<T> = T extends A
   ? B
@@ -19,7 +19,7 @@ type X<T> = T extends A
     : D;
 
 ---------- Options ----------
-{"useTabs":true}
+{"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 type X<T> = T extends A
 	? B
@@ -34,7 +34,7 @@ type X<T> = T extends A
 		: D;
 
 ---------- Options ----------
-{"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 type X<T> = T extends A
     ? B

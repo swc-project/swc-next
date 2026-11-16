@@ -9,7 +9,7 @@ const view = <Box>{consume(
   "wrong"
 ) /* suffix */ !}</Box>;
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 declare const React: any, Box: any;
 declare function consume(

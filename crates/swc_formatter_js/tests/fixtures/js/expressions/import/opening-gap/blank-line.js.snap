@@ -6,6 +6,6 @@ import(
 
 a);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 import(a);

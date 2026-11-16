@@ -9,7 +9,7 @@ MissingBaseFactory(unknownValue)
 {};
 const outsideSentinel: number = "outside";
 ---------- Options ----------
-{"printWidth":50}
+{"indentStyle":"space","lineWidth":50}
 ---------- Output ----------
 let Implementation: unknown;
 Implementation = class extends
@@ -19,7 +19,7 @@ MissingBaseFactory(unknownValue)
 const outsideSentinel: number = "outside";
 
 ---------- Options ----------
-{"printWidth":90}
+{"indentStyle":"space","lineWidth":90}
 ---------- Output ----------
 let Implementation: unknown;
 Implementation = class extends
@@ -29,7 +29,7 @@ MissingBaseFactory(unknownValue)
 const outsideSentinel: number = "outside";
 
 ---------- Options ----------
-{"printWidth":50,"semi":false}
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
 ---------- Output ----------
 let Implementation: unknown
 Implementation = class extends
@@ -39,7 +39,7 @@ MissingBaseFactory(unknownValue)
 const outsideSentinel: number = "outside"
 
 ---------- Options ----------
-{"printWidth":50,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
 ---------- Output ----------
 let Implementation: unknown;
 Implementation = class extends

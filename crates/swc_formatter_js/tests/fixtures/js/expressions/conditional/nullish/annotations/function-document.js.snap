@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 condition ? /*#__PURE__*/ (/** @param {number} value */ function(value) { return value; }) ?? fallback : fallback;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 condition
   ? (

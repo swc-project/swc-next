@@ -6,7 +6,7 @@ declare interface A
 /* prettier-ignore */
 { x : number; y: string; }
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 declare interface A
 /* prettier-ignore */
@@ -16,7 +16,7 @@ declare interface A
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 declare interface A
 /* prettier-ignore */
@@ -26,7 +26,7 @@ declare interface A
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 declare interface A
 /* prettier-ignore */
@@ -36,7 +36,7 @@ declare interface A
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 declare interface A
 /* prettier-ignore */

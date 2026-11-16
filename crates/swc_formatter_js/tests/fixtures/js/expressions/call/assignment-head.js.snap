@@ -8,7 +8,7 @@ result = (
 [entry]
 ).method();
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result =
   // first
@@ -16,7 +16,7 @@ result =
   [entry].method();
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result =
   // first
@@ -24,7 +24,7 @@ result =
   [entry].method();
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 result =
   // first
@@ -32,7 +32,7 @@ result =
   [entry].method()
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
 ---------- Output ----------
 result =
   // first

@@ -6,7 +6,7 @@ type X<T> = T extends infer U extends A & (B
 // c
 ) ? U : never;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type X<T> = T extends infer U extends (
   A & B
@@ -16,7 +16,7 @@ type X<T> = T extends infer U extends (
   : never;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type X<T> =
   T extends infer U extends
@@ -28,7 +28,7 @@ type X<T> =
     : never;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type X<T> = T extends infer U extends (
   A & B

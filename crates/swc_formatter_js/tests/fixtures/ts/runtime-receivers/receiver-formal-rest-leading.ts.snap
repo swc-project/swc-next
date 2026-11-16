@@ -9,7 +9,7 @@ function receiverAndTail(
   ...rest: number[]
 ): number { return this.value + (value ?? rest.length); }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function receiverAndTail(
   // prettier-ignore
@@ -21,7 +21,7 @@ function receiverAndTail(
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function receiverAndTail(
   // prettier-ignore
@@ -37,7 +37,7 @@ function receiverAndTail(
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 function receiverAndTail(
   // prettier-ignore
@@ -53,7 +53,7 @@ function receiverAndTail(
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 function receiverAndTail(
   // prettier-ignore

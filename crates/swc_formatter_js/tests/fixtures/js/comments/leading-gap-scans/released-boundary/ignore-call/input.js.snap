@@ -9,7 +9,7 @@ before
 // prettier-ignore
 /* inline */call(  1,  2 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 before;
 /* tail */
@@ -18,7 +18,7 @@ before;
 /* inline */ call(  1,  2 );
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 before;
 /* tail */
@@ -27,7 +27,7 @@ before;
 /* inline */ call(  1,  2 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 before
 /* tail */

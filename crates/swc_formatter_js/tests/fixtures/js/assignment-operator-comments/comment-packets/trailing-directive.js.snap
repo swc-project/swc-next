@@ -6,7 +6,7 @@ x = // c
 "s"; // @ts-ignore
 y;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = // c
   "s"; // @ts-ignore

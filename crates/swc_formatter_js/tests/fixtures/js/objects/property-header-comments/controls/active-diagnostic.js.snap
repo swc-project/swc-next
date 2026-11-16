@@ -8,7 +8,7 @@ result = { key /* first */ // second
 // @ts-expect-error
 unknownValue };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-check
 result = {

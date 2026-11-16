@@ -6,14 +6,14 @@ outer /* before */:
 /* lead */ // note
 while (ready) step();
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 outer /* before */:
   /* lead */ // note
   while (ready) step();
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 outer /* before */:
   /* lead */ // note
@@ -21,7 +21,7 @@ outer /* before */:
     step();
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 outer /* before */:
   /* lead */ // note

@@ -12,7 +12,7 @@ const spread=<Box {...properties} active {...other}/>;
 const multiline=<Box title="first
   second" active/>;
 ---------- Options ----------
-{"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
 ---------- Output ----------
 const empty = <Box />;
 const single = <Box active />;
@@ -29,7 +29,7 @@ const multiline = (
 );
 
 ---------- Options ----------
-{"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const empty = <Box />;
 const single = <Box active />;
@@ -58,7 +58,7 @@ const multiline = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
 ---------- Output ----------
 const empty = <Box />;
 const single = (
@@ -97,7 +97,7 @@ const multiline = (
 );
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const empty = <Box />;
 const single = (
@@ -136,7 +136,7 @@ const multiline = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const empty = <Box />;
 const single = <Box active />;
@@ -165,7 +165,7 @@ const multiline = (
 );
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const empty = <Box />;
 const single = (

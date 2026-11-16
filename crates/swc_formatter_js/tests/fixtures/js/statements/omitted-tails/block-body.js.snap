@@ -9,7 +9,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
   b;
 }
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 {
   a; /* tail */
@@ -17,7 +17,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 {
   a /* tail */

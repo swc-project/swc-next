@@ -6,7 +6,7 @@ type T<A extends // prettier-ignore
 // @ts-expect-error
 Missing> = A;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T<
   A extends // prettier-ignore

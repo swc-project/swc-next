@@ -8,7 +8,7 @@ assertion_line: 58
 
 consume((value => value /* receiver */) /* quasi */`result`);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (
   function (value) {
@@ -20,7 +20,7 @@ consume((value => value /* receiver */) /* quasi */`result`);
 consume(((value) => value /* receiver */) /* quasi */ `result`);
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(
   function (value) {
@@ -37,7 +37,7 @@ consume(
 )
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 (
 	function (value) {

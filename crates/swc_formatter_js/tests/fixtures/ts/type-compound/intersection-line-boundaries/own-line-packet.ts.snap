@@ -7,7 +7,7 @@ type T = (A
 // c
 ) & B;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = A &
   /* b */

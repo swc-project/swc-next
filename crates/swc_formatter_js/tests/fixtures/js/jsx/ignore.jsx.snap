@@ -23,7 +23,7 @@ function HelloWorld() {
   );
 }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const a1 = (
   <div>
@@ -70,7 +70,7 @@ function HelloWorld() {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const a1 = (
   <div>

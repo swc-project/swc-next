@@ -6,7 +6,7 @@ declare function F(...a: number[]): { bar: 1 };
 new F(1, 2 // @ts-ignore
 , /* d */ ).foo;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare function F(...a: number[]): { bar: 1 };
 new F(
@@ -15,7 +15,7 @@ new F(
   /* d */).foo;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 declare function F(
   ...a: number[]
@@ -26,7 +26,7 @@ new F(
   /* d */).foo;
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 declare function F(...a: number[]): { bar: 1 };
 new F(

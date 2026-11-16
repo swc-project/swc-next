@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 export function useThing({ enabled, onChange }: { enabled?: boolean; onChange?: (value: string) => void; label: string } = {}) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export function useThing({
   enabled,
@@ -16,7 +16,7 @@ export function useThing({
 } = {}) {}
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 export function useThing({
   enabled,
@@ -28,7 +28,7 @@ export function useThing({
 } = {}) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 export function useThing({
   enabled,
@@ -40,7 +40,7 @@ export function useThing({
 } = {}) {}
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 export function useThing({
 	enabled,

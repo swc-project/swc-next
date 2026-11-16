@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 third, ( // @ts-expect-error first = second );---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (third,
   // @ts-expect-error

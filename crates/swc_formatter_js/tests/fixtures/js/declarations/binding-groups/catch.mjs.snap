@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 try {} catch ({ data: { message: { code } } }) {}
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 try {
 } catch ({
@@ -14,7 +14,7 @@ try {
 }) {}
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 try {
 } catch ({
@@ -24,7 +24,7 @@ try {
 }) {}
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 try {
 } catch ({

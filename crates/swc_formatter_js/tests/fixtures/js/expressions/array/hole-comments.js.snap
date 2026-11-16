@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 [/* leading */, value, , /* trailing */];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [/* leading */, value, , /* trailing */];
 
 ---------- Options ----------
-{"printWidth":14}
+{"indentStyle":"space","lineWidth":14}
 ---------- Output ----------
 [
   /* leading */,
@@ -18,7 +18,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":13}
+{"indentStyle":"space","lineWidth":13}
 ---------- Output ----------
 [
   /* leading */,
@@ -27,7 +27,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 [
   /* leading */,
@@ -36,7 +36,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":0}
+{"indentStyle":"space","lineWidth":0}
 ---------- Output ----------
 [
   /* leading */,
@@ -45,12 +45,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;[/* leading */, value, , /* trailing */]
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
 ---------- Output ----------
 [
   /* leading */,
@@ -59,7 +59,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"es5"}
 ---------- Output ----------
 [
   /* leading */,
@@ -68,7 +68,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 [
 	/* leading */,
@@ -77,7 +77,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":10}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
 ---------- Output ----------
 [
   /* leading */,

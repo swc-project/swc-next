@@ -10,7 +10,7 @@ second
 // before alternate
 third;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 first
   ? // before consequent
@@ -19,7 +19,7 @@ first
     third;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 first
   ? // before consequent
@@ -28,7 +28,7 @@ first
     third
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 first
   ? // before consequent
@@ -37,7 +37,7 @@ first
     third;
 
 ---------- Options ----------
-{"printWidth":8}
+{"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
 first
   ? // before consequent
@@ -46,7 +46,7 @@ first
     third;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4}
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 first
     ? // before consequent
@@ -55,7 +55,7 @@ first
       third;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
 first
 	? // before consequent
@@ -64,7 +64,7 @@ first
 		third;
 
 ---------- Options ----------
-{"printWidth":20,"tabWidth":1}
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
 ---------- Output ----------
 first
  ? // before consequent
@@ -73,7 +73,7 @@ first
    third;
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 first
   ? // before consequent

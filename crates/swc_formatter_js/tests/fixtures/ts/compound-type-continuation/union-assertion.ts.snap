@@ -6,7 +6,7 @@ z as A | (B
 // c
 ) as C;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 z as (
   | A
@@ -15,7 +15,7 @@ z as (
 ) as C;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 z as (
   | A
@@ -24,7 +24,7 @@ z as (
 ) as C;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 z as (
   | A

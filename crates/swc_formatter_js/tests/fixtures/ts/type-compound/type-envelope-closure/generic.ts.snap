@@ -6,7 +6,7 @@ type T = F<A & (B
 // comment
 ), C>;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = F<
   A & B,

@@ -7,7 +7,7 @@ foo?.(
   y  +  1
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 foo?.(
   // prettier-ignore

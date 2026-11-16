@@ -6,7 +6,7 @@ type A = (/* outer */ (
 /* inner */
 Left & Right));
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type A =
   /* outer */
@@ -14,7 +14,7 @@ type A =
   Left & Right;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type A =
   /* outer */
@@ -22,7 +22,7 @@ type A =
   Left & Right;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type A =
   /* outer */
@@ -31,7 +31,7 @@ type A =
     Right
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 type A =
 	/* outer */

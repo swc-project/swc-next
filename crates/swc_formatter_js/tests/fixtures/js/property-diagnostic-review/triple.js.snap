@@ -7,7 +7,7 @@ a = (// @ts-expect-error
 b = (// @ts-ignore
 c = d))) });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
   k:
@@ -17,7 +17,7 @@ c = d))) });
           c = d))), });
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 ({
   k:
@@ -27,7 +27,7 @@ c = d))) });
               c = d))), });
 
 ---------- Options ----------
-{"printWidth":80,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 ({
   k:

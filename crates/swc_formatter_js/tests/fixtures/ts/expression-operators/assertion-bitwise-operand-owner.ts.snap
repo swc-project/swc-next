@@ -6,14 +6,14 @@ left << <T> (// prettier-ignore
 receiver . method( firstArgument , secondArgument )
 );
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 left <<
   ((<T>// prettier-ignore
   receiver . method( firstArgument , secondArgument )));
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 left <<
   ((<
@@ -22,7 +22,7 @@ left <<
   receiver . method( firstArgument , secondArgument )));
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 left <<
   ((<
@@ -31,7 +31,7 @@ left <<
   receiver . method( firstArgument , secondArgument )))
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 left <<
 	((<

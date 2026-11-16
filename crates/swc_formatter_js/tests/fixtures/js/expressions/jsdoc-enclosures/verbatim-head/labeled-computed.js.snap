@@ -7,7 +7,7 @@ label: /* note */
 // prettier-ignore
 )[b];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 /* note */ label: (/** @type {any} */ a
 // prettier-ignore

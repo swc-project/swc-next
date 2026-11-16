@@ -4,27 +4,27 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 ['雪🙂é', '\uD800', '\uDC00', '\0', '\x00', '\v'];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ["雪🙂é", "\uD800", "\uDC00", "\0", "\x00", "\v"];
 
 ---------- Options ----------
-{"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
 ['雪🙂é', '\uD800', '\uDC00', '\0', '\x00', '\v'];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;["雪🙂é", "\uD800", "\uDC00", "\0", "\x00", "\v"]
 
 ---------- Options ----------
-{"semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 ;['雪🙂é', '\uD800', '\uDC00', '\0', '\x00', '\v']
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 [
   "雪🙂é",
@@ -36,7 +36,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 [
   "雪🙂é",
@@ -48,16 +48,16 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 ["雪🙂é", "\uD800", "\uDC00", "\0", "\x00", "\v"];
 
 ---------- Options ----------
-{"endOfLine":"cr"}
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
 ---------- Output ----------
 ["雪🙂é", "\uD800", "\uDC00", "\0", "\x00", "\v"];
 ---------- Options ----------
-{"printWidth":10,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
 ---------- Output ----------
 [
 	"雪🙂é",

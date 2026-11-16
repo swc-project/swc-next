@@ -6,19 +6,19 @@ callee
 // prefix
 <Type>(value);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 callee // prefix
 <Type>(value);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 callee // prefix
 <Type>(value)
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 callee // prefix
 <Type>(value);

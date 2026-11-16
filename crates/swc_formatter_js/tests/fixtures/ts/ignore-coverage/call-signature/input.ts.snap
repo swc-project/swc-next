@@ -7,7 +7,7 @@ type T = {
   second: string;
 };
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = {
   ( ):   void; // prettier-ignore
@@ -15,7 +15,7 @@ type T = {
 };
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = {
   ( ):   void; // prettier-ignore

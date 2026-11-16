@@ -6,7 +6,7 @@ function f(): /* head */ A | (B
 // c
 ) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(): /* head */ (
   | A
@@ -15,7 +15,7 @@ function f(): /* head */ (
 ) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(): /* head */ (
   | A
@@ -24,7 +24,7 @@ function f(): /* head */ (
 ) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(): /* head */ (
   | A

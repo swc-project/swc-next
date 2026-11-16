@@ -6,14 +6,14 @@ connect(firstArgument, secondArgument, thirdArgument)(outer);
 
 connect(firstArgument, [1, 2, 3])(secondArgument);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 connect(firstArgument, secondArgument, thirdArgument)(outer);
 
 connect(firstArgument, [1, 2, 3])(secondArgument);
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 connect(
   firstArgument,
@@ -27,7 +27,7 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 connect(
   firstArgument,
@@ -41,7 +41,7 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 connect(
   firstArgument,
@@ -55,14 +55,14 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 connect(firstArgument, secondArgument, thirdArgument)(outer)
 
 connect(firstArgument, [1, 2, 3])(secondArgument)
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 connect(
 	firstArgument,
@@ -76,14 +76,14 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"endOfLine":"crlf"}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 connect(firstArgument, secondArgument, thirdArgument)(outer);
 
 connect(firstArgument, [1, 2, 3])(secondArgument);
 
 ---------- Options ----------
-{"printWidth":30,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":30,"trailingCommas":"none"}
 ---------- Output ----------
 connect(
   firstArgument,
@@ -97,7 +97,7 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":30}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 connect(
   firstArgument,
@@ -111,7 +111,7 @@ connect(
 )(secondArgument);
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":30}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 connect(
   firstArgument,

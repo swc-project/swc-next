@@ -6,7 +6,7 @@ target = (first  +second
 // @ts-ignore
 // prettier-ignore
 );---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = (
   first  +second
@@ -15,7 +15,7 @@ target = (
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target = (
   first  +second

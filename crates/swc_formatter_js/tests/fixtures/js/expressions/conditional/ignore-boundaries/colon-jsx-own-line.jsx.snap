@@ -6,7 +6,7 @@ flag ? fallback
 // prettier-ignore
 : <Box/>;
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 flag ? (
   fallback
@@ -15,7 +15,7 @@ flag ? (
 <Box/>
 
 ---------- Options ----------
-{"printWidth":20,"semi":true}
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
 flag ? (
   fallback

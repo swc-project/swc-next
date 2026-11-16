@@ -7,7 +7,7 @@ label: /*#__PURE__*/
 // prettier-ignore
 ).value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 label: /*#__PURE__*/
 (run()

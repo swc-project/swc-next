@@ -1,1 +1,16 @@
-[{}, {"semi": false}, {"trailingComma": "es5"}]
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "es5"
+  }
+]

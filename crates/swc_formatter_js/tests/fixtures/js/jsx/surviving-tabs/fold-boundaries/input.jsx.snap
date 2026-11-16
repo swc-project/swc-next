@@ -6,7 +6,7 @@ const x = <Box>	first
 	 middle	value	
 	last	</Box>;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const x = (
   <Box>	first	
@@ -15,7 +15,7 @@ const x = (
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const x = (
   <Box>	first	

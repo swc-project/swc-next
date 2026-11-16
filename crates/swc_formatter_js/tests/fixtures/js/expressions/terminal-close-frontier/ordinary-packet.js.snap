@@ -7,7 +7,7 @@ call(first,
 second /* block */ // line
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 call(
   first,
@@ -16,7 +16,7 @@ call(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 call(
   first,

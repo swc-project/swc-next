@@ -6,7 +6,7 @@ class Base<T> {}
 function choose<T>() { return Base; }
 const Derived = class extends (choose<string>())<number> {};
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Base<T> {}
 function choose<T>() {
@@ -15,7 +15,7 @@ function choose<T>() {
 const Derived = class extends choose<string>()<number> {};
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Base<T> {}
 function choose<

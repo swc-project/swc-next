@@ -6,7 +6,7 @@ function f() { return (
 /* prettier-ignore */ /** @type {number} */ (first(  ))
 ); }
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f() {
   return (
@@ -15,7 +15,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return (
@@ -24,7 +24,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   return (

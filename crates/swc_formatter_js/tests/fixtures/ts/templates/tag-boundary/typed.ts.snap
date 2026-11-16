@@ -8,7 +8,7 @@ const value = tag<{ first: string; second: number }> /* quasi */
 consume(tag<string> /* first */ // last
 `value`);
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = tag<{ first: string; second: number }> /* quasi */ `value`;
 
@@ -18,7 +18,7 @@ consume(
 );
 
 ---------- Options ----------
-{"printWidth":24,"semi":false}
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = tag<{
   first: string
@@ -32,7 +32,7 @@ consume(
 )
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 const value = tag<{
 	first: string;

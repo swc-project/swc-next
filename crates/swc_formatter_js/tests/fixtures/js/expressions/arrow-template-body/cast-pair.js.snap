@@ -6,7 +6,7 @@ const create = () => /** @type {"specific"} */ (`
   text
 `);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () =>
   /** @type {"specific"} */ (
@@ -16,7 +16,7 @@ const create = () =>
   );
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const create = () =>
   /** @type {"specific"} */ (
@@ -26,7 +26,7 @@ const create = () =>
   );
 
 ---------- Options ----------
-{"arrowParens":"avoid"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () =>
   /** @type {"specific"} */ (

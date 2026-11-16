@@ -9,7 +9,7 @@ foo({
   return 1;
 });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 foo(
   {

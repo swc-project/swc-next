@@ -18,10 +18,9 @@ use std::{
     },
 };
 
-#[path = "../../../crates/swc_formatter_js/tests/support/prettier_options.rs"]
-mod prettier_options;
+mod options;
 
-use prettier_options::{apply_prettier_option, format_options};
+use options::{format_options, unsupported_option_names};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde_json::Value;
 use swc_next_allocator::Allocator;
@@ -30,9 +29,7 @@ use swc_next_ecma_ast::{
     PropertyKey, Severity, SourceType, StringLiteral, VariableDeclarator, Visit, VisitWith,
 };
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_formatter_js::{
-    FormatError, FormatOptions, PRETTIER_COMPATIBILITY_VERSION, format, format_ast,
-};
+use swc_next_formatter_js::{FormatError, PRETTIER_COMPATIBILITY_VERSION, format, format_ast};
 
 use crate::util::crate_root;
 
@@ -928,16 +925,6 @@ fn fixture_parser_key(language: Lang) -> &'static str {
     } else {
         "oxc"
     }
-}
-
-fn unsupported_option_names(options: &OptionSet) -> Vec<String> {
-    let mut format_options = FormatOptions::prettier();
-    options
-        .iter()
-        .filter_map(|(name, value)| {
-            apply_prettier_option(&mut format_options, name, value, "").err()
-        })
-        .collect()
 }
 
 fn is_comparison_result(result: &CaseResult) -> bool {

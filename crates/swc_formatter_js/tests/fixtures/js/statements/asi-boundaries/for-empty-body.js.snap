@@ -6,14 +6,14 @@ for (; false;);
 
 [receiver].call();
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 for (; false;);
 
 ;[receiver].call()
 
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 for (; false;);
 

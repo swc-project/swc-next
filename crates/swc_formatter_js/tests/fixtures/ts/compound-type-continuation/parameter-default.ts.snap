@@ -6,7 +6,7 @@ function f(x: A & (B
 // c
 ) = 1) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(
   x: (
@@ -16,7 +16,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(
   x: (
@@ -26,7 +26,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(
   x: (

@@ -6,7 +6,7 @@ result = (
 // @ts-expect-error
 !left)(arg);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 result =
   (
@@ -14,7 +14,7 @@ result =
     !left)(arg);
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 result =
   (

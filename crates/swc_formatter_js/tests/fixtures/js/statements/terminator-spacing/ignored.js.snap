@@ -9,7 +9,7 @@ for(  ;;  ) continue
 
 next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // prettier-ignore
 for(  ;;  ) continue;
@@ -18,7 +18,7 @@ for(  ;;  ) continue;
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // prettier-ignore
 for(  ;;  ) continue
@@ -27,7 +27,7 @@ for(  ;;  ) continue
 next()
 
 ---------- Options ----------
-{"printWidth":28,"semi":false}
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
 ---------- Output ----------
 // prettier-ignore
 for(  ;;  ) continue

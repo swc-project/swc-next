@@ -2,12 +2,11 @@ use std::{fmt::Write, fs, path::Path};
 
 use serde_json::{Map, Value};
 use swc_next_allocator::Allocator;
+use swc_next_core::js::formatter::JsFormatterConfig;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_formatter_host::FormatSession;
 use swc_next_formatter_js::{FormatOptions, LineEnding, format, format_ast, format_to_doc_buffer};
-
-use super::prettier_options;
 
 fn option_sets(path: &Path, root: &Path) -> Vec<Map<String, Value>> {
     let mut directory = path.parent().unwrap();
@@ -39,7 +38,9 @@ pub fn test_file(relative: &str) {
     };
     let mut snapshot = format!("---------- Input ----------\n{source}");
     for spec in option_sets(&path, &root) {
-        let options = prettier_options::format_options(&spec, &source).unwrap();
+        let config: JsFormatterConfig =
+            serde_json::from_value(Value::Object(spec.clone())).unwrap();
+        let options = FormatOptions::try_from(config).unwrap();
         let output = format_pass(relative, parser_options, options, &source);
         writeln!(
             snapshot,

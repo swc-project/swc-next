@@ -6,7 +6,7 @@ function f(v: unknown): asserts v is A | (B
 // c
 ) {}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f(v: unknown): asserts v is (
   | A
@@ -15,7 +15,7 @@ function f(v: unknown): asserts v is (
 ) {}
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 function f(
   v: unknown,
@@ -26,7 +26,7 @@ function f(
 ) {}
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f(v: unknown): asserts v is (
   | A

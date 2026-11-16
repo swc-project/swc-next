@@ -1,3 +1,6 @@
 [
-  {"printWidth": 8}
+  {
+    "lineWidth": 8,
+    "indentStyle": "space"
+  }
 ]

@@ -7,14 +7,14 @@ const chosen = input satisfies /*
  */
 number;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = input satisfies /*
  * choose type
  */ number;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen =
   input satisfies /*
@@ -22,14 +22,14 @@ const chosen =
    */ number
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = input satisfies /*
  * choose type
  */ number;
 
 ---------- Options ----------
-{"printWidth":100,"semi":false}
+{"indentStyle":"space","lineWidth":100,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen = input satisfies /*
  * choose type

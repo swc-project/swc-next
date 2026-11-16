@@ -3,7 +3,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 type M = { [\u004b in /* prettier-ignore */ | \u0041]: number };---------- Options ----------
-{"printWidth":18}
+{"indentStyle":"space","lineWidth":18}
 ---------- Output ----------
 type M = {
   [
@@ -12,6 +12,6 @@ type M = {
 };
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type M = { [\u004b /* prettier-ignore */ in A]: number };

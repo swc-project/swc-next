@@ -6,12 +6,12 @@ type Choice<T> = T extends string /* test */
  /* branch */
  ? One : Two;
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type Choice<T> = T extends string /* test */ ? /* branch */ One : Two;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type Choice<T> =
   T extends string /* test */
@@ -20,7 +20,7 @@ type Choice<T> =
     : Two;
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 type Choice<
   T,
@@ -31,7 +31,7 @@ type Choice<
     : Two
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 type Choice<T> =
 	T extends string /* test */

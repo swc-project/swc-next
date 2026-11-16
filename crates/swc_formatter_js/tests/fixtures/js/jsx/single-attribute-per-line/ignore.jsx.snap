@@ -8,7 +8,7 @@ const child=<Box first second>{/* prettier-ignore */}<Child  first = {left+right
 // prettier-ignore
 const ignored=<Box  first = {left+right}  second/>;
 ---------- Options ----------
-{"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
 ---------- Output ----------
 const attributes = (
   <Box
@@ -26,7 +26,7 @@ const child = (
 const ignored=<Box  first = {left+right}  second/>;
 
 ---------- Options ----------
-{"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const attributes = (
   <Box
@@ -47,7 +47,7 @@ const child = (
 const ignored=<Box  first = {left+right}  second/>;
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":false}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
 ---------- Output ----------
 const attributes = (
   <Box
@@ -67,7 +67,7 @@ const child = (
 const ignored=<Box  first = {left+right}  second/>;
 
 ---------- Options ----------
-{"printWidth":24,"singleAttributePerLine":true}
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const attributes = (
   <Box
@@ -90,7 +90,7 @@ const child = (
 const ignored=<Box  first = {left+right}  second/>;
 
 ---------- Options ----------
-{"bracketSameLine":true,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
 ---------- Output ----------
 const attributes = (
   <Box
@@ -110,7 +110,7 @@ const child = (
 const ignored=<Box  first = {left+right}  second/>;
 
 ---------- Options ----------
-{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
 ---------- Output ----------
 const attributes = (
   <Box

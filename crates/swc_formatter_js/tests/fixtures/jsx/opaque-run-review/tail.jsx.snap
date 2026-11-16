@@ -6,7 +6,7 @@ v = a ? (<B />)// @ts-ignore
 
 : h(x);
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 v = a ? (
   <B />
@@ -15,7 +15,7 @@ v = a ? (
 : (h(x));
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 v = a ? (
   <B />

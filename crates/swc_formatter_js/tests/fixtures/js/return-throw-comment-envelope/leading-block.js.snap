@@ -8,7 +8,7 @@ function f() {
   );
 }
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 function f() {
   return (
@@ -18,7 +18,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function f() {
   return (
@@ -28,7 +28,7 @@ function f() {
 }
 
 ---------- Options ----------
-{"printWidth":40,"semi":false}
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
   return (

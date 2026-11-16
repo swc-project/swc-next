@@ -6,21 +6,21 @@ it("an intentionally long test description for parameter ownership", (done: Func
 
 result: number) => { return done(result); });
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
   return done(result);
 });
 
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
   return done(result);
 });
 
 ---------- Options ----------
-{"printWidth":18,"semi":false}
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
 ---------- Output ----------
 it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
   return done(

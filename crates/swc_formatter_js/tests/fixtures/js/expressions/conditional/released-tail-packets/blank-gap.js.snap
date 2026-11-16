@@ -8,7 +8,7 @@ v = a ? (b
 
 /* @ts-ignore */ : /* prettier-ignore */ c;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 v = a
   ? b

@@ -9,7 +9,7 @@ case "b":
   x;
 }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 switch (a) {
   case "s" // prettier-ignore

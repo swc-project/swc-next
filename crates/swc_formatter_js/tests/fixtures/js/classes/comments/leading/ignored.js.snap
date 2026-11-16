@@ -6,7 +6,7 @@ class C {/* first */
 /* prettier-ignore */
 field  =  1+2;}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   /* first */

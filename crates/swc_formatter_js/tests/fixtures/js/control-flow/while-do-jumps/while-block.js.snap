@@ -48,7 +48,7 @@ while (false) nested: {}
 
 {}
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 while (test()) {
   if (ready) break;
@@ -122,7 +122,7 @@ while (false)
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 while (test()) {
   if (ready) break;
@@ -204,7 +204,7 @@ while (false)
 }
 
 ---------- Options ----------
-{"printWidth":80,"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 while (test()) {
   if (ready) break
@@ -278,7 +278,7 @@ while (false)
 }
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 while (test()) {
   if (ready) break
@@ -360,7 +360,7 @@ while (false)
 }
 
 ---------- Options ----------
-{"printWidth":20,"useTabs":true}
+{"indentStyle":"tab","lineWidth":20}
 ---------- Output ----------
 while (test()) {
 	if (ready) break;
@@ -442,7 +442,7 @@ while (false)
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":40}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 while (test()) {
   if (ready) break;

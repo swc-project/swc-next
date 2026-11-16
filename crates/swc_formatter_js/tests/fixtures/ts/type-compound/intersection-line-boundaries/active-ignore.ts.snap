@@ -6,7 +6,7 @@ type T = (A
 // c
 ) & /* prettier-ignore */ (B  |  C);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = A
 // c

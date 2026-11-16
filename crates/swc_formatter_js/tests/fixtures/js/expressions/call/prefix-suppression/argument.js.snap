@@ -4,7 +4,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 factory /* prettier-ignore */ ( first(  ), second( ) );
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 factory(
   /* prettier-ignore */ first(  ),
@@ -12,12 +12,12 @@ factory(
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 factory(/* prettier-ignore */ first(  ), second());
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 factory(
   /* prettier-ignore */ first(  ),
@@ -25,7 +25,7 @@ factory(
 )
 
 ---------- Options ----------
-{"printWidth":20,"trailingComma":"es5"}
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
 ---------- Output ----------
 factory(
   /* prettier-ignore */ first(  ),

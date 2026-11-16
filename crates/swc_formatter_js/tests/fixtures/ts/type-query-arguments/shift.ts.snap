@@ -7,7 +7,7 @@ const value = 4;
 const other = 2;
 value as typeof f << other;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 declare const f: number;
 const value = 4;
@@ -15,7 +15,7 @@ const other = 2;
 (value as typeof f) << other;
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 declare const f: number;
 const value = 4;
@@ -24,7 +24,7 @@ const other = 2;
   other;
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const f: number
 const value = 4
@@ -33,7 +33,7 @@ const other = 2
   other
 
 ---------- Options ----------
-{"printWidth":1,"semi":false}
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
 declare const f: number
 const value = 4
@@ -42,7 +42,7 @@ const other = 2
   other
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
 ---------- Output ----------
 declare const f: number;
 const value = 4;

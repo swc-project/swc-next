@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const /* prettier-ignore */ x = y as ?;
 [1].map(f);
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const /* prettier-ignore */ x = y as ?;
 [1].map(f)

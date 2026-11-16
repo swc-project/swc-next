@@ -6,7 +6,7 @@ target /* multi
  line */
 = // right
 value;---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target = // right
   /* multi

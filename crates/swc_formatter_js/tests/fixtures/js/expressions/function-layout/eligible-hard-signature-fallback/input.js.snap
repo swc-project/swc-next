@@ -6,7 +6,7 @@ consume("long description", (firstParameter,
 // required parameter line
 secondParameter) => { return firstParameter + secondParameter; }); third();
 ---------- Options ----------
-{"printWidth":36}
+{"indentStyle":"space","lineWidth":36}
 ---------- Output ----------
 consume(
   "long description",

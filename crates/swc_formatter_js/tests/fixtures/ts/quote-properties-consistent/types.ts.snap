@@ -5,7 +5,7 @@ assertion_line: 58
 ---------- Input ----------
 type RecordType = { plain: number; "2": string; 1: number; nested: { plain: number; "simple": string }; };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type RecordType = {
   plain: number;
@@ -15,7 +15,7 @@ type RecordType = {
 };
 
 ---------- Options ----------
-{"quoteProps":"preserve"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
 ---------- Output ----------
 type RecordType = {
   plain: number;
@@ -25,7 +25,7 @@ type RecordType = {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent"}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
 ---------- Output ----------
 type RecordType = {
   "plain": number;
@@ -35,7 +35,7 @@ type RecordType = {
 };
 
 ---------- Options ----------
-{"quoteProps":"consistent","semi":false,"singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 type RecordType = {
   'plain': number

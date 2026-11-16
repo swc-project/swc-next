@@ -9,7 +9,7 @@ async function run() {
   ).select(options).finish();
 }
 ---------- Options ----------
-{"printWidth":50}
+{"indentStyle":"space","lineWidth":50}
 ---------- Output ----------
 async function run() {
   await (
@@ -21,7 +21,7 @@ async function run() {
 }
 
 ---------- Options ----------
-{"printWidth":90}
+{"indentStyle":"space","lineWidth":90}
 ---------- Output ----------
 async function run() {
   await (
@@ -33,7 +33,7 @@ async function run() {
 }
 
 ---------- Options ----------
-{"printWidth":50,"semi":false}
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
 ---------- Output ----------
 async function run() {
   await (
@@ -45,7 +45,7 @@ async function run() {
 }
 
 ---------- Options ----------
-{"printWidth":50,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
 ---------- Output ----------
 async function run() {
 	await (

@@ -6,7 +6,7 @@ const {first, /* b */
 /* c */ // d
 } = value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const {
   first /* b */,
@@ -14,7 +14,7 @@ const {
 } = value;
 
 ---------- Options ----------
-{"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 const {
   first /* b */

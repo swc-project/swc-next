@@ -5,7 +5,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 target = /** @type {number} */ (first  +second
 // prettier-ignore
 );---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 target =
   /** @type {number} */ (first  +second
@@ -13,7 +13,7 @@ target =
 );
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 target =
   /** @type {number} */ (first  +second

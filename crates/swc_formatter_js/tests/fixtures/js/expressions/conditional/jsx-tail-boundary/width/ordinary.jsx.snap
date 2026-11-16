@@ -5,12 +5,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 condition ? <Item />
 /* comment */ : next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 condition ? <Item /> : /* comment */ next();
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 condition ? (
   <Item />

@@ -4,12 +4,12 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 firstLongValue ?? secondLongValue ? consequentValue : alternateValue;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (firstLongValue ?? secondLongValue) ? consequentValue : alternateValue;
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 (firstLongValue ??
 secondLongValue)
@@ -17,7 +17,7 @@ secondLongValue)
   : alternateValue;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(firstLongValue ?? secondLongValue) ? consequentValue : alternateValue
 

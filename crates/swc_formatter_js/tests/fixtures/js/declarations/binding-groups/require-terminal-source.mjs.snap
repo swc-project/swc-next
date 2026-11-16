@@ -6,7 +6,7 @@ const { alpha, beta: renamed, gamma } = require("first-long-module-name", readCo
  // prettier-ignore
  );
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const {
   alpha,
@@ -17,7 +17,7 @@ const {
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const {
   alpha,
@@ -28,7 +28,7 @@ const {
 );
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 const {
   alpha,

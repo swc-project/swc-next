@@ -26,7 +26,7 @@ second line`);
 insertRule(`first line
 second line`, option);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 insertRule(`first line
 second ${value} line`);
@@ -60,7 +60,7 @@ second line`,
 );
 
 ---------- Options ----------
-{"printWidth":40,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":40,"trailingCommas":"none"}
 ---------- Output ----------
 insertRule(`first line
 second ${value} line`);

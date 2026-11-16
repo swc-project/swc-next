@@ -6,7 +6,7 @@ class Result { static ["value"]():
 /* prettier-ignore */
 (number   | string) { return 1; } }
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Result {
   static ["value"]():
@@ -17,7 +17,7 @@ number | string {
 }
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class Result {
   static ["value"]():
@@ -28,7 +28,7 @@ number | string {
 }
 
 ---------- Options ----------
-{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 class Result {
   static ["value"]():
@@ -39,7 +39,7 @@ number | string {
 }
 
 ---------- Options ----------
-{"endOfLine":"crlf","printWidth":20}
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 class Result {
   static ["value"]():

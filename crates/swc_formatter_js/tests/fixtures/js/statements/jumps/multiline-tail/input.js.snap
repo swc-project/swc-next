@@ -7,7 +7,7 @@ label: while(a){ if(b) break label /* marker
 after: while(a){ if(b) break after; /* marker
  continued */ continue after; }
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 label: while (a) {
   if (b) break label; /* marker
@@ -21,7 +21,7 @@ after: while (a) {
 }
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 label: while (a) {
   if (b) break label /* marker
@@ -35,7 +35,7 @@ after: while (a) {
 }
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 label: while (
   a
@@ -55,7 +55,7 @@ after: while (
 }
 
 ---------- Options ----------
-{"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
 label: while (a) {
 	if (b) break label; /* marker

@@ -5,19 +5,19 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 (1 as // marker
 const).toFixed();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (1 as const) // marker
 .toFixed();
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 (1 as const) // marker
 .toFixed();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 ;(1 as const) // marker
 .toFixed()

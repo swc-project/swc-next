@@ -5,13 +5,13 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 const value = (source as Shape) // receiver
 [key];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = (source as Shape) // receiver
 [key];
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value = (
   source as Shape
@@ -19,7 +19,7 @@ const value = (
 [key];
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = (source as Shape) // receiver
 [key]

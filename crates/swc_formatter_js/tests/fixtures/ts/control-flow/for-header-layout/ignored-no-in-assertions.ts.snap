@@ -10,7 +10,7 @@ for (((/* prettier-ignore */ value = left in right as boolean)), second = true; 
 for (value = false, ((/* prettier-ignore */ second = left in right satisfies boolean)); false;) {}
 for (let picked = (((/* prettier-ignore */ value = left in right as boolean))); false;) {}
 ---------- Options ----------
-{"printWidth":25}
+{"indentStyle":"space","lineWidth":25}
 ---------- Output ----------
 for (
   (/* prettier-ignore */ name  in object as boolean);
@@ -48,7 +48,7 @@ for (
 ) {}
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 for ((/* prettier-ignore */ name  in object as boolean); false;);
 for ((/* prettier-ignore */ name  in object satisfies boolean); false;);
@@ -69,7 +69,7 @@ for (
 ) {}
 
 ---------- Options ----------
-{"printWidth":25,"semi":false}
+{"indentStyle":"space","lineWidth":25,"semicolons":"as-needed"}
 ---------- Output ----------
 for (
   (/* prettier-ignore */ name  in object as boolean);

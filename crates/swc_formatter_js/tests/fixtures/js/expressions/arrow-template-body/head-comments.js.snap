@@ -7,7 +7,7 @@ const create = () => // template body
   ${value}
 `;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () =>
   // template body
@@ -16,7 +16,7 @@ const create = () =>
 `;
 
 ---------- Options ----------
-{"printWidth":24}
+{"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const create = () =>
   // template body
@@ -25,7 +25,7 @@ const create = () =>
 `;
 
 ---------- Options ----------
-{"arrowParens":"avoid"}
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const create = () =>
   // template body

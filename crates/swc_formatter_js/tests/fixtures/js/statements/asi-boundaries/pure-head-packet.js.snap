@@ -7,7 +7,7 @@ if (condition);
 /* ordinary prefix */
 /*#__PURE__*/ (() => call())();
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (condition);
 
@@ -16,7 +16,7 @@ if (condition);
 /*#__PURE__*/ (() => call())()
 
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 if (condition);
 

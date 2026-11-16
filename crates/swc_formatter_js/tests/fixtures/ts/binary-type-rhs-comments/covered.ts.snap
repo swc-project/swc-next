@@ -7,7 +7,7 @@ const chosen = 1 as
 Record<MissingOne, MissingTwo>;
 const outsideSentinel: number = "x";
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const chosen = 1 as
 // @ts-expect-error
@@ -15,7 +15,7 @@ Record<MissingOne, MissingTwo>;
 const outsideSentinel: number = "x";
 
 ---------- Options ----------
-{"printWidth":20,"semi":false}
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen = 1 as
 // @ts-expect-error
@@ -24,7 +24,7 @@ const outsideSentinel: number =
   "x"
 
 ---------- Options ----------
-{"printWidth":40,"tabWidth":4,"useTabs":true}
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
 const chosen = 1 as
 // @ts-expect-error
@@ -32,7 +32,7 @@ Record<MissingOne, MissingTwo>;
 const outsideSentinel: number = "x";
 
 ---------- Options ----------
-{"printWidth":100,"semi":false}
+{"indentStyle":"space","lineWidth":100,"semicolons":"as-needed"}
 ---------- Output ----------
 const chosen = 1 as
 // @ts-expect-error

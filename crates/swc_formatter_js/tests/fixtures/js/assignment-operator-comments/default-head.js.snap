@@ -6,7 +6,7 @@ const use = (value =
   // default
   fallback) => value;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const use = (
   // default
@@ -14,7 +14,7 @@ const use = (
 ) => value;
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const use = (
   // default
@@ -22,7 +22,7 @@ const use = (
 ) => value;
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const use = (
   // default

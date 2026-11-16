@@ -4,16 +4,16 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ---------- Input ----------
 export * as namespace from "module" with {type:"json"};
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 export * as namespace from "module" with { type: "json" };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 export * as namespace from "module" with { type: "json" };
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
 ---------- Output ----------
 export * as namespace from 'module' with {type: 'json'}

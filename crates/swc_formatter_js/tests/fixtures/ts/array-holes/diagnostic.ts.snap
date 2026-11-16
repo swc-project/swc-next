@@ -9,7 +9,7 @@ const values = [
   missing,
 ];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const values = [
   1,

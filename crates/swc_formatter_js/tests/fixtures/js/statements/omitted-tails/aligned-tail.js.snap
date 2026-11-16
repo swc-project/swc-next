@@ -10,7 +10,7 @@ a(); /**
 ;
 b();
 ---------- Options ----------
-{"semi":true}
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
 a(); /**
  * first
@@ -20,7 +20,7 @@ a(); /**
 b();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 a() /**
  * first

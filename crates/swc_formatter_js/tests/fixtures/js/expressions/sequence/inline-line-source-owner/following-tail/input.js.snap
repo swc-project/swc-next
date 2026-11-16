@@ -6,7 +6,7 @@ first, // @ts-expect-error
 (missing // tail
 );
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 (first, // @ts-expect-error
   (missing // tail

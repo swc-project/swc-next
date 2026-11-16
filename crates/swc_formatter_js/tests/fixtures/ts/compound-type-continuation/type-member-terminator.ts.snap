@@ -6,7 +6,7 @@ type T = { p: A & (B
 // c
 ) };
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 type T = {
   p: A & B;
@@ -14,7 +14,7 @@ type T = {
 };
 
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 type T = {
   p: A & B;
@@ -22,7 +22,7 @@ type T = {
 };
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = {
   p: A & B

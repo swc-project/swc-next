@@ -9,7 +9,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 [{}];
 [( [a, b] ), ( [c, d] )];
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 [
   { a, b },
@@ -28,7 +28,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"printWidth":30}
+{"indentStyle":"space","lineWidth":30}
 ---------- Output ----------
 [
   { a, b },
@@ -47,7 +47,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ];
 
 ---------- Options ----------
-{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 ;[
   {a, b},
@@ -66,7 +66,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 ]
 
 ---------- Options ----------
-{"quoteProps":"preserve","singleQuote":true}
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","quoteStyle":"single"}
 ---------- Output ----------
 [
   { a, b },

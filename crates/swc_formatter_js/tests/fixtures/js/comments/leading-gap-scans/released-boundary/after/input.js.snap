@@ -8,7 +8,7 @@ source: crates/swc_formatter_js/tests/fixtures/mod.rs
 
 next();
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 item;
 // @ts-ignore
@@ -16,7 +16,7 @@ item;
 next();
 
 ---------- Options ----------
-{"printWidth":10}
+{"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
 item;
 // @ts-ignore
@@ -24,7 +24,7 @@ item;
 next();
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 item
 // @ts-ignore

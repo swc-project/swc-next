@@ -6,7 +6,7 @@ test ?
 // prettier-ignore
 (\u0066oo  +  bar) : other;
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 test
   ? // prettier-ignore

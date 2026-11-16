@@ -21,7 +21,7 @@ coveredLast}
 </>
 </MissingPanel>;
 ---------- Options ----------
-{"printWidth":20}
+{"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <>{coveredFirst}{coveredSecond}</>;
@@ -56,7 +56,7 @@ const value4 = (
 );
 
 ---------- Options ----------
-{"printWidth":40}
+{"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <>{coveredFirst}{coveredSecond}</>;
@@ -89,7 +89,7 @@ const value4 = (
 );
 
 ---------- Options ----------
-{"printWidth":80}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <>{coveredFirst}{coveredSecond}</>;
@@ -122,7 +122,7 @@ const value4 = (
 );
 
 ---------- Options ----------
-{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <>{coveredFirst}{coveredSecond}</>
@@ -161,7 +161,7 @@ const value4 =
 	)
 
 ---------- Options ----------
-{"printWidth":100,"trailingComma":"none"}
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
 ---------- Output ----------
 // @ts-ignore
 const value0 = <>{coveredFirst}{coveredSecond}</>;

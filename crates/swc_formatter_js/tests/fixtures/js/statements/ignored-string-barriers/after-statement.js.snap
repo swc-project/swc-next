@@ -6,14 +6,14 @@ start();
 // prettier-ignore
 "custom hint";
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 start()
 // prettier-ignore
 ;"custom hint"
 
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 start();
 // prettier-ignore

@@ -6,7 +6,7 @@ class C /* first */
 // second
 {field;}
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
   /* first */

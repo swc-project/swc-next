@@ -7,7 +7,7 @@ f(first,
 // @ts-ignore
 missing);
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 f(
   first,
@@ -17,7 +17,7 @@ f(
 );
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 f(
   first,

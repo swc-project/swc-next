@@ -1,18 +1,22 @@
 [
   {
-    "printWidth": 20,
-    "semi": true
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "always"
   },
   {
-    "printWidth": 80,
-    "semi": true
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "always"
   },
   {
-    "printWidth": 20,
-    "semi": false
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   },
   {
-    "printWidth": 80,
-    "semi": false
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
   }
 ]
