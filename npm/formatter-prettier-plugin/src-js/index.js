@@ -1,15 +1,14 @@
-import { decode } from "./decode.js";
-import { encodeOptions } from "./options.js";
+import { decodeDoc } from "./decode.js";
+import { toFormatterConfig } from "./options.js";
 export { options } from "./options.js";
 
 let binding;
 const loadBinding = () => (binding ??= import("@swc-next/formatter-js"));
 
-// Values from the shared parser option wire protocol.
 function sourceTypeForPath(path) {
-  if (/\.(?:mjs|mts)$/iu.test(path)) return 1; // Module
-  if (/\.(?:cjs|cts)$/iu.test(path)) return 3; // CommonJs
-  return 4; // Unambiguous
+  if (/\.(?:mjs|mts)$/iu.test(path)) return "module";
+  if (/\.(?:cjs|cts)$/iu.test(path)) return "commonjs";
+  return "unambiguous";
 }
 
 function parser(lang) {
@@ -31,20 +30,40 @@ function parser(lang) {
       ) {
         throw new Error("SWCFMT does not yet support pragma options");
       }
-      const formatOptions = encodeOptions(options);
+      const formatOptions = toFormatterConfig(options);
       const { formatDocBufferSync } = await loadBinding();
       const path = options.filepath ?? "";
       const declaration = lang === "ts" && /\.d\.(?:ts|mts|cts)$/iu.test(path);
-      const language = declaration ? 5 : { jsx: 3, ts: 2, tsx: 4 }[lang];
+      const language = declaration ? "dts" : lang;
       const sourceType = sourceTypeForPath(path);
-      // Existing parser option wire: present + source type + language.
-      const parserOptions = 1 | (sourceType << 1) | (language << 4);
-      const buffer = formatDocBufferSync(source, parserOptions, formatOptions);
+      const parserOptions = { lang: language, sourceType };
+      let buffer;
+      try {
+        buffer = formatDocBufferSync(source, parserOptions, formatOptions);
+      } catch (error) {
+        if (
+          error instanceof SyntaxError &&
+          Number.isInteger(error.start) &&
+          Number.isInteger(error.end)
+        ) {
+          const location = (offset) => {
+            const lines = source
+              .slice(0, offset)
+              .split(/\r\n|[\n\r\u2028\u2029]/u);
+            return { line: lines.length, column: lines.at(-1).length + 1 };
+          };
+          error.loc = {
+            start: location(error.start),
+            end: location(error.end),
+          };
+        }
+        throw error;
+      }
       return {
         type: "SWCFMT",
         start: 0,
         end: source.length,
-        doc: decode(buffer, source, options),
+        doc: decodeDoc(buffer, options),
       };
     },
   };

@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",
+    "@swc-next/protocol": "workspace:*",
     "@types/node": "catalog:",
     "cross-env": "catalog:"
   }

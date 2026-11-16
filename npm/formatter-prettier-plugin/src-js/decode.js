@@ -12,7 +12,7 @@ class FillEntry {
 
 // Private ABI v0; keep in sync with document/encode.rs. Fragments are complete
 // scopes, so their standard Docs can be shared without caller-dependent state.
-export function decode(buffer, source, options = { tabWidth: 2 }, labels = []) {
+export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
   const bytes = new Uint8Array(
     buffer.buffer,
     buffer.byteOffset,
@@ -28,20 +28,6 @@ export function decode(buffer, source, options = { tabWidth: 2 }, labels = []) {
   };
   const magic = word();
   if (word() !== 0) throw invalid();
-  if (magic === 0x45435753) {
-    const start = word();
-    const end = word();
-    const sourceBytes = new TextEncoder().encode(source);
-    if (start > end || end > sourceBytes.length) throw invalid();
-    const location = (byte) => {
-      const prefix = utf8.decode(sourceBytes.subarray(0, byte));
-      const lines = prefix.split(/\r\n|[\n\r\u2028\u2029]/u);
-      return { line: lines.length, column: lines.at(-1).length + 1 };
-    };
-    const error = new SyntaxError(utf8.decode(bytes.subarray(offset)));
-    error.loc = { start: location(start), end: location(end) };
-    throw error;
-  }
   if (magic !== 0x44435753) throw invalid();
   const count = word();
   const stringLength = word();

@@ -14,14 +14,15 @@ test("document printing forwards layout options and preserves input strings", ()
   assert.equal(printDocBufferSync(buffer), "λ 世界");
   assert.equal(
     printDocBufferSync(buffer, {
-      printWidth: 2,
-      tabWidth: 4,
-      endOfLine: "crlf",
+      lineWidth: 2,
+      indentWidth: 4,
+      indentStyle: "space",
+      lineEnding: "crlf",
     }),
     "λ\r\n    世界",
   );
   assert.equal(
-    printDocBufferSync(buffer, { printWidth: 2, useTabs: true }),
+    printDocBufferSync(buffer, { lineWidth: 2, indentStyle: "tab" }),
     "λ\n\t世界",
   );
 
@@ -42,20 +43,20 @@ test("document printing forwards document and option errors", () => {
   new DataView(unsupportedVersion.buffer).setUint32(4, 1, true);
   assert.throws(() => printDocBufferSync(unsupportedVersion), /version/i);
   assert.throws(
-    () => printDocBufferSync(new Uint8Array(), { printWidth: 65536 }),
+    () => printDocBufferSync(new Uint8Array(), { lineWidth: 65536 }),
     RangeError,
   );
   assert.throws(
-    () => printDocBufferSync(new Uint8Array(), { tabWidth: 65 }),
+    () => printDocBufferSync(new Uint8Array(), { indentWidth: 65 }),
     RangeError,
   );
   assert.throws(
-    () => printDocBufferSync(new Uint8Array(), { useTabs: 1 }),
+    () => printDocBufferSync(new Uint8Array(), { indentStyle: 1 }),
     TypeError,
   );
   assert.throws(
-    () => printDocBufferSync(new Uint8Array(), { endOfLine: "auto" }),
-    RangeError,
+    () => printDocBufferSync(new Uint8Array(), { lineEnding: "auto" }),
+    TypeError,
   );
 });
 
@@ -88,7 +89,7 @@ test("cursor positions are reported in UTF-16 after trimming and line ending con
     "中",
     cursor,
   ]);
-  const options = { endOfLine: "crlf" };
+  const options = { lineEnding: "crlf" };
   assert.deepEqual(printDocBufferWithCursorSync(buffer, options), {
     formatted: "😀\r\n中",
     cursorNodeStart: 2,

@@ -30,6 +30,8 @@
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
     "build:js": "pnpm -w exec rslib build --lib formatter-js",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter-js --output-dir dist",
+    "test": "pnpm build:js && node --test test/*.test.js",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "prepack": "pnpm build:js"
   },
   "keywords": [
@@ -63,6 +65,9 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",
-    "@types/node": "catalog:"
+    "@swc-next/formatter": "workspace:*",
+    "@swc-next/protocol": "workspace:*",
+    "@types/node": "catalog:",
+    "cross-env": "catalog:"
   }
 }

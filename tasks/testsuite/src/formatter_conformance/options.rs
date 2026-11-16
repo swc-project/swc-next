@@ -1,7 +1,8 @@
 use serde::Deserialize;
+use swc_next_core::formatter::{IndentStyle, LineEnding};
 use swc_next_core::js::formatter::{
-    JsArrowParentheses, JsFormatterConfig, JsIndentStyle, JsLineEnding, JsQuoteProperties,
-    JsQuoteStyle, JsSemicolons, JsTrailingCommas,
+    JsArrowParentheses, JsFormatterConfig, JsQuoteProperties, JsQuoteStyle, JsSemicolons,
+    JsTrailingCommas,
 };
 use swc_next_formatter_js::FormatOptions;
 
@@ -48,15 +49,15 @@ impl PrettierOptions {
         JsFormatterConfig {
             line_width: Some(self.print_width.unwrap_or(80)),
             indent_style: Some(if self.use_tabs.unwrap_or(false) {
-                JsIndentStyle::Tab
+                IndentStyle::Tab
             } else {
-                JsIndentStyle::Space
+                IndentStyle::Space
             }),
             indent_width: self.tab_width,
             line_ending: Some(match self.end_of_line.unwrap_or(EndOfLine::Lf) {
-                EndOfLine::Lf => JsLineEnding::Lf,
-                EndOfLine::CrLf => JsLineEnding::CrLf,
-                EndOfLine::Cr => JsLineEnding::Cr,
+                EndOfLine::Lf => LineEnding::Lf,
+                EndOfLine::CrLf => LineEnding::CrLf,
+                EndOfLine::Cr => LineEnding::Cr,
                 EndOfLine::Auto => detect_line_ending(source),
             }),
             semicolons: self.semi.map(|semi| {
@@ -113,15 +114,15 @@ pub(super) fn unsupported_option_names(spec: &OptionSet) -> Vec<String> {
         .collect()
 }
 
-fn detect_line_ending(source: &str) -> JsLineEnding {
+fn detect_line_ending(source: &str) -> LineEnding {
     let bytes = source.as_bytes();
     for index in 0..bytes.len() {
         match bytes[index] {
-            b'\r' if bytes.get(index + 1) == Some(&b'\n') => return JsLineEnding::CrLf,
-            b'\r' => return JsLineEnding::Cr,
-            b'\n' => return JsLineEnding::Lf,
+            b'\r' if bytes.get(index + 1) == Some(&b'\n') => return LineEnding::CrLf,
+            b'\r' => return LineEnding::Cr,
+            b'\n' => return LineEnding::Lf,
             _ => {}
         }
     }
-    JsLineEnding::Lf
+    LineEnding::Lf
 }

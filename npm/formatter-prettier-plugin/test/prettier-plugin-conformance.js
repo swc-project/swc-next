@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
 import { formatDocBufferSync } from "@swc-next/formatter-js";
 import { printDocBufferSync } from "@swc-next/formatter";
-import { encodeOptions } from "../src-js/options.js";
+import { toFormatterConfig } from "../src-js/options.js";
 import * as plugin from "../dist/index.js";
 
 const workspace = fileURLToPath(new URL("../../../", import.meta.url));
@@ -84,18 +84,18 @@ async function fixtureCases() {
 
 function parserOptions(filepath) {
   const language = /\.d\.(?:ts|mts|cts)$/iu.test(filepath)
-    ? 5
+    ? "dts"
     : /\.tsx$/iu.test(filepath)
-      ? 4
+      ? "tsx"
       : /\.(?:ts|mts|cts)$/iu.test(filepath)
-        ? 2
-        : 3;
+        ? "ts"
+        : "jsx";
   const sourceType = /\.(?:mjs|mts)$/iu.test(filepath)
-    ? 1
+    ? "module"
     : /\.(?:cjs|cts)$/iu.test(filepath)
-      ? 3
-      : 4;
-  return 1 | (sourceType << 1) | (language << 4);
+      ? "commonjs"
+      : "unambiguous";
+  return { lang: language, sourceType };
 }
 
 // Convert SWC fixture configuration only at the Prettier conformance boundary.
@@ -135,13 +135,14 @@ function prettierOptions(options) {
 
 function formatSwcWithSwcFormatter(source, filepath, options) {
   const normalized = normalizeInput(source, options);
+  const config = toFormatterConfig(normalized.options);
   const buffer = formatDocBufferSync(
     normalized.source,
     parserOptions(filepath),
-    encodeOptions(normalized.options),
+    config,
   );
   const bom = source.startsWith("\uFEFF") ? "\uFEFF" : "";
-  return bom + printDocBufferSync(buffer, normalized.options);
+  return bom + printDocBufferSync(buffer, config);
 }
 
 async function format(formatter) {

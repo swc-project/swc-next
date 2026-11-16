@@ -9,6 +9,8 @@
 
 use swc_next_formatter_js::{self as formatter, FormatOptions, InvalidIndentWidth};
 
+use crate::formatter::{IndentStyle, LineEnding};
+
 /// JavaScript and TypeScript formatting options.
 ///
 /// JSON uses SWC option names and rejects unknown fields. Conversion validates
@@ -27,7 +29,7 @@ pub struct JsFormatterConfig {
     /// Indentation style.
     ///
     /// @default "tab"
-    pub indent_style: Option<JsIndentStyle>,
+    pub indent_style: Option<IndentStyle>,
     /// Indentation width in the inclusive range `0..=64`.
     ///
     /// @default 2
@@ -35,7 +37,7 @@ pub struct JsFormatterConfig {
     /// Output line ending.
     ///
     /// @default "lf"
-    pub line_ending: Option<JsLineEnding>,
+    pub line_ending: Option<LineEnding>,
     /// Semicolon policy.
     ///
     /// @default "always"
@@ -130,42 +132,6 @@ impl TryFrom<JsFormatterConfig> for FormatOptions {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum JsIndentStyle {
-    Tab,
-    Space,
-}
-
-impl From<JsIndentStyle> for swc_next_formatter_core::IndentStyle {
-    fn from(value: JsIndentStyle) -> Self {
-        match value {
-            JsIndentStyle::Tab => Self::Tab,
-            JsIndentStyle::Space => Self::Space,
-        }
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum JsLineEnding {
-    Lf,
-    CrLf,
-    Cr,
-}
-
-impl From<JsLineEnding> for swc_next_formatter_core::LineEnding {
-    fn from(value: JsLineEnding) -> Self {
-        match value {
-            JsLineEnding::Lf => Self::Lf,
-            JsLineEnding::CrLf => Self::CrLf,
-            JsLineEnding::Cr => Self::Cr,
-        }
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum JsSemicolons {
@@ -256,32 +222,64 @@ impl From<JsArrowParentheses> for formatter::ArrowParentheses {
 
 #[cfg(feature = "bridge")]
 pub mod bridge {
+    use swc_next_bridge::{BridgeDecodeOptional, BridgeEncode, bridge};
     use swc_next_ecma_ast::Severity;
     use swc_next_ecma_parser::Options as ParserOptions;
-    use swc_next_formatter_js::{
-        ArrowParentheses, DOCUMENT_FORMAT_VERSION, FormatError, FormatOptions, QuoteProperties,
-        QuoteStyle, Semicolons, TrailingCommas,
+    use swc_next_formatter_js::{DOCUMENT_FORMAT_VERSION, FormatError, FormatOptions};
+
+    use super::{
+        JsArrowParentheses, JsFormatterConfig, JsQuoteProperties, JsQuoteStyle, JsSemicolons,
+        JsTrailingCommas,
     };
+    use crate::formatter::bridge::{decode_layout, field};
 
-    use crate::formatter::bridge::layout_options;
+    /// Internal document result. Syntax failures are transported separately from documents.
+    pub enum FormatDocOutput {
+        Document(Vec<u8>),
+        Error {
+            start: u32,
+            end: u32,
+            message: String,
+        },
+    }
 
-    /// Parse source and encode a document using version-matched formatter options.
-    ///
-    /// For internal SWC Next use only. This API and binary format do not follow
-    /// semantic versioning and may change in any release.
+    #[bridge]
+    impl BridgeEncode for FormatDocOutput {
+        type Wire = Vec<u8>;
+
+        fn encode(self) -> Self::Wire {
+            match self {
+                Self::Document(document) => document,
+                Self::Error {
+                    start,
+                    end,
+                    message,
+                } => {
+                    let mut output = b"SWCE".to_vec();
+                    output.extend(DOCUMENT_FORMAT_VERSION.to_le_bytes());
+                    output.extend(start.to_le_bytes());
+                    output.extend(end.to_le_bytes());
+                    output.extend(message.as_bytes());
+                    output
+                }
+            }
+        }
+    }
+
+    /// Parse source and produce a document or a source diagnostic.
     pub fn format_doc(
         source: String,
         parser: Option<ParserOptions>,
-        options: &[u8],
-    ) -> Result<Vec<u8>, String> {
-        let options = decode_options(options).ok_or("invalid formatter options")?;
-        let result = swc_next_formatter_js::format_to_doc_buffer(
+        options: Option<JsFormatterConfig>,
+    ) -> Result<FormatDocOutput, String> {
+        let options = FormatOptions::try_from(options.unwrap_or_default())
+            .map_err(|error| error.to_string())?;
+        match swc_next_formatter_js::format_to_doc_buffer(
             &source,
             parser.unwrap_or_default(),
             options,
-        );
-        match result {
-            Ok(document) => Ok(document),
+        ) {
+            Ok(document) => Ok(FormatDocOutput::Document(document)),
             Err(error) => {
                 let (span, message) = match &error {
                     FormatError::Parse(diagnostics) => {
@@ -293,87 +291,80 @@ pub mod bridge {
                     }
                     FormatError::Unsupported { span, .. } => (*span, error.to_string()),
                 };
-                let mut output = b"SWCE".to_vec();
-                output.extend(DOCUMENT_FORMAT_VERSION.to_le_bytes());
-                output.extend(span.start.to_le_bytes());
-                output.extend(span.end.to_le_bytes());
-                output.extend(message.as_bytes());
-                Ok(output)
+                Ok(FormatDocOutput::Error {
+                    start: span.start,
+                    end: span.end,
+                    message,
+                })
             }
         }
     }
 
-    fn decode_options(bytes: &[u8]) -> Option<FormatOptions> {
-        let &[
-            version,
-            width_low,
-            width_high,
-            indent_width,
-            use_tabs,
-            semi,
-            single_quote,
-            jsx_single_quote,
-            quote_props,
-            trailing_comma,
-            arrow_parens,
-            bracket_spacing,
-            bracket_same_line,
-            single_attribute_per_line,
-            line_ending,
-        ] = bytes
-        else {
-            return None;
-        };
-        if version != 0 {
-            return None;
+    #[bridge]
+    impl BridgeDecodeOptional for JsFormatterConfig {
+        type Wire = Vec<u8>;
+
+        fn decode_optional(bytes: Self::Wire) -> Option<Option<Self>> {
+            if bytes.is_empty() {
+                return Some(None);
+            }
+            if bytes.len() != 22 {
+                return None;
+            }
+            let (mask, layout) = decode_layout(&bytes[..13], 0x1fff)?;
+            Some(Some(Self {
+                line_width: layout.line_width,
+                indent_style: layout.indent_style,
+                indent_width: layout.indent_width,
+                line_ending: layout.line_ending,
+                semicolons: field(
+                    mask,
+                    4,
+                    bytes[13],
+                    &[JsSemicolons::Always, JsSemicolons::AsNeeded],
+                )?,
+                quote_style: field(
+                    mask,
+                    5,
+                    bytes[14],
+                    &[JsQuoteStyle::Double, JsQuoteStyle::Single],
+                )?,
+                jsx_quote_style: field(
+                    mask,
+                    6,
+                    bytes[15],
+                    &[JsQuoteStyle::Double, JsQuoteStyle::Single],
+                )?,
+                quote_properties: field(
+                    mask,
+                    7,
+                    bytes[16],
+                    &[
+                        JsQuoteProperties::AsNeeded,
+                        JsQuoteProperties::Consistent,
+                        JsQuoteProperties::Preserve,
+                    ],
+                )?,
+                trailing_commas: field(
+                    mask,
+                    8,
+                    bytes[17],
+                    &[
+                        JsTrailingCommas::All,
+                        JsTrailingCommas::Es5,
+                        JsTrailingCommas::None,
+                    ],
+                )?,
+                arrow_parentheses: field(
+                    mask,
+                    9,
+                    bytes[18],
+                    &[JsArrowParentheses::Always, JsArrowParentheses::AsNeeded],
+                )?,
+                bracket_spacing: field(mask, 10, bytes[19], &[false, true])?,
+                bracket_same_line: field(mask, 11, bytes[20], &[false, true])?,
+                single_attribute_per_line: field(mask, 12, bytes[21], &[false, true])?,
+            }))
         }
-        let boolean = |value| match value {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        };
-        let quote = |value| {
-            boolean(value).map(|single| {
-                if single {
-                    QuoteStyle::Single
-                } else {
-                    QuoteStyle::Double
-                }
-            })
-        };
-        let layout = layout_options(width_low, width_high, indent_width, use_tabs, line_ending)?;
-        Some(FormatOptions {
-            line_width: layout.line_width,
-            indent_width: layout.indent_width,
-            indent_style: layout.indent_style,
-            semicolons: if boolean(semi)? {
-                Semicolons::Always
-            } else {
-                Semicolons::AsNeeded
-            },
-            quote_style: quote(single_quote)?,
-            jsx_quote_style: quote(jsx_single_quote)?,
-            quote_properties: match quote_props {
-                0 => QuoteProperties::AsNeeded,
-                1 => QuoteProperties::Preserve,
-                2 => QuoteProperties::Consistent,
-                _ => return None,
-            },
-            trailing_commas: match trailing_comma {
-                0 => TrailingCommas::All,
-                1 => TrailingCommas::Es5,
-                2 => TrailingCommas::None,
-                _ => return None,
-            },
-            arrow_parentheses: if boolean(arrow_parens)? {
-                ArrowParentheses::Always
-            } else {
-                ArrowParentheses::AsNeeded
-            },
-            bracket_spacing: boolean(bracket_spacing)?,
-            bracket_same_line: boolean(bracket_same_line)?,
-            single_attribute_per_line: boolean(single_attribute_per_line)?,
-            line_ending: layout.line_ending,
-        })
     }
 }
