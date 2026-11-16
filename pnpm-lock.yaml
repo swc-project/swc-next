@@ -445,7 +445,7 @@ importers:
         version: 26.1.1
 
   packages/protocol:
-    devDependencies:
+    dependencies:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types

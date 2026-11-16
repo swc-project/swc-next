@@ -2,8 +2,6 @@
 
 Shared JavaScript source for SWC Next's internal native and WebAssembly protocols. Includes AST and document encoders, parser and generator configuration encoders, source transport, transform options and output, and formatter configuration and results.
 
-This private workspace package is bundled into each API by Rslib. It is not published or required at runtime. Import the specific protocol entry point so each API includes only the protocols it uses.
-
 ```js
 import { encodeParserConfig } from "@swc-next/protocol/parser";
 import { encodeFormatterConfig } from "@swc-next/protocol/formatter";
