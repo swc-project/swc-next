@@ -1,9 +1,9 @@
 use serde::Deserialize;
-use swc_next_core::formatter::{IndentStyle, LineEnding};
-use swc_next_core::js::formatter::{
+use swc_next_formatter::js::{
     JsArrowParentheses, JsFormatterConfig, JsQuoteProperties, JsQuoteStyle, JsSemicolons,
     JsTrailingCommas,
 };
+use swc_next_formatter::{IndentStyle, LineEnding};
 use swc_next_formatter_js::FormatOptions;
 
 use super::OptionSet;

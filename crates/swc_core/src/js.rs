@@ -25,8 +25,6 @@ pub enum CommentsOption {
     // Options(CommentsOptions),
 }
 
-#[cfg(feature = "js_formatter")]
-pub mod formatter;
 #[cfg(feature = "js_generator")]
 pub mod generator;
 #[cfg(feature = "js_minifier")]

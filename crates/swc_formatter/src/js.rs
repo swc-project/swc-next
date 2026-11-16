@@ -9,7 +9,7 @@
 
 use swc_next_formatter_js::{self as formatter, FormatOptions, InvalidIndentWidth};
 
-use crate::formatter::{IndentStyle, LineEnding};
+use crate::{IndentStyle, LineEnding};
 
 /// JavaScript and TypeScript formatting options.
 ///
@@ -231,7 +231,7 @@ pub mod bridge {
         JsArrowParentheses, JsFormatterConfig, JsQuoteProperties, JsQuoteStyle, JsSemicolons,
         JsTrailingCommas,
     };
-    use crate::formatter::bridge::{decode_layout, field};
+    use crate::bridge::{decode_layout, field};
 
     /// Internal document result. Syntax failures are transported separately from documents.
     pub enum FormatDocOutput {

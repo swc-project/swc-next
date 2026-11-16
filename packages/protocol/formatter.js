@@ -1,5 +1,5 @@
 // Internal SWC Next transport; use matching native/Wasm bindings.
-// Keep in sync with swc_core/src/{formatter,js/formatter}.rs.
+// Keep in sync with crates/swc_formatter/src/{lib,js}.rs.
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const encoder = new TextEncoder();
 const layout = [

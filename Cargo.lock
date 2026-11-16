@@ -3813,9 +3813,6 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
- "swc_next_formatter_core",
- "swc_next_formatter_host",
- "swc_next_formatter_js",
 ]
 
 [[package]]
@@ -3927,12 +3924,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_formatter"
+version = "0.7.0"
+dependencies = [
+ "serde",
+ "swc_next_bridge",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_formatter_js",
+]
+
+[[package]]
 name = "swc_next_formatter_bridge"
 version = "0.7.0"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
- "swc_next_core",
+ "swc_next_formatter",
 ]
 
 [[package]]
@@ -3961,9 +3971,9 @@ dependencies = [
  "memchr",
  "serde_json",
  "swc_next_allocator",
- "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
+ "swc_next_formatter",
  "swc_next_formatter_core",
  "swc_next_formatter_host",
  "zmij_ecma",
@@ -3976,6 +3986,7 @@ dependencies = [
  "napi-build",
  "swc_next_bridge",
  "swc_next_core",
+ "swc_next_formatter",
 ]
 
 [[package]]
@@ -4160,6 +4171,7 @@ dependencies = [
  "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_formatter",
  "swc_next_formatter_js",
 ]
 

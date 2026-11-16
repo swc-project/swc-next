@@ -4,10 +4,8 @@
 //! change without notice.
 
 use swc_next_bridge::bridge;
-use swc_next_core::js::{
-    formatter::{JsFormatterConfig, bridge::FormatDocOutput},
-    parser::JsParserConfig as ParserConfig,
-};
+use swc_next_core::js::parser::JsParserConfig as ParserConfig;
+use swc_next_formatter::js::{JsFormatterConfig, bridge::FormatDocOutput};
 
 #[bridge(
     ts_args_type = "source: string, parser: number, options: Uint8Array",
@@ -19,5 +17,5 @@ pub fn format_doc_buffer_sync(
     parser: Option<ParserConfig>,
     options: Option<JsFormatterConfig>,
 ) -> Result<FormatDocOutput, String> {
-    swc_next_core::js::formatter::bridge::format_doc(source, parser.map(Into::into), options)
+    swc_next_formatter::js::bridge::format_doc(source, parser.map(Into::into), options)
 }

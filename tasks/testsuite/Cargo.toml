@@ -15,13 +15,14 @@ serde        = { workspace = true }
 serde_json   = { workspace = true }
 
 swc_core                  = { workspace = true, features = ["base", "ecma_transforms_react", "ecma_preset_env"] }
-swc_next_core             = { workspace = true, features = ["js_formatter", "js_transformer", "serde"] }
+swc_next_core             = { workspace = true, features = ["js_transformer", "serde"] }
 swc_next_allocator        = { workspace = true }
 swc_next_ecma_ast         = { workspace = true }
 swc_next_ecma_codegen     = { workspace = true }
 swc_next_ecma_minifier    = { workspace = true }
 swc_next_ecma_parser      = { workspace = true }
 swc_next_ecma_semantic    = { workspace = true }
+swc_next_formatter        = { workspace = true, features = ["js", "serde"] }
 swc_next_formatter_js     = { workspace = true }
 
 [[bin]]
