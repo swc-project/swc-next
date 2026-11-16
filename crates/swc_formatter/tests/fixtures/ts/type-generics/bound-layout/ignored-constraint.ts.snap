@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Alias<T extends
+/* prettier-ignore */
+12.00 | 13.00 = // suffix
+Default> = T;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Alias<
+  T extends
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type Alias<
+  T extends
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Alias<
+  T extends
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type Alias<
+	T extends
+		/* prettier-ignore */
+		12.00 | 13.0 = // suffix
+		Default
+> = T;

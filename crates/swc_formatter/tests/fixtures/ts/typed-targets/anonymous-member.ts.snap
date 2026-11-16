@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(cell.value) = function () {};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+cell.value = function () {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+cell.value =
+  function () {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+cell.value =
+  function () {}

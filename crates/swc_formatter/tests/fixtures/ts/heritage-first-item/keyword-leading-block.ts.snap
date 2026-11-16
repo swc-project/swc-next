@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A extends Base<T> implements
+/* head */ First, Second {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class A
+  extends Base<T>
+  /* head */
+  implements First, Second {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class A
+  extends Base<T>
+  /* head */
+  implements
+    First,
+    Second {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+class A
+	extends Base<T>
+	/* head */
+	implements First, Second {}

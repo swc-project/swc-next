@@ -1,0 +1,52 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default class<T> { method(value: T): T { return value; } }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export default class<T> {
+  method(value: T): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export default class<
+  T,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+export default class<
+  T
+> {
+  method(
+    value: T
+  ): T {
+    return value
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+export default class<
+  T,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}

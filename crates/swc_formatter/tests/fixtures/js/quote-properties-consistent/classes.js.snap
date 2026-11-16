@@ -1,0 +1,73 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+class Record { plain = 1; "quoted-key" = 2; constructor() {} method() {} get value() { return 3; } set value(next) {} #private = 4; #method() {} [computed]() {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Record {
+  plain = 1;
+  "quoted-key" = 2;
+  constructor() {}
+  method() {}
+  get value() {
+    return 3;
+  }
+  set value(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
+---------- Output ----------
+class Record {
+  plain = 1;
+  "quoted-key" = 2;
+  constructor() {}
+  method() {}
+  get value() {
+    return 3;
+  }
+  set value(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
+---------- Output ----------
+class Record {
+  "plain" = 1;
+  "quoted-key" = 2;
+  "constructor"() {}
+  "method"() {}
+  get "value"() {
+    return 3;
+  }
+  set "value"(next) {}
+  #private = 4;
+  #method() {}
+  [computed]() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+class Record {
+  'plain' = 1
+  'quoted-key' = 2
+  'constructor'() {}
+  'method'() {}
+  get 'value'() {
+    return 3
+  }
+  set 'value'(next) {}
+  #private = 4
+  #method() {}
+  [computed]() {}
+}

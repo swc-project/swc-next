@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const make = <T>(value: T): ((next: T) => T) => (next: T): T => value;---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const make =
+  <T>(value: T): ((next: T) => T) =>
+  (next: T): T =>
+    value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const make =
+  <T>(
+    value: T,
+  ): ((
+    next: T,
+  ) => T) =>
+  (next: T): T =>
+    value;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const make =
+  <T>(
+    value: T
+  ): ((
+    next: T
+  ) => T) =>
+  (next: T): T =>
+    value
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const make =
+  <T>(
+    value: T,
+  ): ((
+    next: T,
+  ) => T) =>
+  (next: T): T =>
+    value;

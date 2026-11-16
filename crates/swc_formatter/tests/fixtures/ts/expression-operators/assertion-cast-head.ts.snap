@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = <LongType>(/** @type {any} */ (receiver.method(firstArgument, secondArgument)));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = <LongType> /** @type {any} */ (
+  receiver.method(firstArgument, secondArgument)
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value = <
+  LongType
+> /** @type {any} */ (
+  receiver.method(
+    firstArgument,
+    secondArgument,
+  )
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  <
+    LongType
+  > /** @type {any} */ (
+    receiver.method(
+      firstArgument,
+      secondArgument,
+    )
+  )
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const value = <
+	LongType
+> /** @type {any} */ (
+	receiver.method(
+		firstArgument,
+		secondArgument,
+	)
+);

@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = (x) =>
+// note
+{ return x; };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const f = (x) =>
+  // note
+  {
+    return x;
+  };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const f = (x) =>
+  // note
+  {
+    return x;
+  };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const f = (x) =>
+  // note
+  {
+    return x
+  }

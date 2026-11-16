@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Value {} /* note */ /** @type {Function} */;
+(consume)(1);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface Value {}
+/* note */ /** @type {Function} */ ;
+consume(1);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+interface Value {}
+/* note */ /** @type {Function} */ ;
+consume(1)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+interface Value {}
+/* note */ /** @type {Function} */ ;
+consume(1);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+interface Value {}
+/* note */ /** @type {Function} */ ;
+consume(1)

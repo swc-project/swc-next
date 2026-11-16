@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function method({ "first" /* prettier-ignore */: value }) { return value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function method({ "first" /* prettier-ignore */: value }) {
+  return value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function method({
+  "first" /* prettier-ignore */: value,
+}) {
+  return value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+function method({
+  "first" /* prettier-ignore */: value
+}) {
+  return value
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+function method({
+  "first" /* prettier-ignore */: value,
+}) {
+  return value
+}

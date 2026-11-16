@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = \u0076alue satisfies /* prettier-ignore */
+B &  C;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+const x = \u0076alue /* prettier-ignore */ satisfies B & C;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+const x =
+  \u0076alue /* prettier-ignore */ satisfies B &
+    C;

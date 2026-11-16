@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = X extends Y ? A | (B
+// c
+) : Z;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = X extends Y
+  ? (
+      | A
+      | B
+      // c
+    )
+  : Z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type T = X extends Y
+  ? (
+      | A
+      | B
+      // c
+    )
+  : Z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+type T = X extends Y
+  ? (
+      | A
+      | B
+      // c
+    )
+  : Z

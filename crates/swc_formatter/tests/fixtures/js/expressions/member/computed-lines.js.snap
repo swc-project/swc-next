@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object // receiver
+[ // key
+first // end
+];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+]

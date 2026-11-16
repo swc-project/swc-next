@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(value = (// @ts-expect-error
+a, b)) { return value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(
+  value =
+    // @ts-expect-error
+    (a, b)) { return value; }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f(
+  value =
+    // @ts-expect-error
+    (a, b)) { return value }

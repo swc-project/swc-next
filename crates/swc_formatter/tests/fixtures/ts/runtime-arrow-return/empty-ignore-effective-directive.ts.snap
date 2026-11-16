@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const check = () /* prettier-ignore */ : { value :number } => {
+  // @ts-expect-error
+  const value: number = "bad";
+  return { value };
+};---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const check = () /* prettier-ignore */ : { value :number } => {
+  // @ts-expect-error
+  const value: number = "bad";
+  return { value };
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const check =
+  () /* prettier-ignore */ : { value :number } => {
+    // @ts-expect-error
+    const value: number = "bad";
+    return {
+      value,
+    };
+  };
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const check =
+  () /* prettier-ignore */ : { value :number } => {
+    // @ts-expect-error
+    const value: number = "bad"
+    return { value }
+  }
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const check =
+  () /* prettier-ignore */ : { value :number } => {
+    // @ts-expect-error
+    const value: number = "bad";
+    return {
+      value,
+    };
+  };

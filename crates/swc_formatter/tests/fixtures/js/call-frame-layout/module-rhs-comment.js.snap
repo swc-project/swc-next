@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const dependency =
+// dependency note
+require("a-long-module-identifier-with-an-existing-module-call-frame");
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const dependency =
+  // dependency note
+  require("a-long-module-identifier-with-an-existing-module-call-frame");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+const dependency =
+  // dependency note
+  require("a-long-module-identifier-with-an-existing-module-call-frame");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+const dependency =
+  // dependency note
+  require("a-long-module-identifier-with-an-existing-module-call-frame")

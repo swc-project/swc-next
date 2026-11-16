@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+_ = `${
+firstLongName || secondLongName || thirdLongName
+}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+_ = `${firstLongName || secondLongName || thirdLongName}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+_ = `${
+  firstLongName ||
+  secondLongName ||
+  thirdLongName
+}`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+_ = `${
+  firstLongName ||
+  secondLongName ||
+  thirdLongName
+}`;

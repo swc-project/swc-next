@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@/** @param {number} value */ /* prettier-ignore */ (make(  value)) class A {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+@/** @param {number} value */ /* prettier-ignore */ (make(  value))
+class A {}

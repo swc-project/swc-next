@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+expect(pet).to.have.property("address").that.deep.equals({
+  street: "Alexanderstrasse",
+  city: "Berlin",
+  country: "Germany",
+});
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+expect(pet)
+  .to.have.property("address")
+  .that.deep.equals({
+    street: "Alexanderstrasse",
+    city: "Berlin",
+    country: "Germany",
+  });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+expect(pet)
+  .to.have.property("address")
+  .that.deep.equals({
+    street: "Alexanderstrasse",
+    city: "Berlin",
+    country: "Germany",
+  });

@@ -1,0 +1,44 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const node = (0, owner.node = (/* ordinary */ <Item value={61} /> /* JSX tail */) /* sequence tail */);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item value={61} /> /* JSX tail */
+  )) /* sequence tail */);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item value={61} /> /* JSX tail */
+  )) /* sequence tail */)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* JSX tail */
+  )) /* sequence tail */);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
+---------- Output ----------
+const node =
+  (0,
+  (owner.node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* JSX tail */
+  )) /* sequence tail */)

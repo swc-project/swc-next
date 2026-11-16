@@ -1,0 +1,31 @@
+[package]
+description           = "Experimental and unstable formatting configuration and document transport for SWC Next"
+edition               = "2024"
+homepage.workspace    = true
+keywords              = ["formatting", "pretty-printing"]
+license.workspace     = true
+name                  = "swc_next_formatter"
+repository.workspace  = true
+version               = "0.7.0"
+
+[features]
+bridge = ["dep:swc_next_bridge"]
+serde  = ["dep:serde"]
+
+[dependencies]
+serde                   = { workspace = true, optional = true, features = ["derive"] }
+swc_next_bridge         = { workspace = true, optional = true }
+swc_next_ecma_ast       = { workspace = true }
+swc_next_ecma_parser    = { workspace = true }
+swc_next_formatter_core = { workspace = true }
+swc_next_formatter_host = { workspace = true }
+swc_next_formatter_js   = { workspace = true }
+
+[dev-dependencies]
+insta              = { workspace = true }
+serde_json         = { workspace = true }
+swc_next_allocator = { workspace = true }
+
+[[test]]
+name              = "fixtures"
+required-features = ["serde"]

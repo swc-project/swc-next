@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = receiver.branch.method(longArgumentName);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(
+    longArgumentName,
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(
+    longArgumentName,
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const assignedValueName = receiver.branch.method(longArgumentName);

@@ -1,0 +1,106 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Elements<T> = T extends [unknown, ...(infer R)[]] ? R : never;
+
+type Union<T extends unknown[], U extends unknown[]> = [...(T | U)];
+
+type Intersection<T extends unknown[], U extends unknown[]> = [...(T & U)];
+
+type Readonly<T extends unknown[]> = [...(readonly T[])];
+
+type Callable = [...(() => unknown[])];
+
+type Optional<T extends unknown[]> = [...(T[])?];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Elements<T> = T extends [unknown, ...(infer R)[]] ? R : never;
+
+type Union<T extends unknown[], U extends unknown[]> = [...(T | U)];
+
+type Intersection<T extends unknown[], U extends unknown[]> = [...(T & U)];
+
+type Readonly<T extends unknown[]> = [...(readonly T[])];
+
+type Callable = [...(() => unknown[])];
+
+type Optional<T extends unknown[]> = [...T[]?];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":32}
+---------- Output ----------
+type Elements<T> = T extends [
+  unknown,
+  ...(infer R)[],
+]
+  ? R
+  : never;
+
+type Union<
+  T extends unknown[],
+  U extends unknown[],
+> = [...(T | U)];
+
+type Intersection<
+  T extends unknown[],
+  U extends unknown[],
+> = [...(T & U)];
+
+type Readonly<
+  T extends unknown[],
+> = [...(readonly T[])];
+
+type Callable = [
+  ...(() => unknown[]),
+];
+
+type Optional<
+  T extends unknown[],
+> = [...T[]?];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":120,"semicolons":"as-needed"}
+---------- Output ----------
+type Elements<T> = T extends [unknown, ...(infer R)[]] ? R : never
+
+type Union<T extends unknown[], U extends unknown[]> = [...(T | U)]
+
+type Intersection<T extends unknown[], U extends unknown[]> = [...(T & U)]
+
+type Readonly<T extends unknown[]> = [...(readonly T[])]
+
+type Callable = [...(() => unknown[])]
+
+type Optional<T extends unknown[]> = [...T[]?]
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":40,"trailingCommas":"none"}
+---------- Output ----------
+type Elements<T> = T extends [
+	unknown,
+	...(infer R)[]
+]
+	? R
+	: never;
+
+type Union<
+	T extends unknown[],
+	U extends unknown[]
+> = [...(T | U)];
+
+type Intersection<
+	T extends unknown[],
+	U extends unknown[]
+> = [...(T & U)];
+
+type Readonly<T extends unknown[]> = [
+	...(readonly T[])
+];
+
+type Callable = [...(() => unknown[])];
+
+type Optional<T extends unknown[]> = [
+	...T[]?
+];

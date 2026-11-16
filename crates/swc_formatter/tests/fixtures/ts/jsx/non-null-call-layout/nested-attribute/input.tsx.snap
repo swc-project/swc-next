@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Box items={items.map(x => <Cell />)!!}/>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const view = (
+  <Box
+    items={items.map(
+      (x) => (
+        <Cell />
+      ),
+    )!!}
+  />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const view = <Box items={items.map((x) => <Cell />)!!} />;

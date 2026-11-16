@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const raw=`line\n\`\${value}`; const multiline=`first
+  literal indentation last`; const empty=``; tag`\unicode${value}\xZ`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const raw = `line\n\`\${value}`;
+const multiline = `first
+  literal indentation
+ last`;
+const empty = ``;
+tag`\unicode${value}\xZ`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const raw = `line\n\`\${value}`
+const multiline = `first
+  literal indentation
+ last`
+const empty = ``
+tag`\unicode${value}\xZ`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const raw = `line\n\`\${value}`;
+const multiline = `first
+  literal indentation
+ last`;
+const empty = ``;
+tag`\unicode${value}\xZ`;

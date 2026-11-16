@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const Implementation: Constructor<Input, Output> = class extends runtime.namespace.BaseConstructor<Input> {};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+  class extends runtime.namespace
+    .BaseConstructor<Input> {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":90}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> = class extends runtime.namespace
+  .BaseConstructor<Input> {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+  class extends runtime.namespace
+    .BaseConstructor<Input> {}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
+---------- Output ----------
+const Implementation: Constructor<Input, Output> =
+	class extends runtime.namespace
+		.BaseConstructor<Input> {};

@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume(value => (// head
+  <Panel value={value} /> /* tail */));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel
+      value={value}
+    />
+  ) /* tail */,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+)
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+consume(
+  value => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+)

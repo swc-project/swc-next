@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(// @ts-expect-error
+(first
+/* tail */), unknown)];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  // @ts-expect-error
+  ((first
+    /* tail */
+  ),
+  unknown),
+];

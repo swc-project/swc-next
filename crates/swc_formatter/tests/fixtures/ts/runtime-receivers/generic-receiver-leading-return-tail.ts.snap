@@ -1,0 +1,62 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function genericReceiver<T>
+// prettier-ignore
+(this:   { value:T }, value: T) // prettier-ignore
+:   T { return value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function genericReceiver<T>
+// prettier-ignore
+(this:   { value:T }, value: T) // prettier-ignore
+:   T {
+  return value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function genericReceiver<
+  T,
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T,
+) // prettier-ignore
+:   T {
+  return value;
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+function genericReceiver<
+  T
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T
+) // prettier-ignore
+:   T {
+  return value
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+function genericReceiver<
+  T,
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T,
+) // prettier-ignore
+:   T {
+  return value;
+}

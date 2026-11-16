@@ -1,0 +1,54 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Choice<T> = T extends string
+ /**
+  * branch
+  */
+ ? One | Two : Three;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Choice<T> = T extends string
+  ? /**
+     * branch
+     */
+    One | Two
+  : Three;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Choice<T> =
+  T extends string
+    ? /**
+       * branch
+       */
+      One | Two
+    : Three;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Choice<
+  T,
+> =
+  T extends string
+    ? /**
+       * branch
+       */
+      | One
+      | Two
+    : Three
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type Choice<T> =
+	T extends string
+		? /**
+			 * branch
+			 */
+			One | Two
+		: Three;

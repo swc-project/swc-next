@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!(/* ordinary */ // @__PURE__
+/** @type {number} */ (first));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+!(
+  /* ordinary */ // @__PURE__
+  /** @type {number} */ (
+    first
+  )
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+!(
+  /* ordinary */ // @__PURE__
+  /** @type {number} */ (first)
+);

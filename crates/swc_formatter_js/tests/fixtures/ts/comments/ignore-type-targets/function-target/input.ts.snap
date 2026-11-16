@@ -1,8 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-type T = /* prettier-ignore */ ((x:A)=>B);---------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-type T = /* prettier-ignore */ (x:A)=>B;

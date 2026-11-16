@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+t ? <a />
+/* #__PURE__ */ : z();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+t ? (
+  <a />
+)
+/* #__PURE__ */ : (
+  z()
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+t ? (
+  <a />
+)
+/* #__PURE__ */ : (
+  z()
+);

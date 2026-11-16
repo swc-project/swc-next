@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-({ [/** @type {string} */ (key)]: value });
----------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-({ [/** @type {string} */ (key)]: value });

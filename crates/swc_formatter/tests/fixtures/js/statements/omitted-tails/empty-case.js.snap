@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (value) {
+  case 0: ; /* first */
+  ; /* second */
+
+  case 1: next();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+switch (value) {
+  case 0: /* first */ /* second */
+
+  case 1:
+    next();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+switch (value) {
+  case 0: /* first */ /* second */
+
+  case 1:
+    next()
+}

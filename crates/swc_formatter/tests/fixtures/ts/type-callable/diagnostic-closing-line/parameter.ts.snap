@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F= (x:number,
+/* @ts-expect-error */ /* packet */
+)=> MissingType;
+type Outside= OutsideMissing;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type F = (
+  x: number,
+  /* @ts-expect-error */ /* packet */
+) => MissingType;
+type Outside = OutsideMissing;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
+---------- Output ----------
+type F = (
+  x: number,
+  /* @ts-expect-error */ /* packet */
+) => MissingType
+type Outside = OutsideMissing

@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it("test", function(done,
+
+result) { return function(a,
+
+b) { return a + b; }; });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b;
+  };
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b;
+  };
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b
+  }
+})

@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+firstLongValue ?? secondLongValue;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+firstLongValue ?? secondLongValue;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+firstLongValue ??
+  secondLongValue;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+firstLongValue ?? secondLongValue
+

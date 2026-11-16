@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(value : number =
+/* prettier-ignore */
+first(  )) { return value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(
+  value : number =
+/* prettier-ignore */
+first(  ),
+) {
+  return value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function f(
+  value : number =
+/* prettier-ignore */
+first(  ),
+) {
+  return value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+function f(
+  value : number =
+/* prettier-ignore */
+first(  ),
+) {
+  return value
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+function f(
+	value : number =
+/* prettier-ignore */
+first(  ),
+) {
+	return value;
+}

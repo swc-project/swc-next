@@ -1,0 +1,126 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+const value0=<MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
+
+// @ts-ignore
+const value1=<MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>;
+
+const value2=<MissingPanel>{/* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>;
+
+const value3=<MissingPanel>{(receiver.a(// @ts-ignore
+missingPaired(1)).b(2).c(3))}</MissingPanel>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// @ts-ignore
+const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
+
+// @ts-ignore
+const value1 = <MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>;
+
+const value2 = (
+  <MissingPanel>
+    {
+      /* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>);
+
+const value3 = (
+  <MissingPanel>
+    {receiver
+      .a(
+        // @ts-ignore
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+// @ts-ignore
+const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
+
+// @ts-ignore
+const value1 = <MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>;
+
+const value2 = (
+  <MissingPanel>
+    {
+      /* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>);
+
+const value3 = (
+  <MissingPanel>
+    {receiver
+      .a(
+        // @ts-ignore
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-ignore
+const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
+
+// @ts-ignore
+const value1 = <MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>;
+
+const value2 = (
+  <MissingPanel>
+    {
+      /* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>);
+
+const value3 = (
+  <MissingPanel>
+    {receiver
+      .a(
+        // @ts-ignore
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-ignore
+const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>
+
+// @ts-ignore
+const value1 = <MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>
+
+const value2 =
+	(
+		<MissingPanel>
+			{
+				/* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>)
+
+const value3 =
+	(
+		<MissingPanel>
+			{receiver
+				.a(
+					// @ts-ignore
+					missingPaired(1)).b(2).c(3)}</MissingPanel>)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
+---------- Output ----------
+// @ts-ignore
+const value0 = <MissingPanel>{/* prettier-ignore */}<IgnoredChild odd = {missingAttribute}  ></IgnoredChild></MissingPanel>;
+
+// @ts-ignore
+const value1 = <MissingPanel>{/* prettier-ignore */}<><IgnoredChild odd = {missingAttribute}  /></></MissingPanel>;
+
+const value2 = (
+  <MissingPanel>
+    {
+      /* prettier-ignore */ receiver.a(// @ts-ignore
+missingIgnored(1)).b(2).c(3)}</MissingPanel>);
+
+const value3 = (
+  <MissingPanel>
+    {receiver
+      .a(
+        // @ts-ignore
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);

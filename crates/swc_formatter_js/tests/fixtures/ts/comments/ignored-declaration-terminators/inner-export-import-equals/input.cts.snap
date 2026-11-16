@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-export /* prettier-ignore */ import Foo = require( 'foo' );
----------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-export /* prettier-ignore */ import Foo = require( 'foo' );

@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(function /* prettier-ignore */ *(first=1+2,second=3+4) { yield first+second; });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(function /* prettier-ignore */* (first=1+2, second = 3 + 4) {
+  yield first + second;
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(function /* prettier-ignore */* (
+  first=1+2,
+  second = 3 + 4,
+) {
+  yield (
+    first + second
+  );
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;(function /* prettier-ignore */* (
+  first=1+2,
+  second = 3 +
+    4
+) {
+  yield (
+    first +
+    second
+  )
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+;(function /* prettier-ignore */* (
+  first=1+2,
+  second = 3 + 4,
+) {
+  yield first + second
+})

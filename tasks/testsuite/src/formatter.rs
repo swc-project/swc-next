@@ -29,7 +29,8 @@ use swc_next_ecma_ast::{
     PropertyKey, Severity, SourceType, StringLiteral, VariableDeclarator, Visit, VisitWith,
 };
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_formatter_js::{FormatError, PRETTIER_COMPATIBILITY_VERSION, format, format_ast};
+use swc_next_formatter::js::{format, format_ast};
+use swc_next_formatter_js::{FormatError, PRETTIER_COMPATIBILITY_VERSION};
 
 use crate::util::crate_root;
 

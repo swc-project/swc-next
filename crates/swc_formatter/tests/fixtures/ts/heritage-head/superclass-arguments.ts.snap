@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Name<T> extends Base<  T  > /* prettier-ignore */ implements Other<T> { value :  T; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Name<T> extends Base<  T  > /* prettier-ignore */ implements Other<T> {
+  value: T;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Name<T>
+  extends Base<  T  > /* prettier-ignore */ implements Other<T>
+{
+  value: T
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class Name<T>
+	extends Base<  T  > /* prettier-ignore */ implements Other<T>
+{
+	value: T;
+}

@@ -1,0 +1,102 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/**@type{(n:number)=>number}*/ (connect(firstArgument, secondArgument, thirdArgument)))(outer);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer)
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+	connect(
+		firstArgument,
+		secondArgument,
+		thirdArgument,
+	)
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"trailingCommas":"none"}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument
+  )
+)(outer);
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);

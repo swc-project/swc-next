@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abstract class Prefix { accessor override public /* @ts-expect-error */ static abstract field: number; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+abstract class Prefix {
+  accessor override public /* @ts-expect-error */ static abstract field: number; }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+abstract class Prefix {
+  accessor override public /* @ts-expect-error */ static abstract field: number }

@@ -1,0 +1,59 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+target = (/** @type {number} */
+first, third);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+target = /** @type {number} */ (first, third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+target =
+  /** @type {number} */
+  (first, third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+target =
+  /** @type {number} */
+  (first, third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+target =
+  /** @type {number} */
+  (
+    first,
+    third
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+target = /** @type {number} */ (first, third)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+target =
+  /** @type {number} */
+  (first, third)
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+target =
+	/** @type {number} */
+	(first, third);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+target = /** @type {number} */ (first, third);

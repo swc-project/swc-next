@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [K in "a"] // @ts-expect-error
+: Missing };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing; };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing; };
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+type M = {
+  [K in "a"] // @ts-expect-error
+  : Missing }

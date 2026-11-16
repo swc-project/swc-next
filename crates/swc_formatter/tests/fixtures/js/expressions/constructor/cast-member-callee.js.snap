@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new /** @type {any} */ (factory().veryLongNamespace.Constructor)(first(), second());
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+new /** @type {any} */ (
+  factory()
+    .veryLongNamespace
+    .Constructor
+)(
+  first(),
+  second(),
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new /** @type {any} */ (factory().veryLongNamespace.Constructor)(
+  first(),
+  second(),
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+new /** @type {any} */ (
+  factory()
+    .veryLongNamespace
+    .Constructor
+)(first(), second())

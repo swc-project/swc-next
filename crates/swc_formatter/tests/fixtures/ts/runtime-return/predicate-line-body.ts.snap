@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function isNumber(value: unknown): value is number
+// prettier-ignore
+{ return typeof  value === "number"; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function isNumber(value: unknown): value is number
+// prettier-ignore
+{
+  return typeof  value === "number";
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function isNumber(
+  value: unknown,
+): value is number
+// prettier-ignore
+{
+  return typeof  value === "number";
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+function isNumber(
+  value: unknown
+): value is number
+// prettier-ignore
+{
+  return typeof  value === "number"
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+function isNumber(
+  value: unknown,
+): value is number
+// prettier-ignore
+{
+  return typeof  value === "number";
+}

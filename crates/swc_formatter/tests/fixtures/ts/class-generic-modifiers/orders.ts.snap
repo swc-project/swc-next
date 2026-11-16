@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Variance<const in Input, out const Output, in out const State> {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Variance<const in Input, const out Output, const in out State> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State,
+> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State
+> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State,
+> {}

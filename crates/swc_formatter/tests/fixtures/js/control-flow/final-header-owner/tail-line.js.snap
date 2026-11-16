@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (initialize(); /* block */; // tail
+) consume();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (
+  initialize() /* block */; // tail
+  ;
+)
+  consume();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+for (
+  initialize() /* block */; // tail
+  ;
+)
+  consume();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+for (
+  initialize() /* block */; // tail
+  ;
+)
+  consume()

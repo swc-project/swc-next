@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const read = () => ((// member
+1, 2), 3);
+read();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+);
+read();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+)
+read()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const read = () => (
+  (
+    // member
+    1, 2
+  ),
+  3
+);
+read();

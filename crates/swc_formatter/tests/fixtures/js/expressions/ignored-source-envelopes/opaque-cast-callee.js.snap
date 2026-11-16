@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @type {Function} */ (f)) // prettier-ignore
+(...items);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;/** @type {Function} */ (f) // prettier-ignore
+(...items)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+/** @type {Function} */ (f) // prettier-ignore
+(...items);

@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Alias<\u0054 /* prettier-ignore */ extends 12.00 = string> = T;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Alias<\u0054 /* prettier-ignore */ extends 12.0 = string> = T;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Alias<
+  \u0054 /* prettier-ignore */ extends
+    12.0 = string,
+> = T;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Alias<
+  \u0054 /* prettier-ignore */ extends
+    12.0 =
+    string,
+> =
+  T
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type Alias<
+	\u0054 /* prettier-ignore */ extends
+		12.0 = string
+> = T;

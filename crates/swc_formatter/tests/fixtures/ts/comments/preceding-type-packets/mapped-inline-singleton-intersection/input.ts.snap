@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [\u004b in /* prettier-ignore */ & B]: X };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+type T = { [\u004b /* prettier-ignore */ in B]: X };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+type T = {
+  [
+    \u004b /* prettier-ignore */ in B
+  ]: X;
+};

@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a, /* first */ /* second */);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+f(a /* first */ /* second */);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f(a /* first */ /* second */);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+f(a /* first */ /* second */)

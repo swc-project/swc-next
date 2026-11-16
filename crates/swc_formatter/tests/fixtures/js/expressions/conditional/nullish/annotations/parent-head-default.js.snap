@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function consume(value = /*#__PURE__*/ removed() ?? 0 ? yes : no) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function consume(value = /*#__PURE__*/ removed() ?? 0 ? yes : no) {}
+

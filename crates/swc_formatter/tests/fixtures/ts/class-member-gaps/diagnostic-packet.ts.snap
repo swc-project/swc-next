@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue = OutsideValue;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue = OutsideValue;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo;
+  outsideValue =
+    OutsideValue;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Value {
+  first() {}
+
+  // ordinary head
+  // @ts-expect-error
+  protectedValue = MissingOne + MissingTwo
+  outsideValue = OutsideValue
+}

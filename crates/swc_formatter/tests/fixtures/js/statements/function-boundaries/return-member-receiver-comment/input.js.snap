@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return (
+// receiver
+{ value: first() }
+).value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    {
+      value:
+        first(),
+    }.value
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    {
+      value:
+        first(),
+    }.value
+  )
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    { value: first() }.value
+  );
+}

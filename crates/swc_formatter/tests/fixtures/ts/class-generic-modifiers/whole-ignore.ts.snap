@@ -1,0 +1,44 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Collection<
+// prettier-ignore
+in const T extends Array < number > = number[],
+U
+> {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U
+> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}

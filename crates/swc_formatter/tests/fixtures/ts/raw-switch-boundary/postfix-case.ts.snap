@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch(c){case 0: const x = (y as /* prettier-ignore */ T?)
+case 1: b();}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+switch (c) {
+  case 0:
+    const x = y as /* prettier-ignore */ T?
+  case 1:
+    b()
+}

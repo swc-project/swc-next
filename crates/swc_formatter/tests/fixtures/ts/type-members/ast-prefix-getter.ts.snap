@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Methods { readonly /* get [ */ get /* key */ [name](): number; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface Methods {
+	/* get [ */
+	get /* key */ [name](): number;
+}

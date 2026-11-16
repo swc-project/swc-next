@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left << <T>/value/.test(input);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+left << ((<T>/value/.test(input)));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+left <<
+  ((<T>/value/.test(
+    input,
+  )));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+left <<
+  ((<
+    T
+  >/value/.test(
+    input,
+  )))
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+left <<
+	((<T>/value/.test(
+		input,
+	)));

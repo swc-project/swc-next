@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @param {number} value */ function (value) { return value; })
+/** lookup */
+.call(null, "wrong");
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(
+  /** @param {number} value */ function (value) {
+    return value;
+  }
+)
+  /** lookup */
+  .call(null, "wrong");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(
+  /** @param {number} value */ function (
+    value,
+  ) {
+    return value;
+  }
+)
+  /** lookup */
+  .call(
+  null,
+  "wrong",
+);

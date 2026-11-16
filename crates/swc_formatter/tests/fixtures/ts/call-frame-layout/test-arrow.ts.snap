@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it("an intentionally long test description for parameter ownership", (done: Function,
+
+result: number) => { return done(result); });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
+  return done(result);
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
+  return done(result);
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+it("an intentionally long test description for parameter ownership", (done: Function, result: number) => {
+  return done(
+    result,
+  )
+})

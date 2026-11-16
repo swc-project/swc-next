@@ -1,0 +1,96 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value0=<MissingPanel>{// @ts-expect-error
+coveredLast}</MissingPanel>;
+
+const value1=<MissingPanel>{// @ts-expect-error
+coveredLast}
+</MissingPanel>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
+---------- Output ----------
+const value0 =
+	(
+		<MissingPanel>
+			{
+				// @ts-expect-error
+				coveredLast}</MissingPanel>)
+
+const value1 =
+	(
+		<MissingPanel>
+			{
+				// @ts-expect-error
+				coveredLast}
+		</MissingPanel>
+	)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    {
+      // @ts-expect-error
+      coveredLast}
+  </MissingPanel>
+);
