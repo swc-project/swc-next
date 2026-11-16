@@ -114,7 +114,7 @@ impl Compressor {
         let ExprData::SequenceExpression(sequence) = ast.expr_data(node) else {
             return None;
         };
-        let reference_position = self.reference_positions.remove(&node.node_id());
+        let reference_position = self.reference_positions.remove(node.node_id());
         let items: Vec<_> = sequence
             .expressions(ast)
             .iter()
@@ -154,7 +154,7 @@ impl Compressor {
             | ExprData::Function(_)
             | ExprData::ArrowFunctionExpression(_) => {}
             ExprData::IdentifierReference(_) => {
-                if !self.candidates.pure_reads.contains(&expr.node_id()) {
+                if !self.candidates.pure_reads.contains(expr.node_id()) {
                     effects.push(expr);
                 }
             }
@@ -185,7 +185,7 @@ impl Compressor {
                         ) =>
                     {
                         let id = value::skip_parentheses(ast, argument).node_id();
-                        if !self.candidates.pure_reads.contains(&id) {
+                        if !self.candidates.pure_reads.contains(id) {
                             effects.push(expr);
                         }
                     }
