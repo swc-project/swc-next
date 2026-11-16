@@ -110,11 +110,11 @@ pub(super) fn check_binding_identifier<'traverse>(
     builder: &mut SemanticBuilder<'traverse, '_>,
     identifier: BindingIdentifier,
     name: &'traverse [u8],
-) -> Option<PreparedDeclaration> {
+) {
     let node_id = identifier.node_id();
     let flags = builder.symbols.pending.flags;
     if flags.is_empty() {
-        return None;
+        return;
     }
     let strict_binding =
         !builder.in_type_position() && builder.is_strict() && !flags.contains(SymbolFlags::AMBIENT);
@@ -139,21 +139,12 @@ pub(super) fn check_binding_identifier<'traverse>(
             ReportOptions::default(),
         );
     }
-    let prepared = if builder.check_syntax.redeclarations() {
-        let prepared = builder.symbols.prepare_declaration(
-            builder.ast,
-            identifier.name(builder.ast).into(),
-            node_id,
-        );
-        builder.check_redeclaration(node_id, name, prepared);
-        Some(prepared)
-    } else {
-        None
-    };
+    if builder.check_syntax.redeclarations() {
+        builder.check_redeclaration(node_id, name, builder.symbols.pending);
+    }
     if builder.symbols.export_state.is_named() {
         builder.record_exported_name(name, node_id);
     }
-    prepared
 }
 
 pub(super) fn check_label_identifier(
@@ -1388,12 +1379,6 @@ pub(super) fn check_export_default_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: ExportDefaultDeclaration,
 ) {
-    let export = declaration.declaration(builder.ast);
-    if let ExportDefaultDeclarationKindData::Expr(expression) =
-        builder.ast.export_default_declaration_kind_data(export)
-    {
-        ts::check_ts_ambient_export_assignment_expression(builder, expression.node_id());
-    }
     builder.check_import_export_position(
         declaration.node_id(),
         "'export default' declaration",
@@ -1424,10 +1409,7 @@ pub(super) fn check_export_specifier(
 ) {
     let exported_name = module_export_name(builder.ast, specifier.exported(builder.ast).node_id());
     builder.record_exported_name(exported_name, specifier.node_id());
-    // TypeScript export targets, including global augmentation members, are
-    // resolved and checked together after traversal by the alias pass.
     if !builder.check_syntax.unresolved_exports()
-        || builder.ast.is_ts()
         || specifier.export_kind(builder.ast) == ImportOrExportKind::Type
         || builder.in_ts_namespace()
     {

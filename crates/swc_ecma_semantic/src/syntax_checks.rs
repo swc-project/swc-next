@@ -83,18 +83,6 @@ bitflags::bitflags! {
         const TS_MODULE_DECLARATIONS = 1 << 38;
         /// Global augmentations with invalid modifiers or containers.
         const TS_GLOBAL_DECLARATIONS = 1 << 39;
-        /// TypeScript export aliases referencing non-local declarations.
-        const TS_NON_LOCAL_EXPORTS = 1 << 40;
-        /// Duplicate TypeScript namespace export aliases.
-        const TS_DUPLICATE_EXPORT_ALIASES = 1 << 41;
-        /// TypeScript namespace export aliases conflicting with exported declarations.
-        const TS_EXPORT_ALIAS_CONFLICTS = 1 << 42;
-        /// TypeScript import aliases conflicting with declarations in their resolved spaces.
-        const TS_IMPORT_ALIAS_CONFLICTS = 1 << 43;
-        /// TypeScript import aliases referencing type-only exports.
-        const TS_TYPE_ONLY_IMPORT_ALIASES = 1 << 44;
-        /// Non-entity-name export assignments in ambient contexts.
-        const TS_AMBIENT_EXPORT_ASSIGNMENTS = 1 << 45;
         /// TypeScript identifiers named `await` in top-level module contexts.
         const TS_CONTEXTUAL_AWAIT = 1 << 46;
         /// Invalid parameter property bindings and names.
@@ -120,19 +108,6 @@ bitflags::bitflags! {
             | Self::DUPLICATE_PRIVATE_NAMES.bits()
             | Self::CLASS_MEMBER_NAMES.bits();
 
-        /// Checks that validate TypeScript namespace export aliases.
-        const TS_EXPORT_ALIASES = Self::UNRESOLVED_EXPORTS.bits()
-            | Self::TS_NON_LOCAL_EXPORTS.bits()
-            | Self::TS_DUPLICATE_EXPORT_ALIASES.bits()
-            | Self::TS_EXPORT_ALIAS_CONFLICTS.bits();
-
-        /// Checks that validate TypeScript import aliases.
-        const TS_IMPORT_ALIASES = Self::TS_IMPORT_ALIAS_CONFLICTS.bits()
-            | Self::TS_TYPE_ONLY_IMPORT_ALIASES.bits();
-
-        /// Checks that validate TypeScript import or export aliases.
-        const TS_ALIASES = Self::TS_EXPORT_ALIASES.bits()
-            | Self::TS_IMPORT_ALIASES.bits();
     }
 }
 
@@ -365,42 +340,6 @@ impl SyntaxChecks {
         self.contains(Self::TS_GLOBAL_DECLARATIONS)
     }
 
-    /// Whether [`Self::TS_NON_LOCAL_EXPORTS`] is enabled.
-    #[inline]
-    pub const fn ts_non_local_exports(&self) -> bool {
-        self.contains(Self::TS_NON_LOCAL_EXPORTS)
-    }
-
-    /// Whether [`Self::TS_DUPLICATE_EXPORT_ALIASES`] is enabled.
-    #[inline]
-    pub const fn ts_duplicate_export_aliases(&self) -> bool {
-        self.contains(Self::TS_DUPLICATE_EXPORT_ALIASES)
-    }
-
-    /// Whether [`Self::TS_EXPORT_ALIAS_CONFLICTS`] is enabled.
-    #[inline]
-    pub const fn ts_export_alias_conflicts(&self) -> bool {
-        self.contains(Self::TS_EXPORT_ALIAS_CONFLICTS)
-    }
-
-    /// Whether [`Self::TS_IMPORT_ALIAS_CONFLICTS`] is enabled.
-    #[inline]
-    pub const fn ts_import_alias_conflicts(&self) -> bool {
-        self.contains(Self::TS_IMPORT_ALIAS_CONFLICTS)
-    }
-
-    /// Whether [`Self::TS_TYPE_ONLY_IMPORT_ALIASES`] is enabled.
-    #[inline]
-    pub const fn ts_type_only_import_aliases(&self) -> bool {
-        self.contains(Self::TS_TYPE_ONLY_IMPORT_ALIASES)
-    }
-
-    /// Whether [`Self::TS_AMBIENT_EXPORT_ASSIGNMENTS`] is enabled.
-    #[inline]
-    pub const fn ts_ambient_export_assignments(&self) -> bool {
-        self.contains(Self::TS_AMBIENT_EXPORT_ASSIGNMENTS)
-    }
-
     /// Whether [`Self::TS_CONTEXTUAL_AWAIT`] is enabled.
     #[inline]
     pub const fn ts_contextual_await(&self) -> bool {
@@ -435,23 +374,5 @@ impl SyntaxChecks {
     #[inline]
     pub const fn class_body(&self) -> bool {
         self.intersects(Self::CLASS_BODY)
-    }
-
-    /// Whether any of the [`Self::TS_EXPORT_ALIASES`] checks are enabled.
-    #[inline]
-    pub const fn ts_export_aliases(&self) -> bool {
-        self.intersects(Self::TS_EXPORT_ALIASES)
-    }
-
-    /// Whether any of the [`Self::TS_IMPORT_ALIASES`] checks are enabled.
-    #[inline]
-    pub const fn ts_import_aliases(&self) -> bool {
-        self.intersects(Self::TS_IMPORT_ALIASES)
-    }
-
-    /// Whether any of the [`Self::TS_ALIASES`] checks are enabled.
-    #[inline]
-    pub const fn ts_aliases(&self) -> bool {
-        self.intersects(Self::TS_ALIASES)
     }
 }

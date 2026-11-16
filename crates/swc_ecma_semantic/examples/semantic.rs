@@ -103,11 +103,6 @@ fn format_scope_flags(scope: Scope) -> String {
         ScopeKind::With => names.push("With"),
         ScopeKind::StaticBlock => names.push("ClassStaticBlock"),
         ScopeKind::TsModule => names.push("TsModuleBlock"),
-        ScopeKind::TsTypeParameters => names.push("TsTypeParameters"),
-        ScopeKind::TsSignatureParameter => names.push("TsSignatureParameter"),
-        ScopeKind::TsInferConstraint => names.push("TsInferConstraint"),
-        ScopeKind::TsConditionalExtends => names.push("TsConditionalExtends"),
-        ScopeKind::TsSignatureReturn => names.push("TsSignatureReturn"),
     }
 
     format!("ScopeFlags({})", names.join(" | "))

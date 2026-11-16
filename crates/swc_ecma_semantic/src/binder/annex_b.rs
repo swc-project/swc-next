@@ -3,6 +3,8 @@
 use swc_next_allocator::Idx;
 
 use super::*;
+use hashbrown::HashMap;
+use rustc_hash::FxBuildHasher;
 
 #[derive(Clone, Copy)]
 pub(super) struct AnnexBFunction {
@@ -32,9 +34,7 @@ impl<'a> SymbolTracker<'a> {
                 .functions
                 .push(index);
         }
-        // Exported TypeScript members need not occur in scope_maps. Their
-        // declaration occurrences still belong to the containing body, just
-        // like private lexical declarations and parameters.
+        // Declaration occurrences identify the containing binding scope.
         for declaration in &self.declarations {
             let scope = scopes.get(declaration.scope);
             if annex_b_var_blocker(tree, scope, declaration.flags) {
@@ -148,18 +148,11 @@ impl<'a> SymbolTracker<'a> {
         {
             return;
         }
-        // ExportValue links identify the body's value binding even when its
-        // ordinary scope map holds a same-named type-only declaration.
-        let existing = self
-            .ts_local_exports
-            .get(&(target, text))
-            .and_then(|local| local.exported_value())
-            .or_else(|| self.own_binding(target, text))
-            .filter(|&symbol| {
-                !self.symbols[symbol]
-                    .flags
-                    .intersects(SymbolFlags::INTERNAL_NAME)
-            });
+        let existing = self.own_binding(target, text).filter(|&symbol| {
+            !self.symbols[symbol]
+                .flags
+                .intersects(SymbolFlags::INTERNAL_NAME)
+        });
         // FunctionDeclarationInstantiation does not create a new arguments
         // binding. Its implicit arguments object remains outside our explicit
         // declaration model; an existing body var can still receive the value.
@@ -228,7 +221,7 @@ impl<'a> SymbolTracker<'a> {
                     .push(id);
             }
         }
-        for map in self.hoisting_variables.iter_mut().flatten() {
+        for map in &mut self.hoisting_variables {
             for declaration in map.values_mut() {
                 *declaration = remap[declaration.index()];
             }

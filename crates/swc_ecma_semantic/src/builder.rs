@@ -15,14 +15,13 @@ use swc_next_ecma_ast::{
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
     BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassType,
     Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
-    ExportDefaultDeclarationKindData, ExportNamedDeclaration, ExportSpecifier, Expr,
-    ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody,
-    FunctionType, IdentifierName, IdentifierReference, ImportDeclaration, ImportOrExportKind,
-    ImportSpecifier, JsxClosingElement, JsxIdentifier, JsxOpeningElement, JsxText, Label,
-    MemberExpression, MethodDefinition, NodeId, NodeKind, NodeKindData, ObjectPattern,
-    ParenthesizedExpression, PropertyDefinition, PropertyKey, PropertyKeyData, ScopeId, Severity,
-    Span, StaticBlock, SwitchCase, SwitchStatement, ThisExpression, TsArrayType, TsAsExpression,
-    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
+    FormalParameters, Function, FunctionBody, FunctionType, IdentifierName, IdentifierReference,
+    ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier,
+    JsxOpeningElement, JsxText, Label, MemberExpression, MethodDefinition, NodeId, NodeKind,
+    NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId,
+    Severity, Span, StaticBlock, SwitchCase, SwitchStatement, ThisExpression, TsArrayType,
+    TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -31,16 +30,16 @@ use swc_next_ecma_ast::{
     TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsModuleNameData,
     TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType,
     TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression,
-    TsTemplateLiteralType, TsThisParameter, TsTupleType, TsType, TsTypeAliasDeclaration,
-    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
-    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
-    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
-    VariableDeclaration, VariableKind, Visit, VisitWith, WithStatement,
+    TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion,
+    TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
+    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
+    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit,
+    VisitWith, WithStatement,
 };
 
 use crate::{
     ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
-    binder::{PreparedDeclaration, SymbolTracker},
+    binder::{PendingBinding, SymbolTracker},
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -52,8 +51,7 @@ pub struct SemanticBuilder<'traverse, 'a> {
     scope: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
     current_scope: ScopeId,
-    // Type syntax and erased value expressions save and restore this default.
-    default_reference_flags: ReferenceFlags,
+    type_position_depth: u32,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
     ast: &'traverse Ast<'a>,
@@ -77,7 +75,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             scope,
             symbols,
             current_scope,
-            default_reference_flags: ReferenceFlags::default(),
+            type_position_depth: 0,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
             ast,
@@ -101,14 +99,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     fn finish(&mut self) {
-        let check_syntax = self.check_syntax;
         self.symbols.bind_annex_b_functions(self.ast, &self.scope);
-        let (export_alias_issues, import_alias_issues) =
-            self.symbols
-                .resolve_ts_aliases(self.ast, &self.scope, check_syntax);
-        if check_syntax.ts_aliases() {
-            ts::check_ts_alias_issues(self, export_alias_issues, import_alias_issues);
-        }
         debug_assert!(self.path.is_empty());
     }
 
@@ -140,37 +131,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
-    fn visit_with_reference_context<T>(&mut self, node: T, flags: ReferenceFlags)
-    where
-        T: VisitWith<'a, Self>,
-    {
-        let previous = self.replace_default_reference_flags(flags);
-        self.visit_with_reference_flags(node, flags);
-        self.replace_default_reference_flags(previous);
-    }
-
-    fn visit_assertion_type(&mut self, annotation: TsType) {
-        let tree = self.ast;
-        if let NodeKindData::TsTypeReference(reference) = tree.kind_data(annotation.node_id())
-            && reference.type_arguments(tree).is_none()
-            && let NodeKindData::IdentifierReference(name) =
-                tree.kind_data(reference.type_name(tree).node_id())
-            && tree.get_utf8(name.name(tree)) == "const"
-        {
-            // Like TS7's isConstTypeReferenceName, this applies only to the
-            // bare marker in an assertion, never to an ordinary type name.
-            return;
-        }
-        annotation.visit_with(self);
-    }
-
-    #[inline]
     fn visit_type_member_key(&mut self, key: PropertyKey, computed: bool) {
         if computed {
-            // TypeScript checks computed names as expressions in value space,
-            // even on erased declarations. Apply that context to the whole key.
             let flags = self.flags_with_space(ReferenceSpace::Typeof);
-            self.visit_with_reference_context(key, flags);
+            self.visit_with_reference_flags(key, flags);
         } else {
             key.visit_with(self);
         }
@@ -179,27 +143,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn visit_erased_member_key(&mut self, key: PropertyKey, computed: bool, decorated: bool) {
         if decorated {
-            // Legacy decorators evaluate a computed key even when the member
-            // declaration itself is erased.
             key.visit_with(self);
         } else {
             self.visit_type_member_key(key, computed);
         }
-    }
-
-    fn visit_ts_heritage_expression(
-        &mut self,
-        expression: Expr,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) {
-        let space = if self.ast.node_kind(expression.node_id()) == NodeKind::MemberExpression {
-            ReferenceSpace::Namespace
-        } else {
-            ReferenceSpace::Type
-        };
-        let flags = self.flags_with_space(space);
-        self.visit_with_reference_flags(expression, flags);
-        type_arguments.visit_with(self);
     }
 
     #[inline]
@@ -208,9 +155,16 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             .add_identifier_reference(self.ast, node, self.current_scope, flags);
     }
 
-    /// Type syntax uses type defaults; erased computed keys use expression defaults.
     fn in_type_position(&self) -> bool {
-        self.default_reference_flags.space == ReferenceSpace::Type
+        self.type_position_depth > 0
+    }
+
+    fn default_reference_flags(&self) -> ReferenceFlags {
+        ReferenceFlags::default().with_space(if self.in_type_position() {
+            ReferenceSpace::Type
+        } else {
+            ReferenceSpace::Value
+        })
     }
 
     /// True when the walker is currently inside a TS namespace body.
@@ -221,7 +175,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn take_reference_flags(&mut self) -> ReferenceFlags {
         let flags = self.reference_flags;
-        self.reference_flags = self.default_reference_flags;
+        self.reference_flags = self.default_reference_flags();
         flags
     }
 
@@ -231,28 +185,20 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
-    fn replace_default_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
-        std::mem::replace(&mut self.default_reference_flags, flags)
+    fn enter_type_position(&mut self) {
+        self.type_position_depth += 1;
     }
 
     #[inline]
-    fn enter_type_position(&mut self) -> ReferenceFlags {
-        let flags = ReferenceFlags::default()
-            .with_space(ReferenceSpace::Type)
-            .no_access();
-        std::mem::replace(&mut self.default_reference_flags, flags)
-    }
-
-    #[inline]
-    fn exit_type_position(&mut self, previous: ReferenceFlags) {
+    fn exit_type_position(&mut self) {
         debug_assert!(self.in_type_position());
-        self.default_reference_flags = previous;
-        self.reference_flags = previous;
+        self.type_position_depth -= 1;
+        self.reference_flags = self.default_reference_flags();
     }
 
     #[inline]
     fn assignment_reference_flags(&self, read: bool) -> ReferenceFlags {
-        let flags = self.default_reference_flags;
+        let flags = self.default_reference_flags();
         if !flags.is_read() {
             flags
         } else if read {
@@ -264,12 +210,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     #[inline]
     fn flags_with_space(&self, space: ReferenceSpace) -> ReferenceFlags {
-        let flags = self.default_reference_flags.with_space(space);
-        if space.in_type_position() {
-            flags.no_access()
-        } else {
-            flags
-        }
+        self.default_reference_flags().with_space(space)
     }
 
     #[inline]
@@ -299,25 +240,9 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         );
     }
 
-    fn enter_ts_lookup_view(&mut self, node: NodeId, kind: ScopeKind) {
-        debug_assert!(kind.is_ts_lookup_view());
-        self.push_scope(kind, node, self.inherit_strict_flag());
-    }
-
-    fn exit_ts_lookup_view(&mut self, node: NodeId) {
-        debug_assert_eq!(self.current_scope().node, node);
-        debug_assert!(self.current_scope().kind.is_ts_lookup_view());
-        self.pop_scope();
-    }
-
     // A node owns its lexical scopes.
-    // Lookup views have a separate lifetime: their root node may
-    // create lexical scopes without owning the surrounding lookup view.
     fn exit_scope(&mut self, node: NodeId) {
-        while self.current_scope.index() != 0
-            && self.current_scope().node == node
-            && !self.current_scope().kind.is_ts_lookup_view()
-        {
+        while self.current_scope.index() != 0 && self.current_scope().node == node {
             self.pop_scope();
         }
     }
@@ -411,7 +336,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             NodeKindData::ExportDefaultDeclaration(node) => {
                 js::check_export_default_declaration(self, node)
             }
-            NodeKindData::TsExportAssignment(node) => ts::check_ts_export_assignment(self, node),
             NodeKindData::TsModuleDeclaration(node) => ts::check_ts_module_declaration(self, node),
             NodeKindData::TsGlobalDeclaration(node) => ts::check_ts_global_declaration(self, node),
             NodeKindData::ExportAllDeclaration(node) => {
@@ -424,14 +348,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn report_unresolved_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
         let message = self.unresolved_export_message(name);
-        self.report(tree.span(node), message, ReportOptions::default());
-    }
-
-    fn report_non_local_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
-        let message = self.fmt(format_args!(
-            "Cannot export '{}'. Only local declarations can be exported from a module",
-            String::from_utf8_lossy(name)
-        ));
         self.report(tree.span(node), message, ReportOptions::default());
     }
 
@@ -558,13 +474,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
         self.enter_node(node.node_id());
-        self.symbols.record_ts_expando_assignment(
-            self.ast,
-            node,
-            &self.scope,
-            self.current_scope,
-            self.path.iter().rev().copied(),
-        );
         let left = node.left(self.ast);
         let read = node.operator(self.ast) != AssignmentOperator::Assign;
         let flags = self.assignment_reference_flags(read);
@@ -595,7 +504,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_as_expression(&mut self, node: TsAsExpression) {
         let node_flags = self.enter_node(node.node_id());
         self.visit_with_reference_flags(node.expression(self.ast), node_flags);
-        self.visit_assertion_type(node.type_annotation(self.ast));
+        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsAsExpression(node));
     }
 
@@ -610,7 +519,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_ts_type_assertion(&mut self, node: TsTypeAssertion) {
         let node_flags = self.enter_node(node.node_id());
-        self.visit_assertion_type(node.type_annotation(self.ast));
+        node.type_annotation(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.expression(self.ast), node_flags);
         self.leave_node(NodeKindData::TsTypeAssertion(node));
     }
@@ -627,7 +536,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         let argument = node.argument(self.ast);
         if node.operator(self.ast) == UnaryOperator::Delete {
-            let flags = self.default_reference_flags.no_access();
+            let flags = self.default_reference_flags().no_access();
             self.visit_with_reference_flags(argument, flags);
         } else {
             argument.visit_with(self);
@@ -670,10 +579,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        let prepared = if self.check_syntax.binding_identifiers() {
+        if self.check_syntax.binding_identifiers() {
             let tree = self.ast;
             let name = tree.get_utf8(node.name(tree)).as_bytes();
-            let prepared = js::check_binding_identifier(self, node, name);
+            js::check_binding_identifier(self, node, name);
             if tree.is_ts() && name == b"await" {
                 ts::check_contextual_await(
                     self,
@@ -681,28 +590,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                     "'await' cannot be used as a binding identifier here",
                 );
             }
-            prepared
-        } else {
-            None
-        };
+        }
         let current = self.path.pop();
         debug_assert_eq!(current, Some(node.node_id()));
-        if let Some(prepared) = prepared {
-            self.symbols.declare_prepared_binding_identifier(
-                self.ast,
-                node,
-                &self.scope,
-                self.current_scope,
-                prepared,
-            );
-        } else {
-            self.symbols.declare_binding_identifier(
-                self.ast,
-                node,
-                &self.scope,
-                self.current_scope,
-            );
-        }
+        self.symbols
+            .declare_binding_identifier(self.ast, node, &self.scope, self.current_scope);
     }
 
     #[inline]
@@ -750,11 +642,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_binding_property(&mut self, node: BindingProperty) {
         let node_flags = self.enter_node(node.node_id());
-        if node_flags.space.in_type_position() {
-            self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
-        } else {
-            node.key(self.ast).visit_with(self);
-        }
+        node.key(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.value(self.ast), node_flags);
         self.leave_node(NodeKindData::BindingProperty(node));
     }
@@ -925,13 +813,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_function_scope(node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
         self.symbols
-            .enter_ts_function(self.ast, node, &self.scope, self.current_scope);
-        node.id(self.ast).visit_with(self);
-        node.type_parameters(self.ast).visit_with(self);
-        node.this_param(self.ast).visit_with(self);
-        let flags = self.flags_with_space(ReferenceSpace::Typeof);
-        self.visit_with_reference_context(node.params(self.ast), flags);
-        node.return_type(self.ast).visit_with(self);
+            .enter_ts_function(&self.scope, self.current_scope);
+        node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsFunction(node));
@@ -958,16 +841,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.leave_node(NodeKindData::ArrowFunctionExpression(node));
     }
 
-    fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
-        self.enter_node(node.node_id());
-        // The receiver annotation has the same lookup rules as parameter annotations,
-        // although it is stored on the signature and creates no runtime binding.
-        self.enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
-        node.visit_children_with(self);
-        self.exit_ts_lookup_view(node.node_id());
-        self.leave_node(NodeKindData::TsThisParameter(node));
-    }
-
     fn visit_formal_parameters(&mut self, node: FormalParameters) {
         self.enter_node(node.node_id());
         if node.items(self.ast).is_empty() && node.rest(self.ast).is_none() {
@@ -976,16 +849,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.leave_node(NodeKindData::FormalParameters(node));
             return;
         }
-        // Bind parameters to their owner before entering the lookup-only region.
+        // Type-only signatures retain parameter labels without declaring bindings.
         self.symbols.enter_formal_parameters(self.current_scope);
-        let parameter_view = self.ast.is_ts();
-        if parameter_view {
-            self.enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
+        if self.in_type_position() {
+            self.symbols.pending.flags = SymbolFlags::NONE;
         }
         node.visit_children_with(self);
-        if parameter_view {
-            self.exit_ts_lookup_view(node.node_id());
-        }
         self.symbols.exit_formal_parameters();
         self.leave_node(NodeKindData::FormalParameters(node));
     }
@@ -1094,9 +963,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_decorator(&mut self, node: Decorator) {
-        // TS resolves members and parameters at the class, skipping method
-        // locals. Only a class declaration's own decorators skip the class;
-        // class expressions retain their type parameters and name environment.
+        // Class declarations evaluate their decorators outside the class.
+        // Class expressions retain their name environment and use the outer
+        // strictness; member decorators evaluate at the class rather than in
+        // a method's parameter or body scope.
         let saved_scope = self.current_scope;
         let class = self
             .scope
@@ -1132,11 +1002,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
-        self.visit_ts_heritage_expression(node.expression(self.ast), node.type_arguments(self.ast));
+        node.visit_children_with(self);
         self.leave_node(NodeKindData::TsClassImplements(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     // https://tc39.es/ecma262/#sec-static-semantics-early-errors
@@ -1167,9 +1037,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             flags = flags.no_access();
         }
         self.visit_with_reference_flags(node.id(self.ast), flags);
-        let target_flags = flags.with_space(ReferenceSpace::Namespace);
-        self.visit_with_reference_flags(node.module_reference(self.ast), target_flags);
-        self.symbols.record_ts_import_equals_target(self.ast, node);
+        self.visit_with_reference_flags(node.module_reference(self.ast), flags);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsImportEqualsDeclaration(node));
     }
@@ -1222,14 +1090,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             flags = flags.no_access();
         }
         if declaration.is_some_and(|declaration| declaration.source(self.ast).is_none()) {
-            self.symbols.add_local_export_reference(
-                self.ast,
-                node,
-                &self.scope,
-                self.current_scope,
-                flags,
-                type_only,
-            );
+            self.symbols
+                .add_local_export_reference(self.ast, node, self.current_scope, flags);
         }
         self.visit_with_reference_flags(node.local(self.ast), flags);
         node.exported(self.ast).visit_with(self);
@@ -1250,15 +1112,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_enum_declaration(self.ast, node, self.current_scope);
-        let id = node.id(self.ast);
-        id.visit_with(self);
-        let owner = self
-            .symbols
-            .symbol_of_node(id.node_id())
-            .expect("an enum declaration has a symbol");
-        self.symbols.enter_ts_enum_members(owner);
-        node.body(self.ast).visit_with(self);
-        self.symbols.exit_ts_enum_members(owner);
+        node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsEnumDeclaration(node));
     }
@@ -1267,7 +1121,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         // TSC resolves unqualified member references inside the body.
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_enum_body(self.current_scope);
+        self.symbols.enter_ts_enum_body();
         node.visit_children_with(self);
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsEnumBody(node));
@@ -1275,16 +1129,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.enter_node(node.node_id());
-        let prepared =
-            self.symbols
-                .prepare_ts_enum_member(self.ast, node, &self.scope, self.current_scope);
-        if let Some(prepared) = prepared {
-            if self.check_syntax.redeclarations() {
-                declarations::check_prepared_redeclaration(self, prepared);
-            }
-            self.symbols
-                .declare_prepared_ts_enum_member(self.ast, prepared);
-        }
+        self.symbols
+            .declare_ts_enum_member(self.ast, node, &self.scope, self.current_scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsEnumMember(node));
     }
@@ -1293,19 +1139,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_module_declaration(self.ast, node, self.current_scope);
-        let name = node.id(self.ast);
-        let was_in_ts_module_name = std::mem::replace(&mut self.in_ts_module_name, true);
-        name.visit_with(self);
-        self.in_ts_module_name = was_in_ts_module_name;
+        let previous = std::mem::replace(&mut self.in_ts_module_name, true);
+        node.id(self.ast).visit_with(self);
+        self.in_ts_module_name = previous;
         node.attributes(self.ast).visit_with(self);
-        let declarations = self.symbols.enter_ts_module_body(self.ast, node);
-        if self.check_syntax.redeclarations() {
-            for prepared in declarations {
-                declarations::check_prepared_redeclaration(self, prepared);
-            }
-        }
         node.body(self.ast).visit_with(self);
-        self.symbols.exit_ts_module_body();
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsModuleDeclaration(node));
     }
@@ -1318,7 +1156,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.inherit_strict_flag(),
         );
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_module_block(self.current_scope);
+        self.symbols.enter_ts_module_block();
         node.visit_children_with(self);
         debug_assert!(self.ts_namespace_depth > 0);
         self.exit_scope(node.node_id());
@@ -1328,21 +1166,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_global_declaration(self.ast, node);
+        self.symbols.enter_ts_global_declaration();
         node.visit_children_with(self);
-        self.symbols.exit_ts_global_declaration();
+        self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsGlobalDeclaration(node));
     }
 
     fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
         self.enter_node(node.node_id());
-        if self.symbols.in_unsupported_ts_external_module() {
-            self.leave_node(NodeKindData::TsNamespaceExportDeclaration(node));
-            return;
-        }
         self.symbols
-            .record_ts_global_export(self.ast, node, self.current_scope);
+            .enter_ts_namespace_export_declaration(self.current_scope);
         node.visit_children_with(self);
+        self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsNamespaceExportDeclaration(node));
     }
 
@@ -1378,59 +1213,38 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
-        self.visit_ts_heritage_expression(node.expression(self.ast), node.type_arguments(self.ast));
+        node.visit_children_with(self);
         self.leave_node(NodeKindData::TsInterfaceHeritage(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsInterfaceBody(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
-        let signature_return = self.current_node().is_some_and(|parent| {
-            matches!(
-                self.ast.node_kind(parent),
-                NodeKind::Function
-                    | NodeKind::TsFunction
-                    | NodeKind::ArrowFunctionExpression
-                    | NodeKind::TsFunctionType
-                    | NodeKind::TsConstructorType
-                    | NodeKind::TsMethodSignature
-                    | NodeKind::TsCallSignatureDeclaration
-                    | NodeKind::TsConstructSignatureDeclaration
-                    | NodeKind::TsIndexSignature
-            )
-        });
-        let view = signature_return.then_some(ScopeKind::TsSignatureReturn);
-        if let Some(view) = view {
-            self.enter_ts_lookup_view(node.node_id(), view);
-        }
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        if view.is_some() {
-            self.exit_ts_lookup_view(node.node_id());
-        }
         self.leave_node(NodeKindData::TsTypeAnnotation(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeReference(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
@@ -1441,261 +1255,245 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.leave_node(NodeKindData::TsQualifiedName(node));
             return;
         }
-        // Qualified names also occur in runtime import-equals targets. The
-        // enclosing syntax determines access; qualification only narrows lookup.
-        let node_flags = self.enter_node(node.node_id());
-        let space = match node_flags.space {
+        self.enter_type_position();
+        let flags = self.enter_node(node.node_id());
+        let space = match flags.space {
             ReferenceSpace::Value | ReferenceSpace::Type | ReferenceSpace::Namespace => {
                 ReferenceSpace::Namespace
             }
             space => space,
         };
-        let flags = node_flags.with_space(space);
-        self.visit_with_reference_flags(node.left(self.ast), flags);
+        self.visit_with_reference_flags(node.left(self.ast), flags.with_space(space));
         node.right(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsQualifiedName(node));
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         let flags = self.flags_with_space(ReferenceSpace::Typeof);
         self.visit_with_reference_flags(node.expr_name(self.ast), flags);
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsTypeQuery(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_import_type(&mut self, node: TsImportType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsImportType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
-        let parent = self.parent();
-        self.symbols
-            .enter_ts_type_parameter(self.ast, parent, &self.scope, self.current_scope);
-        node.name(self.ast).visit_with(self);
-        let infer =
-            parent.is_some_and(|parent| self.ast.node_kind(parent) == NodeKind::TsInferType);
-        if infer {
-            self.enter_ts_lookup_view(node.node_id(), ScopeKind::TsInferConstraint);
-            self.symbols.expose_ts_infer_parameter(
-                self.ast,
-                node.name(self.ast),
-                &self.scope,
-                self.current_scope,
-            );
-        }
-        node.constraint(self.ast).visit_with(self);
-        node.default(self.ast).visit_with(self);
-        if infer {
-            self.exit_ts_lookup_view(node.node_id());
-        }
+        self.symbols.enter_ts_type_parameter(
+            self.ast,
+            self.parent(),
+            &self.scope,
+            self.current_scope,
+        );
+        node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsTypeParameter(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
-        let type_position = self.enter_type_position();
-        self.enter_ts_lookup_view(node.node_id(), ScopeKind::TsTypeParameters);
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        self.exit_ts_lookup_view(node.node_id());
         self.leave_node(NodeKindData::TsTypeParameterDeclaration(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeParameterInstantiation(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsLiteralType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTemplateLiteralType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_array_type(&mut self, node: TsArrayType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsArrayType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsIndexedAccessType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTupleType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsNamedTupleMember(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         if !self.check_syntax.is_empty() {
             ts::check_tuple_optional_type(self, node);
         }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsOptionalType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         if !self.check_syntax.is_empty() {
             ts::check_tuple_rest_type(self, node);
         }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsRestType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocNullableType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocNonNullableType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocUnknownType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_union_type(&mut self, node: TsUnionType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsUnionType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsIntersectionType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_infer_type(&mut self, node: TsInferType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsInferType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeOperator(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsParenthesizedType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeLiteral(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
     fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
         node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsPropertySignature(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.add_ts_type_predicate_reference(
             self.ast,
@@ -1705,52 +1503,50 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         );
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypePredicate(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         node.check_type(self.ast).visit_with(self);
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let extends = node.extends_type(self.ast);
-        self.enter_ts_lookup_view(extends.node_id(), ScopeKind::TsConditionalExtends);
         extends.visit_with(self);
-        self.exit_ts_lookup_view(extends.node_id());
         node.true_type(self.ast).visit_with(self);
         self.exit_scope(node.node_id());
         node.false_type(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsConditionalType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_function_type(&mut self, node: TsFunctionType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_ts_function_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsFunctionType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_ts_constructor_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsConstructorType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         let parent = self.parent();
         self.symbols
@@ -1759,14 +1555,14 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsMappedType(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
-        self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
+        self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
         self.symbols.enter_ts_method_signature(self.current_scope);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
@@ -1775,12 +1571,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsMethodSignature(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_call_signature_declaration(self.current_scope);
@@ -1788,12 +1584,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsCallSignatureDeclaration(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_construct_signature_declaration(self.current_scope);
@@ -1801,19 +1597,19 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsConstructSignatureDeclaration(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let type_position = self.enter_type_position();
+        self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_ts_index_signature(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsIndexSignature(node));
-        self.exit_type_position(type_position);
+        self.exit_type_position();
     }
 
     #[inline]
@@ -1876,15 +1672,6 @@ fn is_annex_b_if_function(tree: &Ast<'_>, parent: Option<NodeId>, function: Func
             .is_some_and(|alternate| alternate.node_id() == function)
 }
 
-fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
-    let expression = crate::ecmascript::unwrap_parentheses(tree, expression);
-    if tree.node_kind(expression) == NodeKind::IdentifierReference {
-        ReferenceSpace::Any
-    } else {
-        ReferenceSpace::Value
-    }
-}
-
 /// Extracts the name from a ModuleExportName: an IdentifierName,
 /// IdentifierReference, or StringLiteral.
 fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
@@ -1911,5 +1698,13 @@ impl Default for ReportOptions {
             help: None,
             labels: Vec::new(),
         }
+    }
+}
+
+fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
+    if tree.node_kind(expression) == NodeKind::IdentifierReference {
+        ReferenceSpace::Any
+    } else {
+        ReferenceSpace::Value
     }
 }

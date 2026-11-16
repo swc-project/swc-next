@@ -3,9 +3,7 @@ use swc_next_ecma_ast::{Ast, NodeId, ScopeId, SourceType};
 
 use crate::Scopes;
 
-/// A lexical environment or a TypeScript name-lookup view in the scope tree.
-/// Lookup views restrict visible declarations without introducing a runtime
-/// environment; see the corresponding [`ScopeKind`] variants.
+/// A lexical environment or decorator evaluation context in the scope tree.
 ///
 /// ## Example
 /// ```ts
@@ -25,13 +23,12 @@ pub struct Scope {
     /// Nearest ancestor (or self) where `var` declarations hoist to.
     pub hoist_target: ScopeId,
     /// Separate body environment when this function has parameter expressions.
-    /// Signature lookup can inspect it without exposing it to initializers.
     pub function_body: Option<ScopeId>,
     pub kind: ScopeKind,
     pub flags: ScopeFlags,
 }
 
-/// The lexical environment or name-lookup view represented by a scope.
+/// The lexical environment represented by a scope.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ScopeKind {
     /// Section 16.1.7 GlobalDeclarationInstantiation.
@@ -49,32 +46,14 @@ pub enum ScopeKind {
     With,
     /// Section 15.7.14 ClassDefinitionEvaluation.
     Class,
-    /// Lookup view for a class expression's decorators. Retains the class's
-    /// name and type parameters, but inherits strictness from outside the class.
+    /// A class expression's decorators use its name environment and inherit
+    /// strictness from the enclosing code.
     ClassDecorator,
     /// Section 15.7.11 ClassStaticBlockDefinitionEvaluation.
     StaticBlock,
     /// TS namespace body. Acts as a var-hoist target so vars
     /// declared inside don't escape to the surrounding scope.
     TsModule,
-    /// Type-parameter-list lookup view. The owning declaration contributes
-    /// type parameters; its parameter variables and body-local types are hidden.
-    TsTypeParameters,
-    /// Return-annotation lookup view. The owning declaration contributes
-    /// parameters and type parameters. Body functions and let/const variables
-    /// can contribute value meaning, but body var declarations and local types
-    /// (including classes and enums queried through `typeof`) remain hidden.
-    TsSignatureReturn,
-    /// Parameter-region lookup view. Type queries exclude body-local variables
-    /// and types, but can see body functions. Runtime expressions retain the
-    /// owning function's JavaScript parameter environment.
-    TsSignatureParameter,
-    /// Extends-clause lookup view. Infer declarations belong to the conditional
-    /// scope but are only visible from its true branch.
-    TsConditionalExtends,
-    /// Local visibility of an infer parameter inside its own constraint.
-    /// Its declaration identity still belongs to the conditional scope.
-    TsInferConstraint,
     /// Separate var environment of a function body whose parameter
     /// list contains expressions (10.2.11 FunctionDeclarationInstantiation
     /// step 28):
@@ -89,17 +68,6 @@ pub enum ScopeKind {
 }
 
 impl ScopeKind {
-    pub(crate) fn is_ts_lookup_view(self) -> bool {
-        matches!(
-            self,
-            Self::TsTypeParameters
-                | Self::TsSignatureReturn
-                | Self::TsSignatureParameter
-                | Self::TsConditionalExtends
-                | Self::TsInferConstraint
-        )
-    }
-
     /// Returns whether `var` declarations hoist to this scope kind.
     pub fn is_hoist_target(self) -> bool {
         matches!(

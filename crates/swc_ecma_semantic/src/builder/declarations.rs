@@ -1,69 +1,33 @@
 use super::*;
 
-use crate::binder::{DeclarationConflictCandidate, SymbolTracker};
-
-pub(super) fn check_prepared_redeclaration(
-    builder: &mut SemanticBuilder<'_, '_>,
-    prepared: PreparedDeclaration,
-) {
-    let name = builder.ast.get_wtf8(prepared.name()).as_bytes();
-    builder.check_redeclaration(prepared.node(), name, prepared);
-}
-
-#[cold]
-#[inline(never)]
-fn has_class_function_conflict(
-    symbols: &SymbolTracker<'_>,
-    candidate: DeclarationConflictCandidate,
-    incoming: SymbolFlags,
-    existing: SymbolFlags,
-) -> bool {
-    if incoming.contains(SymbolFlags::CLASS) {
-        return !incoming.contains(SymbolFlags::AMBIENT)
-            && existing.contains(SymbolFlags::FUNCTION);
-    }
-    incoming.contains(SymbolFlags::FUNCTION)
-        && existing.contains(SymbolFlags::CLASS)
-        && symbols.has_non_ambient_class_declaration(candidate)
-}
-
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline(always)]
     pub(super) fn check_redeclaration(
         &mut self,
         node: NodeId,
         name: &[u8],
-        prepared: PreparedDeclaration,
+        binding: PendingBinding,
     ) {
-        let target = prepared.target();
-        let flags = prepared.flags();
-        let excludes = prepared.excludes();
+        let target = binding.scope;
+        let flags = binding.flags;
+        let excludes = binding.excludes;
         debug_assert!(!name.is_empty() || flags.contains(SymbolFlags::ENUM_MEMBER));
-        for candidate in prepared.conflict_candidates() {
-            let existing_id = candidate.symbol;
-            let (existing_flags, existing_node) = self.symbols.conflict_candidate_info(candidate);
-            if self.ast.is_ts()
-                && (flags.contains(SymbolFlags::EXPORTED)
-                    || existing_flags.contains(SymbolFlags::EXPORTED))
-                && self
-                    .symbols
-                    .has_same_scope_export_visibility_conflict(prepared, existing_id)
-            {
-                self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
-                return;
-            }
+        if let Some(existing_id) = self.symbols.own_binding(target, name).filter(|&id| {
+            !self
+                .symbols
+                .symbol(id)
+                .flags
+                .intersects(SymbolFlags::INTERNAL_NAME)
+        }) {
+            let existing_flags = self.symbols.symbol(existing_id).flags;
+            let existing_node = self.symbols.first_decl_of(existing_id);
             let import_value_conflict = !self.ast.is_ts()
                 && self.ast.is_module()
                 && target == ScopeId::MODULE
                 && ((flags.contains(SymbolFlags::IMPORT) && existing_flags.in_value_space())
                     || (flags.in_value_space() && existing_flags.contains(SymbolFlags::IMPORT)));
             let declaration_conflict = existing_flags.intersects(excludes) || import_value_conflict;
-            let invalid_class_function_merge = !declaration_conflict
-                && self.ast.is_ts()
-                && flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
-                && existing_flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
-                && has_class_function_conflict(&self.symbols, candidate, flags, existing_flags);
-            if declaration_conflict || invalid_class_function_merge {
+            if declaration_conflict {
                 self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 return;
             }
@@ -90,17 +54,17 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             }
         }
 
-        if let Some(existing) = self.symbols.hoisting_conflict(prepared, name) {
+        if let Some(existing) = self.symbols.hoisting_conflict(binding, name) {
             self.report_redeclaration(self.ast, name, node, existing.node, existing.flags);
             return;
         }
 
-        let flags = prepared.flags();
+        let flags = binding.flags;
         if !flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR) {
-            self.check_outer_parameter_conflict(node, name, prepared);
+            self.check_outer_parameter_conflict(node, name, binding);
         }
         if flags.is_hoisting_var() {
-            self.check_hoisting_var_conflict(node, name, prepared);
+            self.check_hoisting_var_conflict(node, name, binding);
         }
     }
 
@@ -109,10 +73,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         &mut self,
         node: NodeId,
         name: &[u8],
-        prepared: PreparedDeclaration,
+        binding: PendingBinding,
     ) {
-        let target = prepared.target();
-        let excludes = prepared.excludes();
+        let target = binding.scope;
+        let excludes = binding.excludes;
         // A split body environment keeps the early errors: lexical body names
         // may not duplicate parameter names (15.2.1) or catch parameter names
         // (14.15.1) one scope up:
@@ -156,14 +120,9 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline(always)]
-    fn check_hoisting_var_conflict(
-        &mut self,
-        node: NodeId,
-        name: &[u8],
-        prepared: PreparedDeclaration,
-    ) {
-        let target = prepared.target();
-        let flags = prepared.flags();
+    fn check_hoisting_var_conflict(&mut self, node: NodeId, name: &[u8], binding: PendingBinding) {
+        let target = binding.scope;
+        let flags = binding.flags;
         // Per 14.2.1, a hoisting var conflicts with block-scoped names
         // in any intermediate block it passes through.
         if flags.is_hoisting_var() {

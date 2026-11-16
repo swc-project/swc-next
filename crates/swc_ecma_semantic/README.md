@@ -3,8 +3,9 @@
 Semantic analysis for SWC Next's flat AST. It builds scopes, symbols,
 and references and reports early errors.
 
-TypeScript analysis resolves declarations, names, and visibility; it does not
-perform full type checking or expression type inference.
+TypeScript analysis resolves lexical declarations and references. It does not
+merge namespace or enum members across bodies, resolve alias targets, or perform
+type checking or expression type inference.
 
 See the [public semantic API](src/lib.rs). Recompute analysis after AST changes
 that invalidate bindings or references.

@@ -1,7 +1,7 @@
 //! Scope, binding, declaration, and reference indexes for transforms.
 //!
 //! The model consumes Semantic's basic indexes without retaining its hoisting
-//! conflict tables or TypeScript member and alias lookup indexes.
+//! conflict tables.
 //! Index mutations take semantic records and identifiers, not an AST. Transforms
 //! read syntax and coordinate subtree edits through TransformCtx.
 
@@ -19,8 +19,7 @@ use crate::{
 /// The basic semantic indexes needed by transforms.
 ///
 /// Scope, symbol, declaration, reference, and node identities are preserved.
-/// This model maintains basic indexes without Semantic's TypeScript
-/// name-resolution queries or AST traversal.
+/// Index mutations do not traverse the AST.
 #[derive(Debug)]
 pub struct ScopeModel<'a> {
     scopes: ScopeTree<'a>,
@@ -92,8 +91,7 @@ impl<'a> ScopeModel<'a> {
     }
 
     /// The symbol declared at `node`, or `None` when the node is not a
-    /// binding or member declaration site. Source-module and anonymous default
-    /// export symbols do not have a node mapping.
+    /// binding declaration site.
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
         self.node_semantic[node].symbol()
     }
@@ -111,8 +109,7 @@ impl<'a> ScopeModel<'a> {
         self.node_semantic[node].scope()
     }
 
-    /// The scope of the symbol's first declaration. Merged TypeScript symbols
-    /// may have additional declarations in other scopes.
+    /// The binding scope of the symbol's first declaration.
     pub fn scope_of_symbol(&self, id: SymbolId) -> ScopeId {
         self.declaration(self.symbol(id).declaration).scope
     }
@@ -137,15 +134,14 @@ impl<'a> ScopeModel<'a> {
         self.declaration_ids(id).map(|id| self.declaration(id))
     }
 
-    /// Every definite or possible use retained from Semantic, in source order.
-    /// An uncertain reference may occur in more than one symbol's list.
+    /// Every use retained from Semantic, in source order.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         &self.uses[id]
     }
 
     /// A binding owned by this lexical scope. Hoisting declarations are only
     /// recorded at their hoist target; passing-through hoisting occurrences
-    /// and TypeScript source-export and member views are not retained by this model.
+    /// are not retained by this model.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.scope_maps[scope].get(name).copied()
     }
@@ -155,7 +151,6 @@ impl<'a> ScopeModel<'a> {
     pub fn bindings(&self, scope: ScopeId) -> BindingIterator<'_> {
         BindingIterator {
             inner: self.scope_maps[scope].values(),
-            source: None,
         }
     }
 
