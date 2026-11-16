@@ -150,7 +150,8 @@ impl Compressor {
         ast: &mut Ast<'_>,
         list: SubRange<Stmt>,
     ) -> Option<SubRange<Stmt>> {
-        let mut statements = Vec::new();
+        let mut statements = std::mem::take(&mut self.function_tail);
+        statements.clear();
         self.flatten_held_blocks(ast, list, &mut statements);
         let mut changed = false;
         if let Some(&last) = statements.last()
@@ -215,7 +216,9 @@ impl Compressor {
             statements.push(replacement);
             changed = true;
         }
-        changed.then(|| ast.add_sub_range(statements))
+        let body = changed.then(|| ast.add_sub_range(statements.iter().copied()));
+        self.function_tail = statements;
+        body
     }
 
     /// Appends the statements of `list` to `statements`, with the
