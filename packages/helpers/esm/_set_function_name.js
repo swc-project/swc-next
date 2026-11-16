@@ -1,4 +1,3 @@
-// Adapted from Babel's setFunctionName helper. See ../README.md for licensing notices.
 function _set_function_name(fn, name, prefix) {
   if (typeof name === "symbol") {
     name = name.description;
