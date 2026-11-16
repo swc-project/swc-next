@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(`a	b`, foo, bar);
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":0,"lineWidth":21}
+---------- Output ----------
+call(
+	`a	b`,
+	foo,
+	bar,
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":0,"lineWidth":21}
+---------- Output ----------
+call(
+`a	b`,
+foo,
+bar,
+);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":1,"lineWidth":21}
+---------- Output ----------
+call(
+	`a	b`,
+	foo,
+	bar,
+);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":21}
+---------- Output ----------
+call(
+	`a	b`,
+	foo,
+	bar,
+);

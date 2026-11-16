@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const other: Result = someLongCall("argument"), { alpha, beta: renamed, gamma }: Config = value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const other: Result =
+    someLongCall("argument"),
+  {
+    alpha,
+    beta: renamed,
+    gamma,
+  }: Config = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const other: Result = someLongCall("argument"),
+  { alpha, beta: renamed, gamma }: Config = value;
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const other: Result =
+    someLongCall("argument"),
+  {
+    alpha,
+    beta: renamed,
+    gamma
+  }: Config = value

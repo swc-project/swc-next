@@ -1,0 +1,51 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[!!item, ~~item, typeof typeof item];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[!!item, ~~item, typeof typeof item];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[!!item, ~~item, typeof typeof item]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  !!item,
+  ~~item,
+  typeof typeof item,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+[
+  !!item,
+  ~~item,
+  typeof typeof item,
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+[
+	!!item,
+	~~item,
+	typeof typeof item,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+[!!item, ~~item, typeof typeof item];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+[!!item, ~~item, typeof typeof item];

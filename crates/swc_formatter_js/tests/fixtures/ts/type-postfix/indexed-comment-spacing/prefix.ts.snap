@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-type Foo = any[( /*! keep */ bigint)[]];
----------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-type Foo = any[/*! keep */ bigint[]];

@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() {
+// @ts-ignore
+await /* first */ using /* second */ resource = acquire();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+async function f() {
+  // @ts-ignore
+  await /* first */ using /* second */ resource = acquire()
+}

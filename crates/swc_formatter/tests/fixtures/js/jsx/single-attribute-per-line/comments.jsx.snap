@@ -1,0 +1,205 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const head=<// name
+Box first second/>;
+const between=<Box first /* attribute */ second/>;
+const tail=<Box first second // closing
+>child</Box>;
+const blank=<Box first
+
+second/>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":false}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = <Box first /* attribute */ second />;
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":80,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"indentStyle":"space","lineWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);

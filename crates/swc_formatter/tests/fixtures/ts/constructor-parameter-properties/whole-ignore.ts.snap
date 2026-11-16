@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(
+/* prettier-ignore */
+public readonly value: number = 1+  2) {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly value: number = 1+  2,
+  ) {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly value: number = 1+  2,
+  ) {}
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly value: number = 1+  2
+  ) {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly value: number = 1+  2,
+  ) {}
+}

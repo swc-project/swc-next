@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-message = tag`this is a long message with a simple interpolation without a linebreak ${value} <- like this`;
----------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-message = tag`this is a long message with a simple interpolation without a linebreak ${value} <- like this`;

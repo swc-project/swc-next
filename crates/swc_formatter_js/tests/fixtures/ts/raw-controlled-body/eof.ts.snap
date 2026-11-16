@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-while(c) x = /* prettier-ignore */ y as ?;
----------- Options ----------
-{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
----------- Output ----------
-while (c) x = /* prettier-ignore */ y as ?

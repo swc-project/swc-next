@@ -18,10 +18,10 @@ See the [crate API](src/lib.rs) for formatting options and AST input requirement
 
 ## Testing
 
-API and fixture tests cover options, source and AST entry points, document serialization, and idempotency.
+Module unit tests cover internal document construction. API and fixture tests live in [`swc_formatter`](../swc_formatter/tests).
 
 ```sh
 cargo test -p swc_next_formatter_js --locked
 ```
 
-See the [test documentation](tests) for fixtures and Prettier conformance coverage.
+See the [test documentation](../swc_formatter/tests) for fixtures and Prettier conformance coverage.

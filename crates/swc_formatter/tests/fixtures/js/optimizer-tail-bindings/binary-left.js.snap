@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first || second /* @__PURE__ */) + third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"semicolons":"as-needed"}
+---------- Output ----------
+;(first ||
+  second) /* @__PURE__ */ +
+  third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+(first ||
+  second) /* @__PURE__ */ +
+  third;

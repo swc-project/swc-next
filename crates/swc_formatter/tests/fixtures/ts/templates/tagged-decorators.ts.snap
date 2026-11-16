@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+tag<string>`x${value}`; (tag<string>)`x`; (value as typeof tag)`x`; @(tag`x`) class C<const T>{ @(factory()<string>`x${value}`) method(){} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+tag<string>`x${value}`;
+(tag<string>)`x`;
+(value as typeof tag)`x`;
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`) method() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+tag<string>`x${value}`
+;(tag<string>)`x`
+;(value as typeof tag)`x`
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`)
+  method() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+tag<string>`x${value}`;
+(tag<string>)`x`;
+(value as typeof tag)`x`;
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`)
+  method() {}
+}

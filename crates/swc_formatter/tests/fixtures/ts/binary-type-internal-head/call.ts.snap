@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(input as(
+// callable
+Fn))();
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+(
+	input as
+		// callable
+		Fn
+)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(
+  input as
+    // callable
+    Fn
+)()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(
+  input as
+    // callable
+    Fn
+)();

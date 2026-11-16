@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+  /** @param {any} s */
+  (s) => s.id === id;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+    /** @param {any} s */
+    (s) =>
+      s.id === id;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+    /** @param {any} s */
+    (s) =>
+      s.id === id;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  id =>
+    /** @param {any} s */
+    s =>
+      s.id === id

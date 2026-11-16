@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(public /* @ts-expect-error */ readonly readonly /* keep */ value: number) {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    public /* @ts-expect-error */ readonly /* keep */ value: number) {} }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    public /* @ts-expect-error */ readonly /* keep */ value: number) {} }

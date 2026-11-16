@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Math. // prettier-ignore
+max(1+2
+
+,3+4);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+Math. // prettier-ignore
+max(
+  1 + 2,
+
+  3 + 4,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+Math. // prettier-ignore
+max(
+  1 + 2,
+
+  3 + 4,
+)

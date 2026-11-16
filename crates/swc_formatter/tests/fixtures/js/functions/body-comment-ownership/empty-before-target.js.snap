@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() // note
+{ "use strict"; ; call(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f() {
+  "use strict";
+  // note
+  call();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function f() {
+  "use strict";
+  // note
+  call();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f() {
+  "use strict"
+  // note
+  call()
+}

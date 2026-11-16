@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object = { [/*#__PURE__*/ removed() ?? 0 ? yes : no]: value };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const object = { [/*#__PURE__*/ removed() ?? 0 ? yes : no]: value };
+

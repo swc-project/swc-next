@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("raw", (/* prettier-ignore */ value = first(
+  )) => { return second(value); }); third();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+consume(
+  "raw",
+  (
+    /* prettier-ignore */ value = first(
+  ),
+  ) => {
+    return second(value);
+  },
+);
+third();

@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(
+/** @type {number} */ (first)
+) /* prettier-ignore */ ? second : third;---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;/** @type {number} */ (first) /* prettier-ignore */ ? second : third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/** @type {number} */ (first) /* prettier-ignore */ ? second : third;

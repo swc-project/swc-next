@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+document.querySelector("p").textContent = `Shader program did not link successfully. Error log: ${linkErrLog}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+document.querySelector("p").textContent =
+  `Shader program did not link successfully. Error log: ${linkErrLog}`;

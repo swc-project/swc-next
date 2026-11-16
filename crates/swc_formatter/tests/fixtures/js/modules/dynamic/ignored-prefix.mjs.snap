@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import.source /* prettier-ignore */ ( "m", {with:{type:"json"}});
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+import.source(/* prettier-ignore */ "m", { with: { type: "json" } });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+import.source(
+  /* prettier-ignore */ "m",
+  {
+    with: {
+      type: "json",
+    },
+  }
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+import.source(
+  /* prettier-ignore */ "m",
+  {
+    with: {
+      type: 'json',
+    },
+  }
+)

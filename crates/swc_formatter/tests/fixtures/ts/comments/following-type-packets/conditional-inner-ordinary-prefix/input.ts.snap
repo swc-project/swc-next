@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = X extends
+/* a */ /* prettier-ignore */ (/* frame */ (& A  &  B)) ? Y : Z;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = X extends /* a */ /* prettier-ignore */ /* frame */ & A  &  B ? Y : Z;

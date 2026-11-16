@@ -1,0 +1,24 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b(c, d)(e).f({ a: b // trailing
+});
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+abc.b(c, d)(e).f({
+  a: b, // trailing
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+abc
+  .b(
+    c,
+    d,
+  )(e)
+  .f({
+    a: b, // trailing
+  });

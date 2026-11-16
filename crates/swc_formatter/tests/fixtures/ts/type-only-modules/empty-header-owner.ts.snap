@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import /* before */ type /* prettier-ignore */ {} from "\u006d";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d"

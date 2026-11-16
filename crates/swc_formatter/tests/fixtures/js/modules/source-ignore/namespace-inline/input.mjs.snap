@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export * as ns /* prettier-ignore */ // c
+from 'm';
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export * as ns /* prettier-ignore */ // c
+from "m";

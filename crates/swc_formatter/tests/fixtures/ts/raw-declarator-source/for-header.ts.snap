@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (let /* prettier-ignore */ x = y as ?; test; step) { work(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for (let /* prettier-ignore */ x = y as ?; test; step) {
+  work()
+}

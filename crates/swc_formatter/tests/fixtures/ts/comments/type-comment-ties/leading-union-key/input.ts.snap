@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [\u004b in /* prettier-ignore */ | \u0041]: number };---------- Options ----------
+{"indentStyle":"space","lineWidth":18}
+---------- Output ----------
+type M = {
+  [
+    \u004b /* prettier-ignore */ in A
+  ]: number;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type M = { [\u004b /* prettier-ignore */ in A]: number };

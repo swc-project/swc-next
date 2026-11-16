@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Child extends (/* superclass */ new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new (/* callee */ class {})();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+class Child
+  extends /* superclass */ (new Base()) {}
+class Ignored
+  extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+class Child
+  extends /* superclass */ (new Base()) {}
+class Ignored
+  extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})()
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+class Child extends /* superclass */ (new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+class Child extends /* superclass */ (new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();

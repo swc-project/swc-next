@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for(var i=0,j=4;i<4;i++,j--){call(i,j);}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+for (
+  var i = 0, j = 4;
+  i < 4;
+  i++, j--
+) {
+  call(i, j);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+for (var i = 0, j = 4; i < 4; i++, j--) {
+  call(i, j);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+for (
+  var i = 0, j = 4;
+  i < 4;
+  i++, j--
+) {
+  call(i, j)
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for (var i = 0, j = 4; i < 4; i++, j--) {
+  call(i, j)
+}

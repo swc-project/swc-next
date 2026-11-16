@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = (/*#__NO_SIDE_EFFECTS__*/ () => sideEffect()); f();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const f =
+  (/*#__NO_SIDE_EFFECTS__*/ () =>
+      sideEffect()
+  );
+f();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const f =
+  (/*#__NO_SIDE_EFFECTS__*/ () =>
+      sideEffect()
+  )
+f()

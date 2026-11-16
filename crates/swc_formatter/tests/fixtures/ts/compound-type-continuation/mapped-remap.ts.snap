@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [K in A & (B
+// c
+) as K]: V };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      A & B
+      // c
+    ) as K
+  ]: V;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      A & B
+      // c
+    ) as K
+  ]: V;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      A & B
+      // c
+    ) as K
+  ]: V
+}

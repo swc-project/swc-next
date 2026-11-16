@@ -1,0 +1,8 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f< /* prettier-ignore */ | \u0041>();---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f</* prettier-ignore */ \u0041>();

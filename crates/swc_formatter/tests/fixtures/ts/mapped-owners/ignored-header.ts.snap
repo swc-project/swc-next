@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type M = { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+type M =
+  { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+type M =
+  { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+}

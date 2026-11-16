@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const make = (): ((value: number) => number) => (value) => value + 1;---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const make = (): ((value: number) => number) => (value) => value + 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const make =
+  (): ((
+    value: number,
+  ) => number) =>
+  (value) =>
+    value + 1;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const make =
+  (): ((
+    value: number
+  ) => number) =>
+  value =>
+    value + 1
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const make =
+  (): ((
+    value: number,
+  ) => number) =>
+  (value) =>
+    value + 1;

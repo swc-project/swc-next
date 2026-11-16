@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(): X extends Y ? Z : A | (B
+// c
+) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(): (
+  X extends Y ? Z : A | B
+  // c
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function f(): (
+  X extends Y
+    ? Z
+    : A | B
+  // c
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f(): (
+  X extends Y ? Z : A | B
+  // c
+) {}

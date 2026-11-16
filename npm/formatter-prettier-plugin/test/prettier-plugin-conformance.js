@@ -8,7 +8,7 @@ import { toFormatterConfig } from "../src-js/options.js";
 import * as plugin from "../dist/index.js";
 
 const workspace = fileURLToPath(new URL("../../../", import.meta.url));
-const fixtureRoot = join(workspace, "crates/swc_formatter_js/tests/fixtures");
+const fixtureRoot = join(workspace, "crates/swc_formatter/tests/fixtures");
 
 const reportFile = new URL(
   "./prettier-plugin-conformance.json",

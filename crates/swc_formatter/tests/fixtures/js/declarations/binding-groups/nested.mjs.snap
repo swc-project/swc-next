@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { profile: { first, last } } = user;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const {
+  profile: { first, last },
+} = user;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const {
+  profile: { first, last },
+} = user;
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const {
+  profile: {first, last}
+} = user

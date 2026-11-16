@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {m(@a /* a */ /* b */ @b x: number) {}}---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class C {
+  m(
+    @a
+    /* a */ /* b */ @b
+    x: number,
+  ) {}
+}

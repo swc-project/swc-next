@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+ a: {b}
+}) => b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+({ a: { b } }) => b;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+;({ a: { b } }) => b
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({ a: { b } }) => b;

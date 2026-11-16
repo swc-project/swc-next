@@ -1,0 +1,13 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if(c) while(d) for(;;) label: x = /* prettier-ignore */ y as ?; /* prettier-ignore */ else z();
+b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if (c)
+  while(d) for(;;) label: x = /* prettier-ignore */ y as ?; /* prettier-ignore */
+else z()
+b

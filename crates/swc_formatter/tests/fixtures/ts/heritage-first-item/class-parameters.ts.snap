@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Subject<T> extends Base implements
+/* head */
+First<T>, Second<T> {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Subject<T>
+  extends Base
+  implements
+    /* head */
+    First<T>,
+    Second<T> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Subject<T>
+  extends Base
+  implements
+    /* head */
+    First<T>,
+    Second<T> {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+class Subject<T>
+	extends Base
+	implements
+		/* head */
+		First<T>,
+		Second<T> {}

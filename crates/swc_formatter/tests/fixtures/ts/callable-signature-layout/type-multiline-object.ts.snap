@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = (x: {
+  a: string;
+}) => void;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type F = (x: { a: string }) => void;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type F = (x: { a: string }) => void;
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+type F = (x: { a: string }) => void

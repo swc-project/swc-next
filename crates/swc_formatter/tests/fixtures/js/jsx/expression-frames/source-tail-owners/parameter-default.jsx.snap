@@ -1,0 +1,44 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function render(node=(/* ordinary */ <Item value={61}/> /* source tail */)){return node.props.value;}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function render(node = /* ordinary */ <Item value={61} /> /* source tail */) {
+  return node.props.value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function render(node = /* ordinary */ <Item value={61} /> /* source tail */) {
+  return node.props.value
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+function render(
+  node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* source tail */
+  ),
+) {
+  return node.props.value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36,"semicolons":"as-needed"}
+---------- Output ----------
+function render(
+  node = (
+    /* ordinary */ <Item
+      value={61}
+    /> /* source tail */
+  ),
+) {
+  return node.props.value
+}

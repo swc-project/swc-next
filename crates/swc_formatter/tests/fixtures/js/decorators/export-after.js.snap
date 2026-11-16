@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* export */ default /* default */ @dec /* decorator */ class C {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}

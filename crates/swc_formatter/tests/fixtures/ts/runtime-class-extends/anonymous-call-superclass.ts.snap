@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T> {}
+function choose<T>() { return Base; }
+const Derived = class extends (choose<string>())<number> {};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Base<T> {}
+function choose<T>() {
+  return Base;
+}
+const Derived = class extends choose<string>()<number> {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Base<T> {}
+function choose<
+  T,
+>() {
+  return Base;
+}
+const Derived = class extends choose<string>()<number> {};

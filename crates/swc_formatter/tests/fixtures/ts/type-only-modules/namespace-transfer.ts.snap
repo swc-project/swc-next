@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* before type */ type /* star */ * /* as */ as /* namespace */ Models from "m";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m"

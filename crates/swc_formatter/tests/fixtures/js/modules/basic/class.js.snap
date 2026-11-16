@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export class Box {method(value=1+2){return value;}}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export class Box {
+  method(value = 1 + 2) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export class Box {
+  method(
+    value = 1 + 2,
+  ) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+export class Box {
+  method(
+    value = 1 + 2,
+  ) {
+    return value
+  }
+}

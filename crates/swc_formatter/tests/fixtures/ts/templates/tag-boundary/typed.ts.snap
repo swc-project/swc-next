@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = tag<{ first: string; second: number }> /* quasi */
+`value`;
+
+consume(tag<string> /* first */ // last
+`value`);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = tag<{ first: string; second: number }> /* quasi */ `value`;
+
+consume(
+  tag<string> /* first */ // last
+  `value`,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+const value = tag<{
+  first: string
+  second: number
+}> /* quasi */
+`value`
+
+consume(
+  tag<string> /* first */ // last
+  `value`,
+)
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const value = tag<{
+	first: string;
+	second: number;
+}> /* quasi */
+`value`;
+
+consume(
+	tag<string> /* first */ // last
+	`value`,
+);

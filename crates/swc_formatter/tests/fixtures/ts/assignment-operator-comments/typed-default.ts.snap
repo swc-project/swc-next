@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function use(value: number =
+  // default
+  1) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}

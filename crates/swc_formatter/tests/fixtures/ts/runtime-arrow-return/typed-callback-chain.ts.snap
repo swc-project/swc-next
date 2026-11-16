@@ -1,0 +1,57 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+run((value: number): ((next: number) => number) => (next: number): number => value + next);---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+run(
+  (value: number): ((next: number) => number) =>
+    (next: number): number =>
+      value + next,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+run(
+  (
+    value: number,
+  ): ((
+    next: number,
+  ) => number) =>
+    (
+      next: number,
+    ): number =>
+      value + next,
+);
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+run(
+  (
+    value: number
+  ): ((
+    next: number
+  ) => number) =>
+    (
+      next: number
+    ): number =>
+      value + next
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+run(
+  (
+    value: number,
+  ): ((
+    next: number,
+  ) => number) =>
+    (
+      next: number,
+    ): number =>
+      value + next,
+);

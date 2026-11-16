@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Directive {
+// @ts-expect-error
+value: number = "wrong";
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Directive {
+  // @ts-expect-error
+  value: number = "wrong";
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+class Directive {
+  // @ts-expect-error
+  value: number = "wrong"
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":24}
+---------- Output ----------
+class Directive {
+	// @ts-expect-error
+	value: number = "wrong";
+}

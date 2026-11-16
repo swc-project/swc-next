@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee(first /* before */, /* after */ second);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+callee(
+  first /* before */,
+  /* after */ second,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+callee(first /* before */, /* after */ second);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+callee(
+  first /* before */,
+  /* after */ second,
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+callee(
+  first /* before */,
+  /* after */ second
+);

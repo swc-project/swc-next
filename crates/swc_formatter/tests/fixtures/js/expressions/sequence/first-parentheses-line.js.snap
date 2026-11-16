@@ -1,0 +1,54 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+((// head
+first), second);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// head
+;(first, second)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+// head
+(first,
+  second);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+// head
+(first, second);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+// head
+(first, second);

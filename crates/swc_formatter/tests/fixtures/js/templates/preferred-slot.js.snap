@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = `start ${[[first, second], [third, fourth]]} end`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = `start ${[
+  [first, second],
+  [third, fourth],
+]} end`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const value = `start ${[
+  [first, second],
+  [third, fourth]
+]} end`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const value = `start ${[
+  [first, second],
+  [third, fourth],
+]} end`;

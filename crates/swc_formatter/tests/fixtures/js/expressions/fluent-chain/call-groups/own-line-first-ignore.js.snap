@@ -1,0 +1,78 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+model = Factory.model
+// prettier-ignore
+ ({ something: mxSomething }).volatile((self) => ({ loading: false, savingStatus: "idle", undoDisabled: false, aiFocused: false, online: true }));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+model = Factory
+  .model
+  // prettier-ignore
+  ({ something: mxSomething })
+  .volatile((self) => ({
+    loading: false,
+    savingStatus: "idle",
+    undoDisabled: false,
+    aiFocused: false,
+    online: true,
+  }));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+model = Factory
+  .model
+  // prettier-ignore
+  ({ something: mxSomething })
+  .volatile(
+    (self) => ({
+      loading: false,
+      savingStatus:
+        "idle",
+      undoDisabled: false,
+      aiFocused: false,
+      online: true,
+    }),
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+model =
+  Factory
+    .model
+    // prettier-ignore
+    ({ something: mxSomething })
+    .volatile(
+      (
+        self,
+      ) => ({
+        loading: false,
+        savingStatus:
+          "idle",
+        undoDisabled: false,
+        aiFocused: false,
+        online: true,
+      }),
+    )
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+model = Factory
+	.model
+	// prettier-ignore
+	({ something: mxSomething })
+	.volatile(
+		(self) => ({
+			loading: false,
+			savingStatus:
+				"idle",
+			undoDisabled: false,
+			aiFocused: false,
+			online: true,
+		}),
+	);

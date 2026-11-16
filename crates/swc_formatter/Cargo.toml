@@ -21,3 +21,16 @@ swc_next_ecma_parser    = { workspace = true, optional = true }
 swc_next_formatter_core = { workspace = true }
 swc_next_formatter_host = { workspace = true }
 swc_next_formatter_js   = { workspace = true, optional = true }
+
+[dev-dependencies]
+insta              = { workspace = true }
+serde_json         = { workspace = true }
+swc_next_allocator = { workspace = true }
+
+[[test]]
+name              = "api"
+required-features = ["js"]
+
+[[test]]
+name              = "fixtures"
+required-features = ["js", "serde"]

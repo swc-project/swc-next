@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (
+/* prettier-ignore */
+A<   X > | B) & C;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = (
+/* prettier-ignore */
+A<   X > | B) &
+  C;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type T = (
+/* prettier-ignore */
+A<   X > | B) &
+  C;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+type T = (
+/* prettier-ignore */
+A<   X > | B) &
+  C

@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try{}catch(error:( Alpha | Beta )) /* prettier-ignore */ {use( 1+  2 );}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+try {
+} catch (error:
+  | Alpha
+  | Beta) /* prettier-ignore */ {use( 1+  2 );}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try {
+} catch (error: Alpha | Beta) /* prettier-ignore */ {use( 1+  2 );}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+} catch (error:
+  | Alpha
+  | Beta) /* prettier-ignore */ {use( 1+  2 );}

@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(object.missing) = value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(object.missing) =
+  value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+(object.missing) = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(object.missing) = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(object.missing) =
+  value

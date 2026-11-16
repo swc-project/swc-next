@@ -1,0 +1,51 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = source.invoke<string>(
+  /* The type argument and empty value frame have different owners. */
+);
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result =
+  invoke<string>(
+    /* This argument value prevents compact empty-frame classification. */
+    value,
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+result =
+  source.invoke<string>(
+    /* The type argument and empty value frame have different owners. */
+  );
+
+result = invoke<string>(
+  /* This argument value prevents compact empty-frame classification. */
+  value,
+);

@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(\u0076
+/* prettier-ignore */
+=1+2){}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+function f(
+  \u0076
+/* prettier-ignore */
+=1+2,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function f(
+  \u0076
+/* prettier-ignore */
+=1+2,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(
+  \u0076
+/* prettier-ignore */
+=1+2,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f(
+  \u0076
+/* prettier-ignore */
+=1+2,
+) {}

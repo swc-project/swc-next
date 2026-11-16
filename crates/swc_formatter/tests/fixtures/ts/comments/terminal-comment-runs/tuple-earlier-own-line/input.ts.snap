@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = [First
+/* b */, /* c */ // d
+];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = [
+  First,
+  /* b */ /* c */ // d
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+type T = [
+  First
+  /* b */ /* c */ // d
+];

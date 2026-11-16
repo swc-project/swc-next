@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const choose = () => { console.log("unexpected"); return "unused"; }; const task = import((/* #__PURE__ */ choose(), "m"));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const choose = () => {
+  console.log("unexpected");
+  return "unused";
+};
+const task = import((/* #__PURE__ */ choose(), "m"));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const choose =
+  () => {
+    console.log(
+      "unexpected",
+    );
+    return "unused";
+  };
+const task = import(
+  (/* #__PURE__ */ choose(),
+    "m"
+  )
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+const choose =
+  () => {
+    console.log(
+      'unexpected',
+    )
+    return 'unused'
+  }
+const task = import(
+  (/* #__PURE__ */ choose(),
+    'm'
+  )
+)

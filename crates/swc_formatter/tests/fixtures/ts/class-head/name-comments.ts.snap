@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A // name
+<T /* parameter */> extends B {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class A // name
+<T /* parameter */> extends B {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class A // name
+<
+  T /* parameter */,
+> extends B {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class A // name
+<
+	T /* parameter */,
+> extends B {}

@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object?.method("scope", value => { return value; })?.next;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+object?.method("scope", (value) => {
+  return value;
+})?.next;

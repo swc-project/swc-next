@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function evaluate(first: boolean): boolean {
+  return !(first &&
+    // @ts-expect-error
+    missingTarget /* tail */);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function evaluate(first: boolean): boolean {
+  return !(
+    first &&
+    // @ts-expect-error
+    missingTarget /* tail */);
+}

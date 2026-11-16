@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type R<T> = [...(readonly T[])];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type R<T> = [...(readonly T[])];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type R<T> = [
+  ...(readonly T[]),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type R<
+  T,
+> =
+  [
+    ...(readonly T[]),
+  ]
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type R<T> = [
+	...(readonly T[])
+];

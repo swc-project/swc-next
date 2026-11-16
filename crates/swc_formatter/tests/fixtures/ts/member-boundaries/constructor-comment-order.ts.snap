@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Factory { new /* before parameters */ (/* inside parameters */): Result; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (/* inside parameters */): Result;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (
+    /* inside parameters */
+  ): Result;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (
+    /* inside parameters */
+  ): Result
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface Factory {
+	new /* before parameters */ (
+		/* inside parameters */
+	): Result;
+}

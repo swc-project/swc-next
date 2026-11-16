@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-const view = <Box>{items.map(x => <Cell />) as unknown}</Box>;
----------- Options ----------
-{"indentStyle":"space","lineWidth":80}
----------- Output ----------
-const view = <Box>{items.map((x) => <Cell />) as unknown}</Box>;

@@ -16,8 +16,3 @@ swc_next_ecma_parser    = { workspace = true }
 swc_next_formatter_core = { workspace = true }
 swc_next_formatter_host = { workspace = true }
 zmij_ecma               = { workspace = true }
-
-[dev-dependencies]
-insta              = { workspace = true }
-serde_json         = { workspace = true }
-swc_next_formatter = { workspace = true, features = ["js", "serde"] }

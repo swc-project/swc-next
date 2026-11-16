@@ -8,7 +8,7 @@ Convert `PrintConfig` into `swc_next_formatter_core::PrintOptions`, or enable `j
 
 ## Testing
 
-Unit tests cover binary print options and document printing.
+Unit tests cover binary print options and document printing. The [API and fixture tests](tests) cover options, source and AST entry points, document serialization, and idempotency.
 
 ```sh
 cargo test -p swc_next_formatter --all-features --locked

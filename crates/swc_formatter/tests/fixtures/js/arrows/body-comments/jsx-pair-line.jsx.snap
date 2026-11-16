@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+KEYPAD_NUMBERS.map(num => ( // Buttons 0-9
+  <div />
+));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+KEYPAD_NUMBERS.map((num) => (
+  // Buttons 0-9
+  <div />
+));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+KEYPAD_NUMBERS.map(
+  (num) => (
+    // Buttons 0-9
+    <div />
+  ),
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+KEYPAD_NUMBERS.map((num) => (
+  // Buttons 0-9
+  <div />
+))
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+KEYPAD_NUMBERS.map(num => (
+  // Buttons 0-9
+  <div />
+))

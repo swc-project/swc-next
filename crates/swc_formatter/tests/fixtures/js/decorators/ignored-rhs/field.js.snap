@@ -1,0 +1,51 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Holder { before=1; static probe=(
+/* prettier-ignore */
+@factory.make() class  Named {static m ( ) { return this .stamp; }}
+) /* terminal */; after=2; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+class Holder {
+  before = 1;
+  static probe =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }}; /* terminal */
+  after = 2;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+class Holder {
+  before = 1
+  static probe =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }} /* terminal */
+  after = 2
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+class Holder {
+  before = 1;
+  static probe =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }}; /* terminal */
+  after = 2;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Holder {
+  before = 1
+  static probe =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }} /* terminal */
+  after = 2
+}

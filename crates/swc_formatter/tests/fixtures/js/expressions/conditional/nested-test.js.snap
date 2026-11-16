@@ -1,0 +1,74 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first ? second : third) ? fourth : fifth;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(first ? second : third) ? fourth : fifth;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;(first ? second : third) ? fourth : fifth
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(
+  first
+    ? second
+    : third
+)
+  ? fourth
+  : fifth;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+(
+  first
+    ? second
+    : third
+)
+  ? fourth
+  : fifth;
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+(
+    first
+        ? second
+        : third
+)
+    ? fourth
+    : fifth;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+(
+	first
+		? second
+		: third
+)
+	? fourth
+	: fifth;
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+(
+ first
+  ? second
+  : third
+)
+ ? fourth
+ : fifth;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+(first ? second : third) ? fourth : fifth;

@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+factory = (a) => (b) => // @ts-ignore
+(c) => missingFirst(a) + missingSecond(b) + c;
+---------- Options ----------
+{"arrowParentheses":"always","indentStyle":"space","lineWidth":24}
+---------- Output ----------
+factory = (a) => (b) =>
+  // @ts-ignore
+  (c) => missingFirst(a) + missingSecond(b) + c;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":24}
+---------- Output ----------
+factory = a => b =>
+  // @ts-ignore
+  (c) => missingFirst(a) + missingSecond(b) + c;
+
+---------- Options ----------
+{"arrowParentheses":"always","indentStyle":"space","lineWidth":80}
+---------- Output ----------
+factory = (a) => (b) =>
+  // @ts-ignore
+  (c) => missingFirst(a) + missingSecond(b) + c;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
+---------- Output ----------
+factory = a => b =>
+  // @ts-ignore
+  (c) => missingFirst(a) + missingSecond(b) + c;

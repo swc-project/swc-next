@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {Thing} */ (object).property;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+/** @type {Thing} */ (
+  object
+).property;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+/** @type {Thing} */ (object).property;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/** @type {Thing} */ (object).property;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;/** @type {Thing} */ (
+  object
+).property

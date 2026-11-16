@@ -1,9 +1,0 @@
----
-source: crates/swc_formatter_js/tests/fixtures/mod.rs
----
----------- Input ----------
-type T = A extends B ? C : /* prettier-ignore */ ( D |  E );
----------- Options ----------
-{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
----------- Output ----------
-type T = A extends B ? C : /* prettier-ignore */ D |  E

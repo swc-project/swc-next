@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume();
+/*#__PURE__*/(function factory(){ trace.push("callee"); return factory; })()<number>;---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+  trace.push("callee");
+  return factory;
+})()<number>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+  trace.push(
+    "callee",
+  );
+  return factory;
+})()<number>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+consume()
+;
+/*#__PURE__*/ (function factory() {
+  trace.push(
+    "callee",
+  )
+  return factory
+})()<number>
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+	trace.push(
+		"callee",
+	);
+	return factory;
+})()<number>;

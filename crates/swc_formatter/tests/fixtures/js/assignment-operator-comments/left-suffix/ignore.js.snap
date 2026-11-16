@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target // prettier-ignore
+= first +second;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+target // prettier-ignore
+= first + second;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+target // prettier-ignore
+= first +
+second;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+target // prettier-ignore
+= first + second;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+target // prettier-ignore
+= first + second
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+target // prettier-ignore
+= first + second;

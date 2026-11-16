@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Initialized { static value: number = 1 + 2; item?: number = 3; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Initialized {
+  static value: number = 1 + 2;
+  item?: number = 3;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+class Initialized {
+  static value: number =
+    1 + 2
+  item?: number = 3
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":24}
+---------- Output ----------
+class Initialized {
+	static value: number =
+		1 + 2;
+	item?: number = 3;
+}

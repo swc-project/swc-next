@@ -1,0 +1,61 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ method(first, second = 1 + 2, ...rest) { return [first, second, rest]; } });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  method(first, second = 1 + 2, ...rest) {
+    return [first, second, rest];
+  },
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+({
+  method(
+    first,
+    second = 1 + 2,
+    ...rest
+  ) {
+    return [
+      first,
+      second,
+      rest,
+    ];
+  },
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;({
+  method(
+    first,
+    second = 1 +
+      2,
+    ...rest
+  ) {
+    return [
+      first,
+      second,
+      rest
+    ]
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+;({
+  method(
+    first,
+    second = 1 + 2,
+    ...rest
+  ) {
+    return [first, second, rest]
+  },
+})

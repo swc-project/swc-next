@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value satisfies // explanation
+Result;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+value satisfies Result; // explanation
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+value satisfies Result; // explanation
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+value satisfies Result // explanation
