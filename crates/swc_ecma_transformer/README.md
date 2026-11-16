@@ -13,11 +13,6 @@ cargo run -p swc_next_ecma_transformer --example transformer -- input.ts
 
 The example lowers TypeScript and class static blocks while preserving JSX.
 
-Modules that need runtime helpers emit named imports from
-[`@swc-next/helpers`](../../packages/helpers). Install that package when
-running the generated code. Scripts and CommonJS use `require` to access the
-same named exports; the runtime or bundler must support loading this ESM package.
-
 ## Testing
 
 ```sh
