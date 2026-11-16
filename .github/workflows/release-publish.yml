@@ -295,6 +295,9 @@ jobs:
       - release_crates
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      # Package assembly adds unpublished bindings to the workspace manifests.
+      pnpm_config_verify_deps_before_run: "false"
     permissions:
       contents: read
       id-token: write
