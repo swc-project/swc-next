@@ -96,11 +96,10 @@ struct InlineCandidate {
 /// arena is scanned once, without walking the tree.
 #[derive(Default)]
 struct Declarations {
-    /// The declarator of each binding identifier, or `None` when more than
-    /// one declarator holds it.
-    declarators: FxHashMap<NodeId, Option<VariableDeclarator>>,
-    /// The declaration that holds each declarator.
-    holders: FxHashMap<NodeId, Option<VariableDeclaration>>,
+    /// The declarator of each binding identifier and the declaration that
+    /// holds it, or `None` when more than one declarator or declaration holds
+    /// it.
+    declarators: FxHashMap<NodeId, Option<(VariableDeclarator, VariableDeclaration)>>,
     /// Declarations in loop heads, which are not statements.
     loop_heads: IdSet<NodeId>,
     /// `var` declarations directly in a function body, which run before
@@ -138,11 +137,14 @@ impl Declarations {
                 NodeKindData::VariableDeclaration(declaration) => {
                     for id in declaration.declarators(ast).iter() {
                         let declarator = ast.get_node_in_sub_range(id);
-                        record(&mut declarations.holders, declarator.node_id(), declaration);
                         if let BindingPatternData::BindingIdentifier(binding) =
                             ast.binding_pattern_data(declarator.id(ast))
                         {
-                            record(&mut declarations.declarators, binding.node_id(), declarator);
+                            record(
+                                &mut declarations.declarators,
+                                binding.node_id(),
+                                (declarator, declaration),
+                            );
                         }
                     }
                 }
@@ -206,8 +208,7 @@ impl Declarations {
     /// The declarator of a binding and the declaration statement that holds
     /// it. Declarators in loop heads are excluded.
     fn statement(&self, binding: NodeId) -> Option<(VariableDeclarator, VariableDeclaration)> {
-        let declarator = (*self.declarators.get(&binding)?)?;
-        let declaration = (*self.holders.get(&declarator.node_id())?)?;
+        let (declarator, declaration) = (*self.declarators.get(&binding)?)?;
         (!self.loop_heads.contains(declaration.node_id())).then_some((declarator, declaration))
     }
 }
@@ -695,8 +696,7 @@ fn is_removable_kind(
         .get(&declaration.node)
         .copied()
         .flatten()
-        .and_then(|declarator| *declarations.holders.get(&declarator.node_id())?)
-        .is_some_and(|holder| match holder.kind(ast) {
+        .is_some_and(|(_, holder)| match holder.kind(ast) {
             VariableKind::Var => true,
             VariableKind::Let | VariableKind::Const => {
                 !declarations.blocks_function(ast, semantic.symbol(symbol).name)

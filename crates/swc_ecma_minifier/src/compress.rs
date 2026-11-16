@@ -16,7 +16,12 @@ use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
 };
 
-use crate::{CompressOptions, dynamic::DynamicScopes, id_set::IdSet, mangle::Renames};
+use crate::{
+    CompressOptions,
+    dynamic::DynamicScopes,
+    id_set::{IdMap, IdSet},
+    mangle::Renames,
+};
 
 mod conditionals;
 mod dead_code;
@@ -48,6 +53,8 @@ struct Candidates {
     /// Reads that cannot throw and whose removal cannot make a declaration
     /// removable.
     pure_reads: IdSet<NodeId>,
+    /// Reads in `globals` or `inlined`, which most reads are not.
+    replaced: IdSet<NodeId>,
     renames: Renames,
 }
 
@@ -74,7 +81,7 @@ impl Candidates {
         if mangle {
             candidates.renames = Renames::build(ast, &semantic, &dynamic);
         }
-        let mut local_vars = FxHashMap::default();
+        let mut local_vars = IdMap::default();
         let mut in_function = IdSet::default();
         for entry in semantic.iter_symbols() {
             // Dynamic lookup can read or write these bindings at any time.
@@ -134,11 +141,12 @@ impl Candidates {
                         _ => continue,
                     };
                     candidates.globals.insert(reference.node, global);
+                    candidates.replaced.insert(reference.node);
                 }
-                NameResolution::Resolved(symbol) if local_vars.contains_key(&symbol) => {
-                    candidates
-                        .typeofs
-                        .insert(reference.node, local_vars[&symbol]);
+                NameResolution::Resolved(symbol) => {
+                    if let Some(&binding) = local_vars.get(symbol) {
+                        candidates.typeofs.insert(reference.node, binding);
+                    }
                 }
                 _ => {}
             }
@@ -162,6 +170,9 @@ impl Candidates {
         let reduction = Reduction::build(ast, &context);
         candidates.removed_functions = reduction.functions;
         candidates.unused.extend(&reduction.removed);
+        for &node in reduction.inlined.keys() {
+            candidates.replaced.insert(node);
+        }
         candidates.inlined = reduction.inlined;
         candidates.constant_bindings = reduction.constant_bindings;
 
@@ -169,7 +180,7 @@ impl Candidates {
             // A removed read could leave a declaration without uses, which
             // only a later pass would remove.
             // Pure symbols, each with the offset from which its reads are pure.
-            let pure_symbols: FxHashMap<_, _> = semantic
+            let pure_symbols: IdMap<_, _> = semantic
                 .iter_symbols()
                 .filter(|entry| {
                     is_initialized(entry.symbol.flags)
@@ -198,7 +209,7 @@ impl Candidates {
                 if let NameResolution::Resolved(symbol) = reference.resolution()
                     && reference.flags.is_read_only()
                     && pure_symbols
-                        .get(&symbol)
+                        .get(symbol)
                         .is_some_and(|start| ast.span(reference.node).start >= *start)
                 {
                     candidates.pure_reads.insert(reference.node);
@@ -435,6 +446,9 @@ impl Compressor {
     }
 
     fn global(&mut self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
+        if !self.candidates.replaced.contains(node.node_id()) {
+            return None;
+        }
         if let Some(constant) = self.candidates.inlined.get(&node.node_id()).copied() {
             // `delete a` becomes `false`; see `exit_expr`.
             if self.deleted_reads.contains(node.node_id()) {
