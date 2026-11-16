@@ -2,6 +2,8 @@
 //! belong to an identifier. The scan lives in `imp`, defined once per target: x86-64 classifies a
 //! whole batch at once, where a lane mask is one `pmovmskb`, and other targets read a byte table.
 
+use super::{TokenTag, get_keyword_type};
+
 /// Whether `byte` continues a non-JSX ASCII identifier.
 #[inline(always)]
 const fn is_ascii_identifier_continue(byte: u8) -> bool {
@@ -35,43 +37,50 @@ fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
 mod imp {
     use swc_next_simd::prelude::*;
 
-    use super::{ascii_identifier_end, is_ascii_identifier_continue};
+    use crate::lexer::keyword_type_of_words;
 
-    /// Whether `byte` continues an identifier, the set that [`identifier_continue_bits`] computes
-    /// a batch at a time.
+    use super::{
+        TokenTag, ascii_identifier_end, is_ascii_identifier_continue,
+        scan_ascii_identifier_or_keyword_slow,
+    };
+
+    /// Whether `byte` continues an identifier, the complement of the set that
+    /// [`identifier_stop_bits`] computes a batch at a time.
     #[inline(always)]
     fn continues<const JSX: bool>(byte: u8) -> bool {
         is_ascii_identifier_continue(byte) || (JSX && byte == b'-')
     }
 
-    /// The lanes that continue an ASCII identifier, as one bit per lane.
+    /// The lanes that stop an ASCII identifier, as one bit per lane.
     ///
-    /// `byte | 0x20` folds `A-Z` onto `a-z`, and an unsigned lane minimum tells a wrapped range offset
-    /// from one that stayed inside the width. A lane-wise table lookup of the class would be
+    /// `byte | 0x20` folds `A-Z` onto `a-z`. A range test subtracts the range start and compares
+    /// the offset with the width as unsigned lanes. SSE2 compares signed lanes only, so the
+    /// comparison flips the offset's high bit, which folds into the subtraction, and it compares
+    /// with the constant in memory. Testing for stop lanes instead of continue lanes keeps every
+    /// test a single comparison with no inversion. A lane-wise table lookup of the class would be
     /// shorter but needs `pshufb`, which is SSSE3, and the build target is x86-64-v1.
     ///
     /// Where the next token starts follows the lane that stops this identifier, so what a scan costs
     /// is this chain's depth rather than its instruction count: the tests are independent, so they
     /// are joined by depth, the letters test last because it is the deepest.
     #[inline(always)]
-    fn identifier_continue_bits<const JSX: bool>(bytes: u8x16) -> u16 {
+    fn identifier_stop_bits<const JSX: bool>(bytes: u8x16) -> u16 {
         #[inline(always)]
-        fn lanes_in_range(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
-            let offset = bytes - u8x16::splat(lo);
-            offset.simd_eq(offset.simd_min(u8x16::splat(hi - lo)))
+        fn lanes_outside(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
+            (bytes - u8x16::splat(lo)).simd_gt(u8x16::splat(hi - lo))
         }
 
-        let letters = lanes_in_range(bytes | u8x16::splat(0x20), b'a', b'z');
-        let digits = lanes_in_range(bytes, b'0', b'9');
-        let marks = bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
-        let continues = if JSX {
+        let not_letters = lanes_outside(bytes | u8x16::splat(0x20), b'a', b'z');
+        let not_digits = lanes_outside(bytes, b'0', b'9');
+        let not_marks = bytes.simd_ne(u8x16::splat(b'_')) & bytes.simd_ne(u8x16::splat(b'$'));
+        let stops = if JSX {
             // `-` joins the marks, which keeps the letters test off the deepest path.
-            letters | (digits | (marks | bytes.simd_eq(u8x16::splat(b'-'))))
+            not_letters & (not_digits & (not_marks & bytes.simd_ne(u8x16::splat(b'-'))))
         } else {
-            letters | (digits | marks)
+            not_letters & (not_digits & not_marks)
         };
 
-        continues.to_bitmask()
+        stops.to_bitmask()
     }
 
     /// Bytes one [`u8x16`] batch covers.
@@ -95,7 +104,7 @@ mod imp {
         // One load and one branch per batch; only the first byte that stops the identifier is
         // looked at again.
         while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
-            let stopped = !identifier_continue_bits::<JSX>(u8x16::from_array(*chunk));
+            let stopped = identifier_stop_bits::<JSX>(u8x16::from_array(*chunk));
             let lane = stopped.trailing_zeros() as usize;
             if lane < IDENTIFIER_BATCH_SIZE {
                 // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
@@ -115,6 +124,48 @@ mod imp {
         debug_assert!(position >= start as usize);
         debug_assert!(position <= source.len());
         Some(position as u32)
+    }
+
+    /// `LEXEME_MASKS[len]` keeps the first `len` bytes of a little-endian 16-byte word.
+    const LEXEME_MASKS: [u128; IDENTIFIER_BATCH_SIZE] = {
+        let mut masks = [0; IDENTIFIER_BATCH_SIZE];
+        let mut len = 0;
+        while len < IDENTIFIER_BATCH_SIZE {
+            masks[len] = (1 << (8 * len)) - 1;
+            len += 1;
+        }
+        masks
+    };
+
+    /// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
+    /// returns its end and its keyword tag. Returns `None` like
+    /// [`scan_ascii_identifier_continue`].
+    ///
+    /// An identifier that ends in the first batch takes its keyword words from that batch, so
+    /// the keyword lookup neither loads the lexeme again nor branches on its length.
+    #[inline(always)]
+    pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+        let position = start as usize;
+        let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() else {
+            return scan_ascii_identifier_or_keyword_slow(source, start);
+        };
+        let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
+        let lane = stopped.trailing_zeros() as usize;
+        if lane >= IDENTIFIER_BATCH_SIZE {
+            // No keyword is this long.
+            let end = scan_ascii_identifier_continue::<false>(
+                source,
+                start + IDENTIFIER_BATCH_SIZE as u32,
+            )?;
+            return Some((end, TokenTag::Identifier));
+        }
+        // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
+        let byte = unsafe { *source.get_unchecked(position + lane) };
+        let end = ascii_identifier_end(byte, position + lane)?;
+        // Every keyword is at most 11 bytes, so a longer lexeme keeps a nonzero byte 11 in `hi`
+        // and matches no table slot, which has zero there.
+        let word = u128::from_le_bytes(*chunk) & LEXEME_MASKS[lane];
+        Some((end, keyword_type_of_words(word as u64, (word >> 64) as u32)))
     }
 }
 
@@ -206,9 +257,26 @@ mod imp {
 
 pub use imp::*;
 
+/// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
+/// returns its end and its keyword tag. Returns `None` like [`scan_ascii_identifier_continue`].
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    scan_ascii_identifier_or_keyword_slow(source, start)
+}
+
+#[inline(always)]
+fn scan_ascii_identifier_or_keyword_slow(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    let end = scan_ascii_identifier_continue::<false>(source, start + 1)?;
+    // SAFETY: `start` indexes the identifier start byte, and the scan returns a position after it
+    // that is at most `source.len()`.
+    let lexeme = unsafe { source.get_unchecked(start as usize..end as usize) };
+    Some((end, get_keyword_type(lexeme)))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::scan_ascii_identifier_continue;
+    use super::{is_identifier_byte, scan_ascii_identifier_continue};
 
     fn end<const JSX: bool>(source: &str, start: u32) -> Option<u32> {
         scan_ascii_identifier_continue::<JSX>(source.as_bytes(), start)
@@ -229,6 +297,27 @@ mod tests {
         // `-` continues a JSX tag name only.
         assert_eq!(end::<false>("a-b", 1), Some(1));
         assert_eq!(end::<true>("a-b", 1), Some(3));
+    }
+
+    #[test]
+    fn scan_classifies_every_byte() {
+        for byte in 0..=u8::MAX {
+            // The byte falls in the middle of a full batch.
+            let mut source = b"a".repeat(24);
+            source[5] = byte;
+            let end = scan_ascii_identifier_continue::<false>(&source, 1);
+            let expected = if super::is_ascii_identifier_continue(byte) {
+                Some(24)
+            } else if is_identifier_byte(byte) {
+                None
+            } else {
+                Some(5)
+            };
+            assert_eq!((byte, end), (byte, expected));
+            let jsx_end = scan_ascii_identifier_continue::<true>(&source, 1);
+            let jsx_expected = if byte == b'-' { Some(24) } else { expected };
+            assert_eq!((byte, jsx_end), (byte, jsx_expected));
+        }
     }
 
     #[test]
