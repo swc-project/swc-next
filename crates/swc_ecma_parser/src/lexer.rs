@@ -20,7 +20,9 @@ use super::util::{
 
 mod scan_ident;
 
-use scan_ident::{is_identifier_byte, scan_ascii_identifier_continue};
+use scan_ident::{
+    is_identifier_byte, scan_ascii_identifier_continue, scan_ascii_identifier_or_keyword,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
@@ -494,14 +496,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
-        let Some(pos) = scan_ascii_identifier_continue::<false>(self.source, start + 1) else {
+        let Some((pos, tag)) = scan_ascii_identifier_or_keyword(self.source, start) else {
             return false;
         };
-        // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
-        // after it that is at most `source.len()`.
-        let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
         self.cursor = pos;
-        *target = Token::new(start, pos, get_keyword_type(lexeme), flags);
+        *target = Token::new(start, pos, tag, flags);
         true
     }
 
@@ -2257,6 +2256,13 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         }
         _ => return TokenTag::Identifier,
     };
+    keyword_type_of_words(lo, hi)
+}
+
+/// Looks up a lexeme packed as in [`KeywordSlot`]: `lo` holds bytes 0..8 and `hi` holds bytes
+/// 8..12, both zero-padded.
+#[inline(always)]
+fn keyword_type_of_words(lo: u64, hi: u32) -> TokenTag {
     let slot = &KEYWORD_TABLE[keyword_hash(lo, hi)];
     if slot.lo == lo && slot.hi == hi {
         slot.tag
@@ -2314,10 +2320,22 @@ mod tests {
             .map_or(TokenTag::Identifier, |&(_, tag)| tag)
     }
 
+    /// The keyword tag that the fast identifier scan gives `lexeme`, both when a full SIMD
+    /// batch follows it and when the source ends right after it.
+    fn scanned_keyword_types(lexeme: &[u8]) -> [TokenTag; 2] {
+        let padded = [lexeme, b" ".repeat(16).as_slice()].concat();
+        [padded.as_slice(), lexeme].map(|source| {
+            let (end, tag) = scan_ascii_identifier_or_keyword(source, 0).unwrap();
+            assert_eq!(end as usize, lexeme.len());
+            tag
+        })
+    }
+
     #[test]
     fn keywords() {
         for (keyword, tag) in KEYWORDS {
             assert_eq!(get_keyword_type(keyword), tag);
+            assert_eq!(scanned_keyword_types(keyword), [tag; 2]);
 
             let mut variants = vec![
                 keyword[..keyword.len() - 1].to_vec(),
@@ -2330,12 +2348,22 @@ mod tests {
             }
             for variant in variants {
                 assert_eq!(get_keyword_type(&variant), listed_keyword_type(&variant));
+                assert_eq!(
+                    scanned_keyword_types(&variant),
+                    [listed_keyword_type(&variant); 2]
+                );
             }
         }
 
         assert_eq!(get_keyword_type(b"a"), TokenTag::Identifier);
 
         assert_eq!(get_keyword_type(b"constructors"), TokenTag::Identifier);
+
+        // Lexemes that fill the first SIMD batch up to and past its end.
+        for len in [1, 12, 15, 16, 17, 40] {
+            let lexeme = b"constructor".repeat(4)[..len].to_vec();
+            assert_eq!(scanned_keyword_types(&lexeme), [TokenTag::Identifier; 2]);
+        }
     }
 
     #[test]

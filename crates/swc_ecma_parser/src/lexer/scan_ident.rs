@@ -2,6 +2,8 @@
 //! belong to an identifier. The scan lives in `imp`, defined once per target: x86-64 classifies a
 //! whole batch at once, where a lane mask is one `pmovmskb`, and other targets read a byte table.
 
+use super::{TokenTag, get_keyword_type};
+
 /// Whether `byte` continues a non-JSX ASCII identifier.
 #[inline(always)]
 const fn is_ascii_identifier_continue(byte: u8) -> bool {
@@ -35,7 +37,12 @@ fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
 mod imp {
     use swc_next_simd::prelude::*;
 
-    use super::{ascii_identifier_end, is_ascii_identifier_continue};
+    use crate::lexer::keyword_type_of_words;
+
+    use super::{
+        TokenTag, ascii_identifier_end, is_ascii_identifier_continue,
+        scan_ascii_identifier_or_keyword_slow,
+    };
 
     /// Whether `byte` continues an identifier, the set that [`identifier_continue_bits`] computes
     /// a batch at a time.
@@ -115,6 +122,48 @@ mod imp {
         debug_assert!(position >= start as usize);
         debug_assert!(position <= source.len());
         Some(position as u32)
+    }
+
+    /// `LEXEME_MASKS[len]` keeps the first `len` bytes of a little-endian 16-byte word.
+    const LEXEME_MASKS: [u128; IDENTIFIER_BATCH_SIZE] = {
+        let mut masks = [0; IDENTIFIER_BATCH_SIZE];
+        let mut len = 0;
+        while len < IDENTIFIER_BATCH_SIZE {
+            masks[len] = (1 << (8 * len)) - 1;
+            len += 1;
+        }
+        masks
+    };
+
+    /// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
+    /// returns its end and its keyword tag. Returns `None` like
+    /// [`scan_ascii_identifier_continue`].
+    ///
+    /// An identifier that ends in the first batch takes its keyword words from that batch, so
+    /// the keyword lookup neither loads the lexeme again nor branches on its length.
+    #[inline(always)]
+    pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+        let position = start as usize;
+        let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() else {
+            return scan_ascii_identifier_or_keyword_slow(source, start);
+        };
+        let stopped = !identifier_continue_bits::<false>(u8x16::from_array(*chunk));
+        let lane = stopped.trailing_zeros() as usize;
+        if lane >= IDENTIFIER_BATCH_SIZE {
+            // No keyword is this long.
+            let end = scan_ascii_identifier_continue::<false>(
+                source,
+                start + IDENTIFIER_BATCH_SIZE as u32,
+            )?;
+            return Some((end, TokenTag::Identifier));
+        }
+        // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
+        let byte = unsafe { *source.get_unchecked(position + lane) };
+        let end = ascii_identifier_end(byte, position + lane)?;
+        // Every keyword is at most 11 bytes, so a longer lexeme keeps a nonzero byte 11 in `hi`
+        // and matches no table slot, which has zero there.
+        let word = u128::from_le_bytes(*chunk) & LEXEME_MASKS[lane];
+        Some((end, keyword_type_of_words(word as u64, (word >> 64) as u32)))
     }
 }
 
@@ -205,6 +254,23 @@ mod imp {
 }
 
 pub use imp::*;
+
+/// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
+/// returns its end and its keyword tag. Returns `None` like [`scan_ascii_identifier_continue`].
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    scan_ascii_identifier_or_keyword_slow(source, start)
+}
+
+#[inline(always)]
+fn scan_ascii_identifier_or_keyword_slow(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    let end = scan_ascii_identifier_continue::<false>(source, start + 1)?;
+    // SAFETY: `start` indexes the identifier start byte, and the scan returns a position after it
+    // that is at most `source.len()`.
+    let lexeme = unsafe { source.get_unchecked(start as usize..end as usize) };
+    Some((end, get_keyword_type(lexeme)))
+}
 
 #[cfg(test)]
 mod tests {
