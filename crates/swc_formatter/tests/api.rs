@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_formatter::js::{format, format_ast};
 use swc_next_formatter_core::{LineEnding, PrintOptions, Writer};
 use swc_next_formatter_host::{
     EmbeddedDispatcher, EmbeddedError, EmbeddedOptions, EmbeddedOutcome, EmbeddedRequest,
@@ -10,7 +11,7 @@ use swc_next_formatter_host::{
 };
 use swc_next_formatter_js::{
     EcmaDocumentProducer, FormatError, FormatOptions, IndentWidth, QuoteStyle, Semicolons,
-    SyntaxOptions, format, format_ast,
+    SyntaxOptions,
 };
 
 #[test]

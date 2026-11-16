@@ -1,4 +1,4 @@
-//! Language-independent formatting configuration and document transport.
+//! Source formatting, configuration, and document transport for SWC Next.
 //!
 //! Experimental and unstable. APIs, document formats, and formatting output may
 //! change without notice.
@@ -6,7 +6,7 @@
 //! These internal APIs and binary formats do not follow semantic versioning.
 //! Use matching SWC Next JavaScript wrappers and native/Wasm bindings.
 //!
-//! Enable `js` for JavaScript and TypeScript formatting configuration.
+//! Enable `js` for JavaScript and TypeScript source formatting and configuration.
 //! Enable `serde` for camelCase configuration deserialization.
 //! The `bridge` feature enables the internal binary transport helpers.
 

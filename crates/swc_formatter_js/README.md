@@ -1,17 +1,19 @@
 # swc_formatter_js
 
-JavaScript, JSX, TypeScript, and TSX formatting for SWC Next. Formats source text or an existing program AST and produces documents for shared formatting sessions.
+JavaScript, JSX, TypeScript, and TSX document production for SWC Next. Converts source text or an existing program AST into document IR for shared formatting sessions. Source-to-string and AST-to-string formatting live in [`swc_formatter`](../swc_formatter).
 
 **Experimental and unstable.** Syntax support is incomplete, and output can differ from Prettier. Unsupported syntax returns an error.
 
 ## Usage
 
 ```rust
-let output = swc_next_formatter_js::format(
-    "const answer=42",
-    Default::default(),
-    Default::default(),
-)?;
+use swc_next_formatter_host::FormatSession;
+use swc_next_formatter_js::{EcmaDocumentProducer, SyntaxOptions};
+
+let session = FormatSession::default();
+let producer = EcmaDocumentProducer::default();
+let document = session.produce(&producer, "const answer=42", &SyntaxOptions::default())?;
+let encoded = document.encode();
 ```
 
 See the [crate API](src/lib.rs) for formatting options and AST input requirements.

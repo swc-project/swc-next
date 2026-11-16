@@ -4,9 +4,9 @@ use serde_json::{Map, Value};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_formatter::js::JsFormatterConfig;
+use swc_next_formatter::js::{JsFormatterConfig, format, format_ast};
 use swc_next_formatter_host::FormatSession;
-use swc_next_formatter_js::{FormatOptions, LineEnding, format, format_ast, format_to_doc_buffer};
+use swc_next_formatter_js::{FormatOptions, LineEnding, format_to_doc_buffer};
 
 fn option_sets(path: &Path, root: &Path) -> Vec<Map<String, Value>> {
     let mut directory = path.parent().unwrap();

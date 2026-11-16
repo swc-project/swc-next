@@ -1,10 +1,12 @@
-//! Source-aware JavaScript and TypeScript formatting for the SWC Next AST.
+//! Source-aware JavaScript and TypeScript document production for the SWC Next AST.
 //!
 //! Experimental and unstable. APIs, document formats, and formatting output may
 //! change without notice.
 //!
-//! [`format()`] parses source, while [`format_ast()`] accepts an existing program.
-//! [`EcmaDocumentProducer`] builds documents for a language-independent host session.
+//! [`EcmaDocumentProducer`] parses source into documents for a host session.
+//! [`ast_to_doc()`] builds a document from an existing program, and
+//! [`format_to_doc_buffer()`] returns an encoded document. Printing and source
+//! formatting convenience APIs belong to `swc_next_formatter`.
 //! Formatting options live in `options`. Syntax support is added incrementally;
 //! unsupported programs return [`FormatError::Unsupported`].
 
@@ -27,7 +29,7 @@ pub use options::{
     ArrowParentheses, FormatOptions, IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding,
     QuoteProperties, QuoteStyle, Semicolons, SyntaxOptions, TrailingCommas,
 };
-pub use producer::EcmaDocumentProducer;
+pub use producer::{EcmaDocumentProducer, ast_to_doc};
 
 /// Prettier version used as the output oracle for [`FormatOptions::prettier`].
 pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.9.9";
@@ -79,21 +81,6 @@ impl fmt::Display for FormatError {
 
 impl Error for FormatError {}
 
-/// Parse and format source text.
-///
-/// Comment collection and parenthesis preservation are always enabled because
-/// the formatter needs both to preserve annotation boundaries.
-pub fn format(
-    source: &str,
-    parser_options: ParserOptions,
-    options: FormatOptions,
-) -> Result<String, FormatError> {
-    let session = FormatSession::new(options.into());
-    let producer = EcmaDocumentProducer::new(parser_options);
-    let document = session.produce(&producer, source, &options.into())?;
-    Ok(restore_bom(source, document.print(session.print_options())))
-}
-
 fn parse_source<'a>(
     allocator: &'a Allocator,
     source: &'a str,
@@ -110,36 +97,6 @@ fn parse_source<'a>(
         return Err(FormatError::Parse(parsed.diagnostics));
     }
     Ok(parsed.ast)
-}
-
-/// Format an already parsed program AST.
-///
-/// The AST must have a program root, as produced by [`Parser::parse`]. Expression
-/// and statement fragment roots are not supported.
-///
-/// The caller must provide an AST parsed with [`CommentMode::Flat`] and
-/// `preserve_parens: true`, retaining its original source and complete comment
-/// list. These prerequisites are not checked; missing comments or parentheses
-/// can lose annotations or change which expression they apply to.
-/// Use [`format()`] to enable both parsing requirements automatically.
-///
-/// # Panics
-///
-/// Panics if the AST has no root or its root is not a program.
-pub fn format_ast(ast: &AstCtx<'_>, options: FormatOptions) -> Result<String, FormatError> {
-    let session = FormatSession::new(options.into());
-    let document = producer::ast_to_doc(ast, session.context(), options.into())?;
-    Ok(restore_bom(
-        ast.source(),
-        document.print(session.print_options()),
-    ))
-}
-
-fn restore_bom(source: &str, mut output: String) -> String {
-    if source.starts_with('\u{feff}') {
-        output.insert(0, '\u{feff}');
-    }
-    output
 }
 
 /// Parse source and encode an unprinted document for the SWCFMT Prettier adapter.

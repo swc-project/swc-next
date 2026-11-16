@@ -1,4 +1,4 @@
-//! JavaScript and TypeScript formatting configuration and document transport.
+//! JavaScript and TypeScript source formatting, configuration, and document transport.
 //!
 //! Experimental and unstable. APIs, document formats, and formatting output may
 //! change without notice.
@@ -7,9 +7,61 @@
 //! use the Rust formatter's defaults, including tabs and a 120-column line width.
 //! The `bridge` feature enables the internal binary transport helpers.
 
-use swc_next_formatter_js::{self as formatter, FormatOptions, InvalidIndentWidth};
+use swc_next_ecma_ast::AstCtx;
+use swc_next_ecma_parser::Options as ParserOptions;
+use swc_next_formatter_host::FormatSession;
+use swc_next_formatter_js::{self as formatter, EcmaDocumentProducer, InvalidIndentWidth};
+
+pub use swc_next_formatter_js::{FormatError, FormatOptions};
 
 use crate::{IndentStyle, LineEnding};
+
+/// Parse and format source text.
+///
+/// Comment collection and parenthesis preservation are always enabled because
+/// the formatter needs both to preserve annotation boundaries.
+pub fn format(
+    source: &str,
+    parser_options: ParserOptions,
+    options: FormatOptions,
+) -> Result<String, FormatError> {
+    let session = FormatSession::new(options.into());
+    let producer = EcmaDocumentProducer::new(parser_options);
+    let document = session.produce(&producer, source, &options.into())?;
+    Ok(restore_bom(source, document.print(session.print_options())))
+}
+
+/// Format an already parsed program AST.
+///
+/// The AST must have a program root, as produced by
+/// [`swc_next_ecma_parser::Parser::parse`]. Expression and statement fragment roots
+/// are not supported.
+///
+/// The caller must provide an AST parsed with
+/// [`swc_next_ecma_parser::CommentMode::Flat`] and `preserve_parens: true`,
+/// retaining its original source and complete comment
+/// list. These prerequisites are not checked; missing comments or parentheses
+/// can lose annotations or change which expression they apply to.
+/// Use [`format()`] to enable both parsing requirements automatically.
+///
+/// # Panics
+///
+/// Panics if the AST has no root or its root is not a program.
+pub fn format_ast(ast: &AstCtx<'_>, options: FormatOptions) -> Result<String, FormatError> {
+    let session = FormatSession::new(options.into());
+    let document = formatter::ast_to_doc(ast, session.context(), options.into())?;
+    Ok(restore_bom(
+        ast.source(),
+        document.print(session.print_options()),
+    ))
+}
+
+fn restore_bom(source: &str, mut output: String) -> String {
+    if source.starts_with('\u{feff}') {
+        output.insert(0, '\u{feff}');
+    }
+    output
+}
 
 /// JavaScript and TypeScript formatting options.
 ///

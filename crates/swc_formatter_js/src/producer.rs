@@ -9,10 +9,10 @@ use crate::{FormatError, FormatOptions, SyntaxOptions, formatter::Formatter, par
 ///
 /// Parser settings belong to this producer. Syntax options are supplied for
 /// each document, while layout comes from the session. Comment collection and
-/// parenthesis preservation are always enabled, as in [`crate::format()`].
+/// parenthesis preservation are always enabled.
 ///
-/// Documents omit a leading BOM. Source-formatting convenience APIs restore it;
-/// document consumers decide how it belongs in their surrounding output.
+/// Documents omit a leading BOM. Document consumers decide how it belongs in
+/// their surrounding output.
 ///
 /// ```
 /// use swc_next_formatter_js::{EcmaDocumentProducer, SyntaxOptions};
@@ -22,7 +22,7 @@ use crate::{FormatError, FormatOptions, SyntaxOptions, formatter::Formatter, par
 /// let session = FormatSession::new(PrintOptions::default());
 /// let producer = EcmaDocumentProducer::default();
 /// let document = session.produce(&producer, "const answer=42", &SyntaxOptions::default())?;
-/// assert_eq!(document.print(session.print_options()), "const answer = 42;\n");
+/// assert!(document.encode().starts_with(b"SWCD"));
 /// # Ok::<(), swc_next_formatter_js::FormatError>(())
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
@@ -56,7 +56,22 @@ impl DocumentProducer for EcmaDocumentProducer {
     }
 }
 
-pub(crate) fn ast_to_doc<'a>(
+/// Build an unprinted document from an existing program AST.
+///
+/// The AST must have a program root, as produced by
+/// [`swc_next_ecma_parser::Parser::parse`], and must retain its original source,
+/// complete comments parsed with [`swc_next_ecma_parser::CommentMode::Flat`],
+/// and parentheses parsed with `preserve_parens: true`. Missing comments or
+/// parentheses can lose annotations or change which expression they apply to.
+/// Use [`EcmaDocumentProducer`] to enable both parsing requirements automatically.
+///
+/// The document borrows the AST and context storage. It omits a leading BOM,
+/// leaving printing, encoding, and BOM handling to the caller.
+///
+/// # Panics
+///
+/// Panics if the AST has no root or its root is not a program.
+pub fn ast_to_doc<'a>(
     ast: &'a AstCtx<'_>,
     context: FormatContext<'a, '_>,
     syntax: SyntaxOptions,

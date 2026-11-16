@@ -24,7 +24,7 @@ use swc_next_ecma_transformer::{
     proposal::ProposalOptions,
     typescript::TypeScriptOptions,
 };
-use swc_next_formatter_js::{FormatOptions, format_ast};
+use swc_next_formatter::js::{FormatOptions, format_ast};
 use swc_next_type_strip::{Options as StripOptions, strip_types};
 
 const MINIFIER_SEMANTIC: &str =
