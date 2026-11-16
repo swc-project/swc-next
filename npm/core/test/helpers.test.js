@@ -55,6 +55,14 @@ test("helper exports set function names", () => {
   setFunctionName(unnamed, Symbol());
   assert.equal(unnamed.name, "");
 
+  const emptyDescription = function () {};
+  setFunctionName(emptyDescription, Symbol(""));
+  assert.equal(emptyDescription.name, "[]");
+
+  const emptyPrefix = function () {};
+  setFunctionName(emptyPrefix, "value", "");
+  assert.equal(emptyPrefix.name, "value");
+
   const getter = function () {};
   setFunctionName(getter, "value", "get");
   assert.equal(getter.name, "get value");
