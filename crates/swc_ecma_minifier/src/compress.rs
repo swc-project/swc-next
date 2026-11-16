@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, AstCtx, AstUtf8, BinaryExpression, BinaryOperator,
@@ -229,6 +231,8 @@ pub(super) fn compress(ast: &mut AstCtx<'_>, options: CompressOptions, mangle: b
         branches: Vec::new(),
         reference_positions: IdSet::default(),
         statement_list: StatementList::default(),
+        effects: Cell::default(),
+        function_tail: Vec::new(),
     };
     let _ = program.traverse_mut_with(&mut compressor, &mut TraverseMutCtx::new(ast, ()));
 }
@@ -262,6 +266,10 @@ struct Compressor {
     /// receiver.
     reference_positions: IdSet<NodeId>,
     statement_list: StatementList,
+    /// Buffer of `drop_value`.
+    effects: Cell<Vec<Expr>>,
+    /// Buffer of `compress_function_tail`.
+    function_tail: Vec<Stmt>,
 }
 
 struct TypeofRewrite {
@@ -959,6 +967,12 @@ impl<'ast> TraverseMut<'ast> for Compressor {
             }
         }
 
+        if !original
+            .iter()
+            .any(|id| self.removable(ast, ast.get_node_in_sub_range(id)))
+        {
+            return TraverseAction::Continue;
+        }
         let kept: Vec<_> = original
             .iter()
             .map(|id| ast.get_node_in_sub_range(id))

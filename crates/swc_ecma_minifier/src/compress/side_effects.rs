@@ -22,17 +22,22 @@ impl Compressor {
     /// whose value is unused, or `None` when nothing observable remains.
     /// Returns `expr` itself when nothing can be removed.
     pub(super) fn drop_value(&self, ast: &mut Ast<'_>, expr: Expr) -> Option<Expr> {
-        let mut effects = Vec::new();
+        // A nested call finds the buffer taken and uses a new one.
+        let mut effects = self.effects.take();
         self.collect_effects(ast, expr, &mut effects);
-        if let ExprData::SequenceExpression(sequence) = ast.expr_data(expr)
+        let kept = if let ExprData::SequenceExpression(sequence) = ast.expr_data(expr)
             && effects.iter().copied().eq(sequence
                 .expressions(ast)
                 .iter()
                 .map(|id| ast.get_node_in_sub_range(id)))
         {
-            return Some(expr);
-        }
-        (!effects.is_empty()).then(|| statements::sequence(ast, &effects))
+            Some(expr)
+        } else {
+            (!effects.is_empty()).then(|| statements::sequence(ast, &effects))
+        };
+        effects.clear();
+        self.effects.set(effects);
+        kept
     }
 
     /// Removes the unused values of an expression statement or of a `for`
@@ -317,6 +322,11 @@ impl Compressor {
 /// Rewrites the calls of function expressions in an expression statement;
 /// see `iife_forms`.
 fn statement_iifes(ast: &mut Ast<'_>, options: &CompressOptions, expr: Expr) -> Expr {
+    if !matches!(ast.expr_data(expr), ExprData::SequenceExpression(_)) {
+        let mut items = [expr];
+        iife_forms(ast, options, &mut items, true);
+        return items[0];
+    }
     let mut items = Vec::new();
     statements::push_expressions(ast, expr, &mut items);
     if !iife_forms(ast, options, &mut items, true) {
