@@ -10,17 +10,16 @@ version               = "0.7.0"
 
 [features]
 bridge = ["dep:swc_next_bridge"]
-js     = ["dep:swc_next_ecma_ast", "dep:swc_next_ecma_parser", "dep:swc_next_formatter_js"]
 serde  = ["dep:serde"]
 
 [dependencies]
 serde                   = { workspace = true, optional = true, features = ["derive"] }
 swc_next_bridge         = { workspace = true, optional = true }
-swc_next_ecma_ast       = { workspace = true, optional = true }
-swc_next_ecma_parser    = { workspace = true, optional = true }
+swc_next_ecma_ast       = { workspace = true }
+swc_next_ecma_parser    = { workspace = true }
 swc_next_formatter_core = { workspace = true }
 swc_next_formatter_host = { workspace = true }
-swc_next_formatter_js   = { workspace = true, optional = true }
+swc_next_formatter_js   = { workspace = true }
 
 [dev-dependencies]
 insta              = { workspace = true }
@@ -28,9 +27,5 @@ serde_json         = { workspace = true }
 swc_next_allocator = { workspace = true }
 
 [[test]]
-name              = "api"
-required-features = ["js"]
-
-[[test]]
 name              = "fixtures"
-required-features = ["js", "serde"]
+required-features = ["serde"]

@@ -5,7 +5,7 @@
 Fixtures check source and AST entry-point consistency, document encoding and decoding, output parsing, comment counts, and second-pass idempotency. Parsing and comment counts alone do not establish semantic equivalence.
 
 ```sh
-cargo test -p swc_next_formatter --features js,serde --test api --test fixtures --locked
+cargo test -p swc_next_formatter --features serde --test api --test fixtures --locked
 ```
 
 Upstream Prettier compatibility is covered by the [testsuite conformance runner](../../../tasks/testsuite).

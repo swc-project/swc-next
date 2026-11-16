@@ -6,13 +6,12 @@
 //! These internal APIs and binary formats do not follow semantic versioning.
 //! Use matching SWC Next JavaScript wrappers and native/Wasm bindings.
 //!
-//! Enable `js` for JavaScript and TypeScript source formatting and configuration.
+//! Provides JavaScript and TypeScript source formatting and configuration.
 //! Enable `serde` for camelCase configuration deserialization.
 //! The `bridge` feature enables the internal binary transport helpers.
 
 use swc_next_formatter_core::{InvalidIndentWidth, PrintOptions};
 
-#[cfg(feature = "js")]
 pub mod js;
 
 /// Shared layout options. Omitted fields use the native document printer defaults.
