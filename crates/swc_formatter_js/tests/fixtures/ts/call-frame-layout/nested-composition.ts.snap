@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@Factory(combine((input) => Input, (output) => Output))
+class Subject { value: number; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+@Factory(
+  combine(
+    (input) => Input,
+    (output) => Output,
+  ),
+)
+class Subject {
+  value: number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+@Factory(
+  combine(
+    (input) => Input,
+    (output) => Output,
+  ),
+)
+class Subject {
+  value: number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+@Factory(
+  combine(
+    (input) =>
+      Input,
+    (output) =>
+      Output,
+  ),
+)
+class Subject {
+  value: number
+}

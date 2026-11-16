@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value as // first
+Result /* second */ as Other;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other

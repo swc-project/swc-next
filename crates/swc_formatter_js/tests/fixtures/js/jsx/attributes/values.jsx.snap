@@ -1,0 +1,149 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a1=<Box title='a\b &quot;c&quot; &amp; d' other="&apos;x&apos; &quot;y&quot;" active data={value+1} {...props}/>;
+const a2=<Box title="first
+  second	line &nbsp;
+last"/>;
+const a3=<div title="a
+b">first
+ second</div>;
+const a4=<Box title=
+/* value */
+"foo"/>;
+const a5=<Box title=// value
+"foo"/>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first
+  second	line &nbsp;
+last"
+  />
+);
+const a3 = (
+  <div
+    title="a&#13;&#10;b"
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ "foo" />;
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first
+  second	line &nbsp;
+last"
+  />
+);
+const a3 = (
+  <div
+    title="a&#13;&#10;b"
+  >
+    first second
+  </div>
+);
+const a4 = (
+  <Box title=/* value */ "foo" />
+);
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"indentStyle":"space","jsxQuoteStyle":"single","lineWidth":80}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other='&apos;x&apos; "y"'
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title='first
+  second	line &nbsp;
+last'
+  />
+);
+const a3 = (
+  <div
+    title='a&#13;&#10;b'
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ 'foo' />;
+const a5 = (
+  <Box title=// value
+  'foo' />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first&#10;  second	line &nbsp;&#10;last"
+  />
+);
+const a3 = (
+  <div
+    title="a
+b"
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ "foo" />;
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
+---------- Output ----------
+const a1 = (  <Box    title='a\b "c" &amp; d'    other="'x' &quot;y&quot;"    active    data={value + 1}    {...props}  />);const a2 = (  <Box    title="first&#10;  second	line &nbsp;&#10;last"  />);const a3 = (  <div    title="a&#13;&#10;b"  >    first second  </div>);const a4 = <Box title=/* value */ "foo" />;const a5 = (  <Box title=// value  "foo" />);

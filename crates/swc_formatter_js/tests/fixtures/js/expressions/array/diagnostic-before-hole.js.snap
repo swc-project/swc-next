@@ -1,0 +1,118 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first
+// @ts-ignore
+,
+,
+second];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":14}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":13}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":0}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"es5"}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+[
+	first
+	// @ts-ignore
+	,
+	,
+	second,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];

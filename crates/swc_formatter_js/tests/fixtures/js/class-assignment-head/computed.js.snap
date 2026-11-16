@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+registry[selectConstructor(namespace.primaryKey, namespace.fallbackKey)] = class extends runtime.namespace.BaseConstructor {};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50}
+---------- Output ----------
+registry[
+  selectConstructor(
+    namespace.primaryKey,
+    namespace.fallbackKey,
+  )
+] = class extends (
+  runtime.namespace.BaseConstructor
+) {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":90}
+---------- Output ----------
+registry[selectConstructor(namespace.primaryKey, namespace.fallbackKey)] = class extends (
+  runtime.namespace.BaseConstructor
+) {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
+---------- Output ----------
+registry[
+  selectConstructor(
+    namespace.primaryKey,
+    namespace.fallbackKey,
+  )
+] = class extends (
+  runtime.namespace.BaseConstructor
+) {}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
+---------- Output ----------
+registry[
+	selectConstructor(
+		namespace.primaryKey,
+		namespace.fallbackKey,
+	)
+] = class extends (
+	runtime.namespace.BaseConstructor
+) {};

@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/usr/bin/env node
+;
+// prettier-ignore
+"use strict";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+#!/usr/bin/env node
+// prettier-ignore
+;"use strict"
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+#!/usr/bin/env node
+// prettier-ignore
+;"use strict";

@@ -1,0 +1,91 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+invoke((
+  value
+  /* inner */
+)
+/* outer */
+);
+
+[
+  (value
+    /* inner */
+
+  )
+  /* outer */
+];
+
+invoke((
+  value
+  /* inner */
+)
+
+  /* outer */
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+invoke(
+  value,
+  /* inner */
+  /* outer */
+);
+
+[
+  value,
+  /* inner */
+  /* outer */
+];
+
+invoke(
+  value,
+  /* inner */
+
+  /* outer */
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+invoke(
+  value,
+  /* inner */
+  /* outer */
+);
+
+[
+  value,
+  /* inner */
+  /* outer */
+];
+
+invoke(
+  value,
+  /* inner */
+
+  /* outer */
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+invoke(
+  value
+  /* inner */
+  /* outer */
+)
+
+;[
+  value
+  /* inner */
+  /* outer */
+]
+
+invoke(
+  value
+  /* inner */
+
+  /* outer */
+)

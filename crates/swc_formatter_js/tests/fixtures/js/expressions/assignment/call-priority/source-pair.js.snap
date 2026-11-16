@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = /** @type {Callable} */ (receiver.branch.method)();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const assignedValueName =
+  /** @type {Callable} */ (
+    receiver.branch
+      .method
+  )();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const assignedValueName =
+  /** @type {Callable} */ (
+    receiver.branch.method
+  )();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const assignedValueName = /** @type {Callable} */ (receiver.branch.method)();

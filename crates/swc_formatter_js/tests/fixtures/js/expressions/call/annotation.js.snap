@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee(/*#__PURE__*/ nested(argument));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+callee(
+  /*#__PURE__*/ nested(
+    argument,
+  ),
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+callee(/*#__PURE__*/ nested(argument));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+callee(
+  /*#__PURE__*/ nested(
+    argument,
+  ),
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+callee(
+  /*#__PURE__*/ nested(
+    argument
+  )
+);

@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = ((1
+/* c */
+)) as number;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = (
+  1
+  /* c */
+) as number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const value = (
+  1
+  /* c */
+) as number
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const value = (
+  1
+  /* c */
+) as number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":120}
+---------- Output ----------
+const value = (
+  1
+  /* c */
+) as number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+const value = (
+  1
+  /* c */
+) as number

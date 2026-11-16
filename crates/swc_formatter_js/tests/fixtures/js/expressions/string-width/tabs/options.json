@@ -1,0 +1,22 @@
+[
+  {
+    "lineWidth": 21,
+    "indentStyle": "tab",
+    "indentWidth": 0
+  },
+  {
+    "lineWidth": 21,
+    "indentStyle": "space",
+    "indentWidth": 0
+  },
+  {
+    "lineWidth": 21,
+    "indentStyle": "tab",
+    "indentWidth": 1
+  },
+  {
+    "lineWidth": 21,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  }
+]

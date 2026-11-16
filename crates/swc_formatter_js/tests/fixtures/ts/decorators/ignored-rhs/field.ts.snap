@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Holder { static probe: unknown=(
+/* prettier-ignore */
+@factory.make() class  Named {static m ( ) { return this .stamp; }}
+); after=2; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+class Holder {
+  static probe: unknown =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }};
+  after = 2;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+class Holder {
+  static probe: unknown =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }}
+  after = 2
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+class Holder {
+  static probe: unknown =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }};
+  after = 2;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Holder {
+  static probe: unknown =
+    /* prettier-ignore */
+    @factory.make() class  Named {static m ( ) { return this .stamp; }}
+  after = 2
+}

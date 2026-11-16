@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+["first"
+// @ts-expect-error
+
+,
+"second"];---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+[
+	"first",
+	// @ts-expect-error
+
+	"second",
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  "first",
+  // @ts-expect-error
+
+  "second",
+];

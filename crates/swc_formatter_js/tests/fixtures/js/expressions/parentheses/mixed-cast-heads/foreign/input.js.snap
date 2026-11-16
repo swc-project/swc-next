@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ /** @type {number} */ (/** @type {Missing} */ (first)));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(/*#__PURE__*/ /** @type {number} */ (
+    /** @type {Missing} */ (
+      first
+    )
+  )
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(/*#__PURE__*/ /** @type {number} */ (/** @type {Missing} */ (first)));

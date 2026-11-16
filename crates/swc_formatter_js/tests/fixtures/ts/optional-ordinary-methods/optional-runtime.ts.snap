@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class OptionalRuntime { method?(): number { return 7; } }
+const result = new OptionalRuntime().method?.();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class OptionalRuntime {
+  method?(): number {
+    return 7;
+  }
+}
+const result = new OptionalRuntime().method?.();

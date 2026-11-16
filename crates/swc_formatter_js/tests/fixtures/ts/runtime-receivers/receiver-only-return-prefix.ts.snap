@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function receiverOnly(this:   { value: number }) // prettier-ignore
+: number { return this.value; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function receiverOnly(this:   { value: number }) // prettier-ignore
+: number {
+  return this.value;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function receiverOnly(
+  this:   { value: number },
+) // prettier-ignore
+: number {
+  return this.value;
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+function receiverOnly(
+  this:   { value: number }
+) // prettier-ignore
+: number {
+  return this.value
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+function receiverOnly(
+  this:   { value: number },
+) // prettier-ignore
+: number {
+  return this.value;
+}

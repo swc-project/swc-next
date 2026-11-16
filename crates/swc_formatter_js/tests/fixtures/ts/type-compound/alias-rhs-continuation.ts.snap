@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type ALongUnionAlias = "a-long-literal-value" | "a-second-long-value" | "third-long-value" | "fourth-long-value";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value"
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type ALongUnionAlias =
+	| "a-long-literal-value"
+	| "a-second-long-value"
+	| "third-long-value"
+	| "fourth-long-value";

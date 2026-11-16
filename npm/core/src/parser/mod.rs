@@ -25,7 +25,7 @@ pub unsafe fn parse_sync(
 #[cfg(not(target_family = "wasm"))]
 #[napi(
     js_name = "parseSync",
-    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options?: ParserConfig | undefined | null",
+    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: number",
     ts_return_type = "Uint8Array"
 )]
 /// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.

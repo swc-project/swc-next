@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  ) + 1;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  ) + 1;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  ) + 1
+}

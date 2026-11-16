@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([  test  ]) ? /* @ts-ignore */ // prettier-ignore
+[  missing  ] : other;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+([  test  ]) ? /* @ts-ignore */ // prettier-ignore
+    [missing] : other;

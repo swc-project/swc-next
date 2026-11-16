@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = (/* ordinary */(value ? object : object)).method(value);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+target = /* ordinary */ (value ? object : object).method(value);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+target = /* ordinary */ (value ? object : object).method(value)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+target = /* ordinary */ (
+  value ? object : object
+).method(value);

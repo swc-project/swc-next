@@ -1,0 +1,64 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? (first, second // inside
+) /* outside */ : third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+test
+  ? (first, second) // inside
+  : /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+test
+  ? (first, second) // inside
+  : /* outside */ third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+test
+  ? (first, second) // inside
+  : /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+test
+  ? (first,
+    second) // inside
+  : /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+test
+    ? (first,
+      second) // inside
+    : /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+test
+	? (first,
+		second) // inside
+	: /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+test
+ ? (first, second) // inside
+ : /* outside */ third;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+test
+  ? (first, second) // inside
+  : /* outside */ third;

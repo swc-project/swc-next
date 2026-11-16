@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* receiver */ this);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* receiver */ this;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+/* receiver */ this
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+/* receiver */ this;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+/* receiver */ this
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+/* receiver */ this;

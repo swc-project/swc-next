@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (; check() /* first */; /* second */) consume();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (; check() /* first */ /* second */;) consume();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+for (
+  ;
+  check() /* first */ /* second */;
+)
+  consume();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+for (
+  ;
+  check() /* first */ /* second */;
+)
+  consume()

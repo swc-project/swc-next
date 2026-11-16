@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function assertString(x: unknown): asserts x is string;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+function assertString(
+  x: unknown,
+): asserts x is string;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function assertString(
+  x: unknown,
+): asserts x is string
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+function assertString(x: unknown): asserts x is string;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function assertString(x: unknown): asserts x is string

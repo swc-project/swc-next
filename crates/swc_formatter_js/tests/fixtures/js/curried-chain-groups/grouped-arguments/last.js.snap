@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b(c, (d) => ({ d }))(e).f();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+abc
+  .b(c, (d) => ({ d }))(e)
+  .f();

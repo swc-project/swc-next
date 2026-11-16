@@ -1,0 +1,81 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[target = "long string used as the conditional test" ? consequent : alternate];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  (target =
+    "long string used as the conditional test"
+      ? consequent
+      : alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+[
+  (target =
+    "long string used as the conditional test"
+      ? consequent
+      : alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+[
+    (target =
+        "long string used as the conditional test"
+            ? consequent
+            : alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+[
+	(target =
+		"long string used as the conditional test"
+			? consequent
+			: alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+[
+ (target =
+  "long string used as the conditional test"
+   ? consequent
+   : alternate),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+];

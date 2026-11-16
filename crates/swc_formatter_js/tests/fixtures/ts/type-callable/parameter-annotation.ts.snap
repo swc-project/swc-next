@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F=(value? /* prettier-ignore */ :12.00)=>13.00;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type F = (value? /* prettier-ignore */ :12.00) => 13.0;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type F = (
+  value? /* prettier-ignore */ :12.00,
+) => 13.0;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type F =
+  (
+    value? /* prettier-ignore */ :12.00,
+  ) => 13.0
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type F = (
+	value? /* prettier-ignore */ :12.00
+) => 13.0;

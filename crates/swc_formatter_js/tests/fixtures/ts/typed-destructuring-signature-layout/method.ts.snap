@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = { run({ a }: { a: string }): string; };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type F = {
+  run({
+    a,
+  }: {
+    a: string;
+  }): string;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type F = {
+  run({ a }: { a: string }): string;
+};

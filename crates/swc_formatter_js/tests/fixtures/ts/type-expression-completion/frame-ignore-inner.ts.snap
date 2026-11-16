@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x as (
+// prettier-ignore
+?
+);
+b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+x as (
+// prettier-ignore
+?
+)
+b

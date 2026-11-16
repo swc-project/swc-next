@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[a // c
+, /* #__PURE__ */ , b];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b
+];

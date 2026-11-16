@@ -1,0 +1,78 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void [/* slot */, call()];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+void [/* slot */, call()];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":14}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":13}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":0}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+void [/* slot */, call()]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
+---------- Output ----------
+void [
+  /* slot */,
+  call()
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"es5"}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+void [
+	/* slot */,
+	call(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
+---------- Output ----------
+void [
+  /* slot */,
+  call(),
+];

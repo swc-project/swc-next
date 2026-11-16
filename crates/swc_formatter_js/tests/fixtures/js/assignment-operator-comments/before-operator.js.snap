@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value /* explanation */
+  = 1;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let value = /* explanation */ 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+let value = /* explanation */ 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+let value = /* explanation */ 1

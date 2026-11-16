@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = !(/* head */ first, second /* tail */);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+const value =
+  !(
+    /* head */ (first,
+    second) /* tail */
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  !(
+    /* head */ (first,
+    second) /* tail */
+  )
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+const value = !(/* head */ (first, second) /* tail */);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const value = !(/* head */ (first, second) /* tail */)

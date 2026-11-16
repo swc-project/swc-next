@@ -1,5 +1,5 @@
 [package]
-description          = "Language-independent document construction and layout printing"
+description          = "Experimental and unstable language-independent document construction and layout printing"
 edition              = "2024"
 homepage.workspace   = true
 keywords             = ["formatting", "pretty-printing"]

@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Box
+// attribute
+title="message" />;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const view = (
+  <Box
+    // attribute
+    title="message"
+  />
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const view = (
+  <Box
+    // attribute
+    title="message"
+  />
+);

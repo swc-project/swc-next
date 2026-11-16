@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({first: 1, /* b */ // c });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  first: 1,
+  /* b */ // c
+});

@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const fieldKey = "field"; class KeyIgnore { [
+/* prettier-ignore */
+fieldKey
+]?: number = 1; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const fieldKey = "field";
+class KeyIgnore {
+  [
+    /* prettier-ignore */
+    fieldKey
+  ]?: number = 1;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+const fieldKey = "field"
+class KeyIgnore {
+  [
+    /* prettier-ignore */
+    fieldKey
+  ]?: number = 1
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":24}
+---------- Output ----------
+const fieldKey =
+	"field";
+class KeyIgnore {
+	[
+		/* prettier-ignore */
+		fieldKey
+	]?: number = 1;
+}

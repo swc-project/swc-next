@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = Foo<?>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Value = Foo<?>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":16,"semicolons":"as-needed"}
+---------- Output ----------
+type Value =
+  Foo<?>

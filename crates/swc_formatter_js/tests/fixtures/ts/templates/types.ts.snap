@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Key<T extends string>=`head${T}tail${T | "x"}`; type Choice<T>=`${T extends string ? "a" : "b"}`; type Empty=``; type Literal=`a\nb`; type Comments<T extends string>=`${/*head*/ T //tail
+}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Key<T extends string> = `head${T}tail${T | "x"}`;
+type Choice<T> = `${T extends string ? "a" : "b"}`;
+type Empty = ``;
+type Literal = `a\nb`;
+type Comments<T extends string> = `${
+  /*head*/ T //tail
+}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+type Key<
+  T extends string
+> =
+  `head${T}tail${T | "x"}`
+type Choice<T> =
+  `${T extends string ? "a" : "b"}`
+type Empty = ``
+type Literal =
+  `a\nb`
+type Comments<
+  T extends string
+> = `${
+  /*head*/ T //tail
+}`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+type Key<T extends string> =
+  `head${T}tail${T | "x"}`;
+type Choice<T> =
+  `${T extends string ? "a" : "b"}`;
+type Empty = ``;
+type Literal = `a\nb`;
+type Comments<T extends string> = `${
+  /*head*/ T //tail
+}`;

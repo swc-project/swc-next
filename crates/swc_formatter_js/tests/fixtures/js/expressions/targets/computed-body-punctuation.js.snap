@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(object["(=)"].property) = value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(
+  object[
+    "(=)"
+  ].property
+) = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+(object["(=)"].property) = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(object["(=)"].property) = value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(
+  object[
+    "(=)"
+  ].property
+) = value

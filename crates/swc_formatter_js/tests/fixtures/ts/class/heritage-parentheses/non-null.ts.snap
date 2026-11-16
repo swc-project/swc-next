@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class ObjectBase extends ({}!) {}
+class ConstructedBase extends (new Base()!) {}
+class TaggedBase extends (make`base`!) {}
+class IdentifierBase extends Base! {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+class ObjectBase extends ({}!) {}
+class ConstructedBase extends (new Base()!) {}
+class TaggedBase extends (make`base`!) {}
+class IdentifierBase extends Base! {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+class ObjectBase extends ({}!) {}
+class ConstructedBase extends (new Base()!) {}
+class TaggedBase extends (make`base`!) {}
+class IdentifierBase extends Base! {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+class ObjectBase extends ({}!) {}
+class ConstructedBase extends (new Base()!) {}
+class TaggedBase extends (make`base`!) {}
+class IdentifierBase extends Base! {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+class ObjectBase extends ({}!) {}
+class ConstructedBase extends (new Base()!) {}
+class TaggedBase extends (make`base`!) {}
+class IdentifierBase extends Base! {}

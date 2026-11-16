@@ -1,0 +1,62 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function run() {
+  await (await source.load(request)).select({ first: firstValue, second: secondValue, third: thirdValue }).finish();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50}
+---------- Output ----------
+async function run() {
+  await (
+    await source.load(request)
+  )
+    .select({
+      first: firstValue,
+      second: secondValue,
+      third: thirdValue,
+    })
+    .finish();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":90}
+---------- Output ----------
+async function run() {
+  await (
+    await source.load(request)
+  )
+    .select({ first: firstValue, second: secondValue, third: thirdValue })
+    .finish();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
+---------- Output ----------
+async function run() {
+  await (
+    await source.load(request)
+  )
+    .select({
+      first: firstValue,
+      second: secondValue,
+      third: thirdValue,
+    })
+    .finish()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
+---------- Output ----------
+async function run() {
+	await (
+		await source.load(request)
+	)
+		.select({
+			first: firstValue,
+			second: secondValue,
+			third: thirdValue,
+		})
+		.finish();
+}

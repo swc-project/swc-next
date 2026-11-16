@@ -1,0 +1,18 @@
+[
+  {
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  }
+]

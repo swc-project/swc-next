@@ -1,0 +1,75 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = Factory.first<number>
+// prettier-ignore
+({ one :1, two:2 }, (entry) => { const next = entry + 1; return next; }).second<string>(other);---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+result = Factory
+  .first<number>
+  // prettier-ignore
+  ({ one :1, two:2 }, (entry) => {
+    const next = entry + 1;
+    return next;
+  })
+  .second<string>(other);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+result = Factory
+  .first<number>
+  // prettier-ignore
+  (
+    { one :1, two:2 },
+    (entry) => {
+      const next =
+        entry + 1;
+      return next;
+    },
+  )
+  .second<string>(
+    other,
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+result =
+  Factory
+    .first<number>
+    // prettier-ignore
+    (
+      { one :1, two:2 },
+      (
+        entry,
+      ) => {
+        const next =
+          entry +
+          1
+        return next
+      },
+    )
+    .second<string>(
+      other,
+    )
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+result = Factory
+	.first<number>
+	// prettier-ignore
+	(
+		{ one :1, two:2 },
+		(entry) => {
+			const next =
+				entry + 1;
+			return next;
+		},
+	)
+	.second<string>(
+		other,
+	);

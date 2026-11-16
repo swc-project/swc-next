@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { readonly public /* prettier-ignore */ [name]() {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Example {
+  readonly public /* prettier-ignore */ [name]() {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Example {
+  readonly public /* prettier-ignore */ [name]() {}
+}

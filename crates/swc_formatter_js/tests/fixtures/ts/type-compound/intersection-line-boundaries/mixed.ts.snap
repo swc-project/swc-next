@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A /* a */ // c
+) /* x */ & /* y */ B;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = A /* a */ & // c
+  /* x */ /* y */ B;

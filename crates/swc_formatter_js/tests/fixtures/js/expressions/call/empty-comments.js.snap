@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee(/* inside */);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+callee(
+  /* inside */
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+callee(/* inside */);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+callee(/* inside */)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+callee(
+  /* inside */
+);

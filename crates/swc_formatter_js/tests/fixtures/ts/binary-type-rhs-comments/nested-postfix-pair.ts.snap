@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = input as
+// choose type
+(First | Second | Third)[];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const chosen = input as
+  // choose type
+  (First | Second | Third)[];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const chosen =
+  input as
+    // choose type
+    (
+      | First
+      | Second
+      | Third
+    )[]
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+const chosen = input as
+	// choose type
+	(First | Second | Third)[];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":100,"semicolons":"as-needed"}
+---------- Output ----------
+const chosen = input as
+  // choose type
+  (First | Second | Third)[]

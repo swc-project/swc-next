@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first + second * third);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first + second * third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first + second * third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
+  second * third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
+  second *
+    third;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
+	second * third;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first + second * third;

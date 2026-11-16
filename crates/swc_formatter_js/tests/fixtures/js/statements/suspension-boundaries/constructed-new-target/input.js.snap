@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function F(value) { return () => [new /* meta */ . /* property */ target === F, arguments[0]]; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function F(value) {
+  return () => [
+    new /* meta */. /* property */target ===
+      F,
+    arguments[0],
+  ];
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function F(value) {
+  return () => [
+    new /* meta */. /* property */target ===
+      F,
+    arguments[0],
+  ]
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function F(value) {
+  return () => [new /* meta */. /* property */target === F, arguments[0]];
+}

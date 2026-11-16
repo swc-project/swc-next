@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+run();
+(<A/>);
+/*#__PURE__*/ (<Box/>);
+// keep
+(<></>);
+run();
+/*#__PURE__*/ (<Box/>).factory();
+(<Tag/>)`head ${<Inner/>}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+run()
+;<A />
+;
+/*#__PURE__*/ <Box />
+// keep
+;<></>
+run()
+;
+/*#__PURE__*/ (<Box />).factory()
+;(<Tag />)`head ${(<Inner />)}`
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+run()
+;<A />
+;
+/*#__PURE__*/ <Box />
+// keep
+;<></>
+run()
+;
+/*#__PURE__*/ (
+  <Box />
+).factory()
+;(
+  <Tag />
+)`head ${(<Inner />)}`

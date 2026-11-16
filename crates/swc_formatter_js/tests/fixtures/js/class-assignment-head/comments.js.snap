@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+registry.Implementation /* target */ = class extends runtime.namespace.BaseConstructor /* base */ {};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":90}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":50,"semicolons":"as-needed"}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":50}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+	runtime.namespace.BaseConstructor
+) /* base */ {};

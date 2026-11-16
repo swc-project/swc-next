@@ -1,0 +1,21 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "all"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "es5"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "none"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space"
+  }
+]

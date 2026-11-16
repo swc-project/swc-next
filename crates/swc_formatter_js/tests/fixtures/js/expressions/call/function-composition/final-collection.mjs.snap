@@ -1,0 +1,68 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+pipe(map((x) => x), { value: 1 });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 },
+)
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
+---------- Output ----------
+pipe(
+	map((x) => x),
+	{ value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  { value: 1 }
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+pipe(
+  map((x) => x),
+  {value: 1},
+);

@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(0, object.method)(argument);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(0, object.method)(
+  argument,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(0, object.method)(argument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(0, object.method)(
+  argument,
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+(0, object.method)(
+  argument
+);

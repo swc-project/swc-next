@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+w = (/** @type {T} */ (a)
+// t
+)`x`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+w = /** @type {T} */ (a)
+// t
+`x`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+w = /** @type {T} */ (
+  a
+)
+// t
+`x`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+w = /** @type {T} */ (a)
+// t
+`x`;

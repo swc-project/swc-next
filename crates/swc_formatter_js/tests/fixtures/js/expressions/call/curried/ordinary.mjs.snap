@@ -1,0 +1,125 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+connect(firstArgument, secondArgument, thirdArgument)(outer);
+
+connect(firstArgument, [1, 2, 3])(secondArgument);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+connect(firstArgument, secondArgument, thirdArgument)(outer);
+
+connect(firstArgument, [1, 2, 3])(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument,
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3],
+)(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument,
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3],
+)(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument,
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3],
+)(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+connect(firstArgument, secondArgument, thirdArgument)(outer)
+
+connect(firstArgument, [1, 2, 3])(secondArgument)
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+connect(
+	firstArgument,
+	secondArgument,
+	thirdArgument,
+)(outer);
+
+connect(
+	firstArgument,
+	[1, 2, 3],
+)(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+connect(firstArgument, secondArgument, thirdArgument)(outer);
+
+connect(firstArgument, [1, 2, 3])(secondArgument);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"trailingCommas":"none"}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3]
+)(secondArgument);
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":30}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument,
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3],
+)(secondArgument);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+connect(
+  firstArgument,
+  secondArgument,
+  thirdArgument,
+)(outer);
+
+connect(
+  firstArgument,
+  [1, 2, 3],
+)(secondArgument);

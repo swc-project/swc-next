@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = ({ a }: { a: string }) => a;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const f = ({
+  a,
+}: {
+  a: string;
+}) => a;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const f = ({ a }: { a: string }) => a;

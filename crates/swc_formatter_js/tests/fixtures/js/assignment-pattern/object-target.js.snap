@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({[key()]:target[index()],a=1+2,...rest}=value);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+({
+  [key()]: target[
+    index()
+  ],
+  a = 1 + 2,
+  ...rest
+} = value);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+({ [key()]: target[index()], a = 1 + 2, ...rest } = value);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;({
+  [key()]: target[
+    index()
+  ],
+  a = 1 + 2,
+  ...rest
+} = value)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;({ [key()]: target[index()], a = 1 + 2, ...rest } = value)

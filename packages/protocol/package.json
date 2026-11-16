@@ -33,6 +33,14 @@
     "./output": {
       "types": "./output.d.ts",
       "import": "./output.js"
+    },
+    "./formatter": {
+      "types": "./formatter.d.ts",
+      "import": "./formatter.js"
+    },
+    "./document": {
+      "types": "./document.d.ts",
+      "import": "./document.js"
     }
   },
   "devDependencies": {

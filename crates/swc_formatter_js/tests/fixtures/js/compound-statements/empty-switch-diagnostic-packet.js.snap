@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch(0){/* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+switch (0) { /* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+switch (
+  0
+) { /* @ts-expect-error */ /* packet */
+}; insideMissing
+outsideMissing
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+switch (0) { /* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+switch (
+  0
+) { /* @ts-expect-error */ /* packet */
+}; insideMissing
+outsideMissing

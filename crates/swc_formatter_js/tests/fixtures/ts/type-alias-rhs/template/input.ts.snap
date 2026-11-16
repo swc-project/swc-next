@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = `لا${
+ keyof World
+}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type T =
+  `لا${keyof World}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = `لا${keyof World}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+type T =
+  `لا${keyof World}`
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type T =
+	`لا${keyof World}`;

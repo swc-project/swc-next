@@ -1,0 +1,17 @@
+[
+  {
+    "lineWidth": 32,
+    "indentStyle": "space",
+    "arrowParentheses": "always"
+  },
+  {
+    "lineWidth": 32,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  }
+]

@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[true,false];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[true, false];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[true, false]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[true, false];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":19}
+---------- Output ----------
+[true, false];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+[
+  true,
+  false,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
+---------- Output ----------
+[
+  true,
+  false
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+[
+	true,
+	false,
+];

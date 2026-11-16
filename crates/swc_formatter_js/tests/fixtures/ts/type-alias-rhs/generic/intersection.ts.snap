@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type I<A extends Left, B = Right> = {field: A} & {other: B};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type I<
+  A extends Left,
+  B = Right,
+> = { field: A } & {
+  other: B;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type I<A extends Left, B = Right> = {
+  field: A;
+} & { other: B };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type I<
+  A extends
+    Left,
+  B =
+    Right,
+> = {
+  field: A
+} & {
+  other: B
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type I<
+	A extends Left,
+	B = Right,
+> = { field: A } & {
+	other: B;
+};

@@ -1,0 +1,34 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "singleAttributePerLine": false
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "singleAttributePerLine": true
+  },
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "singleAttributePerLine": false
+  },
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "singleAttributePerLine": true
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "singleAttributePerLine": true,
+    "bracketSameLine": true
+  },
+  {
+    "lineWidth": 24,
+    "indentStyle": "space",
+    "singleAttributePerLine": true,
+    "bracketSameLine": true
+  }
+]

@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = <div></ /* block */ // head
+ div>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const element = (
+  <div></
+    /* block */ // head
+    div
+  >
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const element = (
+  <div></
+    /* block */ // head
+    div
+  >
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const element = (
+  <div></
+    /* block */ // head
+    div
+  >
+)

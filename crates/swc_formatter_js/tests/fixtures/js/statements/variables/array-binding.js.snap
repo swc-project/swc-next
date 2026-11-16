@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let [head,,...tail]=items;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+let [
+  head,
+  ,
+  ...tail
+] =
+  items;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+let [
+  head,
+  ,
+  ...tail
+] = items
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let [head, , ...tail] = items;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+let [head, , ...tail] = items

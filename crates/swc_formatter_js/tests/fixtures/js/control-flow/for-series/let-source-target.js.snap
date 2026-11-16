@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for ((let)[key] in values) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+for ((let)[
+  key
+] in values) {
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+for ((let)[key] in values) {
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+for ((let)[
+  key
+] in values) {
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for ((let)[key] in values) {
+}

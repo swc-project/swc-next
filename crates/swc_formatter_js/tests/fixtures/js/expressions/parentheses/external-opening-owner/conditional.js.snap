@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? // @ts-ignore
+(
+first
+) : other;---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+test // @ts-ignore
+  ? first
+  : other;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+test // @ts-ignore
+  ? first
+  : other

@@ -1,0 +1,21 @@
+[
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "semicolons": "always"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "tab"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "trailingCommas": "none"
+  }
+]

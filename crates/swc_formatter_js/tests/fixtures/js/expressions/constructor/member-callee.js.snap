@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new namespace.veryLongNamespace.Constructor(first(), second());
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(
+  first(),
+  second(),
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(first(), second());
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(
+  first(),
+  second(),
+)

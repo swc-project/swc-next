@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value /* before bang */ ! /* @ts-expect-error */ : /* type */ number;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number

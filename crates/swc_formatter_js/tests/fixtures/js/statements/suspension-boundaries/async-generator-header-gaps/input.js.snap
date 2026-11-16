@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async /* @ts-expect-error */ function /* before-star */ * /* after-star */ f() { yield missing(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing(); }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing() }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+async /* @ts-expect-error */ function /* before-star */* /* after-star */ f() { yield missing(); }

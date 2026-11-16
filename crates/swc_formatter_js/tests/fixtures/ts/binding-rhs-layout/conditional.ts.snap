@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const state: Registry<Context, Ready extends State ? ActiveState : InactiveState> = fetchState();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State ? ActiveState : InactiveState
+> = fetchState();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State
+    ? ActiveState
+    : InactiveState
+> = fetchState();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State
+    ? ActiveState
+    : InactiveState
+> = fetchState()

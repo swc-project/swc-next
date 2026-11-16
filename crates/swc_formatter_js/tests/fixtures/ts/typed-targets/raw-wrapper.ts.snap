@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(
+// prettier-ignore
+object  ['field']  as   T
+) = compute( 1,2);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(
+// prettier-ignore
+object  ['field']  as   T
+) = compute(1, 2);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(
+// prettier-ignore
+object  ['field']  as   T
+) = compute(1, 2);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(
+// prettier-ignore
+object  ['field']  as   T
+) = compute(1, 2)

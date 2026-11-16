@@ -1,0 +1,52 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { one, two, three, four, five, six, seven, eight, nine, ten } = require("./my-utils");
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten,
+} = require("./my-utils");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten,
+} = require("./my-utils");
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten
+} = require("./my-utils")

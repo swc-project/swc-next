@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+result = (
+/** @type {number} */
+left, right).property;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+result = /** @type {number} */ (left, right).property;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+result = /** @type {number} */ (left, right).property
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+result =
+  /** @type {number} */
+  (left, right)
+    .property;

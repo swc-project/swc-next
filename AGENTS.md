@@ -8,13 +8,6 @@
 
 ## Testing
 
-### Formatter Fixtures
-
-Keep local formatter regressions under
-`crates/swc_ecma_formatter/tests/fixtures/<language>/<syntax>/`, with small inputs
-and representative option sets. Review generated snapshots; see
-`crates/swc_ecma_formatter/tests/README.md` for commands and test guarantees.
-
 ### Adding Rust Unit Tests
 
 - Add tests to the existing module; group related cases by broad feature and use a coarse
@@ -36,7 +29,7 @@ and representative option sets. Review generated snapshots; see
 ### Adding JavaScript Unit Tests
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
-- New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
+- JavaScript API tests belong to `@swc-next/core`, except formatter tests The browser package should only have a simple smoke test.
 
 ## README Writing
 

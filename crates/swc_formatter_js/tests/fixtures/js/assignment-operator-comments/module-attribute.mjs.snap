@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import data from "data" with { type:
+  /* format */
+  "json" };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+}

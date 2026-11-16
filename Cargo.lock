@@ -193,11 +193,11 @@ dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
- "swc_next_ecma_formatter",
  "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
+ "swc_next_formatter_js",
  "swc_next_type_strip",
  "tracy-client",
 ]
@@ -3813,6 +3813,9 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_formatter_js",
 ]
 
 [[package]]
@@ -3852,20 +3855,6 @@ dependencies = [
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
  "swc_next_simd",
- "zmij_ecma",
-]
-
-[[package]]
-name = "swc_next_ecma_formatter"
-version = "0.6.1"
-dependencies = [
- "insta",
- "memchr",
- "serde_json",
- "swc_next_allocator",
- "swc_next_ecma_ast",
- "swc_next_ecma_parser",
- "swc_next_formatter_core",
  "zmij_ecma",
 ]
 
@@ -3938,6 +3927,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_formatter_bridge"
+version = "0.3.0"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_core",
+]
+
+[[package]]
 name = "swc_next_formatter_core"
 version = "0.6.1"
 dependencies = [
@@ -3945,6 +3943,39 @@ dependencies = [
  "rustc-hash",
  "swc_next_allocator",
  "unicode-width 0.2.3",
+]
+
+[[package]]
+name = "swc_next_formatter_host"
+version = "0.6.0"
+dependencies = [
+ "swc_next_allocator",
+ "swc_next_formatter_core",
+]
+
+[[package]]
+name = "swc_next_formatter_js"
+version = "0.6.1"
+dependencies = [
+ "insta",
+ "memchr",
+ "serde_json",
+ "swc_next_allocator",
+ "swc_next_core",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "zmij_ecma",
+]
+
+[[package]]
+name = "swc_next_formatter_js_bridge"
+version = "0.3.0"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_core",
 ]
 
 [[package]]
@@ -4126,10 +4157,10 @@ dependencies = [
  "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
- "swc_next_ecma_formatter",
  "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_formatter_js",
 ]
 
 [[package]]

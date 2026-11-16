@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/** @type {number} */
+: (first, second) });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+({
+  key:
+    /** @type {number} */
+    (first, second),
+});

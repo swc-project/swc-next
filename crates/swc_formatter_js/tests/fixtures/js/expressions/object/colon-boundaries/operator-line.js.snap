@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key: // value comment
+[first, second] });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  // value comment
+  key: [first, second],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+({
+  // value comment
+  key: [
+    first,
+    second,
+  ],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+({
+  // value comment
+  key: [first, second],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;({
+  // value comment
+  key: [
+    first,
+    second,
+  ],
+})

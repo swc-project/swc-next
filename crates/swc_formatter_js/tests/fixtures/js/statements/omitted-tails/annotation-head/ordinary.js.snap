@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Value {} /* ordinary annotation */;
+(consume)(1);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Value {} /* ordinary annotation */
+consume(1);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Value {} /* ordinary annotation */
+consume(1)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+class Value {} /* ordinary annotation */
+consume(1);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+class Value {} /* ordinary annotation */
+consume(1)

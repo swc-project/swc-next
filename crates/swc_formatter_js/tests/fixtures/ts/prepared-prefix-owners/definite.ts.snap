@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let alpha /* name */ !: number;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let alpha! /* name */ : number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+let alpha! /* name */ : number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+let alpha! /* name */ : number

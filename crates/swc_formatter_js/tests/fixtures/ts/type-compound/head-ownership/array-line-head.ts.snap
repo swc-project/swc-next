@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (// ordinary first
+Left & Right)[];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T =
+  // ordinary first
+  (Left & Right)[];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+type T =
+  // ordinary first
+  (Left & Right)[];
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+type T =
+	// ordinary first
+	(Left & Right)[]

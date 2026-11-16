@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = input satisfies /* outer */ (/* middle */ (// inner
+number));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const chosen =
+  input satisfies /* outer */ /* middle */ // inner
+    number;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+const chosen =
+	input satisfies /* outer */ /* middle */ // inner
+		number;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const chosen =
+  input satisfies /* outer */ /* middle */ // inner
+    number
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const chosen = input satisfies /* outer */ /* middle */ // inner
+  number;

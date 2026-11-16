@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function invoke() { globalThis.effects = 1; return 1; }
+const result = /*#__PURE__*/
+invoke();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1;
+  return 1;
+}
+const result =
+  /*#__PURE__*/
+  invoke();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1
+  return 1
+}
+const result =
+  /*#__PURE__*/
+  invoke()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1;
+  return 1;
+}
+const result = /*#__PURE__*/ invoke();

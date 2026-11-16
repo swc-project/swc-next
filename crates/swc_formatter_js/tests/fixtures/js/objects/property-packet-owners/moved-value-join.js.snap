@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ k
+/* v */: // h
+value });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+({
+  // h
+  k: /* v */ value,
+});

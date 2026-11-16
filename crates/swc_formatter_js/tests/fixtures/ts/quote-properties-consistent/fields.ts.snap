@@ -1,0 +1,53 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+class RecordType { field: string; "quoted": string; accessor value: string; accessor "other": string; "quoted-key" = 1; method(): void {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  method(): void {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  method(): void {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  "method"(): void {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+class RecordType {
+  field: string
+  'quoted': string
+  accessor value: string
+  accessor 'other': string
+  'quoted-key' = 1
+  'method'(): void {}
+}

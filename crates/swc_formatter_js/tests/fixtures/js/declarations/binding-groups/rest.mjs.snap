@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { alpha: local, beta, ...remaining } = readConfig("left")("right");
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const {
+  alpha: local,
+  beta,
+  ...remaining
+} = readConfig("left")("right");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const { alpha: local, beta, ...remaining } = readConfig("left")("right");
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const {
+  alpha: local,
+  beta,
+  ...remaining
+} = readConfig("left")("right")

@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume(condition ? firstLongName ?? secondLongName : no);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+consume(condition ? (firstLongName ?? secondLongName) : no);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+consume(
+  condition
+    ? (firstLongName ??
+        secondLongName)
+    : no,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+consume(condition ? (firstLongName ?? secondLongName) : no)
+

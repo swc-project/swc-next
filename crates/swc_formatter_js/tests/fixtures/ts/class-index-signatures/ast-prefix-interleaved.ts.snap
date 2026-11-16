@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Registry { static /* readonly */ public /* [ */ readonly /* opening */ [key: string]: number; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Registry {
+  static /* readonly */ /* [ */ readonly /* opening */ [key: string]: number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Registry {
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number;
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class Registry {
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class Registry {
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number;
+}

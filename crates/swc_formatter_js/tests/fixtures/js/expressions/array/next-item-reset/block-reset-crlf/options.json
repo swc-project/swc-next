@@ -1,0 +1,12 @@
+[
+  {
+    "lineWidth": 10,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space",
+    "trailingCommas": "none"
+  }
+]

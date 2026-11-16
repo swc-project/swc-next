@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A<in out
+ extends string> = out;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type A<
+  in out
+  extends string,
+> = out;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type A<
+  in out
+  extends string,
+> = out;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type A<
+  in out
+  extends
+    string,
+> =
+  out
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type A<
+	in out
+	extends string
+> = out;

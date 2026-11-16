@@ -1,0 +1,60 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first(), /** @type {View} */ (<Panel first={firstArgument} second={secondArgument}/>), last());
+async function view(){return await /** @type {View} */ (<Panel first={firstArgument} second={secondArgument}/>);}
+<Panel {.../** @type {Props} */ (first || second)} {.../*#__PURE__*/ createProps()} />;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(first(),
+  /** @type {View} */ (<Panel first={firstArgument} second={secondArgument} />),
+  last());
+async function view() {
+  return await /** @type {View} */ (
+    <Panel first={firstArgument} second={secondArgument} />
+  );
+}
+<Panel
+  {.../** @type {Props} */ (first || second)}
+  {.../*#__PURE__*/ createProps()}
+/>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+(first(),
+  /** @type {View} */ (
+    <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    />
+  ),
+  last());
+async function view() {
+  return await /** @type {View} */ (
+    <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    />
+  );
+}
+<Panel
+  {
+    .../** @type {Props} */ (
+      first || second
+    )
+  }
+  {
+    .../*#__PURE__*/ createProps()
+  }
+/>;

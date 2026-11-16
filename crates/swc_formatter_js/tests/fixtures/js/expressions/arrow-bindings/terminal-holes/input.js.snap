@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([value,,]) => value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+([value, ,]) => value;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+;([value, ,]) => value
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+([value, ,]) => value;

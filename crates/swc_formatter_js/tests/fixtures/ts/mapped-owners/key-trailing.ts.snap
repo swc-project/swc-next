@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M<T> = { [K in keyof T]? /* a */: T[K] };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type M<T> = { [K in keyof T /* a */]?: T[K] };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+type M<T> = {
+  [K in keyof T /* a */]?: T[K];
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+type M<T> = {
+  [
+    K in keyof T /* a */
+  ]?: T[K]
+}

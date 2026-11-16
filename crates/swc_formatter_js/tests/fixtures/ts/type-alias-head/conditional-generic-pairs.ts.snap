@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export type Equals<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+    ? true
+    : false;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export type Equals<
+  X,
+  Y,
+> =
+  (<
+    T,
+  >() => T extends X
+    ? 1
+    : 2) extends <
+    T,
+  >() => T extends Y
+    ? 1
+    : 2
+    ? true
+    : false;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+export type Equals<
+  X,
+  Y,
+> =
+  (<
+    T,
+  >() => T extends X
+    ? 1
+    : 2) extends <
+    T,
+  >() => T extends Y
+    ? 1
+    : 2
+    ? true
+    : false

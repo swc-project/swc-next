@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = (A!)[Key];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Value = A![Key];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":16,"semicolons":"as-needed"}
+---------- Output ----------
+type Value =
+  A![Key]

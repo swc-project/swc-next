@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(/*#__NO_SIDE_EFFECTS__*/ /** @satisfies {Missing} */ (first)), other];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  /*#__NO_SIDE_EFFECTS__*/ /** @satisfies {Missing} */ (
+    first
+  ),
+  other,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[/*#__NO_SIDE_EFFECTS__*/ /** @satisfies {Missing} */ (first), other];

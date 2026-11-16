@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (fn<number>)<string>;---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+result = (fn<number>)<string>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+result =
+  (fn<number>)<string>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+result =
+  (fn<number>)<string>
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+result =
+	(fn<number>)<string>;

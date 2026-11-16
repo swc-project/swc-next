@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<A extends /* prettier-ignore */ /* c */ ( ( B ) )> = A;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+type T<
+  A extends
+    /* prettier-ignore */ /* c */ B,
+> = A;

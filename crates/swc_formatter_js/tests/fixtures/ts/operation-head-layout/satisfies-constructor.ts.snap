@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = new (loadSomething(parameter) satisfies Constructor)();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const result = new (
+  loadSomething(
+    parameter,
+  ) satisfies Constructor
+)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const result = new (loadSomething(parameter) satisfies Constructor)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+const result = new (
+  loadSomething(
+    parameter,
+  ) satisfies Constructor
+)()

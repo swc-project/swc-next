@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const message=`a${left,right}b${key in object}c${`nested ${value}`}`; const comments=`a${/*head*/ value /*block*/}b${value //tail
+}c${//leading
+ value}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`;

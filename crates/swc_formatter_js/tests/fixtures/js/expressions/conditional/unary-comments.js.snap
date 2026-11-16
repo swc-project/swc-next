@@ -1,0 +1,64 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+typeof /* marker */ (first ?second :next);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next))
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+typeof (
+  /* marker */ (first
+    ? second
+    : next)
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+typeof (
+  /* marker */ (first
+    ? second
+    : next)
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+typeof (
+    /* marker */ (first
+        ? second
+        : next)
+);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+typeof (
+	/* marker */ (first
+		? second
+		: next)
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+typeof (
+ /* marker */ (first
+  ? second
+  : next)
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next));

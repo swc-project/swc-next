@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ alpha, beta } = parameter => transform(parameter));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+({ alpha, beta } = (parameter) =>
+  transform(parameter));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({ alpha, beta } = (parameter) => transform(parameter));
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;({alpha, beta} = (parameter) =>
+  transform(parameter))

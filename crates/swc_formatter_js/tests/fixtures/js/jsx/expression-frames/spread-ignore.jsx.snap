@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<Panel {...(
+// prettier-ignore
+(first  ||  second))} />;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+<Panel
+  {
+    // prettier-ignore
+    ...(first  ||  second)
+  }
+/>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+<Panel
+  {
+    // prettier-ignore
+    ...(first  ||  second)
+  }
+/>;

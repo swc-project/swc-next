@@ -1,0 +1,47 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const values = [tag /* inline */
+`one`, tag
+/* own */`two`];
+
+consume(tag /* first */ // last
+/* quasi */`first ${left+right} last`);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const values = [tag /* inline */ `one`, tag /* own */ `two`];
+
+consume(
+  tag /* first */ // last
+  /* quasi */ `first ${left + right} last`,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+const values = [
+  tag /* inline */
+  `one`,
+  tag /* own */ `two`,
+]
+
+consume(
+  tag /* first */ // last
+  /* quasi */ `first ${left + right} last`,
+)
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const values = [
+	tag /* inline */ `one`,
+	tag /* own */ `two`,
+];
+
+consume(
+	tag /* first */ // last
+	/* quasi */ `first ${left + right} last`,
+);

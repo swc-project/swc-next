@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface T extends First, /* block */
+
+// line
+Last {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface T
+  extends
+    First /* block */,
+    // line
+    Last {}

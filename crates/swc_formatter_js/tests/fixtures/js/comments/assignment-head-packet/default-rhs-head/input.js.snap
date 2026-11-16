@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const {value = /* own */
+(!left)(arg)} = source;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const {
+  value = /* own */
+  (!left)(arg),
+} = source;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const {
+  value = /* own */
+  (!left)(arg),
+} = source

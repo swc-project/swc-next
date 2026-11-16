@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = y satisfies /* prettier-ignore */ A & ?;
+b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const x = y satisfies /* prettier-ignore */ A & ?;
+b

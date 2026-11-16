@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(a+b) /* prettier-ignore */
+
+( first(  ) );
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;(a+b) /* prettier-ignore */
+(first())
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+(a+b) /* prettier-ignore */
+(first());

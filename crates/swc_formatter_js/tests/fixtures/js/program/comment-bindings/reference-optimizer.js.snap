@@ -1,0 +1,34 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"always"}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+/* #__PURE__ */
+/// <reference path="./missing.d.ts" />
+(() => call())()

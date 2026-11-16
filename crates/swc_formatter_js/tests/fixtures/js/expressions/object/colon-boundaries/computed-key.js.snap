@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [/* key */ name /* tail */] // boundary
+: /* value */ [first, second] });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  // boundary
+  [/* key */ name /* tail */]: /* value */ [first, second],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+({
+  // boundary
+  [/* key */ name /* tail */]:
+    /* value */ [
+      first,
+      second,
+    ],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+({
+  // boundary
+  [/* key */ name /* tail */]:
+    /* value */ [first, second],
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;({
+  // boundary
+  [/* key */ name /* tail */]:
+    /* value */ [
+      first,
+      second,
+    ],
+})

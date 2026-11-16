@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = receiver.branch.method(éééééééééé);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(
+    éééééééééé,
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(éééééééééé);

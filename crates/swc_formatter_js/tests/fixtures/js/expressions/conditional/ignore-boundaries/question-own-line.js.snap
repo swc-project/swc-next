@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first
+// prettier-ignore
+? 1.0e+00 : third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+first
+  ? // prettier-ignore
+    1.0e+00
+  : third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+first
+  ? // prettier-ignore
+    1.0e+00
+  : third;

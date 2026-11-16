@@ -1,0 +1,53 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+/* head */ /** @type {number} */ (first), third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-expect-error
+/* head */ ;(/** @type {number} */ (first), third)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-expect-error
+/* head */ ;(/** @type {number} */ (first), third)
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);

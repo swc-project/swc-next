@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class OptionalValue { public value ? : number | undefined   = /* prettier-ignore */ configuration . branch . value; other = { untouched :  2 }; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class OptionalValue {
+  public value?: number | undefined =
+    /* prettier-ignore */ configuration . branch . value;
+  other = { untouched: 2 };
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24,"semicolons":"as-needed"}
+---------- Output ----------
+class OptionalValue {
+  public value?:
+    number | undefined =
+    /* prettier-ignore */ configuration . branch . value
+  other = {
+    untouched: 2,
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":24}
+---------- Output ----------
+class OptionalValue {
+	public value?:
+		number | undefined =
+		/* prettier-ignore */ configuration . branch . value;
+	other = {
+		untouched: 2,
+	};
+}

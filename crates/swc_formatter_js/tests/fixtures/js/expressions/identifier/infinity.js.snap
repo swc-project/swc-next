@@ -1,0 +1,24 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Infinity;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+Infinity;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+Infinity
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+Infinity;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
+---------- Output ----------
+Infinity;

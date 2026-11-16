@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = X extends/*prettier-ignore*/((
+A)) ? 1 : 2;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = X extends /*prettier-ignore*/ A ? 1 : 2;

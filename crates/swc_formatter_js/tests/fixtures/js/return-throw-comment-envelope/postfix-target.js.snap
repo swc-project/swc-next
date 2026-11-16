@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  throw foo
+    // result member
+    .bar++;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function f() {
+  throw (
+    foo
+      // result member
+      .bar++
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f() {
+  throw (
+    foo
+      // result member
+      .bar++
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+function f() {
+  throw (
+    foo
+      // result member
+      .bar++
+  )
+}

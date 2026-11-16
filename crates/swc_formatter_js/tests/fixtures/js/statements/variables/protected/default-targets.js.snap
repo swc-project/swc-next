@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2]=items;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+const [
+  \u0076 /* prettier-ignore */=/* prettier-ignore */1+2,
+] =
+  items;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const [
+  \u0076 /* prettier-ignore */=/* prettier-ignore */1+2,
+] = items
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2] = items;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2] = items

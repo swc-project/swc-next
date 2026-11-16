@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first // note
+, /* c
+ d */ second);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f(
+  first, // note
+  /* c
+ d */ second,
+);

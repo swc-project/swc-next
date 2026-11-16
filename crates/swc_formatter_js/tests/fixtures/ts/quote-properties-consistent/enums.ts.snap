@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+enum RecordType { plain = 1, "quoted-key" = 2, "simple" = 3 }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+enum RecordType {
+  plain = 1,
+  "quoted-key" = 2,
+  simple = 3,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
+---------- Output ----------
+enum RecordType {
+  plain = 1,
+  "quoted-key" = 2,
+  "simple" = 3,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
+---------- Output ----------
+enum RecordType {
+  "plain" = 1,
+  "quoted-key" = 2,
+  "simple" = 3,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+enum RecordType {
+  'plain' = 1,
+  'quoted-key' = 2,
+  'simple' = 3,
+}

@@ -1,0 +1,53 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Picked<T> = T extends string ? T extends "x" ? 1 : 2 : T extends number ? 3 : 4;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Picked<T> = T extends string
+  ? T extends "x"
+    ? 1
+    : 2
+  : T extends number
+    ? 3
+    : 4;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Picked<T> =
+  T extends string
+    ? T extends "x"
+      ? 1
+      : 2
+    : T extends number
+      ? 3
+      : 4;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Picked<
+  T,
+> =
+  T extends string
+    ? T extends "x"
+      ? 1
+      : 2
+    : T extends number
+      ? 3
+      : 4
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type Picked<T> =
+	T extends string
+		? T extends "x"
+			? 1
+			: 2
+		: T extends number
+			? 3
+			: 4;

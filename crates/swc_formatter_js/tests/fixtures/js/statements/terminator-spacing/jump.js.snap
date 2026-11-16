@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for(;;) continue
+// tail
+;
+
+next();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (;;) continue;
+// tail
+
+next();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for (;;) continue
+// tail
+
+next()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":28,"semicolons":"as-needed"}
+---------- Output ----------
+for (;;) continue
+// tail
+
+next()

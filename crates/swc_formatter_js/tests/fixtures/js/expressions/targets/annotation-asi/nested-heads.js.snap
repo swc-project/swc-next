@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+( /* head */ ( /* inner */ /** @type {number} */ (object.property) /* tail */ ) /* outer */ )++;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* head */ /* inner */ /** @type {number} */ (
+  object.property
+) /* tail */ /* outer */++;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+/* head */ /* inner */ ;/** @type {number} */ (
+  object.property
+) /* tail */ /* outer */++
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+/* head */ /* inner */ ;/** @type {number} */ (
+  object.property
+) /* tail */ /* outer */++
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+/* head */ /* inner */ ;/** @type {number} */ (
+	object.property
+) /* tail */ /* outer */++

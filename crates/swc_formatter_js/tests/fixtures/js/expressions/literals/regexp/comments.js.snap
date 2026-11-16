@@ -1,0 +1,59 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* before *//世界/yg/* after */,/slash\//,null];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[/* before */ /世界/gy /* after */, /slash\//, null];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[/* before */ /世界/gy /* after */, /slash\//, null]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":19}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+[
+	/* before */ /世界/gy /* after */,
+	/slash\//,
+	null,
+];

@@ -1,0 +1,48 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 30,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "trailingCommas": "none"
+  },
+  {
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "arrowParentheses": "as-needed"
+  },
+  {
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "bracketSpacing": false
+  }
+]

@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[effect(), /* ordinary */ /* @__PURE__ */ // line
+factory()];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[
+  effect(), /* ordinary */ /* @__PURE__ */ // line
+  factory(),
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+[
+  effect(), /* ordinary */ /* @__PURE__ */ // line
+  factory()
+];

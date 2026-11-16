@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (factory()`x`)(); new (factory().tag`x`)(); new (factory`x`)(); (new Maker)`x`; tag /*gap*/ `a${value}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new (factory()`x`)();
+new (factory().tag`x`)();
+new factory`x`();
+new Maker()`x`;
+tag /*gap*/ `a${value}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+new (factory()`x`)()
+new (factory()
+  .tag`x`)()
+new factory`x`()
+new Maker()`x`
+tag /*gap*/ `a${value}`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+new (factory()`x`)();
+new (factory().tag`x`)();
+new factory`x`();
+new Maker()`x`;
+tag /*gap*/ `a${value}`;

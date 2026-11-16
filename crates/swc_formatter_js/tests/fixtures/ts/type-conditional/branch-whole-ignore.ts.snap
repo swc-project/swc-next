@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Outcome<T> = T extends string ?
+/* prettier-ignore */
+( 1  | 2 ) : 3;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Outcome<T> = T extends string ?
+/* prettier-ignore */
+1  | 2
+  : 3;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Outcome<T> =
+  T extends string ?
+/* prettier-ignore */
+1  | 2
+    : 3;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Outcome<
+  T,
+> =
+  T extends string ?
+/* prettier-ignore */
+1  | 2
+    : 3
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type Outcome<T> =
+	T extends string ?
+/* prettier-ignore */
+1  | 2
+		: 3;

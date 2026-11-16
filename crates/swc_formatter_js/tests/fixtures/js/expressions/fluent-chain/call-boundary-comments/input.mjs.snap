@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+source.start() /* callee */ .next // keep
+ (value).finish();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+source
+  .start() /* callee */
+  .next // keep
+  (value)
+  .finish();

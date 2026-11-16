@@ -1,0 +1,8 @@
+[
+  {
+    "lineWidth": 24,
+    "indentStyle": "tab",
+    "semicolons": "as-needed",
+    "lineEnding": "crlf"
+  }
+]

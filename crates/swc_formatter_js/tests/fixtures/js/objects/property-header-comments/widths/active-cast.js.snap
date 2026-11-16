@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number} */ let result; result = { key /* first */ // second
+: /** @type {number} */ (unknownValue) };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+/** @type {number} */ let result;
+result = {
+  /* first */ // second
+  key: /** @type {number} */ (
+    unknownValue
+  ),
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/** @type {number} */ let result;
+result = {
+  /* first */ // second
+  key: /** @type {number} */ (unknownValue),
+};

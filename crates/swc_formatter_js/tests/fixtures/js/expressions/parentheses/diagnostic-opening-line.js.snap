@@ -1,0 +1,49 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+(
+missing
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-expect-error
+missing;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-expect-error
+missing
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// @ts-expect-error
+missing;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+// @ts-expect-error
+missing;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// @ts-expect-error
+missing;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+// @ts-expect-error
+missing;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+// @ts-expect-error
+missing;

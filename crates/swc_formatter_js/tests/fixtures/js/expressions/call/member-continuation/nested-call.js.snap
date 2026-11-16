@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume((condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(firstArgument, secondArgument, thirdArgument, fourthArgument), tail);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+consume(
+  (condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+consume(
+  (condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+consume(
+  (condition
+    ? someValueWhenTrueIsHere
+    : someOtherValueWhenFalseIsHere
+  ).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+);

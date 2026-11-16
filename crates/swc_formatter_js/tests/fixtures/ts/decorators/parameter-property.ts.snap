@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(@first /* decorator */ @second /* modifier */ private /* private */ readonly /* binding */ value: number = 1) {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    @first
+    /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1,
+  ) {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class C {
+  constructor(
+    @first
+    /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1
+  ) {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+class C {
+  constructor(
+    @first
+    /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1,
+  ) {}
+}

@@ -1,0 +1,107 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace Example { type Result = `
+   ${
+"firstLongName" | "secondLongName"
+} ${
+"firstLongName" | "secondLongName"
+}
+${
+"firstLongName" | "secondLongName"
+}
+`; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${"firstLongName" | "secondLongName"} ${"firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     | "firstLongName"
+     | "secondLongName"}
+${
+  | "firstLongName"
+  | "secondLongName"}
+`
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":2,"lineWidth":40}
+---------- Output ----------
+namespace Example {
+	type Result = `
+   ${
+			| "firstLongName"
+			| "secondLongName"} ${
+			| "firstLongName"
+			| "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":8,"lineWidth":40}
+---------- Output ----------
+namespace Example {
+	type Result = `
+   ${
+		| "firstLongName"
+		| "secondLongName"} ${
+		| "firstLongName"
+		| "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+namespace Example {
+    type Result = `
+   ${
+       | "firstLongName"
+       | "secondLongName"} ${
+       | "firstLongName"
+       | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     "firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40,"semicolons":"always","trailingCommas":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     "firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}

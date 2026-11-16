@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Empty<T> {}
+class Incoming implements Empty<number> // prettier-ignore
+{ x  =  7; }
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface Empty<T> {}
+class Incoming implements Empty<number> // prettier-ignore
+{
+  x  =  7;
+}
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface Empty<
+  T,
+> {}
+class Incoming implements Empty<number> // prettier-ignore
+{
+  x  =  7;
+}
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }

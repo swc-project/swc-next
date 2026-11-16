@@ -1,0 +1,12 @@
+[
+  {
+    "lineWidth": 10,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 10,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  }
+]

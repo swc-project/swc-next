@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it("test", function(done,
+// @ts-expect-error
+result: Missing) { return done(result); });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+it(
+  "test",
+  function (
+    done,
+    // @ts-expect-error
+    result: Missing) { return done(result); });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":36}
+---------- Output ----------
+it(
+  "test",
+  function (
+    done,
+    // @ts-expect-error
+    result: Missing) { return done(result); });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+it(
+  "test",
+  function (
+    done,
+    // @ts-expect-error
+    result: Missing) { return done(result) })

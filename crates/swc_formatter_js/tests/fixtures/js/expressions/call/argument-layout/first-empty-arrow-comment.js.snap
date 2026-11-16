@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+execute((
+  // inside parameters
+) => {}, value);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"all"}
+---------- Output ----------
+execute(
+  (
+    // inside parameters
+  ) => {},
+  value,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
+---------- Output ----------
+execute(
+  (
+    // inside parameters
+  ) => {},
+  value
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+execute(
+  (
+    // inside parameters
+  ) => {},
+  value
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+execute(
+  (
+    // inside parameters
+  ) => {},
+  value,
+);

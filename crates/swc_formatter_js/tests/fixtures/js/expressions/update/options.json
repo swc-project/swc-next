@@ -1,0 +1,34 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "semicolons": "as-needed"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 10,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 20,
+    "indentStyle": "tab",
+    "indentWidth": 4
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "quoteStyle": "single"
+  }
+]

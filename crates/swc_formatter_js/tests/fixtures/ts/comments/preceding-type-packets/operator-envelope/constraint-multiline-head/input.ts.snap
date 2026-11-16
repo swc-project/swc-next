@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<\u004b /* prettier-ignore */ extends
+/* frame
+ * ordinary */ A | B> = K;---------- Options ----------
+{"indentStyle":"space","lineWidth":18}
+---------- Output ----------
+type T<
+  \u004b /* prettier-ignore */ extends
+
+      /* frame
+       * ordinary */ | A
+      | B,
+> = K;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+type T<
+  \u004b /* prettier-ignore */ extends
+
+      /* frame
+       * ordinary */ | A
+      | B,
+> = K

@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee((argument /* tail */), next);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+callee(
+  argument /* tail */,
+  next,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+callee(argument /* tail */, next);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+callee(
+  argument /* tail */,
+  next,
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+callee(
+  argument /* tail */,
+  next
+);

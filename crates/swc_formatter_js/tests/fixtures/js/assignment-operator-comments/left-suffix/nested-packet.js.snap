@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer = target /* prefix */ // left
+= first + second;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+outer = target = /* prefix */ first + second; // left
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+outer =
+  target = /* prefix */ // left
+    first +
+    second;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+outer = target = /* prefix */ // left
+  first + second;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+outer = target = /* prefix */ first + second // left
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+outer =
+	target = /* prefix */ // left
+		first +
+		second;

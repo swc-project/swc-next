@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,{one:1,two:2,three:3});---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+})
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+});

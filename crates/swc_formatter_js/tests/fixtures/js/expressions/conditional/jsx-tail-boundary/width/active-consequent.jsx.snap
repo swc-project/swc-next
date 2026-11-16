@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? /*#__PURE__*/ effect() : <Item />;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+condition ? /*#__PURE__*/ effect() : <Item />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+condition ? /*#__PURE__*/ effect() : (
+  <Item />
+);

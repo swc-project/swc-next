@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type LayoutWith<T extends string, S extends unknown = { width: string }> = ({ value: T; code: string; state: S });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type LayoutWith<T extends string, S extends unknown = { width: string }> = {
+  value: T;
+  code: string;
+  state: S;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type LayoutWith<
+  T extends string,
+  S extends
+    unknown = {
+    width: string;
+  },
+> = {
+  value: T;
+  code: string;
+  state: S;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type LayoutWith<
+  T extends
+    string,
+  S extends
+    unknown =
+    {
+      width: string
+    },
+> = {
+  value: T
+  code: string
+  state: S
+}

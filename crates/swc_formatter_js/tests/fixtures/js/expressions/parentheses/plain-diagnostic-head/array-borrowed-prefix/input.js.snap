@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(
+/* ordinary */
+// @ts-ignore
+first = second
+)];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[
+  /* ordinary */
+  // @ts-ignore
+  (first = second),
+];

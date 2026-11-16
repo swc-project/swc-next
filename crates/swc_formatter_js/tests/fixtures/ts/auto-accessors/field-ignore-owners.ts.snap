@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Owners {
+  accessor [first  +  second
+  /* prettier-ignore */
+  ]?: Box < number > = { a:1,b:2 };
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+class Owners {
+  accessor [
+    first + second
+    /* prettier-ignore */
+  ]?: Box < number > = { a: 1, b: 2 };
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Owners {
+  accessor [
+    first + second
+    /* prettier-ignore */
+  ]?: Box < number > =
+    { a: 1, b: 2 }
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >
+}

@@ -1,0 +1,88 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function buildSomethingMeaningful(first: number, second: number): number { return first + second; }
+const veryLongInitializedVariableName: number = buildSomethingMeaningful(1, 2);
+function withDefault(veryLongDefaultParameterName: number = buildSomethingMeaningful(1, 2)): number { return veryLongDefaultParameterName; }
+class Example { veryLongInitializedFieldName: number = buildSomethingMeaningful(1, 2); }
+enum Value { veryLongComputedEnumMemberName = buildSomethingMeaningful(1, 2), literal = 1 }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function buildSomethingMeaningful(
+  first: number,
+  second: number,
+): number {
+  return first + second;
+}
+const veryLongInitializedVariableName: number =
+  buildSomethingMeaningful(1, 2);
+function withDefault(
+  veryLongDefaultParameterName: number = buildSomethingMeaningful(
+    1,
+    2,
+  ),
+): number {
+  return veryLongDefaultParameterName;
+}
+class Example {
+  veryLongInitializedFieldName: number =
+    buildSomethingMeaningful(1, 2);
+}
+enum Value {
+  veryLongComputedEnumMemberName = buildSomethingMeaningful(
+    1,
+    2,
+  ),
+  literal = 1,
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":60,"semicolons":"as-needed"}
+---------- Output ----------
+function buildSomethingMeaningful(
+	first: number,
+	second: number,
+): number {
+	return first + second
+}
+const veryLongInitializedVariableName: number =
+	buildSomethingMeaningful(1, 2)
+function withDefault(
+	veryLongDefaultParameterName: number = buildSomethingMeaningful(
+		1,
+		2,
+	),
+): number {
+	return veryLongDefaultParameterName
+}
+class Example {
+	veryLongInitializedFieldName: number =
+		buildSomethingMeaningful(1, 2)
+}
+enum Value {
+	veryLongComputedEnumMemberName = buildSomethingMeaningful(
+		1,
+		2,
+	),
+	literal = 1,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":120}
+---------- Output ----------
+function buildSomethingMeaningful(first: number, second: number): number {
+  return first + second;
+}
+const veryLongInitializedVariableName: number = buildSomethingMeaningful(1, 2);
+function withDefault(veryLongDefaultParameterName: number = buildSomethingMeaningful(1, 2)): number {
+  return veryLongDefaultParameterName;
+}
+class Example {
+  veryLongInitializedFieldName: number = buildSomethingMeaningful(1, 2);
+}
+enum Value {
+  veryLongComputedEnumMemberName = buildSomethingMeaningful(1, 2),
+  literal = 1,
+}

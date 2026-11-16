@@ -1,0 +1,87 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function render() { return `
+   ${() => {a}} ${() => {b}}
+${() => {c}}
+`; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function render() {
+  return `
+   ${() => {
+     a;
+   }} ${() => {
+     b;
+   }}
+${() => {
+  c;
+}}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+function render() {
+  return `
+   ${() => {
+     a
+   }} ${() => {
+     b
+   }}
+${() => {
+  c
+}}
+`
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":2,"lineWidth":40}
+---------- Output ----------
+function render() {
+	return `
+   ${() => {
+			a;
+		}} ${() => {
+			b;
+		}}
+${() => {
+	c;
+}}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":8,"lineWidth":40}
+---------- Output ----------
+function render() {
+	return `
+   ${() => {
+		a;
+   }} ${() => {
+		b;
+   }}
+${() => {
+	c;
+}}
+`;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+function render() {
+  return `
+   ${() => {
+     a;
+   }} ${() => {
+     b;
+   }}
+${() => {
+  c;
+}}
+`;
+}

@@ -1,0 +1,78 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[世界, é, 𐀀];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":14}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":13}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":0}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[世界, é, 𐀀]
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"none"}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10,"trailingCommas":"es5"}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+[
+	世界,
+	é,
+	𐀀,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];

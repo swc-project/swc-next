@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(a,b) { return 0; } f(1,
+// @ts-ignore
+missing).property;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(a, b) {
+  return 0;
+}
+f(
+  1,
+  // @ts-ignore
+  missing).property;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f(a, b) {
+  return 0
+}
+f(
+  1,
+  // @ts-ignore
+  missing).property

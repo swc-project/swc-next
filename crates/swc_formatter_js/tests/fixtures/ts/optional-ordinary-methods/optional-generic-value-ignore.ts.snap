@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { method? /* prettier-ignore */ < T >(value: T): T { return value; } }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Example {
+  method? /* prettier-ignore */< T >(value: T): T { return value; }
+}

@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const /* prefix */ enum E { A = 1, B = A + 2 }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}

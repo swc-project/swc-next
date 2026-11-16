@@ -1,0 +1,15 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "tab"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "indentWidth": 4
+  }
+]

@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: /* marker
+ continued */ while(a){ if(b) break label; continue label; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+label: /* marker
+ continued */ while (a) {
+  if (b) break label;
+  continue label;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+label: /* marker
+ continued */ while (
+  a
+) {
+  if (b)
+    break label;
+  continue label;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+label: /* marker
+ continued */ while (
+  a
+) {
+  if (b) break label
+  continue label
+}

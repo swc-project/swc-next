@@ -1,5 +1,0 @@
-[
-  {"printWidth":32,"arrowParens":"always"},
-  {"printWidth":32,"arrowParens":"avoid","semi":false},
-  {"printWidth":80}
-]

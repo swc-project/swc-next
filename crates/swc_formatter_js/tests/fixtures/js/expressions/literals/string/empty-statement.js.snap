@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+; "use strict";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+("use strict");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+('use strict');
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;("use strict")
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+;('use strict')
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+("use strict");
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+("use strict");
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+("use strict");
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"cr","lineWidth":80}
+---------- Output ----------
+("use strict");
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":10}
+---------- Output ----------
+("use strict");

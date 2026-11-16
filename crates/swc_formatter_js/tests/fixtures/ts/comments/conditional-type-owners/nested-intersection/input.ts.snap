@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = A extends /* prettier-ignore */ (( \u0042 &  C )) ? D : E;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = A extends /* prettier-ignore */ \u0042 &  C ? D : E;
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":18}
+---------- Output ----------
+type T =
+	A extends /* prettier-ignore */ \u0042 &  C
+		? D
+		: E;

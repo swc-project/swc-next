@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-check
+(/** @type {number} */ ("x")
+// tail
+)
+/* prettier-ignore */
+? a  +b : c;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-check
+/** @type {number} */ ("x")
+  ? // tail
+    /* prettier-ignore */
+    a  +b
+  : c;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18}
+---------- Output ----------
+// @ts-check
+/** @type {number} */ (
+  "x"
+)
+  ? // tail
+    /* prettier-ignore */
+    a  +b
+  : c;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":18,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-check
+;/** @type {number} */ (
+  "x"
+)
+  ? // tail
+    /* prettier-ignore */
+    a  +b
+  : c

@@ -1,0 +1,61 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+interface RecordType { "new"(value: string): RecordType; method(): void; get value(): number; set value(next: number); property: string; 1: number; "2": number; [computed]: unknown; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  method(): void;
+  get value(): number;
+  set value(next: number);
+  property: string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve"}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  method(): void;
+  get value(): number;
+  set value(next: number);
+  property: string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent"}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  "method"(): void;
+  get "value"(): number;
+  set "value"(next: number);
+  "property": string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"consistent","quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+interface RecordType {
+  'new'(value: string): RecordType
+  'method'(): void
+  get 'value'(): number
+  set 'value'(next: number)
+  'property': string
+  1: number
+  '2': number
+  [computed]: unknown
+}

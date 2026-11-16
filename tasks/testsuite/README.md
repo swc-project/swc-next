@@ -41,7 +41,7 @@ worktrees sharing a Git common directory.
 Run the Prettier compatibility matrix:
 
 ```sh
-cargo run -p testsuite --bin formatter_conformance --profile conformance
+cargo run -p testsuite --bin formatter --profile conformance
 ```
 
 The fixture is pinned to Prettier 3.9.9 at commit
@@ -63,7 +63,7 @@ Inspect matching inputs and detailed diffs without changing reports:
 
 ```sh
 PRETTIER_FILTER='js/comments/jsx.js' \
-  cargo run -p testsuite --bin formatter_conformance --profile conformance
+  cargo run -p testsuite --bin formatter --profile conformance
 ```
 
 ## Debug one case

@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Choice = | /* first */ number | string;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type Choice =
+  /* first */ number | string;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":40}
+---------- Output ----------
+type Choice =
+	/* first */ number | string;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+type Choice =
+  | /* first */ number
+  | string
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Choice = /* first */ number | string;

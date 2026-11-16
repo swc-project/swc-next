@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(first,
+// @ts-ignore
+second /* block */ // line
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second /* block */, // line
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+call(
+  first,
+  // @ts-ignore
+  second /* block */, // line
+)

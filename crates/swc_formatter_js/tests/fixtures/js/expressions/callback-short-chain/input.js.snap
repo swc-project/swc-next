@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+expect(() => request({ url: "/test-endpoint-with-a-long-url" })).done();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+expect(() =>
+  request({
+    url: "/test-endpoint-with-a-long-url",
+  }),
+).done();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+expect(() => request({ url: "/test-endpoint-with-a-long-url" })).done();
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+expect(() =>
+  request({
+    url: "/test-endpoint-with-a-long-url",
+  }),
+).done()

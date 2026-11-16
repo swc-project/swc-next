@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace N { export interface I { x: number; } export interface J<T> { x: T; } }
+class C implements N . I, /* prettier-ignore */ N . J<  number  > { x = 7; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+namespace N {
+  export interface I {
+    x: number;
+  }
+  export interface J<T> {
+    x: T;
+  }
+}
+class C implements N.I, /* prettier-ignore */ N . J<  number  > {
+  x = 7;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+namespace N {
+  export interface I {
+    x: number;
+  }
+  export interface J<
+    T,
+  > {
+    x: T;
+  }
+}
+class C
+  implements
+    N.I,
+    /* prettier-ignore */ N . J<  number  >
+{
+  x = 7;
+}

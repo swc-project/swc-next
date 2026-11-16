@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (
+// @ts-expect-error
+!left)(arg);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+result =
+  (
+    // @ts-expect-error
+    !left)(arg);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+result =
+  (
+    // @ts-expect-error
+    !left)(arg)

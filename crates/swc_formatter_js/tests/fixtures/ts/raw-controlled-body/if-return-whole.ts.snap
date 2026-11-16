@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(){ if(c) return /* prettier-ignore */ y as ?; /* prettier-ignore */ else z();
+b; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function f() {
+  if (c) return /* prettier-ignore */ y as ?; /* prettier-ignore */
+  else z()
+  b
+}

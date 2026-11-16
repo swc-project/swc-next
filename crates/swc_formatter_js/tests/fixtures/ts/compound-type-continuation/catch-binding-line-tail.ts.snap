@@ -1,0 +1,36 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {} catch (e: A | (B
+// c
+)) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+} catch (e: (
+  | A
+  | B
+  // c
+)) {}

@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import local,* as namespace from "module";
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+import local, * as namespace from "module";
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+import local, * as namespace from "module";
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+import local, * as namespace from 'module'

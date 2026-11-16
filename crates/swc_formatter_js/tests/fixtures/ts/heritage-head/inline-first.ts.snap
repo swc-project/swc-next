@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Name implements /* prettier-ignore */ First<  string  >, Second { value =  1 ; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Name implements /* prettier-ignore */ First<  string  >, Second {
+  value = 1;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Name
+  implements /* prettier-ignore */ First<  string  >,
+    Second
+{
+  value = 1
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class Name
+	implements /* prettier-ignore */ First<  string  >,
+		Second
+{
+	value = 1;
+}

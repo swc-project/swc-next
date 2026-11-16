@@ -108,6 +108,8 @@ jobs:
         run: pnpm prepare:browser --source-dir ../core/dist
       - name: Run Node.js WebAssembly tests
         run: pnpm test:wasm
+      - name: Check formatter conformance report
+        run: git diff --exit-code -- npm/formatter-prettier-plugin/test/prettier-plugin-conformance.json
       - name: Install Chromium Headless Shell
         run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Run browser WebAssembly smoke tests
@@ -133,7 +135,7 @@ jobs:
       - name: Run conformance
         run: cargo run --locked -p testsuite --bin conformance --profile conformance
       - name: Run formatter conformance
-        run: cargo run --locked -p testsuite --bin formatter_conformance --profile conformance
+        run: cargo run --locked -p testsuite --bin formatter --profile conformance
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Build JavaScript APIs
@@ -145,4 +147,4 @@ jobs:
       - name: Run JavaScript tests
         run: pnpm test
       - name: Check conformance snapshots
-        run: git diff --exit-code -- tasks/testsuite/snapshots
+        run: git diff --exit-code -- tasks/testsuite/snapshots npm/formatter-prettier-plugin/test/prettier-plugin-conformance.json

@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const pair = ["لالالا", value];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+const pair = ["لالالا", value];

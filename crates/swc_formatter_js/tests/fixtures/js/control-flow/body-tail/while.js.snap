@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (ready) continue // body tail
+;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+while (ready)
+  continue; // body tail
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+while (ready) continue; // body tail
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+while (ready) continue // body tail

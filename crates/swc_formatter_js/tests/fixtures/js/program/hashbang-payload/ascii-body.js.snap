@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/bin/tool 	 
+run()
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"lf","lineWidth":80}
+---------- Output ----------
+#!/bin/tool 	 
+run();
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+#!/bin/tool 	 
+run();

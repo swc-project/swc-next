@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Example = Box</* head */ { longPropertyName: number } | null>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Example = Box</* head */ { longPropertyName: number } | null>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Example = Box<
+  /* head */ {
+    longPropertyName: number;
+  } | null
+>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Example =
+  Box<
+    /* head */ {
+      longPropertyName: number
+    } | null
+  >
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type Example = Box<
+	/* head */ {
+		longPropertyName: number;
+	} | null
+>;

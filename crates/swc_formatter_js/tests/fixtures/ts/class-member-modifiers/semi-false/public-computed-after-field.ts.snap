@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const key = "read"; class C { value = 1; public [key]() { return this.value + 6; } }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const key = "read"
+class C {
+  value = 1
+  public [key]() {
+    return this.value + 6
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const key = "read"
+class C {
+  value = 1
+  public [key]() {
+    return (
+      this.value + 6
+    )
+  }
+}

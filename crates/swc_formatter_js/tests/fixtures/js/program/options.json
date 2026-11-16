@@ -1,0 +1,16 @@
+[
+  {
+    "lineWidth": 80,
+    "indentStyle": "space"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "crlf"
+  },
+  {
+    "lineWidth": 80,
+    "indentStyle": "space",
+    "lineEnding": "cr"
+  }
+]

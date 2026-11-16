@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div>bbb	ccc{" "}<b>a</b></div>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+<div>bbb	ccc <b>a</b>
+</div>;

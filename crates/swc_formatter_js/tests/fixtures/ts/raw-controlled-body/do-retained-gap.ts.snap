@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do x = /* prettier-ignore */ y as ?;
+/* prettier-ignore */
+while(c);
+b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+do x = /* prettier-ignore */ y as ?;
+/* prettier-ignore */
+while(c)
+b

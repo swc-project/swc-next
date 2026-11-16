@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = value as
+/* c */ /* prettier-ignore */ B;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+const x = value as /* c */ /* prettier-ignore */ B;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"semicolons":"always"}
+---------- Output ----------
+const x =
+  value as /* c */ /* prettier-ignore */ B;

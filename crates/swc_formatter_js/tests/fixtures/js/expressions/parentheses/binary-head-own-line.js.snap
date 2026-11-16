@@ -1,0 +1,52 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(
+/* before */
+first * second) + third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* before */
+first * second + third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+/* before */
+first * second + third
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+/* before */
+first * second +
+  third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+/* before */
+first *
+  second +
+  third;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+/* before */
+first * second +
+	third;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+/* before */
+first * second + third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+/* before */
+first * second + third;

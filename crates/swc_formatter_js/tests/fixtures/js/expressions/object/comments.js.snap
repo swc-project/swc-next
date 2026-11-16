@@ -1,0 +1,107 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ /*empty*/ });
+({ //empty
+});
+({ a /*key*/ : /*value*/ b, c //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({ a: 1,
+
+b: 2,
+// dangling
+});
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({
+  /*lead*/ a: 1,
+  /*next*/ b: 2 /*end*/,
+});
+({
+  [/*key*/ a /*end*/]: b,
+  .../*spread*/ c,
+});
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":30,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;({/*empty*/})
+;({
+  //empty
+})
+;({
+  a /*key*/: /*value*/ b,
+  c //tail
+})
+;({
+  /*lead*/ a: 1,
+  /*next*/ b: 2 /*end*/
+})
+;({
+  [/*key*/ a /*end*/]: b,
+  .../*spread*/ c
+})
+;({
+  a: 1,
+
+  b: 2
+  // dangling
+})
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","quoteStyle":"single"}
+---------- Output ----------
+({/*empty*/});
+({
+  //empty
+});
+({
+  a /*key*/: /*value*/ b,
+  c, //tail
+});
+({ /*lead*/ a: 1, /*next*/ b: 2 /*end*/ });
+({ [/*key*/ a /*end*/]: b, .../*spread*/ c });
+({
+  a: 1,
+
+  b: 2,
+  // dangling
+});

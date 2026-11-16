@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (callee // inner
+) /* outer */ <Type>(value);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new callee // inner
+/* outer */ <Type>(value);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+new callee // inner
+/* outer */ <Type>(value)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+new callee // inner
+/* outer */ <Type>(
+  value,
+);

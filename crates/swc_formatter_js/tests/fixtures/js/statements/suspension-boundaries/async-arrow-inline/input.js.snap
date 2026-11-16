@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async /* head */ value /* arrow */ => await value;
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20}
+---------- Output ----------
+async /* head */ (
+  value,
+) /* arrow */ =>
+  await value;
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+async /* head */ (
+  value,
+) /* arrow */ =>
+  await value
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":80}
+---------- Output ----------
+async /* head */ (value) /* arrow */ => await value;

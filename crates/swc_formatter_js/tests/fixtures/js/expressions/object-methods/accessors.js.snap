@@ -1,0 +1,56 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ get [key]() { return value; }, set [key](value) { target(value); } });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  get [key]() {
+    return value;
+  },
+  set [key](value) {
+    target(value);
+  },
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+({
+  get [key]() {
+    return value;
+  },
+  set [key](value) {
+    target(value);
+  },
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;({
+  get [key]() {
+    return value
+  },
+  set [key](
+    value
+  ) {
+    target(
+      value
+    )
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
+---------- Output ----------
+;({
+  get [key]() {
+    return value
+  },
+  set [key](value) {
+    target(value)
+  },
+})

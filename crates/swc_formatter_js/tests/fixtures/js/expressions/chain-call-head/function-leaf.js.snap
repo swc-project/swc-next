@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function read(){return (/** @returns {string} */ function(){return 1;}.call()).next.finish();}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function read() {
+  return /** @returns {string} */ function () {
+    return 1;
+  }
+    .call()
+    .next.finish();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function read() {
+  return /** @returns {string} */ function () {
+    return 1
+  }
+    .call()
+    .next.finish()
+}

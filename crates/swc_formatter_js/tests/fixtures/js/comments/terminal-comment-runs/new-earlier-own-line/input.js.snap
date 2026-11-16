@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new F(first
+/* b */, /* c */ // d
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new F(
+  first,
+  /* b */ /* c */ // d
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+new F(
+  first
+  /* b */ /* c */ // d
+);

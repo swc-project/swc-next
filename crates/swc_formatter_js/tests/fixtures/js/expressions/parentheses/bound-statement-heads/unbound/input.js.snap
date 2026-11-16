@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* head */ function (value) { return value; }).name;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* head */ (function (value) {
+  return value;
+}).name;

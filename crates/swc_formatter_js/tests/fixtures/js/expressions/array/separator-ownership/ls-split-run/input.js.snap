@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first, /* block */ // line
+, last];
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":10}
+---------- Output ----------
+[
+  first,
+  /* block */
+  // line
+  ,
+  last,
+];

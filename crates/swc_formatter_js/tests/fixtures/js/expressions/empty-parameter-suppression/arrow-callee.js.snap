@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+((/* prettier-ignore */)=>1+2)();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+((/* prettier-ignore */)=>1+2)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+((/* prettier-ignore */)=>1+2)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+((/* prettier-ignore */)=>1+2)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+;((/* prettier-ignore */)=>1+2)()
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+((/* prettier-ignore */)=>1+2)();

@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+v = a ? (<B />)// @ts-ignore
+: h(x);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+v = a ? (
+  <B />
+) // @ts-ignore
+: (h(x));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+v = a ? (
+  <B />
+) // @ts-ignore
+: (h(x));

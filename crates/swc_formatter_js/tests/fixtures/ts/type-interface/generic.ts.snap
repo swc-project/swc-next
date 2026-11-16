@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface T<in A,out B extends A=A>{value:B}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface T<in A, out B extends A = A> {
+  value: B;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface T<
+  in A,
+  out B extends A =
+    A,
+> {
+  value: B;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface T<
+  in A,
+  out B extends
+    A =
+    A,
+> {
+  value: B
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface T<
+	in A,
+	out B extends A =
+		A,
+> {
+	value: B;
+}

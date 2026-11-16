@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }

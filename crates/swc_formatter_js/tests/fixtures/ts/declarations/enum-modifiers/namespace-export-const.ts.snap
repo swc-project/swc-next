@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace N { export const enum E { A = 1 } }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+namespace N {
+  export const enum E {
+    A = 1,
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+namespace N {
+  export const enum E {
+    A = 1,
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+namespace N {
+  export const enum E {
+    A = 1,
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+namespace N {
+  export const enum E {
+    A = 1,
+  }
+}

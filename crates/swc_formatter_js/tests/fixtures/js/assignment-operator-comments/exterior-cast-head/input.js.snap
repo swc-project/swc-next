@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = /* @ts-expect-error */ (
+/** @type {number} */ (first)
+);---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+target =
+  /* @ts-expect-error */
+  /** @type {number} */ (first);

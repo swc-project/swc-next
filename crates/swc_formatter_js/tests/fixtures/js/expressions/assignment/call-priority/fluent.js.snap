@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = foo.bar().baz();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const assignedValueName =
+  foo.bar().baz();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const assignedValueName = foo
+  .bar()
+  .baz();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const assignedValueName = foo.bar().baz();

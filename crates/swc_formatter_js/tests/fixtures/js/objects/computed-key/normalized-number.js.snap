@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter_js/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const o = { [1.000]: veryVeryVeryVeryLongReceiver.longProperty.longProperty.longProperty };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":35}
+---------- Output ----------
+const o = {
+  [1.0]:
+    veryVeryVeryVeryLongReceiver
+      .longProperty.longProperty
+      .longProperty,
+};
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":35}
+---------- Output ----------
+const o = {
+    [1.0]: veryVeryVeryVeryLongReceiver
+        .longProperty.longProperty
+        .longProperty,
+};
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":8,"lineWidth":35}
+---------- Output ----------
+const o = {
+	[1.0]: veryVeryVeryVeryLongReceiver
+		.longProperty
+		.longProperty
+		.longProperty,
+};
