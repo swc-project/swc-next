@@ -324,7 +324,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
                 }
                 FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
-                FastClass::Slash => return lexer.try_slash_token::<LINE_BREAK>(target, start),
+                FastClass::Slash => {
+                    let next = lexer.source.get(start as usize + 1).copied();
+                    if matches!(next, Some(b'*' | b'/')) {
+                        return lexer.try_token_after_comments(target, start, LINE_BREAK);
+                    }
+                    let (tag, end) = if next == Some(b'=') {
+                        (TokenTag::SlashAssign, start + 2)
+                    } else {
+                        (TokenTag::Slash, start + 1)
+                    };
+                    lexer.cursor = end;
+                    *target = Token::new(start, end, tag, flags);
+                }
                 FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
             }
             lexer.handle_fast_token(*target);
@@ -394,25 +406,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             TokenTag::StringLiteral,
             fast_token_flags(LINE_BREAK),
         );
-        self.handle_fast_token(*target);
-        true
-    }
-
-    /// Reads `/` or `/=` at `start`, or the comments that start there and the token after them.
-    /// See [`Self::try_identifier_token`].
-    #[inline(never)]
-    fn try_slash_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
-        let next = self.source.get(start as usize + 1).copied();
-        if matches!(next, Some(b'*' | b'/')) {
-            return self.try_token_after_comments(target, start, LINE_BREAK);
-        }
-        let (tag, end) = if next == Some(b'=') {
-            (TokenTag::SlashAssign, start + 2)
-        } else {
-            (TokenTag::Slash, start + 1)
-        };
-        self.cursor = end;
-        *target = Token::new(start, end, tag, fast_token_flags(LINE_BREAK));
         self.handle_fast_token(*target);
         true
     }
