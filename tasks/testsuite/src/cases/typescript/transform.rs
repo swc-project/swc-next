@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use swc_next_core::{
+use swc_next::{
     BoolOr,
     js::{
         JsTransformApiOptions,

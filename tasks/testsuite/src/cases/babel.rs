@@ -6,7 +6,7 @@ use std::{
 
 use jwalk::WalkDir;
 use rayon::prelude::*;
-use swc_next_core::js::{JsTransformApiOptions, parser::JsParserConfig};
+use swc_next::js::{JsTransformApiOptions, parser::JsParserConfig};
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::cases::{Case, TransformCase, fixtures};

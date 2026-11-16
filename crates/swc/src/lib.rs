@@ -1,4 +1,4 @@
-//! Core APIs for swc-next.
+//! Aggregate APIs for swc-next.
 //!
 //! Enable `js` for JavaScript configuration types, and select stages with
 //! `js_parser`, `js_generator`, `js_transformer`, and `js_minifier`.

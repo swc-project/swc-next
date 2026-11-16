@@ -1,5 +1,5 @@
 // Internal SWC Next transport; these APIs and formats do not follow semver.
-// Keep in sync with crates/swc_core/src/js/transformer.rs.
+// Keep in sync with crates/swc/src/js/transformer.rs.
 const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 const utf8Slice = typeof Buffer !== "undefined" && typeof Buffer.prototype.utf8Slice === "function"
   ? Buffer.prototype.utf8Slice

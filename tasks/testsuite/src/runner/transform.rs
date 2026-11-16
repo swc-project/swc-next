@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
+use swc_next::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
 use swc_next_allocator::Allocator;
-use swc_next_core::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};

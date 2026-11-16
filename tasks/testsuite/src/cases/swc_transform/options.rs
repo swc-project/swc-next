@@ -13,7 +13,7 @@ use swc_core::{
         transforms::react::Runtime,
     },
 };
-use swc_next_core::{
+use swc_next::{
     BoolOr,
     js::{
         CommentsOption, JsTransformApiOptions,

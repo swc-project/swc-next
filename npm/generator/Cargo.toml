@@ -12,8 +12,8 @@ version               = "0.7.0"
 crate-type = ["cdylib"]
 
 [dependencies]
+swc_next        = { workspace = true, features = ["bridge", "js_generator"] }
 swc_next_bridge = { workspace = true }
-swc_next_core   = { workspace = true, features = ["bridge", "js_generator"] }
 
 [build-dependencies]
 napi-build = { workspace = true }
