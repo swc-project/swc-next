@@ -23,8 +23,9 @@ pnpm --filter @swc-next/helpers build
 
 The script generates explicit named exports for the package entry point.
 
-Scripts and CommonJS output load named exports with `require`. This requires a
-runtime that supports requiring ES modules, or a bundler that handles them.
+The `swc_next_helpers` Rust crate packages the same ESM sources. The transformer
+can parse them with its own parser and inject the helpers inline, including
+their dependencies, without requiring an npm package at runtime.
 
 Run the public ESM API tests with:
 
