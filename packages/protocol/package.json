@@ -1,8 +1,12 @@
 {
   "name": "@swc-next/protocol",
   "version": "0.6.1",
-  "private": true,
   "description": "Shared source for SWC Next internal JavaScript transport protocols",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/protocol"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -43,7 +47,31 @@
       "import": "./document.js"
     }
   },
-  "devDependencies": {
+  "files": [
+    "ast",
+    "buffer.js",
+    "document.d.ts",
+    "document.js",
+    "formatter.d.ts",
+    "formatter.js",
+    "generator.d.ts",
+    "generator.js",
+    "output.d.ts",
+    "output.js",
+    "parser.d.ts",
+    "parser.js",
+    "source.d.ts",
+    "source.js",
+    "transform.d.ts",
+    "transform.js",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
     "@swc-next/types": "workspace:*"
   }
 }
