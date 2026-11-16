@@ -277,8 +277,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
             self.handle_fast_token(*target);
             return true;
+        } else if class == FastClass::KeywordOrIdentifier {
+            return self.try_identifier_token::<LINE_BREAK, true>(target, start);
         } else if class == FastClass::Identifier {
-            return self.try_identifier_token::<LINE_BREAK>(target, start);
+            return self.try_identifier_token::<LINE_BREAK, false>(target, start);
         }
 
         /// Scans a token of one of the classes the two tests above do not cover, and returns
@@ -324,7 +326,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
                 }
                 FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
-                FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
+                FastClass::Slow
+                | FastClass::KeywordOrIdentifier
+                | FastClass::Identifier
+                | FastClass::Punctuation => return false,
             }
             lexer.handle_fast_token(*target);
             true
@@ -338,13 +343,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// they are tail-called to keep callee-saved register saves out of
     /// [`Self::try_next_token`].
     #[inline(never)]
-    fn try_identifier_token<const LINE_BREAK: bool>(
+    fn try_identifier_token<const LINE_BREAK: bool, const KEYWORD: bool>(
         &mut self,
         target: &mut Token,
         start: u32,
     ) -> bool {
         let flags = fast_token_flags(LINE_BREAK);
-        if !self.scan_ascii_identifier(start, flags, target) {
+        if !self.scan_ascii_identifier(start, flags, target, KEYWORD) {
             return false;
         }
         self.handle_fast_token(*target);
@@ -493,15 +498,26 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
-    fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
+    fn scan_ascii_identifier(
+        &mut self,
+        start: u32,
+        flags: u8,
+        target: &mut Token,
+        can_be_keyword: bool,
+    ) -> bool {
         let Some(pos) = scan_ascii_identifier_continue::<false>(self.source, start + 1) else {
             return false;
         };
-        // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
-        // after it that is at most `source.len()`.
-        let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
+        let tag = if can_be_keyword {
+            // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
+            // after it that is at most `source.len()`.
+            let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
+            get_keyword_type(lexeme)
+        } else {
+            TokenTag::Identifier
+        };
         self.cursor = pos;
-        *target = Token::new(start, pos, get_keyword_type(lexeme), flags);
+        *target = Token::new(start, pos, tag, flags);
         true
     }
 
@@ -548,8 +564,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         let current_char = self.source[self.cursor as usize];
-        if is_ident_start_ascii(current_char) {
-            if self.scan_ascii_identifier(self.cursor, self.state.token_flags, target) {
+        let class = FAST_CLASS[current_char as usize];
+        if matches!(
+            class,
+            FastClass::KeywordOrIdentifier | FastClass::Identifier
+        ) {
+            if self.scan_ascii_identifier(
+                self.cursor,
+                self.state.token_flags,
+                target,
+                class == FastClass::KeywordOrIdentifier,
+            ) {
                 self.clear_token_flags();
             } else {
                 *target = self.scan_identifier_or_keyword(false)?;
@@ -1239,8 +1264,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             TokenTag::PrivateIdentifier
         } else if has_escape {
             get_escaped_keyword_type(lexeme)
-        } else {
+        } else if FAST_CLASS[first_char as usize] == FastClass::KeywordOrIdentifier {
             get_keyword_type(lexeme)
+        } else {
+            TokenTag::Identifier
         };
 
         Ok(self.create_token(tag, start, self.cursor))
@@ -1879,6 +1906,7 @@ const OPERATOR_EXTENDS: [bool; 256] = {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum FastClass {
     Slow,
+    KeywordOrIdentifier,
     Identifier,
     Punctuation,
     Digit,
@@ -1901,6 +1929,12 @@ const FAST_CLASS: [FastClass; 256] = {
             table[byte] = FastClass::Punctuation;
         }
         byte += 1;
+    }
+    // Derive keyword starts from the same list as the lookup table, including contextual keywords.
+    let mut keyword = 0;
+    while keyword < KEYWORDS.len() {
+        table[KEYWORDS[keyword].0[0] as usize] = FastClass::KeywordOrIdentifier;
+        keyword += 1;
     }
     let mut digit = b'0' as usize;
     while digit <= b'9' as usize {
