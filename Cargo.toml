@@ -42,7 +42,7 @@ unicode-width    = { version = "0.2.3", default-features = false }
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "=84.1.1", features = [
+swc_core = { version = "=84.1.2", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
@@ -98,8 +98,8 @@ jwalk         = "0.9.0"
 jsonc-parser  = { version = "0.34.0", features = ["serde"] }
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
-oxc           = { version = "0.158.0", features = ["ast_visit", "semantic"] }
-oxc_allocator = "0.158.0"
+oxc           = { version = "0.159.0", features = ["ast_visit", "semantic"] }
+oxc_allocator = "0.159.0"
 saphyr        = "0.3.4"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
