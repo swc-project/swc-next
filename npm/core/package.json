@@ -76,6 +76,7 @@
     "@swc-next/parser": "workspace:*",
     "@swc-next/protocol": "workspace:*",
     "@swc-next/transformer": "workspace:*",
+    "@swc-next/helpers": "workspace:*",
     "@swc/core": "catalog:",
     "@types/node": "catalog:",
     "cross-env": "catalog:",
