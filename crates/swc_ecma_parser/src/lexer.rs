@@ -324,6 +324,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
                 }
                 FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
+                FastClass::Slash => return lexer.try_slash_token::<LINE_BREAK>(target, start),
                 FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
             }
             lexer.handle_fast_token(*target);
@@ -395,6 +396,115 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         );
         self.handle_fast_token(*target);
         true
+    }
+
+    /// Reads `/` or `/=` at `start`, or the comments that start there and the token after them.
+    /// See [`Self::try_identifier_token`].
+    #[inline(never)]
+    fn try_slash_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
+        let next = self.source.get(start as usize + 1).copied();
+        if matches!(next, Some(b'*' | b'/')) {
+            return self.try_token_after_comments(target, start, LINE_BREAK);
+        }
+        let (tag, end) = if next == Some(b'=') {
+            (TokenTag::SlashAssign, start + 2)
+        } else {
+            (TokenTag::Slash, start + 1)
+        };
+        self.cursor = end;
+        *target = Token::new(start, end, tag, fast_token_flags(LINE_BREAK));
+        self.handle_fast_token(*target);
+        true
+    }
+
+    /// Skips the comments at `start` with the spaces, tabs, and line feeds around them, and reads
+    /// the token after them with the fast path. `line_break` tells whether a line break precedes
+    /// `start`. Comments are recorded and attached as the trivia scanner does. On failure, the
+    /// cursor and the comments are unchanged.
+    #[inline(never)]
+    fn try_token_after_comments(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+        line_break: bool,
+    ) -> bool {
+        // Whether a comment trails the previous token depends on its tag, and an `Eof` target
+        // can be a placeholder.
+        let previous = target.tag();
+        if previous == TokenTag::Eof {
+            return false;
+        }
+        let first_comment = self.comments.len();
+        debug_assert_eq!(self.processed_comments, first_comment);
+        let read = match self.skip_comments(start as usize, previous, line_break) {
+            Some((pos, byte, line_break)) => {
+                for comment in &mut self.comments[first_comment..] {
+                    if comment.position == CommentPosition::Leading {
+                        comment.attached_to = pos;
+                    }
+                }
+                self.processed_comments = self.comments.len();
+                if line_break {
+                    self.try_next_token_at::<true>(target, pos, byte)
+                } else {
+                    self.try_next_token_at::<false>(target, pos, byte)
+                }
+            }
+            None => false,
+        };
+        if !read {
+            self.comments.truncate(first_comment);
+            self.processed_comments = first_comment;
+        }
+        read
+    }
+
+    /// Records the comments from `pos`, where a comment starts, and skips them with the spaces,
+    /// tabs, and line feeds between them. Returns the position and value of the next byte and
+    /// whether a line break precedes it, or `None` when the trivia scanner must read the rest.
+    #[inline(always)]
+    fn skip_comments(
+        &mut self,
+        mut pos: usize,
+        previous: TokenTag,
+        mut line_break: bool,
+    ) -> Option<(u32, u8, bool)> {
+        let src = self.source;
+        loop {
+            let start = pos as u32;
+            if src[pos + 1] == b'*' {
+                let had_line_break = line_break;
+                pos = block_comment_end(src, pos + 2, &mut line_break)?;
+                let trailing = !had_line_break
+                    && (src.get(pos) == Some(&b';') || previous.can_have_trailing_comment());
+                self.push_comment(CommentKind::Block, start, pos as u32, trailing);
+            } else {
+                pos = line_comment_end(src, pos + 2);
+                // Other line terminators need the trivia scanner.
+                if src.get(pos) != Some(&b'\n') {
+                    return None;
+                }
+                let trailing = !line_break && previous.can_have_trailing_line_comment();
+                self.push_comment(CommentKind::Line, start, pos as u32, trailing);
+            }
+
+            let byte = loop {
+                let byte = *src.get(pos)?;
+                match byte {
+                    b' ' | b'\t' => pos += 1,
+                    b'\n' => {
+                        line_break = true;
+                        let (next, byte) = self.skip_line_feed_indentation(pos as u32)?;
+                        pos = next as usize;
+                        break byte;
+                    }
+                    _ => break byte,
+                }
+            };
+            if byte != b'/' || !matches!(src.get(pos + 1), Some(b'*' | b'/')) {
+                return Some((pos as u32, byte, line_break));
+            }
+        }
     }
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
@@ -1651,10 +1761,16 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         end: u32,
         trailing: bool,
     ) -> Result<(), LexicalError> {
+        self.push_comment(kind, start, end, trailing);
+        Ok(())
+    }
+
+    #[inline]
+    fn push_comment(&mut self, kind: CommentKind, start: u32, end: u32, trailing: bool) {
         debug_assert!(start < end);
         debug_assert!((end as usize) <= self.source.len());
         if !self.collect_comments {
-            return Ok(());
+            return;
         }
         let mut comment = Comment::new(Span::new(start, end), kind);
         if trailing {
@@ -1668,7 +1784,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             comment.position = CommentPosition::Leading;
         }
         self.comments.push(comment);
-        Ok(())
     }
 
     fn attach_pending_comments(&mut self, token: Token) {
@@ -1697,20 +1812,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert_eq!(self.source[self.cursor as usize], b'/');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'/');
         let start = self.cursor;
-        let src = self.source;
-        let mut pos = start as usize + 2;
-        while pos < src.len() {
-            let rest = &src[pos..];
-            let Some(offset) = memchr3(b'\n', b'\r', 0xE2, rest) else {
-                pos = src.len();
-                break;
-            };
-            pos += offset;
-            if src[pos] != 0xE2 || unicode_separator_len(src, pos) > 0 {
-                break;
-            }
-            pos += 1;
-        }
+        let pos = line_comment_end(self.source, start as usize + 2);
         self.cursor = pos as u32;
         let trailing = self.can_have_trailing_line_comment();
         self.record_comment(CommentKind::Line, start, pos as u32, trailing)
@@ -1722,56 +1824,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'*');
         let start = self.cursor;
         let had_line_break = self.has_token_flag(TokenFlag::LineTerminatorBefore);
-        let src = self.source;
-        let mut pos = start as usize + 2;
-        while pos < src.len() {
-            // Preserve line-terminator bookkeeping while searching for */.
-            // The overlapping load also catches a terminator across chunks.
-            while src.len() - pos > 16 {
-                let bytes = u8x16::from_slice(&src[pos..]);
-                let next = u8x16::from_slice(&src[pos + 1..]);
-                let end = bytes.simd_eq(u8x16::splat(b'*')) & next.simd_eq(u8x16::splat(b'/'));
-                // Once recorded, further line breaks cannot change the next token's flags.
-                let special = if self.has_token_flag(TokenFlag::LineTerminatorBefore) {
-                    end
-                } else {
-                    end | bytes.simd_eq(u8x16::splat(b'\n'))
-                        | bytes.simd_eq(u8x16::splat(b'\r'))
-                        | bytes.simd_eq(u8x16::splat(0xE2))
-                };
-                if let Some(offset) = special.first_set() {
-                    pos += offset;
-                    break;
-                }
-                pos += 16;
-            }
-
-            match src[pos] {
-                b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
-                    pos += 2;
-                    self.cursor = pos as u32;
-                    let trailing = self.can_have_trailing_block_comment(had_line_break, pos as u32);
-                    return self.record_comment(CommentKind::Block, start, pos as u32, trailing);
-                }
-                b'*' => pos += 1,
-                b'\n' | b'\r' => {
-                    self.set_token_flag(TokenFlag::LineTerminatorBefore);
-                    pos += 1;
-                }
-                0x80..=0xFF => {
-                    let lt_len = unicode_separator_len(src, pos) as usize;
-                    if lt_len > 0 {
-                        self.set_token_flag(TokenFlag::LineTerminatorBefore);
-                        pos += lt_len;
-                    } else {
-                        pos += 1;
-                    }
-                }
-                _ => pos += 1,
-            }
+        let mut line_break = had_line_break;
+        let end = block_comment_end(self.source, start as usize + 2, &mut line_break);
+        if line_break {
+            self.set_token_flag(TokenFlag::LineTerminatorBefore);
         }
+        let Some(pos) = end else {
+            self.cursor = self.source.len() as u32;
+            return Err(LexicalError::UnterminatedMultiLineComment);
+        };
         self.cursor = pos as u32;
-        Err(LexicalError::UnterminatedMultiLineComment)
+        let trailing = self.can_have_trailing_block_comment(had_line_break, pos as u32);
+        self.record_comment(CommentKind::Block, start, pos as u32, trailing)
     }
 
     #[cold]
@@ -1885,6 +1949,7 @@ enum FastClass {
     Dot,
     Operator,
     Quote,
+    Slash,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1910,7 +1975,8 @@ const FAST_CLASS: [FastClass; 256] = {
     table[b'.' as usize] = FastClass::Dot;
     table[b'"' as usize] = FastClass::Quote;
     table[b'\'' as usize] = FastClass::Quote;
-    // Slash and minus can start comments and retain the trivia path.
+    table[b'/' as usize] = FastClass::Slash;
+    // Minus can start an HTML-like comment and retains the trivia path.
     let operators = b"+*%<>=!&|^?";
     let mut operator = 0;
     while operator < operators.len() {
@@ -1919,6 +1985,73 @@ const FAST_CLASS: [FastClass; 256] = {
     }
     table
 };
+
+/// Returns the position of the line terminator that ends a line comment whose body starts at
+/// `pos`, or the source length.
+#[inline(always)]
+fn line_comment_end(src: &[u8], mut pos: usize) -> usize {
+    while pos < src.len() {
+        let rest = &src[pos..];
+        let Some(offset) = memchr3(b'\n', b'\r', 0xE2, rest) else {
+            return src.len();
+        };
+        pos += offset;
+        if src[pos] != 0xE2 || unicode_separator_len(src, pos) > 0 {
+            break;
+        }
+        pos += 1;
+    }
+    pos
+}
+
+/// Returns the position after the `*/` that ends a block comment whose body starts at `pos`, or
+/// `None` when the comment is unterminated. Sets `line_break` when the comment contains a line
+/// terminator.
+#[inline(always)]
+fn block_comment_end(src: &[u8], mut pos: usize, line_break: &mut bool) -> Option<usize> {
+    while pos < src.len() {
+        // Preserve line-terminator bookkeeping while searching for */.
+        // The overlapping load also catches a terminator across chunks.
+        while src.len() - pos > 16 {
+            let bytes = u8x16::from_slice(&src[pos..]);
+            let next = u8x16::from_slice(&src[pos + 1..]);
+            let end = bytes.simd_eq(u8x16::splat(b'*')) & next.simd_eq(u8x16::splat(b'/'));
+            // Once recorded, further line breaks cannot change the next token's flags.
+            let special = if *line_break {
+                end
+            } else {
+                end | bytes.simd_eq(u8x16::splat(b'\n'))
+                    | bytes.simd_eq(u8x16::splat(b'\r'))
+                    | bytes.simd_eq(u8x16::splat(0xE2))
+            };
+            if let Some(offset) = special.first_set() {
+                pos += offset;
+                break;
+            }
+            pos += 16;
+        }
+
+        match src[pos] {
+            b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => return Some(pos + 2),
+            b'*' => pos += 1,
+            b'\n' | b'\r' => {
+                *line_break = true;
+                pos += 1;
+            }
+            0x80..=0xFF => {
+                let lt_len = unicode_separator_len(src, pos) as usize;
+                if lt_len > 0 {
+                    *line_break = true;
+                    pos += lt_len;
+                } else {
+                    pos += 1;
+                }
+            }
+            _ => pos += 1,
+        }
+    }
+    None
+}
 
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
