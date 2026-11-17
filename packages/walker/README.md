@@ -90,13 +90,17 @@ const walker = createWalker({
 for (const program of programs) walker.walk(program);
 ```
 
-Pass an array to `createWalker` to merge visitors into one traversal:
+Use `merge` to combine visitors before traversing:
 
 ```js
-const walker = createWalker([renameIdentifiers, collectIdentifiers]);
+import { merge, createWalker } from "@swc-next/walker";
+
+const visitor = merge([renameIdentifiers, collectIdentifiers]);
+const walker = createWalker(visitor);
 walker.walk(program);
 ```
 
+`merge` returns a frozen snapshot that also works with `walk(program, visitor)`.
 At each node, enter and leave callbacks run in visitor array order. Each visitor
 keeps its global, alias, and concrete hook order. Later visitors see earlier
 edits to the current node; they do not wait for earlier visitors to finish the

@@ -1,4 +1,4 @@
-import { createWalker } from "@swc-next/walker";
+import { createWalker, merge } from "@swc-next/walker";
 import { encode } from "./ast/encode.js";
 import { decode } from "./ast/decode.js";
 import { encodeSource } from "./source.js";
@@ -69,8 +69,8 @@ function compilePlugins(plugins) {
     stages[stage].push(plugin.visitor);
   }
   return {
-    afterParse: stages.afterParse.length === 0 ? null : createWalker(stages.afterParse),
-    beforeCodegen: stages.beforeCodegen.length === 0 ? null : createWalker(stages.beforeCodegen),
+    afterParse: stages.afterParse.length === 0 ? null : createWalker(merge(stages.afterParse)),
+    beforeCodegen: stages.beforeCodegen.length === 0 ? null : createWalker(merge(stages.beforeCodegen)),
   };
 }
 

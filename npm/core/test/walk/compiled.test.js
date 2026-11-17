@@ -1,5 +1,5 @@
 import { expect, test } from "@rstest/core";
-import { createWalker, walk } from "@swc-next/walker";
+import { createWalker, merge, walk } from "@swc-next/walker";
 
 const id = (name) => ({ type: "Identifier", name });
 const program = () => ({
@@ -82,7 +82,8 @@ test("merged visitors preserve per-visitor hook order in one traversal", () => {
     leave(node) { if (node === ast) events.push(`${name}:global leave`); },
   });
   const visitors = [visitor("A"), visitor("B")];
-  const walker = createWalker(visitors);
+  const merged = merge(visitors);
+  const walker = createWalker(merged);
   visitors[0].Function = () => { throw new Error("hook snapshot changed"); };
   visitors.push({ enter() { throw new Error("visitor snapshot changed"); } });
   walker.walk(ast);
@@ -93,15 +94,34 @@ test("merged visitors preserve per-visitor hook order in one traversal", () => {
     "A:typed leave", "A:alias leave", "A:global leave",
     "B:typed leave", "B:alias leave", "B:global leave",
   ]);
-  expect(createWalker([]).walk(ast)).toBe(ast);
-  expect(() => createWalker([{}, { UnknownNode() {} }])).toThrow(/Unknown/);
+  const directEvents = [];
+  walk(id("direct"), merge([
+    { Identifier(node) { directEvents.push(`A:${node.name}`); } },
+    { Identifier(node) { directEvents.push(`B:${node.name}`); } },
+  ]));
+  expect(directEvents).toEqual(["A:direct", "B:direct"]);
+  expect(Object.isFrozen(merged)).toBe(true);
+  expect(Object.isFrozen(merged.FunctionDeclaration.enter)).toBe(true);
+  expect(createWalker(merge([])).walk(ast)).toBe(ast);
+  expect(() => merge([{}, { UnknownNode() {} }])).toThrow(/Unknown/);
+  expect(() => merge({})).toThrow(/array/);
+});
+
+test("merge accepts merged visitors and snapshots callback arrays", () => {
+  const events = [];
+  const callbacks = [() => { events.push("A"); }, () => { events.push("B"); }];
+  const merged = merge([merge([{ enter: callbacks }]), { Identifier() { events.push("C"); } }]);
+  callbacks[0] = () => { throw new Error("callback snapshot changed"); };
+  walk(id("value"), merged);
+  expect(events).toEqual(["A", "B", "C"]);
+  expect(() => merge([{ Identifier: { enter: [1] } }])).toThrow(/Invalid hook/);
 });
 
 test("merged visitors share skip, replacement, removal, and stop controls", () => {
   const statement = (name) => ({ type: "ExpressionStatement", expression: id(name) });
   const ast = { type: "Program", body: [statement("skip"), statement("remove"), statement("replace"), statement("stop"), statement("tail")] };
   const events = [];
-  createWalker([
+  createWalker(merge([
     {
       ExpressionStatement: {
         enter(node, ctx) {
@@ -122,7 +142,7 @@ test("merged visitors share skip, replacement, removal, and stop controls", () =
       },
       Identifier(node) { events.push(`B:child ${node.name}`); },
     },
-  ]).walk(ast);
+  ])).walk(ast);
   expect(events).toEqual([
     "A:skip", "A:leave skip", "B:leave skip",
     "A:remove", "A:replace", "A:child new", "B:child new",
