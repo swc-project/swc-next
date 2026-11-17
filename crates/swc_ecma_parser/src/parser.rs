@@ -14360,7 +14360,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     #[inline]
     fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
-        self.lexer.state.prev_token_end = self.current_token.end();
+        debug_assert_eq!(self.lexer.cursor, self.current_token.end());
         if self.lexer.try_next_token(&mut self.current_token) {
             Some(())
         } else {
@@ -14368,15 +14368,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    /// Advance through the lexer fast path only. On failure, nothing changes.
+    /// Advance through the lexer fast path only. On failure, only the
+    /// previous-token end is updated, to the current token end.
     #[inline]
     fn try_advance_fast(&mut self) -> bool {
         let mut next = self.current_token;
+        debug_assert_eq!(self.lexer.cursor, self.current_token.end());
         if !self.lexer.try_next_token(&mut next) {
             return false;
         }
         self.check_escaped_keyword();
-        self.lexer.state.prev_token_end = self.current_token.end();
         self.current_token = next;
         true
     }
@@ -14409,7 +14410,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// keyword.
     #[inline]
     fn advance_without_escape_check(&mut self) -> Option<()> {
-        self.lexer.state.prev_token_end = self.current_token.end();
+        debug_assert_eq!(self.lexer.cursor, self.current_token.end());
         if self.lexer.try_next_token(&mut self.current_token) {
             Some(())
         } else {

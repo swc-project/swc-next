@@ -254,6 +254,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
+        // The cursor is at the end of the token being consumed.
+        self.state.prev_token_end = start;
         if start >= self.fast_end {
             return false;
         }
