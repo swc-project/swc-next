@@ -22,6 +22,7 @@ use crate::{
 };
 
 mod annex_b;
+mod ts;
 
 use annex_b::AnnexBFunction;
 
