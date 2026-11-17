@@ -1240,7 +1240,6 @@ impl<'a> SymbolTracker<'a> {
             declarations.push(declaration_id);
             existing
         } else {
-            let new_id = self.symbols.next_idx();
             let name = {
                 let text = tree.get_wtf8(name).as_bytes();
                 match self.own_binding(binding.scope, text) {
@@ -1258,8 +1257,7 @@ impl<'a> SymbolTracker<'a> {
                 name,
                 flags: declaration_flags,
                 declaration: declaration_id,
-            });
-            new_id
+            })
         };
 
         self.declarations.push(Declaration {
@@ -1434,15 +1432,13 @@ impl<'a> SymbolTracker<'a> {
         } else {
             flags
         };
-        let id = self.references.next_idx();
         self.references.push(Reference {
             name,
             scope,
             node,
             symbol: None,
             flags,
-        });
-        id
+        })
     }
 
     #[inline]

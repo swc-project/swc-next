@@ -240,12 +240,11 @@ impl<'a> ScopeModel<'a> {
             declarations.push(declaration);
             symbol
         } else {
-            let symbol = self.symbols.next_idx();
             let name = match previous {
                 Some(symbol) => self.symbol(symbol).name,
                 None => name.into(),
             };
-            self.symbols.push(Symbol {
+            let symbol = self.symbols.push(Symbol {
                 name,
                 flags,
                 declaration,
@@ -289,8 +288,7 @@ impl<'a> ScopeModel<'a> {
             self.reference_of(node).is_none(),
             "reference already registered"
         );
-        let id = self.references.next_idx();
-        self.references.push(reference);
+        let id = self.references.push(reference);
         debug_assert_eq!(self.node_semantic[node], NodeSemanticId::None);
         self.node_semantic[node] = NodeSemanticId::Reference(id);
         if let Some(symbol) = target {
@@ -329,20 +327,7 @@ impl ScopeModel<'_> {
             debug_assert!(parent_scope.function_body.is_none());
         }
         self.grow_to(owner.index() + 1);
-        let id = self.scopes.list.next_idx();
-        self.scopes.list.push(Scope {
-            active: true,
-            node: owner,
-            parent: Some(parent),
-            hoist_target: if kind.is_hoist_target() {
-                id
-            } else {
-                parent_scope.hoist_target
-            },
-            function_body: None,
-            kind,
-            flags,
-        });
+        let id = self.scopes.push_scope(parent, kind, owner, flags);
         self.scope_maps
             .push(ScopeMap::new_in(self.scopes.list.bump()));
         debug_assert!(matches!(
