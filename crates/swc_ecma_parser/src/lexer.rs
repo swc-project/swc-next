@@ -23,6 +23,7 @@ mod scan_ident;
 
 use scan_ident::{
     is_identifier_byte, scan_ascii_identifier_continue, scan_ascii_identifier_or_keyword,
+    scan_ascii_identifier_or_keyword_unchecked,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,7 +116,17 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
+    /// The fast paths read a token only at a position up to this one. At least
+    /// [`FAST_PATH_LOOKAHEAD`] bytes follow it, and it is at most the position
+    /// of the last byte that is not a space, tab, line feed, or decimal digit,
+    /// so the fast paths read their bytes and skip whitespace and digits
+    /// without bounds checks. Tokens after it go to the full scanner.
+    fast_end: u32,
 }
+
+/// Bytes that the fast paths can read from a token start up to
+/// [`Lexer::fast_end`] without bounds checks: one batch of the identifier scan.
+const FAST_PATH_LOOKAHEAD: usize = 16;
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub fn init(
@@ -155,6 +166,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             allow_html_like_comments,
             hashbang: None,
             state: LexerState::default(),
+            fast_end: fast_path_end(source.as_bytes()),
         };
         lexer.skip_hashbang();
         if lexer.hashbang.is_some() {
@@ -242,15 +254,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
-        let Some(mut byte) = self.source.get(start as usize).copied() else {
+        if start >= self.fast_end {
             return false;
-        };
+        }
+        // SAFETY: `start` is before `fast_end`, and both positions read here are at most
+        // `fast_end`.
+        let mut byte = unsafe { *self.source.get_unchecked(start as usize) };
         if byte == b' ' {
             start += 1;
-            let Some(next) = self.source.get(start as usize).copied() else {
-                return false;
-            };
-            byte = next;
+            byte = unsafe { *self.source.get_unchecked(start as usize) };
         } else if byte == b'\n' {
             let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
                 return false;
@@ -263,8 +275,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.try_next_token_at::<false>(target, start, byte)
     }
 
-    /// Reads a fast-path token at `start`. `LINE_BREAK` is a constant so each
-    /// copy builds its token flags without keeping them in a register.
+    /// Reads a fast-path token at `start`, which is at most [`Self::fast_end`].
+    /// `LINE_BREAK` is a constant so each copy builds its token flags without
+    /// keeping them in a register.
     #[inline(always)]
     fn try_next_token_at<const LINE_BREAK: bool>(
         &mut self,
@@ -272,6 +285,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         start: u32,
         byte: u8,
     ) -> bool {
+        debug_assert!(start <= self.fast_end);
         let flags = fast_token_flags(LINE_BREAK);
         let class = FAST_CLASS[byte as usize];
 
@@ -294,8 +308,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         target: &mut Token,
         start: u32,
     ) -> bool {
+        debug_assert!(start <= self.fast_end);
         let flags = fast_token_flags(LINE_BREAK);
-        if !self.scan_ascii_identifier(start, flags, target) {
+        if !self.scan_ascii_identifier::<true>(start, flags, target) {
             return false;
         }
         self.handle_fast_token(*target);
@@ -328,17 +343,24 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// [`ClassScanner`], which runs outside [`Self::try_next_token`].
     #[inline(always)]
     fn try_string_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
-        let quote = self.source[start as usize];
+        debug_assert!(start <= self.fast_end);
         let body = start as usize + 1;
+        // SAFETY: `start` is at most `fast_end`, so it and the byte after it are in the source.
+        let (quote, rest) = unsafe {
+            (
+                *self.source.get_unchecked(start as usize),
+                self.source.get_unchecked(body..),
+            )
+        };
         // Escapes and unterminated strings still need the full string scanner.
-        let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', &self.source[body..]) else {
+        let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
             return false;
         };
-        let end = body + offset;
-        if self.source[end] != quote {
+        // SAFETY: `memchr4` returns the offset of a byte in `rest`.
+        if unsafe { *rest.get_unchecked(offset) } != quote {
             return false;
         }
-        let end = end as u32 + 1;
+        let end = (body + offset) as u32 + 1;
         self.cursor = end;
         *target = Token::new(
             start,
@@ -428,8 +450,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             };
             leading |= !trailing;
 
+            // The fast path reads tokens only up to `fast_end`.
+            if pos > self.fast_end as usize {
+                return None;
+            }
             let byte = loop {
-                let byte = *src.get(pos)?;
+                // SAFETY: a byte other than a space, tab, or line feed is at `fast_end` or after
+                // it, and `pos` starts at most at `fast_end`, so the scan stops inside the source.
+                let byte = unsafe { *src.get_unchecked(pos) };
                 match byte {
                     b' ' | b'\t' => pos += 1,
                     b'\n' => {
@@ -442,6 +470,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 }
             };
             if byte != b'/' || !matches!(src.get(pos + 1), Some(b'*' | b'/')) {
+                // The fast path reads tokens only up to `fast_end`.
+                if pos > self.fast_end as usize {
+                    return None;
+                }
                 return Some((pos as u32, byte, line_break, leading));
             }
         }
@@ -518,40 +550,76 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     /// Skips a line feed, blank lines, and space or tab indentation. Returns the
-    /// position and value of the next byte, or `None` at the end of the source.
+    /// position and value of the next byte, or `None` when the fast path does
+    /// not read a token there because it is after [`Self::fast_end`].
     #[inline(always)]
     fn skip_line_feed_indentation(&self, line_feed: u32) -> Option<(u32, u8)> {
-        let mut start = line_feed as usize + 1;
-        if self.source.get(start) == Some(&b' ') {
+        let src = self.source;
+        let fast_end = self.fast_end as usize;
+        let line_feed = line_feed as usize;
+        if line_feed >= fast_end {
+            return None;
+        }
+        // A byte other than a space, tab, or line feed is at `fast_end` or after it, so it stops
+        // every scan below inside the source, and `start + FAST_PATH_LOOKAHEAD` is in the source
+        // whenever `start` is at most `fast_end`.
+        let mut start = line_feed + 1;
+        // SAFETY: `start` is at most `fast_end`.
+        if unsafe { *src.get_unchecked(start) } == b' ' {
             // Skip a run of spaces eight bytes at a time. The first byte that differs from a
             // space ends the run, wherever it falls in the word.
-            while let Some(word) = self.source.get(start..start + 8) {
-                let differing =
-                    u64::from_le_bytes(word.try_into().unwrap()) ^ 0x2020_2020_2020_2020;
+            while start <= fast_end {
+                // SAFETY: `start` is at most `fast_end`, so eight bytes follow it.
+                let word = unsafe { src.as_ptr().add(start).cast::<u64>().read_unaligned() };
+                let differing = u64::from_le(word) ^ 0x2020_2020_2020_2020;
                 start += (differing.trailing_zeros() / 8) as usize;
                 if differing != 0 {
                     break;
                 }
             }
         }
-        while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
+        let byte = loop {
+            // SAFETY: see above; the scan stops before it passes the last byte other than a
+            // space, tab, or line feed.
+            let byte = unsafe { *src.get_unchecked(start) };
+            if !matches!(byte, b' ' | b'\t' | b'\n') {
+                break byte;
+            }
             start += 1;
+        };
+        if start > fast_end {
+            return None;
         }
-        let byte = *self.source.get(start)?;
         Some((start as u32, byte))
     }
 
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
+    /// `IN_BOUNDS` says that `start` is at most [`Self::fast_end`], so the first
+    /// batch is read without a bounds check.
     ///
     /// The token is built as an identifier before the keyword lookup, so the lookup does not
     /// keep the span live, and a keyword only replaces the tag.
     #[inline(always)]
-    fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
+    fn scan_ascii_identifier<const IN_BOUNDS: bool>(
+        &mut self,
+        start: u32,
+        flags: u8,
+        target: &mut Token,
+    ) -> bool {
+        debug_assert!(!IN_BOUNDS || start <= self.fast_end);
+        let source = self.source;
         let cursor = &mut self.cursor;
-        let Some(keyword) = scan_ascii_identifier_or_keyword(self.source, start, |end| {
+        let found = |end| {
             *cursor = end;
             *target = Token::new(start, end, TokenTag::Identifier, flags);
-        }) else {
+        };
+        let scanned = if IN_BOUNDS {
+            // SAFETY: `start` is at most `fast_end`, so a batch of lookahead bytes follows it.
+            unsafe { scan_ascii_identifier_or_keyword_unchecked(source, start, found) }
+        } else {
+            scan_ascii_identifier_or_keyword(source, start, found)
+        };
+        let Some(keyword) = scanned else {
             return false;
         };
         if let Some(tag) = keyword {
@@ -572,15 +640,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         target: &mut Token,
     ) -> bool {
         debug_assert_eq!(self.source[start as usize], byte);
+        debug_assert!(start <= self.fast_end);
+        let src = self.source;
         let mut end = start as usize + 1;
+        // SAFETY: a byte other than a decimal digit is at `fast_end` or after it, and `start` is
+        // at most `fast_end`, so the scan stops inside the source.
+        let mut next = unsafe { *src.get_unchecked(end) };
         if byte != b'0' {
-            while self.source.get(end).is_some_and(u8::is_ascii_digit) {
+            while next.is_ascii_digit() {
                 end += 1;
+                next = unsafe { *src.get_unchecked(end) };
             }
         }
-        if let Some(&next) = self.source.get(end)
-            && (is_identifier_byte(next) || next == b'.')
-        {
+        if is_identifier_byte(next) || next == b'.' {
             return false;
         }
         self.cursor = end as u32;
@@ -604,7 +676,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let current_char = self.source[self.cursor as usize];
         if is_ident_start_ascii(current_char) {
-            if self.scan_ascii_identifier(self.cursor, self.state.token_flags, target) {
+            if self.scan_ascii_identifier::<false>(self.cursor, self.state.token_flags, target) {
                 self.clear_token_flags();
             } else {
                 *target = self.scan_identifier_or_keyword(false)?;
@@ -1957,7 +2029,8 @@ const FAST_CLASS: [FastClass; 256] = {
 
 /// Scans a token at `start` whose first byte, `byte`, has a class that
 /// [`Lexer::try_next_token_at`] does not scan inline. Returns `false` when the
-/// token needs the full scanner.
+/// token needs the full scanner. `start` is at most [`Lexer::fast_end`], so the
+/// scanners read their lookahead bytes without bounds checks.
 type ClassScanner<C> = for<'a> fn(&mut Lexer<'a, C>, &mut Token, u32, u8) -> bool;
 
 /// The [`ClassScanner`] of each [`FastClass`], for tokens after a line break when
@@ -1993,11 +2066,9 @@ impl<C: ParserConfig, const LINE_BREAK: bool> ClassScanners<C, LINE_BREAK> {
     }
 
     fn dot(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
-        if lexer
-            .source
-            .get(start as usize + 1)
-            .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
-        {
+        // SAFETY: `start` is at most `fast_end`, so a lookahead byte follows it.
+        let next = unsafe { *lexer.source.get_unchecked(start as usize + 1) };
+        if next == b'.' || next.is_ascii_digit() {
             return false;
         }
         lexer.cursor = start + 1;
@@ -2015,9 +2086,8 @@ impl<C: ParserConfig, const LINE_BREAK: bool> ClassScanners<C, LINE_BREAK> {
         let end = start + 1;
         // A second byte outside this set ends the operator, so the token is
         // one byte long and does not need the full punctuation scan.
-        let Some(&next) = lexer.source.get(end as usize) else {
-            return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
-        };
+        // SAFETY: `start` is at most `fast_end`, so a lookahead byte follows it.
+        let next = unsafe { *lexer.source.get_unchecked(end as usize) };
         if OPERATOR_EXTENDS[next as usize] {
             return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, next);
         }
@@ -2037,11 +2107,12 @@ impl<C: ParserConfig, const LINE_BREAK: bool> ClassScanners<C, LINE_BREAK> {
     }
 
     fn slash(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
-        let next = lexer.source.get(start as usize + 1).copied();
-        if matches!(next, Some(b'*' | b'/')) {
+        // SAFETY: `start` is at most `fast_end`, so a lookahead byte follows it.
+        let next = unsafe { *lexer.source.get_unchecked(start as usize + 1) };
+        if matches!(next, b'*' | b'/') {
             return lexer.try_token_after_comments(target, start, LINE_BREAK);
         }
-        let (tag, end) = if next == Some(b'=') {
+        let (tag, end) = if next == b'=' {
             (TokenTag::SlashAssign, start + 2)
         } else {
             (TokenTag::Slash, start + 1)
@@ -2051,6 +2122,22 @@ impl<C: ParserConfig, const LINE_BREAK: bool> ClassScanners<C, LINE_BREAK> {
         lexer.handle_fast_token(*target);
         true
     }
+}
+
+/// Returns [`Lexer::fast_end`] for `source`: the last position that is followed by
+/// [`FAST_PATH_LOOKAHEAD`] bytes and is not after the last byte other than a space,
+/// tab, line feed, or decimal digit. Returns 0 when no such position exists, which
+/// leaves every token to the full scanner.
+fn fast_path_end(source: &[u8]) -> u32 {
+    let last_stop = source
+        .iter()
+        .rposition(|byte| !matches!(byte, b' ' | b'\t' | b'\n' | b'0'..=b'9'))
+        .unwrap_or(0);
+    let end = source
+        .len()
+        .saturating_sub(FAST_PATH_LOOKAHEAD)
+        .min(last_stop);
+    end as u32
 }
 
 /// Returns the position of the line terminator that ends a line comment whose body starts at

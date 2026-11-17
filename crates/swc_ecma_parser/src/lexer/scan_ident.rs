@@ -186,6 +186,23 @@ mod imp {
             return scan_ascii_identifier_or_keyword_slow(source, start, found);
         }
         // SAFETY: the check above keeps a whole batch at `position` within `source`.
+        unsafe { scan_ascii_identifier_or_keyword_unchecked(source, start, found) }
+    }
+
+    /// [`scan_ascii_identifier_or_keyword`] for a `start` that a whole batch follows.
+    ///
+    /// # Safety
+    ///
+    /// `start + 16` must be at most `source.len()`.
+    #[inline(always)]
+    pub unsafe fn scan_ascii_identifier_or_keyword_unchecked(
+        source: &[u8],
+        start: u32,
+        found: impl FnOnce(u32),
+    ) -> Option<Option<TokenTag>> {
+        let position = start as usize;
+        debug_assert!(position + IDENTIFIER_BATCH_SIZE <= source.len());
+        // SAFETY: the caller keeps a whole batch at `position` within `source`.
         let chunk = unsafe {
             &*source
                 .as_ptr()
@@ -333,6 +350,21 @@ pub use imp::*;
 #[cfg(not(target_arch = "x86_64"))]
 #[inline(always)]
 pub fn scan_ascii_identifier_or_keyword(
+    source: &[u8],
+    start: u32,
+    found: impl FnOnce(u32),
+) -> Option<Option<TokenTag>> {
+    scan_ascii_identifier_or_keyword_slow(source, start, found)
+}
+
+/// [`scan_ascii_identifier_or_keyword`] for a `start` that 16 bytes follow.
+///
+/// # Safety
+///
+/// `start + 16` must be at most `source.len()`.
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+pub unsafe fn scan_ascii_identifier_or_keyword_unchecked(
     source: &[u8],
     start: u32,
     found: impl FnOnce(u32),
