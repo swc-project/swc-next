@@ -33,8 +33,8 @@
 
 ## Code Style
 
-- Rewrite `Option` chains that produce excessive line breaks and indentation
-  into flatter, more readable code.
+- Rewrite `Option` chains that produce excessive line breaks and indentation into flatter, more readable code.
+- Prefer `unwrap()` to avoid the line break and make the code clear when the reason it cannot fail is obvious from the surrounding code. Use expect() when success depends on a non-obvious invariant, and explain that invariant in the message.
 
 ## README Writing
 

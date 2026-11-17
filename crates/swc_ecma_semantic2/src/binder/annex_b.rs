@@ -72,7 +72,7 @@ impl<'a> SymbolTracker<'a> {
                         if enter {
                             *blocked.entry(key).or_default() += 1;
                         } else {
-                            let count = blocked.get_mut(&key).expect("active lexical blocker");
+                            let count = blocked.get_mut(&key).unwrap();
                             *count -= 1;
                             if *count == 0 {
                                 blocked.remove(&key);
@@ -172,9 +172,7 @@ impl<'a> SymbolTracker<'a> {
         // The syntax node continues to identify the lexical function. The
         // companion declaration only contributes to the outer var symbol.
         let (symbol, _) = self.declare_symbol(tree, declaration, existing, false);
-        let lexical = self
-            .symbol_of_node(name.node_id())
-            .expect("function name is bound");
+        let lexical = self.symbol_of_node(name.node_id()).unwrap();
         self.symbol_links.link(lexical, symbol);
         if existing.is_none() {
             self.insert_scope_binding(tree, target, declaration.name, symbol);

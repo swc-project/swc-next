@@ -220,10 +220,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn pop_scope(&mut self) {
         // Root and its source-type wrapper are never popped directly by the ordinary walk.
-        self.current_scope = self
-            .current_scope()
-            .parent
-            .expect("non-root scopes have a parent");
+        self.current_scope = self.current_scope().parent.unwrap();
     }
 
     // Ordinary functions own arguments whether or not they have a body.
@@ -704,7 +701,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         //
         //   switch (x) { case 1: let x }
         //   //      ^ outer scope    ^ case-block scope
-        let parent = self.current_node().expect("a switch case has a parent");
+        let parent = self.current_node().unwrap();
         if self.current_scope().node != parent {
             self.push_scope(ScopeKind::Block, parent, self.inherit_strict_flag());
         }

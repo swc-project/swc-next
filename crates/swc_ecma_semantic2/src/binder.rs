@@ -756,10 +756,7 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         let is_declaration = function.function_type(tree) == FunctionType::FunctionDeclaration;
-        let enclosing = scope
-            .get(current_scope)
-            .parent
-            .expect("a function scope has an enclosing scope");
+        let enclosing = scope.get(current_scope).parent.unwrap();
         // Declaration placement follows the enclosing code, independently
         // of a "use strict" directive in the function's own body.
         let strict = scope.get(enclosing).flags.strict;
@@ -819,10 +816,7 @@ impl<'a> SymbolTracker<'a> {
 
     pub fn enter_ts_function(&mut self, scope: &ScopeTree<'a>, current_scope: ScopeId) {
         self.push_saved_context();
-        let target = scope
-            .get(current_scope)
-            .parent
-            .expect("a TypeScript function scope has a parent");
+        let target = scope.get(current_scope).parent.unwrap();
         self.pending = PendingBinding {
             flags: SymbolFlags::FUNCTION | SymbolFlags::AMBIENT,
             excludes: Excludes::FUNCTION,
@@ -845,10 +839,7 @@ impl<'a> SymbolTracker<'a> {
                 .with(SymbolFlags::AMBIENT, class.declare(tree) || self.ambient),
             excludes: Excludes::CLASS,
             scope: if is_declaration {
-                scope
-                    .get(current_scope)
-                    .parent
-                    .expect("a class declaration scope has a parent")
+                scope.get(current_scope).parent.unwrap()
             } else {
                 current_scope
             },
@@ -874,10 +865,7 @@ impl<'a> SymbolTracker<'a> {
 
     /// Restores the context to what it was before the matching enter.
     pub fn exit_formal_parameters(&mut self) {
-        let saved = self
-            .saved_stack
-            .pop()
-            .expect("formal parameters have a saved binding context");
+        let saved = self.saved_stack.pop().unwrap();
         self.pending = saved.pending;
         self.ambient = saved.ambient;
     }
@@ -957,10 +945,7 @@ impl<'a> SymbolTracker<'a> {
                 declaration.declare(tree) || self.ambient,
             ),
             excludes: Excludes::INTERFACE,
-            scope: scope
-                .get(current_scope)
-                .parent
-                .expect("an interface scope has a parent"),
+            scope: scope.get(current_scope).parent.unwrap(),
         };
     }
 
@@ -978,10 +963,7 @@ impl<'a> SymbolTracker<'a> {
                 declaration.declare(tree) || self.ambient,
             ),
             excludes: Excludes::TYPE_ALIAS,
-            scope: scope
-                .get(current_scope)
-                .parent
-                .expect("a type alias scope has a parent"),
+            scope: scope.get(current_scope).parent.unwrap(),
         };
     }
 
@@ -1134,10 +1116,7 @@ impl<'a> SymbolTracker<'a> {
     }
 
     pub fn exit_saved_context(&mut self) {
-        let saved = self
-            .saved_stack
-            .pop()
-            .expect("binding context entry and exit are paired");
+        let saved = self.saved_stack.pop().unwrap();
         self.pending = saved.pending;
         self.export_state = saved.export_state;
         self.ambient = saved.ambient;
@@ -1261,7 +1240,7 @@ impl<'a> SymbolTracker<'a> {
 
     pub(crate) fn link_parameter_vars(&mut self, scopes: &ScopeTree<'a>, body: ScopeId) {
         self.sync_scope_maps_from(scopes);
-        let parameters = scopes.get(body).parent.expect("function body has a parent");
+        let parameters = scopes.get(body).parent.unwrap();
         // Inspect the completed body so a function implementation suppresses
         // parameter-to-var initialization independently of declaration order.
         for (&name, &parameter) in &self.scope_maps[parameters] {

@@ -1171,10 +1171,7 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
     if function.function_type(builder.ast) != FunctionType::FunctionDeclaration {
         return;
     }
-    let enclosing = builder
-        .current_scope()
-        .parent
-        .expect("a function declaration scope has an enclosing scope");
+    let enclosing = builder.current_scope().parent.unwrap();
     let strict = builder.scope.get(enclosing).flags.strict;
     let mut through_labels = false;
     let mut ancestors = builder.ancestors();
@@ -1262,10 +1259,7 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
     let children = body.body(builder.ast);
     let mut first_constructor = None;
     for index in 0..children.len() {
-        let child = children
-            .get_node(builder.ast, index)
-            .expect("class child exists")
-            .node_id();
+        let child = children.get_node(builder.ast, index).unwrap().node_id();
         if builder.check_syntax.class_member_names() {
             check_class_member_name(builder, child);
         }
@@ -1304,7 +1298,7 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
         for previous_index in 0..index {
             let previous = children
                 .get_node(builder.ast, previous_index)
-                .expect("class child exists")
+                .unwrap()
                 .node_id();
             if builder.ast.node_kind(previous) == NodeKind::TsMethodDefinition {
                 continue;
@@ -1695,9 +1689,7 @@ fn check_assign_target_eval_arguments(builder: &mut SemanticBuilder<'_, '_>, nod
         NodeKindData::ObjectPattern(object) => {
             let properties = object.properties(builder.ast);
             for index in 0..properties.len() {
-                let property = properties
-                    .get_node(builder.ast, index)
-                    .expect("object pattern property exists");
+                let property = properties.get_node(builder.ast, index).unwrap();
                 check_assign_target_eval_arguments(builder, property.value(builder.ast).node_id());
             }
             if let Some(rest) = object.rest(builder.ast) {
@@ -1814,17 +1806,13 @@ fn check_duplicate_with_attributes(
         return;
     }
     for index in 0..attributes.len() {
-        let attribute = attributes
-            .get_node(builder.ast, index)
-            .expect("import attribute exists");
+        let attribute = attributes.get_node(builder.ast, index).unwrap();
         let key = attribute.key(builder.ast).node_id();
         let Some(key_name) = import_attribute_name(builder.ast, key) else {
             continue;
         };
         for previous_index in 0..index {
-            let previous = attributes
-                .get_node(builder.ast, previous_index)
-                .expect("import attribute exists");
+            let previous = attributes.get_node(builder.ast, previous_index).unwrap();
             let previous_key = previous.key(builder.ast).node_id();
             let Some(previous_key_name) = import_attribute_name(builder.ast, previous_key) else {
                 continue;

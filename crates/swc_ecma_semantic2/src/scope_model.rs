@@ -379,7 +379,7 @@ impl ScopeModel<'_> {
     ) {
         let original = self.scope(scope);
         debug_assert!(original.active);
-        let parent = original.parent.expect("cannot convert a root scope");
+        let parent = original.parent.unwrap();
         debug_assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
         debug_assert!(kind == ScopeKind::Function || original.function_body.is_none());
         debug_assert!(!self.iter_scopes().any(|entry| {
@@ -443,7 +443,7 @@ impl ScopeModel<'_> {
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         let original = self.scope(scope);
         debug_assert!(original.active && self.scope(parent).active);
-        let previous = original.parent.expect("cannot reparent a root scope");
+        let previous = original.parent.unwrap();
         if previous == parent {
             return;
         }
@@ -496,7 +496,7 @@ impl ScopeModel<'_> {
     pub fn remove_scope(&mut self, scope: ScopeId) {
         let original = self.scope(scope);
         debug_assert!(original.active);
-        let parent = original.parent.expect("cannot remove a root scope");
+        let parent = original.parent.unwrap();
         debug_assert_eq!(self.scope_of(original.node), Some(scope));
         debug_assert!(
             !self
