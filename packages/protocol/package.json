@@ -45,6 +45,9 @@
     "./document": {
       "types": "./document.d.ts",
       "import": "./document.js"
+    },
+    "./plugins": {
+      "import": "./plugins.js"
     }
   },
   "files": [
@@ -64,7 +67,8 @@
     "source.js",
     "transform.d.ts",
     "transform.js",
-    "README.md"
+    "README.md",
+    "plugins.js"
   ],
   "publishConfig": {
     "access": "public",
@@ -72,6 +76,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@swc-next/types": "workspace:*"
+    "@swc-next/types": "workspace:*",
+    "@swc-next/walker": "workspace:*"
   }
 }

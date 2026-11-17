@@ -655,7 +655,7 @@ pub mod bridge {
     ///
     /// # Safety
     /// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
-    fn output_to_buffer<T: AsMut<[u8]>, E>(
+    pub(super) fn output_to_buffer<T: AsMut<[u8]>, E>(
         source: &str,
         source_utf16_len: u32,
         output: JsOutput,
@@ -740,3 +740,6 @@ pub mod bridge {
         .map(napi::bindgen_prelude::Either::B)
     }
 }
+
+#[cfg(feature = "bridge")]
+pub mod plugins;

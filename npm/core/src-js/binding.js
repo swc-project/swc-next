@@ -583,3 +583,5 @@ export { CommentMode }
 export { Lang }
 export { SourceType }
 export { transformSync }
+
+export const { parseForPluginsSync, checkPluginAstSync, printPluginAstSync } = nativeBinding

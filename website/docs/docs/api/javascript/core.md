@@ -54,3 +54,40 @@ const result = parseSync("const answer: number = 42;", options);
 ```
 
 `satisfies` checks option names and values while preserving their inferred types. The browser package exports the same types from `@swc-next/core-browser`. Both packages also re-export [AST node types](/api/javascript/types), such as `Program` and `Node`.
+
+### JavaScript plugins
+
+`plugins` lets synchronous JavaScript visitors edit the full ESTree / TS-ESTree
+Program. Plugins finish one walk each in array order within their stage.
+`afterParse` is the default; `beforeCodegen` runs immediately before printing.
+
+```js
+transformSync('import value from "pkg"; debugger;', {
+  plugins: [{
+    name: "remove-debugger",
+    stage: "afterParse",
+    visitor: {
+      DebuggerStatement(_node, ctx) {
+        if (ctx.index !== null) ctx.remove();
+        else ctx.replace({ type: "EmptyStatement" });
+      },
+    },
+  }],
+});
+```
+
+An absent or empty list preserves the source-only API and keeps the AST in Rust.
+The current JavaScript API parses and prints; it does not lower TypeScript or JSX.
+Both stages therefore see source syntax. When `parser.semanticErrors` is enabled,
+input is checked before callbacks and the AST is checked again after `afterParse`
+visitors. `beforeCodegen` edits are printed without another semantic check.
+
+Hooks must return `undefined` synchronously. Plugin exceptions propagate;
+invalid input and enabled semantic errors throw `SyntaxError` with UTF-16
+`diagnostics` before later hooks execute. Without plugins, the existing API still
+returns errors in `diagnostics`.
+
+Nonempty plugins do not support source maps or preserved source comments.
+Use `comments: "none"` to suppress output comments; `parser.comments` only controls
+collection during parsing. Parser-only context checks are not rerun after edits.
+Source spans remain the plugin author's responsibility.
