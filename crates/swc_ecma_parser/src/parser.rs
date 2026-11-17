@@ -4180,7 +4180,37 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
     }
 
+    // Only TypeScript has `this` parameters, decorators, and parameter properties.
+    // JavaScript uses a smaller list loop whose result is returned in registers.
+    #[inline(always)]
     fn parse_formal_parameters(
+        &mut self,
+        kind: FormalParameterKind,
+        allow_parameter_properties: bool,
+    ) -> Option<(Option<TsThisParameter>, FormalParameters)> {
+        if self.lang.is_typescript() {
+            self.parse_typescript_formal_parameters(kind, allow_parameter_properties)
+        } else {
+            Some((None, self.parse_javascript_formal_parameters(kind)?))
+        }
+    }
+
+    fn parse_javascript_formal_parameters(
+        &mut self,
+        kind: FormalParameterKind,
+    ) -> Option<FormalParameters> {
+        let start = self.current_token.start();
+        if !self.expect(
+            TokenTag::LeftParen,
+            "Expected '(' to start parameter list",
+            None,
+        ) {
+            return None;
+        }
+        self.parse_formal_parameter_list::<false>(start, kind, false)
+    }
+
+    fn parse_typescript_formal_parameters(
         &mut self,
         kind: FormalParameterKind,
         allow_parameter_properties: bool,
@@ -4193,8 +4223,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let this_param = if self.lang.is_typescript() && self.current_token.tag() == TokenTag::This
-        {
+        let this_param = if self.current_token.tag() == TokenTag::This {
             if allow_parameter_properties || kind == FormalParameterKind::ArrowFormalParameters {
                 self.report(
                     self.current_token.span(),
@@ -4216,6 +4245,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
+        let parameters =
+            self.parse_formal_parameter_list::<true>(start, kind, allow_parameter_properties)?;
+        Some((this_param, parameters))
+    }
+
+    // Parses the parameters after `(` and an optional `this` parameter.
+    #[inline(always)]
+    fn parse_formal_parameter_list<const IS_TYPESCRIPT: bool>(
+        &mut self,
+        start: u32,
+        kind: FormalParameterKind,
+        allow_parameter_properties: bool,
+    ) -> Option<FormalParameters> {
         let checkpoint = self.scratch_a.begin();
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
@@ -4225,12 +4267,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 && self.current_token.tag() != TokenTag::Eof
             {
                 let parameter_start = self.current_token.start();
-                let decorators =
-                    if self.lang.is_typescript() && self.current_token.tag() == TokenTag::At {
-                        self.parse_decorators()?.1
-                    } else {
-                        SubRange::empty()
-                    };
+                let decorators = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::At {
+                    self.parse_decorators()?.1
+                } else {
+                    SubRange::empty()
+                };
 
                 if self.current_token.tag() == TokenTag::Spread {
                     let parameter = self.parse_formal_parameter_rest(kind, decorators)?;
@@ -4248,21 +4289,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     break;
                 }
 
-                let parameter = if self.lang.is_typescript() {
-                    self.parse_formal_parameter::<true>(
-                        kind,
-                        allow_parameter_properties,
-                        decorators,
-                        parameter_start,
-                    )
-                } else {
-                    self.parse_formal_parameter::<false>(
-                        kind,
-                        allow_parameter_properties,
-                        decorators,
-                        parameter_start,
-                    )
-                }?;
+                let parameter = self.parse_formal_parameter::<IS_TYPESCRIPT>(
+                    kind,
+                    allow_parameter_properties,
+                    decorators,
+                    parameter_start,
+                )?;
 
                 self.scratch_a.append(parameter);
                 if !self.eat(TokenTag::Comma)? {
@@ -4278,10 +4310,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return None;
             }
             let items = self.add_extra_from_scratch_a(checkpoint);
-            let parameters = self
-                .ast
-                .formal_parameters(Span::new(start, end), items, rest, kind);
-            Some((this_param, parameters))
+            Some(
+                self.ast
+                    .formal_parameters(Span::new(start, end), items, rest, kind),
+            )
         })();
         self.ts_context = ts_context;
         self.scratch_a.reset(checkpoint);
