@@ -1625,22 +1625,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.take_reference_flags();
     }
 
-    fn visit_jsx_element(&mut self, node: swc_next_ecma_ast::JsxElement) {
-        self.enter_node(node.node_id());
-        self.symbols
-            .record_jsx_usage(node.node_id(), self.current_scope, false);
-        node.visit_children_with(self);
-        self.leave_node(NodeKindData::JsxElement(node));
-    }
-
-    fn visit_jsx_fragment(&mut self, node: swc_next_ecma_ast::JsxFragment) {
-        self.enter_node(node.node_id());
-        self.symbols
-            .record_jsx_usage(node.node_id(), self.current_scope, true);
-        node.visit_children_with(self);
-        self.leave_node(NodeKindData::JsxFragment(node));
-    }
-
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.enter_node(node.node_id());
         self.symbols

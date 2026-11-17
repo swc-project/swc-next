@@ -575,7 +575,6 @@ pub(crate) struct SymbolTracker<'a> {
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
     symbol_links: SymbolLinks<'a>,
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
-    jsx_usages: ArenaVec<'a, crate::JsxUsage>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
@@ -662,7 +661,6 @@ impl<'a> SymbolTracker<'a> {
             symbols: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             symbol_links: SymbolLinks::new_in(allocator),
             references: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 4), allocator),
-            jsx_usages: ArenaVec::new_in(allocator),
             declarations: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             redeclarations: Redeclarations::new_in(allocator),
             node_semantic,
@@ -1437,14 +1435,6 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    pub fn record_jsx_usage(&mut self, node: NodeId, scope: ScopeId, is_fragment: bool) {
-        self.jsx_usages.push(crate::JsxUsage {
-            node,
-            scope,
-            is_fragment,
-        });
-    }
-
     pub fn add_jsx_opening_element_reference(
         &mut self,
         tree: &Ast<'a>,
@@ -1647,7 +1637,6 @@ impl<'a> SymbolTracker<'a> {
             symbols: self.symbols,
             symbol_links: self.symbol_links,
             references: self.references,
-            jsx_usages: self.jsx_usages,
             declarations: self.declarations,
             redeclarations: self.redeclarations,
             use_ids,

@@ -48,15 +48,6 @@ type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
 type HoistingMap<'a> = ArenaHashMap<'a, &'a [u8], DeclarationId>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
-/// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
-/// This records syntax and its lexical environment, not a particular JSX runtime.
-#[derive(Debug, Clone, Copy)]
-pub struct JsxUsage {
-    pub node: NodeId,
-    pub scope: ScopeId,
-    pub is_fragment: bool,
-}
-
 /// The semantic model of a tree, with scopes, symbols, declarations, and
 /// references cross-indexed. Backed by the tree's arena and valid for the
 /// lifetime of the tree.
@@ -68,7 +59,6 @@ pub struct JsxUsage {
 pub struct Semantic<'a> {
     /// Every scope, indexed by [`ScopeId`].
     scopes: ScopeTree<'a>,
-    jsx_usages: ArenaVec<'a, JsxUsage>,
     /// Every symbol, in declaration order, indexed by [`SymbolId`].
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
     symbol_links: SymbolLinks<'a>,
@@ -123,20 +113,6 @@ impl NodeSemanticId {
 }
 
 impl<'a> Semantic<'a> {
-    /// JSX usage sites and their lexical environments in traversal order.
-    /// Intrinsic tags are included; a fragment also requires an element factory.
-    pub fn jsx_usages(&self) -> &[JsxUsage] {
-        &self.jsx_usages
-    }
-
-    /// Consecutive JSX usage sites grouped by their shared lexical scope.
-    /// Binding-dependent analyses can resolve implicit runtime names once per group.
-    pub fn jsx_usage_groups(&self) -> impl Iterator<Item = (ScopeId, &[JsxUsage])> {
-        self.jsx_usages
-            .chunk_by(|previous, next| previous.scope == next.scope)
-            .map(|usages| (usages[0].scope, usages))
-    }
-
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id]
