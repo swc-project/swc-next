@@ -1,4 +1,5 @@
 use std::hint::cold_path;
+use std::marker::PhantomData;
 
 use memchr::{memchr, memchr2, memchr3};
 use swc_next_allocator::Allocator;
@@ -283,73 +284,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return self.try_identifier_token::<LINE_BREAK>(target, start);
         }
 
-        /// Scans a token of one of the classes the two tests above do not cover, and returns
-        /// `false` when the token needs the full scanner. `#[cold]` names it the rare path, which
-        /// is what keeps the jump table out of the hot code above.
-        #[cold]
-        fn cold_class_token<C: ParserConfig, const LINE_BREAK: bool>(
-            lexer: &mut Lexer<'_, C>,
-            target: &mut Token,
-            start: u32,
-            byte: u8,
-            class: FastClass,
-            flags: u8,
-        ) -> bool {
-            match class {
-                FastClass::Digit => {
-                    if !lexer.scan_decimal_integer(start, byte, flags, target) {
-                        return false;
-                    }
-                }
-                FastClass::Dot => {
-                    if lexer
-                        .source
-                        .get(start as usize + 1)
-                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
-                    {
-                        return false;
-                    }
-                    lexer.cursor = start + 1;
-                    *target = Token::new(start, start + 1, TokenTag::Dot, flags);
-                }
-                FastClass::Operator => {
-                    let end = start + 1;
-                    // A second byte outside this set ends the operator, so the token is
-                    // one byte long and does not need the full punctuation scan.
-                    let Some(&next) = lexer.source.get(end as usize) else {
-                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
-                    };
-                    if OPERATOR_EXTENDS[next as usize] {
-                        return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, next);
-                    }
-                    lexer.cursor = end;
-                    *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
-                }
-                FastClass::Quote => return lexer.try_string_token::<LINE_BREAK>(target, start),
-                FastClass::Slash => {
-                    let next = lexer.source.get(start as usize + 1).copied();
-                    if matches!(next, Some(b'*' | b'/')) {
-                        return lexer.try_token_after_comments(target, start, LINE_BREAK);
-                    }
-                    let (tag, end) = if next == Some(b'=') {
-                        (TokenTag::SlashAssign, start + 2)
-                    } else {
-                        (TokenTag::Slash, start + 1)
-                    };
-                    lexer.cursor = end;
-                    *target = Token::new(start, end, tag, flags);
-                }
-                FastClass::Slow | FastClass::Identifier | FastClass::Punctuation => return false,
-            }
-            lexer.handle_fast_token(*target);
-            true
-        }
-
-        cold_class_token::<C, LINE_BREAK>(self, target, start, byte, class, flags)
+        // The other classes are rare. One indirect jump through a table of their scanners
+        // replaces a call followed by a jump table.
+        cold_path();
+        ColdScanners::<C, LINE_BREAK>::TABLE[class as usize](self, target, start, byte)
     }
 
-    /// Reads an ASCII identifier or keyword at `start`. Identifier, string, and
-    /// extended operator scans need more registers than the other fast paths, so
+    /// Reads an ASCII identifier or keyword at `start`. Identifier and extended
+    /// operator scans need more registers than the other fast paths, so
     /// they are tail-called to keep callee-saved register saves out of
     /// [`Self::try_next_token`].
     #[inline(never)]
@@ -387,8 +329,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    /// Reads a string literal without escapes at `start`. See [`Self::try_identifier_token`].
-    #[inline(never)]
+    /// Reads a string literal without escapes at `start`. It is inlined into its
+    /// [`ColdScanner`], which runs outside [`Self::try_next_token`].
+    #[inline(always)]
     fn try_string_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
         let quote = self.source[start as usize];
         let body = start as usize + 1;
@@ -1952,6 +1895,8 @@ enum FastClass {
     Slash,
 }
 
+const FAST_CLASS_COUNT: usize = FastClass::Slash as usize + 1;
+
 const FAST_CLASS: [FastClass; 256] = {
     let mut table = [FastClass::Slow; 256];
     let mut byte = 0;
@@ -1985,6 +1930,99 @@ const FAST_CLASS: [FastClass; 256] = {
     }
     table
 };
+
+/// Scans a token at `start` whose first byte, `byte`, has a class that
+/// [`Lexer::try_next_token_at`] does not scan inline. Returns `false` when the
+/// token needs the full scanner.
+type ColdScanner<C> = for<'a> fn(&mut Lexer<'a, C>, &mut Token, u32, u8) -> bool;
+
+/// The [`ColdScanner`] of each [`FastClass`], for tokens after a line break when
+/// `LINE_BREAK` is set.
+struct ColdScanners<C, const LINE_BREAK: bool>(PhantomData<C>);
+
+impl<C: ParserConfig, const LINE_BREAK: bool> ColdScanners<C, LINE_BREAK> {
+    const TABLE: [ColdScanner<C>; FAST_CLASS_COUNT] = {
+        let mut table: [ColdScanner<C>; FAST_CLASS_COUNT] = [Self::slow; FAST_CLASS_COUNT];
+        table[FastClass::Digit as usize] = Self::digit;
+        table[FastClass::Dot as usize] = Self::dot;
+        table[FastClass::Operator as usize] = Self::operator;
+        table[FastClass::Quote as usize] = Self::quote;
+        table[FastClass::Slash as usize] = Self::slash;
+        table
+    };
+
+    fn slow(_: &mut Lexer<'_, C>, _: &mut Token, _: u32, _: u8) -> bool {
+        false
+    }
+
+    fn digit(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, byte: u8) -> bool {
+        if !lexer.scan_decimal_integer(start, byte, fast_token_flags(LINE_BREAK), target) {
+            return false;
+        }
+        lexer.handle_fast_token(*target);
+        true
+    }
+
+    fn dot(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
+        if lexer
+            .source
+            .get(start as usize + 1)
+            .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
+        {
+            return false;
+        }
+        lexer.cursor = start + 1;
+        *target = Token::new(
+            start,
+            start + 1,
+            TokenTag::Dot,
+            fast_token_flags(LINE_BREAK),
+        );
+        lexer.handle_fast_token(*target);
+        true
+    }
+
+    fn operator(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, byte: u8) -> bool {
+        let end = start + 1;
+        // A second byte outside this set ends the operator, so the token is
+        // one byte long and does not need the full punctuation scan.
+        let Some(&next) = lexer.source.get(end as usize) else {
+            return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, 0);
+        };
+        if OPERATOR_EXTENDS[next as usize] {
+            return lexer.try_operator_token::<LINE_BREAK>(target, start, byte, next);
+        }
+        lexer.cursor = end;
+        *target = Token::new(
+            start,
+            end,
+            OPERATOR_TAG[byte as usize],
+            fast_token_flags(LINE_BREAK),
+        );
+        lexer.handle_fast_token(*target);
+        true
+    }
+
+    fn quote(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
+        lexer.try_string_token::<LINE_BREAK>(target, start)
+    }
+
+    fn slash(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
+        let next = lexer.source.get(start as usize + 1).copied();
+        if matches!(next, Some(b'*' | b'/')) {
+            return lexer.try_token_after_comments(target, start, LINE_BREAK);
+        }
+        let (tag, end) = if next == Some(b'=') {
+            (TokenTag::SlashAssign, start + 2)
+        } else {
+            (TokenTag::Slash, start + 1)
+        };
+        lexer.cursor = end;
+        *target = Token::new(start, end, tag, fast_token_flags(LINE_BREAK));
+        lexer.handle_fast_token(*target);
+        true
+    }
+}
 
 /// Returns the position of the line terminator that ends a line comment whose body starts at
 /// `pos`, or the source length.
