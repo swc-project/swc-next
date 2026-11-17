@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export as namespace Foo;
+export declare const Foo: number;
+export type Value = typeof Foo;
+---------- Options ----------
+{"names":["Foo"]}
+---------- Output ----------
+{
+  "references": {
+    "Foo": [
+      {
+        "span": "86..89",
+        "scope": 2,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Foo",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+      "declarations": [
+        "46..49"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

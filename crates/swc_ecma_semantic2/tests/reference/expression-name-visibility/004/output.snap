@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n<T extends typeof n>() {
+  var n;
+};
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "references": {
+    "n": [
+      {
+        "span": "38..39",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "n",
+      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "19..20"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsTypeParameters",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

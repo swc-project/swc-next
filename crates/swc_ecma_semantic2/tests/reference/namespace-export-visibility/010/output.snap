@@ -1,0 +1,112 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+namespace Item {
+  export const value = "outer";
+}
+declare namespace N {
+  namespace Local {
+    const value: "inner";
+  }
+  export { Local as Item };
+}
+namespace N {
+  import A = Item;
+  export const result = A.value;
+}
+---------- Options ----------
+{"names":["A","Item","Local"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "221..222",
+        "scope": 5,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ],
+    "Item": [
+      {
+        "span": "191..195",
+        "scope": 5,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "Local": [
+      {
+        "span": "145..150",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "Local",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "96..101"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "187..188"
+      ],
+      "alias_target": 4
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

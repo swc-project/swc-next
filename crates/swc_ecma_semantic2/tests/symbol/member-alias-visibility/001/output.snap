@@ -1,0 +1,154 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const A = 0;
+type A = string;
+namespace Target {
+  export interface T {}
+}
+enum E {
+  A = 42,
+  B = A,
+}
+declare namespace E {
+  export import A = Target;
+}
+namespace E {
+  const value: 0 = A;
+  type ValueType = A;
+  type Qualified = A.T;
+}
+---------- Options ----------
+{"names":["A","E"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 1,
+        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+        "declarations": [
+          {
+            "span": "17..18",
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR"
+          },
+          {
+            "span": "29..30",
+            "scope": 1,
+            "flags": "TYPE_ALIAS"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "201..202",
+          "223..224"
+        ]
+      },
+      {
+        "id": 5,
+        "flags": "IMPORT | EXPORTED | ENUM_MEMBER | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "97..103",
+            "scope": 5,
+            "flags": "ENUM_MEMBER"
+          },
+          {
+            "span": "154..155",
+            "scope": 6,
+            "flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          }
+        ],
+        "uses": [
+          "111..112",
+          "245..246"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "158..164"
+        }
+      }
+    ],
+    "E": [
+      {
+        "id": 4,
+        "flags": "REGULAR_ENUM | VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "91..92",
+            "scope": 1,
+            "flags": "REGULAR_ENUM"
+          },
+          {
+            "span": "134..135",
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
+          },
+          {
+            "span": "178..179",
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            }
+          }
+        },
+        "enum": {
+          "members": {
+            "A": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            },
+            "B": {
+              "symbol": 6,
+              "value_symbols": [
+                {
+                  "Resolved": 6
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

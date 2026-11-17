@@ -1,0 +1,113 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface I {}
+export default class {}
+export namespace Owner {
+  export interface Item {}
+}
+export { I as Owner };
+type A = string;
+namespace Test {
+  import A = Owner.prototype;
+  export let text: A;
+  export const value = A;
+}
+---------- Options ----------
+{"names":["A","Owner"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "214..215",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "240..241",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ],
+    "Owner": [
+      {
+        "span": "178..183",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "I",
+      "flags": "CLASS | INTERFACE | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "25..26",
+        "45..53"
+      ]
+    },
+    "2": {
+      "name": "Owner",
+      "flags": "NAMESPACE_MODULE | EXPORTED",
+      "declarations": [
+        "71..76"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "136..137"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "174..175"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

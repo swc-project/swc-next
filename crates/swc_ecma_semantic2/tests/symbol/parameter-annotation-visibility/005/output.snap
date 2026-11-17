@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type T = string;
+function f<T>(x: T) {}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "T": [
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "16..17",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "39..40",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
+          "45..46"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

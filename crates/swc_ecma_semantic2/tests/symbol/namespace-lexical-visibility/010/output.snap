@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace AliasSpace {
+  interface OnlyType {}
+  export type Public = OnlyType;
+}
+namespace AliasSpace {
+  export type Good = Public;
+  export const bad = Public;
+}
+---------- Options ----------
+{"names":["Public"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Public": [
+      {
+        "id": 3,
+        "flags": "TYPE_ALIAS | EXPORTED",
+        "declarations": [
+          {
+            "span": "61..67",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "126..132"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

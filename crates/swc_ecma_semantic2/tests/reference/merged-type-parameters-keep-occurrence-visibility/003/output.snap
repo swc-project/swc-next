@@ -1,0 +1,100 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+class Box<T> {
+  constructor(public T: T) {
+    const value = T;
+  }
+}
+interface Box<T> {
+  extra: T;
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "39..40",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "62..63",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      },
+      {
+        "span": "99..100",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "10..11",
+        "85..86"
+      ]
+    },
+    "3": {
+      "name": "T",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "36..37"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "Function",
+      "parent": 2,
+      "flags": "Strict | ArgumentsBarrier"
+    },
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 4
+    },
+    "6": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

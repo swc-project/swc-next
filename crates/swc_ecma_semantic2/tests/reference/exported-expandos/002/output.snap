@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export function F() {}
+type F = {};
+export namespace F {
+  export interface Marker {}
+}
+F.x = 1;
+type Alias = number;
+namespace Use {
+  import Alias = F.x;
+  const value = Alias;
+  const typed: Alias = 0;
+}
+---------- Options ----------
+{"names":["Alias"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "172..177",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      },
+      {
+        "span": "194..199",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "Alias",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "102..107"
+      ]
+    },
+    "6": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "143..148"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

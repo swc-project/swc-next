@@ -1,0 +1,1888 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+namespace N {
+  export namespace N1 {
+    export namespace N2 {
+      export namespace N3 {
+        export namespace N4 {
+          export namespace N5 {
+            export namespace N6 {
+              export namespace N7 {
+                export namespace N8 {
+                  export namespace N9 {
+                    export namespace N10 {
+                      export namespace N11 {
+                        export namespace N12 {
+                          export namespace N13 {
+                            export namespace N14 {
+                              export namespace N15 {
+                                export namespace N16 {
+                                  export namespace N17 {
+                                    export namespace N18 {
+                                      export namespace N19 {
+                                        export namespace N20 {
+                                          export namespace N21 {
+                                            export namespace N22 {
+                                              export namespace N23 {
+                                                export namespace N24 {
+                                                  export namespace N25 {
+                                                    export namespace N26 {
+                                                      export namespace N27 {
+                                                        export namespace N28 {
+                                                          export namespace N29 {
+                                                            export namespace N30 {
+                                                              export namespace N31 {
+                                                                export namespace N32 {
+                                                                  export namespace N33 {
+                                                                    export namespace N34 {
+                                                                      export namespace N35 {
+                                                                        export namespace N36 {
+                                                                          export namespace N37 {
+                                                                            export namespace N38 {
+                                                                              export namespace N39 {
+                                                                                export namespace N40 {
+                                                                                  export namespace N41 {
+                                                                                    export namespace N42 {
+                                                                                      export namespace N43 {
+                                                                                        export namespace N44 {
+                                                                                          export namespace N45 {
+                                                                                            export namespace N46 {
+                                                                                              export namespace N47 {
+                                                                                                export namespace N48 {
+                                                                                                  export namespace N49 {
+                                                                                                    export namespace N50 {
+                                                                                                      export namespace N51 {
+                                                                                                        export namespace N52 {
+                                                                                                          export namespace N53 {
+                                                                                                            export namespace N54 {
+                                                                                                              export namespace N55 {
+                                                                                                                export namespace N56 {
+                                                                                                                  export namespace N57 {
+                                                                                                                    export namespace N58 {
+                                                                                                                      export namespace N59 {
+                                                                                                                        export namespace N60 {
+                                                                                                                          export namespace N61 {
+                                                                                                                            export namespace N62 {
+                                                                                                                              export namespace N63 {
+                                                                                                                                export declare namespace Inner {
+                                                                                                                                  export { X as Y };
+                                                                                                                                }
+                                                                                                                              }
+                                                                                                                              export declare namespace N63 {
+                                                                                                                                export { X };
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                            export declare namespace N62 {
+                                                                                                                              export { X };
+                                                                                                                            }
+                                                                                                                          }
+                                                                                                                          export declare namespace N61 {
+                                                                                                                            export { X };
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                        export declare namespace N60 {
+                                                                                                                          export { X };
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                      export declare namespace N59 {
+                                                                                                                        export { X };
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                    export declare namespace N58 {
+                                                                                                                      export { X };
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                  export declare namespace N57 {
+                                                                                                                    export { X };
+                                                                                                                  }
+                                                                                                                }
+                                                                                                                export declare namespace N56 {
+                                                                                                                  export { X };
+                                                                                                                }
+                                                                                                              }
+                                                                                                              export declare namespace N55 {
+                                                                                                                export { X };
+                                                                                                              }
+                                                                                                            }
+                                                                                                            export declare namespace N54 {
+                                                                                                              export { X };
+                                                                                                            }
+                                                                                                          }
+                                                                                                          export declare namespace N53 {
+                                                                                                            export { X };
+                                                                                                          }
+                                                                                                        }
+                                                                                                        export declare namespace N52 {
+                                                                                                          export { X };
+                                                                                                        }
+                                                                                                      }
+                                                                                                      export declare namespace N51 {
+                                                                                                        export { X };
+                                                                                                      }
+                                                                                                    }
+                                                                                                    export declare namespace N50 {
+                                                                                                      export { X };
+                                                                                                    }
+                                                                                                  }
+                                                                                                  export declare namespace N49 {
+                                                                                                    export { X };
+                                                                                                  }
+                                                                                                }
+                                                                                                export declare namespace N48 {
+                                                                                                  export { X };
+                                                                                                }
+                                                                                              }
+                                                                                              export declare namespace N47 {
+                                                                                                export { X };
+                                                                                              }
+                                                                                            }
+                                                                                            export declare namespace N46 {
+                                                                                              export { X };
+                                                                                            }
+                                                                                          }
+                                                                                          export declare namespace N45 {
+                                                                                            export { X };
+                                                                                          }
+                                                                                        }
+                                                                                        export declare namespace N44 {
+                                                                                          export { X };
+                                                                                        }
+                                                                                      }
+                                                                                      export declare namespace N43 {
+                                                                                        export { X };
+                                                                                      }
+                                                                                    }
+                                                                                    export declare namespace N42 {
+                                                                                      export { X };
+                                                                                    }
+                                                                                  }
+                                                                                  export declare namespace N41 {
+                                                                                    export { X };
+                                                                                  }
+                                                                                }
+                                                                                export declare namespace N40 {
+                                                                                  export { X };
+                                                                                }
+                                                                              }
+                                                                              export declare namespace N39 {
+                                                                                export { X };
+                                                                              }
+                                                                            }
+                                                                            export declare namespace N38 {
+                                                                              export { X };
+                                                                            }
+                                                                          }
+                                                                          export declare namespace N37 {
+                                                                            export { X };
+                                                                          }
+                                                                        }
+                                                                        export declare namespace N36 {
+                                                                          export { X };
+                                                                        }
+                                                                      }
+                                                                      export declare namespace N35 {
+                                                                        export { X };
+                                                                      }
+                                                                    }
+                                                                    export declare namespace N34 {
+                                                                      export { X };
+                                                                    }
+                                                                  }
+                                                                  export declare namespace N33 {
+                                                                    export { X };
+                                                                  }
+                                                                }
+                                                                export declare namespace N32 {
+                                                                  export { X };
+                                                                }
+                                                              }
+                                                              export declare namespace N31 {
+                                                                export { X };
+                                                              }
+                                                            }
+                                                            export declare namespace N30 {
+                                                              export { X };
+                                                            }
+                                                          }
+                                                          export declare namespace N29 {
+                                                            export { X };
+                                                          }
+                                                        }
+                                                        export declare namespace N28 {
+                                                          export { X };
+                                                        }
+                                                      }
+                                                      export declare namespace N27 {
+                                                        export { X };
+                                                      }
+                                                    }
+                                                    export declare namespace N26 {
+                                                      export { X };
+                                                    }
+                                                  }
+                                                  export declare namespace N25 {
+                                                    export { X };
+                                                  }
+                                                }
+                                                export declare namespace N24 {
+                                                  export { X };
+                                                }
+                                              }
+                                              export declare namespace N23 {
+                                                export { X };
+                                              }
+                                            }
+                                            export declare namespace N22 {
+                                              export { X };
+                                            }
+                                          }
+                                          export declare namespace N21 {
+                                            export { X };
+                                          }
+                                        }
+                                        export declare namespace N20 {
+                                          export { X };
+                                        }
+                                      }
+                                      export declare namespace N19 {
+                                        export { X };
+                                      }
+                                    }
+                                    export declare namespace N18 {
+                                      export { X };
+                                    }
+                                  }
+                                  export declare namespace N17 {
+                                    export { X };
+                                  }
+                                }
+                                export declare namespace N16 {
+                                  export { X };
+                                }
+                              }
+                              export declare namespace N15 {
+                                export { X };
+                              }
+                            }
+                            export declare namespace N14 {
+                              export { X };
+                            }
+                          }
+                          export declare namespace N13 {
+                            export { X };
+                          }
+                        }
+                        export declare namespace N12 {
+                          export { X };
+                        }
+                      }
+                      export declare namespace N11 {
+                        export { X };
+                      }
+                    }
+                    export declare namespace N10 {
+                      export { X };
+                    }
+                  }
+                  export declare namespace N9 {
+                    export { X };
+                  }
+                }
+                export declare namespace N8 {
+                  export { X };
+                }
+              }
+              export declare namespace N7 {
+                export { X };
+              }
+            }
+            export declare namespace N6 {
+              export { X };
+            }
+          }
+          export declare namespace N5 {
+            export { X };
+          }
+        }
+        export declare namespace N4 {
+          export { X };
+        }
+      }
+      export declare namespace N3 {
+        export { X };
+      }
+    }
+    export declare namespace N2 {
+      export { X };
+    }
+  }
+  export declare namespace N1 {
+    export { X };
+  }
+}
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  const original: 1;
+  export { original as X };
+}
+import Alias = N.N1.N2.N3.N4.N5.N6.N7.N8.N9.N10.N11.N12.N13.N14.N15.N16.N17.N18.N19.N20.N21.N22.N23.N24.N25.N26.N27.N28.N29.N30.N31.N32.N33.N34.N35.N36.N37.N38.N39.N40.N41.N42.N43.N44.N45.N46.N47.N48.N49.N50.N51.N52.N53.N54.N55.N56.N57.N58.N59.N60.N61.N62.N63.Inner.Y;
+const value: 1 = Alias;
+const typed: Alias = { right: true };
+const queried: typeof Alias = 1;
+---------- Options ----------
+{"names":["Alias","N","X","original"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "25674..25679",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 68
+        },
+        "candidates": [
+          68
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 68
+          }
+        ]
+      },
+      {
+        "span": "25694..25699",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 68
+        },
+        "candidates": [
+          68
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 68
+          }
+        ]
+      },
+      {
+        "span": "25741..25746",
+        "scope": 1,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 68
+        },
+        "candidates": [
+          68
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 68
+          }
+        ]
+      }
+    ],
+    "N": [
+      {
+        "span": "25403..25404",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "5797..5798",
+        "scope": 66,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "6359..6360",
+        "scope": 67,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "6908..6909",
+        "scope": 68,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "7449..7450",
+        "scope": 69,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "7982..7983",
+        "scope": 70,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "8507..8508",
+        "scope": 71,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "9024..9025",
+        "scope": 72,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "9533..9534",
+        "scope": 73,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "10034..10035",
+        "scope": 74,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "10527..10528",
+        "scope": 75,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "11012..11013",
+        "scope": 76,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "11489..11490",
+        "scope": 77,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "11958..11959",
+        "scope": 78,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "12419..12420",
+        "scope": 79,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "12872..12873",
+        "scope": 80,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "13317..13318",
+        "scope": 81,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "13754..13755",
+        "scope": 82,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "14183..14184",
+        "scope": 83,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "14604..14605",
+        "scope": 84,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "15017..15018",
+        "scope": 85,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "15422..15423",
+        "scope": 86,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "15819..15820",
+        "scope": 87,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "16208..16209",
+        "scope": 88,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "16589..16590",
+        "scope": 89,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "16962..16963",
+        "scope": 90,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "17327..17328",
+        "scope": 91,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "17684..17685",
+        "scope": 92,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "18033..18034",
+        "scope": 93,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "18374..18375",
+        "scope": 94,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "18707..18708",
+        "scope": 95,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "19032..19033",
+        "scope": 96,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "19349..19350",
+        "scope": 97,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "19658..19659",
+        "scope": 98,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "19959..19960",
+        "scope": 99,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "20252..20253",
+        "scope": 100,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "20537..20538",
+        "scope": 101,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "20814..20815",
+        "scope": 102,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "21083..21084",
+        "scope": 103,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "21344..21345",
+        "scope": 104,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "21597..21598",
+        "scope": 105,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "21842..21843",
+        "scope": 106,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "22079..22080",
+        "scope": 107,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "22308..22309",
+        "scope": 108,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "22529..22530",
+        "scope": 109,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "22742..22743",
+        "scope": 110,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "22947..22948",
+        "scope": 111,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "23144..23145",
+        "scope": 112,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "23333..23334",
+        "scope": 113,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "23514..23515",
+        "scope": 114,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "23687..23688",
+        "scope": 115,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "23852..23853",
+        "scope": 116,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24009..24010",
+        "scope": 117,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24158..24159",
+        "scope": 118,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24299..24300",
+        "scope": 119,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24432..24433",
+        "scope": 120,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24556..24557",
+        "scope": 121,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24672..24673",
+        "scope": 122,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24780..24781",
+        "scope": 123,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24880..24881",
+        "scope": 124,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "24972..24973",
+        "scope": 125,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "25056..25057",
+        "scope": 126,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "25132..25133",
+        "scope": 127,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "25200..25201",
+        "scope": 128,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      },
+      {
+        "span": "25260..25261",
+        "scope": 129,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 66
+        },
+        "candidates": [
+          66
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      }
+    ],
+    "original": [
+      {
+        "span": "25369..25377",
+        "scope": 130,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 67
+        },
+        "candidates": [
+          67
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 67
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "21..22",
+        "25289..25290"
+      ]
+    },
+    "66": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "25312..25313"
+      ]
+    },
+    "67": {
+      "name": "original",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "25345..25353"
+      ]
+    },
+    "68": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "25395..25400"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "66": {
+      "kind": "TsModule",
+      "parent": 65,
+      "flags": "Strict"
+    },
+    "67": {
+      "kind": "TsModule",
+      "parent": 64,
+      "flags": "Strict"
+    },
+    "68": {
+      "kind": "TsModule",
+      "parent": 63,
+      "flags": "Strict"
+    },
+    "69": {
+      "kind": "TsModule",
+      "parent": 62,
+      "flags": "Strict"
+    },
+    "70": {
+      "kind": "TsModule",
+      "parent": 61,
+      "flags": "Strict"
+    },
+    "71": {
+      "kind": "TsModule",
+      "parent": 60,
+      "flags": "Strict"
+    },
+    "72": {
+      "kind": "TsModule",
+      "parent": 59,
+      "flags": "Strict"
+    },
+    "73": {
+      "kind": "TsModule",
+      "parent": 58,
+      "flags": "Strict"
+    },
+    "74": {
+      "kind": "TsModule",
+      "parent": 57,
+      "flags": "Strict"
+    },
+    "75": {
+      "kind": "TsModule",
+      "parent": 56,
+      "flags": "Strict"
+    },
+    "76": {
+      "kind": "TsModule",
+      "parent": 55,
+      "flags": "Strict"
+    },
+    "77": {
+      "kind": "TsModule",
+      "parent": 54,
+      "flags": "Strict"
+    },
+    "78": {
+      "kind": "TsModule",
+      "parent": 53,
+      "flags": "Strict"
+    },
+    "79": {
+      "kind": "TsModule",
+      "parent": 52,
+      "flags": "Strict"
+    },
+    "80": {
+      "kind": "TsModule",
+      "parent": 51,
+      "flags": "Strict"
+    },
+    "81": {
+      "kind": "TsModule",
+      "parent": 50,
+      "flags": "Strict"
+    },
+    "82": {
+      "kind": "TsModule",
+      "parent": 49,
+      "flags": "Strict"
+    },
+    "83": {
+      "kind": "TsModule",
+      "parent": 48,
+      "flags": "Strict"
+    },
+    "84": {
+      "kind": "TsModule",
+      "parent": 47,
+      "flags": "Strict"
+    },
+    "85": {
+      "kind": "TsModule",
+      "parent": 46,
+      "flags": "Strict"
+    },
+    "86": {
+      "kind": "TsModule",
+      "parent": 45,
+      "flags": "Strict"
+    },
+    "87": {
+      "kind": "TsModule",
+      "parent": 44,
+      "flags": "Strict"
+    },
+    "88": {
+      "kind": "TsModule",
+      "parent": 43,
+      "flags": "Strict"
+    },
+    "89": {
+      "kind": "TsModule",
+      "parent": 42,
+      "flags": "Strict"
+    },
+    "90": {
+      "kind": "TsModule",
+      "parent": 41,
+      "flags": "Strict"
+    },
+    "91": {
+      "kind": "TsModule",
+      "parent": 40,
+      "flags": "Strict"
+    },
+    "92": {
+      "kind": "TsModule",
+      "parent": 39,
+      "flags": "Strict"
+    },
+    "93": {
+      "kind": "TsModule",
+      "parent": 38,
+      "flags": "Strict"
+    },
+    "94": {
+      "kind": "TsModule",
+      "parent": 37,
+      "flags": "Strict"
+    },
+    "95": {
+      "kind": "TsModule",
+      "parent": 36,
+      "flags": "Strict"
+    },
+    "96": {
+      "kind": "TsModule",
+      "parent": 35,
+      "flags": "Strict"
+    },
+    "97": {
+      "kind": "TsModule",
+      "parent": 34,
+      "flags": "Strict"
+    },
+    "98": {
+      "kind": "TsModule",
+      "parent": 33,
+      "flags": "Strict"
+    },
+    "99": {
+      "kind": "TsModule",
+      "parent": 32,
+      "flags": "Strict"
+    },
+    "100": {
+      "kind": "TsModule",
+      "parent": 31,
+      "flags": "Strict"
+    },
+    "101": {
+      "kind": "TsModule",
+      "parent": 30,
+      "flags": "Strict"
+    },
+    "102": {
+      "kind": "TsModule",
+      "parent": 29,
+      "flags": "Strict"
+    },
+    "103": {
+      "kind": "TsModule",
+      "parent": 28,
+      "flags": "Strict"
+    },
+    "104": {
+      "kind": "TsModule",
+      "parent": 27,
+      "flags": "Strict"
+    },
+    "105": {
+      "kind": "TsModule",
+      "parent": 26,
+      "flags": "Strict"
+    },
+    "106": {
+      "kind": "TsModule",
+      "parent": 25,
+      "flags": "Strict"
+    },
+    "107": {
+      "kind": "TsModule",
+      "parent": 24,
+      "flags": "Strict"
+    },
+    "108": {
+      "kind": "TsModule",
+      "parent": 23,
+      "flags": "Strict"
+    },
+    "109": {
+      "kind": "TsModule",
+      "parent": 22,
+      "flags": "Strict"
+    },
+    "110": {
+      "kind": "TsModule",
+      "parent": 21,
+      "flags": "Strict"
+    },
+    "111": {
+      "kind": "TsModule",
+      "parent": 20,
+      "flags": "Strict"
+    },
+    "112": {
+      "kind": "TsModule",
+      "parent": 19,
+      "flags": "Strict"
+    },
+    "113": {
+      "kind": "TsModule",
+      "parent": 18,
+      "flags": "Strict"
+    },
+    "114": {
+      "kind": "TsModule",
+      "parent": 17,
+      "flags": "Strict"
+    },
+    "115": {
+      "kind": "TsModule",
+      "parent": 16,
+      "flags": "Strict"
+    },
+    "116": {
+      "kind": "TsModule",
+      "parent": 15,
+      "flags": "Strict"
+    },
+    "117": {
+      "kind": "TsModule",
+      "parent": 14,
+      "flags": "Strict"
+    },
+    "118": {
+      "kind": "TsModule",
+      "parent": 13,
+      "flags": "Strict"
+    },
+    "119": {
+      "kind": "TsModule",
+      "parent": 12,
+      "flags": "Strict"
+    },
+    "120": {
+      "kind": "TsModule",
+      "parent": 11,
+      "flags": "Strict"
+    },
+    "121": {
+      "kind": "TsModule",
+      "parent": 10,
+      "flags": "Strict"
+    },
+    "122": {
+      "kind": "TsModule",
+      "parent": 9,
+      "flags": "Strict"
+    },
+    "123": {
+      "kind": "TsModule",
+      "parent": 8,
+      "flags": "Strict"
+    },
+    "124": {
+      "kind": "TsModule",
+      "parent": 7,
+      "flags": "Strict"
+    },
+    "125": {
+      "kind": "TsModule",
+      "parent": 6,
+      "flags": "Strict"
+    },
+    "126": {
+      "kind": "TsModule",
+      "parent": 5,
+      "flags": "Strict"
+    },
+    "127": {
+      "kind": "TsModule",
+      "parent": 4,
+      "flags": "Strict"
+    },
+    "128": {
+      "kind": "TsModule",
+      "parent": 3,
+      "flags": "Strict"
+    },
+    "129": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    },
+    "130": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

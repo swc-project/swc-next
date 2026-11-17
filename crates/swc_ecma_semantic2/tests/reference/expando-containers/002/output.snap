@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function F() {}
+namespace F {
+  export interface Marker {}
+}
+const write = () => {
+  F.value = 1;
+};
+import Alias = F.value;
+type T = Alias;
+---------- Options ----------
+{"names":["Alias"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "134..139",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 4
+          }
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "108..113"
+      ]
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

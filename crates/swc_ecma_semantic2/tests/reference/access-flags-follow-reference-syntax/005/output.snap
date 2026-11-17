@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import type { T } from "mod";
+type U = T;
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "39..40",
+        "scope": 2,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "TYPE_IMPORT",
+      "declarations": [
+        "14..15"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  namespace M {
+    "use strict";
+  }
+}
+---------- Options ----------
+{"names":["N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {}
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

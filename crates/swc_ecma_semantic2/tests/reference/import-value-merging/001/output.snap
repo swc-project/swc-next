@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import type { T as X } from "./dep.js";
+const X = 1;
+export const result = X;
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "75..76",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_IMPORT | CONST_VAR",
+      "declarations": [
+        "19..20",
+        "46..47"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

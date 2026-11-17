@@ -1,0 +1,105 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  export const X: number;
+  interface X {}
+  export interface Y {}
+  export { X as Y };
+}
+---------- Options ----------
+{"names":["N","X","Y"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "Y": {
+              "symbol": 4,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "37..38",
+            "scope": 2
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "INTERFACE | AMBIENT",
+        "declarations": [
+          {
+            "span": "60..61",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "100..101"
+        ]
+      }
+    ],
+    "Y": [
+      {
+        "id": 4,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "84..85",
+            "scope": 2
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

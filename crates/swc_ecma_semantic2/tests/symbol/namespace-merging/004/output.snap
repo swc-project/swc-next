@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function F() {}
+namespace F {
+  export const x = 1;
+}
+namespace F {
+  export const y = x;
+}
+---------- Options ----------
+{"names":["x","y"]}
+---------- Output ----------
+{
+  "symbols": {
+    "x": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+        "declarations": [
+          {
+            "span": "45..46",
+            "scope": 3
+          }
+        ],
+        "uses": [
+          "87..88"
+        ]
+      }
+    ],
+    "y": [
+      {
+        "id": 3,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+        "declarations": [
+          {
+            "span": "83..84",
+            "scope": 4
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

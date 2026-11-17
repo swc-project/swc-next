@@ -1,0 +1,77 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const x = 2;
+class C {
+  static x = 1;
+}
+namespace C {
+  export const y = x;
+}
+---------- Options ----------
+{"names":["C","x"]}
+---------- Output ----------
+{
+  "symbols": {
+    "C": [
+      {
+        "id": 2,
+        "flags": "CLASS | VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "30..31",
+            "scope": 1,
+            "flags": "CLASS"
+          },
+          {
+            "span": "62..63",
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "y": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "x": [
+      {
+        "id": 1,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "17..18",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "85..86"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

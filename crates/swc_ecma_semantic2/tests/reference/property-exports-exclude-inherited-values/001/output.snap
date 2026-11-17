@@ -1,0 +1,90 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+class Base {
+  static x = 1;
+}
+class C extends Base {}
+namespace C {
+  export interface x {
+    own: true;
+  }
+}
+import Alias = C.x;
+const typed: Alias = { own: true };
+---------- Options ----------
+{"names":["Alias","C"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "157..162",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ],
+    "C": [
+      {
+        "span": "139..140",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "C",
+      "flags": "CLASS | NAMESPACE_MODULE",
+      "declarations": [
+        "48..49",
+        "76..77"
+      ]
+    },
+    "3": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "99..100"
+      ]
+    },
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "131..136"
+      ],
+      "alias_target": 3
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

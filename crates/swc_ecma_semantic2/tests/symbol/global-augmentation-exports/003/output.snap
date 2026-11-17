@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare global {
+  const X: number;
+}
+export { X as Y };
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "X": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "25..26",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          0
+        ],
+        "uses": [
+          "47..48"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

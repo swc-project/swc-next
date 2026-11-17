@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+if (condition) function f() {}
+{
+  var g;
+}
+g;
+---------- Options ----------
+{"names":["g"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "g": [
+      {
+        "span": "44..45",
+        "scope": 0,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "g",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "39..40"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    }
+  }
+}

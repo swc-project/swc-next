@@ -1,0 +1,86 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+namespace N {
+  export import Alias = remote;
+}
+import A = N.Alias;
+export { A };
+---------- Options ----------
+{"names":["A","remote"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "113..114",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      }
+    ],
+    "remote": [
+      {
+        "span": "74..80",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "remote",
+      "flags": "IMPORT",
+      "declarations": [
+        "12..18"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "91..92"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+declare abstract class C {
+  abstract f(): typeof arguments;
+}
+---------- Options ----------
+{"names":["arguments"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "arguments": [
+      {
+        "span": "92..101",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsSignatureReturn",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

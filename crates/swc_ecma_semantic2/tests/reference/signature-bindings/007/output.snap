@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const value = "outer";
+interface I {
+  [value: string]: typeof value;
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "74..79",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "value",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "51..56"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureReturn",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

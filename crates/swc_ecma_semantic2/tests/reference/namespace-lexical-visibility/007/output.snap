@@ -1,0 +1,79 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace Target {
+    interface Type {}
+  }
+  export import PublicAlias = Target;
+  import PrivateAlias = Target;
+}
+declare namespace N {
+  interface UsesPublic extends PublicAlias.Type {}
+  type UsesPrivate = PrivateAlias;
+}
+---------- Options ----------
+{"names":["PrivateAlias","PublicAlias"]}
+---------- Output ----------
+{
+  "references": {
+    "PrivateAlias": [
+      {
+        "span": "235..247",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ],
+    "PublicAlias": [
+      {
+        "span": "194..205",
+        "scope": 6,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Target",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "34..40"
+      ]
+    },
+    "4": {
+      "name": "PublicAlias",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "85..96"
+      ],
+      "alias_target": 2
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "Block",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 5
+    },
+    "7": {
+      "kind": "Block",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 5
+    }
+  }
+}

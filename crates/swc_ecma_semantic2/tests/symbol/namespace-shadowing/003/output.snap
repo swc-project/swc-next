@@ -1,0 +1,130 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+const Alias = { value: "outer" };
+namespace N {
+  import B = remote;
+  export import Alias = B;
+}
+namespace N {
+  export const selected = Alias.value;
+}
+---------- Options ----------
+{"names":["Alias","B","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Alias": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "42..47",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "174..179"
+        ]
+      },
+      {
+        "id": 5,
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "121..126",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "174..179"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "129..130"
+        }
+      }
+    ],
+    "B": [
+      {
+        "id": 4,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "93..94",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "129..130"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "97..103"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 3,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "80..81",
+            "scope": 1
+          },
+          {
+            "span": "144..145",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "Alias": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Uncertain": {
+                    "candidate": 5
+                  }
+                }
+              ]
+            },
+            "selected": {
+              "symbol": 6,
+              "value_symbols": [
+                {
+                  "Resolved": 6
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

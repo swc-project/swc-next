@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+var arguments;
+function f() {
+  return () => arguments;
+}
+---------- Options ----------
+{"names":["arguments"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "arguments": [
+      {
+        "span": "45..54",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1
+    }
+  }
+}

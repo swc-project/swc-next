@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+class T {}
+const f = (...args: T[]) => {
+  class T {}
+};
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "31..32",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "CLASS",
+      "declarations": [
+        "6..7"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureParameter",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 3
+    }
+  }
+}

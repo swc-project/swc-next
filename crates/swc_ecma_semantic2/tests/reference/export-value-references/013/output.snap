@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const X = 1;
+declare namespace N {
+  interface X {}
+  export { X };
+}
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "63..64",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "47..48"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}
+---------- Options ----------
+{"names":["X"],"preserveParens":false}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "63..64",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "47..48"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface T {}
+namespace N {
+  export { T };
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "55..56",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "INTERFACE | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "25..26"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace Owner {
+  export interface Item {}
+}
+import Owner = N.C;
+namespace N {
+  export class C {
+    static x = 1;
+  }
+}
+import Mid = Owner;
+type A = string;
+namespace Test {
+  import A = Mid.x;
+  export let text: A;
+  export const value = A;
+}
+---------- Options ----------
+{"names":["A","Owner"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "217..218",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "243..244",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 8
+        },
+        "candidates": [
+          8
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 8
+          }
+        ]
+      }
+    ],
+    "Owner": [
+      {
+        "span": "137..142",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Owner",
+      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "10..15",
+        "54..59"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "149..150"
+      ]
+    },
+    "8": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "187..188"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

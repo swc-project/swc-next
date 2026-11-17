@@ -1,0 +1,71 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const C = class Inner<Inner> {
+  value!: Inner;
+  self = Inner;
+};
+---------- Options ----------
+{"names":["Inner"]}
+---------- Output ----------
+{
+  "references": {
+    "Inner": [
+      {
+        "span": "41..46",
+        "scope": 2,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "57..62",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Inner",
+      "flags": "CLASS | CLASS_EXPRESSION",
+      "declarations": [
+        "16..21"
+      ]
+    },
+    "3": {
+      "name": "Inner",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "22..27"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

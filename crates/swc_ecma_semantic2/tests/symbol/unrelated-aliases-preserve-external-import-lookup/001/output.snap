@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import type { Item } from "./dep";
+type A = Item;
+---------- Options ----------
+{"names":["A","Item"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "40..41",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ]
+      }
+    ],
+    "Item": [
+      {
+        "id": 1,
+        "flags": "TYPE_IMPORT",
+        "declarations": [
+          {
+            "span": "14..18",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "44..48"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

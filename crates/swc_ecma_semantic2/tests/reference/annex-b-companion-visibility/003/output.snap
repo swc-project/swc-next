@@ -1,0 +1,66 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+{
+  let f;
+  if (condition)
+    function f() {
+      return f;
+    }
+}
+f;
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "60..61",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "71..72",
+        "scope": 0,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "41..42"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

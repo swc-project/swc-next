@@ -1,0 +1,112 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace Target {
+    interface Type {}
+  }
+  export import PublicAlias = Target;
+  import PrivateAlias = Target;
+}
+declare namespace N {
+  interface UsesPublic extends PublicAlias.Type {}
+  type UsesPrivate = PrivateAlias;
+}
+---------- Options ----------
+{"names":["N","PrivateAlias","PublicAlias"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          },
+          {
+            "span": "159..160",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE | AMBIENT"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "PublicAlias": {
+              "symbol": 4,
+              "value_symbols": []
+            },
+            "Target": {
+              "symbol": 2,
+              "value_symbols": []
+            },
+            "UsesPrivate": {
+              "symbol": 7,
+              "value_symbols": []
+            },
+            "UsesPublic": {
+              "symbol": 6,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "PrivateAlias": [
+      {
+        "id": 5,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "116..128",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "131..137"
+        }
+      }
+    ],
+    "PublicAlias": [
+      {
+        "id": 4,
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "85..96",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "194..205"
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "99..105"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

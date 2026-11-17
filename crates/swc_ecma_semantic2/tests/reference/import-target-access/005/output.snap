@@ -1,0 +1,73 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export interface T {}
+}
+import B = N;
+import A = B;
+export type Result = A.T;
+---------- Options ----------
+{"names":["B","N"]}
+---------- Output ----------
+{
+  "references": {
+    "B": [
+      {
+        "span": "65..66",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      }
+    ],
+    "N": [
+      {
+        "span": "51..52",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "3": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "47..48"
+      ],
+      "alias_target": 1
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

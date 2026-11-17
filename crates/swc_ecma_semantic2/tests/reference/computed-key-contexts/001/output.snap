@@ -1,0 +1,170 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface T {}
+const k = "p";
+type F = ({ [(k as T) + k]: v }) => void;
+---------- Options ----------
+{"names":["T","k"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "49..50",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ],
+    "k": [
+      {
+        "span": "44..45",
+        "scope": 5,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      },
+      {
+        "span": "54..55",
+        "scope": 5,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "INTERFACE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "2": {
+      "name": "k",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "21..22"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}
+---------- Options ----------
+{"names":["T","k"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "49..50",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 0
+        },
+        "candidates": [
+          0
+        ],
+        "value_symbols": []
+      }
+    ],
+    "k": [
+      {
+        "span": "44..45",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "54..55",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "T",
+      "flags": "INTERFACE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "1": {
+      "name": "k",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "21..22"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureParameter",
+      "parent": 3,
+      "hoist_target": 0
+    }
+  }
+}

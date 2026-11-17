@@ -1,0 +1,80 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+let f = 1;
+if (condition)
+  function f() {
+    "use strict";
+    return f;
+  }
+f;
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "72..73",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "79..80",
+        "scope": 0,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 0
+        },
+        "candidates": [
+          0
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 0
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "f",
+      "flags": "BLOCK_SCOPED_VAR",
+      "declarations": [
+        "4..5"
+      ]
+    },
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "37..38"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "1": {
+      "kind": "Function",
+      "parent": 0,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

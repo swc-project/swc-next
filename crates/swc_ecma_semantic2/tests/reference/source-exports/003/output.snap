@@ -1,0 +1,110 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface I {
+  value: string;
+}
+export const I = 1;
+namespace I {
+  export interface Item {}
+}
+type A = string;
+const A = 1;
+namespace Test {
+  import A = I;
+  export let item: A;
+  export const scalar: typeof A = A;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "193..194",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      },
+      {
+        "span": "226..227",
+        "scope": 6,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "230..231",
+        "scope": 6,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "I",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "61..62"
+      ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+      "declarations": [
+        "116..117",
+        "134..135"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "167..168"
+      ],
+      "alias_target": 2
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

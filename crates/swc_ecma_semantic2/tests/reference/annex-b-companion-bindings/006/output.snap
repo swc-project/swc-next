@@ -1,0 +1,79 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+{
+  function f() {
+    return f;
+  }
+}
+f;
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "30..31",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 0
+        },
+        "candidates": [
+          0
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 0
+          }
+        ]
+      },
+      {
+        "span": "39..40",
+        "scope": 0,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "f",
+      "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "13..14"
+      ]
+    },
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "13..14"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

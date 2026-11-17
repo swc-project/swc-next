@@ -1,0 +1,127 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export type f = number;
+namespace f {
+  export interface Item {}
+}
+type A = string;
+const A = 1;
+namespace Test {
+  import A = f;
+  export let item: A;
+  export const scalar: typeof A = A;
+}
+---------- Options ----------
+{"names":["A","f"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "180..181",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "213..214",
+        "scope": 7,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      },
+      {
+        "span": "217..218",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ],
+    "f": [
+      {
+        "span": "158..159",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "f",
+      "flags": "TYPE_ALIAS | EXPORTED",
+      "declarations": [
+        "43..44"
+      ]
+    },
+    "3": {
+      "name": "f",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "65..66"
+      ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+      "declarations": [
+        "103..104",
+        "121..122"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "154..155"
+      ],
+      "alias_target": 2
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

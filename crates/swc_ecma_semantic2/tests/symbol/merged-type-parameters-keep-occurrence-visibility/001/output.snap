@@ -1,0 +1,97 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type U = number;
+interface Box<T> {
+  value: T;
+  outer: U;
+}
+interface Box<T, U = string> {
+  extra: T;
+  inner: U;
+}
+---------- Options ----------
+{"names":["T","U"]}
+---------- Output ----------
+{
+  "symbols": {
+    "T": [
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "31..32",
+            "scope": 3
+          },
+          {
+            "span": "76..77",
+            "scope": 5
+          }
+        ],
+        "bindings": [
+          3,
+          5
+        ],
+        "uses": [
+          "45..46",
+          "102..103"
+        ]
+      }
+    ],
+    "U": [
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "5..6",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "57..58"
+        ]
+      },
+      {
+        "id": 4,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "79..80",
+            "scope": 5
+          }
+        ],
+        "bindings": [
+          5
+        ],
+        "uses": [
+          "114..115"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

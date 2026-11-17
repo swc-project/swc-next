@@ -1,0 +1,142 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const A = 0;
+type A = string;
+namespace Target {
+  export interface T {}
+}
+enum E {
+  A = 42,
+  B = A,
+}
+declare namespace E {
+  export import A = Target;
+}
+namespace E {
+  const value: 0 = A;
+  type ValueType = A;
+  type Qualified = A.T;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "111..112",
+        "scope": 5,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      },
+      {
+        "span": "201..202",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "223..224",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "245..246",
+        "scope": 9,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+      "declarations": [
+        "17..18",
+        "29..30"
+      ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "IMPORT | EXPORTED | ENUM_MEMBER | IMPORT_EQUALS",
+      "declarations": [
+        "97..103",
+        "154..155"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    },
+    "9": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    }
+  }
+}

@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "symbols": {
+    "U": [
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 4
+          },
+          {
+            "span": "62..63",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4,
+          8,
+          9
+        ],
+        "uses": [
+          "67..68"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "4": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}
+---------- Options ----------
+{"names":["U"],"preserveParens":false}
+---------- Output ----------
+{
+  "symbols": {
+    "U": [
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 4
+          },
+          {
+            "span": "62..63",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4,
+          8,
+          9
+        ],
+        "uses": [
+          "67..68"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "4": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

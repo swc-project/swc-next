@@ -1,0 +1,108 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+class C {
+  static x = 1;
+}
+namespace C {
+  export interface T {}
+}
+namespace A {
+  export interface T {
+    outer: true;
+  }
+}
+namespace N {
+  import A = C.x;
+  import B = A;
+  export const typed: B.T = { outer: true };
+  export const runtime = A;
+}
+---------- Options ----------
+{"names":["A","B"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "184..185",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      },
+      {
+        "span": "257..258",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ],
+    "B": [
+      {
+        "span": "209..210",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "89..90"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "162..163"
+      ]
+    },
+    "7": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "180..181"
+      ],
+      "alias_target": 3
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

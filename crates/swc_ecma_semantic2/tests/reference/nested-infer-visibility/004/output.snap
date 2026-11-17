@@ -1,0 +1,71 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type U = string;
+type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "references": {
+    "U": [
+      {
+        "span": "74..75",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "79..80",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "U",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..6"
+      ]
+    },
+    "4": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "46..47"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "6": {
+      "kind": "TsConditionalExtends",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

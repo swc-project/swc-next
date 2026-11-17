@@ -1,0 +1,82 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function outer() {
+  if (condition)
+    function f() {
+      return f;
+    }
+  return f;
+}
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "68..69",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "86..87",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "49..50"
+      ]
+    },
+    "2": {
+      "name": "f",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "49..50"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Function",
+      "parent": 0,
+      "flags": "ArgumentsBarrier"
+    },
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

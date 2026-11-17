@@ -1,0 +1,123 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  export const X: number;
+}
+declare namespace N {
+  interface X {}
+  export { X as Y };
+}
+import A = N.Y;
+---------- Options ----------
+{"names":["A","N","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 4,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "119..120",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "import": {
+          "target": 3,
+          "initializer": "123..124"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          },
+          {
+            "span": "68..69",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "123..124"
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "Y": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "37..38",
+            "scope": 2
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "INTERFACE | AMBIENT",
+        "declarations": [
+          {
+            "span": "84..85",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
+          "100..101"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

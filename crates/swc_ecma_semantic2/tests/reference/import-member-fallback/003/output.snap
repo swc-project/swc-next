@@ -1,0 +1,117 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export class C {
+    static x = 1;
+  }
+}
+import Owner = N.C;
+namespace Owner {
+  export interface x {}
+}
+const A = 1;
+namespace Test {
+  import A = Owner.x;
+  export let text: A;
+  export const value = A;
+}
+---------- Options ----------
+{"names":["A","Owner"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "192..193",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "218..219",
+        "scope": 6,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ],
+    "Owner": [
+      {
+        "span": "164..169",
+        "scope": 6,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "Owner",
+      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "64..69",
+        "87..92"
+      ]
+    },
+    "4": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "114..115"
+      ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "127..128"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "160..161"
+      ],
+      "alias_target": 4
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

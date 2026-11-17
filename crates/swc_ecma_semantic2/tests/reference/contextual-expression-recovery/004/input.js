@@ -1,0 +1,3 @@
+function read() {
+  yield value;
+}

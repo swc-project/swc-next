@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const key = "other";
+class C {
+  static [key] = 1;
+}
+namespace C {
+  export interface x {}
+}
+namespace A {
+  export interface Inner {}
+}
+namespace Use {
+  import A = C.x;
+  type Result = A.Inner;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "187..188",
+        "scope": 8,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "103..104"
+      ]
+    }
+  },
+  "scopes": {
+    "8": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    }
+  }
+}

@@ -1,0 +1,101 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace E {
+  export namespace A {}
+}
+enum E {
+  A,
+}
+---------- Options ----------
+{"names":["A","E"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 2,
+            "flags": "NAMESPACE_MODULE | EXPORTED"
+          },
+          {
+            "span": "51..52",
+            "scope": 4,
+            "flags": "ENUM_MEMBER"
+          }
+        ],
+        "namespace": {
+          "members": {}
+        }
+      }
+    ],
+    "E": [
+      {
+        "id": 1,
+        "flags": "REGULAR_ENUM | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
+          },
+          {
+            "span": "45..46",
+            "scope": 1,
+            "flags": "REGULAR_ENUM"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        },
+        "enum": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

@@ -1,0 +1,99 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface I<T> {
+  extra: T;
+}
+export default class C<T> {
+  value!: T;
+}
+const I = 1;
+const value = I;
+---------- Options ----------
+{"names":["I","T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "I": [
+      {
+        "id": 1,
+        "flags": "CLASS | INTERFACE | EXPORTED | IS_DEFAULT",
+        "declarations": [
+          {
+            "span": "25..26",
+            "scope": 1,
+            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
+          },
+          {
+            "span": "67..68",
+            "scope": 1,
+            "flags": "CLASS | EXPORTED | IS_DEFAULT"
+          }
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "95..96",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "116..117"
+        ]
+      }
+    ],
+    "T": [
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "27..28",
+            "scope": 2
+          },
+          {
+            "span": "69..70",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          2,
+          4
+        ],
+        "uses": [
+          "41..42",
+          "84..85"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "4": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

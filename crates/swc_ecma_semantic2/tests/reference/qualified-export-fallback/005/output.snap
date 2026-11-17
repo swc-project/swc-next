@@ -1,0 +1,193 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  export namespace X {
+    interface T {
+      own: true;
+    }
+  }
+}
+declare namespace N {
+  class Original {
+    static x: number;
+  }
+  export { Original as X };
+}
+type A = number;
+namespace Use {
+  import A = N.X.x;
+  export const typed: A = 1;
+  export const runtime = A;
+  export type Q = typeof A;
+}
+import B = N.X.T;
+const b: B = { own: true };
+---------- Options ----------
+{"names":["A","B","N"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "275..276",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "307..308",
+        "scope": 8,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "335..336",
+        "scope": 9,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      }
+    ],
+    "B": [
+      {
+        "span": "367..368",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 11
+        },
+        "candidates": [
+          11
+        ],
+        "value_symbols": []
+      }
+    ],
+    "N": [
+      {
+        "span": "246..247",
+        "scope": 8,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      },
+      {
+        "span": "351..352",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "29..30",
+        "121..122"
+      ]
+    },
+    "3": {
+      "name": "T",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "70..71"
+      ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "205..206"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "242..243"
+      ]
+    },
+    "11": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "347..348"
+      ],
+      "alias_target": 3
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "9": {
+      "kind": "Block",
+      "parent": 8,
+      "flags": "Strict",
+      "hoist_target": 8
+    }
+  }
+}

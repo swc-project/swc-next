@@ -1,0 +1,2 @@
+let value;
+delete value;

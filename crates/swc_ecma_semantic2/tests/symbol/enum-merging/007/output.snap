@@ -1,0 +1,140 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  A,
+}
+namespace E {
+  export namespace A {
+    export interface X {}
+  }
+}
+namespace E {
+  export type T = A.X;
+}
+---------- Options ----------
+{"names":["A","E","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "11..12",
+            "scope": 2,
+            "flags": "ENUM_MEMBER"
+          },
+          {
+            "span": "49..50",
+            "scope": 3,
+            "flags": "NAMESPACE_MODULE | EXPORTED"
+          }
+        ],
+        "uses": [
+          "117..118"
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 3,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "E": [
+      {
+        "id": 1,
+        "flags": "REGULAR_ENUM | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "5..6",
+            "scope": 1,
+            "flags": "REGULAR_ENUM"
+          },
+          {
+            "span": "26..27",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
+          },
+          {
+            "span": "95..96",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "T": {
+              "symbol": 4,
+              "value_symbols": []
+            }
+          }
+        },
+        "enum": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 3,
+        "flags": "INTERFACE | EXPORTED",
+        "declarations": [
+          {
+            "span": "74..75",
+            "scope": 4
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 3,
+      "flags": "Strict"
+    }
+  }
+}

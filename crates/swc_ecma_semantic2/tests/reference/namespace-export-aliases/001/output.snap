@@ -1,0 +1,96 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  interface X {}
+  export { X as Y };
+}
+declare namespace N {
+  type T = Y;
+}
+import A = N.Y;
+---------- Options ----------
+{"names":["N","X","Y"]}
+---------- Output ----------
+{
+  "references": {
+    "N": [
+      {
+        "span": "111..112",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "50..51",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": []
+      }
+    ],
+    "Y": [
+      {
+        "span": "95..96",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "18..19",
+        "80..81"
+      ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "34..35"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 4
+    }
+  }
+}

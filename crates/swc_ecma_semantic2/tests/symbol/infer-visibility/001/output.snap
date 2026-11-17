@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type U = number;
+type R<T> = T extends [infer U, U] ? U : U;
+const ok: R<[string, number]> = "ok";
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "symbols": {
+    "U": [
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "16..17",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "60..61",
+          "69..70"
+        ]
+      },
+      {
+        "id": 4,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "57..58",
+            "scope": 5
+          }
+        ],
+        "bindings": [
+          5,
+          7
+        ],
+        "uses": [
+          "65..66"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

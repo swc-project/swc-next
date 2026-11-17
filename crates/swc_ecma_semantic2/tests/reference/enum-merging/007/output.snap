@@ -1,0 +1,116 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const A = 0;
+type A = string;
+enum E {
+  A,
+}
+namespace E {
+  export namespace A {
+    export interface X {}
+  }
+}
+namespace E {
+  const value = A;
+  type Type = A;
+  type Qualified = A.X;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "145..146",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "162..163",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "184..185",
+        "scope": 9,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+      "declarations": [
+        "6..7",
+        "18..19"
+      ]
+    },
+    "3": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
+      "declarations": [
+        "41..42",
+        "79..80"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    },
+    "9": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    }
+  }
+}

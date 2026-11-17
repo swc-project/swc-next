@@ -1,0 +1,120 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+export default function f(): void;
+type f = number;
+declare namespace f {
+  interface Item {}
+}
+type A = string;
+declare const A: 1;
+declare namespace Test {
+  import A = f;
+  const value: A;
+  const scalar: typeof A;
+}
+---------- Options ----------
+{"names":["A","f"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "200..201",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      },
+      {
+        "span": "226..227",
+        "scope": 8,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ],
+    "f": [
+      {
+        "span": "182..183",
+        "scope": 8,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "35..36"
+      ]
+    },
+    "2": {
+      "name": "f",
+      "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "51..52",
+        "81..82"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT",
+      "declarations": [
+        "112..113",
+        "138..139"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "178..179"
+      ],
+      "alias_target": 1
+    }
+  },
+  "scopes": {
+    "8": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

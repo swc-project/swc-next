@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const key = "p";
+function f({ [key]: v }: { p: number }) {
+  return v;
+}
+---------- Options ----------
+{"names":["key"]}
+---------- Output ----------
+{
+  "references": {
+    "key": [
+      {
+        "span": "31..34",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsSignatureParameter",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

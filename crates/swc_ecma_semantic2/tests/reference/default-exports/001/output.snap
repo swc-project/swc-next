@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f(value: string): string;
+type F = typeof f;
+---------- Options ----------
+{"names":["f"]}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "66..67",
+        "scope": 5,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "24..25"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

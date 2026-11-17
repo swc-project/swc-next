@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const key = "other";
+class C {
+  static [(key)]() {}
+}
+namespace C {
+  export interface x {}
+}
+const A = 0;
+namespace Use {
+  import A = C.x;
+  const result = A;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "159..160",
+        "scope": 6,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 6
+          }
+        },
+        "candidates": [
+          6,
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 6
+            }
+          },
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "101..102"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "133..134"
+      ]
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

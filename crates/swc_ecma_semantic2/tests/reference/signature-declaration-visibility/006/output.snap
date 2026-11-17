@@ -1,0 +1,73 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function f(x = 0): typeof value {
+  const value = 123;
+  return value;
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "26..31",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      },
+      {
+        "span": "64..69",
+        "scope": 5,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "value",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "42..47"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureReturn",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    },
+    "5": {
+      "kind": "FunctionBody",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

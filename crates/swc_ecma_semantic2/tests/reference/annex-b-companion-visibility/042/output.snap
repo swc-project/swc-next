@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+class C {
+  static {
+    {
+      function f() {
+        return f;
+      }
+    }
+    f;
+  }
+}
+f;
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "f": [
+      {
+        "span": "63..64",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "84..85",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      },
+      {
+        "span": "93..94",
+        "scope": 0,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "f",
+      "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "42..43"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "2": {
+      "kind": "StaticBlock",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    },
+    "4": {
+      "kind": "Function",
+      "parent": 3,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

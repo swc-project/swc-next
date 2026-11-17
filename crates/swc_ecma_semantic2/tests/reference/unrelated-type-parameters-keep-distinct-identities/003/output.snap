@@ -1,0 +1,71 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function f<T>(value: T): void;
+declare function f<T>(value: T, extra: number): void;
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "29..30",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "68..69",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "19..20"
+      ]
+    },
+    "4": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "58..59"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureParameter",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    },
+    "8": {
+      "kind": "TsSignatureParameter",
+      "parent": 6,
+      "flags": "Strict",
+      "hoist_target": 6
+    }
+  }
+}

@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export type { X as Y };
+declare global {
+  interface X {}
+}
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "X": [
+      {
+        "id": 2,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "53..54",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          0
+        ],
+        "uses": [
+          "14..15"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

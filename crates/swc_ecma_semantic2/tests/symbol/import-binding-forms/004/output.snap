@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import A = B;
+import B = A;
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 1,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "7..8",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "import": {
+          "target": null,
+          "initializer": "11..12"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

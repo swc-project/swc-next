@@ -1,0 +1,91 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace Source {
+    export interface x {}
+  }
+  export class X {
+    static x: number;
+  }
+  export { Source as X };
+}
+type A = number;
+namespace Use {
+  import A = N.X.x;
+  const value: A = {};
+}
+---------- Options ----------
+{"names":["A","N"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "214..215",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      }
+    ],
+    "N": [
+      {
+        "span": "192..193",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "18..19"
+      ]
+    },
+    "3": {
+      "name": "x",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "64..65"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "188..189"
+      ],
+      "alias_target": 3
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

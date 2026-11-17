@@ -1,0 +1,80 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n(): typeof n {
+  var n;
+  return n;
+};
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "references": {
+    "n": [
+      {
+        "span": "31..32",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      },
+      {
+        "span": "53..54",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "n",
+      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "19..20"
+      ]
+    },
+    "3": {
+      "name": "n",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "41..42"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    },
+    "3": {
+      "kind": "TsSignatureReturn",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

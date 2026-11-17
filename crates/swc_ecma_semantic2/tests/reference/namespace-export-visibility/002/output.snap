@@ -1,0 +1,86 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const pick = "outer";
+declare namespace N {
+  const original: "inner";
+  export { original as pick };
+}
+declare namespace N {
+  const result: typeof pick;
+}
+---------- Options ----------
+{"names":["original","pick"]}
+---------- Output ----------
+{
+  "references": {
+    "original": [
+      {
+        "span": "93..101",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ],
+    "pick": [
+      {
+        "span": "160..164",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "pick",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "17..21"
+      ]
+    },
+    "3": {
+      "name": "original",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "63..71"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

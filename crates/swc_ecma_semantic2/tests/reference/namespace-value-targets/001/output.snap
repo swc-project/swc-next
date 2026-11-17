@@ -1,0 +1,87 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  const original: number;
+  export { original as value };
+  export type { original as erased };
+  export interface mixed {}
+  export { original as mixed };
+}
+---------- Options ----------
+{"names":["original"]}
+---------- Output ----------
+{
+  "references": {
+    "original": [
+      {
+        "span": "59..67",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      },
+      {
+        "span": "96..104",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      },
+      {
+        "span": "157..165",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "original",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "30..38"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

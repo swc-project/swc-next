@@ -1,0 +1,86 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type Alias = number;
+function Root() {}
+namespace Root {
+  export function child() {}
+  export namespace child {
+    export interface Marker {}
+  }
+}
+((Root).child.value) = 1;
+namespace Use {
+  import Alias = Root.child.value;
+  export type T = Alias;
+  export const result = Alias;
+}
+---------- Options ----------
+{"names":["Alias"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "245..250",
+        "scope": 9,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "276..281",
+        "scope": 8,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Alias",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..10"
+      ]
+    },
+    "6": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "201..206"
+      ]
+    }
+  },
+  "scopes": {
+    "8": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "9": {
+      "kind": "Block",
+      "parent": 8,
+      "flags": "Strict",
+      "hoist_target": 8
+    }
+  }
+}

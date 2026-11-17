@@ -1,0 +1,114 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type U = number;
+interface Box<T> {
+  value: T;
+  outer: U;
+}
+interface Box<T, U = string> {
+  extra: T;
+  inner: U;
+}
+---------- Options ----------
+{"names":["T","U"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "45..46",
+        "scope": 3,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "102..103",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ],
+    "U": [
+      {
+        "span": "57..58",
+        "scope": 3,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "114..115",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "U",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..6"
+      ]
+    },
+    "3": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "31..32",
+        "76..77"
+      ]
+    },
+    "4": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "79..80"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

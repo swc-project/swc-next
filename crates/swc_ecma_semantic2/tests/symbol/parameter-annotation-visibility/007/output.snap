@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type T = { x: string };
+function f({ x }: T) {
+  type T = number;
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "T": [
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "16..17",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "53..54"
+        ]
+      },
+      {
+        "id": 4,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "65..66",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare module "foo" {
+  export const x: number;
+}
+declare module "foo" {
+  export const y: typeof x;
+}
+---------- Options ----------
+{"names":["x"]}
+---------- Output ----------
+{
+  "references": {
+    "x": [
+      {
+        "span": "99..100",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

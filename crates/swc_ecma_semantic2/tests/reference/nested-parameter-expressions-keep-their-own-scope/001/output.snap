@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function f(arg = () => undefined as unknown as typeof value) {
+  function value() {}
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "54..59",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "value",
+      "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "74..79"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "Function",
+      "parent": 3,
+      "flags": "Strict"
+    }
+  }
+}

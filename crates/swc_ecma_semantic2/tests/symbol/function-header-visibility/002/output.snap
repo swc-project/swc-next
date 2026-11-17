@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+function f(): typeof value {
+  function value() {}
+  return value;
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "symbols": {
+    "value": [
+      {
+        "id": 2,
+        "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "51..56",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "32..37",
+          "71..76"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

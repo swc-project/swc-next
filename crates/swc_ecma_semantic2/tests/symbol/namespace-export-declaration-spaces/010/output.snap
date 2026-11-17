@@ -1,0 +1,74 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace A {
+  export interface T {}
+}
+namespace N {
+  import X = A.T;
+  export interface X {}
+}
+---------- Options ----------
+{"names":["A","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "67..68"
+        ],
+        "namespace": {
+          "members": {
+            "T": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 3,
+        "flags": "NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "50..51",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 5,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

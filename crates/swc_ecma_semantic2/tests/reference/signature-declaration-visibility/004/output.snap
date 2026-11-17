@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const value = "outer";
+function f(x = 0): typeof value {
+  enum value {
+    A,
+  }
+  return "outer";
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "49..54",
+        "scope": 4,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "value",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..11"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureReturn",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export const X = 1;
+  interface X {
+    local: true;
+  }
+  type T = X;
+}
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "84..85",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "29..30"
+      ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE",
+      "declarations": [
+        "48..49"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

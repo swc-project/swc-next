@@ -1,0 +1,132 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  namespace Original {
+    const v: 1;
+    interface T {
+      ok: true;
+    }
+  }
+  export { Original as X };
+}
+import Alias = N.Inner.Y;
+const value: 1 = Alias.v;
+const typed: Alias = { right: true };
+const nested: Alias.T = { ok: true };
+---------- Options ----------
+{"names":["Alias","N","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Alias": [
+      {
+        "id": 7,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "275..280",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "311..316",
+          "333..338",
+          "372..377"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "283..284"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "21..22",
+            "scope": 1
+          },
+          {
+            "span": "107..108",
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "283..284"
+        ],
+        "namespace": {
+          "members": {
+            "Inner": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "Original": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 4
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 3,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "130..131",
+            "scope": 4
+          }
+        ],
+        "uses": [
+          "73..74"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

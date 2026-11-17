@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "pkg";
+declare namespace N {
+  import original = remote.value;
+  export { original as value };
+  export type { original as erased };
+}
+namespace N {
+  export const result = value;
+}
+---------- Options ----------
+{"names":["N","original"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 2,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "49..50",
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
+          },
+          {
+            "span": "169..170",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "erased": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "original": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "result": {
+              "symbol": 4,
+              "value_symbols": [
+                {
+                  "Resolved": 4
+                }
+              ]
+            },
+            "value": {
+              "symbol": null,
+              "value_symbols": [
+                {
+                  "Uncertain": {
+                    "candidate": 3
+                  }
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "original": [
+      {
+        "id": 3,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "62..70",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "98..106",
+          "135..143",
+          "197..202"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "73..79"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

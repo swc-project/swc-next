@@ -1,0 +1,63 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+try {
+} catch ([value = 1]) {
+  function f() {
+    return f;
+  }
+}
+f;
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "symbols": {
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "41..42",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
+          "58..59"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR",
+        "declarations": [
+          {
+            "span": "41..42",
+            "scope": 0,
+            "node_symbol": 1
+          }
+        ],
+        "bindings": [
+          0
+        ],
+        "uses": [
+          "67..68"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "hoist_target": 0
+    }
+  }
+}

@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  const original: 1;
+  export type { original as X };
+}
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+import Alias = N.Inner.Y;
+const typed: Alias = { right: true };
+const queried: typeof Alias = 1;
+---------- Options ----------
+{"names":["Alias","N"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "250..255",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      },
+      {
+        "span": "297..302",
+        "scope": 1,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ],
+    "N": [
+      {
+        "span": "226..227",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "29..30",
+        "143..144"
+      ]
+    },
+    "5": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "218..223"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace A {
+  export const x = 1;
+}
+namespace A.B {
+  export const y = x;
+}
+namespace A.B.C {
+  export const z = x + y;
+}
+---------- Options ----------
+{"names":["x","y"]}
+---------- Output ----------
+{
+  "references": {
+    "x": [
+      {
+        "span": "73..74",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      },
+      {
+        "span": "115..116",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ],
+    "y": [
+      {
+        "span": "119..120",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "x",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "29..30"
+      ]
+    },
+    "4": {
+      "name": "y",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "69..70"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

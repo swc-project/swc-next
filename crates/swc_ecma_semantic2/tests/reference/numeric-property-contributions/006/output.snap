@@ -1,0 +1,101 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const Alias = 0;
+namespace N {
+  function C() {}
+  C[123] = 1;
+  namespace C {
+    export interface x {}
+  }
+  import Alias = C.x;
+  export const result = Alias;
+}
+---------- Options ----------
+{"names":["Alias","C"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "155..160",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ],
+    "C": [
+      {
+        "span": "51..52",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      },
+      {
+        "span": "126..127",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Alias",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..11"
+      ]
+    },
+    "3": {
+      "name": "C",
+      "flags": "FUNCTION | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "42..43",
+        "75..76"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

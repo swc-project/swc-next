@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export as namespace Global;
+export declare const value: number;
+---------- Options ----------
+{"names":["Global"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Global": [
+      {
+        "id": 1,
+        "flags": "UMD_EXPORT",
+        "declarations": [
+          {
+            "span": "20..26",
+            "scope": 1
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

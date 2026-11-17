@@ -1,0 +1,101 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const Inner = 1;
+namespace Outer {
+  const { fn }: { fn: <U>(x: U) => U } = { fn: (x) => x };
+  interface T {}
+  export declare namespace Inner {
+    export { T };
+  }
+  export const selected = Inner;
+}
+---------- Options ----------
+{"names":["Inner","Outer"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Inner": [
+      {
+        "id": 1,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "17..22",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "205..210"
+        ]
+      },
+      {
+        "id": 8,
+        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "149..154",
+            "scope": 2
+          }
+        ],
+        "namespace": {
+          "members": {
+            "T": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "Outer": [
+      {
+        "id": 2,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "38..43",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "Inner": {
+              "symbol": 8,
+              "value_symbols": []
+            },
+            "selected": {
+              "symbol": 9,
+              "value_symbols": [
+                {
+                  "Resolved": 9
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

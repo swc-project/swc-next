@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function outer() {
+  var arguments;
+  if (condition) function arguments() {}
+  arguments;
+}
+---------- Options ----------
+{"names":["arguments"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "arguments": [
+      {
+        "span": "79..88",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "arguments",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "25..34",
+        "62..71"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Function",
+      "parent": 0,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

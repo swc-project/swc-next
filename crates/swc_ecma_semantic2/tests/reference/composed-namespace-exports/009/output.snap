@@ -1,0 +1,168 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  namespace Original {
+    const v: 1;
+    interface T {
+      ok: true;
+    }
+  }
+  export { Original as X };
+}
+import Alias = N.Inner.Y;
+const value: 1 = Alias.v;
+const typed: Alias = { right: true };
+const nested: Alias.T = { ok: true };
+---------- Options ----------
+{"names":["Alias","N","X"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "311..316",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "333..338",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "372..377",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      }
+    ],
+    "N": [
+      {
+        "span": "283..284",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "73..74",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "21..22",
+        "107..108"
+      ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "130..131"
+      ]
+    },
+    "4": {
+      "name": "Original",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "167..175"
+      ]
+    },
+    "7": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "275..280"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

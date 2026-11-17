@@ -1,0 +1,132 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const key = "x";
+class C {
+  static [key] = 1;
+}
+namespace C {
+  export interface x {
+    own: true;
+  }
+}
+import Alias = C.x;
+const runtime = Alias;
+const typed: Alias = { own: true };
+const queried: typeof Alias = 1;
+---------- Options ----------
+{"names":["Alias","C"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "154..159",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 4
+          }
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      },
+      {
+        "span": "174..179",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      },
+      {
+        "span": "219..224",
+        "scope": 1,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 4
+          }
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ]
+      }
+    ],
+    "C": [
+      {
+        "span": "133..134",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "C",
+      "flags": "CLASS | NAMESPACE_MODULE",
+      "declarations": [
+        "34..35",
+        "70..71"
+      ]
+    },
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "125..130"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

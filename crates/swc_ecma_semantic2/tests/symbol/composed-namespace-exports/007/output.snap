@@ -1,0 +1,111 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  namespace Original {
+    const v: 1;
+    interface T {
+      ok: true;
+    }
+  }
+  export { Original as X };
+}
+import Alias = N.X;
+const value: 1 = Alias.v;
+const typed: Alias = { right: true };
+const nested: Alias.T = { ok: true };
+---------- Options ----------
+{"names":["Alias","N","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Alias": [
+      {
+        "id": 6,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "197..202",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "227..232",
+          "249..254",
+          "288..293"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "205..206"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "205..206"
+        ],
+        "namespace": {
+          "members": {
+            "Original": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

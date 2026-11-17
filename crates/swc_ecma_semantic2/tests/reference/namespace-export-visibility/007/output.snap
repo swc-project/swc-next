@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type Item = { outer: true };
+declare namespace N {
+  interface Local {
+    inner: true;
+  }
+  export { Local as Item };
+  export const Item: 0;
+}
+namespace N {
+  export let value: Item;
+}
+---------- Options ----------
+{"names":["Item","Local"]}
+---------- Output ----------
+{
+  "references": {
+    "Item": [
+      {
+        "span": "191..195",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ],
+    "Local": [
+      {
+        "span": "114..119",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "Local",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "74..79"
+      ]
+    },
+    "4": {
+      "name": "Item",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+      "declarations": [
+        "146..150"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

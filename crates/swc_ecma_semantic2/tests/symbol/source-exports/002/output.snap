@@ -1,0 +1,164 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export type f = number;
+namespace f {
+  export interface Item {}
+}
+type A = string;
+const A = 1;
+namespace Test {
+  import A = f;
+  export let item: A;
+  export const scalar: typeof A = A;
+}
+---------- Options ----------
+{"names":["A","f",""]}
+---------- Output ----------
+{
+  "symbols": {
+    "": [
+      {
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "0..222",
+            "scope": 0,
+            "node_symbol": null
+          }
+        ],
+        "roles": [
+          "SourceModule"
+        ],
+        "namespace": {
+          "members": {
+            "default": {
+              "symbol": 1,
+              "value_symbols": [
+                {
+                  "Resolved": 1
+                }
+              ]
+            },
+            "f": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "A": [
+      {
+        "id": 5,
+        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+        "declarations": [
+          {
+            "span": "103..104",
+            "scope": 1,
+            "flags": "TYPE_ALIAS"
+          },
+          {
+            "span": "121..122",
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "213..214",
+          "217..218"
+        ]
+      },
+      {
+        "id": 7,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "154..155",
+            "scope": 7
+          }
+        ],
+        "bindings": [
+          7
+        ],
+        "uses": [
+          "180..181"
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "158..159"
+        }
+      }
+    ],
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1
+          }
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_ALIAS | EXPORTED",
+        "declarations": [
+          {
+            "span": "43..44",
+            "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "65..66",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "158..159"
+        ],
+        "namespace": {
+          "members": {
+            "Item": {
+              "symbol": 4,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

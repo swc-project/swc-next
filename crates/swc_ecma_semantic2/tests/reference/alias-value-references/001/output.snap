@@ -1,0 +1,62 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export class C {}
+}
+namespace N {
+  export import Value = N.C;
+}
+import Alias = N.Value;
+export { Alias };
+---------- Options ----------
+{"names":["Alias"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "114..119",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "C",
+      "flags": "CLASS | EXPORTED",
+      "declarations": [
+        "29..30"
+      ]
+    },
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "88..93"
+      ],
+      "alias_target": 2
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

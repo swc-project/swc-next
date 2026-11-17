@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f<T>(value: T) {
+  return value;
+}
+export default interface I<T> {
+  value: T;
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "36..37",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "100..101",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "26..27"
+      ]
+    },
+    "4": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "86..87"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsSignatureParameter",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

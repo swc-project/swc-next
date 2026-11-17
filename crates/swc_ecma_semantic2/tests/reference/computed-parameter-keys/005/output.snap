@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace key {
+  export const p = "p";
+}
+type F = ({ [key.p]: v }) => void;
+---------- Options ----------
+{"names":["key"]}
+---------- Output ----------
+{
+  "references": {
+    "key": [
+      {
+        "span": "55..58",
+        "scope": 5,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "key",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "10..13"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

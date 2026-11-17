@@ -1,0 +1,76 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  interface Box<T> {}
+}
+declare namespace N {
+  type Invalid = T;
+}
+---------- Options ----------
+{"names":["N","T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          },
+          {
+            "span": "64..65",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "Box": {
+              "symbol": 2,
+              "value_symbols": []
+            },
+            "Invalid": {
+              "symbol": 4,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "T": [
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "38..39",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

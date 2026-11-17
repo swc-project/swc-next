@@ -1,0 +1,108 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+const Alias = { value: "outer" };
+namespace N {
+  import B = remote;
+  export import Alias = B;
+}
+namespace N {
+  export const selected = Alias.value;
+}
+---------- Options ----------
+{"names":["Alias","B"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "174..179",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 5
+          }
+        },
+        "candidates": [
+          5,
+          2
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 5
+            }
+          },
+          {
+            "Uncertain": {
+              "candidate": 2
+            }
+          }
+        ]
+      }
+    ],
+    "B": [
+      {
+        "span": "129..130",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 4
+          }
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Alias",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "42..47"
+      ]
+    },
+    "4": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "93..94"
+      ]
+    },
+    "5": {
+      "name": "Alias",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "121..126"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

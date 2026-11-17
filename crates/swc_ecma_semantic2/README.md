@@ -20,8 +20,9 @@ cargo run -p swc_next_ecma_semantic2 --example semantic2 -- input.ts
 
 ## Testing
 
-Check the library and example targets from the workspace root:
+Integration tests in `tests/` cover syntax checks, symbol links, and
+symbol/reference snapshots. Run the crate tests from the workspace root:
 
 ```sh
-cargo test -p swc_next_ecma_semantic2 --lib --examples --locked
+cargo test -p swc_next_ecma_semantic2 --locked
 ```

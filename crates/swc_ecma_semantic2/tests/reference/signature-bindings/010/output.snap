@@ -1,0 +1,82 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const key = "method";
+interface I {
+  [key](key: number): typeof key;
+}
+---------- Options ----------
+{"names":["key"]}
+---------- Output ----------
+{
+  "references": {
+    "key": [
+      {
+        "span": "50..53",
+        "scope": 2,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "76..79",
+        "scope": 5,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "17..20"
+      ]
+    },
+    "3": {
+      "name": "key",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "55..58"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "5": {
+      "kind": "TsSignatureReturn",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

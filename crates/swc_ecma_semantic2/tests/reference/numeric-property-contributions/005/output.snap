@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const Alias = 0;
+namespace N {
+  class C {
+    static [123] = 1;
+  }
+  namespace C {
+    export interface x {}
+  }
+  import Alias = C.x;
+  export const result = Alias;
+}
+---------- Options ----------
+{"names":["Alias","C"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "161..166",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ],
+    "C": [
+      {
+        "span": "132..133",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Alias",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..11"
+      ]
+    },
+    "3": {
+      "name": "C",
+      "flags": "CLASS | NAMESPACE_MODULE",
+      "declarations": [
+        "39..40",
+        "81..82"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

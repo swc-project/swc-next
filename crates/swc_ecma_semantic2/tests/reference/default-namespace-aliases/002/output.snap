@@ -1,0 +1,104 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default class C {}
+namespace C {
+  export interface Item {}
+}
+namespace A {
+  export interface Item {}
+}
+namespace Test {
+  import A = C;
+  export let value: A;
+  export let ctor: typeof A;
+  export let item: A.Item;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "165..166",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "194..195",
+        "scope": 7,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      },
+      {
+        "span": "216..217",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "C",
+      "flags": "CLASS | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "21..22"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "79..80"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "138..139"
+      ],
+      "alias_target": 1
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

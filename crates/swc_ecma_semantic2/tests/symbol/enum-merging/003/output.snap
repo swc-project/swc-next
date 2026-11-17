@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  ["value"] = 1,
+  Other = value,
+}
+---------- Options ----------
+{"names":["E","value"]}
+---------- Output ----------
+{
+  "symbols": {
+    "E": [
+      {
+        "id": 1,
+        "flags": "REGULAR_ENUM",
+        "declarations": [
+          {
+            "span": "5..6",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "enum": {
+          "members": {
+            "Other": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            },
+            "value": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "value": [
+      {
+        "id": 2,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "12..24",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "36..41"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

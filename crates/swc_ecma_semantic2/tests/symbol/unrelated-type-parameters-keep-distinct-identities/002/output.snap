@@ -1,0 +1,65 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface Box<T> {
+  value: T;
+}
+const C = class Box<T> {
+  value!: T;
+};
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "T": [
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "14..15",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "28..29"
+        ]
+      },
+      {
+        "id": 5,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "53..54",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "uses": [
+          "68..69"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "4": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

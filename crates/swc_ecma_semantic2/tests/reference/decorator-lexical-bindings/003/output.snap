@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function dec<U>(value?: unknown): any;
+class C {
+  @(((local: number) => dec(local))(1)) m() {}
+}
+---------- Options ----------
+{"names":["local"]}
+---------- Output ----------
+{
+  "references": {
+    "local": [
+      {
+        "span": "85..90",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "5": {
+      "name": "local",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "63..68"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "Function",
+      "parent": 6,
+      "flags": "Strict"
+    }
+  }
+}

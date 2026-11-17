@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const value = "outer";
+function f(): typeof value {
+  var value = 1;
+  return "outer";
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "symbols": {
+    "value": [
+      {
+        "id": 1,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "17..22",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "55..60"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "FUNCTION_SCOPED_VAR",
+        "declarations": [
+          {
+            "span": "69..74",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

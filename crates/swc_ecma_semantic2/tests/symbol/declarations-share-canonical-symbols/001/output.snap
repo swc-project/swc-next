@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface A {}
+interface B {}
+interface A {}
+interface A {}
+---------- Options ----------
+{"names":["A","B"],"sourceType":"script"}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 0,
+        "flags": "INTERFACE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 0
+          },
+          {
+            "span": "40..41",
+            "scope": 0
+          },
+          {
+            "span": "55..56",
+            "scope": 0
+          }
+        ],
+        "bindings": [
+          0
+        ]
+      }
+    ],
+    "B": [
+      {
+        "id": 1,
+        "flags": "INTERFACE",
+        "declarations": [
+          {
+            "span": "25..26",
+            "scope": 0
+          }
+        ],
+        "bindings": [
+          0
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    }
+  }
+}

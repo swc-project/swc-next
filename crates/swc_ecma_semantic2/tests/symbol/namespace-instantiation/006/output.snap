@@ -1,0 +1,74 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export { E };
+  const enum E {
+    A,
+  }
+}
+const value = N.E.A;
+---------- Options ----------
+{"names":["A","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 3,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "51..52",
+            "scope": 3
+          }
+        ]
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "74..75"
+        ],
+        "namespace": {
+          "members": {
+            "E": {
+              "symbol": null,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

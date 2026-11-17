@@ -1,0 +1,72 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface Type {}
+function check() {
+  var Type;
+  let value: Type;
+  return Type;
+}
+---------- Options ----------
+{"names":["Type"]}
+---------- Output ----------
+{
+  "references": {
+    "Type": [
+      {
+        "span": "62..66",
+        "scope": 3,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "77..81",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Type",
+      "flags": "INTERFACE",
+      "declarations": [
+        "10..14"
+      ]
+    },
+    "3": {
+      "name": "Type",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "43..47"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

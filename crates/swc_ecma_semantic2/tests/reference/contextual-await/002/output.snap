@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export let await = 1,
+    x = await;
+}
+---------- Options ----------
+{"names":["await"]}
+---------- Output ----------
+{
+  "references": {
+    "await": [
+      {
+        "span": "46..51",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "await",
+      "flags": "BLOCK_SCOPED_VAR | EXPORTED",
+      "declarations": [
+        "27..32"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

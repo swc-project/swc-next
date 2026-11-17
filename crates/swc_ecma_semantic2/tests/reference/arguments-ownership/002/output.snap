@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+declare function f(x: typeof arguments): void;
+---------- Options ----------
+{"names":["arguments"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "arguments": [
+      {
+        "span": "71..80",
+        "scope": 2,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsSignatureParameter",
+      "parent": 1,
+      "hoist_target": 1
+    }
+  }
+}

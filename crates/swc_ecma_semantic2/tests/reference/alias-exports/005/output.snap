@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+namespace N {
+  import B = remote;
+  export import Alias = B;
+}
+---------- Options ----------
+{"names":["remote"]}
+---------- Output ----------
+{
+  "references": {
+    "remote": [
+      {
+        "span": "63..69",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "remote",
+      "flags": "IMPORT",
+      "declarations": [
+        "12..18"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

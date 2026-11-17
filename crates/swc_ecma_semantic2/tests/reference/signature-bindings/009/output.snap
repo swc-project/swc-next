@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const value = "outer";
+function f<T extends typeof value>(value: number): T {
+  throw 0;
+}
+---------- Options ----------
+{"names":["value"]}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "62..67",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "value",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "17..22"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsTypeParameters",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

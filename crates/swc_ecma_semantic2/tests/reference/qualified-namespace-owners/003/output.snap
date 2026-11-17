@@ -1,0 +1,119 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace Source {
+    export interface x {}
+  }
+  export class X {
+    static x: number;
+  }
+  export { Source as X };
+}
+type A = number;
+namespace Use {
+  import Owner = N.X;
+  import A = Owner.x;
+  const value: A = {};
+}
+---------- Options ----------
+{"names":["A","N","Owner"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "238..239",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 8
+        },
+        "candidates": [
+          8
+        ],
+        "value_symbols": []
+      }
+    ],
+    "N": [
+      {
+        "span": "196..197",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "Owner": [
+      {
+        "span": "214..219",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "18..19"
+      ]
+    },
+    "3": {
+      "name": "x",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "64..65"
+      ]
+    },
+    "7": {
+      "name": "Owner",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "188..193"
+      ]
+    },
+    "8": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "210..211"
+      ],
+      "alias_target": 3
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

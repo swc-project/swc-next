@@ -1,0 +1,166 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum Outer {
+  A = (() => {
+    enum Inner {
+      X,
+    }
+    return 0;
+  })(),
+  B = 1,
+  C = B,
+}
+---------- Options ----------
+{"names":["A","B","C","Inner","Outer","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "15..80",
+            "scope": 2
+          }
+        ]
+      }
+    ],
+    "B": [
+      {
+        "id": 5,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "84..89",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "97..98"
+        ]
+      }
+    ],
+    "C": [
+      {
+        "id": 6,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "93..98",
+            "scope": 2
+          }
+        ]
+      }
+    ],
+    "Inner": [
+      {
+        "id": 3,
+        "flags": "REGULAR_ENUM",
+        "declarations": [
+          {
+            "span": "37..42",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "enum": {
+          "members": {
+            "X": {
+              "symbol": 4,
+              "value_symbols": [
+                {
+                  "Resolved": 4
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "Outer": [
+      {
+        "id": 1,
+        "flags": "REGULAR_ENUM",
+        "declarations": [
+          {
+            "span": "5..10",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "enum": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "B": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            },
+            "C": {
+              "symbol": 6,
+              "value_symbols": [
+                {
+                  "Resolved": 6
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 4,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "51..52",
+            "scope": 4
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "3": {
+      "kind": "Function",
+      "parent": 2,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 3
+    }
+  }
+}

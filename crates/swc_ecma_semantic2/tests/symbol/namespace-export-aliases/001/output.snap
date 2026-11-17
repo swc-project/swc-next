@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  interface X {}
+  export { X as Y };
+}
+declare namespace N {
+  type T = Y;
+}
+import A = N.Y;
+---------- Options ----------
+{"names":["A","N","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 4,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "107..108",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "111..112"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          },
+          {
+            "span": "80..81",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "111..112"
+        ],
+        "namespace": {
+          "members": {
+            "T": {
+              "symbol": 3,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "Y": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "INTERFACE | AMBIENT",
+        "declarations": [
+          {
+            "span": "34..35",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "50..51"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

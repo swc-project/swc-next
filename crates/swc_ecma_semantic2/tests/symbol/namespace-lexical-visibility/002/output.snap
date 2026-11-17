@@ -1,0 +1,121 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export interface X {
+    exported: true;
+  }
+}
+namespace N {
+  interface X {
+    local: true;
+  }
+  export const X = 1;
+  type T = X;
+}
+---------- Options ----------
+{"names":["N","T","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
+          },
+          {
+            "span": "73..74",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "T": [
+      {
+        "id": 4,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "143..144",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ]
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | EXPORTED",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 2,
+            "flags": "INTERFACE | EXPORTED"
+          },
+          {
+            "span": "129..130",
+            "scope": 4,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "INTERFACE",
+        "declarations": [
+          {
+            "span": "89..90",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "uses": [
+          "147..148"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "names": [
+      "N",
+      "mixed",
+      "original"
+    ],
+    "exports": {
+      "N": [
+        "erased",
+        "original"
+      ]
+    }
+  }
+]

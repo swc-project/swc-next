@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type T = string;
+function f<T>(x: T) {}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "45..46",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "39..40"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 3
+    }
+  }
+}

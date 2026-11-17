@@ -1,0 +1,95 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  export const X: 1;
+  interface X {}
+  export namespace Y {}
+  export { X as Y };
+  export namespace Inner {
+    export interface Z {}
+    export { Y as Z };
+  }
+}
+---------- Options ----------
+{"names":["X","Y"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "106..107",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ],
+    "Y": [
+      {
+        "span": "182..183",
+        "scope": 5,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+      "declarations": [
+        "48..49"
+      ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "66..67"
+      ]
+    },
+    "4": {
+      "name": "Y",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "90..91"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n<n>(a: n) {
+  return n;
+};
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "references": {
+    "n": [
+      {
+        "span": "27..28",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "41..42",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "n",
+      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "19..20"
+      ]
+    },
+    "3": {
+      "name": "n",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "21..22"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    },
+    "4": {
+      "kind": "TsSignatureParameter",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

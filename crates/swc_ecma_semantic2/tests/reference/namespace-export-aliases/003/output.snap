@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  export const X: number;
+}
+declare namespace N {
+  interface X {}
+  export { X as Y };
+}
+import A = N.Y;
+---------- Options ----------
+{"names":["N","X"]}
+---------- Output ----------
+{
+  "references": {
+    "N": [
+      {
+        "span": "123..124",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "100..101",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "18..19",
+        "68..69"
+      ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "84..85"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

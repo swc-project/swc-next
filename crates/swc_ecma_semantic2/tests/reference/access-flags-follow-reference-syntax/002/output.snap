@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+let value;
+value = 1;
+---------- Options ----------
+{"names":["value"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "11..16",
+        "scope": 0,
+        "space": "Value",
+        "access": "Write",
+        "resolution": {
+          "Resolved": 0
+        },
+        "candidates": [
+          0
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 0
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "value",
+      "flags": "BLOCK_SCOPED_VAR",
+      "declarations": [
+        "4..9"
+      ]
+    }
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    }
+  }
+}

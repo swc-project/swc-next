@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default class<T> {
+  value!: T;
+}
+export default interface I<T> {
+  extra: T;
+}
+const ctor = I;
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "symbols": {
+    "T": [
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "21..22",
+            "scope": 2
+          },
+          {
+            "span": "68..69",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          2,
+          4
+        ],
+        "uses": [
+          "36..37",
+          "82..83"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "4": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

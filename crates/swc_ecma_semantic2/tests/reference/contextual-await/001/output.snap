@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  await = 1,
+  A = await,
+}
+---------- Options ----------
+{"names":["await"]}
+---------- Output ----------
+{
+  "references": {
+    "await": [
+      {
+        "span": "28..33",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "await",
+      "flags": "ENUM_MEMBER",
+      "declarations": [
+        "11..20"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

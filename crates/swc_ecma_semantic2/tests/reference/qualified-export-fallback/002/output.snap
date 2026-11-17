@@ -1,0 +1,173 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  class Original {
+    static x: number;
+  }
+  export namespace X {
+    interface T {
+      own: true;
+    }
+  }
+  export { Original as X };
+}
+import Mid = N.X;
+type A = number;
+namespace Use {
+  import A = Mid.x;
+  export const typed: A = 1;
+  export const runtime = A;
+  export type Q = typeof A;
+}
+import B = Mid.T;
+const b: B = { own: true };
+---------- Options ----------
+{"names":["A","B","N"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "269..270",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "301..302",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 8
+        },
+        "candidates": [
+          8
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 8
+          }
+        ]
+      },
+      {
+        "span": "329..330",
+        "scope": 8,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 8
+        },
+        "candidates": [
+          8
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 8
+          }
+        ]
+      }
+    ],
+    "B": [
+      {
+        "span": "361..362",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 12
+        },
+        "candidates": [
+          12
+        ],
+        "value_symbols": []
+      }
+    ],
+    "N": [
+      {
+        "span": "189..190",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "29..30"
+      ]
+    },
+    "4": {
+      "name": "T",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "115..116"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "199..200"
+      ]
+    },
+    "8": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "236..237"
+      ]
+    },
+    "12": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "341..342"
+      ],
+      "alias_target": 4
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "Block",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 7
+    }
+  }
+}

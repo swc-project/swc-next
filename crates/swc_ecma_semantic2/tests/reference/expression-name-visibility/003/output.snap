@@ -1,0 +1,80 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n(a = n) {
+  let n;
+  return n;
+};
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "references": {
+    "n": [
+      {
+        "span": "25..26",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      },
+      {
+        "span": "48..49",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "n",
+      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "19..20"
+      ]
+    },
+    "3": {
+      "name": "n",
+      "flags": "BLOCK_SCOPED_VAR",
+      "declarations": [
+        "36..37"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier",
+      "function_body": 3
+    },
+    "3": {
+      "kind": "FunctionBody",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const X = "wrong";
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+declare namespace N {
+  const original: "right";
+  export { original as X };
+}
+type Result = typeof N.Inner.Y;
+const result: Result = "right";
+---------- Options ----------
+{"names":["X","original"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "92..93",
+        "scope": 3,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ],
+    "original": [
+      {
+        "span": "168..176",
+        "scope": 4,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "original",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "138..146"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

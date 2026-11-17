@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n(n) {
+  return n;
+};
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "symbols": {
+    "n": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "19..20",
+            "scope": 2
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+        "declarations": [
+          {
+            "span": "21..22",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "35..36"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+const Alias = { value: "outer" };
+namespace N {
+  export import Alias = remote;
+}
+namespace N {
+  export const selected = Alias.value;
+}
+---------- Options ----------
+{"names":["Alias","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Alias": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "42..47",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "158..163"
+        ]
+      },
+      {
+        "id": 4,
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "100..105",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "158..163"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "108..114"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 3,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "80..81",
+            "scope": 1
+          },
+          {
+            "span": "128..129",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "Alias": {
+              "symbol": 4,
+              "value_symbols": [
+                {
+                  "Uncertain": {
+                    "candidate": 4
+                  }
+                }
+              ]
+            },
+            "selected": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

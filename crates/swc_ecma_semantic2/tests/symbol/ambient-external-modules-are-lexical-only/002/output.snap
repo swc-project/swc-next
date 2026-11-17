@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare module "foo" {
+  export as namespace Umd;
+}
+---------- Options ----------
+{"names":["Umd"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Umd": []
+  }
+}

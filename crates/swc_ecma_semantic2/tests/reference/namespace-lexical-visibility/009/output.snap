@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace A {
+  export const x = 2;
+}
+namespace A.B {}
+namespace A {
+  const x = 1;
+  namespace B {
+    export const y = x;
+  }
+}
+---------- Options ----------
+{"names":["x"]}
+---------- Output ----------
+{
+  "references": {
+    "x": [
+      {
+        "span": "121..122",
+        "scope": 5,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "x",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "77..78"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "TsModule",
+      "parent": 4,
+      "flags": "Strict"
+    }
+  }
+}

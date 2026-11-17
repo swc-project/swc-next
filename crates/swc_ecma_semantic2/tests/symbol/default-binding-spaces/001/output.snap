@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export default interface I {
+  value: string;
+}
+let item: f;
+const fn = f;
+---------- Options ----------
+{"names":["f"]}
+---------- Output ----------
+{
+  "symbols": {
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1,
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+          },
+          {
+            "span": "56..57",
+            "scope": 1,
+            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
+          }
+        ],
+        "uses": [
+          "89..90",
+          "103..104"
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

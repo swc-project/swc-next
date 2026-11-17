@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  const hidden = 1;
+}
+namespace N {
+  export const visible = hidden;
+}
+---------- Options ----------
+{"names":["hidden"]}
+---------- Output ----------
+{
+  "references": {
+    "hidden": [
+      {
+        "span": "75..81",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

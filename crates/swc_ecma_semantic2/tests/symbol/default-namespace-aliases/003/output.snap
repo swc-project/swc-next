@@ -1,0 +1,82 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface I {
+  value: string;
+}
+namespace I {
+  export interface Item {}
+}
+type A = number;
+const A = 1;
+namespace Test {
+  import A = I;
+  export let item: A.Item;
+  export let value: A;
+  export let scalar: typeof A;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 4,
+        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+        "declarations": [
+          {
+            "span": "96..97",
+            "scope": 1,
+            "flags": "TYPE_ALIAS"
+          },
+          {
+            "span": "114..115",
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "201..202",
+          "232..233"
+        ]
+      },
+      {
+        "id": 6,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "147..148",
+            "scope": 6
+          }
+        ],
+        "bindings": [
+          6
+        ],
+        "uses": [
+          "173..174"
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "151..152"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

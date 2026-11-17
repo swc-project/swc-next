@@ -1,0 +1,4 @@
+{
+  function f(): void;
+}
+f;

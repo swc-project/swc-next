@@ -1,0 +1,62 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface X {}
+declare namespace N {
+  export { X };
+}
+---------- Options ----------
+{"names":["N","X"],"sourceType":"script"}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 0
+          }
+        ],
+        "bindings": [
+          0
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 0,
+        "flags": "INTERFACE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 0
+          }
+        ],
+        "bindings": [
+          0
+        ],
+        "uses": [
+          "48..49"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    }
+  }
+}

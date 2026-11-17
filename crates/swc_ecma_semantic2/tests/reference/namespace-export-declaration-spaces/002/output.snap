@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type A = string;
+namespace V {
+  export const x = 1;
+}
+namespace N {
+  export import A = V.x;
+}
+namespace N {
+  export type Result = A;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "133..134",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..6"
+      ]
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "Block",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 5
+    }
+  }
+}

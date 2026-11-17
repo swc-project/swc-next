@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum Outer {
+  A = (() => {
+    enum Inner {
+      X,
+    }
+    return 0;
+  })(),
+  B = 1,
+  C = B,
+}
+---------- Options ----------
+{"names":["B"]}
+---------- Output ----------
+{
+  "references": {
+    "B": [
+      {
+        "span": "97..98",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "5": {
+      "name": "B",
+      "flags": "ENUM_MEMBER",
+      "declarations": [
+        "84..89"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

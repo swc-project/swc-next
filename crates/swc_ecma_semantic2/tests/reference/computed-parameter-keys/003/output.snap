@@ -1,0 +1,84 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface key {}
+namespace N {
+  const key = "p";
+  type F = ({ [key]: v }: { p: number }) => typeof v;
+}
+---------- Options ----------
+{"names":["key","v"]}
+---------- Output ----------
+{
+  "references": {
+    "key": [
+      {
+        "span": "65..68",
+        "scope": 6,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ],
+    "v": [
+      {
+        "span": "101..102",
+        "scope": 7,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "39..42"
+      ]
+    },
+    "5": {
+      "name": "v",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "71..72"
+      ]
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "TsSignatureParameter",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 3
+    },
+    "7": {
+      "kind": "TsSignatureReturn",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 3
+    }
+  }
+}

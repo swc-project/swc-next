@@ -1,0 +1,79 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+interface X {
+  wrong: true;
+}
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+declare namespace N {
+  interface T {
+    right: true;
+  }
+  export { T as X };
+}
+type Result = N.Inner.Y;
+const result: Result = { right: true };
+---------- Options ----------
+{"names":["T","X"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "190..191",
+        "scope": 5,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ],
+    "X": [
+      {
+        "span": "104..105",
+        "scope": 4,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "T",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "154..155"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsModule",
+      "parent": 3,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

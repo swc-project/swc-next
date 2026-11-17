@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum T {
+  A,
+}
+class C {
+  m(...args: T[]) {
+    enum T {
+      B,
+    }
+  }
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "39..40",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "REGULAR_ENUM",
+      "declarations": [
+        "5..6"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 4
+    }
+  }
+}

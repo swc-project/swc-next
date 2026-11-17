@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type U = string;
+type R<T> = T extends (<V>() => true extends true ? infer U : never) ? U : never;
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "references": {
+    "U": [
+      {
+        "span": "88..89",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "5": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "75..76"
+      ]
+    }
+  },
+  "scopes": {
+    "5": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

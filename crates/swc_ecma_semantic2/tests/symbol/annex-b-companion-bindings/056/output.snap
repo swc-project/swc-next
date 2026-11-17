@@ -1,0 +1,81 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  type f = string;
+  export var f;
+  if (condition)
+    function f() {
+      return f;
+    }
+  f;
+}
+---------- Options ----------
+{"names":["f"],"sourceType":"script"}
+---------- Output ----------
+{
+  "symbols": {
+    "f": [
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "21..22",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | EXPORTED",
+        "declarations": [
+          {
+            "span": "46..47",
+            "scope": 1
+          },
+          {
+            "span": "79..80",
+            "scope": 1,
+            "flags": "FUNCTION_SCOPED_VAR",
+            "node_symbol": 3
+          }
+        ],
+        "uses": [
+          "109..110"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "79..80",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
+          "98..99"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "TsModule",
+      "parent": 0
+    },
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

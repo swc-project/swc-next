@@ -1,0 +1,96 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export default interface I {
+  value: string;
+}
+export type f = number;
+let item: f;
+---------- Options ----------
+{"names":["f",""]}
+---------- Output ----------
+{
+  "symbols": {
+    "": [
+      {
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "0..116",
+            "scope": 0,
+            "node_symbol": null
+          }
+        ],
+        "roles": [
+          "SourceModule"
+        ],
+        "namespace": {
+          "members": {
+            "default": {
+              "symbol": 1,
+              "value_symbols": [
+                {
+                  "Resolved": 1
+                }
+              ]
+            },
+            "f": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1,
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+          },
+          {
+            "span": "56..57",
+            "scope": 1,
+            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
+          }
+        ],
+        "uses": [
+          "113..114"
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_ALIAS | EXPORTED",
+        "declarations": [
+          {
+            "span": "91..92",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

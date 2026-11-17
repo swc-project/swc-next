@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as External from "./dep";
+import A = External.Item;
+type Result = A;
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "75..76",
+        "scope": 2,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 2
+          }
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 2
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "42..43"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

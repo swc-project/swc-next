@@ -1,0 +1,2 @@
+type U = string;
+type R<T> = T extends (true extends true ? infer U : U) ? U : never;

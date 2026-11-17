@@ -1,0 +1,104 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "pkg";
+declare namespace N {
+  import original = remote.value;
+  export { original as value };
+  export type { original as erased };
+}
+namespace N {
+  export const result = value;
+}
+---------- Options ----------
+{"names":["original","value"]}
+---------- Output ----------
+{
+  "references": {
+    "original": [
+      {
+        "span": "98..106",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 3
+            }
+          }
+        ]
+      },
+      {
+        "span": "135..143",
+        "scope": 2,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 3
+            }
+          }
+        ]
+      }
+    ],
+    "value": [
+      {
+        "span": "197..202",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 3
+          }
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 3
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "original",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "62..70"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

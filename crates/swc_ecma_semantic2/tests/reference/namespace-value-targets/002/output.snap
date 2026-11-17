@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "pkg";
+namespace N {
+  export import A = remote.Unknown;
+}
+---------- Options ----------
+{"names":["remote"]}
+---------- Output ----------
+{
+  "references": {
+    "remote": [
+      {
+        "span": "65..71",
+        "scope": 2,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "remote",
+      "flags": "IMPORT",
+      "declarations": [
+        "12..18"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

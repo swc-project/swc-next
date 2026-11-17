@@ -1,0 +1,71 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+const Alias = { value: "outer" };
+namespace N {
+  export import Alias = remote;
+}
+namespace N {
+  export const selected = Alias.value;
+}
+---------- Options ----------
+{"names":["Alias"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "158..163",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Uncertain": {
+            "candidate": 4
+          }
+        },
+        "candidates": [
+          4,
+          2
+        ],
+        "value_symbols": [
+          {
+            "Uncertain": {
+              "candidate": 4
+            }
+          },
+          {
+            "Uncertain": {
+              "candidate": 2
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Alias",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "42..47"
+      ]
+    },
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "100..105"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

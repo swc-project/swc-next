@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare global {
+  global {}
+}
+---------- Options ----------
+{"names":["global"],"sourceType":"unambiguous"}
+---------- Output ----------
+{
+  "references": {
+    "global": []
+  }
+}

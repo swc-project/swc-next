@@ -1,0 +1,105 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface X {}
+export const X = 1;
+export default (X);
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "51..52",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "X",
+      "flags": "INTERFACE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "28..29"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}
+---------- Options ----------
+{"names":["X"],"preserveParens":false}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "51..52",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "X",
+      "flags": "INTERFACE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+      "declarations": [
+        "28..29"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

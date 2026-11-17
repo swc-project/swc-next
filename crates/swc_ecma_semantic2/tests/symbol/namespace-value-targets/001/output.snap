@@ -1,0 +1,106 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  const original: number;
+  export { original as value };
+  export type { original as erased };
+  export interface mixed {}
+  export { original as mixed };
+}
+---------- Options ----------
+{"names":["N","mixed","original"],"exports":{"N":["erased","original"]}}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "erased": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "mixed": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "original": {
+              "symbol": null,
+              "value_symbols": []
+            },
+            "value": {
+              "symbol": null,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "mixed": [
+      {
+        "id": 3,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "137..142",
+            "scope": 2
+          }
+        ]
+      }
+    ],
+    "original": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+        "declarations": [
+          {
+            "span": "30..38",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "59..67",
+          "96..104",
+          "157..165"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

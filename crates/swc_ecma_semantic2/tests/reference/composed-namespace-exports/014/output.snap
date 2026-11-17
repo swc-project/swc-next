@@ -1,0 +1,203 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace Values {
+  namespace Original {
+    const v: 1;
+    interface T {
+      ok: true;
+    }
+  }
+}
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  import original = Values.Original;
+  export { original as X };
+}
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+import Alias = N.Inner.Y;
+const value: 1 = Alias.v;
+const typed: Alias = { right: true };
+const nested: Alias.T = { ok: true };
+---------- Options ----------
+{"names":["Alias","N","X","original"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "377..382",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 9
+        },
+        "candidates": [
+          9
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 9
+          }
+        ]
+      },
+      {
+        "span": "399..404",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 9
+        },
+        "candidates": [
+          9
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 9
+          }
+        ]
+      },
+      {
+        "span": "438..443",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 9
+        },
+        "candidates": [
+          9
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 9
+          }
+        ]
+      }
+    ],
+    "N": [
+      {
+        "span": "349..350",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "318..319",
+        "scope": 8,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      }
+    ],
+    "original": [
+      {
+        "span": "237..245",
+        "scope": 5,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 7
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "Original",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "50..58"
+      ]
+    },
+    "5": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "141..142",
+        "266..267"
+      ]
+    },
+    "6": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "164..165"
+      ]
+    },
+    "7": {
+      "name": "original",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "198..206"
+      ],
+      "alias_target": 2
+    },
+    "9": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "341..346"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "TsModule",
+      "parent": 7,
+      "flags": "Strict"
+    }
+  }
+}

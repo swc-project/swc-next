@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare enum E {
+  A,
+}
+declare namespace E {
+  interface X {}
+  export type { X as A };
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "AMBIENT | ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "19..20",
+            "scope": 2
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

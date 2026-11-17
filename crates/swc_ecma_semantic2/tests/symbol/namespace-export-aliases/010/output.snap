@@ -1,0 +1,130 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace A {
+    const value: number;
+  }
+  import Y = A;
+  export const X: number;
+  export { Y as X };
+}
+---------- Options ----------
+{"names":["A","N","X","Y"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "34..35",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "80..81"
+        ],
+        "namespace": {
+          "members": {
+            "value": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "18..19",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                },
+                {
+                  "Resolved": 4
+                }
+              ]
+            },
+            "Y": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 5,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "98..99",
+            "scope": 2
+          }
+        ]
+      }
+    ],
+    "Y": [
+      {
+        "id": 4,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "76..77",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "120..121"
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "80..81"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

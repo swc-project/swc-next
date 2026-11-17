@@ -1,0 +1,111 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+namespace A {
+  export interface T {}
+}
+const B = { value: "outer" };
+namespace N {
+  import A = remote.Inner;
+  export import B = A;
+}
+namespace N {
+  export const result = B.value;
+}
+---------- Options ----------
+{"names":["B","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "B": [
+      {
+        "id": 4,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "82..83",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "210..211"
+        ]
+      },
+      {
+        "id": 7,
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "163..164",
+            "scope": 4
+          }
+        ],
+        "uses": [
+          "210..211"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "167..168"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 5,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "116..117",
+            "scope": 1
+          },
+          {
+            "span": "182..183",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "B": {
+              "symbol": 7,
+              "value_symbols": [
+                {
+                  "Uncertain": {
+                    "candidate": 7
+                  }
+                }
+              ]
+            },
+            "result": {
+              "symbol": 8,
+              "value_symbols": [
+                {
+                  "Resolved": 8
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

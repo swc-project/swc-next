@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import Item = require("./dep");
+type A = typeof Item;
+namespace Unrelated {
+  export interface T {}
+}
+import Unused = Unrelated;
+---------- Options ----------
+{"names":["A","Item"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "37..38",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ]
+      }
+    ],
+    "Item": [
+      {
+        "id": 1,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "7..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "48..52"
+        ],
+        "import": {
+          "target": null,
+          "initializer": null
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

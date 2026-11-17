@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  A,
+}
+namespace E {
+  export namespace A {
+    export interface X {}
+  }
+}
+namespace E {
+  export type T = A.X;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "117..118",
+        "scope": 7,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "2": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
+      "declarations": [
+        "11..12",
+        "49..50"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "Block",
+      "parent": 6,
+      "flags": "Strict",
+      "hoist_target": 6
+    }
+  }
+}

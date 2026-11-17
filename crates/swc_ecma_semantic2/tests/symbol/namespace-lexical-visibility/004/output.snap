@@ -1,0 +1,106 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export interface X {}
+}
+namespace N {
+  const X = 1;
+  type T = X;
+}
+---------- Options ----------
+{"names":["N","T","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
+          },
+          {
+            "span": "50..51",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "X": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "T": [
+      {
+        "id": 4,
+        "flags": "TYPE_ALIAS",
+        "declarations": [
+          {
+            "span": "76..77",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ]
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "INTERFACE | EXPORTED",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "80..81"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+        "declarations": [
+          {
+            "span": "62..63",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

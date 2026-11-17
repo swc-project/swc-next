@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  const x: number;
+}
+declare namespace N {
+  const y: typeof x;
+}
+---------- Options ----------
+{"names":["x"]}
+---------- Output ----------
+{
+  "symbols": {
+    "x": [
+      {
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "30..31",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "83..84"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

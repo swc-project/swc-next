@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as N from "pkg";
+import A = N.x;
+---------- Options ----------
+{"names":["A","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "import": {
+          "target": null,
+          "initializer": "37..38"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "IMPORT",
+        "declarations": [
+          {
+            "span": "12..13",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "37..38"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

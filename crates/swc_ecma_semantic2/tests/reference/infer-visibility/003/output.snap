@@ -1,0 +1,129 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type U = number;
+type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "references": {
+    "U": [
+      {
+        "span": "80..81",
+        "scope": 9,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "85..86",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "89..90",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "94..95",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "98..99",
+        "scope": 3,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "U",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "16..17"
+      ]
+    },
+    "4": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "57..58"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "6": {
+      "kind": "TsConditionalExtends",
+      "parent": 5,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "8": {
+      "kind": "Block",
+      "parent": 6,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "9": {
+      "kind": "TsConditionalExtends",
+      "parent": 8,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

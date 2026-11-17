@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace E {
+  export const B = 1;
+}
+enum E {
+  A = B,
+}
+---------- Options ----------
+{"names":["B"]}
+---------- Output ----------
+{
+  "references": {
+    "B": [
+      {
+        "span": "53..54",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+var arguments;
+const f = () => arguments;
+---------- Options ----------
+{"names":["arguments"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "arguments": [
+      {
+        "span": "31..40",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 0
+        },
+        "candidates": [
+          0
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 0
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "arguments",
+      "flags": "FUNCTION_SCOPED_VAR",
+      "declarations": [
+        "4..13"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Function",
+      "parent": 0
+    }
+  }
+}

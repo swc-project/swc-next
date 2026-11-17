@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare module "foo" {
+  export const x: number;
+}
+declare module "foo" {
+  export const y: typeof x;
+}
+---------- Options ----------
+{"names":["foo"]}
+---------- Output ----------
+{
+  "symbols": {
+    "foo": []
+  }
+}

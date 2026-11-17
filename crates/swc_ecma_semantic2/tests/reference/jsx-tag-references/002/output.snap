@@ -1,0 +1,109 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace JSX {
+  interface Element {}
+  interface IntrinsicElements {
+    div: {};
+    "A-B": {};
+  }
+}
+declare const _Button: () => JSX.Element;
+declare const $Button: () => JSX.Element;
+declare const Élement: () => JSX.Element;
+const views = [<_Button />, <$Button />, <Élement />, <div />, <A-B />];
+---------- Options ----------
+{"names":["$Button","_Button","Élement"]}
+---------- Output ----------
+{
+  "references": {
+    "$Button": [
+      {
+        "span": "269..276",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ],
+    "_Button": [
+      {
+        "span": "256..263",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      }
+    ],
+    "Élement": [
+      {
+        "span": "282..290",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 6
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "_Button",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "127..134"
+      ]
+    },
+    "5": {
+      "name": "$Button",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "169..176"
+      ]
+    },
+    "6": {
+      "name": "Élement",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+      "declarations": [
+        "211..219"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

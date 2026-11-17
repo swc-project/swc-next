@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+function read() {
+  yield value;
+}
+---------- Options ----------
+{"names":["value"],"sourceType":"script"}
+---------- Output ----------
+{
+  "references": {
+    "value": [
+      {
+        "span": "26..31",
+        "scope": 1,
+        "space": "Value",
+        "access": "Read",
+        "resolution": "Unresolved",
+        "candidates": [],
+        "value_symbols": []
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Function",
+      "parent": 0,
+      "flags": "ArgumentsBarrier"
+    }
+  }
+}

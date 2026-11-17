@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace A {
+  export interface T {}
+}
+namespace V {
+  export const x = 1;
+}
+namespace N {
+  export import A = V.x;
+}
+namespace N {
+  import B = A;
+  const B = 0;
+}
+---------- Options ----------
+{"names":["A","N"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "146..147"
+        ],
+        "namespace": {
+          "members": {
+            "T": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "108..109",
+            "scope": 5
+          }
+        ],
+        "import": {
+          "target": 4,
+          "initializer": "112..113"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 5,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "88..89",
+            "scope": 1
+          },
+          {
+            "span": "129..130",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 6,
+              "value_symbols": [
+                {
+                  "Resolved": 6
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

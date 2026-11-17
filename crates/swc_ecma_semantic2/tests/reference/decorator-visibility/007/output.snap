@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function dec<U>(value?: unknown): any;
+const C = class Inner {
+  @dec<Inner>() m() {}
+};
+---------- Options ----------
+{"names":["Inner"]}
+---------- Output ----------
+{
+  "references": {
+    "Inner": [
+      {
+        "span": "78..83",
+        "scope": 6,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 5
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "5": {
+      "name": "Inner",
+      "flags": "CLASS | CLASS_EXPRESSION",
+      "declarations": [
+        "63..68"
+      ]
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

@@ -1,0 +1,134 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  const original: 1;
+  export { original as X };
+  export namespace Inner {
+    export { X as Y };
+  }
+}
+import Alias = N.Inner.Y;
+const value: 1 = Alias;
+const typed: Alias = { right: true };
+const queried: typeof Alias = 1;
+---------- Options ----------
+{"names":["Alias","N","X","original"]}
+---------- Output ----------
+{
+  "symbols": {
+    "Alias": [
+      {
+        "id": 5,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "189..194",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "225..230",
+          "245..250",
+          "292..297"
+        ],
+        "import": {
+          "target": null,
+          "initializer": "197..198"
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "197..198"
+        ],
+        "namespace": {
+          "members": {
+            "Inner": {
+              "symbol": 4,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            },
+            "original": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 2,
+        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2
+          }
+        ],
+        "uses": [
+          "166..167"
+        ]
+      }
+    ],
+    "original": [
+      {
+        "id": 3,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+        "declarations": [
+          {
+            "span": "85..93",
+            "scope": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "uses": [
+          "109..117"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

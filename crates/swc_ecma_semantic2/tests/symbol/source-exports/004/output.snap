@@ -1,0 +1,175 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f(): void;
+type f = number;
+declare namespace f {
+  interface Item {}
+}
+type A = string;
+declare const A: 1;
+declare namespace Test {
+  import A = f;
+  const value: A;
+  const scalar: typeof A;
+}
+---------- Options ----------
+{"names":["A","f",""]}
+---------- Output ----------
+{
+  "symbols": {
+    "": [
+      {
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "0..220",
+            "scope": 0,
+            "node_symbol": null
+          }
+        ],
+        "roles": [
+          "SourceModule"
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 4,
+              "value_symbols": [
+                {
+                  "Resolved": 4
+                }
+              ]
+            },
+            "Test": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            },
+            "default": {
+              "symbol": 1,
+              "value_symbols": [
+                {
+                  "Resolved": 1
+                }
+              ]
+            },
+            "f": {
+              "symbol": 2,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ],
+    "A": [
+      {
+        "id": 4,
+        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "101..102",
+            "scope": 1,
+            "flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "127..128",
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "215..216"
+        ]
+      },
+      {
+        "id": 6,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "167..168",
+            "scope": 8
+          }
+        ],
+        "bindings": [
+          8
+        ],
+        "uses": [
+          "189..190"
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "171..172"
+        }
+      }
+    ],
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1
+          }
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "40..41",
+            "scope": 1,
+            "flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "70..71",
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "171..172"
+        ],
+        "namespace": {
+          "members": {
+            "Item": {
+              "symbol": 3,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "0": {
+      "kind": "Global"
+    },
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

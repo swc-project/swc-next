@@ -1,0 +1,120 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+namespace Item {
+  export interface T {
+    outer: true;
+  }
+}
+declare namespace N {
+  namespace Local {
+    export interface T {
+      inner: true;
+    }
+  }
+  export { Local as Item };
+  export interface Item {
+    direct: true;
+  }
+}
+declare namespace N {
+  export import A = Item;
+  const value: A.T;
+  const direct: A;
+}
+---------- Options ----------
+{"names":["A","Item","Local"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "311..312",
+        "scope": 8,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "332..333",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      }
+    ],
+    "Item": [
+      {
+        "span": "290..294",
+        "scope": 8,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [],
+        "import_equals": true
+      }
+    ],
+    "Local": [
+      {
+        "span": "181..186",
+        "scope": 4,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "4": {
+      "name": "Local",
+      "flags": "NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "108..113"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "286..287"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "8": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

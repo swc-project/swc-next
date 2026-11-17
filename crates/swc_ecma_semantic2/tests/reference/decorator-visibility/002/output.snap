@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function dec<U>(value?: unknown): any;
+type T = string;
+const C =
+  @dec<T>()
+  class Inner<T> {};
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "81..82",
+        "scope": 8,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 7
+        },
+        "candidates": [
+          7
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "7": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "100..101"
+      ]
+    }
+  },
+  "scopes": {
+    "8": {
+      "kind": "ClassDecorator",
+      "parent": 7,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

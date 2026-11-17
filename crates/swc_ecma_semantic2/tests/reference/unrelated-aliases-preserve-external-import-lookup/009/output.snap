@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import Item = require("./dep");
+type A = typeof Item;
+---------- Options ----------
+{"names":["Item"]}
+---------- Output ----------
+{
+  "references": {
+    "Item": [
+      {
+        "span": "48..52",
+        "scope": 2,
+        "space": "Typeof",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Item",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "7..11"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

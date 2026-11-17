@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+import type { Item } from "./dep";
+type A = Item;
+namespace Unrelated {
+  export interface T {}
+}
+import Unused = Unrelated;
+---------- Options ----------
+{"names":["Item"]}
+---------- Output ----------
+{
+  "references": {
+    "Item": [
+      {
+        "span": "44..48",
+        "scope": 2,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Item",
+      "flags": "TYPE_IMPORT",
+      "declarations": [
+        "14..18"
+      ]
+    }
+  },
+  "scopes": {
+    "2": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

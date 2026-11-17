@@ -1,0 +1,133 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace Outer {
+  namespace A {
+    const X: number;
+    namespace B {
+      export { Sibling };
+    }
+    const bad: typeof B;
+  }
+  namespace Sibling {
+    export { X };
+  }
+  interface X {}
+}
+---------- Options ----------
+{"names":["A","B","Outer"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 2,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "38..39",
+            "scope": 2
+          }
+        ],
+        "namespace": {
+          "members": {
+            "B": {
+              "symbol": 4,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            },
+            "bad": {
+              "symbol": 5,
+              "value_symbols": [
+                {
+                  "Resolved": 5
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "B": [
+      {
+        "id": 4,
+        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "declarations": [
+          {
+            "span": "77..78",
+            "scope": 3
+          }
+        ],
+        "namespace": {
+          "members": {
+            "Sibling": {
+              "symbol": null,
+              "value_symbols": []
+            }
+          },
+          "export_aliases": true
+        }
+      }
+    ],
+    "Outer": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+        "declarations": [
+          {
+            "span": "18..23",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "namespace": {
+          "members": {
+            "A": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            },
+            "Sibling": {
+              "symbol": 6,
+              "value_symbols": []
+            },
+            "X": {
+              "symbol": 7,
+              "value_symbols": []
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

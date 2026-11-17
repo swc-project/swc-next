@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f(value: string): string;
+export default function f(value: number): number;
+export default function f(value: string | number) {
+  return value;
+}
+---------- Options ----------
+{"names":["f"]}
+---------- Output ----------
+{
+  "symbols": {
+    "f": [
+      {
+        "id": 1,
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT"
+          },
+          {
+            "span": "74..75",
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT"
+          },
+          {
+            "span": "124..125",
+            "scope": 1
+          }
+        ],
+        "roles": [
+          "DefaultExport"
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

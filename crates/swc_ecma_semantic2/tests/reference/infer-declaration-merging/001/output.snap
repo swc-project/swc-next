@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
+---------- Options ----------
+{"names":["U"]}
+---------- Output ----------
+{
+  "references": {
+    "U": [
+      {
+        "span": "67..68",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "52..53",
+        "62..63"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}
+---------- Options ----------
+{"names":["U"],"preserveParens":false}
+---------- Output ----------
+{
+  "references": {
+    "U": [
+      {
+        "span": "67..68",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "52..53",
+        "62..63"
+      ]
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

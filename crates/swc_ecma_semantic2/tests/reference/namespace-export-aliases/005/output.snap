@@ -1,0 +1,87 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  export const X: number;
+  interface X {}
+  export namespace Inner {
+    export { X as Y };
+  }
+}
+import A = N.Inner.Y;
+---------- Options ----------
+{"names":["N","X"]}
+---------- Output ----------
+{
+  "references": {
+    "N": [
+      {
+        "span": "132..133",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ],
+    "X": [
+      {
+        "span": "105..106",
+        "scope": 4,
+        "space": "Any",
+        "access": "None",
+        "resolution": {
+          "Resolved": 2
+        },
+        "candidates": [
+          2
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 2
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "18..19"
+      ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | AMBIENT | EXPORTED",
+      "declarations": [
+        "37..38",
+        "60..61"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,120 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export const enum E {
+    X = 1,
+  }
+}
+import A = N.E;
+---------- Options ----------
+{"names":["A","E","N","X"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 4,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "62..63",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "import": {
+          "target": 2,
+          "initializer": "66..67"
+        }
+      }
+    ],
+    "E": [
+      {
+        "id": 2,
+        "flags": "CONST_ENUM | EXPORTED",
+        "declarations": [
+          {
+            "span": "34..35",
+            "scope": 2
+          }
+        ],
+        "enum": {
+          "members": {
+            "X": {
+              "symbol": 3,
+              "value_symbols": [
+                {
+                  "Resolved": 3
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "N": [
+      {
+        "id": 1,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE",
+        "declarations": [
+          {
+            "span": "10..11",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "66..67"
+        ],
+        "namespace": {
+          "members": {
+            "E": {
+              "symbol": 2,
+              "value_symbols": [
+                {
+                  "Resolved": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "X": [
+      {
+        "id": 3,
+        "flags": "ENUM_MEMBER",
+        "declarations": [
+          {
+            "span": "42..47",
+            "scope": 3
+          }
+        ]
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2
+    }
+  }
+}

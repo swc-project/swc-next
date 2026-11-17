@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function dec<U>(value?: unknown): any;
+type T = string;
+class C<T> {
+  @dec<T>() value = 1;
+}
+---------- Options ----------
+{"names":["T"]}
+---------- Output ----------
+{
+  "references": {
+    "T": [
+      {
+        "span": "84..85",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 6
+        },
+        "candidates": [
+          6
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "6": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "72..73"
+      ]
+    }
+  },
+  "scopes": {
+    "7": {
+      "kind": "Class",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
+  }
+}

@@ -1,0 +1,77 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export const f = function n<n>(x: n) {
+    return n;
+  };
+}
+---------- Options ----------
+{"names":["n"]}
+---------- Output ----------
+{
+  "references": {
+    "n": [
+      {
+        "span": "50..51",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": []
+      },
+      {
+        "span": "66..67",
+        "scope": 3,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 3
+        },
+        "candidates": [
+          3
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 3
+          }
+        ]
+      }
+    ]
+  },
+  "symbols": {
+    "3": {
+      "name": "n",
+      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "42..43"
+      ]
+    },
+    "4": {
+      "name": "n",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "44..45"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "Function",
+      "parent": 2,
+      "flags": "Strict | ArgumentsBarrier"
+    },
+    "5": {
+      "kind": "TsSignatureParameter",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 3
+    }
+  }
+}

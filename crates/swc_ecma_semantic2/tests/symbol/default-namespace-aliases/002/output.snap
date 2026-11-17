@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default class C {}
+namespace C {
+  export interface Item {}
+}
+namespace A {
+  export interface Item {}
+}
+namespace Test {
+  import A = C;
+  export let value: A;
+  export let ctor: typeof A;
+  export let item: A.Item;
+}
+---------- Options ----------
+{"names":["A"]}
+---------- Output ----------
+{
+  "symbols": {
+    "A": [
+      {
+        "id": 4,
+        "flags": "NAMESPACE_MODULE",
+        "declarations": [
+          {
+            "span": "79..80",
+            "scope": 1
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "216..217"
+        ],
+        "namespace": {
+          "members": {
+            "Item": {
+              "symbol": 5,
+              "value_symbols": []
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "flags": "IMPORT | IMPORT_EQUALS",
+        "declarations": [
+          {
+            "span": "138..139",
+            "scope": 7
+          }
+        ],
+        "bindings": [
+          7
+        ],
+        "uses": [
+          "165..166",
+          "194..195"
+        ],
+        "import": {
+          "target": 1,
+          "initializer": "142..143"
+        }
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+type Attribute = "text";
+declare module "*.txt" with { type: Attribute } {
+  type Attribute = "inner";
+}
+---------- Options ----------
+{"names":["Attribute"]}
+---------- Output ----------
+{
+  "references": {
+    "Attribute": [
+      {
+        "span": "61..70",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": []
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "Attribute",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..14"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

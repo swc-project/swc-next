@@ -1,0 +1,119 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+function C() {}
+namespace C {
+  export interface x {
+    own: true;
+  }
+}
+function write(C: { x: number }) {
+  C.x = 1;
+}
+import Alias = C.x;
+const typed: Alias = { own: true };
+---------- Options ----------
+{"names":["Alias","C"]}
+---------- Output ----------
+{
+  "references": {
+    "Alias": [
+      {
+        "span": "166..171",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "resolution": {
+          "Resolved": 5
+        },
+        "candidates": [
+          5
+        ],
+        "value_symbols": []
+      }
+    ],
+    "C": [
+      {
+        "span": "122..123",
+        "scope": 5,
+        "space": "Value",
+        "access": "Read",
+        "resolution": {
+          "Resolved": 4
+        },
+        "candidates": [
+          4
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 4
+          }
+        ]
+      },
+      {
+        "span": "148..149",
+        "scope": 1,
+        "space": "Namespace",
+        "access": "None",
+        "resolution": {
+          "Resolved": 1
+        },
+        "candidates": [
+          1
+        ],
+        "value_symbols": [
+          {
+            "Resolved": 1
+          }
+        ],
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "C",
+      "flags": "FUNCTION | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "20..21",
+        "37..38"
+      ]
+    },
+    "2": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "60..61"
+      ]
+    },
+    "4": {
+      "name": "C",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "100..101"
+      ]
+    },
+    "5": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "140..145"
+      ],
+      "alias_target": 2
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    },
+    "5": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
+    }
+  }
+}
