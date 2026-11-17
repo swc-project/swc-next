@@ -1316,14 +1316,14 @@ function encImportDeclaration(n) {
   const v_2 = encArray(n.attributes, encImportAttribute, false);
   const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
   const v_4 = 0;
-  const extraId = allocExtra(5);
+  const extraId = allocExtra(4);
   const index = allocNode(77, n.start, n.end);
   setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 4);
-  setPayloadU32(index, 0, v_1);
-  writeArrayRange(v_2, n.attributes, extra, (extraId + 2) * 4);
-  setExtraU8(extraId + 4, 0, v_3);
-  setPayloadU8(index, 4, v_4);
+  writeArrayRange(v_0, n.specifiers, payload, index * 16 + 0);
+  setExtraU32(extraId + 0, 0, v_1);
+  writeArrayRange(v_2, n.attributes, extra, (extraId + 1) * 4);
+  setExtraU8(extraId + 3, 0, v_3);
+  setPayloadU8(index, 8, v_4);
   return index;
 }
 

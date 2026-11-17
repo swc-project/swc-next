@@ -5704,12 +5704,6 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         import_kind: ImportOrExportKind,
     ) -> ImportDeclaration {
-        let _extra_field0 = unsafe {
-            (ExtraData {
-                sub_range: SubRange::new((specifiers).start, (specifiers).end),
-            })
-            .units
-        };
         let _extra_field1 = unsafe {
             (ExtraData {
                 sub_range: SubRange::new((attributes).start, (attributes).end),
@@ -5717,8 +5711,9 @@ impl<'a> Ast<'a> {
             .units
         };
         let _extra_data = [
-            _extra_field0[0],
-            _extra_field0[1],
+            ExtraDataUnit {
+                node_id: (source).node_id(),
+            },
             _extra_field1[0],
             _extra_field1[1],
             ExtraDataUnit {
@@ -5731,9 +5726,9 @@ impl<'a> Ast<'a> {
             NodeKind::ImportDeclaration,
             NodePayload {
                 import_declaration: ImportDeclarationPayload {
-                    source,
+                    specifiers,
                     import_kind,
-                    _pad0: [0; 7usize],
+                    _pad0: [0; 3usize],
                     extra_data_start: _extra_data_start,
                 },
             },

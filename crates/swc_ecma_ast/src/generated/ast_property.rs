@@ -5525,8 +5525,13 @@ impl ImportExpression {
 }
 impl ImportDeclaration {
     #[inline]
-    pub fn source<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
-        unsafe { ast.nodes.data_unchecked(self.0).import_declaration.source }
+    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportDeclarationSpecifier> {
+        unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .import_declaration
+                .specifiers
+        }
     }
     #[inline]
     pub fn import_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -5538,7 +5543,7 @@ impl ImportDeclaration {
         }
     }
     #[inline]
-    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportDeclarationSpecifier> {
+    pub fn source<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let start = unsafe {
             ast.nodes
                 .data_unchecked(self.0)
@@ -5547,14 +5552,9 @@ impl ImportDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            {
-                let range = (ast.read_extra_data(offset)).sub_range;
-                SubRange::new(range.start, range.end)
-            }
-        }
+        unsafe { StringLiteral((ast.extra_data.get_unchecked(offset)).node_id) }
     }
     #[inline]
     pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
@@ -5565,7 +5565,7 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -5584,7 +5584,7 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(4usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -5595,12 +5595,16 @@ impl ImportDeclaration {
         }
     }
     #[inline]
-    pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: StringLiteral) {
+    pub fn set_specifiers<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        specifiers: SubRange<ImportDeclarationSpecifier>,
+    ) {
         unsafe {
             ast.nodes
                 .data_mut_unchecked(self.0)
                 .import_declaration
-                .source = source;
+                .specifiers = specifiers;
         }
     }
     #[inline]
@@ -5613,11 +5617,7 @@ impl ImportDeclaration {
         }
     }
     #[inline]
-    pub fn set_specifiers<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        specifiers: SubRange<ImportDeclarationSpecifier>,
-    ) {
+    pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: StringLiteral) {
         let start = unsafe {
             ast.nodes
                 .data_unchecked(self.0)
@@ -5626,15 +5626,12 @@ impl ImportDeclaration {
                 .index()
         };
         let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            ast.write_extra_data(
-                offset,
-                ExtraData {
-                    sub_range: SubRange::new((specifiers).start, (specifiers).end),
-                },
-            );
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                node_id: (source).node_id(),
+            };
         }
     }
     #[inline]
@@ -5650,7 +5647,7 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset + 2usize <= ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -5671,7 +5668,7 @@ impl ImportDeclaration {
                 .extra_data_start
                 .index()
         };
-        let offset = unsafe { start.unchecked_add(4usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {

@@ -39,7 +39,7 @@ The node table uses a structure-of-arrays layout: spans, kinds, and payloads are
 Different node kinds have different fields. `ast_tools` computes a fixed layout for each kind, and generates a `NodePayload` union containing the corresponding typed payload structs. Fields are placed in the payload when possible:
 
 - **Full layout:** All fields fit in the 16-byte payload; no extra field slots are needed.
-- **Partial layout:** Selected fields occupy the first 12 bytes, and the last 4 bytes hold an `ExtraDataId` pointing to the remaining fields. Smaller fields are preferred to keep more fields inline.
+- **Partial layout:** Selected fields occupy the first 12 bytes, and the last 4 bytes hold an `ExtraDataId` pointing to the remaining fields. The selection minimizes the number of four-byte extra-data units needed by spilled fields. Equal-cost layouts prefer more inline fields, then smaller fields and declaration order.
 
 For example, `Program` stores `directives` and `hashbang` inline, while `body` occupies two consecutive extra-data units:
 
