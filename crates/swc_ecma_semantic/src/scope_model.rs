@@ -1,7 +1,7 @@
 //! Scope, binding, declaration, and reference indexes for transforms.
 //!
 //! The model consumes Semantic's basic indexes without retaining its hoisting
-//! conflict tables.
+//! conflict tables or TypeScript member and alias lookup indexes.
 //! Index mutations take semantic records and identifiers, not an AST. Transforms
 //! read syntax and coordinate subtree edits through TransformCtx.
 
@@ -19,7 +19,8 @@ use crate::{
 /// The basic semantic indexes needed by transforms.
 ///
 /// Scope, symbol, declaration, reference, and node identities are preserved.
-/// Index mutations do not traverse the AST.
+/// This model maintains basic indexes without Semantic's TypeScript
+/// name-resolution queries or AST traversal.
 #[derive(Debug)]
 pub struct ScopeModel<'a> {
     scopes: ScopeTree<'a>,
@@ -38,15 +39,19 @@ impl<'a> ScopeModel<'a> {
     /// Consumes Semantic, moving its basic indexes and expanding its compact
     /// use index into one arena vector per symbol.
     pub fn new(semantic: Semantic<'a>) -> Self {
-        let uses = {
-            let allocator = semantic.use_ids.bump();
-            let lists = semantic.use_ranges.iter().map(|range| {
+        let allocator = semantic.use_ids.bump();
+        let uses = ArenaIndexVec::from_iter_in(
+            semantic.use_ranges.iter().map(|range| {
                 let start = range.start as usize;
-                let ids = &semantic.use_ids[start..start + range.len as usize];
-                ArenaVec::from_iter_in(ids.iter().copied(), allocator)
-            });
-            ArenaIndexVec::from_iter_in(lists, allocator)
-        };
+                ArenaVec::from_iter_in(
+                    semantic.use_ids[start..start + range.len as usize]
+                        .iter()
+                        .copied(),
+                    allocator,
+                )
+            }),
+            allocator,
+        );
 
         Self {
             scopes: semantic.scopes,
@@ -87,7 +92,8 @@ impl<'a> ScopeModel<'a> {
     }
 
     /// The symbol declared at `node`, or `None` when the node is not a
-    /// binding declaration site.
+    /// binding or member declaration site. Source-module and anonymous default
+    /// export symbols do not have a node mapping.
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
         self.node_semantic[node].symbol()
     }
@@ -105,7 +111,8 @@ impl<'a> ScopeModel<'a> {
         self.node_semantic[node].scope()
     }
 
-    /// The binding scope of the symbol's first declaration.
+    /// The scope of the symbol's first declaration. Merged TypeScript symbols
+    /// may have additional declarations in other scopes.
     pub fn scope_of_symbol(&self, id: SymbolId) -> ScopeId {
         self.declaration(self.symbol(id).declaration).scope
     }
@@ -130,14 +137,15 @@ impl<'a> ScopeModel<'a> {
         self.declaration_ids(id).map(|id| self.declaration(id))
     }
 
-    /// Every use retained from Semantic, in source order.
+    /// Every definite or possible use retained from Semantic, in source order.
+    /// An uncertain reference may occur in more than one symbol's list.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         &self.uses[id]
     }
 
     /// A binding owned by this lexical scope. Hoisting declarations are only
     /// recorded at their hoist target; passing-through hoisting occurrences
-    /// are not retained by this model.
+    /// and TypeScript source-export and member views are not retained by this model.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.scope_maps[scope].get(name).copied()
     }
@@ -147,6 +155,7 @@ impl<'a> ScopeModel<'a> {
     pub fn bindings(&self, scope: ScopeId) -> BindingIterator<'_> {
         BindingIterator {
             inner: self.scope_maps[scope].values(),
+            source: None,
         }
     }
 
@@ -228,16 +237,17 @@ impl<'a> ScopeModel<'a> {
         let declaration = self.declarations.next_idx();
         let previous = self.binding(scope, text.as_bytes());
         let existing = previous.filter(|&symbol| {
-            let flags = self.symbol(symbol).flags;
-            !flags.intersects(SymbolFlags::INTERNAL_NAME)
+            !self
+                .symbol(symbol)
+                .flags
+                .intersects(SymbolFlags::INTERNAL_NAME)
         });
         let symbol = if let Some(symbol) = existing {
             self.symbols[symbol].flags |= flags;
-            let declarations = self
-                .redeclarations
+            self.redeclarations
                 .entry(symbol)
-                .or_insert_with(|| ArenaVec::new_in(self.declarations.bump()));
-            declarations.push(declaration);
+                .or_insert_with(|| ArenaVec::new_in(self.declarations.bump()))
+                .push(declaration);
             symbol
         } else {
             let symbol = self.symbols.next_idx();

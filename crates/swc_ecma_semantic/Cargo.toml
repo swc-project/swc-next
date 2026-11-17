@@ -15,6 +15,7 @@ hashbrown        = { workspace = true }
 memchr           = { workspace = true }
 rustc-hash       = { workspace = true }
 unicode-id-start = { workspace = true }
+zmij_ecma        = { workspace = true }
 
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }

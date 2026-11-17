@@ -3901,6 +3901,23 @@ dependencies = [
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
  "unicode-id-start",
+ "zmij_ecma",
+]
+
+[[package]]
+name = "swc_next_ecma_semantic2"
+version = "0.7.0"
+dependencies = [
+ "bitflags",
+ "chumsky",
+ "clap",
+ "hashbrown 0.17.1",
+ "memchr",
+ "rustc-hash",
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
+ "unicode-id-start",
 ]
 
 [[package]]

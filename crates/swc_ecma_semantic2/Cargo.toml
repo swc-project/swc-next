@@ -1,0 +1,24 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_ecma_semantic2"
+repository.workspace  = true
+version               = "0.7.0"
+
+[dependencies]
+bitflags         = { workspace = true }
+chumsky          = { workspace = true }
+hashbrown        = { workspace = true }
+memchr           = { workspace = true }
+rustc-hash       = { workspace = true }
+unicode-id-start = { workspace = true }
+
+swc_next_allocator = { workspace = true }
+swc_next_ecma_ast  = { workspace = true }
+
+[dev-dependencies]
+clap                 = { workspace = true }
+swc_next_ecma_parser = { workspace = true }
