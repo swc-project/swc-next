@@ -145,9 +145,31 @@ mod imp {
     /// the keyword lookup neither loads the lexeme again nor branches on its length.
     #[inline(always)]
     pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
-        let position = start as usize;
-        let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() else {
+        if source[start as usize..].len() < IDENTIFIER_BATCH_SIZE {
             return scan_ascii_identifier_or_keyword_slow(source, start);
+        }
+        // SAFETY: a batch of bytes starts at `start`.
+        unsafe { scan_ascii_identifier_or_keyword_unchecked(source, start) }
+    }
+
+    /// [`scan_ascii_identifier_or_keyword`] for a `start` that a batch of bytes follows.
+    ///
+    /// # Safety
+    ///
+    /// `start + 16` must be at most `source.len()`.
+    #[inline(always)]
+    pub unsafe fn scan_ascii_identifier_or_keyword_unchecked(
+        source: &[u8],
+        start: u32,
+    ) -> Option<(u32, TokenTag)> {
+        let position = start as usize;
+        debug_assert!(position + IDENTIFIER_BATCH_SIZE <= source.len());
+        // SAFETY: the caller guarantees that a batch of bytes starts at `position`.
+        let chunk = unsafe {
+            &*source
+                .as_ptr()
+                .add(position)
+                .cast::<[u8; IDENTIFIER_BATCH_SIZE]>()
         };
         let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
         let lane = stopped.trailing_zeros() as usize;
@@ -262,6 +284,20 @@ pub use imp::*;
 #[cfg(not(target_arch = "x86_64"))]
 #[inline(always)]
 pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    scan_ascii_identifier_or_keyword_slow(source, start)
+}
+
+/// [`scan_ascii_identifier_or_keyword`] for a `start` that 16 bytes follow.
+///
+/// # Safety
+///
+/// `start + 16` must be at most `source.len()`.
+#[cfg(not(target_arch = "x86_64"))]
+#[inline(always)]
+pub unsafe fn scan_ascii_identifier_or_keyword_unchecked(
+    source: &[u8],
+    start: u32,
+) -> Option<(u32, TokenTag)> {
     scan_ascii_identifier_or_keyword_slow(source, start)
 }
 
