@@ -2,81 +2,6 @@ use swc_next_ecma_ast::{FormalParameterPatternData, Lang, SourceType, TsParamete
 
 use super::*;
 
-pub(super) fn check_method_definition(
-    builder: &mut SemanticBuilder<'_, '_>,
-    method: MethodDefinition,
-) {
-    if !builder.check_syntax.ts_abstract_methods() {
-        return;
-    }
-    if method.r#abstract(builder.ast) {
-        builder.report(
-            builder.ast.span(method.node_id()),
-            "An abstract method cannot have an implementation",
-            ReportOptions::default(),
-        );
-    }
-}
-
-pub(super) fn check_tuple_rest_type(builder: &mut SemanticBuilder<'_, '_>, rest: TsRestType) {
-    if !builder.check_syntax.ts_tuple_rest() {
-        return;
-    }
-    if let Some(member) = rest
-        .type_annotation(builder.ast)
-        .as_ts_named_tuple_member(builder.ast)
-    {
-        if member.optional(builder.ast) {
-            builder.report(
-                builder.ast.span(rest.node_id()),
-                "A tuple member cannot be both optional and rest",
-                ReportOptions::default(),
-            );
-        }
-        return;
-    }
-    if let Some(parent) = builder.parent()
-        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
-    {
-        builder.report(
-            builder.ast.span(rest.node_id()),
-            "A labeled tuple element is declared as rest with '...' before the name, rather than before the type",
-            ReportOptions::default(),
-        );
-    }
-}
-
-pub(super) fn check_tuple_optional_type(
-    builder: &mut SemanticBuilder<'_, '_>,
-    optional: TsOptionalType,
-) {
-    if !builder.check_syntax.ts_tuple_optional() {
-        return;
-    }
-    if let Some(parent) = builder.parent()
-        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
-    {
-        builder.report(
-            builder.ast.span(optional.node_id()),
-            "A labeled tuple element is declared as optional with '?' after the name and before the colon, rather than after the type",
-            ReportOptions::default(),
-        );
-    }
-}
-
-pub(super) fn check_ts_module_declaration(
-    builder: &mut SemanticBuilder<'_, '_>,
-    declaration: TsModuleDeclaration,
-) {
-    if !builder.check_syntax.ts_module_declarations() {
-        return;
-    }
-    let Some((node, message)) = ts_module_declaration_context_error(builder, declaration) else {
-        return;
-    };
-    builder.report(builder.ast.span(node), message, ReportOptions::default());
-}
-
 fn ts_module_declaration_context_error(
     builder: &SemanticBuilder<'_, '_>,
     declaration: TsModuleDeclaration,
@@ -105,26 +30,6 @@ fn ts_module_declaration_context_error(
         ));
     }
     None
-}
-
-pub(super) fn check_ts_global_declaration(
-    builder: &mut SemanticBuilder<'_, '_>,
-    declaration: TsGlobalDeclaration,
-) {
-    if !builder.check_syntax.ts_global_declarations() {
-        return;
-    }
-    if !declaration.declare(builder.ast) && !in_ts_syntactic_ambient_context(builder) {
-        builder.report(
-            builder.ast.span(declaration.id(builder.ast).node_id()),
-            "Augmentations for the global scope should have 'declare' modifier unless they appear in already ambient context",
-            ReportOptions::default(),
-        );
-    }
-    let Some((node, message)) = ts_global_declaration_context_error(builder, declaration) else {
-        return;
-    };
-    builder.report(builder.ast.span(node), message, ReportOptions::default());
 }
 
 fn ts_global_declaration_context_error(
@@ -264,27 +169,6 @@ fn is_in_top_level_context(context: &SemanticBuilder<'_, '_>, node: NodeId) -> b
     false
 }
 
-#[cold]
-#[inline(never)]
-pub(super) fn check_contextual_await(
-    checker: &mut SemanticBuilder<'_, '_>,
-    node: NodeId,
-    message: &'static str,
-) {
-    if !checker.check_syntax.ts_contextual_await() {
-        return;
-    }
-    let context = &*checker;
-    if context.in_type_position()
-        || context.symbols.in_ambient_context()
-        || !context.ast.is_module()
-        || !is_in_top_level_context(context, node)
-    {
-        return;
-    }
-    checker.report(context.ast.span(node), message, ReportOptions::default());
-}
-
 fn parameter_property_binding(
     tree: &Ast<'_>,
     property: TsParameterProperty,
@@ -299,24 +183,138 @@ fn parameter_property_binding(
     Some(identifier)
 }
 
-pub(super) fn check_parameter_property(
-    checker: &mut SemanticBuilder<'_, '_>,
-    property: TsParameterProperty,
+pub(super) fn check_method_definition(
+    builder: &mut SemanticBuilder<'_, '_>,
+    method: MethodDefinition,
 ) {
-    if !checker.check_syntax.ts_parameter_properties() {
+    if !builder.check_syntax.ts_abstract_methods() {
         return;
     }
-    let Some(binding) = parameter_property_binding(checker.ast, property) else {
-        checker.report(
-            checker.ast.span(property.node_id()),
+    if method.r#abstract(builder.ast) {
+        builder.report(
+            builder.ast.span(method.node_id()),
+            "An abstract method cannot have an implementation",
+            ReportOptions::default(),
+        );
+    }
+}
+
+pub(super) fn check_tuple_rest_type(builder: &mut SemanticBuilder<'_, '_>, rest: TsRestType) {
+    if !builder.check_syntax.ts_tuple_rest() {
+        return;
+    }
+    if let Some(member) = rest
+        .type_annotation(builder.ast)
+        .as_ts_named_tuple_member(builder.ast)
+    {
+        if member.optional(builder.ast) {
+            builder.report(
+                builder.ast.span(rest.node_id()),
+                "A tuple member cannot be both optional and rest",
+                ReportOptions::default(),
+            );
+        }
+        return;
+    }
+    if let Some(parent) = builder.parent()
+        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
+    {
+        builder.report(
+            builder.ast.span(rest.node_id()),
+            "A labeled tuple element is declared as rest with '...' before the name, rather than before the type",
+            ReportOptions::default(),
+        );
+    }
+}
+
+pub(super) fn check_tuple_optional_type(
+    builder: &mut SemanticBuilder<'_, '_>,
+    optional: TsOptionalType,
+) {
+    if !builder.check_syntax.ts_tuple_optional() {
+        return;
+    }
+    if let Some(parent) = builder.parent()
+        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
+    {
+        builder.report(
+            builder.ast.span(optional.node_id()),
+            "A labeled tuple element is declared as optional with '?' after the name and before the colon, rather than after the type",
+            ReportOptions::default(),
+        );
+    }
+}
+
+pub(super) fn check_ts_module_declaration(
+    builder: &mut SemanticBuilder<'_, '_>,
+    declaration: TsModuleDeclaration,
+) {
+    if !builder.check_syntax.ts_module_declarations() {
+        return;
+    }
+    let Some((node, message)) = ts_module_declaration_context_error(builder, declaration) else {
+        return;
+    };
+    builder.report(builder.ast.span(node), message, ReportOptions::default());
+}
+
+pub(super) fn check_ts_global_declaration(
+    builder: &mut SemanticBuilder<'_, '_>,
+    declaration: TsGlobalDeclaration,
+) {
+    if !builder.check_syntax.ts_global_declarations() {
+        return;
+    }
+    if !declaration.declare(builder.ast) && !in_ts_syntactic_ambient_context(builder) {
+        builder.report(
+            builder.ast.span(declaration.id(builder.ast).node_id()),
+            "Augmentations for the global scope should have 'declare' modifier unless they appear in already ambient context",
+            ReportOptions::default(),
+        );
+    }
+    let Some((node, message)) = ts_global_declaration_context_error(builder, declaration) else {
+        return;
+    };
+    builder.report(builder.ast.span(node), message, ReportOptions::default());
+}
+
+#[cold]
+pub(super) fn check_contextual_await(
+    builder: &mut SemanticBuilder<'_, '_>,
+    node: NodeId,
+    message: &'static str,
+) {
+    if !builder.check_syntax.ts_contextual_await() {
+        return;
+    }
+    if builder.in_type_position()
+        || builder.symbols.in_ambient_context()
+        || !builder.ast.is_module()
+        || !is_in_top_level_context(builder, node)
+    {
+        return;
+    }
+    builder.report(builder.ast.span(node), message, ReportOptions::default());
+}
+
+pub(super) fn check_parameter_property(
+    builder: &mut SemanticBuilder<'_, '_>,
+    property: TsParameterProperty,
+) {
+    if !builder.check_syntax.ts_parameter_properties() {
+        return;
+    }
+    let Some(binding) = parameter_property_binding(builder.ast, property) else {
+        builder.report(
+            builder.ast.span(property.node_id()),
             "A parameter property must use an identifier binding",
             ReportOptions::default(),
         );
         return;
     };
-    if checker.ast.get_utf8(binding.name(checker.ast)).as_bytes() == b"constructor" {
-        checker.report(
-            checker.ast.span(property.node_id()),
+    if builder.ast.get_utf8(binding.name(builder.ast)).as_bytes() == b"constructor" {
+        builder.report(
+            builder.ast.span(property.node_id()),
             "A parameter property cannot be named 'constructor'",
             ReportOptions::default(),
         );

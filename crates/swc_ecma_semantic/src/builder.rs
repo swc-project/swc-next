@@ -1,7 +1,6 @@
 //! The semantic builder, a visitor that builds the semantic model and reports
 //! the scope-dependent early errors the specification requires.
 
-mod declarations;
 mod js;
 mod regex;
 mod ts;
@@ -39,7 +38,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
-    binder::{PendingBinding, SymbolTracker},
+    binder::SymbolTracker,
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
