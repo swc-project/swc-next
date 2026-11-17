@@ -3137,7 +3137,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })
     }
 
+    // JavaScript functions have no type parameters, `this` parameter, return
+    // type, or bodiless declaration, so they use a smaller instantiation.
+    #[inline(always)]
     fn parse_function(
+        &mut self,
+        opts: ParseFunctionOpts,
+        start_from_param: Option<u32>,
+    ) -> Option<ParsedFunction> {
+        if self.lang.is_typescript() {
+            self.parse_function_for::<true>(opts, start_from_param)
+        } else {
+            self.parse_function_for::<false>(opts, start_from_param)
+        }
+    }
+
+    fn parse_function_for<const IS_TYPESCRIPT: bool>(
         &mut self,
         opts: ParseFunctionOpts,
         start_from_param: Option<u32>,
@@ -3180,27 +3195,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             parser.context = context;
             let id = id?;
             parser.boundary_context = BoundaryContext::local();
-            let type_parameters = if parser.lang.is_typescript()
-                && parser.current_token.tag() == TokenTag::LessThan
-            {
-                Some(
-                    parser.parse_type_parameters(
+            let type_parameters =
+                if IS_TYPESCRIPT && parser.current_token.tag() == TokenTag::LessThan {
+                    Some(parser.parse_type_parameters(
                         TypeParameterContext::Declaration,
                         AngleClose::Peel,
-                    )?,
-                )
-            } else {
-                None
-            };
-            enter_function_grammar_context(&mut parser.context, generator, opts.is_async);
-            let (this_param, params) =
-                parser.parse_formal_parameters(FormalParameterKind::FormalParameters, false)?;
-            let return_type =
-                if parser.lang.is_typescript() && parser.current_token.tag() == TokenTag::Colon {
-                    Some(parser.parse_return_type_annotation()?)
+                    )?)
                 } else {
                     None
                 };
+            enter_function_grammar_context(&mut parser.context, generator, opts.is_async);
+            let (this_param, params) = parser.parse_formal_parameters_for::<IS_TYPESCRIPT>(
+                FormalParameterKind::FormalParameters,
+                false,
+            )?;
+            let return_type = if IS_TYPESCRIPT && parser.current_token.tag() == TokenTag::Colon {
+                Some(parser.parse_return_type_annotation()?)
+            } else {
+                None
+            };
             let params_end = params.span(&parser.ast).end;
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(&parser.ast).end);
@@ -3213,7 +3226,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ReportOptions::default(),
                 );
             }
-            let has_body = !parser.lang.is_typescript()
+            let has_body = !IS_TYPESCRIPT
                 || is_function_expression
                 || parser.current_token.tag() == TokenTag::LeftBrace;
             let body = if has_body {
@@ -4189,6 +4202,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         allow_parameter_properties: bool,
     ) -> Option<(Option<TsThisParameter>, FormalParameters)> {
         if self.lang.is_typescript() {
+            self.parse_formal_parameters_for::<true>(kind, allow_parameter_properties)
+        } else {
+            self.parse_formal_parameters_for::<false>(kind, allow_parameter_properties)
+        }
+    }
+
+    #[inline(always)]
+    fn parse_formal_parameters_for<const IS_TYPESCRIPT: bool>(
+        &mut self,
+        kind: FormalParameterKind,
+        allow_parameter_properties: bool,
+    ) -> Option<(Option<TsThisParameter>, FormalParameters)> {
+        if IS_TYPESCRIPT {
             self.parse_typescript_formal_parameters(kind, allow_parameter_properties)
         } else {
             Some((None, self.parse_javascript_formal_parameters(kind)?))
