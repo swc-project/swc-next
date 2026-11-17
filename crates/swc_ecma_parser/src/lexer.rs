@@ -117,9 +117,9 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     pub(crate) state: LexerState,
     /// The fast paths read a token only at a position up to this one. At least
     /// [`FAST_PATH_LOOKAHEAD`] bytes follow it, and it is at most the position
-    /// of the last byte that is not a space, tab, or line feed, so the fast
-    /// paths read their bytes and skip whitespace without bounds checks. Tokens
-    /// after it go to the full scanner.
+    /// of the last byte that is not a space, tab, line feed, or decimal digit,
+    /// so the fast paths read their bytes and skip whitespace and digits
+    /// without bounds checks. Tokens after it go to the full scanner.
     fast_end: u32,
 }
 
@@ -507,8 +507,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.push_comment(CommentKind::Line, start, pos as u32, trailing);
             }
 
+            // The fast path reads tokens only up to `fast_end`.
+            if pos > self.fast_end as usize {
+                return None;
+            }
             let byte = loop {
-                let byte = *src.get(pos)?;
+                // SAFETY: a byte other than a space, tab, or line feed is at `fast_end` or after
+                // it, and `pos` starts at most at `fast_end`, so the scan stops inside the source.
+                let byte = unsafe { *src.get_unchecked(pos) };
                 match byte {
                     b' ' | b'\t' => pos += 1,
                     b'\n' => {
@@ -667,15 +673,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         target: &mut Token,
     ) -> bool {
         debug_assert_eq!(self.source[start as usize], byte);
+        debug_assert!(start <= self.fast_end);
+        let src = self.source;
         let mut end = start as usize + 1;
+        // SAFETY: a byte other than a decimal digit is at `fast_end` or after it, and `start` is
+        // at most `fast_end`, so the scan stops inside the source.
+        let mut next = unsafe { *src.get_unchecked(end) };
         if byte != b'0' {
-            while self.source.get(end).is_some_and(u8::is_ascii_digit) {
+            while next.is_ascii_digit() {
                 end += 1;
+                next = unsafe { *src.get_unchecked(end) };
             }
         }
-        if let Some(&next) = self.source.get(end)
-            && (is_identifier_byte(next) || next == b'.')
-        {
+        if is_identifier_byte(next) || next == b'.' {
             return false;
         }
         self.cursor = end as u32;
@@ -2028,17 +2038,17 @@ const FAST_CLASS: [FastClass; 256] = {
 
 /// Returns [`Lexer::fast_end`] for `source`: the last position that is followed by
 /// [`FAST_PATH_LOOKAHEAD`] bytes and is not after the last byte other than a space,
-/// tab, or line feed. Returns 0 when no such position exists, which leaves every
-/// token to the full scanner.
+/// tab, line feed, or decimal digit. Returns 0 when no such position exists, which
+/// leaves every token to the full scanner.
 fn fast_path_end(source: &[u8]) -> u32 {
-    let last_non_whitespace = source
+    let last_stop = source
         .iter()
-        .rposition(|byte| !matches!(byte, b' ' | b'\t' | b'\n'))
+        .rposition(|byte| !matches!(byte, b' ' | b'\t' | b'\n' | b'0'..=b'9'))
         .unwrap_or(0);
     let end = source
         .len()
         .saturating_sub(FAST_PATH_LOOKAHEAD)
-        .min(last_non_whitespace);
+        .min(last_stop);
     end as u32
 }
 
