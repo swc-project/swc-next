@@ -59,14 +59,34 @@ for (const [name, transformSync] of [["core", core], ["transformer", standalone]
       }
     });
 
-    test("each plugin completes a walk in stage array order", () => {
+    test("plugins share one walk per stage with callbacks in array order", () => {
       const events = [];
       const plugin = (name, stage) => ({ name, stage, visitor: {
         Program() { events.push(`${name}:Program`); },
         Identifier() { events.push(`${name}:Identifier`); },
       } });
       transformSync("let value;", { plugins: [plugin("after", "beforeCodegen"), plugin("one", "afterParse"), plugin("two", "afterParse")] });
-      assert.deepEqual(events, ["one:Program", "one:Identifier", "two:Program", "two:Identifier", "after:Program", "after:Identifier"]);
+      assert.deepEqual(events, ["one:Program", "two:Program", "one:Identifier", "two:Identifier", "after:Program", "after:Identifier"]);
+    });
+
+    test("later plugins see edits to the current node before its children", () => {
+      const names = [];
+      const output = transformSync("let value;", { plugins: [
+        { name: "rename", visitor: { Identifier(node) { node.name = "edited"; } } },
+        { name: "observe", visitor: { Identifier(node) { names.push(node.name); } } },
+      ] });
+      assert.deepEqual(names, ["edited"]);
+      assert.equal(output.code, "let edited;\n");
+    });
+
+    test("stop ends the merged stage but the next stage still runs", () => {
+      const events = [];
+      transformSync("let value;", { plugins: [
+        { name: "stop", visitor: { Program(_node, ctx) { events.push("stop"); ctx.stop(); } } },
+        { name: "skipped", visitor: { Program() { events.push("skipped"); } } },
+        { name: "after", stage: "beforeCodegen", visitor: { Program() { events.push("after"); } } },
+      ] });
+      assert.deepEqual(events, ["stop", "after"]);
     });
 
     test("parser comment collection cannot override output comments", () => {

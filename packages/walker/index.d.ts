@@ -137,6 +137,10 @@ export interface CompiledWalker<State = unknown> {
 /**
  * Validate and snapshot hooks once for repeated synchronous tree traversal.
  * Later hook changes do not affect the snapshot; callback closures remain shared.
+ * An array merges visitors into one traversal. At each node, enter and leave
+ * callbacks run in visitor array order, preserving each visitor's global/alias/
+ * concrete hook order. Traversal controls are shared: skip, remove, replace, and
+ * stop suppress later callbacks as documented on WalkContext.
  *
  * @param hooks - Callbacks with the same rules as {@link walk}.
  * @returns A frozen walker with a `walk(root, state?)` method.
@@ -159,4 +163,4 @@ export interface CompiledWalker<State = unknown> {
 export declare function createWalker<
   State = unknown,
   Node extends AstNode = AstNode,
->(hooks: WalkHooks<State, Node>): CompiledWalker<State>;
+>(hooks: WalkHooks<State, Node> | readonly WalkHooks<State, Node>[]): CompiledWalker<State>;

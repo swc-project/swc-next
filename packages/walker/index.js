@@ -125,6 +125,37 @@ function compile(hooks) {
   };
 }
 
+function compileVisitors(visitors) {
+  if (!Array.isArray(visitors)) return compile(visitors);
+  if (visitors.length === 1) return compile(visitors[0]);
+  const compiled = visitors.map(compile);
+  const dispatch = Object.create(baseDispatch);
+  const walkers = Object.create(nodeWalkers);
+  const append = (handlers, hook) => {
+    if (Array.isArray(hook)) handlers.push(...hook);
+    else if (hook !== null) handlers.push(hook);
+  };
+  const compact = (handlers) =>
+    handlers.length === 1 ? handlers[0] : handlers;
+  for (const type of Object.keys(baseDispatch)) {
+    const enter = [];
+    const leave = [];
+    for (const visitor of compiled) {
+      const entry = visitor.dispatch[type];
+      append(enter, entry.enter ?? visitor.globalEnter);
+      append(leave, entry.leave ?? visitor.globalLeave);
+    }
+    if (enter.length === 0 && leave.length === 0) continue;
+    dispatch[type] = {
+      children: childVisitors[type],
+      enter: enter.length === 0 ? null : compact(enter),
+      leave: leave.length === 0 ? null : compact(leave),
+    };
+    walkers[type] = enter.length === 0 ? walkLeave : walkEnter;
+  }
+  return { dispatch, walkers, globalEnter: null, globalLeave: null };
+}
+
 function walkEnter(node, walker, parent, key, list, index) {
   return walker.visitHooks(node, parent, key, list, index);
 }
@@ -434,7 +465,7 @@ export function walk(root, hooks, state) {
  * @type {typeof import("./index.js").createWalker}
  */
 export function createWalker(hooks) {
-  const compiled = compile(hooks);
+  const compiled = compileVisitors(hooks);
   return Object.freeze({
     walk(root, state) {
       assertNode(root);

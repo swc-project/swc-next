@@ -28,7 +28,7 @@ export declare function transformSync(
   options?: TransformApiOptions | undefined | null,
 ): JsOutput;
 
-/** A synchronous AST plugin. Plugins finish one walk each, in stage array order. */
+/** Synchronous AST plugin. Same-stage visitors share one walk with callbacks in array order. */
 export interface JsPlugin {
   name: string;
   stage?: "afterParse" | "beforeCodegen";

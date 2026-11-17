@@ -10,7 +10,7 @@ export function transformWithPlugins(source, options, bindings) {
   const plugins = compilePlugins(configured);
   // Validate all current Rust-backed options before running any callbacks.
   let packed = encodeTransformApiOptions(config);
-  if (plugins.afterParse.length === 0 && plugins.beforeCodegen.length === 0) {
+  if (plugins.afterParse === null && plugins.beforeCodegen === null) {
     return decodeJsOutput(bindings.transformSync(encodeSource(source), source.length, packed));
   }
   // Callbacks may reenter transformSync and overwrite option scratch storage.
@@ -31,14 +31,14 @@ export function transformWithPlugins(source, options, bindings) {
     header.setUint32(32, (header.getUint32(32, true) & ~28) | langBits, true);
     return parts;
   };
-  for (const plugin of plugins.afterParse) plugin.walk(program);
+  plugins.afterParse?.walk(program);
   let diagnostics = parsed.diagnostics;
-  if (plugins.afterParse.length && config.parser?.semanticErrors) {
+  if (plugins.afterParse !== null && config.parser?.semanticErrors) {
     const checked = decodeJsOutput(bindings.checkPluginAstSync(...encodeProgram(), packed));
     throwOnDiagnostics(checked.diagnostics, filename);
     diagnostics = [...diagnostics, ...checked.diagnostics];
   }
-  for (const plugin of plugins.beforeCodegen) plugin.walk(program);
+  plugins.beforeCodegen?.walk(program);
   const output = decodeJsOutput(bindings.printPluginAstSync(...encodeProgram(), packed));
   output.diagnostics = [...diagnostics, ...output.diagnostics];
   return output;
@@ -46,7 +46,7 @@ export function transformWithPlugins(source, options, bindings) {
 
 function compilePlugins(plugins) {
   const stages = { afterParse: [], beforeCodegen: [] };
-  if (plugins === undefined) return stages;
+  if (plugins === undefined) return { afterParse: null, beforeCodegen: null };
   if (!Array.isArray(plugins)) throw new TypeError("plugins must be an array");
   for (const [index, plugin] of plugins.entries()) {
     const path = `plugins[${index}]`;
@@ -66,9 +66,12 @@ function compilePlugins(plugins) {
     ) {
       throw new TypeError(`${path}.visitor must be an object`);
     }
-    stages[stage].push(createWalker(plugin.visitor));
+    stages[stage].push(plugin.visitor);
   }
-  return stages;
+  return {
+    afterParse: stages.afterParse.length === 0 ? null : createWalker(stages.afterParse),
+    beforeCodegen: stages.beforeCodegen.length === 0 ? null : createWalker(stages.beforeCodegen),
+  };
 }
 
 function optionObject(value, path, keys) {

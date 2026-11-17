@@ -65,6 +65,72 @@ test("compiled walkers support reentrancy and recover after hook failures", () =
   expect(afterState).toEqual(["after"]);
 });
 
+test("merged visitors preserve per-visitor hook order in one traversal", () => {
+  const ast = program();
+  const events = [];
+  const visitor = (name) => ({
+    enter(node) { if (node === ast) events.push(`${name}:global enter`); },
+    Function: {
+      enter() { events.push(`${name}:alias enter`); },
+      leave() { events.push(`${name}:alias leave`); },
+    },
+    FunctionDeclaration: {
+      enter() { events.push(`${name}:typed enter`); },
+      leave() { events.push(`${name}:typed leave`); },
+    },
+    Identifier() { events.push(`${name}:Identifier`); },
+    leave(node) { if (node === ast) events.push(`${name}:global leave`); },
+  });
+  const visitors = [visitor("A"), visitor("B")];
+  const walker = createWalker(visitors);
+  visitors[0].Function = () => { throw new Error("hook snapshot changed"); };
+  visitors.push({ enter() { throw new Error("visitor snapshot changed"); } });
+  walker.walk(ast);
+  expect(events).toEqual([
+    "A:global enter", "A:alias enter", "A:typed enter",
+    "B:global enter", "B:alias enter", "B:typed enter",
+    "A:Identifier", "B:Identifier",
+    "A:typed leave", "A:alias leave", "A:global leave",
+    "B:typed leave", "B:alias leave", "B:global leave",
+  ]);
+  expect(createWalker([]).walk(ast)).toBe(ast);
+  expect(() => createWalker([{}, { UnknownNode() {} }])).toThrow(/Unknown/);
+});
+
+test("merged visitors share skip, replacement, removal, and stop controls", () => {
+  const statement = (name) => ({ type: "ExpressionStatement", expression: id(name) });
+  const ast = { type: "Program", body: [statement("skip"), statement("remove"), statement("replace"), statement("stop"), statement("tail")] };
+  const events = [];
+  createWalker([
+    {
+      ExpressionStatement: {
+        enter(node, ctx) {
+          events.push(`A:${node.expression.name}`);
+          if (node.expression.name === "skip") ctx.skip();
+          if (node.expression.name === "remove") ctx.remove();
+          if (node.expression.name === "replace") ctx.replace(statement("new"));
+          if (node.expression.name === "stop") ctx.stop();
+        },
+        leave(node) { events.push(`A:leave ${node.expression.name}`); },
+      },
+      Identifier(node) { events.push(`A:child ${node.name}`); },
+    },
+    {
+      ExpressionStatement: {
+        enter(node) { events.push(`B:${node.expression.name}`); },
+        leave(node) { events.push(`B:leave ${node.expression.name}`); },
+      },
+      Identifier(node) { events.push(`B:child ${node.name}`); },
+    },
+  ]).walk(ast);
+  expect(events).toEqual([
+    "A:skip", "A:leave skip", "B:leave skip",
+    "A:remove", "A:replace", "A:child new", "B:child new",
+    "A:leave new", "B:leave new", "A:stop",
+  ]);
+  expect(ast.body.map(node => node.expression.name)).toEqual(["skip", "new", "stop", "tail"]);
+});
+
 test("list edits dispatch inserted nodes and stop subsequent traversal", () => {
   const first = { type: "VariableDeclarator", id: id("first"), init: null };
   const last = { type: "VariableDeclarator", id: id("last"), init: null };

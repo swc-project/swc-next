@@ -58,7 +58,8 @@ const result = parseSync("const answer: number = 42;", options);
 ### JavaScript plugins
 
 `plugins` lets synchronous JavaScript visitors edit the full ESTree / TS-ESTree
-Program. Plugins finish one walk each in array order within their stage.
+Program. Same-stage visitors share one traversal; callbacks on each node run
+in plugin array order. Later plugins see earlier edits to the current node.
 `afterParse` is the default; `beforeCodegen` runs immediately before printing.
 
 ```js
@@ -86,6 +87,12 @@ Hooks must return `undefined` synchronously. Plugin exceptions propagate;
 invalid input and enabled semantic errors throw `SyntaxError` with UTF-16
 `diagnostics` before later hooks execute. Without plugins, the existing API still
 returns errors in `diagnostics`.
+
+Traversal controls are shared within a stage. `skip()` suppresses remaining
+enter callbacks and children, `remove()` suppresses the node's remaining hooks,
+and `stop()` ends the stage's walk. `replace()` suppresses remaining callbacks
+in that phase, then visits the replacement's children and leave hooks without
+re-entering it. The next stage starts an independent walk.
 
 Nonempty plugins do not support source maps or preserved source comments.
 Use `comments: "none"` to suppress output comments; `parser.comments` only controls
