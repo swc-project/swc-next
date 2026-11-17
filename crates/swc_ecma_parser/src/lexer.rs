@@ -280,21 +280,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
             self.handle_fast_token(*target);
             return true;
-        } else if class == FastClass::Identifier {
-            return self.try_identifier_token::<LINE_BREAK>(target, start);
         }
 
-        // The other classes are rare. One indirect jump through a table of their scanners
-        // replaces a call followed by a jump table.
-        cold_path();
-        ColdScanners::<C, LINE_BREAK>::TABLE[class as usize](self, target, start, byte)
+        // One indirect jump through a table of scanners replaces a test for each class.
+        ClassScanners::<C, LINE_BREAK>::TABLE[class as usize](self, target, start, byte)
     }
 
-    /// Reads an ASCII identifier or keyword at `start`. Identifier and extended
-    /// operator scans need more registers than the other fast paths, so
-    /// they are tail-called to keep callee-saved register saves out of
-    /// [`Self::try_next_token`].
-    #[inline(never)]
+    /// Reads an ASCII identifier or keyword at `start`. It is inlined into its
+    /// [`ClassScanner`], which runs outside [`Self::try_next_token`].
+    #[inline(always)]
     fn try_identifier_token<const LINE_BREAK: bool>(
         &mut self,
         target: &mut Token,
@@ -308,8 +302,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    /// Reads an operator at `start` whose second byte, `c1`, can extend it. See
-    /// [`Self::try_identifier_token`].
+    /// Reads an operator at `start` whose second byte, `c1`, can extend it. Extended
+    /// operator scans need more registers than one-byte operators, so they are
+    /// tail-called to keep callee-saved register saves out of their [`ClassScanner`].
     #[inline(never)]
     fn try_operator_token<const LINE_BREAK: bool>(
         &mut self,
@@ -330,7 +325,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     /// Reads a string literal without escapes at `start`. It is inlined into its
-    /// [`ColdScanner`], which runs outside [`Self::try_next_token`].
+    /// [`ClassScanner`], which runs outside [`Self::try_next_token`].
     #[inline(always)]
     fn try_string_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
         let quote = self.source[start as usize];
@@ -1934,15 +1929,16 @@ const FAST_CLASS: [FastClass; 256] = {
 /// Scans a token at `start` whose first byte, `byte`, has a class that
 /// [`Lexer::try_next_token_at`] does not scan inline. Returns `false` when the
 /// token needs the full scanner.
-type ColdScanner<C> = for<'a> fn(&mut Lexer<'a, C>, &mut Token, u32, u8) -> bool;
+type ClassScanner<C> = for<'a> fn(&mut Lexer<'a, C>, &mut Token, u32, u8) -> bool;
 
-/// The [`ColdScanner`] of each [`FastClass`], for tokens after a line break when
+/// The [`ClassScanner`] of each [`FastClass`], for tokens after a line break when
 /// `LINE_BREAK` is set.
-struct ColdScanners<C, const LINE_BREAK: bool>(PhantomData<C>);
+struct ClassScanners<C, const LINE_BREAK: bool>(PhantomData<C>);
 
-impl<C: ParserConfig, const LINE_BREAK: bool> ColdScanners<C, LINE_BREAK> {
-    const TABLE: [ColdScanner<C>; FAST_CLASS_COUNT] = {
-        let mut table: [ColdScanner<C>; FAST_CLASS_COUNT] = [Self::slow; FAST_CLASS_COUNT];
+impl<C: ParserConfig, const LINE_BREAK: bool> ClassScanners<C, LINE_BREAK> {
+    const TABLE: [ClassScanner<C>; FAST_CLASS_COUNT] = {
+        let mut table: [ClassScanner<C>; FAST_CLASS_COUNT] = [Self::slow; FAST_CLASS_COUNT];
+        table[FastClass::Identifier as usize] = Self::identifier;
         table[FastClass::Digit as usize] = Self::digit;
         table[FastClass::Dot as usize] = Self::dot;
         table[FastClass::Operator as usize] = Self::operator;
@@ -1953,6 +1949,10 @@ impl<C: ParserConfig, const LINE_BREAK: bool> ColdScanners<C, LINE_BREAK> {
 
     fn slow(_: &mut Lexer<'_, C>, _: &mut Token, _: u32, _: u8) -> bool {
         false
+    }
+
+    fn identifier(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, _: u8) -> bool {
+        lexer.try_identifier_token::<LINE_BREAK>(target, start)
     }
 
     fn digit(lexer: &mut Lexer<'_, C>, target: &mut Token, start: u32, byte: u8) -> bool {
