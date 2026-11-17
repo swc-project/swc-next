@@ -194,11 +194,33 @@ mod imp {
         };
         let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
         if stopped == 0 {
-            // No keyword is this long.
-            let end = scan_ascii_identifier_continue::<false>(
-                source,
-                start + IDENTIFIER_BATCH_SIZE as u32,
-            )?;
+            // No keyword is this long. Most such identifiers end in the next batch, so it is
+            // tested here as well, with no loop to keep the classification constants in
+            // registers; only longer identifiers enter the loop and load them.
+            let next = position + IDENTIFIER_BATCH_SIZE;
+            let end = if source.len() - next >= IDENTIFIER_BATCH_SIZE {
+                // SAFETY: the check above keeps a whole batch at `next` within `source`.
+                let chunk = unsafe {
+                    &*source
+                        .as_ptr()
+                        .add(next)
+                        .cast::<[u8; IDENTIFIER_BATCH_SIZE]>()
+                };
+                let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
+                if stopped == 0 {
+                    scan_ascii_identifier_continue::<false>(
+                        source,
+                        (next + IDENTIFIER_BATCH_SIZE) as u32,
+                    )?
+                } else {
+                    let lane = stopped.trailing_zeros() as usize;
+                    // SAFETY: `lane` indexes the 16-byte chunk that starts at `next`.
+                    let byte = unsafe { *source.get_unchecked(next + lane) };
+                    ascii_identifier_end(byte, next + lane)?
+                }
+            } else {
+                scan_ascii_identifier_continue::<false>(source, next as u32)?
+            };
             found(end);
             return Some(None);
         }
