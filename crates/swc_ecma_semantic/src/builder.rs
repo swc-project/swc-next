@@ -46,19 +46,24 @@ use crate::{
 };
 
 pub struct SemanticBuilder<'traverse, 'a> {
-    exported_names: FxHashMap<&'traverse [u8], NodeId>,
-    export_specifiers: Vec<ExportSpecifier>,
-    diagnostics: Vec<Diagnostic>,
+    // Immutable builder properties
+    ast: &'traverse Ast<'a>,
+    check_syntax: SyntaxChecks,
+
+    // Core semantic analysis state and results
     scope: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
+    diagnostics: Vec<Diagnostic>,
+
+    // Mutable state during traversal
     current_scope: ScopeId,
-    // Type syntax and erased value expressions save and restore this default.
-    default_reference_flags: ReferenceFlags,
-    ts_namespace_depth: u32,
-    reference_flags: ReferenceFlags,
-    ast: &'traverse Ast<'a>,
     path: Vec<NodeId>,
-    check_syntax: SyntaxChecks,
+    reference_flags: ReferenceFlags,
+    default_reference_flags: ReferenceFlags,
+
+    exported_names: FxHashMap<&'traverse [u8], NodeId>,
+    export_specifiers: Vec<ExportSpecifier>,
+    ts_namespace_depth: u32,
     in_ts_module_name: bool,
 }
 
