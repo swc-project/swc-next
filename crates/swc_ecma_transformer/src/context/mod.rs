@@ -4,7 +4,6 @@ use swc_next_ecma_ast::{
 
 mod comments;
 mod container;
-mod helper_globals;
 mod helpers;
 mod inline_helpers;
 mod rename_binding;

@@ -1169,10 +1169,8 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
     }
 }
 
-/// ECMAScript and TypeScript parser.
-pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig>(ParserState<'a, C, false>);
-
-struct ParserState<'a, C: ParserConfig, const SYNTHETIC: bool> {
+/// Parser state and typed AST writer.
+pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig, const SYNTHETIC: bool = false> {
     ast: Ast<'a>,
     source: &'a str,
     source_type: SourceType,
@@ -1215,7 +1213,7 @@ struct ParserState<'a, C: ParserConfig, const SYNTHETIC: bool> {
 // The parser owns the target AST while it appends nodes. Return it to the
 // caller even if parsing unwinds, so its existing handles remain valid.
 struct AppendingParser<'target, 'a> {
-    parser: ParserState<'a, NoTokenParserConfig, true>,
+    parser: Parser<'a, NoTokenParserConfig, true>,
     target: &'target mut Ast<'a>,
     nodes: usize,
     extra_data: usize,
@@ -1510,19 +1508,7 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
 
 impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
-        Self(ParserState::init(allocator, source, options, config))
-    }
-
-    pub fn parse(self) -> ParseReturn<'a> {
-        self.0.parse()
-    }
-
-    /// Parses the source as exactly one expression in `fragment_context`.
-    pub fn parse_expression_fragment(
-        self,
-        fragment_context: FragmentContext,
-    ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
-        self.0.parse_expression_fragment(fragment_context)
+        Self::new(allocator, source, options, config)
     }
 }
 
@@ -1542,7 +1528,7 @@ impl<'a> Parser<'a> {
             comments: CommentMode::None,
             ..Options::default()
         };
-        let mut parser = ParserState::init(ast.allocator(), source, options, NoTokenParserConfig);
+        let mut parser = Parser::new(ast.allocator(), source, options, NoTokenParserConfig);
         mem::swap(&mut parser.ast, ast);
         let mut append = AppendingParser {
             parser,
@@ -1569,8 +1555,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
-    fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
+impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
+    fn new(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
         // SAFETY: The parser only uses handles from this AST and wraps it before returning.
         let mut ast = unsafe { Ast::new(source, allocator) };
@@ -1626,7 +1612,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
         }
     }
 
-    fn parse(mut self) -> ParseReturn<'a> {
+    pub fn parse(mut self) -> ParseReturn<'a> {
         self.start_parse();
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_program(),
@@ -1681,7 +1667,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
             preserve_parens: self.preserve_parens,
             comments: self.comment_mode,
         };
-        let mut parser = Self::init(
+        let mut parser = Self::new(
             self.ast.allocator(),
             self.source,
             options,
@@ -1760,7 +1746,8 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
         }
     }
 
-    fn parse_expression_fragment(
+    /// Parses the source as exactly one expression in `fragment_context`.
+    pub fn parse_expression_fragment(
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<AstCtx<'a>, Vec<Diagnostic>> {
@@ -2192,7 +2179,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
         debug_assert!(inserted, "TypeScript speculation was already rejected");
     }
 
-    /// Restores parser state captured by [`Self::checkpoint`].
+    /// Restores parser state captured by [`Parser::checkpoint`].
     fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
@@ -2225,7 +2212,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> ParserState<'a, C, SYNTHETIC> {
 
     /// Peeks at the token immediately after `current_token` without advancing.
     ///
-    /// For multi-token lookahead, use [`Self::begin_peek`].
+    /// For multi-token lookahead, use [`Parser::begin_peek`].
     fn peek_ahead(&mut self) -> Option<Token> {
         let mut peek = self.begin_peek();
         let token = peek.next();
@@ -15269,8 +15256,7 @@ mod tests {
             ..Options::default()
         };
         let parser = |source| {
-            let mut parser =
-                ParserState::<_, false>::init(&allocator, source, options, TokenParserConfig);
+            let mut parser = Parser::init(&allocator, source, options, TokenParserConfig);
             parser.advance().unwrap();
             parser
         };
@@ -15372,8 +15358,7 @@ mod tests {
             ..Options::default()
         };
         let parse_type = |source| {
-            let mut parser =
-                ParserState::<_, false>::init(&allocator, source, options, NoTokenParserConfig);
+            let mut parser = Parser::init(&allocator, source, options, NoTokenParserConfig);
             parser.advance().unwrap();
             let ty = parser.parse_type().unwrap();
             let kind = parser.ast.node_kind(ty.node_id());

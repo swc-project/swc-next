@@ -1,6 +1,6 @@
 //! Canonical helper sources, shared with the `@swc-next/helpers` npm package.
 
-/// Package entry point exposing every helper by its function name.
+/// Package entry point exposing helpers by their function names.
 pub const MODULE: &str = "@swc-next/helpers";
 
 /// A runtime helper module. Inline consumers parse [`Self::code`] and resolve

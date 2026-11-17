@@ -72,8 +72,12 @@ impl TransformCtx<'_, '_> {
     /// import * as _swc_helpers2 from "@swc-next/helpers";
     /// ```
     fn prepare_external_helpers(&mut self) -> PreparedHelper {
-        let bound_identifier =
-            BoundIdentifier::named(self, self.program_scope(), "_swc_helpers", SymbolFlags::IMPORT);
+        let bound_identifier = BoundIdentifier::named(
+            self,
+            self.program_scope(),
+            "_swc_helpers",
+            SymbolFlags::IMPORT,
+        );
         let specifier =
             ImportDeclarationSpecifier::ImportNamespaceSpecifier(self.add_node(|ast| {
                 ast.import_namespace_specifier(DUMMY_SP, bound_identifier.identifier)

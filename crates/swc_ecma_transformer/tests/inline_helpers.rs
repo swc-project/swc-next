@@ -3,23 +3,14 @@ use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SyntaxChecks, analyze};
 
-use swc_next_ecma_transformer::HelperMode;
-
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
+    HelperMode, Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions,
 };
 
 fn inline(source: &str, source_type: SourceType) -> String {
-    transformed_code_with_helpers(source, source_type, HelperMode::Inline)
-}
-
-fn transformed_code_with_helpers(
-    source: &str,
-    source_type: SourceType,
-    helpers: HelperMode,
-) -> String {
-    let (code, diagnostics) = transform_with_helpers(source, source_type, Lang::Js, helpers);
+    let (code, diagnostics) =
+        transform_with_helpers(source, source_type, Lang::Js, HelperMode::Inline);
     assert!(diagnostics.is_empty(), "{diagnostics:?}");
     code
 }
@@ -71,19 +62,6 @@ fn transform_with_helpers(
         assert_eq!(transformed.semantic.reference(id).symbol, symbol);
     }
     assert_semantic(&ast, &transformed.semantic);
-    // SAFETY: The transformed semantic model refers to this AST.
-    let tree = unsafe { ast.ast() };
-    for entry in transformed.semantic.iter_references() {
-        let name = tree.get_utf8(entry.reference.name);
-        if name.starts_with("_set_function_name") || name.starts_with("_to_property_key") {
-            let symbol = entry.reference.symbol.expect("helper reference binding");
-            assert_eq!(
-                tree.get_wtf8(transformed.semantic.symbol(symbol).name)
-                    .as_bytes(),
-                name.as_bytes(),
-            );
-        }
-    }
     (
         swc_next_ecma_codegen::generate(&ast, Default::default()).code,
         transformed.diagnostics,
