@@ -16,8 +16,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps, Scopes,
-    Semantic, ShadowedInternalNames, Symbols,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, Scopes, Semantic,
+    ShadowedInternalNames, SymbolTable, SymbolTables, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -582,7 +582,7 @@ pub(crate) struct SymbolTracker<'a> {
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
-    scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
+    symbol_tables: ArenaIndexVec<'a, ScopeId, SymbolTable<'a>>,
     shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
@@ -669,7 +669,7 @@ impl<'a> SymbolTracker<'a> {
             declarations: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             redeclarations: Redeclarations::new_in(allocator),
             node_semantic,
-            scope_maps: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            symbol_tables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             shadowed_internal_names: ShadowedInternalNames::new_in(allocator),
             hoisting_variables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             annex_b_functions: ArenaVec::new_in(allocator),
@@ -1094,7 +1094,7 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTree<'a>,
         current_scope: ScopeId,
     ) {
-        self.sync_scope_maps_from(scope);
+        self.sync_symbol_tables_from(scope);
         // Type-only signature parameter labels do not declare bindings.
         if self.pending.flags.is_empty() {
             return;
@@ -1132,7 +1132,7 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTree<'a>,
         current_scope: ScopeId,
     ) {
-        self.sync_scope_maps_from(scope);
+        self.sync_symbol_tables_from(scope);
         if member.computed(tree) {
             return;
         }
@@ -1159,7 +1159,7 @@ impl<'a> SymbolTracker<'a> {
         id: SymbolId,
     ) {
         let name = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
-        if let Some(previous) = self.scope_maps[scope].insert(name, id) {
+        if let Some(previous) = self.symbol_tables[scope].insert(name, id) {
             let flags = self.symbols[previous].flags;
             debug_assert!(flags.intersects(SymbolFlags::INTERNAL_NAME));
             // Preserve the hidden name when a parameter or local replaces it.
@@ -1207,11 +1207,11 @@ impl<'a> SymbolTracker<'a> {
     }
 
     pub(crate) fn link_parameter_vars(&mut self, scopes: &ScopeTree<'a>, body: ScopeId) {
-        self.sync_scope_maps_from(scopes);
+        self.sync_symbol_tables_from(scopes);
         let parameters = scopes.get(body).parent.unwrap();
         // Inspect the completed body so a function implementation suppresses
         // parameter-to-var initialization independently of declaration order.
-        for (&name, &parameter) in &self.scope_maps[parameters] {
+        for (&name, &parameter) in &self.symbol_tables[parameters] {
             let parameter_flags = self.symbols[parameter].flags;
             if !parameter_flags.contains(SymbolFlags::PARAMETER) {
                 continue;
@@ -1292,19 +1292,19 @@ impl<'a> SymbolTracker<'a> {
         (id, declaration_id)
     }
 
-    fn sync_scope_maps_from(&mut self, scope: &ScopeTree<'a>) {
-        if self.scope_maps.len() < scope.list.len() {
-            self.sync_scope_maps(scope.list.len());
+    fn sync_symbol_tables_from(&mut self, scope: &ScopeTree<'a>) {
+        if self.symbol_tables.len() < scope.list.len() {
+            self.sync_symbol_tables(scope.list.len());
         }
     }
 
-    fn sync_scope_maps(&mut self, count: usize) {
-        debug_assert_eq!(self.scope_maps.len(), self.hoisting_variables.len());
-        let additional = count - self.scope_maps.len();
-        self.scope_maps.reserve(additional);
+    fn sync_symbol_tables(&mut self, count: usize) {
+        debug_assert_eq!(self.symbol_tables.len(), self.hoisting_variables.len());
+        let additional = count - self.symbol_tables.len();
+        self.symbol_tables.reserve(additional);
         self.hoisting_variables.reserve(additional);
         for _ in 0..additional {
-            self.scope_maps.push(ScopeMap::new_in(self.allocator));
+            self.symbol_tables.push(SymbolTable::new_in(self.allocator));
             self.hoisting_variables
                 .push(HoistingMap::new_in(self.allocator));
         }
@@ -1352,7 +1352,7 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTree<'a>,
         current_scope: ScopeId,
     ) {
-        self.sync_scope_maps_from(scope);
+        self.sync_symbol_tables_from(scope);
         // `param is T` parses `param` as an IdentifierName but it
         // references the enclosing function's parameter. Type-only signature
         // parameters are labels, so they do not create a reference here.
@@ -1514,7 +1514,7 @@ impl<'a> SymbolTracker<'a> {
     /// The binding of `name` declared directly in `scope`, excluding
     /// hoisting `var`s passing through.
     pub fn own_binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        let map = self.scope_maps.get(scope)?;
+        let map = self.symbol_tables.get(scope)?;
         map.get(name).copied()
     }
 
@@ -1554,14 +1554,14 @@ impl<'a> SymbolTracker<'a> {
     pub fn finalize(mut self, tree: &Ast<'a>, scopes: ScopeTree<'a>) -> Semantic<'a> {
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
-        self.sync_scope_maps(scopes.list.len());
+        self.sync_symbol_tables(scopes.list.len());
         let mut use_ranges = ArenaIndexVec::with_capacity_in(self.symbols.len(), self.allocator);
         use_ranges.resize(self.symbols.len(), Range::default());
 
         let lookup = LexicalLookup {
             scopes: &scopes.list,
             symbols: &self.symbols,
-            scope_maps: &self.scope_maps,
+            symbol_tables: &self.symbol_tables,
             shadowed_internal_names: &self.shadowed_internal_names,
         };
         for reference in &mut self.references {
@@ -1607,7 +1607,7 @@ impl<'a> SymbolTracker<'a> {
             redeclarations: self.redeclarations,
             use_ids,
             use_ranges,
-            scope_maps: self.scope_maps,
+            symbol_tables: self.symbol_tables,
             shadowed_internal_names: self.shadowed_internal_names,
             hoisting_variables: self.hoisting_variables,
             node_semantic: self.node_semantic,
@@ -1619,22 +1619,22 @@ impl<'a> SymbolTracker<'a> {
 pub(super) struct LexicalLookup<'s, 'a> {
     pub scopes: &'s Scopes,
     pub symbols: &'s Symbols,
-    pub scope_maps: &'s ScopeMaps<'a>,
+    pub symbol_tables: &'s SymbolTables<'a>,
     pub shadowed_internal_names: &'s ShadowedInternalNames<'a>,
 }
 
 impl LexicalLookup<'_, '_> {
     /// Walk outwards, checking each scope before crossing its `arguments` barrier.
     pub fn lookup(&self, scope: ScopeId, name: &[u8], space: ReferenceSpace) -> Option<SymbolId> {
-        // All scope maps share a hasher; hash the name once for the whole walk.
-        let hash = self.scope_maps[ScopeId::ROOT].hasher().hash_one(name);
+        // All symbol tables share a hasher; hash the name once for the whole walk.
+        let hash = self.symbol_tables[ScopeId::ROOT].hasher().hash_one(name);
         let is_arguments =
             name == b"arguments" && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
         let mut ancestor = Some(scope);
         while let Some(current) = ancestor {
             let scope = &self.scopes[current];
             let barrier = is_arguments && scope.flags.arguments_barrier;
-            let entry = self.scope_maps[current]
+            let entry = self.symbol_tables[current]
                 .raw_entry()
                 .from_hash(hash, |candidate| *candidate == name);
             if let Some((_, &binding)) = entry

@@ -10,8 +10,8 @@ use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
-    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
-    Semantic, Symbol, SymbolFlags, SymbolIterator,
+    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, Semantic, Symbol,
+    SymbolFlags, SymbolIterator, SymbolTable,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -30,7 +30,7 @@ pub struct ScopeModel<'a> {
     redeclarations: Redeclarations<'a>,
     /// Independently growable use lists, indexed by SymbolId.
     uses: ArenaIndexVec<'a, SymbolId, ArenaVec<'a, ReferenceId>>,
-    scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
+    symbol_tables: ArenaIndexVec<'a, ScopeId, SymbolTable<'a>>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
 }
 
@@ -56,7 +56,7 @@ impl<'a> ScopeModel<'a> {
             declarations: semantic.declarations,
             redeclarations: semantic.redeclarations,
             uses,
-            scope_maps: semantic.scope_maps,
+            symbol_tables: semantic.symbol_tables,
             node_semantic: semantic.node_semantic,
         }
     }
@@ -139,14 +139,14 @@ impl<'a> ScopeModel<'a> {
     /// recorded at their hoist target; passing-through hoisting occurrences
     /// are not retained by this model.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        self.scope_maps[scope].get(name).copied()
+        self.symbol_tables[scope].get(name).copied()
     }
 
     /// Every lexical symbol owned directly by `scope`. A hoisting `var`
     /// appears in its hoist target, not in blocks it passes through.
     pub fn bindings(&self, scope: ScopeId) -> BindingIterator<'_> {
         BindingIterator {
-            inner: self.scope_maps[scope].values(),
+            inner: self.symbol_tables[scope].values(),
         }
     }
 
@@ -250,7 +250,7 @@ impl<'a> ScopeModel<'a> {
                 declaration,
             });
             self.uses.push(ArenaVec::new_in(self.symbols.bump()));
-            self.scope_maps[scope].insert(text.as_bytes(), symbol);
+            self.symbol_tables[scope].insert(text.as_bytes(), symbol);
             symbol
         };
         self.declarations.push(Declaration {
@@ -328,8 +328,8 @@ impl ScopeModel<'_> {
         }
         self.grow_to(owner.index() + 1);
         let id = self.scopes.push_scope(parent, kind, owner, flags);
-        self.scope_maps
-            .push(ScopeMap::new_in(self.scopes.list.bump()));
+        self.symbol_tables
+            .push(SymbolTable::new_in(self.scopes.list.bump()));
         debug_assert!(matches!(
             self.node_semantic[owner],
             NodeSemanticId::None | NodeSemanticId::Scope(_)
@@ -488,7 +488,7 @@ impl ScopeModel<'_> {
                 .iter_scopes()
                 .any(|entry| { entry.id != scope && entry.scope.node == original.node })
         );
-        debug_assert!(self.scope_maps[scope].is_empty());
+        debug_assert!(self.symbol_tables[scope].is_empty());
         debug_assert!(
             !self
                 .declarations

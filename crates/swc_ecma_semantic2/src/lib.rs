@@ -42,8 +42,8 @@ type Symbols = IndexSlice<SymbolId, [Symbol]>;
 type Declarations = IndexSlice<DeclarationId, [Declaration]>;
 type Scopes = IndexSlice<ScopeId, [scope::Scope]>;
 
-type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
-type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
+type SymbolTable<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
+type SymbolTables<'a> = IndexSlice<ScopeId, [SymbolTable<'a>]>;
 // Maps a replacement binding to the internal name it hides in the same scope.
 type ShadowedInternalNames<'a> = ArenaHashMap<'a, SymbolId, SymbolId>;
 // Keep the var declaration, since its symbol may also contain functions.
@@ -73,7 +73,7 @@ pub struct Semantic<'a> {
 
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaIndexVec<'a, SymbolId, Range>,
-    scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
+    symbol_tables: ArenaIndexVec<'a, ScopeId, SymbolTable<'a>>,
     shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
 
@@ -227,7 +227,7 @@ impl<'a> Semantic<'a> {
     /// //               lives in the function scope
     /// ```
     pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        if let Some(&symbol) = self.scope_maps[scope_id].get(name) {
+        if let Some(&symbol) = self.symbol_tables[scope_id].get(name) {
             return Some(symbol);
         }
         let declaration = self.hoisting_variables[scope_id].get(name)?;
@@ -238,7 +238,7 @@ impl<'a> Semantic<'a> {
     /// appears in its hoist target, not in blocks it passes through.
     pub fn bindings(&self, scope_id: ScopeId) -> BindingIterator<'_> {
         BindingIterator {
-            inner: self.scope_maps[scope_id].values(),
+            inner: self.symbol_tables[scope_id].values(),
         }
     }
 
@@ -264,7 +264,7 @@ impl<'a> Semantic<'a> {
         let lookup = LexicalLookup {
             scopes: &self.scopes.list,
             symbols: &self.symbols,
-            scope_maps: &self.scope_maps,
+            symbol_tables: &self.symbol_tables,
             shadowed_internal_names: &self.shadowed_internal_names,
         };
         lookup.lookup(scope_id, name, space)

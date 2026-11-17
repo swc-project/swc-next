@@ -10,7 +10,7 @@
 //! instantiation. Class static members and function expandos use the export
 //! tables when resolving alias targets.
 //!
-//! Go's `Locals` already has a counterpart in `scope_maps`. Per-declaration
+//! Go's `Locals` already has a counterpart in `symbol_tables`. Per-declaration
 //! visibility uses the existing `Declaration.flags`, rather than aggregate
 //! symbol flags. Implicit export context (`NodeFlagsExportContext`) can be
 //! computed from each body's syntax and the binder's ambient context while
@@ -40,7 +40,7 @@
 use swc_next_allocator::{Allocator, hash_map::HashMap, hash_set::HashSet, vec::ArenaVec};
 use swc_next_ecma_ast::{NodeId, ScopeId, SymbolId};
 
-use crate::ScopeMap;
+use crate::SymbolTable;
 
 /// Additional TypeScript binding data associated with the existing semantic IDs.
 ///
@@ -53,22 +53,22 @@ pub(super) struct TsBinder<'a> {
     ///
     /// Class instance and interface members, including their type parameters,
     /// share this name map across merged declarations. Lexical type-parameter
-    /// bindings remain in the existing scope maps for occurrence-local lookup.
+    /// bindings remain in the existing symbol tables for occurrence-local lookup.
     /// Member declarations use the existing symbol and declaration arenas.
     /// This table records declaration identities, not inferred member types.
     /// Type/object literals can use the same table when their members are bound;
     /// namespace exports, enum members, and class statics use `symbol_exports`.
-    pub symbol_members: HashMap<'a, SymbolId, ScopeMap<'a>>,
+    pub symbol_members: HashMap<'a, SymbolId, SymbolTable<'a>>,
 
     /// Exported names owned by a symbol: tsc-go `ast.Symbol.Exports()`.
     ///
     /// Each value reuses the existing name-to-symbol map used for lexical bindings.
     /// Namespace declarations sharing an owner share this table, while their local
-    /// bindings remain in their separate `scope_maps`. Enum members and class static
+    /// bindings remain in their separate `symbol_tables`. Enum members and class static
     /// members also belong to exports in Go; lookup applies the appropriate meaning.
     /// Export specifiers point to ordinary alias symbols from the existing symbol
     /// arena. `default` and `export=` are entries in the source module's export map.
-    pub symbol_exports: HashMap<'a, SymbolId, ScopeMap<'a>>,
+    pub symbol_exports: HashMap<'a, SymbolId, SymbolTable<'a>>,
 
     /// Local symbol to its export symbol: tsc-go `ast.Symbol.ExportSymbol()`.
     ///
@@ -100,7 +100,7 @@ pub(super) struct TsBinder<'a> {
     /// A semantic model analyzes one AST, so a single existing name map suffices.
     /// `export as namespace` names are separate from that file's lexical bindings
     /// and ordinary module exports.
-    pub global_exports: ScopeMap<'a>,
+    pub global_exports: SymbolTable<'a>,
 
     /// Cached alias targets: tsc-go `checker.AliasSymbolLinks.aliasTarget`.
     ///
@@ -159,7 +159,7 @@ impl<'a> TsBinder<'a> {
             export_symbols: HashMap::new_in(allocator),
             container_symbols: HashMap::new_in(allocator),
             symbol_parents: HashMap::new_in(allocator),
-            global_exports: ScopeMap::new_in(allocator),
+            global_exports: SymbolTable::new_in(allocator),
             alias_targets: HashMap::new_in(allocator),
             type_only_alias_declarations: HashMap::new_in(allocator),
             alias_resolution_stack: ArenaVec::new_in(allocator),
@@ -186,7 +186,7 @@ pub(super) enum ModuleInstanceState {
 /// A deferred expando declaration: tsc-go `binder.ExpandoAssignmentInfo`.
 ///
 /// Only the syntax and lexical environments required for binding are retained;
-/// the receiver's symbol is found using the existing scope maps after traversal.
+/// the receiver's symbol is found using the existing symbol tables after traversal.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct ExpandoAssignmentInfo {
     /// Go's `node`: the assignment or `Object.defineProperty` call.

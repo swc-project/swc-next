@@ -24,7 +24,7 @@ impl<'a> SymbolTracker<'a> {
         if self.annex_b_functions.is_empty() {
             return;
         }
-        self.sync_scope_maps_from(scopes);
+        self.sync_symbol_tables_from(scopes);
 
         let eligible = {
             let mut facts = HashMap::<_, AnnexBScope<'a>, FxBuildHasher>::default();
