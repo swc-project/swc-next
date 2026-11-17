@@ -305,6 +305,18 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                     );
                 }
             }
+            NodeKindData::BindingIdentifier(node) if self.check_syntax.binding_identifiers() => {
+                let tree = self.ast;
+                let name = tree.get_utf8(node.name(tree)).as_bytes();
+                js::check_binding_identifier(self, node, name);
+                if tree.is_ts() && name == b"await" {
+                    ts::check_contextual_await(
+                        self,
+                        node.node_id(),
+                        "'await' cannot be used as a binding identifier here",
+                    );
+                }
+            }
             NodeKindData::LabelIdentifier(node) => js::check_label_identifier(self, node),
             NodeKindData::BinaryExpression(node) => js::check_binary_expression(self, node),
             NodeKindData::UnaryExpression(node) => js::check_unary_expression(self, node),
@@ -328,6 +340,8 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             NodeKindData::AwaitExpression(node) => js::check_await_expression(self, node),
             NodeKindData::YieldExpression(node) => js::check_yield_expression(self, node),
             NodeKindData::TsParameterProperty(node) => ts::check_parameter_property(self, node),
+            NodeKindData::TsOptionalType(node) => ts::check_tuple_optional_type(self, node),
+            NodeKindData::TsRestType(node) => ts::check_tuple_rest_type(self, node),
             NodeKindData::ImportDeclaration(node) => js::check_import_declaration(self, node),
             NodeKindData::ExportNamedDeclaration(node) => {
                 js::check_export_named_declaration(self, node)
@@ -578,20 +592,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        if self.check_syntax.binding_identifiers() {
-            let tree = self.ast;
-            let name = tree.get_utf8(node.name(tree)).as_bytes();
-            js::check_binding_identifier(self, node, name);
-            if tree.is_ts() && name == b"await" {
-                ts::check_contextual_await(
-                    self,
-                    node.node_id(),
-                    "'await' cannot be used as a binding identifier here",
-                );
-            }
-        }
-        let current = self.path.pop();
-        debug_assert_eq!(current, Some(node.node_id()));
+        self.leave_node(NodeKindData::BindingIdentifier(node));
         self.symbols
             .declare_binding_identifier(self.ast, node, &self.scope, self.current_scope);
     }
@@ -1384,9 +1385,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
         self.enter_type_position();
         self.enter_node(node.node_id());
-        if !self.check_syntax.is_empty() {
-            ts::check_tuple_optional_type(self, node);
-        }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsOptionalType(node));
         self.exit_type_position();
@@ -1396,9 +1394,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
         self.enter_type_position();
         self.enter_node(node.node_id());
-        if !self.check_syntax.is_empty() {
-            ts::check_tuple_rest_type(self, node);
-        }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsRestType(node));
         self.exit_type_position();
