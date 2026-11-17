@@ -126,12 +126,33 @@ mod imp {
         Some(position as u32)
     }
 
-    /// `LEXEME_MASKS[len]` keeps the first `len` bytes of a little-endian 16-byte word.
-    const LEXEME_MASKS: [u128; IDENTIFIER_BATCH_SIZE] = {
+    /// `LO_MASKS[len]` keeps the first `len` bytes of the little-endian word of bytes 0..8, and
+    /// `HI_MASKS[len]` keeps the bytes before `len` of the word of bytes 8..12. Separate 8- and
+    /// 4-byte entries let `len` scale into the load address.
+    const LO_MASKS: [u64; IDENTIFIER_BATCH_SIZE] = {
         let mut masks = [0; IDENTIFIER_BATCH_SIZE];
         let mut len = 0;
         while len < IDENTIFIER_BATCH_SIZE {
-            masks[len] = (1 << (8 * len)) - 1;
+            masks[len] = if len < 8 {
+                (1 << (8 * len)) - 1
+            } else {
+                u64::MAX
+            };
+            len += 1;
+        }
+        masks
+    };
+    const HI_MASKS: [u32; IDENTIFIER_BATCH_SIZE] = {
+        let mut masks = [0; IDENTIFIER_BATCH_SIZE];
+        let mut len = 0;
+        while len < IDENTIFIER_BATCH_SIZE {
+            masks[len] = if len <= 8 {
+                0
+            } else if len < 12 {
+                (1 << (8 * (len - 8))) - 1
+            } else {
+                u32::MAX
+            };
             len += 1;
         }
         masks
@@ -146,12 +167,20 @@ mod imp {
     #[inline(always)]
     pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
         let position = start as usize;
-        let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() else {
+        // The caller read the start byte at `start`, so the subtraction cannot overflow.
+        debug_assert!(position < source.len());
+        if source.len() - position < IDENTIFIER_BATCH_SIZE {
             return scan_ascii_identifier_or_keyword_slow(source, start);
+        }
+        // SAFETY: the check above keeps a whole batch at `position` within `source`.
+        let chunk = unsafe {
+            &*source
+                .as_ptr()
+                .add(position)
+                .cast::<[u8; IDENTIFIER_BATCH_SIZE]>()
         };
         let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
-        let lane = stopped.trailing_zeros() as usize;
-        if lane >= IDENTIFIER_BATCH_SIZE {
+        if stopped == 0 {
             // No keyword is this long.
             let end = scan_ascii_identifier_continue::<false>(
                 source,
@@ -159,13 +188,18 @@ mod imp {
             )?;
             return Some((end, TokenTag::Identifier));
         }
+        let lane = stopped.trailing_zeros() as usize;
         // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
         let byte = unsafe { *source.get_unchecked(position + lane) };
         let end = ascii_identifier_end(byte, position + lane)?;
+        let [lo @ .., _, _, _, _, _, _, _, _] = *chunk;
+        let [_, _, _, _, _, _, _, _, hi @ .., _, _, _, _] = *chunk;
         // Every keyword is at most 11 bytes, so a longer lexeme keeps a nonzero byte 11 in `hi`
         // and matches no table slot, which has zero there.
-        let word = u128::from_le_bytes(*chunk) & LEXEME_MASKS[lane];
-        Some((end, keyword_type_of_words(word as u64, (word >> 64) as u32)))
+        let tag = keyword_type_of_words(u64::from_le_bytes(lo) & LO_MASKS[lane], || {
+            u32::from_le_bytes(hi) & HI_MASKS[lane]
+        });
+        Some((end, tag))
     }
 }
 

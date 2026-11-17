@@ -2303,35 +2303,35 @@ const KEYWORDS: [(&[u8], TokenTag); 85] = [
 const MAX_KEYWORD_LEN: usize = 11;
 
 /// The multiplier of the keyword hash. It maps every entry in [`KEYWORDS`] to a
-/// different slot; [`build_keyword_table`] rejects a collision at compile time.
-const KEYWORD_HASH_MULTIPLIER: u64 = 0xf52b_5853_3d7a_32d9;
+/// different slot by its first eight bytes alone; [`build_keyword_table`] rejects a
+/// collision at compile time.
+const KEYWORD_HASH_MULTIPLIER: u64 = 0x686a_c588_6dd9_fa39;
 
-/// A keyword hash table slot. `lo` holds bytes 0..8 and `hi` holds bytes 8..
-/// of the zero-padded keyword in little-endian order. Empty slots hold zero
-/// words, which no identifier matches.
-#[derive(Clone, Copy)]
-#[repr(align(16))]
-struct KeywordSlot {
-    lo: u64,
-    hi: u32,
-    tag: TokenTag,
+/// The keyword hash table, one array per field so that a slot index scales to every
+/// field in an address. `lo` holds bytes 0..8 and `hi` holds bytes 8.. of the
+/// zero-padded keyword in little-endian order. Empty slots hold zero words, which no
+/// identifier matches.
+struct KeywordTable {
+    lo: [u64; 256],
+    hi: [u32; 256],
+    tag: [TokenTag; 256],
 }
 
-static KEYWORD_TABLE: [KeywordSlot; 256] = build_keyword_table();
+static KEYWORD_TABLE: KeywordTable = build_keyword_table();
 
+/// Hashes only the first eight bytes, so a lookup can compare them before it reads the
+/// rest of the lexeme.
 #[inline(always)]
-const fn keyword_hash(lo: u64, hi: u32) -> usize {
-    (lo.wrapping_add(hi as u64)
-        .wrapping_mul(KEYWORD_HASH_MULTIPLIER)
-        >> 56) as usize
+const fn keyword_hash(lo: u64) -> usize {
+    (lo.wrapping_mul(KEYWORD_HASH_MULTIPLIER) >> 56) as usize
 }
 
-const fn build_keyword_table() -> [KeywordSlot; 256] {
-    let mut table = [KeywordSlot {
-        lo: 0,
-        hi: 0,
-        tag: TokenTag::Identifier,
-    }; 256];
+const fn build_keyword_table() -> KeywordTable {
+    let mut table = KeywordTable {
+        lo: [0; 256],
+        hi: [0; 256],
+        tag: [TokenTag::Identifier; 256],
+    };
     let mut i = 0;
     while i < KEYWORDS.len() {
         let (keyword, tag) = KEYWORDS[i];
@@ -2346,9 +2346,11 @@ const fn build_keyword_table() -> [KeywordSlot; 256] {
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
         ]);
         let hi = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
-        let slot = keyword_hash(lo, hi);
-        assert!(table[slot].lo == 0, "keyword hash collision");
-        table[slot] = KeywordSlot { lo, hi, tag };
+        let slot = keyword_hash(lo);
+        assert!(table.lo[slot] == 0, "keyword hash collision");
+        table.lo[slot] = lo;
+        table.hi[slot] = hi;
+        table.tag[slot] = tag;
         i += 1;
     }
     table
@@ -2382,16 +2384,17 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         }
         _ => return TokenTag::Identifier,
     };
-    keyword_type_of_words(lo, hi)
+    keyword_type_of_words(lo, || hi)
 }
 
-/// Looks up a lexeme packed as in [`KeywordSlot`]: `lo` holds bytes 0..8 and `hi` holds bytes
-/// 8..12, both zero-padded.
+/// Looks up a lexeme packed as in [`KeywordTable`]: `lo` holds bytes 0..8 and `hi` gives bytes
+/// 8..12, both zero-padded. `hi` runs only when `lo` matches a keyword, so an identifier that
+/// is not a keyword does not pack the rest of its lexeme.
 #[inline(always)]
-fn keyword_type_of_words(lo: u64, hi: u32) -> TokenTag {
-    let slot = &KEYWORD_TABLE[keyword_hash(lo, hi)];
-    if slot.lo == lo && slot.hi == hi {
-        slot.tag
+fn keyword_type_of_words(lo: u64, hi: impl FnOnce() -> u32) -> TokenTag {
+    let slot = keyword_hash(lo);
+    if KEYWORD_TABLE.lo[slot] == lo && KEYWORD_TABLE.hi[slot] == hi() {
+        KEYWORD_TABLE.tag[slot]
     } else {
         TokenTag::Identifier
     }
