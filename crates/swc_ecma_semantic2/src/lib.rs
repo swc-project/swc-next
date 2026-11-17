@@ -23,11 +23,12 @@ use crate::{
 mod binder;
 mod builder;
 mod ecmascript;
-pub mod scope;
+mod scope;
 mod scope_model;
 mod syntax_checks;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
+pub use scope::{Scope, ScopeFlags, ScopeKind};
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;

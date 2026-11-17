@@ -10,8 +10,7 @@ use swc_next_allocator::{Allocator, Idx};
 use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic2::{
-    AnalyzeOptions, Semantic, SymbolFlags, SyntaxChecks, analyze,
-    scope::{Scope, ScopeKind},
+    AnalyzeOptions, Scope, ScopeKind, Semantic, SymbolFlags, SyntaxChecks, analyze,
 };
 
 #[derive(Parser)]
