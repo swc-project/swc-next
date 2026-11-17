@@ -2940,14 +2940,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // JavaScript declarators have no definite assignment assertion or type
+    // annotation, so they use a smaller instantiation.
     fn parse_variable_declarators(
+        &mut self,
+        kind: VariableKind,
+        context: DeclaratorCtx,
+    ) -> Option<SubRange<VariableDeclarator>> {
+        if self.lang.is_typescript() {
+            self.parse_variable_declarators_for::<true>(kind, context)
+        } else {
+            self.parse_variable_declarators_for::<false>(kind, context)
+        }
+    }
+
+    #[inline(always)]
+    fn parse_variable_declarators_for<const IS_TYPESCRIPT: bool>(
         &mut self,
         kind: VariableKind,
         context: DeclaratorCtx,
     ) -> Option<SubRange<VariableDeclarator>> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
-            let first = self.parse_variable_declarator(kind, context)?;
+            let first = self.parse_variable_declarator::<IS_TYPESCRIPT>(kind, context)?;
             if self.current_token.tag() != TokenTag::Comma {
                 return Some(self.ast.add_sub_range([first]));
             }
@@ -2961,7 +2976,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     );
                     break;
                 }
-                let declarator = self.parse_variable_declarator(kind, context)?;
+                let declarator = self.parse_variable_declarator::<IS_TYPESCRIPT>(kind, context)?;
                 self.scratch_a.append(declarator);
             }
             Some(self.add_extra_from_scratch_a(checkpoint))
@@ -2989,7 +3004,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // LexicalBinding[In, Yield, Await, Pattern] :
     //   BindingIdentifier[?Yield, ?Await] Initializer[?In, ?Yield, ?Await]?
     //   [+Pattern] BindingPattern[?Yield, ?Await] Initializer[?In, ?Yield, ?Await]
-    fn parse_variable_declarator(
+    fn parse_variable_declarator<const IS_TYPESCRIPT: bool>(
         &mut self,
         kind: VariableKind,
         context: DeclaratorCtx,
@@ -3005,7 +3020,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let definite = self.lang.is_typescript()
+        let definite = IS_TYPESCRIPT
             && !self.current_token.has_line_terminator_before()
             && self.eat(TokenTag::LogicalNot)?;
         let mut end = if definite {
@@ -3020,14 +3035,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let type_annotation =
-            if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                let annotation = self.parse_type_annotation()?;
-                end = annotation.span(&self.ast).end;
-                Some(annotation)
-            } else {
-                None
-            };
+        let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
+            let annotation = self.parse_type_annotation()?;
+            end = annotation.span(&self.ast).end;
+            Some(annotation)
+        } else {
+            None
+        };
         let init = if self.eat(TokenTag::Assign)? {
             let expression =
                 self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
