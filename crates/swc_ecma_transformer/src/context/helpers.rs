@@ -21,8 +21,8 @@ impl TransformCtx<'_, '_> {
     ///
     /// Example callees (assuming the generated names are available):
     /// ```js
-    /// _helpers._set_function_name
-    /// _helpers._to_property_key
+    /// _swc_helpers._set_function_name
+    /// _swc_helpers._to_property_key
     /// ```
     pub(crate) fn helper_callee(&mut self, helper: HelperKind, scope: ScopeId) -> Expr {
         let namespace = match self.state.helpers.bound_identifier() {
@@ -47,15 +47,15 @@ impl TransformCtx<'_, '_> {
     /// then build the detached import declaration. This allocates AST
     /// nodes and semantic information without attaching the declaration.
     ///
-    /// For example, if `_helpers` already exists, prepare:
+    /// For example, if `_swc_helpers` already exists, prepare:
     /// ```js
-    /// import * as _helpers2 from "@swc-next/helpers";
+    /// import * as _swc_helpers2 from "@swc-next/helpers";
     /// ```
     fn prepare_external_helpers(&mut self) -> PreparedHelper {
         let bound_identifier = BoundIdentifier::named(
             self,
             self.program_scope(),
-            "_helpers",
+            "_swc_helpers",
             if self.ast.is_module() {
                 SymbolFlags::IMPORT
             } else {
@@ -109,8 +109,8 @@ impl TransformCtx<'_, '_> {
     ///
     /// Module output after flushing a used helper:
     /// ```js
-    /// import * as _helpers from "@swc-next/helpers";
-    /// const C = _helpers._set_function_name(class {}, "C");
+    /// import * as _swc_helpers from "@swc-next/helpers";
+    /// const C = _swc_helpers._set_function_name(class {}, "C");
     /// ```
     pub(crate) fn inject_helpers(&mut self, program: Program) {
         if let Some(statement) = self.state.helpers.take_statement() {
@@ -124,7 +124,7 @@ impl TransformCtx<'_, '_> {
     ///
     /// For `target = class {}` and `name = "C"`, build:
     /// ```js
-    /// _helpers._set_function_name(class {}, "C")
+    /// _swc_helpers._set_function_name(class {}, "C")
     /// ```
     pub(crate) fn call_set_function_name(
         &mut self,
@@ -141,7 +141,7 @@ impl TransformCtx<'_, '_> {
     ///
     /// For `argument = getKey()`, build:
     /// ```js
-    /// _helpers._to_property_key(getKey())
+    /// _swc_helpers._to_property_key(getKey())
     /// ```
     pub(crate) fn call_to_property_key(&mut self, argument: Expr, scope: ScopeId) -> Expr {
         let callee = self.helper_callee(HelperKind::ToPropertyKey, scope);
@@ -162,9 +162,9 @@ impl TransformCtx<'_, '_> {
     /// Wrap an existing helper binding and initializer in a detached `var`
     /// declaration, retaining the registered binding identifier and its symbol.
     ///
-    /// For the `_helpers` binding and a require initializer, build:
+    /// For the `_swc_helpers` binding and a require initializer, build:
     /// ```js
-    /// var _helpers = require("@swc-next/helpers");
+    /// var _swc_helpers = require("@swc-next/helpers");
     /// ```
     fn helper_var(&mut self, binding: BindingIdentifier, init: Expr) -> Stmt {
         let declarator = self.add_node(|ast| {
