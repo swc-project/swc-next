@@ -316,6 +316,9 @@ importers:
       '@swc-next/transformer':
         specifier: workspace:*
         version: link:../transformer
+      '@swc-next/helpers':
+        specifier: workspace:*
+        version: link:../../packages/helpers
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.46(@swc/helpers@0.5.23)
@@ -449,6 +452,8 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
+
+  packages/helpers: {}
 
   packages/types: {}
 

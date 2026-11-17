@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+var _swc_helpers = require("@swc-next/helpers");
+var _computedKey, _staticBlock;
+const obj = { [_computedKey = _swc_helpers._to_property_key(key())]: (class {
+  static #_ = _staticBlock = () => (_swc_helpers._set_function_name(this, _computedKey), init(), this);
+}, _staticBlock()) };

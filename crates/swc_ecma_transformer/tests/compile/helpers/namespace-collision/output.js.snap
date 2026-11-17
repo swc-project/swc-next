@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+import * as _swc_helpers3 from "@swc-next/helpers";
+const _swc_helpers = input;
+function run(_swc_helpers2) {
+  var _computedKey, _staticBlock;
+  return { [_computedKey = _swc_helpers3._to_property_key(key())]: (class {
+    static #_ = _staticBlock = () => (_swc_helpers3._set_function_name(this, _computedKey), use(_swc_helpers, _swc_helpers2), this);
+  }, _staticBlock()) };
+}

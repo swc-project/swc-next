@@ -1,0 +1,74 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  _set_function_name as setFunctionName,
+  _to_property_key as toPropertyKey,
+} from "@swc-next/helpers";
+
+test("helper exports preserve property keys", () => {
+  assert.equal(toPropertyKey(12), "12");
+  assert.equal(toPropertyKey(null), "null");
+  assert.equal(toPropertyKey("name"), "name");
+
+  const key = Symbol("name");
+  assert.equal(toPropertyKey(key), key);
+
+  let calls = 0;
+  const value = {
+    [Symbol.toPrimitive](hint) {
+      assert.equal(this, value);
+      assert.equal(hint, "string");
+      calls++;
+      return key;
+    },
+  };
+  assert.equal(toPropertyKey(value), key);
+  assert.equal(calls, 1);
+
+  const ordinary = { toString: () => ({}), valueOf: () => 42 };
+  assert.equal(toPropertyKey(ordinary), "42");
+
+  const invalid = { [Symbol.toPrimitive]: () => ({}) };
+  assert.throws(() => toPropertyKey(invalid), TypeError);
+
+  const error = new Error("conversion failed");
+  const throwing = { [Symbol.toPrimitive]() { throw error; } };
+  assert.throws(() => toPropertyKey(throwing), (caught) => caught === error);
+});
+
+test("helper exports set function names", () => {
+  const fn = function () {};
+  assert.equal(setFunctionName(fn, "renamed"), fn);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(fn, "name"), {
+    value: "renamed",
+    configurable: true,
+    enumerable: false,
+    writable: false,
+  });
+
+  const cls = class {};
+  assert.equal(setFunctionName(cls, Symbol("Widget")), cls);
+  assert.equal(cls.name, "[Widget]");
+
+  const unnamed = function () {};
+  setFunctionName(unnamed, Symbol());
+  assert.equal(unnamed.name, "");
+
+  const emptyDescription = function () {};
+  setFunctionName(emptyDescription, Symbol(""));
+  assert.equal(emptyDescription.name, "[]");
+
+  const emptyPrefix = function () {};
+  setFunctionName(emptyPrefix, "value", "");
+  assert.equal(emptyPrefix.name, "value");
+
+  const getter = function () {};
+  setFunctionName(getter, "value", "get");
+  assert.equal(getter.name, "get value");
+
+  const frozen = Object.freeze(function original() {});
+  assert.equal(setFunctionName(frozen, "renamed"), frozen);
+  assert.equal(frozen.name, "original");
+});
+

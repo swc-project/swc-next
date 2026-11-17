@@ -140,6 +140,8 @@ jobs:
         run: pnpm build --release
       - name: Build JavaScript APIs
         run: pnpm build:js
+      - name: Check generated helpers
+        run: git diff --exit-code -- packages/helpers/esm/index.js
       - name: Run ESTree conformance
         run: pnpm test:conformance
       - name: Run codec conformance

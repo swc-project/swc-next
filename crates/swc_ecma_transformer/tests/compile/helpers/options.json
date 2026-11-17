@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "sourceType": "module"
+  },
+  "transformer": {
+    "features": {
+      "class-static-block": true
+    },
+    "proposal": {
+      "preventExtensions": true
+    }
+  }
+}

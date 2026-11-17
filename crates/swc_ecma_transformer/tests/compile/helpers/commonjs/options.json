@@ -1,0 +1,13 @@
+{
+  "parser": {
+    "sourceType": "commonjs"
+  },
+  "transformer": {
+    "features": {
+      "class-static-block": true
+    },
+    "proposal": {
+      "preventExtensions": true
+    }
+  }
+}

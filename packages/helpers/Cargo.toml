@@ -1,0 +1,8 @@
+[package]
+name = "swc_next_helpers"
+version = "0.6.1"
+edition = "2024"
+description = "Runtime helper sources shared by SWC Next transforms and JavaScript packages"
+license.workspace = true
+repository.workspace = true
+include = ["/src/**", "/esm/**", "/Cargo.toml", "/README.md"]
