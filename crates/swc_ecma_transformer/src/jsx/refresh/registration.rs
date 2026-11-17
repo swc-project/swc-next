@@ -400,9 +400,10 @@ impl<'ast> ReactRefresh<'_, 'ast> {
                     return (expression, false);
                 };
                 let callee_span = call.callee(self.ast).span(self.ast);
+                // SAFETY: The callee span refers to this AST's source at UTF-8 boundaries.
                 let callee = self
                     .ast
-                    .get_utf8(self.ast.source_slice(callee_span.start, callee_span.end));
+                    .get_utf8(unsafe { self.ast.source_slice(callee_span.start, callee_span.end) });
                 let inferred_name_text = self.ast.get_utf8(inferred_name);
                 let nested_name = format!("{inferred_name_text}${callee}");
                 let nested_name = self.ast.add_utf8(&nested_name);

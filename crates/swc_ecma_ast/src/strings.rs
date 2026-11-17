@@ -93,7 +93,13 @@ impl<'a> StringPool<'a> {
         let source_len = self.source.len() as u32;
         if start < source_len {
             debug_assert!(end <= source_len);
-            &self.source.as_bytes()[start as usize..end as usize]
+            // SAFETY: Ast's handle invariants guarantee an ordered, in-bounds
+            // range within this source.
+            unsafe {
+                self.source
+                    .as_bytes()
+                    .get_unchecked(start as usize..end as usize)
+            }
         } else {
             let start = (start - source_len) as usize;
             let end = (end - source_len) as usize;
@@ -130,20 +136,26 @@ impl<'a> StringPool<'a> {
         &self.extra
     }
 
-    /// Returns a slice of the source string corresponding to the given start and end offsets.
-    /// Actually this function should be unsafe because it does not check if the offsets are valid.
-    /// So external crates should be better not use this function directly.
+    /// Returns a UTF-8 string handle for the given source range.
+    ///
+    /// # Safety
+    ///
+    /// `start <= end <= self.source.len()` must hold, and both offsets must
+    /// be UTF-8 character boundaries in the source.
     #[inline]
-    pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
+    pub unsafe fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
         debug_assert!(self.source.get(start as usize..end as usize).is_some());
         AstUtf8 { start, end }
     }
 
-    /// Returns a slice of the source string corresponding to the given start and end offsets.
-    /// Actually this function should be unsafe because it does not check if the offsets are valid.
-    /// So external crates should be better not use this function directly.
+    /// Returns a WTF-8 string handle for the given source range.
+    ///
+    /// # Safety
+    ///
+    /// `start <= end <= self.source.len()` must hold, and both offsets must
+    /// be UTF-8 character boundaries in the source.
     #[inline]
-    pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
+    pub unsafe fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
         debug_assert!(self.source.get(start as usize..end as usize).is_some());
         AstWtf8 { start, end }
     }
@@ -197,7 +209,8 @@ mod tests {
         let (source, first, large, last, surrogate) = {
             // SAFETY: All handles used below belong to this AST and remain valid.
             let mut ast = unsafe { Ast::new("source", &allocator) };
-            let source = ast.get_utf8(ast.source_slice(0, 6));
+            // SAFETY: The range covers the entire ASCII source.
+            let source = ast.get_utf8(unsafe { ast.source_slice(0, 6) });
             let first = ast.add_utf8("first");
             let first = ast.get_utf8(first);
             let large = ast.add_utf8(&"x".repeat(4096));
