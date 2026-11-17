@@ -597,13 +597,21 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
+    ///
+    /// The token is built as an identifier before the keyword lookup, so the lookup does not
+    /// keep the span live, and a keyword only replaces the tag.
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
-        let Some((pos, tag)) = scan_ascii_identifier_or_keyword(self.source, start) else {
+        let cursor = &mut self.cursor;
+        let Some(keyword) = scan_ascii_identifier_or_keyword(self.source, start, |end| {
+            *cursor = end;
+            *target = Token::new(start, end, TokenTag::Identifier, flags);
+        }) else {
             return false;
         };
-        self.cursor = pos;
-        *target = Token::new(start, pos, tag, flags);
+        if let Some(tag) = keyword {
+            target.set_tag(tag);
+        }
         true
     }
 
@@ -2384,20 +2392,17 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         }
         _ => return TokenTag::Identifier,
     };
-    keyword_type_of_words(lo, || hi)
+    keyword_of_words(lo, || hi).unwrap_or(TokenTag::Identifier)
 }
 
 /// Looks up a lexeme packed as in [`KeywordTable`]: `lo` holds bytes 0..8 and `hi` gives bytes
 /// 8..12, both zero-padded. `hi` runs only when `lo` matches a keyword, so an identifier that
 /// is not a keyword does not pack the rest of its lexeme.
 #[inline(always)]
-fn keyword_type_of_words(lo: u64, hi: impl FnOnce() -> u32) -> TokenTag {
+fn keyword_of_words(lo: u64, hi: impl FnOnce() -> u32) -> Option<TokenTag> {
     let slot = keyword_hash(lo);
-    if KEYWORD_TABLE.lo[slot] == lo && KEYWORD_TABLE.hi[slot] == hi() {
-        KEYWORD_TABLE.tag[slot]
-    } else {
-        TokenTag::Identifier
-    }
+    (KEYWORD_TABLE.lo[slot] == lo && KEYWORD_TABLE.hi[slot] == hi())
+        .then(|| KEYWORD_TABLE.tag[slot])
 }
 
 #[cfg(test)]
@@ -2454,9 +2459,10 @@ mod tests {
     fn scanned_keyword_types(lexeme: &[u8]) -> [TokenTag; 2] {
         let padded = [lexeme, b" ".repeat(16).as_slice()].concat();
         [padded.as_slice(), lexeme].map(|source| {
-            let (end, tag) = scan_ascii_identifier_or_keyword(source, 0).unwrap();
-            assert_eq!(end as usize, lexeme.len());
-            tag
+            let mut end = None;
+            let keyword = scan_ascii_identifier_or_keyword(source, 0, |found| end = Some(found));
+            assert_eq!(end, Some(lexeme.len() as u32));
+            keyword.unwrap().unwrap_or(TokenTag::Identifier)
         })
     }
 

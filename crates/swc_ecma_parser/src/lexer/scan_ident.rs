@@ -37,7 +37,7 @@ fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
 mod imp {
     use swc_next_simd::prelude::*;
 
-    use crate::lexer::keyword_type_of_words;
+    use crate::lexer::keyword_of_words;
 
     use super::{
         TokenTag, ascii_identifier_end, is_ascii_identifier_continue,
@@ -102,11 +102,20 @@ mod imp {
         let mut position = start as usize;
 
         // One load and one branch per batch; only the first byte that stops the identifier is
-        // looked at again.
-        while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
+        // looked at again. Comparing the batch end leaves no bounds check that can panic, so the
+        // scan needs no stack frame; it cannot overflow because a slice length is at most
+        // `isize::MAX`.
+        while position + IDENTIFIER_BATCH_SIZE <= source.len() {
+            // SAFETY: The loop condition keeps the batch at `position` within `source`.
+            let chunk = unsafe {
+                &*source
+                    .as_ptr()
+                    .add(position)
+                    .cast::<[u8; IDENTIFIER_BATCH_SIZE]>()
+            };
             let stopped = identifier_stop_bits::<JSX>(u8x16::from_array(*chunk));
-            let lane = stopped.trailing_zeros() as usize;
-            if lane < IDENTIFIER_BATCH_SIZE {
+            if stopped != 0 {
+                let lane = stopped.trailing_zeros() as usize;
                 // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
                 let byte = unsafe { *source.get_unchecked(position + lane) };
                 return ascii_identifier_end(byte, position + lane);
@@ -158,19 +167,23 @@ mod imp {
         masks
     };
 
-    /// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
-    /// returns its end and its keyword tag. Returns `None` like
-    /// [`scan_ascii_identifier_continue`].
+    /// Scans the ASCII identifier that starts with the identifier start byte at `start`, passes
+    /// its end to `found` before the keyword lookup, and returns its keyword tag if it is a
+    /// keyword. Returns `None` like [`scan_ascii_identifier_continue`].
     ///
     /// An identifier that ends in the first batch takes its keyword words from that batch, so
     /// the keyword lookup neither loads the lexeme again nor branches on its length.
     #[inline(always)]
-    pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+    pub fn scan_ascii_identifier_or_keyword(
+        source: &[u8],
+        start: u32,
+        found: impl FnOnce(u32),
+    ) -> Option<Option<TokenTag>> {
         let position = start as usize;
         // The caller read the start byte at `start`, so the subtraction cannot overflow.
         debug_assert!(position < source.len());
         if source.len() - position < IDENTIFIER_BATCH_SIZE {
-            return scan_ascii_identifier_or_keyword_slow(source, start);
+            return scan_ascii_identifier_or_keyword_slow(source, start, found);
         }
         // SAFETY: the check above keeps a whole batch at `position` within `source`.
         let chunk = unsafe {
@@ -186,20 +199,21 @@ mod imp {
                 source,
                 start + IDENTIFIER_BATCH_SIZE as u32,
             )?;
-            return Some((end, TokenTag::Identifier));
+            found(end);
+            return Some(None);
         }
         let lane = stopped.trailing_zeros() as usize;
         // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
         let byte = unsafe { *source.get_unchecked(position + lane) };
-        let end = ascii_identifier_end(byte, position + lane)?;
+        found(ascii_identifier_end(byte, position + lane)?);
         let [lo @ .., _, _, _, _, _, _, _, _] = *chunk;
         let [_, _, _, _, _, _, _, _, hi @ .., _, _, _, _] = *chunk;
         // Every keyword is at most 11 bytes, so a longer lexeme keeps a nonzero byte 11 in `hi`
         // and matches no table slot, which has zero there.
-        let tag = keyword_type_of_words(u64::from_le_bytes(lo) & LO_MASKS[lane], || {
-            u32::from_le_bytes(hi) & HI_MASKS[lane]
-        });
-        Some((end, tag))
+        Some(keyword_of_words(
+            u64::from_le_bytes(lo) & LO_MASKS[lane],
+            || u32::from_le_bytes(hi) & HI_MASKS[lane],
+        ))
     }
 }
 
@@ -291,21 +305,32 @@ mod imp {
 
 pub use imp::*;
 
-/// Scans the ASCII identifier that starts with the identifier start byte at `start`, and
-/// returns its end and its keyword tag. Returns `None` like [`scan_ascii_identifier_continue`].
+/// Scans the ASCII identifier that starts with the identifier start byte at `start`, passes its
+/// end to `found`, and returns its keyword tag if it is a keyword. Returns `None` like
+/// [`scan_ascii_identifier_continue`].
 #[cfg(not(target_arch = "x86_64"))]
 #[inline(always)]
-pub fn scan_ascii_identifier_or_keyword(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
-    scan_ascii_identifier_or_keyword_slow(source, start)
+pub fn scan_ascii_identifier_or_keyword(
+    source: &[u8],
+    start: u32,
+    found: impl FnOnce(u32),
+) -> Option<Option<TokenTag>> {
+    scan_ascii_identifier_or_keyword_slow(source, start, found)
 }
 
 #[inline(always)]
-fn scan_ascii_identifier_or_keyword_slow(source: &[u8], start: u32) -> Option<(u32, TokenTag)> {
+fn scan_ascii_identifier_or_keyword_slow(
+    source: &[u8],
+    start: u32,
+    found: impl FnOnce(u32),
+) -> Option<Option<TokenTag>> {
     let end = scan_ascii_identifier_continue::<false>(source, start + 1)?;
+    found(end);
     // SAFETY: `start` indexes the identifier start byte, and the scan returns a position after it
     // that is at most `source.len()`.
     let lexeme = unsafe { source.get_unchecked(start as usize..end as usize) };
-    Some((end, get_keyword_type(lexeme)))
+    let tag = get_keyword_type(lexeme);
+    Some((tag != TokenTag::Identifier).then_some(tag))
 }
 
 #[cfg(test)]

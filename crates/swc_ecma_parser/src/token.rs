@@ -594,6 +594,22 @@ impl Token {
         self.0 = unsafe { NonZeroU128::new_unchecked(data) };
     }
 
+    /// Replaces the tag. It writes only the tag's bytes, so the rest of the token need not be
+    /// known where it is called.
+    #[inline]
+    pub fn set_tag(&mut self, tag: TokenTag) {
+        #[cfg(target_endian = "little")]
+        // SAFETY: The tag is the low 32 bits, the first four bytes in little-endian order, and a
+        // nonzero tag keeps the token nonzero.
+        unsafe {
+            (self as *mut Self).cast::<u32>().write(tag as u32);
+        }
+        #[cfg(not(target_endian = "little"))]
+        {
+            *self = Self::new(self.start(), self.end(), tag, self.flags());
+        }
+    }
+
     #[inline]
     pub fn eof(pos: u32) -> Self {
         Self::new(pos, pos, TokenTag::Eof, 0)
