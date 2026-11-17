@@ -15,7 +15,7 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{Ast, AstCtx, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
-    binder::{Range, SymbolLinks},
+    binder::{LexicalLookup, Range, SymbolLinks},
     builder::SemanticBuilder,
     scope::ScopeTree,
 };
@@ -44,6 +44,8 @@ type Scopes = IndexSlice<ScopeId, [scope::Scope]>;
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
+// Maps a replacement binding to the internal name it hides in the same scope.
+type ShadowedInternalNames<'a> = ArenaHashMap<'a, SymbolId, SymbolId>;
 // Keep the var declaration, since its symbol may also contain functions.
 type HoistingMap<'a> = ArenaHashMap<'a, &'a [u8], DeclarationId>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
@@ -72,6 +74,7 @@ pub struct Semantic<'a> {
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaIndexVec<'a, SymbolId, Range>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
+    shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
 
     /// Each node records one binding, reference, or created scope identity.
@@ -258,15 +261,13 @@ impl<'a> Semantic<'a> {
         name: &[u8],
         space: ReferenceSpace,
     ) -> Option<SymbolId> {
-        binder::lookup_lexical_name(
-            &self.scopes.list,
-            &self.symbols,
-            &self.scope_maps,
-            &self.declarations,
-            scope_id,
-            name,
-            space,
-        )
+        let lookup = LexicalLookup {
+            scopes: &self.scopes.list,
+            symbols: &self.symbols,
+            scope_maps: &self.scope_maps,
+            shadowed_internal_names: &self.shadowed_internal_names,
+        };
+        lookup.lookup(scope_id, name, space)
     }
 
     /// Iterates every `(id, scope)` pair in creation order.

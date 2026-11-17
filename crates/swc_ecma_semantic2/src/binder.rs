@@ -9,15 +9,15 @@ use swc_next_ecma_ast::{
     Ast, AstUtf8, AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration,
     ExportSpecifier, Function, FunctionType, IdentifierReference, ImportDeclaration,
     ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxElementName, JsxElementNameData,
-    JsxIdentifier, JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind,
-    NodeKindData, ReferenceId, ScopeId, SymbolId, TsEnumDeclaration, TsEnumMember,
-    TsInterfaceDeclaration, TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate,
-    VariableDeclaration, VariableKind,
+    JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId,
+    ScopeId, SymbolId, TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration,
+    TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration,
+    VariableKind,
 };
 
 use crate::{
-    DeclarationId, Declarations, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps,
-    Scopes, Semantic, Symbols,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps, Scopes,
+    Semantic, ShadowedInternalNames, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -53,8 +53,7 @@ pub struct Range {
 /// contribution of an individual declaration matters.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
-    /// Same-named declarations that shadow an internal name reuse its name
-    /// handle, so lexical lookup can compare names without reading the AST.
+    /// Same-named declarations that shadow an internal name reuse its name handle.
     pub name: AstWtf8,
     pub flags: SymbolFlags,
     /// The first declaration contributing to this symbol.
@@ -584,6 +583,7 @@ pub(crate) struct SymbolTracker<'a> {
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
+    shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
 
@@ -670,6 +670,7 @@ impl<'a> SymbolTracker<'a> {
             redeclarations: Redeclarations::new_in(allocator),
             node_semantic,
             scope_maps: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            shadowed_internal_names: ShadowedInternalNames::new_in(allocator),
             hoisting_variables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             annex_b_functions: ArenaVec::new_in(allocator),
             pending: PendingBinding::default(),
@@ -1045,7 +1046,10 @@ impl<'a> SymbolTracker<'a> {
         self.push_saved_context();
         let target = if parent.is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
         {
-            nearest_conditional_scope(tree, scope, current_scope)
+            scope
+                .ancestors(Some(current_scope))
+                .find(|&id| tree.node_kind(scope.get(id).node) == NodeKind::TsConditionalType)
+                .unwrap_or(current_scope)
         } else {
             current_scope
         };
@@ -1155,7 +1159,18 @@ impl<'a> SymbolTracker<'a> {
         id: SymbolId,
     ) {
         let name = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
-        self.scope_maps[scope].insert(name, id);
+        if let Some(previous) = self.scope_maps[scope].insert(name, id) {
+            let flags = self.symbols[previous].flags;
+            debug_assert!(flags.intersects(SymbolFlags::INTERNAL_NAME));
+            // Preserve the hidden name when a parameter or local replaces it.
+            // E.g. `(function f() { type f = string; return f; })` still uses
+            // the function's internal name in value space.
+            let internal = match self.shadowed_internal_names.get(&previous) {
+                Some(&internal) => internal,
+                None => previous,
+            };
+            self.shadowed_internal_names.insert(id, internal);
+        }
     }
 
     /// Declares the pending binding for `name` at `node`. A compatible
@@ -1392,9 +1407,32 @@ impl<'a> SymbolTracker<'a> {
 
     fn add_jsx_reference(&mut self, tree: &Ast<'a>, name: JsxElementName, scope: ScopeId) {
         let element_name = tree.jsx_element_name_data(name);
-        let Some(identifier) = jsx_tag_root(tree, element_name) else {
-            return;
+
+        // Walks a JSX tag name to its leftmost JsxIdentifier. Returns None for
+        // namespaced names (`<svg:path>`) and non-tag shapes.
+        let identifier = {
+            let mut current = element_name;
+            loop {
+                match current {
+                    JsxElementNameData::JsxIdentifier(identifier) => break identifier,
+                    JsxElementNameData::JsxMemberExpression(member) => {
+                        match tree.jsx_member_expression_object_data(member.object(tree)) {
+                            JsxMemberExpressionObjectData::JsxIdentifier(jsx_identifier) => {
+                                current = JsxElementNameData::JsxIdentifier(jsx_identifier);
+                            }
+                            JsxMemberExpressionObjectData::JsxMemberExpression(
+                                jsx_member_expression,
+                            ) => {
+                                current =
+                                    JsxElementNameData::JsxMemberExpression(jsx_member_expression);
+                            }
+                        }
+                    }
+                    JsxElementNameData::JsxNamespacedName(_) => return,
+                }
+            }
         };
+
         let name = identifier.name(tree);
         let text = tree.get_utf8(name).as_bytes();
         if matches!(element_name, JsxElementNameData::JsxIdentifier(_))
@@ -1519,17 +1557,16 @@ impl<'a> SymbolTracker<'a> {
         self.sync_scope_maps(scopes.list.len());
         let mut use_ranges = ArenaIndexVec::with_capacity_in(self.symbols.len(), self.allocator);
         use_ranges.resize(self.symbols.len(), Range::default());
+
+        let lookup = LexicalLookup {
+            scopes: &scopes.list,
+            symbols: &self.symbols,
+            scope_maps: &self.scope_maps,
+            shadowed_internal_names: &self.shadowed_internal_names,
+        };
         for reference in &mut self.references {
             let name = tree.get_utf8(reference.name).as_bytes();
-            reference.symbol = lookup_lexical_name(
-                &scopes.list,
-                &self.symbols,
-                &self.scope_maps,
-                &self.declarations,
-                reference.scope,
-                name,
-                reference.flags.space,
-            );
+            reference.symbol = lookup.lookup(reference.scope, name, reference.flags.space);
             if let Some(symbol) = reference.symbol {
                 use_ranges[symbol].len += 1;
                 let flags = self.symbols[symbol].flags;
@@ -1541,28 +1578,26 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
         }
-        let use_ids = {
-            let count = {
-                let mut offset = 0;
-                for range in &mut use_ranges {
-                    range.start = offset;
-                    offset += range.len;
-                    range.len = 0;
-                }
-                offset as usize
-            };
-            let mut ids = ArenaVec::with_capacity_in(count, self.allocator);
-            ids.resize(count, ReferenceId::from_usize(0));
-            for (id, reference) in self.references.iter_enumerated() {
-                self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
-                if let Some(symbol) = reference.symbol {
-                    let range = &mut use_ranges[symbol];
-                    ids[(range.start + range.len) as usize] = id;
-                    range.len += 1;
-                }
+
+        let mut count = 0;
+        for range in &mut use_ranges {
+            range.start = count;
+            count += range.len;
+            range.len = 0;
+        }
+
+        let count = count as usize;
+        let mut use_ids = ArenaVec::with_capacity_in(count, self.allocator);
+        use_ids.resize(count, ReferenceId::from_usize(0));
+        for (id, reference) in self.references.iter_enumerated() {
+            self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
+            if let Some(symbol) = reference.symbol {
+                let range = &mut use_ranges[symbol];
+                use_ids[(range.start + range.len) as usize] = id;
+                range.len += 1;
             }
-            ids
-        };
+        }
+
         Semantic {
             scopes,
             symbols: self.symbols,
@@ -1573,74 +1608,72 @@ impl<'a> SymbolTracker<'a> {
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,
+            shadowed_internal_names: self.shadowed_internal_names,
             hoisting_variables: self.hoisting_variables,
             node_semantic: self.node_semantic,
         }
     }
 }
 
-pub(super) fn lookup_lexical_name(
-    scopes: &Scopes,
-    symbols: &Symbols,
-    scope_maps: &ScopeMaps<'_>,
-    declarations: &Declarations,
-    scope: ScopeId,
-    name: &[u8],
-    space: ReferenceSpace,
-) -> Option<SymbolId> {
-    let hash = scope_maps[ScopeId::ROOT].hasher().hash_one(name);
-    let arguments_barrier =
-        name == b"arguments" && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
-    let mut ancestor = Some(scope);
-    while let Some(current) = ancestor {
-        let barrier = arguments_barrier && scopes[current].flags.arguments_barrier;
-        let visible = |symbol: SymbolId| {
-            let flags = symbols[symbol].flags;
-            flags.visible_in(space)
-                && (!barrier
-                    || !flags.intersects(
-                        SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION,
-                    ))
-        };
-        let bindings = &scope_maps[current];
-        let entry = bindings
-            .raw_entry()
-            .from_hash(hash, |candidate| *candidate == name);
-        if let Some((_, &symbol)) = entry {
-            if visible(symbol) {
-                return Some(symbol);
-            }
-            if let Some(internal) = find_internal_name(symbols, declarations, current, symbol)
-                && visible(internal)
-            {
-                return Some(internal);
-            }
-        }
-        if barrier {
-            break;
-        }
-        ancestor = scopes[current].parent;
-    }
-    None
+/// Shared by reference resolution and [`Semantic::lookup`].
+pub(super) struct LexicalLookup<'s, 'a> {
+    pub scopes: &'s Scopes,
+    pub symbols: &'s Symbols,
+    pub scope_maps: &'s ScopeMaps<'a>,
+    pub shadowed_internal_names: &'s ShadowedInternalNames<'a>,
 }
 
-fn find_internal_name(
-    symbols: &Symbols,
-    declarations: &Declarations,
-    scope: ScopeId,
-    binding: SymbolId,
-) -> Option<SymbolId> {
-    let name = symbols[binding].name;
-    for (id, symbol) in symbols.iter_enumerated() {
-        if id != binding
-            && symbol.flags.intersects(SymbolFlags::INTERNAL_NAME)
-            && symbol.name == name
-            && declarations[symbol.declaration].scope == scope
-        {
-            return Some(id);
+impl LexicalLookup<'_, '_> {
+    /// Walk outwards, checking each scope before crossing its `arguments` barrier.
+    pub fn lookup(&self, scope: ScopeId, name: &[u8], space: ReferenceSpace) -> Option<SymbolId> {
+        // All scope maps share a hasher; hash the name once for the whole walk.
+        let hash = self.scope_maps[ScopeId::ROOT].hasher().hash_one(name);
+        let is_arguments =
+            name == b"arguments" && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
+        let mut ancestor = Some(scope);
+        while let Some(current) = ancestor {
+            let scope = &self.scopes[current];
+            let barrier = is_arguments && scope.flags.arguments_barrier;
+            let entry = self.scope_maps[current]
+                .raw_entry()
+                .from_hash(hash, |candidate| *candidate == name);
+            if let Some((_, &binding)) = entry
+                && let Some(symbol) = self.lookup_binding(binding, space, barrier)
+            {
+                return Some(symbol);
+            }
+            // Implicit arguments bindings have no SymbolId but hide outer declarations.
+            // `function f() { return () => arguments; }` stops at f, even through an arrow.
+            if barrier {
+                return None;
+            }
+            ancestor = scope.parent;
+        }
+        None
+    }
+
+    /// Prefer the scope binding, then its hidden internal name in the requested space.
+    fn lookup_binding(
+        &self,
+        binding: SymbolId,
+        space: ReferenceSpace,
+        arguments_barrier: bool,
+    ) -> Option<SymbolId> {
+        let mut symbol = binding;
+        loop {
+            let flags = self.symbols[symbol].flags;
+            // `(function arguments() { return arguments; })` uses its implicit
+            // arguments object. Parameters and locals can override that object;
+            // the function's internal name cannot.
+            let internal_function = flags
+                .intersects(SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION);
+            let shadowed_by_arguments = arguments_barrier && internal_function;
+            if flags.visible_in(space) && !shadowed_by_arguments {
+                return Some(symbol);
+            }
+            symbol = *self.shadowed_internal_names.get(&symbol)?;
         }
     }
-    None
 }
 
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
@@ -1652,28 +1685,6 @@ fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
         },
         excludes: Excludes::IMPORT_BINDING,
         scope,
-    }
-}
-
-// Walks a JSX tag name to its leftmost JsxIdentifier. Returns None for
-// namespaced names (`<svg:path>`) and non-tag shapes.
-fn jsx_tag_root(tree: &Ast<'_>, name: JsxElementNameData) -> Option<JsxIdentifier> {
-    let mut current = name;
-    loop {
-        match current {
-            JsxElementNameData::JsxIdentifier(identifier) => return Some(identifier),
-            JsxElementNameData::JsxMemberExpression(member) => {
-                match tree.jsx_member_expression_object_data(member.object(tree)) {
-                    JsxMemberExpressionObjectData::JsxIdentifier(jsx_identifier) => {
-                        current = JsxElementNameData::JsxIdentifier(jsx_identifier)
-                    }
-                    JsxMemberExpressionObjectData::JsxMemberExpression(jsx_member_expression) => {
-                        current = JsxElementNameData::JsxMemberExpression(jsx_member_expression)
-                    }
-                }
-            }
-            JsxElementNameData::JsxNamespacedName(_) => return None,
-        }
     }
 }
 
@@ -1722,16 +1733,6 @@ fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
     }
 }
 
-fn nearest_conditional_scope(
-    tree: &Ast<'_>,
-    scope: &ScopeTree<'_>,
-    current_scope: ScopeId,
-) -> ScopeId {
-    scope
-        .ancestors(Some(current_scope))
-        .find(|&id| tree.node_kind(scope.get(id).node) == NodeKind::TsConditionalType)
-        .unwrap_or(current_scope)
-}
 fn merge_symbol_flags(existing: SymbolFlags, incoming: SymbolFlags) -> SymbolFlags {
     let mut merged = existing.merge(incoming);
     merged.set(
