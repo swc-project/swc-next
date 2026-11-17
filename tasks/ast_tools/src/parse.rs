@@ -29,6 +29,27 @@ struct Parser {
     repr_sizes: HashMap<String, usize>,
 }
 
+#[derive(Clone, Default)]
+struct PayloadSelection {
+    saved_units: usize,
+    /// Fields in ascending (byte size, declaration index) order.
+    fields: Vec<(usize, usize)>,
+}
+
+impl PayloadSelection {
+    fn better_than(&self, other: &Self) -> bool {
+        let score = (self.saved_units, self.fields.len());
+        let other_score = (other.saved_units, other.fields.len());
+        if score != other_score {
+            return score > other_score;
+        }
+        self.fields
+            .iter()
+            .map(|&(index, size)| (size, index))
+            .lt(other.fields.iter().map(|&(index, size)| (size, index)))
+    }
+}
+
 pub fn parse_files(file_paths: &[&str]) -> Schema {
     struct PrototypeStruct {
         type_id: TypeId,
@@ -532,15 +553,9 @@ impl Parser {
             eligible.sort_by_key(|&(_, size)| std::cmp::Reverse(size));
             (LayoutMode::Full, Self::place_fields(eligible, PAYLOAD_SIZE))
         } else {
-            // Select small fields first to maximize the number stored in the
-            // low 12 bytes, then place the selected fields largest first so
-            // each field starts at an offset aligned to its size.
-            eligible.sort_by_key(|&(index, size)| (size, index));
-            let mut selected = Self::place_fields(eligible, EXTRA_START_OFFSET)
-                .into_iter()
-                .map(|(index, _, size)| (index, size))
-                .collect::<Vec<_>>();
+            let mut selected = Self::select_payload_fields(eligible);
             assert!(!selected.is_empty(), "partial layout needs an inline field");
+            // Place largest first so the selected power-of-two widths are aligned.
             selected.sort_by_key(|&(index, size)| (std::cmp::Reverse(size), index));
             (
                 LayoutMode::Partial,
@@ -575,6 +590,46 @@ impl Parser {
             extra_count,
             extra_start_offset: (extra_count != 0).then_some(EXTRA_START_OFFSET),
         }
+    }
+
+    /// Minimize spilled four-byte units within the 12-byte partial payload.
+    /// A field saves ceil(size / 4) units when placed inline, rather than one
+    /// unit per field. Equal-cost layouts prefer more inline fields, then
+    /// smaller fields and their declaration order to preserve stable layouts.
+    fn select_payload_fields(mut fields: Vec<(usize, usize)>) -> Vec<(usize, usize)> {
+        fields.sort_by_key(|&(index, size)| (size, index));
+        let mut best: [Option<PayloadSelection>; EXTRA_START_OFFSET + 1] =
+            std::array::from_fn(|_| None);
+        best[0] = Some(PayloadSelection::default());
+
+        for (index, size) in fields {
+            // Descending capacity prevents using the same field more than once.
+            for used in (size..=EXTRA_START_OFFSET).rev() {
+                let Some(mut candidate) = best[used - size].clone() else {
+                    continue;
+                };
+                candidate.saved_units += size.div_ceil(4);
+                candidate.fields.push((index, size));
+                if best[used]
+                    .as_ref()
+                    .is_none_or(|current| candidate.better_than(current))
+                {
+                    best[used] = Some(candidate);
+                }
+            }
+        }
+
+        best.into_iter()
+            .flatten()
+            .reduce(|current, candidate| {
+                if candidate.better_than(&current) {
+                    candidate
+                } else {
+                    current
+                }
+            })
+            .unwrap()
+            .fields
     }
 
     fn place_fields(fields: Vec<(usize, usize)>, capacity: usize) -> Vec<(usize, usize, usize)> {

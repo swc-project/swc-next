@@ -1152,11 +1152,11 @@ export function decodeTs(buffer, source) {
       case 77: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ImportDeclaration", start, end,
-          specifiers: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
-          source: node(_i32[(payload + 0) >> 2]),
-          attributes: nodeArray(_i32[(extra + (extraId + 2) * 4) >> 2], _i32[(extra + (extraId + 2) * 4 + 4) >> 2], false),
-          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 4) * 4)),
-          importKind: enumValue(15, _dv.getUint8(payload + 4)),
+          specifiers: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          source: node(_i32[(extra + (extraId + 0) * 4) >> 2]),
+          attributes: nodeArray(_i32[(extra + (extraId + 1) * 4) >> 2], _i32[(extra + (extraId + 1) * 4 + 4) >> 2], false),
+          phase: optionalEnum(13, _dv.getUint8(extra + (extraId + 3) * 4)),
+          importKind: enumValue(15, _dv.getUint8(payload + 8)),
         };
         break;
       }

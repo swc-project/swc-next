@@ -697,9 +697,9 @@ pub(crate) struct ImportExpressionPayload {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportDeclarationPayload {
-    pub(crate) source: StringLiteral,
+    pub(crate) specifiers: SubRange<ImportDeclarationSpecifier>,
     pub(crate) import_kind: ImportOrExportKind,
-    pub(crate) _pad0: [u8; 7usize],
+    pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
 #[repr(C)]
@@ -1733,10 +1733,10 @@ const _: () = {
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ImportExpressionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ImportDeclarationPayload>() == 16);
-    assert!(std::mem::size_of::<StringLiteral>() == 4usize);
-    assert!(std::mem::offset_of!(ImportDeclarationPayload, source) == 0usize);
+    assert!(std::mem::size_of::<SubRange<ImportDeclarationSpecifier>>() == 8usize);
+    assert!(std::mem::offset_of!(ImportDeclarationPayload, specifiers) == 0usize);
     assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
-    assert!(std::mem::offset_of!(ImportDeclarationPayload, import_kind) == 4usize);
+    assert!(std::mem::offset_of!(ImportDeclarationPayload, import_kind) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ImportDeclarationPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ImportSpecifierPayload>() == 16);
@@ -2524,6 +2524,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         }
         NodeKind::ImportDeclaration => {
             bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ImportSpecifier => {
