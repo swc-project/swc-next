@@ -355,102 +355,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             _ => {}
         }
     }
-
-    fn report_unresolved_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
-        let message = self.unresolved_export_message(name);
-        self.report(tree.span(node), message, ReportOptions::default());
-    }
-
-    fn unresolved_export_message(&self, name: &[u8]) -> String {
-        self.fmt(format_args!(
-            "Export '{}' is not defined",
-            String::from_utf8_lossy(name)
-        ))
-    }
-
-    #[cold]
-    fn report_redeclaration(
-        &mut self,
-        tree: &Ast<'a>,
-        name: &[u8],
-        node: NodeId,
-        existing_node: NodeId,
-        existing_flags: SymbolFlags,
-    ) {
-        let name = String::from_utf8_lossy(name);
-        let current_span = tree.span(node);
-        let existing_span = tree.span(existing_node);
-        let kind = existing_flags.diagnostic_kind();
-        let article = if matches!(kind.as_bytes()[0], b'a' | b'e' | b'i' | b'o' | b'u') {
-            "an"
-        } else {
-            "a"
-        };
-        let name = name.as_ref();
-        let message = ["Identifier '", name, "' has already been declared"].concat();
-        let first = [
-            "'",
-            name,
-            "' was first declared as ",
-            article,
-            " ",
-            kind,
-            " here",
-        ]
-        .concat();
-        let help = [
-            "Consider removing or renaming this declaration of '",
-            name,
-            "'",
-        ]
-        .concat();
-        self.report(
-            current_span,
-            message,
-            ReportOptions {
-                help: Some(Cow::Owned(help)),
-                labels: vec![
-                    self.label(existing_span, first),
-                    self.label(current_span, "cannot be redeclared here"),
-                ],
-                ..ReportOptions::default()
-            },
-        );
-    }
-
-    #[cold]
-    fn report(
-        &mut self,
-        span: Span,
-        message: impl Into<Cow<'static, str>>,
-        options: ReportOptions,
-    ) {
-        let message = message.into();
-        debug_assert!(span.start <= span.end);
-        debug_assert!(!message.is_empty());
-        self.diagnostics.push(Diagnostic {
-            severity: options.severity,
-            message,
-            span,
-            help: options.help,
-            labels: options.labels,
-        });
-    }
-
-    fn label(&self, span: Span, message: impl Into<Cow<'static, str>>) -> Label {
-        Label {
-            span,
-            message: message.into(),
-        }
-    }
-
-    fn labels(&self, items: &[Label]) -> Vec<Label> {
-        items.to_vec()
-    }
-
-    fn fmt(&self, arguments: std::fmt::Arguments<'_>) -> String {
-        arguments.to_string()
-    }
 }
 
 impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
@@ -1678,6 +1582,78 @@ impl Default for ReportOptions {
             help: None,
             labels: Vec::new(),
         }
+    }
+}
+
+impl<'a> SemanticBuilder<'_, 'a> {
+    fn report_unresolved_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
+        let message = format!("Export '{}' is not defined", String::from_utf8_lossy(name));
+        self.report(tree.span(node), message, ReportOptions::default());
+    }
+
+    #[cold]
+    fn report_redeclaration(
+        &mut self,
+        tree: &Ast<'a>,
+        name: &[u8],
+        node: NodeId,
+        existing_node: NodeId,
+        existing_flags: SymbolFlags,
+    ) {
+        let name = String::from_utf8_lossy(name);
+        let current_span = tree.span(node);
+        let existing_span = tree.span(existing_node);
+        let kind = existing_flags.diagnostic_kind();
+        let article = if matches!(kind.as_bytes()[0], b'a' | b'e' | b'i' | b'o' | b'u') {
+            "an"
+        } else {
+            "a"
+        };
+        let message = format!("Identifier '{name}' has already been declared");
+        let first = format!("'{name}' was first declared as {article} {kind} here");
+        let help = format!("Consider removing or renaming this declaration of '{name}'");
+        self.report(
+            current_span,
+            message,
+            ReportOptions {
+                help: Some(Cow::Owned(help)),
+                labels: vec![
+                    self.label(existing_span, first),
+                    self.label(current_span, "cannot be redeclared here"),
+                ],
+                ..ReportOptions::default()
+            },
+        );
+    }
+
+    #[cold]
+    fn report(
+        &mut self,
+        span: Span,
+        message: impl Into<Cow<'static, str>>,
+        options: ReportOptions,
+    ) {
+        let message = message.into();
+        debug_assert!(span.start <= span.end);
+        debug_assert!(!message.is_empty());
+        self.diagnostics.push(Diagnostic {
+            severity: options.severity,
+            message,
+            span,
+            help: options.help,
+            labels: options.labels,
+        });
+    }
+
+    fn label(&self, span: Span, message: impl Into<Cow<'static, str>>) -> Label {
+        Label {
+            span,
+            message: message.into(),
+        }
+    }
+
+    fn labels(&self, items: &[Label]) -> Vec<Label> {
+        items.to_vec()
     }
 }
 

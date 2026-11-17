@@ -601,10 +601,10 @@ pub(super) fn check_binding_identifier<'traverse>(
     if strict_binding {
         check_strict_reserved(builder, name, node_id, "a binding identifier");
         if builder.check_syntax.strict_binding_names() && is_eval_or_arguments(name) {
-            let message = builder.fmt(format_args!(
+            let message = format!(
                 "'{}' is not allowed as a binding identifier in strict mode",
                 String::from_utf8_lossy(name)
-            ));
+            );
             builder.report(builder.ast.span(node_id), message, ReportOptions::default());
         }
     }
@@ -654,10 +654,10 @@ pub(super) fn check_binary_expression(
             .get_utf8(identifier.name(builder.ast))
             .as_bytes();
         if !is_private_name_declared(builder, name) {
-            let message = builder.fmt(format_args!(
+            let message = format!(
                 "Private field '#{}' must be declared in an enclosing class",
                 String::from_utf8_lossy(name)
-            ));
+            );
             builder.report(builder.ast.span(left), message, ReportOptions::default());
         }
     }
@@ -813,10 +813,10 @@ pub(super) fn check_member_expression(
         } else if builder.check_syntax.private_name_references()
             && !is_private_name_declared(builder, name)
         {
-            let message = builder.fmt(format_args!(
+            let message = format!(
                 "Private field '#{}' must be declared in an enclosing class",
                 String::from_utf8_lossy(name)
-            ));
+            );
             builder.report(
                 builder.ast.span(property),
                 message,
@@ -910,10 +910,10 @@ pub(super) fn check_variable_declaration(
         );
     }
     if builder.symbols.in_ambient_context() {
-        let message = builder.fmt(format_args!(
+        let message = format!(
             "'{}' declarations are not allowed in ambient contexts",
             kind.as_str()
-        ));
+        );
         builder.report(
             builder.ast.span(declaration.node_id()),
             message,
@@ -924,10 +924,10 @@ pub(super) fn check_variable_declaration(
     if builder.ast.source_type() == swc_next_ecma_ast::SourceType::Script
         && is_at_program_level(builder)
     {
-        let message = builder.fmt(format_args!(
+        let message = format!(
             "'{}' is not allowed at the top level of a script",
             kind.as_str()
-        ));
+        );
         builder.report(
             builder.ast.span(declaration.node_id()),
             message,
@@ -1011,14 +1011,13 @@ pub(super) fn check_break_statement(
         let result = find_label(builder, name);
         if result != LabelSearch::Found {
             let message = match result {
-                LabelSearch::NotFound => builder.fmt(format_args!(
-                    "Use of undefined label '{}'",
-                    String::from_utf8_lossy(name)
-                )),
-                LabelSearch::CrossedBoundary => builder.fmt(format_args!(
+                LabelSearch::NotFound => {
+                    format!("Use of undefined label '{}'", String::from_utf8_lossy(name))
+                }
+                LabelSearch::CrossedBoundary => format!(
                     "Cannot break to label '{}' across function boundaries",
                     String::from_utf8_lossy(name)
-                )),
+                ),
                 LabelSearch::Found => unreachable!(),
             };
             builder.report(
@@ -1054,24 +1053,21 @@ pub(super) fn check_continue_statement(
         if result != ContinueLabelSearch::Found {
             let (message, help) = match result {
                 ContinueLabelSearch::NotFound => (
-                    builder.fmt(format_args!(
-                        "Use of undefined label '{}'",
-                        String::from_utf8_lossy(name)
-                    )),
+                    format!("Use of undefined label '{}'", String::from_utf8_lossy(name)),
                     None,
                 ),
                 ContinueLabelSearch::CrossedBoundary => (
-                    builder.fmt(format_args!(
+                    format!(
                         "Cannot continue to label '{}' across function boundaries",
                         String::from_utf8_lossy(name)
-                    )),
+                    ),
                     None,
                 ),
                 ContinueLabelSearch::NotIteration => (
-                    builder.fmt(format_args!(
+                    format!(
                         "Label '{}' does not denote an iteration statement",
                         String::from_utf8_lossy(name)
-                    )),
+                    ),
                     Some(Cow::Borrowed(
                         "A 'continue' statement can only jump to a label of an enclosing 'for', 'while', 'do-while', 'for-in', or 'for-of' statement",
                     )),
@@ -1136,10 +1132,7 @@ pub(super) fn check_labeled_statement(
         duplicate
     };
     if duplicate {
-        let message = builder.fmt(format_args!(
-            "Duplicate label '{}'",
-            String::from_utf8_lossy(name)
-        ));
+        let message = format!("Duplicate label '{}'", String::from_utf8_lossy(name));
         builder.report(
             builder.ast.span(statement.label(builder.ast).node_id()),
             message,
@@ -1321,10 +1314,10 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
             {
                 continue;
             }
-            let message = builder.fmt(format_args!(
+            let message = format!(
                 "Duplicate private name '#{}'",
                 String::from_utf8_lossy(name)
-            ));
+            );
             builder.report(
                 builder.ast.span(child),
                 message,
@@ -1647,10 +1640,10 @@ fn check_strict_reserved(
         return;
     }
     if let Some(word) = match_strict_reserved(name) {
-        let message = builder.fmt(format_args!(
+        let message = format!(
             "'{}' is reserved in strict mode and cannot be used as {}",
             word, as_what
-        ));
+        );
         builder.report(builder.ast.span(node), message, ReportOptions::default());
     }
 }
@@ -1783,15 +1776,15 @@ fn check_import_export_position(
         return;
     };
     let message = match builder.ast.node_kind(parent) {
-        NodeKind::Program if !builder.ast.is_module() => Some(builder.fmt(format_args!(
+        NodeKind::Program if !builder.ast.is_module() => Some(format!(
             "Cannot use {} outside a module",
             out_of_module_label
-        ))),
+        )),
         NodeKind::Program | NodeKind::TsModuleBlock => None,
-        _ => Some(builder.fmt(format_args!(
+        _ => Some(format!(
             "{} may only appear at the top level",
             top_level_label
-        ))),
+        )),
     };
     if let Some(message) = message {
         builder.report(builder.ast.span(node), message, ReportOptions::default());
@@ -1818,10 +1811,10 @@ fn check_duplicate_with_attributes(
                 continue;
             };
             if key_name == previous_key_name {
-                let message = builder.fmt(format_args!(
+                let message = format!(
                     "Duplicate import attribute key '{}'",
                     String::from_utf8_lossy(key_name)
-                ));
+                );
                 builder.report(
                     builder.ast.span(key),
                     message,
@@ -1863,10 +1856,7 @@ fn record_exported_name<'traverse>(
             return;
         }
     };
-    let message = builder.fmt(format_args!(
-        "Duplicate export of '{}'",
-        String::from_utf8_lossy(name)
-    ));
+    let message = format!("Duplicate export of '{}'", String::from_utf8_lossy(name));
     builder.report(
         builder.ast.span(node),
         message,
