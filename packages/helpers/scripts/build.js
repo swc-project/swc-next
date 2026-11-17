@@ -10,6 +10,6 @@ const exports = helpers.map((file) => {
   if (!/^_[a-z][a-z0-9_]*$/.test(name)) {
     throw new Error(`Invalid helper module name: ${file}`);
   }
-  return `export { _ as ${name} } from "./${file}";\n`;
+  return `export { ${name} } from "./${file}";\n`;
 });
 await writeFile(new URL("index.js", esm), header + exports.join(""));

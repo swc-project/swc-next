@@ -1,4 +1,4 @@
-function _set_function_name(fn, name, prefix) {
+export function _set_function_name(fn, name, prefix) {
   if (typeof name === "symbol") {
     name = name.description;
     // ECMA-262 SetFunctionName, step 2: only an undefined Symbol description
@@ -16,4 +16,3 @@ function _set_function_name(fn, name, prefix) {
   } catch (_) {}
   return fn;
 }
-export { _set_function_name as _ };
