@@ -2538,10 +2538,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn is_using_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Using);
         let next = self.peek_ahead()?;
-        if can_start_using_binding(next.tag()) && !self.can_insert_implicit_semicolon(next) {
-            return Some(false);
-        }
-        Some(true)
+        Some(!can_start_using_binding(next.tag()) || self.can_insert_implicit_semicolon(next))
     }
 
     fn is_await_using_declaration_ahead(&mut self) -> Option<bool> {
