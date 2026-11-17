@@ -9,7 +9,7 @@ when a case no longer reports diagnostics. Inputs preserve their
 original whitespace, including CRLF and Unicode line separators.
 
 The nearest `options.json`, in the case directory or an ancestor within
-`compile/`, contains `swc_next_core::js::JsTransformApiOptions`.
+`compile/`, contains `swc_next::js::JsTransformApiOptions`.
 An options file replaces ancestor options; files are not merged. Set parser
 language and source type explicitly when a case depends on them. Transforms use
 the public `transform_js` pipeline, and their output must parse with the fixture's

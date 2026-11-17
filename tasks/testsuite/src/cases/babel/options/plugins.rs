@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use swc_next_core::js::transformer::{JsTypeScriptConfig, JsxConfig};
+use swc_next::js::transformer::{JsTypeScriptConfig, JsxConfig};
 
 use super::PluginPresetEntries;
 

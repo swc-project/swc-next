@@ -8,11 +8,11 @@
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[cfg(target_family = "wasm")]
+use swc_next::js::transformer::bridge::{TransformApiOptions, transform_to_buffer};
+#[cfg(target_family = "wasm")]
 use swc_next_bridge::bridge;
 #[cfg(not(target_family = "wasm"))]
 use swc_next_bridge::{napi, napi_derive::napi};
-#[cfg(target_family = "wasm")]
-use swc_next_core::js::transformer::bridge::{TransformApiOptions, transform_to_buffer};
 
 #[cfg(target_family = "wasm")]
 #[bridge]
@@ -50,7 +50,7 @@ pub unsafe fn transform_sync(
     >,
 > {
     unsafe {
-        swc_next_core::js::transformer::bridge::transform_to_node_output(
+        swc_next::js::transformer::bridge::transform_to_node_output(
             &env,
             &source,
             source_utf16_len,

@@ -4,7 +4,7 @@ edition               = "2024"
 homepage.workspace    = true
 keywords.workspace    = true
 license.workspace     = true
-name                  = "swc_next_core"
+name                  = "swc_next"
 repository.workspace  = true
 version               = "0.7.0"
 

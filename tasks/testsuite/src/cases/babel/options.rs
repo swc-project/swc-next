@@ -2,7 +2,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
-use swc_next_core::{
+use swc_next::{
     BoolOr,
     js::{
         JsTransformApiOptions,

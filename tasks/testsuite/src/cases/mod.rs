@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use swc_core::ecma::transforms::base::assumptions::Assumptions;
-use swc_next_core::js::{JsTransformApiOptions, transformer::JsAssumptions};
+use swc_next::js::{JsTransformApiOptions, transformer::JsAssumptions};
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_minifier::MinifierOptions;
 

@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
+use swc_next::js::{JsTransformApiOptions, transformer::transform_js};
 use swc_next_allocator::Allocator;
-use swc_next_core::js::{JsTransformApiOptions, transformer::transform_js};
 use swc_next_ecma_ast::{
     Ast, GetSpan, Lang, SetSpan, SourceType, Span, TsEnumMember, VariableDeclarator, VisitMut,
     VisitMutWith,

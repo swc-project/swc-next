@@ -110,7 +110,7 @@ function cargoVersion() {
   );
   const versions = new Set(
     metadata.packages
-      .filter(({ name }) => name.startsWith("swc_next_"))
+      .filter(({ name }) => name === "swc_next" || name.startsWith("swc_next_"))
       .map(({ version }) => version)
   );
   if (versions.size !== 1) fail("Rust workspace versions are not synchronized");

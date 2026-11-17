@@ -3758,6 +3758,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next"
+version = "0.7.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "swc_next_allocator",
+ "swc_next_bridge",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_minifier",
+ "swc_next_ecma_parser",
+ "swc_next_ecma_semantic",
+ "swc_next_ecma_transformer",
+]
+
+[[package]]
 name = "swc_next_allocator"
 version = "0.7.0"
 dependencies = [
@@ -3800,29 +3816,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_next_core"
-version = "0.7.0"
-dependencies = [
- "serde",
- "serde_json",
- "swc_next_allocator",
- "swc_next_bridge",
- "swc_next_ecma_ast",
- "swc_next_ecma_codegen",
- "swc_next_ecma_minifier",
- "swc_next_ecma_parser",
- "swc_next_ecma_semantic",
- "swc_next_ecma_transformer",
-]
-
-[[package]]
 name = "swc_next_core_bridge"
 version = "0.7.0"
 dependencies = [
  "mimalloc",
  "napi-build",
+ "swc_next",
  "swc_next_bridge",
- "swc_next_core",
  "swc_next_ecma_ast",
 ]
 
@@ -3914,8 +3914,8 @@ dependencies = [
  "phf 0.14.0",
  "rustc-hash",
  "serde_json",
+ "swc_next",
  "swc_next_allocator",
- "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
@@ -3985,8 +3985,8 @@ name = "swc_next_formatter_js_bridge"
 version = "0.7.0"
 dependencies = [
  "napi-build",
+ "swc_next",
  "swc_next_bridge",
- "swc_next_core",
  "swc_next_formatter",
 ]
 
@@ -3995,8 +3995,8 @@ name = "swc_next_generator_bridge"
 version = "0.7.0"
 dependencies = [
  "napi-build",
+ "swc_next",
  "swc_next_bridge",
- "swc_next_core",
 ]
 
 [[package]]
@@ -4023,8 +4023,8 @@ version = "0.7.0"
 dependencies = [
  "mimalloc",
  "napi-build",
+ "swc_next",
  "swc_next_bridge",
- "swc_next_core",
  "swc_next_ecma_ast",
 ]
 
@@ -4038,8 +4038,8 @@ version = "0.7.0"
 dependencies = [
  "mimalloc",
  "napi-build",
+ "swc_next",
  "swc_next_bridge",
- "swc_next_core",
 ]
 
 [[package]]
@@ -4169,8 +4169,8 @@ dependencies = [
  "serde",
  "serde_json",
  "swc_core",
+ "swc_next",
  "swc_next_allocator",
- "swc_next_core",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_minifier",

@@ -1,5 +1,5 @@
 // Internal SWC Next transport; these APIs and formats do not follow semver.
-// Keep in sync with crates/swc_core/src/js/transformer.rs.
+// Keep in sync with crates/swc/src/js/transformer.rs.
 import { storage } from "./buffer.js";
 import { encodeParserConfig } from "./parser.js";
 import { encodeGeneratorConfig } from "./generator.js";
