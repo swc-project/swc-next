@@ -18476,6 +18476,63 @@ mod tests {
     }
 
     #[test]
+    fn class_modifiers_after_method_prefixes() {
+        for lang in [Lang::Js, Lang::Ts] {
+            let options = Options {
+                lang,
+                ..Options::default()
+            };
+            let errors = |source| has_errors(source, options);
+
+            assert!(errors("class C { async static m() {} }"));
+
+            assert!(errors("class C { get static m() {} }"));
+
+            assert!(errors("class C { set static m(v) {} }"));
+
+            assert!(errors("class C { async static #m() {} }"));
+
+            assert!(errors("class C { get static [m]() {} }"));
+
+            assert!(!errors("class C { static async m() {} }"));
+
+            assert!(!errors("class C { static get m() {} }"));
+
+            assert!(!errors("class C { async static() {} }"));
+
+            assert!(!errors("class C { get static() {} }"));
+        }
+
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        assert!(errors("class C { get readonly x() { return 1 } }"));
+
+        assert!(errors("class C { set declare x(v) {} }"));
+
+        assert!(errors("abstract class C { get abstract x(): number }"));
+
+        assert!(errors("class C { get private x() { return 1 } }"));
+
+        assert!(errors("class C { get public x() { return 1 } }"));
+
+        assert!(errors("class C { set protected x(v) {} }"));
+
+        assert!(errors("class C extends B { get override x() {} }"));
+
+        assert!(!errors("class C { get readonly() { return 1 } }"));
+
+        assert!(!errors("class C { get private() { return 1 } }"));
+
+        assert!(!errors("class C { private get x() { return 1 } }"));
+
+        assert!(!errors("abstract class C { abstract get x(): number }"));
+    }
+
+    #[test]
     fn module_names() {
         fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
             spans
