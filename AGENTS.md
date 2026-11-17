@@ -31,6 +31,11 @@
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
 - JavaScript API tests belong to `@swc-next/core`, except formatter tests The browser package should only have a simple smoke test.
 
+## Code Style
+
+- Rewrite `Option` chains that produce excessive line breaks and indentation
+  into flatter, more readable code.
+
 ## README Writing
 
 - Follow the root README: briefly describe purpose, capabilities, basic usage,

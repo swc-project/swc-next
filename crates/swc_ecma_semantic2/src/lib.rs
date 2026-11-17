@@ -174,10 +174,10 @@ impl<'a> Semantic<'a> {
 
     /// Iterates the ids of every declaration of `id`, in source order.
     pub fn declaration_ids(&self, id: SymbolId) -> DeclarationIdIterator<'_> {
-        let additional = self
-            .redeclarations
-            .get(&id)
-            .map_or(&[][..], |declarations| declarations.as_slice());
+        let additional = match self.redeclarations.get(&id) {
+            Some(declarations) => declarations.as_slice(),
+            None => &[],
+        };
         DeclarationIdIterator {
             first: Some(self.symbols[id].declaration),
             additional: additional.iter().copied(),
@@ -338,7 +338,10 @@ impl Iterator for DeclarationIdIterator<'_> {
     type Item = DeclarationId;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.first.take().or_else(|| self.additional.next())
+        match self.first.take() {
+            Some(first) => Some(first),
+            None => self.additional.next(),
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -349,7 +352,10 @@ impl Iterator for DeclarationIdIterator<'_> {
 
 impl DoubleEndedIterator for DeclarationIdIterator<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.additional.next_back().or_else(|| self.first.take())
+        match self.additional.next_back() {
+            Some(last) => Some(last),
+            None => self.first.take(),
+        }
     }
 }
 

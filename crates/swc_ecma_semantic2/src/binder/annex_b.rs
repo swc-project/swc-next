@@ -66,15 +66,17 @@ impl<'a> SymbolTracker<'a> {
             while let Some((id, enter)) = walk.pop() {
                 let scope = scopes.get(id);
                 let local = facts.get(&id);
-                for &name in local.into_iter().flat_map(|facts| &facts.blockers) {
-                    let key = (scope.hoist_target, name);
-                    if enter {
-                        *blocked.entry(key).or_default() += 1;
-                    } else {
-                        let count = blocked.get_mut(&key).expect("active lexical blocker");
-                        *count -= 1;
-                        if *count == 0 {
-                            blocked.remove(&key);
+                if let Some(local) = local {
+                    for &name in &local.blockers {
+                        let key = (scope.hoist_target, name);
+                        if enter {
+                            *blocked.entry(key).or_default() += 1;
+                        } else {
+                            let count = blocked.get_mut(&key).expect("active lexical blocker");
+                            *count -= 1;
+                            if *count == 0 {
+                                blocked.remove(&key);
+                            }
                         }
                     }
                 }
@@ -90,10 +92,12 @@ impl<'a> SymbolTracker<'a> {
                         // implicit block is nested inside this scope as well.
                         let same_block = {
                             let symbol = self.symbol_of_node(name.node_id());
-                            let branch_local = symbol.is_some_and(|symbol| {
-                                let flags = self.symbols[symbol].flags;
-                                flags.contains(SymbolFlags::ANNEX_B_IF_FUNCTION)
-                            });
+                            let branch_local = match symbol {
+                                Some(symbol) => self.symbols[symbol]
+                                    .flags
+                                    .contains(SymbolFlags::ANNEX_B_IF_FUNCTION),
+                                None => false,
+                            };
                             if branch_local {
                                 0
                             } else {
@@ -138,9 +142,8 @@ impl<'a> SymbolTracker<'a> {
         // Parameter expressions introduce a separate body var environment.
         // Annex B still excludes every name from the parameter environment.
         if scope.kind == ScopeKind::FunctionBody
-            && let Some(parameter) = scope
-                .parent
-                .and_then(|parent| self.own_binding(parent, text))
+            && let Some(parent) = scope.parent
+            && let Some(parameter) = self.own_binding(parent, text)
             && self.symbols[parameter]
                 .flags
                 .contains(SymbolFlags::PARAMETER)
@@ -236,9 +239,10 @@ fn annex_b_var_blocker(tree: &Ast<'_>, scope: Scope, flags: SymbolFlags) -> bool
         let NodeKindData::CatchClause(catch) = tree.kind_data(scope.node) else {
             unreachable!("catch variables belong to a catch scope");
         };
-        return catch.param(tree).is_some_and(|parameter| {
-            tree.node_kind(parameter.node_id()) != NodeKind::BindingIdentifier
-        });
+        return match catch.param(tree) {
+            Some(parameter) => tree.node_kind(parameter.node_id()) != NodeKind::BindingIdentifier,
+            None => false,
+        };
     }
     flags.intersects(SymbolFlags::BLOCK_SCOPED_LIKE.difference(SymbolFlags::FUNCTION))
         || flags.contains(SymbolFlags::PARAMETER)

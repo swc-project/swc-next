@@ -665,17 +665,21 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         //
         //   catch (e)       { let e }   // shared, conflict found
         //   catch ([e = 1]) { let e }   // split; default cannot see let
-        let catch = match tree.kind_data(self.current_scope().node) {
-            NodeKindData::CatchClause(catch) => Some(catch),
-            _ => None,
-        };
-        let shares_catch_scope = self.current_scope().kind == ScopeKind::Block
-            && catch.is_some_and(|catch| {
-                catch.body(tree).node_id() == node.node_id()
-                    && catch.param(tree).is_none_or(|param| {
+        let scope = self.current_scope();
+        let shares_catch_scope = match tree.kind_data(scope.node) {
+            NodeKindData::CatchClause(catch)
+                if scope.kind == ScopeKind::Block
+                    && catch.body(tree).node_id() == node.node_id() =>
+            {
+                match catch.param(tree) {
+                    Some(param) => {
                         ecmascript::find_pattern_expression(tree, Some(param.node_id())).is_none()
-                    })
-            });
+                    }
+                    None => true,
+                }
+            }
+            _ => false,
+        };
         if !shares_catch_scope {
             self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         }
@@ -870,9 +874,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 Some(NodeKindData::ArrowFunctionExpression(arrow)) => Some(arrow.params(self.ast)),
                 _ => None,
             };
-            params.is_some_and(|params| {
-                ecmascript::find_parameter_expression(self.ast, params).is_some()
-            })
+            match params {
+                Some(params) => ecmascript::find_parameter_expression(self.ast, params).is_some(),
+                None => false,
+            }
         };
         if split_scope {
             let function = self.current_scope;
@@ -1058,11 +1063,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols.enter_export_default_declaration();
         let declaration = node.declaration(self.ast);
-        let space = declaration
-            .as_expr(self.ast)
-            .map_or(ReferenceSpace::Value, |expression| {
-                export_expression_space(self.ast, expression.node_id())
-            });
+        let space = match declaration.as_expr(self.ast) {
+            Some(expression) => export_expression_space(self.ast(), expression.node_id()),
+            None => ReferenceSpace::Value,
+        };
         let flags = self.flags_with_space(space);
         self.visit_with_reference_flags(declaration, flags);
         self.symbols.exit_export_declaration();
@@ -1078,13 +1082,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.enter_node(node.node_id());
-        let declaration = self.parent().and_then(|parent| {
-            let NodeKindData::ExportNamedDeclaration(declaration) = self.ast.kind_data(parent)
-            else {
-                return None;
-            };
-            Some(declaration)
-        });
+        let declaration = match self.parent().map(|parent| self.ast.kind_data(parent)) {
+            Some(NodeKindData::ExportNamedDeclaration(declaration)) => Some(declaration),
+            _ => None,
+        };
         let type_only = node.export_kind(self.ast) == ImportOrExportKind::Type
             || declaration.is_some_and(|declaration| {
                 declaration.export_kind(self.ast) == ImportOrExportKind::Type

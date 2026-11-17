@@ -1619,9 +1619,12 @@ fn check_hoisting_var_conflict(
             let NodeKindData::CatchClause(catch) = builder.ast.kind_data(catch_node) else {
                 unreachable!()
             };
-            let simple_parameter = catch.param(builder.ast).is_some_and(|parameter| {
-                builder.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
-            });
+            let simple_parameter = match catch.param(builder.ast) {
+                Some(parameter) => {
+                    builder.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
+                }
+                None => false,
+            };
             if !simple_parameter {
                 builder.report_redeclaration(
                     builder.ast,

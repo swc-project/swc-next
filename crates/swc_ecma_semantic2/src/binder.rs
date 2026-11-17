@@ -517,11 +517,9 @@ impl<'a> SymbolLinks<'a> {
     }
 
     pub(crate) fn symbols(&self, symbol: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
-        successors(Some(symbol), move |current| {
-            self.links
-                .get(current)
-                .map(|link| link.next)
-                .filter(|&next| next != symbol)
+        successors(Some(symbol), move |current| match self.links.get(current) {
+            Some(link) if link.next != symbol => Some(link.next),
+            _ => None,
         })
     }
 
@@ -536,8 +534,14 @@ impl<'a> SymbolLinks<'a> {
         }
 
         // Splice the two circular member lists without visiting their members.
-        let left_next = self.links.get(&left).map_or(left, |link| link.next);
-        let right_next = self.links.get(&right).map_or(right, |link| link.next);
+        let left_next = match self.links.get(&left) {
+            Some(link) => link.next,
+            None => left,
+        };
+        let right_next = match self.links.get(&right) {
+            Some(link) => link.next,
+            None => right,
+        };
         self.links
             .entry(left)
             .or_insert_with(|| SymbolLink::singleton(left))
@@ -1544,24 +1548,23 @@ impl<'a> SymbolTracker<'a> {
     /// The binding of `name` declared directly in `scope`, excluding
     /// hoisting `var`s passing through.
     pub fn own_binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        self.scope_maps
-            .get(scope)
-            .and_then(|map| map.get(name).copied())
+        let map = self.scope_maps.get(scope)?;
+        map.get(name).copied()
     }
 
     /// The binding of `name` at `scope`, including a hoisting `var` passing
     /// through on its way to its hoist target.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        self.own_binding(scope, name).or_else(|| {
-            self.hoisting_declaration(scope, name)
-                .map(|declaration| self.declarations[declaration].symbol)
-        })
+        if let Some(symbol) = self.own_binding(scope, name) {
+            return Some(symbol);
+        }
+        let declaration = self.hoisting_declaration(scope, name)?;
+        Some(self.declarations[declaration].symbol)
     }
 
     fn hoisting_declaration(&self, scope: ScopeId, name: &[u8]) -> Option<DeclarationId> {
-        self.hoisting_variables
-            .get(scope)
-            .and_then(|map| map.get(name).copied())
+        let map = self.hoisting_variables.get(scope)?;
+        map.get(name).copied()
     }
 
     pub(crate) fn hoisting_conflict(
@@ -1700,13 +1703,16 @@ fn find_internal_name(
     binding: SymbolId,
 ) -> Option<SymbolId> {
     let name = symbols[binding].name;
-    symbols.iter_enumerated().find_map(|(id, symbol)| {
-        (id != binding
+    for (id, symbol) in symbols.iter_enumerated() {
+        if id != binding
             && symbol.flags.intersects(SymbolFlags::INTERNAL_NAME)
             && symbol.name == name
-            && declarations[symbol.declaration].scope == scope)
-            .then_some(id)
-    })
+            && declarations[symbol.declaration].scope == scope
+        {
+            return Some(id);
+        }
+    }
+    None
 }
 
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {

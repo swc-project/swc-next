@@ -25,9 +25,8 @@ pub(crate) fn find_parameter_expression(
             return Some(found);
         }
     }
-    params
-        .rest(tree)
-        .and_then(|rest| find_pattern_expression(tree, Some(rest.argument(tree).node_id())))
+    let rest = params.rest(tree)?;
+    find_pattern_expression(tree, Some(rest.argument(tree).node_id()))
 }
 
 /// <https://tc39.es/ecma262/#sec-static-semantics-containsexpression>
@@ -43,16 +42,15 @@ pub(crate) fn find_pattern_expression(tree: &Ast<'_>, pattern: Option<NodeId>) -
         }
         NodeKindData::ArrayPattern(array) => {
             for element in array.elements(tree).iter() {
-                let element = tree.get_node_in_sub_range(element);
-                if let Some(found) = element
-                    .and_then(|element| find_pattern_expression(tree, Some(element.node_id())))
-                {
+                let Some(element) = tree.get_node_in_sub_range(element) else {
+                    continue;
+                };
+                if let Some(found) = find_pattern_expression(tree, Some(element.node_id())) {
                     return Some(found);
                 }
             }
-            array
-                .rest(tree)
-                .and_then(|rest| find_pattern_expression(tree, Some(rest.node_id())))
+            let rest = array.rest(tree)?;
+            find_pattern_expression(tree, Some(rest.node_id()))
         }
         NodeKindData::ObjectPattern(object) => {
             for property in object.properties(tree).iter() {

@@ -112,10 +112,10 @@ impl<'a> ScopeModel<'a> {
 
     /// Iterates the ids of every declaration of `id`, in source order.
     pub fn declaration_ids(&self, id: SymbolId) -> DeclarationIdIterator<'_> {
-        let additional = self
-            .redeclarations
-            .get(&id)
-            .map_or(&[][..], |declarations| declarations.as_slice());
+        let additional = match self.redeclarations.get(&id) {
+            Some(declarations) => declarations.as_slice(),
+            None => &[],
+        };
         DeclarationIdIterator {
             first: Some(self.symbol(id).declaration),
             additional: additional.iter().copied(),
@@ -241,8 +241,12 @@ impl<'a> ScopeModel<'a> {
             symbol
         } else {
             let symbol = self.symbols.next_idx();
+            let name = match previous {
+                Some(symbol) => self.symbol(symbol).name,
+                None => name.into(),
+            };
             self.symbols.push(Symbol {
-                name: previous.map_or(name.into(), |symbol| self.symbol(symbol).name),
+                name,
                 flags,
                 declaration,
             });
