@@ -439,8 +439,7 @@ impl ReferenceFlags {
     }
 
     pub(crate) fn no_access(mut self) -> Self {
-        self.properties
-            .remove(ReferenceProperties::READ | ReferenceProperties::WRITE);
+        self.properties = ReferenceProperties::empty();
         self
     }
 }
@@ -709,42 +708,39 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         self.push_saved_context();
-        let kind = declaration.kind(tree);
-        self.pending = match kind {
-            VariableKind::Var => {
-                let target = scope.get(current_scope).hoist_target;
-                let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
-                // JS permits var/function merges in hoist scopes, except modules.
-                if !tree.is_ts() && scope.get(target).kind != ScopeKind::Module {
-                    excludes.remove(SymbolFlags::FUNCTION);
+        self.pending = {
+            let mut binding = match declaration.kind(tree) {
+                VariableKind::Var => {
+                    let target = scope.get(current_scope).hoist_target;
+                    let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
+                    // JS permits var/function merges in hoist scopes, except modules.
+                    if !tree.is_ts() && scope.get(target).kind != ScopeKind::Module {
+                        excludes.remove(SymbolFlags::FUNCTION);
+                    }
+                    PendingBinding {
+                        flags: SymbolFlags::FUNCTION_SCOPED_VAR,
+                        excludes,
+                        scope: target,
+                    }
                 }
-                PendingBinding {
-                    flags: SymbolFlags::FUNCTION_SCOPED_VAR.with(
-                        SymbolFlags::AMBIENT,
-                        declaration.declare(tree) || self.ambient,
-                    ),
-                    excludes,
-                    scope: target,
+                VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
+                    PendingBinding {
+                        flags: SymbolFlags::BLOCK_SCOPED_VAR | SymbolFlags::CONST_VAR,
+                        excludes: Excludes::BLOCK_SCOPED_VAR,
+                        scope: current_scope,
+                    }
                 }
-            }
-            VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
-                PendingBinding {
-                    flags: (SymbolFlags::BLOCK_SCOPED_VAR | SymbolFlags::CONST_VAR).with(
-                        SymbolFlags::AMBIENT,
-                        declaration.declare(tree) || self.ambient,
-                    ),
+                VariableKind::Let => PendingBinding {
+                    flags: SymbolFlags::BLOCK_SCOPED_VAR,
                     excludes: Excludes::BLOCK_SCOPED_VAR,
                     scope: current_scope,
-                }
-            }
-            VariableKind::Let => PendingBinding {
-                flags: SymbolFlags::BLOCK_SCOPED_VAR.with(
-                    SymbolFlags::AMBIENT,
-                    declaration.declare(tree) || self.ambient,
-                ),
-                excludes: Excludes::BLOCK_SCOPED_VAR,
-                scope: current_scope,
-            },
+                },
+            };
+            binding.flags.set(
+                SymbolFlags::AMBIENT,
+                declaration.declare(tree) || self.ambient,
+            );
+            binding
         };
     }
 
@@ -790,7 +786,6 @@ impl<'a> SymbolTracker<'a> {
                 scope: enclosing,
             });
         }
-        let hoist_scope = target_kind.is_hoist_target() && target_kind != ScopeKind::Module;
         // TS signatures merge with implementations. Duplicate implementations
         // follow the same hoist-scope and Annex B rules as JavaScript.
         self.pending = PendingBinding {
@@ -799,17 +794,19 @@ impl<'a> SymbolTracker<'a> {
                 .with(SymbolFlags::ANNEX_B_IF_FUNCTION, branch_local)
                 .with(SymbolFlags::NON_ANNEX_B_FUNCTION, !ordinary)
                 .with(SymbolFlags::AMBIENT, self.ambient),
-            excludes: Excludes::FUNCTION
-                .with(SymbolFlags::CLASS, !tree.is_ts())
-                .with(
+            excludes: {
+                let hoist_scope = target_kind.is_hoist_target() && target_kind != ScopeKind::Module;
+                let unique_implementation = !hoist_scope && !annex_b_block_function;
+                let mut excludes = Excludes::FUNCTION;
+                excludes.set(SymbolFlags::CLASS, !tree.is_ts());
+                excludes.set(
                     SymbolFlags::FUNCTION_SCOPED_VAR,
                     tree.is_ts() || !hoist_scope,
-                )
-                .with(
-                    SymbolFlags::FUNCTION_IMPLEMENTATION,
-                    !hoist_scope && !annex_b_block_function,
-                )
-                .with(SymbolFlags::NON_ANNEX_B_FUNCTION, annex_b_block_function),
+                );
+                excludes.set(SymbolFlags::FUNCTION_IMPLEMENTATION, unique_implementation);
+                excludes.set(SymbolFlags::NON_ANNEX_B_FUNCTION, annex_b_block_function);
+                excludes
+            },
             scope: target,
         };
         // Expression names are local.
@@ -1159,12 +1156,35 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTree<'a>,
         current_scope: ScopeId,
     ) {
-        let Some((node, name)) = self.binding_identifier_declaration(tree, identifier, scope)
-        else {
+        self.sync_scope_maps_from(scope);
+        // Type-only signature parameter labels do not declare bindings.
+        if self.pending.flags.is_empty() {
             return;
-        };
-        let declaration_id = self.declare(tree, name.into(), node);
-        self.finish_binding_identifier(tree, name, declaration_id, scope, current_scope);
+        }
+        let name = identifier.name(tree);
+        let declaration_id = self.declare(tree, name.into(), identifier.node_id());
+        let declaration = self.declarations[declaration_id];
+        if !declaration.flags.is_hoisting_var() || current_scope == declaration.scope {
+            return;
+        }
+
+        // Register a hoisting var in every block it passes through so
+        // block-scoped redeclarations see it.
+        let name = tree.get_utf8(name).as_bytes().clone_in(self.allocator);
+        for scope_id in scope.ancestors(Some(current_scope)) {
+            if scope_id == declaration.scope {
+                break;
+            }
+            self.hoisting_variables[scope_id]
+                .entry(name)
+                .or_insert(declaration_id);
+            if tree.node_kind(scope.get(scope_id).node) == NodeKind::CatchClause
+                && let Some(catch) = self.own_binding(scope_id, name)
+                && self.symbols[catch].flags.contains(SymbolFlags::CATCH_VAR)
+            {
+                self.symbol_links.link(declaration.symbol, catch);
+            }
+        }
     }
 
     pub fn declare_ts_enum_member(
@@ -1200,7 +1220,8 @@ impl<'a> SymbolTracker<'a> {
         name: AstWtf8,
         id: SymbolId,
     ) {
-        self.scope_maps[scope].insert(tree.get_wtf8(name).as_bytes().clone_in(self.allocator), id);
+        let name = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
+        self.scope_maps[scope].insert(name, id);
     }
 
     /// Declares the pending binding for `name` at `node`. A compatible
@@ -1209,18 +1230,17 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> DeclarationId {
         let target = self.pending.scope;
-        let existing = self
-            .own_binding(target, tree.get_wtf8(name).as_bytes())
-            .filter(|&id| {
-                !self.symbols[id]
-                    .flags
-                    .intersects(SymbolFlags::INTERNAL_NAME)
-            });
-        let mut flags = self.pending.flags;
-        flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
-        flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
-        let (symbol, declaration) = self.declare_symbol(
-            tree,
+        let existing = {
+            let text = tree.get_wtf8(name).as_bytes();
+            self.own_binding(target, text).filter(|&id| {
+                let flags = self.symbols[id].flags;
+                !flags.intersects(SymbolFlags::INTERNAL_NAME)
+            })
+        };
+        let declaration = {
+            let mut flags = self.pending.flags;
+            flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
+            flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
             PendingDeclaration {
                 name,
                 node,
@@ -1228,61 +1248,13 @@ impl<'a> SymbolTracker<'a> {
                     flags,
                     ..self.pending
                 },
-            },
-            existing,
-            true,
-        );
+            }
+        };
+        let (symbol, declaration) = self.declare_symbol(tree, declaration, existing, true);
         if existing.is_none() {
             self.insert_scope_binding(tree, target, name, symbol);
         }
         declaration
-    }
-
-    #[inline(always)]
-    fn binding_identifier_declaration(
-        &mut self,
-        tree: &Ast<'a>,
-        identifier: BindingIdentifier,
-        scope: &ScopeTree<'a>,
-    ) -> Option<(NodeId, AstUtf8)> {
-        self.sync_scope_maps_from(scope);
-        // The declaration role comes from the enclosing syntax, independently
-        // of whether references in that syntax produce runtime access.
-        if self.pending.flags.is_empty() {
-            return None;
-        }
-        Some((identifier.node_id(), identifier.name(tree)))
-    }
-
-    #[inline(always)]
-    fn finish_binding_identifier(
-        &mut self,
-        tree: &Ast<'a>,
-        name: AstUtf8,
-        declaration_id: DeclarationId,
-        scope: &ScopeTree<'a>,
-        current_scope: ScopeId,
-    ) {
-        // Register a hoisting var in every block it passes through so
-        // block-scoped redeclarations see it.
-        let declaration = self.declarations[declaration_id];
-        if declaration.flags.is_hoisting_var() && current_scope != declaration.scope {
-            let name = tree.get_utf8(name).as_bytes().clone_in(self.allocator);
-            for scope_id in scope.ancestors(Some(current_scope)) {
-                if scope_id == declaration.scope {
-                    break;
-                }
-                self.hoisting_variables[scope_id]
-                    .entry(name)
-                    .or_insert(declaration_id);
-                if tree.node_kind(scope.get(scope_id).node) == NodeKind::CatchClause
-                    && let Some(catch) = self.own_binding(scope_id, name)
-                    && self.symbols[catch].flags.contains(SymbolFlags::CATCH_VAR)
-                {
-                    self.symbol_links.link(declaration.symbol, catch);
-                }
-            }
-        }
     }
 
     pub(crate) fn link_parameter_vars(&mut self, scopes: &ScopeTree<'a>, body: ScopeId) {
@@ -1291,16 +1263,16 @@ impl<'a> SymbolTracker<'a> {
         // Inspect the completed body so a function implementation suppresses
         // parameter-to-var initialization independently of declaration order.
         for (&name, &parameter) in &self.scope_maps[parameters] {
-            if self.symbols[parameter]
-                .flags
-                .contains(SymbolFlags::PARAMETER)
-                && let Some(var) = self.own_binding(body, name)
-                && self.symbols[var]
-                    .flags
-                    .contains(SymbolFlags::FUNCTION_SCOPED_VAR)
-                && !self.symbols[var]
-                    .flags
-                    .contains(SymbolFlags::FUNCTION_IMPLEMENTATION)
+            let parameter_flags = self.symbols[parameter].flags;
+            if !parameter_flags.contains(SymbolFlags::PARAMETER) {
+                continue;
+            }
+            let Some(var) = self.own_binding(body, name) else {
+                continue;
+            };
+            let flags = self.symbols[var].flags;
+            if flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+                && !flags.contains(SymbolFlags::FUNCTION_IMPLEMENTATION)
             {
                 self.symbol_links.link(parameter, var);
             }
@@ -1324,26 +1296,33 @@ impl<'a> SymbolTracker<'a> {
         debug_assert!(node.index() < tree.node_count());
         let declaration_id = self.declarations.next_idx();
         let id = if let Some(existing) = existing {
-            let merges = !self.symbols[existing].flags.intersects(binding.excludes);
             let symbol = &mut self.symbols[existing];
-            if merges {
+            if !symbol.flags.intersects(binding.excludes) {
                 symbol.flags = merge_symbol_flags(symbol.flags, declaration_flags);
             }
-            self.redeclarations
+            let declarations = self
+                .redeclarations
                 .entry(existing)
-                .or_insert_with(|| ArenaVec::with_capacity_in(1, self.allocator))
-                .push(declaration_id);
+                .or_insert_with(|| ArenaVec::with_capacity_in(1, self.allocator));
+            declarations.push(declaration_id);
             existing
         } else {
             let new_id = self.symbols.next_idx();
+            let name = {
+                let text = tree.get_wtf8(name).as_bytes();
+                match self.own_binding(binding.scope, text) {
+                    Some(id)
+                        if self.symbols[id]
+                            .flags
+                            .intersects(SymbolFlags::INTERNAL_NAME) =>
+                    {
+                        self.symbols[id].name
+                    }
+                    _ => name,
+                }
+            };
             self.symbols.push(Symbol {
-                name: self
-                    .scope_maps
-                    .get(binding.scope)
-                    .and_then(|bindings| bindings.get(tree.get_wtf8(name).as_bytes()))
-                    .map(|&symbol| self.symbols[symbol])
-                    .filter(|symbol| symbol.flags.intersects(SymbolFlags::INTERNAL_NAME))
-                    .map_or(name, |symbol| symbol.name),
+                name,
                 flags: declaration_flags,
                 declaration: declaration_id,
             });
@@ -1605,8 +1584,7 @@ impl<'a> SymbolTracker<'a> {
         if !binding.excludes.contains(SymbolFlags::FUNCTION_SCOPED_VAR) {
             return None;
         }
-        let scope = binding.scope;
-        let declaration = self.hoisting_declaration(scope, name)?;
+        let declaration = self.hoisting_declaration(binding.scope, name)?;
         Some(self.declarations[declaration])
     }
 
@@ -1642,22 +1620,28 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
         }
-        let mut offset = 0;
-        for range in &mut use_ranges {
-            range.start = offset;
-            offset += range.len;
-            range.len = 0;
-        }
-        let mut use_ids = ArenaVec::with_capacity_in(offset as usize, self.allocator);
-        use_ids.resize(offset as usize, ReferenceId::from_usize(0));
-        for (id, reference) in self.references.iter_enumerated() {
-            self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
-            if let Some(symbol) = reference.symbol {
-                let range = &mut use_ranges[symbol];
-                use_ids[(range.start + range.len) as usize] = id;
-                range.len += 1;
+        let use_ids = {
+            let count = {
+                let mut offset = 0;
+                for range in &mut use_ranges {
+                    range.start = offset;
+                    offset += range.len;
+                    range.len = 0;
+                }
+                offset as usize
+            };
+            let mut ids = ArenaVec::with_capacity_in(count, self.allocator);
+            ids.resize(count, ReferenceId::from_usize(0));
+            for (id, reference) in self.references.iter_enumerated() {
+                self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
+                if let Some(symbol) = reference.symbol {
+                    let range = &mut use_ranges[symbol];
+                    ids[(range.start + range.len) as usize] = id;
+                    range.len += 1;
+                }
             }
-        }
+            ids
+        };
         Semantic {
             scopes,
             symbols: self.symbols,
@@ -1698,10 +1682,11 @@ pub(super) fn lookup_lexical_name(
                         SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION,
                     ))
         };
-        if let Some((_, &symbol)) = scope_maps[current]
+        let bindings = &scope_maps[current];
+        let entry = bindings
             .raw_entry()
-            .from_hash(hash, |candidate| *candidate == name)
-        {
+            .from_hash(hash, |candidate| *candidate == name);
+        if let Some((_, &symbol)) = entry {
             if visible(symbol) {
                 return Some(symbol);
             }

@@ -38,19 +38,15 @@ impl<'a> ScopeModel<'a> {
     /// Consumes Semantic, moving its basic indexes and expanding its compact
     /// use index into one arena vector per symbol.
     pub fn new(semantic: Semantic<'a>) -> Self {
-        let allocator = semantic.use_ids.bump();
-        let uses = ArenaIndexVec::from_iter_in(
-            semantic.use_ranges.iter().map(|range| {
+        let uses = {
+            let allocator = semantic.use_ids.bump();
+            let lists = semantic.use_ranges.iter().map(|range| {
                 let start = range.start as usize;
-                ArenaVec::from_iter_in(
-                    semantic.use_ids[start..start + range.len as usize]
-                        .iter()
-                        .copied(),
-                    allocator,
-                )
-            }),
-            allocator,
-        );
+                let ids = &semantic.use_ids[start..start + range.len as usize];
+                ArenaVec::from_iter_in(ids.iter().copied(), allocator)
+            });
+            ArenaIndexVec::from_iter_in(lists, allocator)
+        };
 
         Self {
             scopes: semantic.scopes,
@@ -232,17 +228,16 @@ impl<'a> ScopeModel<'a> {
         let declaration = self.declarations.next_idx();
         let previous = self.binding(scope, text.as_bytes());
         let existing = previous.filter(|&symbol| {
-            !self
-                .symbol(symbol)
-                .flags
-                .intersects(SymbolFlags::INTERNAL_NAME)
+            let flags = self.symbol(symbol).flags;
+            !flags.intersects(SymbolFlags::INTERNAL_NAME)
         });
         let symbol = if let Some(symbol) = existing {
             self.symbols[symbol].flags |= flags;
-            self.redeclarations
+            let declarations = self
+                .redeclarations
                 .entry(symbol)
-                .or_insert_with(|| ArenaVec::new_in(self.declarations.bump()))
-                .push(declaration);
+                .or_insert_with(|| ArenaVec::new_in(self.declarations.bump()));
+            declarations.push(declaration);
             symbol
         } else {
             let symbol = self.symbols.next_idx();

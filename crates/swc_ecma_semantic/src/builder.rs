@@ -821,16 +821,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
-        let tree = self.ast;
-        let body = node.body(tree).node_id();
-        let flags = match tree.kind_data(body) {
-            NodeKindData::FunctionBody(body) if self.has_retroactive_use_strict(body) => {
-                ScopeFlags {
-                    strict: true,
-                    ..ScopeFlags::default()
+        let flags = {
+            let tree = self.ast;
+            let body = node.body(tree).node_id();
+            match tree.kind_data(body) {
+                NodeKindData::FunctionBody(body) if self.has_retroactive_use_strict(body) => {
+                    ScopeFlags {
+                        strict: true,
+                        ..ScopeFlags::default()
+                    }
                 }
+                _ => self.inherit_strict_flag(),
             }
-            _ => self.inherit_strict_flag(),
         };
         self.push_scope(ScopeKind::Function, node.node_id(), flags);
         let export_state = self.symbols.enter_arrow_function_expression();
@@ -861,16 +863,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_function_body(&mut self, node: FunctionBody) {
         // Pushed only when the parent function's parameter list contains expressions.
-        let params = self
-            .current_node()
-            .and_then(|parent| match self.ast.kind_data(parent) {
-                NodeKindData::Function(function) => Some(function.params(self.ast)),
-                NodeKindData::ArrowFunctionExpression(arrow) => Some(arrow.params(self.ast)),
+        let split_scope = {
+            let parent = self.current_node().map(|parent| self.ast.kind_data(parent));
+            let params = match parent {
+                Some(NodeKindData::Function(function)) => Some(function.params(self.ast)),
+                Some(NodeKindData::ArrowFunctionExpression(arrow)) => Some(arrow.params(self.ast)),
                 _ => None,
-            });
-        if let Some(params) = params
-            && ecmascript::find_parameter_expression(self.ast, params).is_some()
-        {
+            };
+            params.is_some_and(|params| {
+                ecmascript::find_parameter_expression(self.ast, params).is_some()
+            })
+        };
+        if split_scope {
             let function = self.current_scope;
             self.push_scope(
                 ScopeKind::FunctionBody,
@@ -968,10 +972,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         // strictness; member decorators evaluate at the class rather than in
         // a method's parameter or body scope.
         let saved_scope = self.current_scope;
-        let class = self
-            .scope
-            .ancestors(Some(self.current_scope))
-            .find(|&scope| self.scope.get(scope).kind == ScopeKind::Class);
+        let class = {
+            let mut ancestors = self.scope.ancestors(Some(self.current_scope));
+            ancestors.find(|&scope| self.scope.get(scope).kind == ScopeKind::Class)
+        };
         if let Some(class) = class
             && let Some(outer) = self.scope.get(class).parent
         {

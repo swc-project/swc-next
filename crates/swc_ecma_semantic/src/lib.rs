@@ -247,12 +247,11 @@ impl<'a> Semantic<'a> {
     /// //               lives in the function scope
     /// ```
     pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        self.scope_maps[scope_id].get(name).copied().or_else(|| {
-            self.hoisting_variables[scope_id]
-                .get(name)
-                .copied()
-                .map(|declaration| self.declarations[declaration].symbol)
-        })
+        if let Some(&symbol) = self.scope_maps[scope_id].get(name) {
+            return Some(symbol);
+        }
+        let declaration = self.hoisting_variables[scope_id].get(name)?;
+        Some(self.declarations[*declaration].symbol)
     }
 
     /// Every symbol declared directly in `scope`. A hoisting `var`

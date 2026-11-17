@@ -26,95 +26,94 @@ impl<'a> SymbolTracker<'a> {
         }
         self.sync_scope_maps_from(scopes);
 
-        let mut facts = HashMap::<_, AnnexBScope<'a>, FxBuildHasher>::default();
-        for (index, function) in self.annex_b_functions.iter().enumerate() {
-            facts
-                .entry(function.scope)
-                .or_default()
-                .functions
-                .push(index);
-        }
-        // Declaration occurrences identify the containing binding scope.
-        for declaration in &self.declarations {
-            let scope = scopes.get(declaration.scope);
-            if annex_b_var_blocker(tree, scope, declaration.flags) {
-                let name = self.symbols[declaration.symbol].name;
-                let name = tree.get_wtf8(name).as_bytes();
-                let local = facts.entry(declaration.scope).or_default();
-                local.blockers.push(name);
-                if declaration.flags.contains(SymbolFlags::FUNCTION)
-                    && !declaration
-                        .flags
-                        .contains(SymbolFlags::NON_ANNEX_B_FUNCTION)
-                {
-                    *local.block_functions.entry(name).or_default() += 1;
-                }
+        let eligible = {
+            let mut facts = HashMap::<_, AnnexBScope<'a>, FxBuildHasher>::default();
+            for (index, function) in self.annex_b_functions.iter().enumerate() {
+                let local = facts.entry(function.scope).or_default();
+                local.functions.push(index);
             }
-        }
-        let mut eligible = vec![false; self.annex_b_functions.len()];
-
-        // Walk the completed scope tree once. Active blockers are keyed by
-        // hoist target so declarations in an outer function cannot suppress
-        // a companion binding in a nested function.
-        let mut children = vec![None; scopes.list.len()];
-        let mut siblings = vec![None; scopes.list.len()];
-        for (index, scope) in scopes.list.iter_enumerated().rev() {
-            if let Some(parent) = scope.parent {
-                siblings[index.index()] = children[parent.index()];
-                children[parent.index()] = Some(index);
-            }
-        }
-        let mut blocked = HashMap::<_, usize, FxBuildHasher>::default();
-        let mut walk = vec![(ScopeId::ROOT, true)];
-        while let Some((id, enter)) = walk.pop() {
-            let scope = scopes.get(id);
-            let local = facts.get(&id);
-            for &name in local.into_iter().flat_map(|facts| &facts.blockers) {
-                let key = (scope.hoist_target, name);
-                if enter {
-                    *blocked.entry(key).or_default() += 1;
-                } else {
-                    let count = blocked.get_mut(&key).expect("active lexical blocker");
-                    *count -= 1;
-                    if *count == 0 {
-                        blocked.remove(&key);
+            // Declaration occurrences identify the containing binding scope.
+            for declaration in &self.declarations {
+                let scope = scopes.get(declaration.scope);
+                if annex_b_var_blocker(tree, scope, declaration.flags) {
+                    let name = self.symbols[declaration.symbol].name;
+                    let name = tree.get_wtf8(name).as_bytes();
+                    let local = facts.entry(declaration.scope).or_default();
+                    local.blockers.push(name);
+                    let flags = declaration.flags;
+                    if flags.contains(SymbolFlags::FUNCTION)
+                        && !flags.contains(SymbolFlags::NON_ANNEX_B_FUNCTION)
+                    {
+                        *local.block_functions.entry(name).or_default() += 1;
                     }
                 }
             }
-            if !enter {
-                continue;
-            }
-            if let Some(local) = local {
-                for &index in &local.functions {
-                    let name = self.annex_b_functions[index].name;
-                    let text = tree.get_utf8(name.name(tree)).as_bytes();
-                    let branch_local = self.symbol_of_node(name.node_id()).is_some_and(|symbol| {
-                        self.symbols[symbol]
-                            .flags
-                            .contains(SymbolFlags::ANNEX_B_IF_FUNCTION)
-                    });
-                    // Ordinary functions in this block may share companions.
-                    // Ancestor blocks still block promotion; an if-clause's
-                    // implicit block is nested inside this scope as well.
-                    let same_block = if branch_local {
-                        0
-                    } else {
-                        local.block_functions.get(text).copied().unwrap_or(0)
-                    };
-                    let blockers = blocked
-                        .get(&(scope.hoist_target, text))
-                        .copied()
-                        .unwrap_or(0);
-                    eligible[index] = blockers == same_block;
+            let mut eligible = vec![false; self.annex_b_functions.len()];
+
+            // Walk the completed scope tree once. Active blockers are keyed by
+            // hoist target so declarations in an outer function cannot suppress
+            // a companion binding in a nested function.
+            let mut children = vec![None; scopes.list.len()];
+            let mut siblings = vec![None; scopes.list.len()];
+            for (index, scope) in scopes.list.iter_enumerated().rev() {
+                if let Some(parent) = scope.parent {
+                    siblings[index.index()] = children[parent.index()];
+                    children[parent.index()] = Some(index);
                 }
             }
-            walk.push((id, false));
-            let mut child = children[id.index()];
-            while let Some(id) = child {
-                walk.push((id, true));
-                child = siblings[id.index()];
+            let mut blocked = HashMap::<_, usize, FxBuildHasher>::default();
+            let mut walk = vec![(ScopeId::ROOT, true)];
+            while let Some((id, enter)) = walk.pop() {
+                let scope = scopes.get(id);
+                let local = facts.get(&id);
+                for &name in local.into_iter().flat_map(|facts| &facts.blockers) {
+                    let key = (scope.hoist_target, name);
+                    if enter {
+                        *blocked.entry(key).or_default() += 1;
+                    } else {
+                        let count = blocked.get_mut(&key).expect("active lexical blocker");
+                        *count -= 1;
+                        if *count == 0 {
+                            blocked.remove(&key);
+                        }
+                    }
+                }
+                if !enter {
+                    continue;
+                }
+                if let Some(local) = local {
+                    for &index in &local.functions {
+                        let name = self.annex_b_functions[index].name;
+                        let text = tree.get_utf8(name.name(tree)).as_bytes();
+                        // Ordinary functions in this block may share companions.
+                        // Ancestor blocks still block promotion; an if-clause's
+                        // implicit block is nested inside this scope as well.
+                        let same_block = {
+                            let symbol = self.symbol_of_node(name.node_id());
+                            let branch_local = symbol.is_some_and(|symbol| {
+                                let flags = self.symbols[symbol].flags;
+                                flags.contains(SymbolFlags::ANNEX_B_IF_FUNCTION)
+                            });
+                            if branch_local {
+                                0
+                            } else {
+                                local.block_functions.get(text).copied().unwrap_or(0)
+                            }
+                        };
+                        let key = (scope.hoist_target, text);
+                        let blockers = blocked.get(&key).copied().unwrap_or(0);
+                        eligible[index] = blockers == same_block;
+                    }
+                }
+                walk.push((id, false));
+                let mut child = children[id.index()];
+                while let Some(id) = child {
+                    walk.push((id, true));
+                    child = siblings[id.index()];
+                }
             }
-        }
+            eligible
+        };
         let explicit = self.declarations.next_idx();
         for (index, eligible) in eligible.into_iter().enumerate() {
             if eligible {
@@ -149,9 +148,8 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let existing = self.own_binding(target, text).filter(|&symbol| {
-            !self.symbols[symbol]
-                .flags
-                .intersects(SymbolFlags::INTERNAL_NAME)
+            let flags = self.symbols[symbol].flags;
+            !flags.intersects(SymbolFlags::INTERNAL_NAME)
         });
         // FunctionDeclarationInstantiation does not create a new arguments
         // binding. Its implicit arguments object remains outside our explicit
@@ -187,38 +185,42 @@ impl<'a> SymbolTracker<'a> {
         // Each companion follows its lexical declaration in the public
         // declaration iterator. Merge once instead of inserting into the
         // arena vector for every function and shifting later declarations.
-        let companions = self.declarations[explicit..]
-            .iter()
-            .enumerate()
-            .map(|(index, declaration)| (declaration.node, explicit + index))
-            .collect::<HashMap<_, _, FxBuildHasher>>();
-        let mut ordered = Vec::with_capacity(self.declarations.len());
-        let mut remap = vec![DeclarationId::from_usize(0); self.declarations.len()];
-        for (index, &declaration) in self.declarations[..explicit].iter_enumerated() {
-            remap[index.index()] = DeclarationId::from_usize(ordered.len());
-            ordered.push(declaration);
-            if let Some(&companion) = companions.get(&declaration.node) {
-                remap[companion.index()] = DeclarationId::from_usize(ordered.len());
-                ordered.push(self.declarations[companion]);
+        let remap = {
+            let companions = {
+                let declarations = &self.declarations[explicit..];
+                let entries = declarations.iter().enumerate();
+                entries
+                    .map(|(index, declaration)| (declaration.node, explicit + index))
+                    .collect::<HashMap<_, _, FxBuildHasher>>()
+            };
+            let mut ordered = Vec::with_capacity(self.declarations.len());
+            let mut remap = vec![DeclarationId::from_usize(0); self.declarations.len()];
+            for (index, &declaration) in self.declarations[..explicit].iter_enumerated() {
+                remap[index.index()] = DeclarationId::from_usize(ordered.len());
+                ordered.push(declaration);
+                if let Some(&companion) = companions.get(&declaration.node) {
+                    remap[companion.index()] = DeclarationId::from_usize(ordered.len());
+                    ordered.push(self.declarations[companion]);
+                }
             }
-        }
-        debug_assert_eq!(ordered.len(), self.declarations.len());
-        self.declarations
-            .as_raw_slice_mut()
-            .copy_from_slice(&ordered);
+            debug_assert_eq!(ordered.len(), self.declarations.len());
+            let declarations = self.declarations.as_raw_slice_mut();
+            declarations.copy_from_slice(&ordered);
+            remap
+        };
         for declarations in self.redeclarations.values_mut() {
             declarations.clear();
         }
         for (index, declaration) in self.declarations.iter_enumerated().rev() {
             self.symbols[declaration.symbol].declaration = index;
         }
-        for (index, declaration) in self.declarations.iter_enumerated() {
-            let id = index;
+        for (id, declaration) in self.declarations.iter_enumerated() {
             if self.symbols[declaration.symbol].declaration != id {
-                self.redeclarations
+                let declarations = self
+                    .redeclarations
                     .entry(declaration.symbol)
-                    .or_insert_with(|| ArenaVec::new_in(self.allocator))
-                    .push(id);
+                    .or_insert_with(|| ArenaVec::new_in(self.allocator));
+                declarations.push(id);
             }
         }
         for map in &mut self.hoisting_variables {

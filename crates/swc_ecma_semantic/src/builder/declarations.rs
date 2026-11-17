@@ -12,13 +12,11 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         let flags = binding.flags;
         let excludes = binding.excludes;
         debug_assert!(!name.is_empty() || flags.contains(SymbolFlags::ENUM_MEMBER));
-        if let Some(existing_id) = self.symbols.own_binding(target, name).filter(|&id| {
-            !self
-                .symbols
-                .symbol(id)
-                .flags
-                .intersects(SymbolFlags::INTERNAL_NAME)
-        }) {
+        let existing = self.symbols.own_binding(target, name).filter(|&id| {
+            let flags = self.symbols.symbol(id).flags;
+            !flags.intersects(SymbolFlags::INTERNAL_NAME)
+        });
+        if let Some(existing_id) = existing {
             let existing_flags = self.symbols.symbol(existing_id).flags;
             let existing_node = self.symbols.first_decl_of(existing_id);
             let import_value_conflict = !self.ast.is_ts()
@@ -59,7 +57,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             return;
         }
 
-        let flags = binding.flags;
         if !flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR) {
             self.check_outer_parameter_conflict(node, name, binding);
         }
@@ -122,19 +119,39 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline(always)]
     fn check_hoisting_var_conflict(&mut self, node: NodeId, name: &[u8], binding: PendingBinding) {
         let target = binding.scope;
-        let flags = binding.flags;
         // Per 14.2.1, a hoisting var conflicts with block-scoped names
         // in any intermediate block it passes through.
-        if flags.is_hoisting_var() {
-            for scope_id in self.scope.ancestors(Some(self.current_scope)) {
-                if scope_id == target {
-                    break;
-                }
-                let Some(symbol_id) = self.symbols.own_binding(scope_id, name) else {
-                    continue;
+        for scope_id in self.scope.ancestors(Some(self.current_scope)) {
+            if scope_id == target {
+                break;
+            }
+            let Some(symbol_id) = self.symbols.own_binding(scope_id, name) else {
+                continue;
+            };
+            let existing = self.symbols.symbol(symbol_id);
+            if existing.flags.is_block_scoped_like() {
+                self.report_redeclaration(
+                    self.ast,
+                    name,
+                    node,
+                    self.symbols.first_decl_of(symbol_id),
+                    existing.flags,
+                );
+                break;
+            }
+            if existing.flags.contains(SymbolFlags::CATCH_VAR) {
+                // https://tc39.es/ecma262/#sec-variablestatements-in-catch-blocks
+                // (14.15.1): a var colliding with a catch parameter is a
+                // syntax error, except for the Annex B.3.4 simple-binding
+                // web-compat carve-out.
+                let catch_node = self.scope.get(scope_id).node;
+                let NodeKindData::CatchClause(catch) = self.ast.kind_data(catch_node) else {
+                    unreachable!()
                 };
-                let existing = self.symbols.symbol(symbol_id);
-                if existing.flags.is_block_scoped_like() {
+                let simple_parameter = catch.param(self.ast).is_some_and(|parameter| {
+                    self.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
+                });
+                if !simple_parameter {
                     self.report_redeclaration(
                         self.ast,
                         name,
@@ -143,29 +160,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                         existing.flags,
                     );
                     break;
-                }
-                if existing.flags.contains(SymbolFlags::CATCH_VAR) {
-                    // https://tc39.es/ecma262/#sec-variablestatements-in-catch-blocks
-                    // (14.15.1): a var colliding with a catch parameter is a
-                    // syntax error, except for the Annex B.3.4 simple-binding
-                    // web-compat carve-out.
-                    let catch_node = self.scope.get(scope_id).node;
-                    let NodeKindData::CatchClause(catch) = self.ast.kind_data(catch_node) else {
-                        unreachable!()
-                    };
-                    let simple_parameter = catch.param(self.ast).is_some_and(|parameter| {
-                        self.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
-                    });
-                    if !simple_parameter {
-                        self.report_redeclaration(
-                            self.ast,
-                            name,
-                            node,
-                            self.symbols.first_decl_of(symbol_id),
-                            existing.flags,
-                        );
-                        break;
-                    }
                 }
             }
         }
