@@ -233,34 +233,34 @@ impl SymbolFlags {
         self.intersects(Self::BLOCK_SCOPED_LIKE)
     }
 
-    /// Human-readable category for diagnostics.
+    /// Human-readable category, including its indefinite article, for diagnostics.
     pub fn diagnostic_kind(self) -> &'static str {
         if self.contains(Self::FUNCTION) {
-            "function"
+            "a function"
         } else if self.contains(Self::CLASS) {
-            "class"
+            "a class"
         } else if self.intersects(Self::REGULAR_ENUM | Self::CONST_ENUM) {
-            "enum"
+            "an enum"
         } else if self.intersects(Self::VALUE_MODULE | Self::NAMESPACE_MODULE) {
-            "namespace"
+            "a namespace"
         } else if self.contains(Self::INTERFACE) {
-            "interface"
+            "an interface"
         } else if self.contains(Self::TYPE_ALIAS) {
-            "type alias"
+            "a type alias"
         } else if self.contains(Self::TYPE_IMPORT) {
-            "type import"
+            "a type import"
         } else if self.contains(Self::IMPORT) {
-            "import"
+            "an import"
         } else if self.contains(Self::PARAMETER) {
-            "parameter"
+            "a parameter"
         } else if self.contains(Self::CATCH_VAR) {
-            "catch parameter"
+            "a catch parameter"
         } else if self.contains(Self::TYPE_PARAMETER) {
-            "type parameter"
+            "a type parameter"
         } else if self.contains(Self::ENUM_MEMBER) {
-            "enum member"
+            "an enum member"
         } else {
-            "variable"
+            "a variable"
         }
     }
 }
@@ -1056,55 +1056,7 @@ impl<'a> SymbolTracker<'a> {
         self.export_state = ExportState::None;
     }
 
-    pub fn enter_ts_mapped_type(
-        &mut self,
-        tree: &Ast<'a>,
-        parent: Option<NodeId>,
-        scope: &ScopeTree<'a>,
-        current_scope: ScopeId,
-    ) {
-        // Mapped type keys `[K in T]` are bare binding identifiers, so the
-        // same pending context as a type parameter applies.
-        self.push_saved_context();
-        let target = if parent.is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
-        {
-            nearest_conditional_scope(tree, scope, current_scope)
-        } else {
-            current_scope
-        };
-        self.pending = PendingBinding {
-            flags: SymbolFlags::TYPE_PARAMETER,
-            excludes: Excludes::TYPE_PARAMETER,
-            scope: target,
-        };
-        self.export_state = ExportState::None;
-    }
-
-    pub fn enter_ts_function_type(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    pub fn enter_ts_constructor_type(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    pub fn enter_ts_method_signature(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    pub fn enter_ts_call_signature_declaration(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    pub fn enter_ts_construct_signature_declaration(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    pub fn enter_ts_index_signature(&mut self, current_scope: ScopeId) {
-        self.enter_signature_type(current_scope);
-    }
-
-    fn enter_signature_type(&mut self, current_scope: ScopeId) {
+    pub fn enter_signature_type(&mut self, current_scope: ScopeId) {
         // Signature parameter names are labels rather than declarations.
         self.push_saved_context();
         self.pending = PendingBinding {

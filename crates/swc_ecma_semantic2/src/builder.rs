@@ -1424,7 +1424,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_function_type(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1436,7 +1436,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_constructor_type(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1449,8 +1449,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_type_position();
         self.enter_node(node.node_id());
         let parent = self.parent();
+        // Mapped type keys `[K in T]` use the same binding context as type parameters.
         self.symbols
-            .enter_ts_mapped_type(self.ast, parent, &self.scope, self.current_scope);
+            .enter_ts_type_parameter(self.ast, parent, &self.scope, self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1463,7 +1464,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
-        self.symbols.enter_ts_method_signature(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
         node.params(self.ast).visit_with(self);
@@ -1478,8 +1479,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols
-            .enter_ts_call_signature_declaration(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1491,8 +1491,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols
-            .enter_ts_construct_signature_declaration(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1504,7 +1503,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_index_signature(self.current_scope);
+        self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1586,31 +1585,25 @@ impl Default for ReportOptions {
 }
 
 impl<'a> SemanticBuilder<'_, 'a> {
-    fn report_unresolved_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
+    fn report_unresolved_export(&mut self, name: &[u8], node: NodeId) {
         let message = format!("Export '{}' is not defined", String::from_utf8_lossy(name));
-        self.report(tree.span(node), message, ReportOptions::default());
+        self.report(self.ast.span(node), message, ReportOptions::default());
     }
 
     #[cold]
     fn report_redeclaration(
         &mut self,
-        tree: &Ast<'a>,
         name: &[u8],
         node: NodeId,
         existing_node: NodeId,
         existing_flags: SymbolFlags,
     ) {
         let name = String::from_utf8_lossy(name);
-        let current_span = tree.span(node);
-        let existing_span = tree.span(existing_node);
+        let current_span = self.ast.span(node);
+        let existing_span = self.ast.span(existing_node);
         let kind = existing_flags.diagnostic_kind();
-        let article = if matches!(kind.as_bytes()[0], b'a' | b'e' | b'i' | b'o' | b'u') {
-            "an"
-        } else {
-            "a"
-        };
         let message = format!("Identifier '{name}' has already been declared");
-        let first = format!("'{name}' was first declared as {article} {kind} here");
+        let first = format!("'{name}' was first declared as {kind} here");
         let help = format!("Consider removing or renaming this declaration of '{name}'");
         self.report(
             current_span,
@@ -1650,10 +1643,6 @@ impl<'a> SemanticBuilder<'_, 'a> {
             span,
             message: message.into(),
         }
-    }
-
-    fn labels(&self, items: &[Label]) -> Vec<Label> {
-        items.to_vec()
     }
 }
 

@@ -125,6 +125,10 @@ pub(super) fn validate_literal(pattern_text: &str, flag_text: &str) -> bool {
 /// ```
 /// §22.2.3.2: only d g i m s u v y; no duplicates; u and v are exclusive.
 fn regular_expression_flags<'src>() -> impl Parser<'src, &'src str, Mode, extra::Err<EmptyErr>> {
+    const UNICODE: u8 = 1 << 5;
+    const UNICODE_SETS: u8 = 1 << 6;
+    const UNICODE_FLAGS: u8 = UNICODE | UNICODE_SETS;
+
     custom(
         |input: &mut InputRef<'src, '_, &'src str, extra::Err<EmptyErr>>| {
             let mut seen = 0u8;
@@ -135,8 +139,8 @@ fn regular_expression_flags<'src>() -> impl Parser<'src, &'src str, Mode, extra:
                     'i' => 4,
                     'm' => 8,
                     's' => 16,
-                    'u' => 32,
-                    'v' => 64,
+                    'u' => UNICODE,
+                    'v' => UNICODE_SETS,
                     'y' => 128,
                     _ => {
                         return Err(EmptyErr::default());
@@ -146,14 +150,14 @@ fn regular_expression_flags<'src>() -> impl Parser<'src, &'src str, Mode, extra:
                     return Err(EmptyErr::default());
                 }
                 seen |= bit;
-                if seen & 96 == 96 {
+                if seen & UNICODE_FLAGS == UNICODE_FLAGS {
                     return Err(EmptyErr::default());
                 }
             }
             Ok(Mode {
-                unicode: seen & 96 != 0,
-                sets: seen & 64 != 0,
-                named: seen & 96 != 0,
+                unicode: seen & UNICODE_FLAGS != 0,
+                sets: seen & UNICODE_SETS != 0,
+                named: seen & UNICODE_FLAGS != 0,
             })
         },
     )
