@@ -165,11 +165,8 @@ impl<'ast_ref, 'ast> HookCollector<'ast_ref, 'ast> {
                 .is_some_and(|init| init.node_id() == call.node_id())
         {
             let span = declarator.id(self.ast).span(self.ast);
-            // SAFETY: The binding span refers to this AST's source at UTF-8 boundaries.
-            self.key.push_str(
-                self.ast
-                    .get_utf8(unsafe { self.ast.source_slice(span.start, span.end) }),
-            );
+            self.key
+                .push_str(&self.ast.source()[span.start as usize..span.end as usize]);
         }
         let argument_index = if hook_name == "useState" {
             Some(0)
@@ -184,11 +181,8 @@ impl<'ast_ref, 'ast> HookCollector<'ast_ref, 'ast> {
             let argument = self.ast.get_node_in_sub_range(argument_id);
             let span = argument.span(self.ast);
             self.key.push('(');
-            // SAFETY: The argument span refers to this AST's source at UTF-8 boundaries.
-            self.key.push_str(
-                self.ast
-                    .get_utf8(unsafe { self.ast.source_slice(span.start, span.end) }),
-            );
+            self.key
+                .push_str(&self.ast.source()[span.start as usize..span.end as usize]);
             self.key.push(')');
         }
         self.key.push('}');
