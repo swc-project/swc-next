@@ -1867,6 +1867,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::NewCallee
                 | ExpressionPosition::Superclass
                 | ExpressionPosition::ConditionalTest
+                | ExpressionPosition::ConditionalConsequent
+                | ExpressionPosition::ConditionalAlternate
                 | ExpressionPosition::TypeAssertionOperand
                 | ExpressionPosition::NonNullOperand
                 | ExpressionPosition::InstantiationOperand

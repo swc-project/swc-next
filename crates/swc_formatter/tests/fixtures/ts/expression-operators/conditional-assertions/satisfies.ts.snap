@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = flag ? first satisfies T : other ? second satisfies U : third;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = flag ? (first satisfies T) : other ? (second satisfies U) : third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value = flag
+  ? (first satisfies T)
+  : other
+    ? (second satisfies U)
+    : third;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  flag
+    ? (first satisfies T)
+    : other
+      ? (second satisfies U)
+      : third
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const value = flag
+	? (first satisfies T)
+	: other
+		? (second satisfies U)
+		: third;

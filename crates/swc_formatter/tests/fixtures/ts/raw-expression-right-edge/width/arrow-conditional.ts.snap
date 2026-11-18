@@ -10,11 +10,11 @@ d;
 const x = (v) =>
   v
     ? z
-    : /* prettier-ignore */ c as ?;
+    : /* prettier-ignore */ (c as ?)
 d
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const x = (v) => (v ? z : /* prettier-ignore */ c as ?);
+const x = (v) => (v ? z : /* prettier-ignore */ (c as ?))
 d

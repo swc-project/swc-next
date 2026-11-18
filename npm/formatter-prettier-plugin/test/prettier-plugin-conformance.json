@@ -37327,7 +37327,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "class C {\n  x = condition ? a : /* prettier-ignore */ y as ?;\n  b() {}\n}\n",
+        "swcPlugin": "class C {\n  x = condition ? a : /* prettier-ignore */ (y as ?)\n  b() {}\n}\n",
         "prettierNativeError": "Type expected. (1:59)"
       }
     ],
@@ -37371,7 +37371,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "// @ts-ignore\nconst x = flag ? a : /* prettier-ignore */ y as ?;\nb\n",
+        "swcPlugin": "// @ts-ignore\nconst x = flag ? a : /* prettier-ignore */ (y as ?)\nb\n",
         "prettierNativeError": "Type expected. (2:50)"
       }
     ],
@@ -37393,7 +37393,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = condition ? a : /* prettier-ignore */ y as ?;\nb\n",
+        "swcPlugin": "const x = condition ? a : /* prettier-ignore */ (y as ?)\nb\n",
         "prettierNativeError": "Type expected. (1:55)"
       }
     ],
@@ -37404,7 +37404,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "function f() {\n  return condition ? a : /* prettier-ignore */ y as ?;\n  b\n}\n",
+        "swcPlugin": "function f() {\n  return condition ? a : /* prettier-ignore */ (y as ?)\n  b\n}\n",
         "prettierNativeError": "Type expected. (1:67)"
       }
     ],
@@ -37426,7 +37426,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = (v) =>\n  v\n    ? z\n    : /* prettier-ignore */ c as ?;\nd\n",
+        "swcPlugin": "const x = (v) =>\n  v\n    ? z\n    : /* prettier-ignore */ (c as ?)\nd\n",
         "prettierNativeError": "Type expected. (1:52)"
       },
       {
@@ -37435,7 +37435,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = (v) => (v ? z : /* prettier-ignore */ c as ?);\nd\n",
+        "swcPlugin": "const x = (v) => (v ? z : /* prettier-ignore */ (c as ?))\nd\n",
         "prettierNativeError": "Type expected. (1:52)"
       }
     ],
