@@ -4,8 +4,8 @@ use swc_next_ecma_ast::{
     BindingIdentifier, Comment, CommentKind, Decl, DeclData, ExportAllDeclaration,
     ExportDefaultDeclaration, ExportDefaultDeclarationKindData, ExportNamedDeclaration,
     ExportSpecifier, Expr, GetSpan, ImportAttribute, ImportDeclaration, ImportDeclarationSpecifier,
-    ImportDeclarationSpecifierData, ImportOrExportKind, ModuleExportName, ModuleExportNameData,
-    PropertyKey, Span, StringLiteral, SubRange,
+    ImportDeclarationSpecifierData, ImportOrExportKind, ImportPhase, ModuleExportName,
+    ModuleExportNameData, PropertyKey, Span, StringLiteral, SubRange,
 };
 
 use super::{Formatter, PrintedStatement, StatementBoundary, StatementPunctuation};
@@ -331,12 +331,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
-        if node.phase(ast).is_some() {
-            return Err(self.unsupported("import phase", node));
-        }
         let span = node.span(ast);
         let keyword_end = span.start + 6;
         let type_only = node.import_kind(ast) == ImportOrExportKind::Type;
+        let prefix = match node.phase(ast) {
+            Some(ImportPhase::Source) => Some("source"),
+            Some(ImportPhase::Defer) => Some("defer"),
+            None => type_only.then_some("type"),
+        };
         let mut specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
         let standalone = first.filter(|&node| {
@@ -405,13 +407,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_prefix,
         )?;
         writer.text("import");
-        let mut end = if type_only {
+        let mut end = if let Some(prefix) = prefix {
             let head_end = match (standalone, list.as_ref()) {
                 (Some(node), _) => node.span(ast).start,
                 (None, Some(list)) => list.span.start,
                 (None, None) => source.from.map_or(source_start, |token| token.start),
             };
-            self.format_module_type_prefix(Span::new(keyword_end, head_end), writer)?
+            self.format_module_keyword_prefix(Span::new(keyword_end, head_end), prefix, writer)?
         } else {
             keyword_end
         };
@@ -628,7 +630,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mode = self.content_mode(comments);
         writer.text("export");
         let head_end = if type_only {
-            self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
+            self.format_module_keyword_prefix(
+                Span::new(keyword_end, list.span.start),
+                "type",
+                writer,
+            )?
         } else {
             keyword_end
         };
@@ -727,7 +733,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.text("export");
         let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
         let head_end = if type_only {
-            self.format_module_type_prefix(Span::new(header.start, star), writer)?
+            self.format_module_keyword_prefix(Span::new(header.start, star), "type", writer)?
         } else {
             header.start
         };
@@ -2204,20 +2210,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
-    fn format_module_type_prefix(
+    fn format_module_keyword_prefix(
         &mut self,
         header: Span,
+        keyword: &'static str,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
         if self.diagnostic_range_is_sensitive(header) {
             let comments = self.comments.in_range(header);
-            if let Some(start) = self.find_token(header, comments, "type") {
+            if let Some(start) = self.find_token(header, comments, keyword) {
                 self.format_module_gap(header.start, start, true, writer)?;
-                writer.text("type");
-                return Ok(start + 4);
+                writer.text(keyword);
+                return Ok(start + keyword.len() as u32);
             }
         }
-        writer.text(" type");
+        writer.space();
+        writer.text(keyword);
         Ok(header.start)
     }
 

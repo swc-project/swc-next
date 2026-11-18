@@ -36967,6 +36967,16 @@
         "prettierNative": "export as namespace /* note */ /* prettier-ignore */\nn\\u0061me\n"
       }
     ],
+    "ts/modules/import-phase-directive/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "import\n// @ts-expect-error\ndefer * as ns from \"m\";\n",
+        "prettierNative": "import defer // @ts-expect-error\n* as ns from \"m\";\n"
+      }
+    ],
     "ts/objects/computed-key/diagnostic.ts": [
       {
         "options": {

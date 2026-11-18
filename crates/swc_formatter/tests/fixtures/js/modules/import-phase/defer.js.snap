@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import /* phase */ defer * /* namespace */ as ns from "module" with { type: "json" };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+import defer /* phase */ * as /* namespace */ ns from "module" with { type: "json" };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+import defer /* phase */ * as /* namespace */ ns from "module" with { type: "json" };
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+import defer /* phase */ * as /* namespace */ ns from 'module' with {type: 'json'}
