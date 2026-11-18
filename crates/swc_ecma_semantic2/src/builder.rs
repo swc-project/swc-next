@@ -21,7 +21,7 @@ use swc_next_ecma_ast::{
     NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId,
     Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, ThisExpression,
     TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
-    TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
+    TsConstructSignatureDeclaration, TsConstructorType, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
     TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
@@ -1055,28 +1055,22 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_enum_declaration(self.ast, node, self.scope);
-        node.visit_children_with(self);
-        self.symbols.exit_saved_context();
-        self.leave_node(NodeKindData::TsEnumDeclaration(node));
-    }
-
-    fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
+        let identifier = node.id(self.ast);
+        identifier.visit_with(self);
+        let owner = self.symbols.symbol_of_node(identifier.node_id());
+        let body = node.body(self.ast);
         self.push_scope(
             ScopeKind::TsEnum,
-            node.node_id(),
+            body.node_id(),
             self.inherit_strict_flag(),
         );
-        self.enter_node(node.node_id());
-        let owner = match self.parent().map(|parent| self.ast.kind_data(parent)) {
-            Some(NodeKindData::TsEnumDeclaration(declaration)) => self
-                .symbols
-                .symbol_of_node(declaration.id(self.ast).node_id()),
-            _ => None,
-        };
+        self.enter_node(body.node_id());
         self.symbols.enter_ts_container(self.scope, owner, false);
-        node.visit_children_with(self);
-        self.exit_scope(node.node_id());
-        self.leave_node(NodeKindData::TsEnumBody(node));
+        body.visit_children_with(self);
+        self.exit_scope(body.node_id());
+        self.leave_node(NodeKindData::TsEnumBody(body));
+        self.symbols.exit_saved_context();
+        self.leave_node(NodeKindData::TsEnumDeclaration(node));
     }
 
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
