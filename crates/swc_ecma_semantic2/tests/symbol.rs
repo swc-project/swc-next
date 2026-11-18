@@ -10,7 +10,7 @@ use support::{
     options::TestOptions,
 };
 use swc_next_allocator::Idx;
-use swc_next_ecma_ast::{Ast, SymbolId};
+use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, SymbolId};
 use swc_next_ecma_semantic2::{Semantic, SymbolFlags};
 
 #[derive(Serialize)]
@@ -197,4 +197,17 @@ fn symbols(source: &str, options: TestOptions, query: &FixtureOptions) -> TestSy
 #[test]
 fn symbol() {
     fixtures::run("symbol", symbols);
+}
+
+#[test]
+#[rustfmt::skip]
+fn namespace_instantiation() {
+    let ts_module = TestOptions::new(Lang::Ts, SourceType::Module);
+    let source = "declare const target: number;\ndeclare namespace A { export { X }; import X = target; }\ndeclare namespace B { interface X {} export { X }; }";
+    with_semantic(source, ts_module, |_, semantic| {
+        let a = semantic.binding(ScopeId::MODULE, b"A").unwrap();
+        let b = semantic.binding(ScopeId::MODULE, b"B").unwrap();
+        assert!(semantic.symbol(a).flags.contains(SymbolFlags::VALUE_MODULE));
+        assert!(!semantic.symbol(b).flags.contains(SymbolFlags::VALUE_MODULE));
+    });
 }

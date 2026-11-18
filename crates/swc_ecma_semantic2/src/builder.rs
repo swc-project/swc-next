@@ -194,8 +194,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             }
         }
 
-        self.symbols
-            .record_expando(member.object(tree), property, self.scope, container);
+        self.symbols.record_ts_expando_assignment(
+            member.object(tree),
+            property,
+            self.scope,
+            container,
+        );
     }
 
     fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
@@ -1021,12 +1025,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let import_kind = node.import_kind(self.ast);
         self.symbols
             .enter_ts_import_equals_declaration(import_kind, self.scope);
-        let first_reference = self.symbols.next_reference();
+        let first_reference = self.symbols.next_reference_id();
         let flags = self.flags_with_space(ReferenceSpace::Any);
         node.id(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.module_reference(self.ast), flags);
         self.symbols
-            .record_import_equals(self.ast, node, first_reference);
+            .record_ts_import_equals_alias(self.ast, node, first_reference);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsImportEqualsDeclaration(node));
     }
@@ -1079,8 +1083,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 .symbols
                 .add_local_export_reference(self.ast, node, self.scope, flags)
         {
-            self.symbols
-                .record_ts_namespace_export(self.ast, &self.scopes, node, root, type_only);
+            self.symbols.declare_ts_namespace_export_alias(
+                self.ast,
+                &self.scopes,
+                node,
+                root,
+                type_only,
+            );
         }
         self.visit_with_reference_flags(node.local(self.ast), flags);
         node.exported(self.ast).visit_with(self);
@@ -1146,9 +1155,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             owner = self.symbols.symbol_of_node(name);
             for (qualifier, segment) in segments.into_iter().rev() {
                 self.push_scope(ScopeKind::TsModule, qualifier, self.inherit_strict_flag());
-                self.symbols.enter_ts_container(self.scope, owner, false);
-                self.symbols.enter_dotted_namespace(self.scope);
-                self.symbols.declare_dotted_namespace(
+                self.symbols.enter_ts_dotted_namespace(self.scope, owner);
+                self.symbols.declare_ts_namespace_segment(
                     tree,
                     &self.scopes,
                     segment.name(tree),
@@ -1169,8 +1177,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                         node.node_id(),
                         self.inherit_strict_flag(),
                     );
-                    self.symbols.enter_ts_container(self.scope, owner, false);
-                    self.symbols.enter_dotted_namespace(self.scope);
+                    self.symbols.enter_ts_dotted_namespace(self.scope, owner);
                     child.visit_with(self);
                 }
             }

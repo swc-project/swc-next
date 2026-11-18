@@ -26,7 +26,7 @@ mod annex_b;
 pub(crate) mod ts;
 
 use annex_b::AnnexBFunction;
-use ts::{NamespaceState, TsBindingState, TsMemberKind, namespace_state};
+use ts::{NamespaceState, TsBindingState, TsMemberKind};
 
 /// A `(start, len)` window into a backing slice.
 #[derive(Debug, Default, Clone, Copy)]
@@ -597,7 +597,7 @@ pub(crate) struct SymbolTracker<'a> {
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
     ts_bindings: TsBindings<'a>,
-    ts_state: TsBindingState,
+    ts_state: TsBindingState<'a>,
 
     /// What the next `binding_identifier` will declare: its flags,
     /// redeclaration excludes, and destination scope. Valid inside an
@@ -1009,7 +1009,7 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         let ambient = declaration.declare(tree) || self.ambient;
-        let state = namespace_state(tree, declaration.body(tree), ambient);
+        let state = self.namespace_state(tree, declaration.body(tree), ambient);
         self.pending = PendingBinding {
             flags: SymbolFlags::NAMESPACE_MODULE.with(SymbolFlags::AMBIENT, ambient)
                 | state.flags(),
@@ -1201,7 +1201,7 @@ impl<'a> SymbolTracker<'a> {
             },
         };
         if tree.is_ts()
-            && let Some(declaration) = self.declare_ts_export(tree, declaration)
+            && let Some(declaration) = self.try_declare_ts_export(tree, declaration)
         {
             return declaration;
         }
@@ -1478,6 +1478,11 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
+    /// Returns the ID that the next appended reference will receive.
+    pub(crate) fn next_reference_id(&self) -> ReferenceId {
+        self.references.next_idx()
+    }
+
     /// Records an identifier reference at `node` in `scope`.
     pub fn add_reference(
         &mut self,
@@ -1590,7 +1595,7 @@ impl<'a> SymbolTracker<'a> {
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
         self.sync_symbol_tables(scopes.list.len());
-        self.bind_expando_assignments(tree, &scopes);
+        self.declare_ts_expando_members(tree, &scopes);
         let mut use_ranges = ArenaIndexVec::with_capacity_in(self.symbols.len(), self.allocator);
         use_ranges.resize(self.symbols.len(), Range::default());
 
