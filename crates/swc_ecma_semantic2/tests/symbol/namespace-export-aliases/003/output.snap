@@ -32,7 +32,12 @@ declare namespace N {
         "bindings": [
           1
         ],
-        "members": {}
+        "members": {
+          "x": {
+            "symbol": 2,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+          }
+        }
       }
     ]
   },

@@ -1,13 +1,12 @@
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, AstCtx, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
     ClassType, Decl, Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement,
-    ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
-    StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
-    TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsEnumBody, TsFunction,
-    TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
-    TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
+    ForOfStatement, ForStatement, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
+    TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
+    TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
+    TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsType, TsTypeAliasDeclaration,
 };
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, SemanticAst, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, ScopeModel, Semantic, SemanticAst, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -484,110 +483,6 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<TsTypeAliasDeclaration> {
         ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
-    }
-
-    fn enter_formal_parameters(
-        &mut self,
-        node: FormalParameters,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<FormalParameters> {
-        if let Some(scope) = ctx.state.semantic.scope_of(node.node_id()) {
-            ctx.state.scope_stack.push(scope);
-        }
-        TraverseAction::Continue
-    }
-
-    fn exit_formal_parameters(
-        &mut self,
-        node: FormalParameters,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<FormalParameters> {
-        if ctx.state.semantic.scope_of(node.node_id()).is_some() {
-            ctx.state.scope_stack.pop().unwrap();
-        }
-        TraverseAction::Continue
-    }
-
-    fn enter_ts_this_parameter(
-        &mut self,
-        node: TsThisParameter,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsThisParameter> {
-        let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
-        ctx.state.scope_stack.push(scope);
-        TraverseAction::Continue
-    }
-
-    fn exit_ts_this_parameter(
-        &mut self,
-        _node: TsThisParameter,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsThisParameter> {
-        ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
-    }
-
-    fn enter_ts_type_parameter_declaration(
-        &mut self,
-        node: TsTypeParameterDeclaration,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeParameterDeclaration> {
-        let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
-        ctx.state.scope_stack.push(scope);
-        TraverseAction::Continue
-    }
-
-    fn exit_ts_type_parameter_declaration(
-        &mut self,
-        _node: TsTypeParameterDeclaration,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeParameterDeclaration> {
-        ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
-    }
-
-    fn enter_ts_type_annotation(
-        &mut self,
-        node: TsTypeAnnotation,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeAnnotation> {
-        if let Some(scope) = ctx.state.semantic.scope_of(node.node_id()) {
-            ctx.state.scope_stack.push(scope);
-        }
-        TraverseAction::Continue
-    }
-
-    fn exit_ts_type_annotation(
-        &mut self,
-        node: TsTypeAnnotation,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeAnnotation> {
-        if ctx.state.semantic.scope_of(node.node_id()).is_some() {
-            ctx.state.scope_stack.pop().unwrap();
-        }
-        TraverseAction::Continue
-    }
-
-    fn enter_ts_type_parameter(
-        &mut self,
-        node: TsTypeParameter,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeParameter> {
-        if let Some(scope) = ctx.state.semantic.scope_of(node.node_id()) {
-            ctx.state.scope_stack.push(scope);
-        }
-        TraverseAction::Continue
-    }
-
-    fn exit_ts_type_parameter(
-        &mut self,
-        node: TsTypeParameter,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
-    ) -> TraverseAction<TsTypeParameter> {
-        if ctx.state.semantic.scope_of(node.node_id()).is_some() {
-            ctx.state.scope_stack.pop().unwrap();
-        }
         TraverseAction::Continue
     }
 

@@ -55,7 +55,7 @@ namespace N.Inner {
           },
           "X": {
             "symbol": 1,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
@@ -63,16 +63,25 @@ namespace N.Inner {
     "X": [
       {
         "id": 1,
-        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "52..53",
-            "scope": 2
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "109..122",
+            "scope": 2,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "uses": [
           "190..191"
-        ]
+        ],
+        "alias": {
+          "Target": 3
+        }
       },
       {
         "id": 2,

@@ -29,7 +29,7 @@ const queried: typeof Alias = 1;
   "symbols": {
     "Alias": [
       {
-        "id": 9,
+        "id": 10,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -45,7 +45,9 @@ const queried: typeof Alias = 1;
           "321..326",
           "368..373"
         ],
-        "alias": "Unknown",
+        "alias": {
+          "Target": 9
+        },
         "import": {
           "initializer": "273..274"
         }
@@ -54,16 +56,17 @@ const queried: typeof Alias = 1;
     "N": [
       {
         "id": 3,
-        "flags": "NAMESPACE_MODULE",
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "72..73",
             "scope": 1,
-            "flags": "NAMESPACE_MODULE | AMBIENT"
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
           },
           {
             "span": "190..191",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           }
         ],
         "bindings": [
@@ -79,7 +82,7 @@ const queried: typeof Alias = 1;
           },
           "X": {
             "symbol": 4,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
@@ -87,16 +90,25 @@ const queried: typeof Alias = 1;
     "X": [
       {
         "id": 4,
-        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "95..96",
-            "scope": 3
+            "scope": 3,
+            "flags": "INTERFACE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "161..174",
+            "scope": 3,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "uses": [
           "242..243"
-        ]
+        ],
+        "alias": {
+          "Target": 6
+        }
       },
       {
         "id": 5,

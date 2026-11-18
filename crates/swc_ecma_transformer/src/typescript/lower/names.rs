@@ -38,11 +38,16 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             let mut owners = FxHashMap::default();
             for entry in self.semantic.iter_symbols() {
                 let name = self.ast.get_wtf8(entry.symbol.name).as_bytes();
-                record_source_name_owner(&mut owners, name, Some(entry.id));
+                let owner = self.semantic.ts_export_symbol(entry.id).unwrap_or(entry.id);
+                record_source_name_owner(&mut owners, name, Some(owner));
             }
             for entry in self.semantic.iter_references() {
                 let name = self.ast.get_utf8(entry.reference.name).as_bytes();
-                record_source_name_owner(&mut owners, name, entry.reference.resolution().symbol());
+                let owner = entry
+                    .reference
+                    .symbol
+                    .map(|symbol| self.semantic.ts_export_symbol(symbol).unwrap_or(symbol));
+                record_source_name_owner(&mut owners, name, owner);
             }
             owners
         });

@@ -27,7 +27,7 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": 7
+        "symbol": 8
       }
     ],
     "Item": [
@@ -36,7 +36,7 @@ namespace N {
         "scope": 5,
         "space": "Namespace",
         "access": "Read",
-        "symbol": 0,
+        "symbol": 7,
         "import_equals": true
       }
     ],
@@ -51,13 +51,6 @@ namespace N {
     ]
   },
   "symbols": {
-    "0": {
-      "name": "Item",
-      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-      "declarations": [
-        "21..25"
-      ]
-    },
     "4": {
       "name": "Local",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
@@ -66,13 +59,23 @@ namespace N {
       ]
     },
     "7": {
+      "name": "Item",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "145..158"
+      ],
+      "alias": {
+        "Target": 4
+      }
+    },
+    "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "187..188"
       ],
       "alias": {
-        "Target": 0
+        "Target": 7
       }
     }
   },

@@ -26,7 +26,7 @@ const result: Result = "right";
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "symbol": 0
+        "symbol": 3
       }
     ],
     "original": [
@@ -40,19 +40,22 @@ const result: Result = "right";
     ]
   },
   "symbols": {
-    "0": {
-      "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "17..18"
-      ]
-    },
     "2": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "60..68"
       ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "90..103"
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
@@ -66,7 +69,7 @@ const result: Result = "right";
       "kind": "TsModule",
       "parent": 3,
       "flags": "Strict",
-      "container_owner": 3
+      "container_owner": 4
     }
   }
 }

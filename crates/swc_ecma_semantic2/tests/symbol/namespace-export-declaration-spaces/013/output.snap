@@ -34,6 +34,10 @@ interface Alias {}
           "X": {
             "symbol": 1,
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          },
+          "Y": {
+            "symbol": 3,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }

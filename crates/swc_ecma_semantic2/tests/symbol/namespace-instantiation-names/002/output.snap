@@ -43,7 +43,12 @@ namespace Outer {
             "scope": 2
           }
         ],
-        "members": {}
+        "members": {
+          "T": {
+            "symbol": 9,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+          }
+        }
       },
       {
         "id": 8,
@@ -82,7 +87,7 @@ namespace Outer {
             "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
           "selected": {
-            "symbol": 9,
+            "symbol": 10,
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }

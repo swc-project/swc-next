@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{
     TsQualifiedNameLeftData, VariableDeclaration, VariableKind, Visit, VisitWith,
 };
 
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 struct Registration {
     binding: AstUtf8,

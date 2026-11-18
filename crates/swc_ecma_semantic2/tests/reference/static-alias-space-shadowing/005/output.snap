@@ -31,28 +31,28 @@ namespace N {
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 7
+        "symbol": 4
       },
       {
         "span": "224..225",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "symbol": 7
+        "symbol": 8
       },
       {
         "span": "258..259",
         "scope": 9,
         "space": "Typeof",
         "access": "None",
-        "symbol": 7
+        "symbol": 8
       },
       {
         "span": "284..285",
         "scope": 10,
         "space": "Namespace",
         "access": "None",
-        "symbol": 7
+        "symbol": 4
       }
     ],
     "C": [
@@ -75,13 +75,30 @@ namespace N {
         "51..52"
       ]
     },
-    "7": {
+    "1": {
+      "name": "x",
+      "flags": "CLASS_STATIC_MEMBER",
+      "declarations": [
+        "23..38"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "TYPE_ALIAS | NAMESPACE_MODULE",
+      "declarations": [
+        "86..87",
+        "108..109"
+      ]
+    },
+    "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "161..162"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {
@@ -89,7 +106,7 @@ namespace N {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 6
+      "container_owner": 7
     },
     "9": {
       "kind": "Block",

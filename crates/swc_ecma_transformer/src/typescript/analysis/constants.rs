@@ -8,7 +8,9 @@ use swc_next_ecma_ast::{
     Ast, AstUtf8, BinaryOperator, Expr, ExprData, MemberExpression, NodeId, NodeKindData,
     NumericLiteral, PropertyKeyData, SymbolId, TsEnumMember, UnaryOperator, VariableDeclarator,
 };
-use swc_next_ecma_semantic::{NameResolution, Semantic, SymbolFlags};
+use swc_next_ecma_semantic2::{ReferenceSpace, Semantic};
+
+use crate::typescript::bindings::resolve_value_binding;
 
 use super::availability::{Availability, Initialization};
 
@@ -156,12 +158,8 @@ impl<'a> EnumValueComputer<'_, 'a> {
                 let Some(reference) = self.semantic.reference_of(identifier.node_id()) else {
                     return Unknown;
                 };
-                match self.semantic.reference(reference).resolution() {
-                    NameResolution::Resolved(symbol) => {
-                        return self.compute_symbol(symbol, location);
-                    }
-                    NameResolution::Uncertain { .. } => return Unknown,
-                    NameResolution::Unresolved => {}
+                if let Some(symbol) = self.semantic.reference(reference).symbol {
+                    return self.compute_symbol(symbol, location);
                 }
                 match self.tree.get_utf8(identifier.name(self.tree)) {
                     "Infinity" => Constant(number(f64::INFINITY)),
@@ -231,11 +229,9 @@ impl<'a> EnumValueComputer<'_, 'a> {
         symbol: SymbolId,
         location: Initialization,
     ) -> EnumMemberValue<'a> {
-        // Semantic keeps an alias's binding identity separate from its terminal value.
-        let symbol = self
-            .semantic
-            .ts_import_alias_target(symbol)
-            .unwrap_or(symbol);
+        let Some(symbol) = resolve_value_binding(self.semantic, symbol) else {
+            return EnumMemberValue::Unknown;
+        };
         if let Some(declaration) = self.enum_member_declarations.get(&symbol).copied() {
             if !self
                 .availability
@@ -396,7 +392,7 @@ pub(super) fn resolve_constant_member(
     let name = static_member_name(ast, member)?;
     match ast.property_key_data(member.property(ast)) {
         PropertyKeyData::IdentifierName(_) => namespace_value_symbol(semantic, owner, name),
-        PropertyKeyData::Expr(_) => semantic.ts_enum_member(owner, name),
+        PropertyKeyData::Expr(_) => enum_member_symbol(semantic, owner, name),
     }
 }
 
@@ -411,7 +407,7 @@ pub(super) fn resolve_enum_member(
     let (reference, owner) =
         namespace_object(member.object(ast), ast, semantic, MemberResolution::Inline)?;
     let name = static_member_name(ast, member)?;
-    let symbol = semantic.ts_enum_member(owner, name)?;
+    let symbol = enum_member_symbol(semantic, owner, name)?;
     Some((reference, owner, symbol))
 }
 
@@ -443,11 +439,7 @@ fn namespace_object(
     let (reference, symbol) = match ast.expr_data(expression) {
         ExprData::IdentifierReference(identifier) => {
             let reference = semantic.reference_of(identifier.node_id())?;
-            let mut targets = semantic.reference_value_targets(ast, reference);
-            let symbol = targets.next()?.symbol()?;
-            if targets.next().is_some() {
-                return None;
-            }
+            let symbol = semantic.reference(reference).symbol?;
             (identifier.node_id(), symbol)
         }
         ExprData::ParenthesizedExpression(parenthesized) => {
@@ -477,17 +469,12 @@ fn namespace_object(
         }
         _ => return None,
     };
-    if semantic
-        .symbol(symbol)
-        .flags
-        .intersects(SymbolFlags::ANY_IMPORT)
-    {
-        semantic
-            .ts_import_alias_target(symbol)
-            .map(|target| (reference, target))
-    } else {
-        Some((reference, symbol))
-    }
+    Some((reference, resolve_value_binding(semantic, symbol)?))
+}
+
+fn enum_member_symbol(semantic: &Semantic<'_>, owner: SymbolId, name: &[u8]) -> Option<SymbolId> {
+    let member = semantic.ts_container_member(owner, name)?;
+    member.enum_flags.map(|_| member.symbol)
 }
 
 fn namespace_value_symbol(
@@ -495,11 +482,11 @@ fn namespace_value_symbol(
     owner: SymbolId,
     name: &[u8],
 ) -> Option<SymbolId> {
-    let mut targets = semantic.ts_namespace_value_targets(owner, name);
-    let symbol = targets.next()?.symbol()?;
-    targets
-        .all(|target| target.symbol() == Some(symbol))
-        .then_some(symbol)
+    let member = semantic.ts_container_member(owner, name)?;
+    member
+        .flags()
+        .visible_in(ReferenceSpace::Value)
+        .then_some(member.symbol)
 }
 
 fn number(value: f64) -> TsEnumConstantValue<'static> {

@@ -12,7 +12,7 @@ pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
 use crate::{helpers::Helpers, uid::UidGenerator};
-use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
+use swc_next_ecma_semantic2::{ScopeModel, SymbolFlags};
 
 /// Configuration, caches and pending work for a single transform.
 /// Passes access state through the context's mutation APIs.

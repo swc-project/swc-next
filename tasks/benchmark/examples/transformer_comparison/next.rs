@@ -3,7 +3,7 @@ use std::hint::black_box;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{AstCtx, Lang};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SemanticAst, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions,
     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},

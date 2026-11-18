@@ -40,7 +40,7 @@ declare namespace Outer {
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
           },
           "bad": {
-            "symbol": 7,
+            "symbol": 8,
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
           }
         }
@@ -73,7 +73,12 @@ declare namespace Outer {
             "scope": 3
           }
         ],
-        "members": {}
+        "members": {
+          "Sibling": {
+            "symbol": 7,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+          }
+        }
       },
       {
         "id": 6,
@@ -112,11 +117,11 @@ declare namespace Outer {
             "namespace_flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
           "Sibling": {
-            "symbol": 9,
+            "symbol": 10,
             "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
           "X": {
-            "symbol": 11,
+            "symbol": 13,
             "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }

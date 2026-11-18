@@ -1,24 +1,31 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    Expr, IdentifierName, PropertyKeyData, TsImportEqualsDeclaration, TsModuleBlock,
+    ClassElement, ClassElementData, Expr, IdentifierName, PropertyKeyData,
+    TsImportEqualsDeclaration, TsModuleBlock,
 };
 
 use super::*;
-use crate::ts::{TsMember, TsMemberTable};
+use crate::ts::{TsContainer, TsMember, TsMemberTable};
 
 mod resolve;
 
 pub(crate) use resolve::LexicalLookup;
 
+const EXPORT_ALIAS_FLAGS: SymbolFlags =
+    SymbolFlags::EXPORT_ALIAS.union(SymbolFlags::TYPE_EXPORT_ALIAS);
+pub(super) const ALIAS_FLAGS: SymbolFlags = SymbolFlags::ANY_IMPORT.union(EXPORT_ALIAS_FLAGS);
+const TYPE_ONLY_ALIAS_FLAGS: SymbolFlags =
+    SymbolFlags::TYPE_IMPORT.union(SymbolFlags::TYPE_EXPORT_ALIAS);
+
 #[derive(Default)]
 pub(super) struct TsBindingState {
     implicit_exports: FxHashSet<ScopeId>,
-    aliases: FxHashMap<SymbolId, ImportEquals>,
+    aliases: FxHashMap<SymbolId, Alias>,
     initializers: FxHashMap<ReferenceId, SymbolId>,
     expando_assignments: Vec<ExpandoAssignment>,
 }
 
-struct ImportEquals {
+struct Alias {
     root: ReferenceId,
     members: Vec<AstUtf8>,
 }
@@ -33,6 +40,7 @@ struct ExpandoAssignment {
 pub(super) enum TsMemberKind {
     Enum,
     Namespace,
+    ClassStatic,
     Expando,
 }
 
@@ -67,12 +75,7 @@ impl<'a> SymbolTracker<'a> {
             reference.flags = reference.flags.no_access();
         }
         members.reverse();
-        if let std::collections::hash_map::Entry::Vacant(entry) =
-            self.ts_state.aliases.entry(symbol)
-        {
-            entry.insert(ImportEquals { root, members });
-            self.ts_state.initializers.insert(root, symbol);
-        }
+        self.record_alias(symbol, root, members);
     }
 
     pub(crate) fn enter_ts_container(
@@ -82,12 +85,69 @@ impl<'a> SymbolTracker<'a> {
         implicit_exports: bool,
     ) {
         if let Some(owner) = owner {
-            self.ts_bindings.container_owners.insert(scope, owner);
+            let ambient = self.in_ambient_context();
+            self.ts_bindings
+                .containers
+                .insert(scope, TsContainer { owner, ambient });
             if implicit_exports {
                 self.ts_state.implicit_exports.insert(scope);
             }
         }
         self.export_state = ExportState::None;
+    }
+
+    pub(crate) fn record_ts_namespace_export(
+        &mut self,
+        tree: &Ast<'a>,
+        scopes: &ScopeTree<'a>,
+        specifier: ExportSpecifier,
+        root: ReferenceId,
+        type_only: bool,
+    ) {
+        if !tree.is_ts() {
+            return;
+        }
+        let scope = self.references[root].scope;
+        let Some(container) = self.ts_bindings.containers.get(&scope).copied() else {
+            return;
+        };
+        if !container.ambient || scopes.get(scope).kind != ScopeKind::TsModule {
+            return;
+        }
+        let name = match tree.module_export_name_data(specifier.exported(tree)) {
+            swc_next_ecma_ast::ModuleExportNameData::IdentifierName(name) => name.name(tree).into(),
+            swc_next_ecma_ast::ModuleExportNameData::StringLiteral(name) => name.value(tree),
+        };
+        let alias_flags = if type_only {
+            SymbolFlags::TYPE_EXPORT_ALIAS
+        } else {
+            SymbolFlags::EXPORT_ALIAS
+        };
+        self.sync_symbol_tables_from(scopes);
+        let (symbol, _) = self.declare_ts_member(
+            tree,
+            container.owner,
+            PendingDeclaration {
+                name,
+                node: specifier.node_id(),
+                binding: PendingBinding {
+                    flags: alias_flags | SymbolFlags::EXPORTED | SymbolFlags::AMBIENT,
+                    excludes: ALIAS_FLAGS,
+                    scope,
+                },
+            },
+            TsMemberKind::Namespace,
+        );
+        self.record_alias(symbol, root, Vec::new());
+    }
+
+    fn record_alias(&mut self, symbol: SymbolId, root: ReferenceId, members: Vec<AstUtf8>) {
+        if let std::collections::hash_map::Entry::Vacant(entry) =
+            self.ts_state.aliases.entry(symbol)
+        {
+            entry.insert(Alias { root, members });
+            self.ts_state.initializers.insert(root, symbol);
+        }
     }
 
     pub(crate) fn enter_dotted_namespace(&mut self, scope: ScopeId) {
@@ -261,11 +321,13 @@ impl<'a> SymbolTracker<'a> {
             symbol,
             enum_flags: None,
             namespace_flags: None,
+            class_static_flags: None,
             expando: false,
         });
         let contribution = match kind {
             TsMemberKind::Enum => &mut member.enum_flags,
             TsMemberKind::Namespace => &mut member.namespace_flags,
+            TsMemberKind::ClassStatic => &mut member.class_static_flags,
             TsMemberKind::Expando => {
                 member.expando = true;
                 return (symbol, id);
@@ -280,6 +342,66 @@ impl<'a> SymbolTracker<'a> {
             _ => {}
         }
         (symbol, id)
+    }
+
+    pub(crate) fn declare_ts_class_static_member(
+        &mut self,
+        tree: &Ast<'a>,
+        node: ClassElement,
+        scopes: &ScopeTree<'a>,
+        scope: ScopeId,
+    ) {
+        let (key, declared) = match tree.class_element_data(node) {
+            ClassElementData::PropertyDefinition(property)
+                if property.r#static(tree) && !property.computed(tree) =>
+            {
+                (
+                    property.key(tree),
+                    property.declare(tree) || property.r#abstract(tree),
+                )
+            }
+            ClassElementData::MethodDefinition(method)
+                if method.r#static(tree) && !method.computed(tree) =>
+            {
+                (method.key(tree), false)
+            }
+            ClassElementData::TsMethodDefinition(method)
+                if method.r#static(tree) && !method.computed(tree) =>
+            {
+                (method.key(tree), method.r#abstract(tree))
+            }
+            _ => return,
+        };
+        let name = match tree.kind_data(key.node_id()) {
+            NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
+            NodeKindData::StringLiteral(literal) => literal.value(tree),
+            _ => return,
+        };
+        let NodeKindData::Class(class) = tree.kind_data(scopes.get(scope).node) else {
+            return;
+        };
+        let Some(owner) = class
+            .id(tree)
+            .and_then(|id| self.symbol_of_node(id.node_id()))
+        else {
+            return;
+        };
+        self.sync_symbol_tables_from(scopes);
+        self.declare_ts_member(
+            tree,
+            owner,
+            PendingDeclaration {
+                name,
+                node: node.node_id(),
+                binding: PendingBinding {
+                    flags: SymbolFlags::CLASS_STATIC_MEMBER
+                        .with(SymbolFlags::AMBIENT, declared || self.in_ambient_context()),
+                    excludes: SymbolFlags::empty(),
+                    scope,
+                },
+            },
+            TsMemberKind::ClassStatic,
+        );
     }
 
     pub(crate) fn record_expando(
@@ -431,6 +553,7 @@ impl NamespaceState {
 pub(super) fn namespace_state(
     tree: &Ast<'_>,
     body: Option<swc_next_ecma_ast::TsModuleBody>,
+    ambient: bool,
 ) -> NamespaceState {
     use NamespaceState::*;
 
@@ -445,20 +568,23 @@ pub(super) fn namespace_state(
             let mut state = NonInstantiated;
             for statement in block.body(tree).iter() {
                 let statement = tree.get_node_in_sub_range(statement).node_id();
-                state = state.max(statement_state(tree, statement));
+                state = state.max(statement_state(tree, statement, ambient));
                 if state == Instantiated {
-                    break;
+                    return state;
                 }
+            }
+            if ambient && exports_local_import_equals(tree, block) {
+                return Instantiated;
             }
             state
         }
         swc_next_ecma_ast::TsModuleBodyData::TsModuleDeclaration(child) => {
-            namespace_state(tree, child.body(tree))
+            namespace_state(tree, child.body(tree), ambient || child.declare(tree))
         }
     }
 }
 
-fn statement_state(tree: &Ast<'_>, node: NodeId) -> NamespaceState {
+fn statement_state(tree: &Ast<'_>, node: NodeId, ambient: bool) -> NamespaceState {
     use NamespaceState::*;
 
     match tree.kind_data(node) {
@@ -469,7 +595,9 @@ fn statement_state(tree: &Ast<'_>, node: NodeId) -> NamespaceState {
         | NodeKindData::TsGlobalDeclaration(_)
         | NodeKindData::TsNamespaceExportDeclaration(_) => NonInstantiated,
         NodeKindData::TsEnumDeclaration(declaration) if declaration.is_const(tree) => ConstEnumOnly,
-        NodeKindData::TsModuleDeclaration(module) => namespace_state(tree, module.body(tree)),
+        NodeKindData::TsModuleDeclaration(module) => {
+            namespace_state(tree, module.body(tree), ambient || module.declare(tree))
+        }
         NodeKindData::ExportNamedDeclaration(export) => {
             if export.export_kind(tree) == ImportOrExportKind::Type {
                 NonInstantiated
@@ -480,7 +608,7 @@ fn statement_state(tree: &Ast<'_>, node: NodeId) -> NamespaceState {
                     {
                         Instantiated
                     }
-                    _ => statement_state(tree, declaration.node_id()),
+                    _ => statement_state(tree, declaration.node_id(), ambient),
                 }
             } else if export.source(tree).is_some() {
                 Instantiated
@@ -489,7 +617,7 @@ fn statement_state(tree: &Ast<'_>, node: NodeId) -> NamespaceState {
             }
         }
         NodeKindData::ExportDefaultDeclaration(export) => {
-            statement_state(tree, export.declaration(tree).node_id())
+            statement_state(tree, export.declaration(tree).node_id(), ambient)
         }
         NodeKindData::ExportAllDeclaration(export)
             if export.export_kind(tree) == ImportOrExportKind::Type =>
@@ -498,4 +626,42 @@ fn statement_state(tree: &Ast<'_>, node: NodeId) -> NamespaceState {
         }
         _ => Instantiated,
     }
+}
+
+// A local import-equals may supply the value of an ambient namespace's export.
+// Classify it before binding, as with a directly exported import-equals.
+fn exports_local_import_equals(tree: &Ast<'_>, block: TsModuleBlock) -> bool {
+    let statements = block.body(tree);
+    let imports: FxHashSet<_> = statements
+        .iter()
+        .filter_map(|id| {
+            let statement = tree.get_node_in_sub_range(id);
+            match tree.kind_data(statement.node_id()) {
+                NodeKindData::TsImportEqualsDeclaration(import)
+                    if import.import_kind(tree) == ImportOrExportKind::Value =>
+                {
+                    Some(tree.get_utf8(import.id(tree).name(tree)))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+    !imports.is_empty()
+        && statements.iter().any(|id| {
+            let statement = tree.get_node_in_sub_range(id);
+            let NodeKindData::ExportNamedDeclaration(export) = tree.kind_data(statement.node_id())
+            else {
+                return false;
+            };
+            export.export_kind(tree) == ImportOrExportKind::Value
+                && export.source(tree).is_none()
+                && export.specifiers(tree).iter().any(|id| {
+                    let specifier = tree.get_node_in_sub_range(id);
+                    specifier.export_kind(tree) == ImportOrExportKind::Value
+                        && specifier
+                            .local(tree)
+                            .as_identifier_name(tree)
+                            .is_some_and(|local| imports.contains(tree.get_utf8(local.name(tree))))
+                })
+        })
 }

@@ -17,7 +17,7 @@ import A = N.Y;
   "symbols": {
     "A": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -28,7 +28,9 @@ import A = N.Y;
         "bindings": [
           1
         ],
-        "alias": "Unknown",
+        "alias": {
+          "Target": 4
+        },
         "import": {
           "initializer": "123..124"
         }
@@ -59,6 +61,10 @@ import A = N.Y;
           "X": {
             "symbol": 1,
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          },
+          "Y": {
+            "symbol": 4,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }

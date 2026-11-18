@@ -17,7 +17,7 @@ import A = N.Inner.Y;
   "symbols": {
     "A": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -28,7 +28,9 @@ import A = N.Inner.Y;
         "bindings": [
           1
         ],
-        "alias": "Unknown",
+        "alias": {
+          "Target": 5
+        },
         "import": {
           "initializer": "132..133"
         }

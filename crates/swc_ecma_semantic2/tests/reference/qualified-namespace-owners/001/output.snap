@@ -27,7 +27,7 @@ namespace Use {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       }
     ],
     "N": [
@@ -35,7 +35,7 @@ namespace Use {
         "span": "192..193",
         "scope": 7,
         "space": "Namespace",
-        "access": "Read",
+        "access": "None",
         "symbol": 0,
         "import_equals": true
       }
@@ -49,13 +49,22 @@ namespace Use {
         "18..19"
       ]
     },
-    "8": {
+    "2": {
+      "name": "x",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "64..65"
+      ]
+    },
+    "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "188..189"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
@@ -63,7 +72,7 @@ namespace Use {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 8
     }
   }
 }

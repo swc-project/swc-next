@@ -13,7 +13,7 @@ use crate::{
     context::{BoundIdentifier, ContainerOwnerChild, TransformCtx},
     uid::UidGenerator,
 };
-use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
+use swc_next_ecma_semantic2::{ScopeFlags, ScopeKind};
 
 pub(crate) struct StaticBlocks {
     prevent_extensions: bool,

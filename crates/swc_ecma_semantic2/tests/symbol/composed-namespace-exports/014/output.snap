@@ -34,7 +34,7 @@ const nested: Alias.T = { ok: true };
   "symbols": {
     "Alias": [
       {
-        "id": 13,
+        "id": 14,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -50,7 +50,9 @@ const nested: Alias.T = { ok: true };
           "399..404",
           "438..443"
         ],
-        "alias": "Unknown",
+        "alias": {
+          "Target": 13
+        },
         "import": {
           "initializer": "349..350"
         }
@@ -59,16 +61,17 @@ const nested: Alias.T = { ok: true };
     "N": [
       {
         "id": 7,
-        "flags": "NAMESPACE_MODULE",
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "141..142",
             "scope": 1,
-            "flags": "NAMESPACE_MODULE | AMBIENT"
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
           },
           {
             "span": "266..267",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           }
         ],
         "bindings": [
@@ -84,7 +87,7 @@ const nested: Alias.T = { ok: true };
           },
           "X": {
             "symbol": 8,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
@@ -92,16 +95,25 @@ const nested: Alias.T = { ok: true };
     "X": [
       {
         "id": 8,
-        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "164..165",
-            "scope": 5
+            "scope": 5,
+            "flags": "INTERFACE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "237..250",
+            "scope": 5,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "uses": [
           "318..319"
-        ]
+        ],
+        "alias": {
+          "Target": 10
+        }
       },
       {
         "id": 9,

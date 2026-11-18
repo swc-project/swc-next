@@ -32,7 +32,12 @@ declare namespace B {
         "uses": [
           "131..132"
         ],
-        "members": {}
+        "members": {
+          "X": {
+            "symbol": 4,
+            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+          }
+        }
       }
     ]
   },

@@ -17,13 +17,22 @@ declare namespace E {
     "A": [
       {
         "id": 1,
-        "flags": "AMBIENT | ENUM_MEMBER",
+        "flags": "AMBIENT | EXPORTED | ENUM_MEMBER | TYPE_EXPORT_ALIAS",
         "declarations": [
           {
             "span": "19..20",
-            "scope": 2
+            "scope": 2,
+            "flags": "AMBIENT | ENUM_MEMBER"
+          },
+          {
+            "span": "79..85",
+            "scope": 3,
+            "flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
           }
-        ]
+        ],
+        "alias": {
+          "Target": 2
+        }
       }
     ]
   },
@@ -33,6 +42,12 @@ declare namespace E {
       "parent": 1,
       "flags": "Strict",
       "hoist_target": 1,
+      "container_owner": 0
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
       "container_owner": 0
     }
   }

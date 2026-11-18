@@ -26,7 +26,7 @@ const result: Result = "right";
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "symbol": 0
+        "symbol": 6
       }
     ],
     "original": [
@@ -35,24 +35,27 @@ const result: Result = "right";
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "symbol": 4
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "17..18"
-      ]
-    },
-    "4": {
+    "5": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "138..146"
       ]
+    },
+    "6": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "168..181"
+      ],
+      "alias": {
+        "Target": 5
+      }
     }
   },
   "scopes": {

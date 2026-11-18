@@ -6,7 +6,7 @@ use swc_next_ecma_ast::{
     SimpleAssignmentTarget, Stmt, SubRange, SymbolId, TsEnumDeclaration, UnaryOperator, VisitMut,
     VisitMutWith,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 use super::{
     StatementExpansion, TypeScriptLowerer, erase::update_binding_property_shorthand,
@@ -224,10 +224,12 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         owner: SymbolId,
         enum_name: AstUtf8,
     ) -> Expr {
-        let members = self
-            .enum_member_symbols
-            .entry(owner)
-            .or_insert_with(|| self.semantic.ts_enum_members(owner).collect());
+        let members = self.enum_member_symbols.entry(owner).or_insert_with(|| {
+            self.semantic
+                .ts_container_members(owner)
+                .filter_map(|(_, member)| member.enum_flags.map(|_| member.symbol))
+                .collect()
+        });
         let mut rewriter = EnumInitializerRewriter {
             ast: self.ast,
             semantic: self.semantic,
@@ -257,7 +259,7 @@ impl EnumInitializerRewriter<'_, '_> {
         let symbol = self
             .semantic
             .reference_of(identifier.node_id())
-            .and_then(|reference| self.semantic.reference(reference).resolution().symbol());
+            .and_then(|reference| self.semantic.reference(reference).symbol);
         if !symbol.is_some_and(|symbol| self.members.contains(&symbol)) {
             return None;
         }

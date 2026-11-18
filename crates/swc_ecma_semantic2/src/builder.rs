@@ -12,8 +12,8 @@ use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
-    BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassType,
-    Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
+    BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassElement,
+    ClassType, Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
     ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
     FormalParameters, Function, FunctionBody, FunctionType, IdentifierName, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier,
@@ -871,6 +871,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.leave_node(NodeKindData::ClassBody(node));
     }
 
+    fn visit_class_element(&mut self, node: ClassElement) {
+        if self.ast.is_ts() {
+            self.symbols.declare_ts_class_static_member(
+                self.ast,
+                node,
+                &self.scope,
+                self.current_scope,
+            );
+        }
+        node.visit_children_with(self);
+    }
+
     #[inline]
     fn visit_property_definition(&mut self, node: PropertyDefinition) {
         self.enter_node(node.node_id());
@@ -1039,9 +1051,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         if type_only {
             flags = flags.no_access();
         }
-        if declaration.is_some_and(|declaration| declaration.source(self.ast).is_none()) {
+        if declaration.is_some_and(|declaration| declaration.source(self.ast).is_none())
+            && let Some(root) =
+                self.symbols
+                    .add_local_export_reference(self.ast, node, self.current_scope, flags)
+        {
             self.symbols
-                .add_local_export_reference(self.ast, node, self.current_scope, flags);
+                .record_ts_namespace_export(self.ast, &self.scope, node, root, type_only);
         }
         self.visit_with_reference_flags(node.local(self.ast), flags);
         node.exported(self.ast).visit_with(self);

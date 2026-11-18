@@ -164,6 +164,11 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
                     return Some(StatementExpansion::Remove);
                 }
             }
+            StmtData::TsExportAssignment(export)
+                if self.export_expression_is_erased(export.expression(self.ast_ref())) =>
+            {
+                return Some(StatementExpansion::Remove);
+            }
             StmtData::ExportAllDeclaration(export) => {
                 if export.export_kind(self.ast_ref()) == ImportOrExportKind::Type {
                     return Some(StatementExpansion::Remove);

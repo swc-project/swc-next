@@ -3,6 +3,7 @@ use swc_next_ecma_ast::{Lang, SubRange};
 use crate::MultiPassTransformer;
 
 mod analysis;
+mod bindings;
 mod lower;
 
 mod options;

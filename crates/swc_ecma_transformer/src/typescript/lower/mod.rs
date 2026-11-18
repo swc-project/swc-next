@@ -2,7 +2,7 @@ use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
 use crate::{context::CommentState, uid::UidGenerator};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{Ast, Program, SourceType, SymbolId, VisitMut};
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 mod bindings;
 mod enums;

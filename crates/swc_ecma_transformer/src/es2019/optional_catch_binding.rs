@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{BindingPattern, CatchClause};
-use swc_next_ecma_semantic::SymbolFlags;
+use swc_next_ecma_semantic2::SymbolFlags;
 
 use crate::context::{BoundIdentifier, TransformCtx};
 

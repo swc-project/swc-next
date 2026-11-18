@@ -28,14 +28,14 @@ namespace Test {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "218..219",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "symbol": 6
+        "symbol": 7
       }
     ],
     "Owner": [
@@ -44,7 +44,7 @@ namespace Test {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "symbol": 3,
+        "symbol": 4,
         "import_equals": true
       }
     ]
@@ -57,7 +57,7 @@ namespace Test {
         "29..30"
       ]
     },
-    "3": {
+    "4": {
       "name": "Owner",
       "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
       "declarations": [
@@ -68,28 +68,28 @@ namespace Test {
         "Target": 1
       }
     },
-    "4": {
+    "5": {
       "name": "x",
       "flags": "INTERFACE | EXPORTED",
       "declarations": [
         "114..115"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "127..128"
       ]
     },
-    "8": {
+    "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "160..161"
       ],
       "alias": {
-        "Target": 4
+        "Target": 5
       }
     }
   },
@@ -98,7 +98,7 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 8
     }
   }
 }

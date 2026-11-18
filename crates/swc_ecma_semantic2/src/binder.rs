@@ -108,6 +108,8 @@ bitflags::bitflags! {
         const NON_ANNEX_B_FUNCTION = 1 << 20;
         /// A named property introduced by an assignment to a function container.
         const EXPANDO_PROPERTY = 1 << 21;
+        /// A named static member declared in a TypeScript class body.
+        const CLASS_STATIC_MEMBER = 1 << 22;
         /// A TypeScript import-equals declaration, including type-only and
         /// external `require` aliases. Independent of target resolution.
         const IMPORT_EQUALS = 1 << 23;
@@ -127,6 +129,10 @@ bitflags::bitflags! {
         /// Declaration-only marker for a const-enum-only namespace, paired with
         /// `VALUE_MODULE`. Excluded from aggregate symbol and member flags.
         const CONST_ENUM_ONLY_MODULE = 1 << 29;
+        /// A named export specifier in an ambient namespace.
+        const EXPORT_ALIAS = 1 << 30;
+        /// A type-only export specifier in an ambient namespace.
+        const TYPE_EXPORT_ALIAS = 1 << 31;
 
         const EXPRESSION_NAME = Self::FUNCTION_EXPRESSION.bits() | Self::CLASS_EXPRESSION.bits();
         const INTERNAL_NAME = Self::EXPRESSION_NAME.bits() | Self::ANNEX_B_IF_FUNCTION.bits();
@@ -146,7 +152,8 @@ bitflags::bitflags! {
             | Self::CONST_ENUM.bits()
             | Self::VALUE_MODULE.bits()
             | Self::ENUM_MEMBER.bits()
-            | Self::EXPANDO_PROPERTY.bits();
+            | Self::EXPANDO_PROPERTY.bits()
+            | Self::CLASS_STATIC_MEMBER.bits();
 
         /// Declarations that live in TS type space.
         const TYPE_SPACE = Self::CLASS.bits()
@@ -221,16 +228,17 @@ impl SymbolFlags {
     /// }
     /// ```
     ///
-    /// Value imports alias symbols of unknowable space and are visible in
-    /// every space. Type-only imports are not visible to runtime value uses,
-    /// but remain valid in type, namespace, and `typeof` positions.
+    /// Before alias resolution, value aliases match every space. Type-only
+    /// aliases match type, namespace, and `typeof` positions.
     pub fn visible_in(self, space: ReferenceSpace) -> bool {
         match space {
-            ReferenceSpace::Value => self.contains(Self::IMPORT) || self.in_value_space(),
-            ReferenceSpace::Typeof => self.intersects(Self::ANY_IMPORT) || self.in_value_space(),
-            ReferenceSpace::Type => self.intersects(Self::ANY_IMPORT) || self.in_type_space(),
+            ReferenceSpace::Value => {
+                self.intersects(Self::IMPORT | Self::EXPORT_ALIAS) || self.in_value_space()
+            }
+            ReferenceSpace::Typeof => self.intersects(ts::ALIAS_FLAGS) || self.in_value_space(),
+            ReferenceSpace::Type => self.intersects(ts::ALIAS_FLAGS) || self.in_type_space(),
             ReferenceSpace::Namespace => {
-                self.intersects(Self::ANY_IMPORT) || self.in_namespace_space()
+                self.intersects(ts::ALIAS_FLAGS) || self.in_namespace_space()
             }
             ReferenceSpace::Any => true,
         }
@@ -1008,12 +1016,11 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         self.push_saved_context();
-        let state = ts::namespace_state(tree, declaration.body(tree));
+        let ambient = declaration.declare(tree) || self.ambient;
+        let state = ts::namespace_state(tree, declaration.body(tree), ambient);
         self.pending = PendingBinding {
-            flags: SymbolFlags::NAMESPACE_MODULE.with(
-                SymbolFlags::AMBIENT,
-                declaration.declare(tree) || self.ambient,
-            ) | state.flags(),
+            flags: SymbolFlags::NAMESPACE_MODULE.with(SymbolFlags::AMBIENT, ambient)
+                | state.flags(),
             excludes: if state == ts::NamespaceState::Instantiated {
                 Excludes::VALUE_MODULE
             } else {
@@ -1021,9 +1028,7 @@ impl<'a> SymbolTracker<'a> {
             },
             scope: current_scope,
         };
-        if declaration.declare(tree) {
-            self.ambient = true;
-        }
+        self.ambient = ambient;
     }
 
     pub fn enter_ts_global_declaration(&mut self) {
@@ -1352,17 +1357,15 @@ impl<'a> SymbolTracker<'a> {
         specifier: ExportSpecifier,
         current_scope: ScopeId,
         flags: ReferenceFlags,
-    ) {
-        let Some(local) = specifier.local(tree).as_identifier_name(tree) else {
-            return;
-        };
-        self.add_reference(
+    ) -> Option<ReferenceId> {
+        let local = specifier.local(tree).as_identifier_name(tree)?;
+        Some(self.add_reference(
             tree,
             local.name(tree),
             current_scope,
             local.node_id(),
             flags,
-        );
+        ))
     }
 
     pub fn add_ts_type_predicate_reference(

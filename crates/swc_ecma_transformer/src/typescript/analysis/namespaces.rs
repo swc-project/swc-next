@@ -3,9 +3,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, Decl, DeclData, ImportOrExportKind, NodeId, NodeKindData, Stmt,
     StmtData, SymbolId, TsModuleBody, TsModuleBodyData, TsModuleDeclaration, TsModuleName,
-    TsModuleNameData,
 };
-use swc_next_ecma_semantic::{Semantic, SymbolFlags};
+use swc_next_ecma_semantic2::{Semantic, SymbolFlags};
 
 use super::super::TypeScriptOptions;
 use super::{enums::EnumAnalysis, modules::ModuleAnalysis};
@@ -104,14 +103,8 @@ struct NamespaceFinalizer<'visit, 'ast> {
     enums: &'visit EnumAnalysis<'ast>,
     modules: &'visit ModuleAnalysis,
     analysis: &'visit mut NamespaceAnalysis,
-    namespace_instantiations: FxHashMap<NodeId, NamespaceInstantiation>,
+    namespace_instantiations: FxHashMap<NodeId, bool>,
     runtime_namespace_usage: FxHashMap<SymbolId, bool>,
-}
-
-#[derive(Clone, Copy)]
-struct NamespaceInstantiation {
-    contributes_to_parent: bool,
-    emits_runtime: bool,
 }
 
 impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
@@ -135,37 +128,37 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
         }
     }
 
-    fn namespace_instantiation(
-        &mut self,
-        declaration: TsModuleDeclaration,
-    ) -> NamespaceInstantiation {
+    fn namespace_instantiation(&mut self, declaration: TsModuleDeclaration) -> bool {
         if let Some(&instantiation) = self.namespace_instantiations.get(&declaration.node_id()) {
             return instantiation;
         }
 
-        let body_instantiated = declaration
-            .body(self.ast)
-            .is_none_or(|body| self.namespace_body_is_instantiated(body));
-        let contributes_to_parent =
-            body_instantiated || self.namespace_name_has_runtime_usage(declaration.id(self.ast));
-        let emits_runtime = contributes_to_parent
-            && !declaration.declare(self.ast)
-            && !matches!(
-                self.ast.ts_module_name_data(declaration.id(self.ast)),
-                TsModuleNameData::StringLiteral(_)
-            );
-        let instantiation = NamespaceInstantiation {
-            contributes_to_parent,
-            emits_runtime,
-        };
+        let name = declaration.id(self.ast);
+        let mut binding = name.node_id();
+        while let NodeKindData::TsQualifiedName(qualified) = self.ast.kind_data(binding) {
+            binding = qualified.left(self.ast).node_id();
+        }
+        let flags = self.declaration_flags(binding);
+        let emits_runtime = flags.is_some_and(|flags| {
+            if flags.contains(SymbolFlags::AMBIENT) {
+                return false;
+            }
+            let body_instantiated = flags.contains(SymbolFlags::VALUE_MODULE)
+                && declaration
+                    .body(self.ast)
+                    .is_some_and(|body| self.namespace_body_is_instantiated(body));
+            body_instantiated
+                || (flags.contains(SymbolFlags::CONST_ENUM_ONLY_MODULE)
+                    && self.namespace_name_has_runtime_usage(name))
+        });
         self.namespace_instantiations
-            .insert(declaration.node_id(), instantiation);
-        if instantiation.emits_runtime {
+            .insert(declaration.node_id(), emits_runtime);
+        if emits_runtime {
             self.analysis
                 .instantiated_declarations
                 .insert(declaration.node_id());
         }
-        instantiation
+        emits_runtime
     }
 
     fn namespace_name_has_runtime_usage(&mut self, name: TsModuleName) -> bool {
@@ -187,7 +180,9 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
         let Some(symbol) = self.semantic.symbol_of(node) else {
             return false;
         };
-        let flags = self.semantic.symbol(symbol).flags;
+        let Some(flags) = self.declaration_flags(node) else {
+            return false;
+        };
         if !flags.contains(SymbolFlags::CONST_ENUM_ONLY_MODULE) {
             return false;
         }
@@ -202,6 +197,14 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
             .or_insert_with(|| self.modules.has_runtime_usage(symbol, self.semantic))
     }
 
+    fn declaration_flags(&self, node: NodeId) -> Option<SymbolFlags> {
+        let symbol = self.semantic.symbol_of(node)?;
+        self.semantic
+            .declarations(symbol)
+            .find(|declaration| declaration.node == node)
+            .map(|declaration| declaration.flags)
+    }
+
     fn namespace_body_is_instantiated(&mut self, body: TsModuleBody) -> bool {
         match self.ast.ts_module_body_data(body) {
             TsModuleBodyData::TsModuleBlock(block) => {
@@ -213,7 +216,6 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
             }
             TsModuleBodyData::TsModuleDeclaration(declaration) => {
                 self.namespace_instantiation(declaration)
-                    .contributes_to_parent
             }
         }
     }
@@ -257,10 +259,7 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
                     .expect("an enum declaration has a symbol");
                 !self.enums.is_removable(symbol)
             }
-            DeclData::TsModuleDeclaration(declaration) => {
-                self.namespace_instantiation(declaration)
-                    .contributes_to_parent
-            }
+            DeclData::TsModuleDeclaration(declaration) => self.namespace_instantiation(declaration),
             DeclData::TsImportEqualsDeclaration(declaration) => {
                 if declaration.import_kind(self.ast) == ImportOrExportKind::Type {
                     return false;

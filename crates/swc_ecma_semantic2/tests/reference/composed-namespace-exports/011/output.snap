@@ -35,14 +35,14 @@ const nested: Alias.T = { ok: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 10
       },
       {
         "span": "346..351",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 10
       },
       {
         "span": "385..390",
@@ -57,7 +57,7 @@ const nested: Alias.T = { ok: true };
         "span": "298..299",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       }
@@ -92,10 +92,14 @@ const nested: Alias.T = { ok: true };
     },
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "52..53"
-      ]
+        "52..53",
+        "109..122"
+      ],
+      "alias": {
+        "Target": 3
+      }
     },
     "3": {
       "name": "original",
@@ -106,10 +110,14 @@ const nested: Alias.T = { ok: true };
     },
     "6": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "198..199"
-      ]
+        "198..199",
+        "267..273"
+      ],
+      "alias": {
+        "Target": 1
+      }
     },
     "10": {
       "name": "Alias",

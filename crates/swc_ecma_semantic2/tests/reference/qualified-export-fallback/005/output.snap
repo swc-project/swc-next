@@ -36,21 +36,21 @@ const b: B = { own: true };
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "307..308",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "335..336",
         "scope": 9,
         "space": "Typeof",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       }
     ],
     "B": [
@@ -59,7 +59,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 15
+        "symbol": 16
       }
     ],
     "N": [
@@ -97,7 +97,7 @@ const b: B = { own: true };
         "70..71"
       ]
     },
-    "8": {
+    "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
@@ -105,7 +105,7 @@ const b: B = { own: true };
       ],
       "alias": "Unknown"
     },
-    "15": {
+    "16": {
       "name": "B",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
@@ -126,7 +126,7 @@ const b: B = { own: true };
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 8
     },
     "9": {
       "kind": "Block",

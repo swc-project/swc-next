@@ -13,7 +13,7 @@ import A = C.x;
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 2,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {

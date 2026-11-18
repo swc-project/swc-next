@@ -30,7 +30,12 @@ declare namespace M {
         "uses": [
           "109..110"
         ],
-        "members": {}
+        "members": {
+          "x": {
+            "symbol": 2,
+            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+          }
+        }
       }
     ]
   },

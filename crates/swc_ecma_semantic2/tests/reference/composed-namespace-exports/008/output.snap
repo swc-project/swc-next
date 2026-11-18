@@ -35,21 +35,21 @@ const nested: Alias.T = { ok: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 10
+        "symbol": 11
       },
       {
         "span": "333..338",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 10
+        "symbol": 11
       },
       {
         "span": "372..377",
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "symbol": 10
+        "symbol": 11
       }
     ],
     "N": [
@@ -83,18 +83,41 @@ const nested: Alias.T = { ok: true };
     },
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "52..53"
+        "52..53",
+        "171..184"
+      ],
+      "alias": {
+        "Target": 3
+      }
+    },
+    "3": {
+      "name": "Original",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
+      "declarations": [
+        "89..97"
       ]
     },
     "10": {
+      "name": "Y",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "252..258"
+      ],
+      "alias": {
+        "Target": 1
+      }
+    },
+    "11": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "275..280"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 10
+      }
     }
   },
   "scopes": {

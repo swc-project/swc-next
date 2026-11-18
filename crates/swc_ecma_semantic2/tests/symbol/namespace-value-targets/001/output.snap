@@ -28,42 +28,58 @@ declare namespace N {
           1
         ],
         "members": {
-          "erased": null,
-          "mixed": {
-            "symbol": 2,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          "erased": {
+            "symbol": 3,
+            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
           },
-          "original": null
+          "mixed": {
+            "symbol": 4,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
+          },
+          "original": null,
+          "value": {
+            "symbol": 2,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+          }
         }
       }
     ],
     "mixed": [
       {
-        "id": 2,
-        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "id": 4,
+        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "137..142",
-            "scope": 2
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "157..174",
+            "scope": 2,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
-        ]
+        ],
+        "alias": {
+          "Target": 1
+        }
       },
       {
-        "id": 3,
+        "id": 5,
         "flags": "0x0",
         "declarations": [
           {
             "span": "137..142",
             "scope": 2,
             "flags": "INTERFACE | AMBIENT | EXPORTED",
-            "node_symbol": 2,
-            "owner": 2
+            "node_symbol": 4,
+            "owner": 4
           }
         ],
         "bindings": [
           2
         ],
-        "export_symbol": 2
+        "export_symbol": 4
       }
     ],
     "original": [

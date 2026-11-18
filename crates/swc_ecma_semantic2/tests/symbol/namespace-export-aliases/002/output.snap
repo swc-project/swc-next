@@ -24,7 +24,12 @@ declare namespace N {
         "bindings": [
           0
         ],
-        "members": {}
+        "members": {
+          "X": {
+            "symbol": 2,
+            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+          }
+        }
       }
     ],
     "X": [
@@ -43,6 +48,19 @@ declare namespace N {
         "uses": [
           "48..49"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "declarations": [
+          {
+            "span": "48..49",
+            "scope": 2
+          }
+        ],
+        "alias": {
+          "Target": 0
+        }
       }
     ]
   },

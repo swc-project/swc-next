@@ -5,13 +5,13 @@
 
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{Ast, NodeId, Program, SymbolId, TsEnumMember, VisitWith};
-use swc_next_ecma_semantic::{Semantic, SymbolFlags};
+use swc_next_ecma_semantic2::{Semantic, SymbolFlags};
 
 use self::{
     collector::AnalysisCollector, enums::EnumAnalysis, modules::ModuleAnalysis,
     namespaces::NamespaceAnalysis,
 };
-use super::TypeScriptOptions;
+use super::{TypeScriptOptions, bindings::resolve_value_binding};
 mod availability;
 mod collector;
 mod constants;
@@ -40,16 +40,14 @@ impl<'ast> TypeScriptAnalysis<'ast> {
     ) -> Self {
         // Ordinary imports use semantic reference flags directly during lowering.
         // Only enums, namespaces and import-equals need a precomputed emission plan.
-        let source_module = semantic.ts_source_module_symbol();
         let needs_plan = semantic.iter_symbols().any(|entry| {
-            Some(entry.id) != source_module
-                && entry.symbol.flags.intersects(
-                    SymbolFlags::REGULAR_ENUM
-                        | SymbolFlags::CONST_ENUM
-                        | SymbolFlags::VALUE_MODULE
-                        | SymbolFlags::NAMESPACE_MODULE
-                        | SymbolFlags::IMPORT_EQUALS,
-                )
+            entry.symbol.flags.intersects(
+                SymbolFlags::REGULAR_ENUM
+                    | SymbolFlags::CONST_ENUM
+                    | SymbolFlags::VALUE_MODULE
+                    | SymbolFlags::NAMESPACE_MODULE
+                    | SymbolFlags::IMPORT_EQUALS,
+            )
         });
         if !needs_plan {
             return Self {
@@ -74,7 +72,7 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         program.visit_with(&mut collector);
 
         let (enums, inlined_references) = EnumAnalysis::finish(ast, semantic, collector.enums);
-        collector.modules.apply_enum_policy(semantic, &enums);
+        collector.modules.apply_enum_policy(&enums);
         let modules = ModuleAnalysis::finish(
             collector.modules,
             semantic,
@@ -97,8 +95,8 @@ impl<'ast> TypeScriptAnalysis<'ast> {
     }
 
     pub(super) fn value_is_erased(&self, symbol: SymbolId, semantic: &Semantic<'_>) -> bool {
-        let target = semantic.ts_import_alias_target(symbol).unwrap_or(symbol);
-        self.enums.is_removable(target)
+        resolve_value_binding(semantic, symbol)
+            .is_some_and(|target| self.enums.is_removable(target))
     }
 
     pub(super) fn import_equals_is_erased(&self, node: NodeId) -> bool {

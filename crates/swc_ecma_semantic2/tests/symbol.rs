@@ -61,6 +61,8 @@ struct TestMember {
     enum_flags: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     namespace_flags: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    class_static_flags: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -102,6 +104,7 @@ impl SymbolSnapshotBuilder<'_, '_> {
                     symbol: member.symbol.index(),
                     enum_flags: member.enum_flags.map(flags),
                     namespace_flags: member.namespace_flags.map(flags),
+                    class_static_flags: member.class_static_flags.map(flags),
                 };
                 (String::from_utf8_lossy(name).into_owned(), Some(member))
             })
@@ -156,7 +159,7 @@ impl SymbolSnapshotBuilder<'_, '_> {
                 .collect(),
             export_symbol: semantic.ts_export_symbol(id).map(Idx::index),
             members: (is_container || !members.is_empty()).then_some(members),
-            alias: semantic.ts_import_alias(id).map(TestAlias::from),
+            alias: semantic.ts_alias(id).map(TestAlias::from),
             import,
         }
     }

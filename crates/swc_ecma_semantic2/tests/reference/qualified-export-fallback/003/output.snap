@@ -34,21 +34,21 @@ const b: B = { own: true };
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "283..284",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "311..312",
         "scope": 8,
         "space": "Typeof",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       }
     ],
     "B": [
@@ -57,7 +57,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 15
+        "symbol": 16
       }
     ],
     "N": [
@@ -87,14 +87,14 @@ const b: B = { own: true };
         "29..30"
       ]
     },
-    "4": {
+    "5": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "115..116"
       ]
     },
-    "8": {
+    "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
@@ -102,14 +102,14 @@ const b: B = { own: true };
       ],
       "alias": "Unknown"
     },
-    "15": {
+    "16": {
       "name": "B",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "323..324"
       ],
       "alias": {
-        "Target": 4
+        "Target": 5
       }
     }
   },
@@ -123,7 +123,7 @@ const b: B = { own: true };
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 8
     },
     "8": {
       "kind": "Block",

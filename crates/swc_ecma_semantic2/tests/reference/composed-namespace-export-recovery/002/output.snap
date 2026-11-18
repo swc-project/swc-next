@@ -29,14 +29,14 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 7
       },
       {
         "span": "297..302",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": 6
+        "symbol": 7
       }
     ],
     "N": [
@@ -44,7 +44,7 @@ const queried: typeof Alias = 1;
         "span": "226..227",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
+        "access": "None",
         "symbol": 0,
         "import_equals": true
       }
@@ -60,12 +60,24 @@ const queried: typeof Alias = 1;
       ]
     },
     "6": {
+      "name": "Y",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "195..201"
+      ],
+      "alias": {
+        "Target": 1
+      }
+    },
+    "7": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "218..223"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 6
+      }
     }
   },
   "scopes": {

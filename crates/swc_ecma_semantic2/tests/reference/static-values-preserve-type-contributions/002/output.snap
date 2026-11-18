@@ -27,21 +27,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 3
+        "symbol": 4
       },
       {
         "span": "168..173",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       },
       {
         "span": "213..218",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       }
     ],
     "C": [
@@ -64,14 +64,23 @@ const queried: typeof Alias = 1;
         "49..50"
       ]
     },
-    "3": {
+    "1": {
+      "name": "x",
+      "flags": "CLASS_STATIC_MEMBER",
+      "declarations": [
+        "23..36"
+      ]
+    },
+    "4": {
       "name": "Alias",
       "flags": "INTERFACE | IMPORT | IMPORT_EQUALS",
       "declarations": [
         "86..91",
         "109..114"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

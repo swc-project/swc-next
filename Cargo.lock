@@ -196,6 +196,7 @@ dependencies = [
  "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_ecma_semantic2",
  "swc_next_ecma_transformer",
  "swc_next_formatter",
  "swc_next_type_strip",
@@ -2343,6 +2344,7 @@ dependencies = [
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_ecma_semantic2",
  "swc_next_ecma_transformer",
 ]
 
@@ -3812,6 +3814,7 @@ dependencies = [
  "swc_next_ecma_minifier",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_ecma_semantic2",
  "swc_next_ecma_transformer",
 ]
 
@@ -3938,7 +3941,7 @@ dependencies = [
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
- "swc_next_ecma_semantic",
+ "swc_next_ecma_semantic2",
  "zmij_ecma",
 ]
 

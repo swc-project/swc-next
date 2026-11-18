@@ -30,7 +30,7 @@ const result: Result = { right: true };
         "scope": 5,
         "space": "Any",
         "access": "None",
-        "symbol": 4
+        "symbol": 5
       }
     ],
     "X": [
@@ -39,24 +39,27 @@ const result: Result = { right: true };
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "symbol": 0
+        "symbol": 6
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "X",
-      "flags": "INTERFACE",
-      "declarations": [
-        "21..22"
-      ]
-    },
-    "4": {
+    "5": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
         "154..155"
       ]
+    },
+    "6": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "190..196"
+      ],
+      "alias": {
+        "Target": 5
+      }
     }
   },
   "scopes": {

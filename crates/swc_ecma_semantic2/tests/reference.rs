@@ -11,7 +11,7 @@ use support::{
 };
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, SymbolId};
-use swc_next_ecma_semantic2::{Semantic, TsImportAlias};
+use swc_next_ecma_semantic2::{Semantic, TsAlias};
 
 #[derive(Serialize)]
 struct TestReferenceSnapshot {
@@ -59,8 +59,8 @@ fn add_symbols(
     target: SymbolId,
 ) {
     let export = semantic.ts_export_symbol(target);
-    let alias = match semantic.ts_import_alias(target) {
-        Some(TsImportAlias::Target(target)) => Some(target),
+    let alias = match semantic.ts_alias(target) {
+        Some(TsAlias::Target(target)) => Some(target),
         _ => None,
     };
     // Include direct links while keeping long alias chains out of the snapshot.
@@ -75,7 +75,7 @@ fn add_symbols(
                     .map(|declaration| span(ast, declaration.node))
                     .collect(),
                 export_symbol: semantic.ts_export_symbol(id).map(Idx::index),
-                alias: semantic.ts_import_alias(id).map(TestAlias::from),
+                alias: semantic.ts_alias(id).map(TestAlias::from),
             }
         });
     }

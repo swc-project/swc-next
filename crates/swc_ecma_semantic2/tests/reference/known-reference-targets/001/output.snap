@@ -26,17 +26,28 @@ namespace Use {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": 4
+        "symbol": 6
       }
     ]
   },
   "symbols": {
-    "4": {
-      "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+    "2": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED | CLASS_STATIC_MEMBER",
       "declarations": [
-        "115..116"
+        "33..46",
+        "102..103"
       ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "147..148"
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {

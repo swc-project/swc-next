@@ -3,7 +3,12 @@ use std::{convert::Infallible, hash::BuildHasher};
 use swc_next_allocator::IndexSlice;
 
 use super::*;
-use crate::{Scopes, SymbolTables, Symbols, ts::TsImportAlias};
+use crate::{Scopes, SymbolTables, Symbols, ts::TsAlias};
+
+const DECLARED_MEANINGS: SymbolFlags = SymbolFlags::VALUE_SPACE
+    .union(SymbolFlags::TYPE_SPACE)
+    .union(SymbolFlags::NAMESPACE_SPACE)
+    .union(SymbolFlags::EXPORT_VALUE);
 
 #[derive(Clone, Copy)]
 struct Binding {
@@ -48,7 +53,7 @@ impl AliasMeaning {
         Self {
             spaces,
             owner: flags.in_namespace_space().then_some(binding.symbol),
-            type_only: flags.contains(SymbolFlags::TYPE_IMPORT),
+            type_only: flags.intersects(TYPE_ONLY_ALIAS_FLAGS),
         }
     }
 
@@ -84,11 +89,11 @@ impl AliasMeaning {
 
 impl Binding {
     fn meaning(self, alias: Option<AliasMeaning>) -> AliasMeaning {
-        let Some(alias) = alias.filter(|_| self.flags.intersects(SymbolFlags::ANY_IMPORT)) else {
+        let Some(alias) = alias.filter(|_| self.flags.intersects(ALIAS_FLAGS)) else {
             return AliasMeaning::direct(self);
         };
         let mut direct = AliasMeaning::direct(Self {
-            flags: self.flags - SymbolFlags::ANY_IMPORT,
+            flags: self.flags - ALIAS_FLAGS,
             ..self
         });
         direct.spaces |= alias.spaces;
@@ -100,7 +105,7 @@ impl Binding {
     }
 
     fn visible_in(self, alias: Option<AliasMeaning>, space: ReferenceSpace) -> bool {
-        if alias.is_some() && self.flags.intersects(SymbolFlags::ANY_IMPORT) {
+        if alias.is_some() && self.flags.intersects(ALIAS_FLAGS) {
             return self.meaning(alias).visible_in(space);
         }
         self.flags.visible_in(space)
@@ -147,7 +152,12 @@ impl LexicalLookup<'_, '_> {
 
     fn export(&self, local: SymbolId) -> Option<Binding> {
         let &symbol = self.ts.export_symbols.get(&local)?;
-        Some(self.binding(symbol))
+        let mut binding = self.binding(symbol);
+        // Qualified contributions do not add meanings to the local declaration.
+        binding
+            .flags
+            .remove(SymbolFlags::CLASS_STATIC_MEMBER | EXPORT_ALIAS_FLAGS);
+        Some(binding)
     }
 
     fn public_binding(
@@ -160,13 +170,20 @@ impl LexicalLookup<'_, '_> {
         match kind {
             ScopeKind::Module => self.export(local?),
             ScopeKind::TsEnum | ScopeKind::TsModule => {
-                let owner = self.ts.ts_owner(scope)?;
-                let member = self.ts.member(owner, name)?;
-                let flags = if kind == ScopeKind::TsEnum {
+                let container = self.ts.containers.get(&scope)?;
+                let member = self.ts.member(container.owner, name)?;
+                let mut flags = if kind == ScopeKind::TsEnum {
                     member.enum_flags?
                 } else {
                     member.namespace_flags?
                 };
+                if container.ambient && flags.intersects(EXPORT_ALIAS_FLAGS) {
+                    // Export specifiers are public names outside their ambient body.
+                    flags.remove(EXPORT_ALIAS_FLAGS);
+                    if !flags.intersects(DECLARED_MEANINGS | SymbolFlags::ANY_IMPORT) {
+                        return None;
+                    }
+                }
                 Some(Binding {
                     symbol: member.symbol,
                     flags,
@@ -222,7 +239,7 @@ impl LexicalLookup<'_, '_> {
 }
 
 struct ResolvedAlias {
-    target: TsImportAlias,
+    target: TsAlias,
     meaning: AliasMeaning,
     root: Option<Binding>,
 }
@@ -233,7 +250,7 @@ struct AliasResolver<'s, 'a> {
     lookup: &'s LexicalLookup<'s, 'a>,
     tree: &'s Ast<'a>,
     references: &'s IndexSlice<ReferenceId, [Reference]>,
-    aliases: &'s FxHashMap<SymbolId, ImportEquals>,
+    aliases: &'s FxHashMap<SymbolId, Alias>,
     active: FxHashSet<SymbolId>,
     resolved: FxHashMap<SymbolId, ResolvedAlias>,
 }
@@ -272,15 +289,14 @@ impl AliasResolver<'_, '_> {
 
     fn alias_meaning(&self, binding: Binding) -> Result<Option<AliasMeaning>, SymbolId> {
         let symbol = binding.symbol;
-        if !binding.flags.intersects(SymbolFlags::ANY_IMPORT) || !self.aliases.contains_key(&symbol)
-        {
+        if !binding.flags.intersects(ALIAS_FLAGS) || !self.aliases.contains_key(&symbol) {
             return Ok(None);
         }
         if let Some(alias) = self.resolved.get(&symbol) {
             return Ok(Some(alias.meaning));
         }
         if self.active.contains(&symbol) {
-            let type_only = binding.flags.contains(SymbolFlags::TYPE_IMPORT);
+            let type_only = binding.flags.intersects(TYPE_ONLY_ALIAS_FLAGS);
             return Ok(Some(AliasMeaning::unknown(type_only)));
         }
         Err(symbol)
@@ -308,16 +324,17 @@ impl AliasResolver<'_, '_> {
                 Ok(binding.visible_in(self.alias_meaning(binding)?, space))
             })
         };
-        let mut binding = lookup(ReferenceSpace::Namespace)?;
-        if binding.is_none() && alias.members.is_empty() {
+        let space = root.flags.space;
+        let mut binding = lookup(space)?;
+        if binding.is_none() && space == ReferenceSpace::Namespace && alias.members.is_empty() {
             binding = lookup(ReferenceSpace::Any)?;
         }
         let type_only = self.lookup.symbols[symbol]
             .flags
-            .contains(SymbolFlags::TYPE_IMPORT);
+            .intersects(TYPE_ONLY_ALIAS_FLAGS);
         let (target, mut meaning) = match binding {
             Some(binding) => self.resolve_path(binding, &alias.members)?,
-            None => (TsImportAlias::Unknown, AliasMeaning::unknown(false)),
+            None => (TsAlias::Unknown, AliasMeaning::unknown(false)),
         };
         meaning.restrict_value(type_only);
         Ok(ResolvedAlias {
@@ -331,7 +348,7 @@ impl AliasResolver<'_, '_> {
         &self,
         mut binding: Binding,
         members: &[AstUtf8],
-    ) -> Result<(TsImportAlias, AliasMeaning), SymbolId> {
+    ) -> Result<(TsAlias, AliasMeaning), SymbolId> {
         let mut meaning = self.target_meaning(binding)?;
         for &name in members {
             let name = self.tree.get_utf8(name).as_bytes();
@@ -340,7 +357,7 @@ impl AliasResolver<'_, '_> {
                 .owner
                 .and_then(|owner| self.lookup.ts.member(owner, name))
             else {
-                return Ok((TsImportAlias::Unknown, AliasMeaning::unknown(type_only)));
+                return Ok((TsAlias::Unknown, AliasMeaning::unknown(type_only)));
             };
             binding = Binding {
                 symbol: member.symbol,
@@ -350,21 +367,17 @@ impl AliasResolver<'_, '_> {
             meaning.restrict_value(type_only);
         }
         let symbol = binding.symbol;
-        let declared_meanings = SymbolFlags::VALUE_SPACE
-            | SymbolFlags::TYPE_SPACE
-            | SymbolFlags::NAMESPACE_SPACE
-            | SymbolFlags::EXPORT_VALUE;
-        let target = if binding.flags.intersects(SymbolFlags::ANY_IMPORT)
-            && !binding.flags.intersects(declared_meanings)
+        let target = if binding.flags.intersects(ALIAS_FLAGS)
+            && !binding.flags.intersects(DECLARED_MEANINGS)
             && (self.active.contains(&symbol)
                 || self
                     .resolved
                     .get(&symbol)
-                    .is_some_and(|alias| alias.target == TsImportAlias::Unknown))
+                    .is_some_and(|alias| alias.target == TsAlias::Unknown))
         {
-            TsImportAlias::Unknown
+            TsAlias::Unknown
         } else {
-            TsImportAlias::Target(symbol)
+            TsAlias::Target(symbol)
         };
         Ok((target, meaning))
     }
@@ -427,7 +440,7 @@ impl SymbolTracker<'_> {
         }
 
         for (symbol, alias) in aliases {
-            self.ts_bindings.import_aliases.insert(symbol, alias.target);
+            self.ts_bindings.aliases.insert(symbol, alias.target);
         }
     }
 }

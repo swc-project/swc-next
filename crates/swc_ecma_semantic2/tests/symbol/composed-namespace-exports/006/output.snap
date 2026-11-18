@@ -26,7 +26,7 @@ const queried: typeof Alias = 1;
   "symbols": {
     "Alias": [
       {
-        "id": 6,
+        "id": 7,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -42,7 +42,9 @@ const queried: typeof Alias = 1;
           "269..274",
           "316..321"
         ],
-        "alias": "Unknown",
+        "alias": {
+          "Target": 3
+        },
         "import": {
           "initializer": "221..222"
         }
@@ -76,42 +78,51 @@ const queried: typeof Alias = 1;
             "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
           "X": {
-            "symbol": 3,
-            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+            "symbol": 4,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
     ],
     "X": [
       {
-        "id": 3,
-        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "id": 4,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "126..127",
-            "scope": 4
+            "scope": 4,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "187..200",
+            "scope": 4,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "uses": [
           "73..74"
-        ]
+        ],
+        "alias": {
+          "Target": 6
+        }
       },
       {
-        "id": 4,
+        "id": 5,
         "flags": "EXPORT_VALUE",
         "declarations": [
           {
             "span": "126..127",
             "scope": 4,
             "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
-            "node_symbol": 3,
-            "owner": 3
+            "node_symbol": 4,
+            "owner": 4
           }
         ],
         "bindings": [
           4
         ],
-        "export_symbol": 3
+        "export_symbol": 4
       }
     ]
   },

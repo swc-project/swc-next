@@ -6,7 +6,8 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
+use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+use swc_next_ecma_semantic2::{AnalyzeOptions, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,

@@ -60,6 +60,11 @@ declare namespace N {
           {
             "span": "55..56",
             "scope": 2
+          },
+          {
+            "span": "73..74",
+            "scope": 2,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "bindings": [

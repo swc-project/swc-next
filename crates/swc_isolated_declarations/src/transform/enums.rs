@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
     Ast, AstWtf8, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKey,
     PropertyKeyData, Span, SymbolId, TsEnumDeclaration, UnaryOperator,
 };
-use swc_next_ecma_semantic2::{ReferenceSpace, Semantic, SymbolFlags, TsImportAlias};
+use swc_next_ecma_semantic2::{ReferenceSpace, Semantic, SymbolFlags, TsAlias};
 use zmij_ecma::Buffer;
 
 use crate::surface::unparenthesized;
@@ -283,14 +283,19 @@ fn resolve_container(semantic: &Semantic<'_>, mut symbol: SymbolId) -> Option<Sy
     let mut aliases = FxHashSet::default();
     loop {
         symbol = value_binding(semantic, symbol);
-        let Some(alias) = semantic.ts_import_alias(symbol) else {
+        let Some(alias) = semantic.ts_alias(symbol) else {
             return Some(symbol);
         };
         let flags = semantic.symbol(symbol).flags;
-        if flags.contains(SymbolFlags::TYPE_IMPORT) || !aliases.insert(symbol) {
+        if flags.in_value_space() {
+            return Some(symbol);
+        }
+        if flags.intersects(SymbolFlags::TYPE_IMPORT | SymbolFlags::TYPE_EXPORT_ALIAS)
+            || !aliases.insert(symbol)
+        {
             return None;
         }
-        let TsImportAlias::Target(target) = alias else {
+        let TsAlias::Target(target) = alias else {
             return None;
         };
         symbol = target;

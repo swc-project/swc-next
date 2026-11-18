@@ -94,10 +94,14 @@ const typed: Alias = { own: true };
     },
     "3": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "90..91"
-      ]
+        "90..91",
+        "106..112"
+      ],
+      "alias": {
+        "Target": 2
+      }
     },
     "4": {
       "name": "Y",
@@ -109,10 +113,14 @@ const typed: Alias = { own: true };
     },
     "7": {
       "name": "Z",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "164..165"
-      ]
+        "164..165",
+        "204..210"
+      ],
+      "alias": {
+        "Target": 4
+      }
     },
     "9": {
       "name": "Alias",

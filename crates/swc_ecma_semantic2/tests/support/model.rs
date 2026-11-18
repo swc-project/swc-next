@@ -6,7 +6,7 @@ use swc_next_ecma_ast::{
     Ast, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId, TsImportEqualsDeclaration,
     TsModuleReferenceData, Visit, VisitWith,
 };
-use swc_next_ecma_semantic2::{Semantic, SymbolFlags, TsImportAlias};
+use swc_next_ecma_semantic2::{Semantic, SymbolFlags, TsAlias};
 
 pub(crate) fn span(ast: &Ast<'_>, node: NodeId) -> String {
     let span = ast.span(node);
@@ -69,11 +69,11 @@ pub(crate) enum TestAlias {
     Unknown,
 }
 
-impl From<TsImportAlias> for TestAlias {
-    fn from(alias: TsImportAlias) -> Self {
+impl From<TsAlias> for TestAlias {
+    fn from(alias: TsAlias) -> Self {
         match alias {
-            TsImportAlias::Target(id) => Self::Target(id.index()),
-            TsImportAlias::Unknown => Self::Unknown,
+            TsAlias::Target(id) => Self::Target(id.index()),
+            TsAlias::Unknown => Self::Unknown,
         }
     }
 }

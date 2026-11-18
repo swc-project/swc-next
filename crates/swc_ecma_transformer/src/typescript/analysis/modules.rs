@@ -1,9 +1,15 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use swc_next_ecma_ast::{Ast, ImportOrExportKind, NodeId, SymbolId, TsImportEqualsDeclaration};
-use swc_next_ecma_semantic::{Semantic, SymbolFlags, scope::ScopeKind};
+use swc_next_ecma_ast::{
+    Ast, ImportOrExportKind, NodeId, NodeKindData, SymbolId, TsImportEqualsDeclaration,
+    TsModuleReferenceData,
+};
+use swc_next_ecma_semantic2::{ScopeKind, Semantic, SymbolFlags};
 
-use super::super::TypeScriptOptions;
+use super::super::{
+    TypeScriptOptions,
+    bindings::{resolve_value_binding, value_binding},
+};
 
 pub(super) struct ModuleCollector {
     initializer_references: FxHashSet<NodeId>,
@@ -14,7 +20,8 @@ pub(super) struct ModuleCollector {
 
 struct AliasDependency {
     declaration: NodeId,
-    targets: Vec<SymbolId>,
+    root: Option<SymbolId>,
+    target: Option<SymbolId>,
     global: bool,
 }
 
@@ -28,14 +35,10 @@ impl ModuleCollector {
         }
     }
 
-    pub(super) fn apply_enum_policy(
-        &mut self,
-        semantic: &Semantic<'_>,
-        enums: &super::enums::EnumAnalysis<'_>,
-    ) {
-        self.alias_dependencies.retain(|&alias, dependency| {
-            let erased = semantic
-                .ts_import_alias_target(alias)
+    pub(super) fn apply_enum_policy(&mut self, enums: &super::enums::EnumAnalysis<'_>) {
+        self.alias_dependencies.retain(|_, dependency| {
+            let erased = dependency
+                .target
                 .is_some_and(|target| enums.is_removable(target));
             if erased {
                 self.erased_aliases.insert(dependency.declaration);
@@ -51,7 +54,16 @@ impl ModuleCollector {
         semantic: &Semantic<'_>,
     ) {
         let alias = semantic.symbol_of(declaration.id(ast).node_id());
-        let reference = semantic.import_equals_reference(ast, declaration);
+        let reference = match ast.ts_module_reference_data(declaration.module_reference(ast)) {
+            TsModuleReferenceData::TsTypeName(name) => {
+                let mut root = name.node_id();
+                while let NodeKindData::TsQualifiedName(qualified) = ast.kind_data(root) {
+                    root = qualified.left(ast).node_id();
+                }
+                semantic.reference_of(root)
+            }
+            TsModuleReferenceData::TsExternalModuleReference(_) => None,
+        };
         if self.collect_runtime_usage
             && let Some(reference) = reference
         {
@@ -74,24 +86,20 @@ impl ModuleCollector {
         // A script's global aliases can be read by other scripts. The initializer
         // reference belongs to the declaration's lexical scope, even when its
         // target resolves to a symbol in another scope.
-        let scope = semantic.reference(reference).scope;
-        let global = semantic.scope(scope).kind == ScopeKind::Global;
-        let mut targets: Vec<_> = semantic
-            .reference_value_targets(ast, reference)
-            .filter_map(|target| target.candidate())
-            .collect();
+        let reference = semantic.reference(reference);
+        let global = semantic.scope(reference.scope).kind == ScopeKind::Global;
+        let root = reference
+            .symbol
+            .map(|symbol| value_binding(semantic, symbol));
         // The root preserves initialization dependencies; the terminal target
         // also keeps an otherwise erased namespace object available.
-        if let Some(target) = semantic.ts_import_alias_target(alias)
-            && !targets.contains(&target)
-        {
-            targets.push(target);
-        }
+        let target = resolve_value_binding(semantic, alias);
         self.alias_dependencies.insert(
             alias,
             AliasDependency {
                 declaration: declaration.node_id(),
-                targets,
+                root,
+                target,
                 global,
             },
         );
@@ -103,6 +111,7 @@ pub(super) struct ModuleAnalysis {
     ignored_references: FxHashSet<NodeId>,
     erased_aliases: FxHashSet<NodeId>,
     propagated_runtime_usage: FxHashSet<SymbolId>,
+    export_locals: FxHashMap<SymbolId, Vec<SymbolId>>,
 }
 
 impl ModuleAnalysis {
@@ -128,6 +137,16 @@ impl ModuleAnalysis {
         if !collector.collect_runtime_usage {
             return analysis;
         }
+        for entry in semantic.iter_symbols() {
+            if entry.symbol.flags.contains(SymbolFlags::EXPORT_VALUE) {
+                let export = value_binding(semantic, entry.id);
+                analysis
+                    .export_locals
+                    .entry(export)
+                    .or_default()
+                    .push(entry.id);
+            }
+        }
         let mut worklist: Vec<_> = analysis.propagated_runtime_usage.iter().copied().collect();
         for (&alias, dependency) in &collector.alias_dependencies {
             if dependency.global
@@ -143,7 +162,7 @@ impl ModuleAnalysis {
             let Some(dependency) = collector.alias_dependencies.get(&alias) else {
                 continue;
             };
-            for &target in &dependency.targets {
+            for target in [dependency.root, dependency.target].into_iter().flatten() {
                 if analysis.propagated_runtime_usage.insert(target) {
                     worklist.push(target);
                 }
@@ -162,10 +181,19 @@ impl ModuleAnalysis {
     }
 
     fn has_direct_runtime_usage(&self, symbol: SymbolId, semantic: &Semantic<'_>) -> bool {
-        semantic.uses(symbol).iter().any(|&reference| {
-            let reference = semantic.reference(reference);
-            !self.ignored_references.contains(&reference.node)
-                && (reference.flags.is_read() || reference.flags.is_write())
-        })
+        std::iter::once(symbol)
+            .chain(
+                self.export_locals
+                    .get(&symbol)
+                    .into_iter()
+                    .flatten()
+                    .copied(),
+            )
+            .flat_map(|symbol| semantic.uses(symbol))
+            .any(|&reference| {
+                let reference = semantic.reference(reference);
+                !self.ignored_references.contains(&reference.node)
+                    && (reference.flags.is_read() || reference.flags.is_write())
+            })
     }
 }

@@ -30,21 +30,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 6
+        "symbol": 7
       },
       {
         "span": "269..274",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 7
       },
       {
         "span": "316..321",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": 6
+        "symbol": 7
       }
     ],
     "N": [
@@ -63,7 +63,7 @@ const queried: typeof Alias = 1;
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       }
     ]
   },
@@ -77,19 +77,42 @@ const queried: typeof Alias = 1;
       ]
     },
     "3": {
-      "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+      "name": "Y",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "126..127"
-      ]
+        "73..79"
+      ],
+      "alias": {
+        "Target": 4
+      }
+    },
+    "4": {
+      "name": "X",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "126..127",
+        "187..200"
+      ],
+      "alias": {
+        "Target": 6
+      }
     },
     "6": {
+      "name": "Original",
+      "flags": "INTERFACE | AMBIENT",
+      "declarations": [
+        "144..152"
+      ]
+    },
+    "7": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "213..218"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 3
+      }
     }
   },
   "scopes": {

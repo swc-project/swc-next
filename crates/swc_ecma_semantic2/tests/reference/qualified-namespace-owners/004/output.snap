@@ -28,7 +28,7 @@ namespace Use {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 10
       }
     ],
     "N": [
@@ -50,7 +50,7 @@ namespace Use {
         "18..19"
       ]
     },
-    "8": {
+    "10": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
@@ -64,7 +64,7 @@ namespace Use {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 9
     }
   }
 }

@@ -66,21 +66,24 @@ container_members[owner][name] → canonical export symbol
   只统计一次。
 - `export { x as y }` 和 `export import A = ...` 按 alias 处理。default 使用下文的绑定规则。
 
-## Import alias
+## Alias
 
-- `import_aliases` 记录 alias 的目标解析结果。缺少 entry 表示该
-  symbol 不属于此表管理的 import alias。引用保留 alias 身份。
+- `Semantic::ts_alias` 查询 import-equals 和 ambient namespace 导出别名的解析结果。
+  引用保留 alias 身份。
 - `Target(symbol)` 表示直接目标身份已知，目标本身可以是 alias；可见性沿目标链
   计算。
 - `Unknown` 表示无法解析目标。引用仍可在该 alias 允许的声明空间命中其词法绑定。
 - 构建期间的未解析、正在解析、已完成状态以及有效声明空间只保存在 binder
   临时数据中。`Semantic::lookup` 提供词法查找。transform 对已有 AST 引用读取
   `Reference.symbol`，其中已考虑限定路径上的可见性。
-- type-only 语法属性使用 `SymbolFlags::TYPE_IMPORT`，沿链查询时累计各节点限制。
+- type-only 语法属性使用 `TYPE_IMPORT` 或 `TYPE_EXPORT_ALIAS`，沿链查询时累计各节点限制。
   解析 `N.X` 时也检查限定路径上 `N` 的 flags。经过 type-only alias 后移除
   `VALUE`，保留 `TYPEOF`，已知目标仍记为 `Target(X)`。
-- `export import A = ...` 参与 import alias 解析。普通 export specifier 当前只
-  解析本地引用，其公开 alias target 暂不建模。
+- ambient namespace 中的 `export { E as F }` 在成员表中为 `F` 创建独立的公开
+  symbol，并在声明所在的 body 中解析 `E`。ambient body 的裸名查找跳过这些公开
+  别名。合并到同一 owner 的 runtime namespace 可以看到它们。
+- `export type` 别名与 type-only import 一样限制 value 查找。ambient namespace 的
+  value export 指向本地 value import-equals 时，该导出参与 namespace 实例化。
 - ES import 和 `import A = require(...)` 提供词法绑定，其可见性由 import flags 决定。
   经由它们访问文件外的限定成员时，成员目标记为 `Unknown`。
 
@@ -121,16 +124,19 @@ container_members[owner][name] → canonical export symbol
 - 同名直接导出声明通过 local entry 的 export 链接查找已有 export symbol。
 - 名称查找在 local 含义不匹配请求空间时，检查关联 export 的相应声明贡献。
   类型导出的 local flags 可以为空，类型含义保存在 export symbol 上。
-- 文件是否为 module 使用现有 source type。公开 export alias 和模块 exports
+- 文件是否为 module 使用现有 source type。顶层公开 export alias 和模块 exports
   查询不属于当前实现范围。
 
 ## Class / function 属性
 
 - import-equals 先按 namespace 空间解析左侧。裸名在没有 namespace 绑定时，
   再按 `Any` 查找。
-- 限定成员查找使用 namespace 和 enum 的共享成员，以及点号赋值为函数声明引入的
-  value 属性。收齐普通声明后、解析别名前写入成员表。已有声明优先于 expando。
-- 计算属性和 class 静态成员尚未建模。找不到成员时，目标记为 `Unknown`。
+- 限定成员查找合并 namespace、enum 和 class 静态成员的贡献，也查找点号赋值为函数
+  声明引入的 value 属性。已有声明优先于 expando。
+- 具名 class 的静态字段、方法和访问器支持非计算的标识符和字符串键。同名 namespace
+  导出可以和静态成员共用 symbol，各次声明保留各自的贡献。namespace 裸名查找
+  只使用 namespace 贡献。
+- 限定成员查找失败时，目标记为 `Unknown`。
 
 ## Declare global
 

@@ -31,14 +31,14 @@ namespace Use {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       },
       {
         "span": "291..292",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "symbol": 6
+        "symbol": 7
       }
     ],
     "N": [
@@ -60,28 +60,28 @@ namespace Use {
         "29..30"
       ]
     },
-    "4": {
+    "5": {
       "name": "x",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "115..116"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "182..183"
       ]
     },
-    "8": {
+    "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "214..215"
       ],
       "alias": {
-        "Target": 4
+        "Target": 5
       }
     }
   },
@@ -90,7 +90,7 @@ namespace Use {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 7
+      "container_owner": 8
     }
   }
 }

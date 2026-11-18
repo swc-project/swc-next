@@ -56,10 +56,14 @@ declare namespace N {
     },
     "3": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "90..91"
-      ]
+        "90..91",
+        "106..112"
+      ],
+      "alias": {
+        "Target": 2
+      }
     },
     "4": {
       "name": "Y",

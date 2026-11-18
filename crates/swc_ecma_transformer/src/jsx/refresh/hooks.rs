@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
     Visit, VisitWith,
 };
 
-use swc_next_ecma_semantic::{Semantic, scope::ScopeKind};
+use swc_next_ecma_semantic2::{ScopeKind, Semantic};
 
 pub(super) struct HookSignature {
     pub(super) key: String,

@@ -47,10 +47,14 @@ namespace N {
     },
     "2": {
       "name": "Item",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
+        "85..98",
         "117..121"
-      ]
+      ],
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

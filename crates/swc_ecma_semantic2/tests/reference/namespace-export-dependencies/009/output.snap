@@ -340,7 +340,7 @@ declare namespace N0 {
         "scope": 130,
         "space": "Any",
         "access": "None",
-        "symbol": 129
+        "symbol": 193
       }
     ],
     "X": [
@@ -349,458 +349,1098 @@ declare namespace N0 {
         "scope": 66,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 130
       },
       {
         "span": "6360..6361",
         "scope": 67,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 131
       },
       {
         "span": "6909..6910",
         "scope": 68,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 132
       },
       {
         "span": "7450..7451",
         "scope": 69,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 133
       },
       {
         "span": "7983..7984",
         "scope": 70,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 134
       },
       {
         "span": "8508..8509",
         "scope": 71,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 135
       },
       {
         "span": "9025..9026",
         "scope": 72,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 136
       },
       {
         "span": "9534..9535",
         "scope": 73,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 137
       },
       {
         "span": "10035..10036",
         "scope": 74,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 138
       },
       {
         "span": "10528..10529",
         "scope": 75,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 139
       },
       {
         "span": "11013..11014",
         "scope": 76,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 140
       },
       {
         "span": "11490..11491",
         "scope": 77,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 141
       },
       {
         "span": "11959..11960",
         "scope": 78,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 142
       },
       {
         "span": "12420..12421",
         "scope": 79,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 143
       },
       {
         "span": "12873..12874",
         "scope": 80,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 144
       },
       {
         "span": "13318..13319",
         "scope": 81,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 145
       },
       {
         "span": "13755..13756",
         "scope": 82,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 146
       },
       {
         "span": "14184..14185",
         "scope": 83,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 147
       },
       {
         "span": "14605..14606",
         "scope": 84,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 148
       },
       {
         "span": "15018..15019",
         "scope": 85,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 149
       },
       {
         "span": "15423..15424",
         "scope": 86,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 150
       },
       {
         "span": "15820..15821",
         "scope": 87,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 151
       },
       {
         "span": "16209..16210",
         "scope": 88,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 152
       },
       {
         "span": "16590..16591",
         "scope": 89,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 153
       },
       {
         "span": "16963..16964",
         "scope": 90,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 154
       },
       {
         "span": "17328..17329",
         "scope": 91,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 155
       },
       {
         "span": "17685..17686",
         "scope": 92,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 156
       },
       {
         "span": "18034..18035",
         "scope": 93,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 157
       },
       {
         "span": "18375..18376",
         "scope": 94,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 158
       },
       {
         "span": "18708..18709",
         "scope": 95,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 159
       },
       {
         "span": "19033..19034",
         "scope": 96,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 160
       },
       {
         "span": "19350..19351",
         "scope": 97,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 161
       },
       {
         "span": "19659..19660",
         "scope": 98,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 162
       },
       {
         "span": "19960..19961",
         "scope": 99,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 163
       },
       {
         "span": "20253..20254",
         "scope": 100,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 164
       },
       {
         "span": "20538..20539",
         "scope": 101,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 165
       },
       {
         "span": "20815..20816",
         "scope": 102,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 166
       },
       {
         "span": "21084..21085",
         "scope": 103,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 167
       },
       {
         "span": "21345..21346",
         "scope": 104,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 168
       },
       {
         "span": "21598..21599",
         "scope": 105,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 169
       },
       {
         "span": "21843..21844",
         "scope": 106,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 170
       },
       {
         "span": "22080..22081",
         "scope": 107,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 171
       },
       {
         "span": "22309..22310",
         "scope": 108,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 172
       },
       {
         "span": "22530..22531",
         "scope": 109,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 173
       },
       {
         "span": "22743..22744",
         "scope": 110,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 174
       },
       {
         "span": "22948..22949",
         "scope": 111,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 175
       },
       {
         "span": "23145..23146",
         "scope": 112,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 176
       },
       {
         "span": "23334..23335",
         "scope": 113,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 177
       },
       {
         "span": "23515..23516",
         "scope": 114,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 178
       },
       {
         "span": "23688..23689",
         "scope": 115,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 179
       },
       {
         "span": "23853..23854",
         "scope": 116,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 180
       },
       {
         "span": "24010..24011",
         "scope": 117,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 181
       },
       {
         "span": "24159..24160",
         "scope": 118,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 182
       },
       {
         "span": "24300..24301",
         "scope": 119,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 183
       },
       {
         "span": "24433..24434",
         "scope": 120,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 184
       },
       {
         "span": "24557..24558",
         "scope": 121,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 185
       },
       {
         "span": "24673..24674",
         "scope": 122,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 186
       },
       {
         "span": "24781..24782",
         "scope": 123,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 187
       },
       {
         "span": "24881..24882",
         "scope": 124,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 188
       },
       {
         "span": "24973..24974",
         "scope": 125,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 189
       },
       {
         "span": "25057..25058",
         "scope": 126,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 190
       },
       {
         "span": "25133..25134",
         "scope": 127,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 191
       },
       {
         "span": "25201..25202",
         "scope": 128,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 192
       },
       {
         "span": "25261..25262",
         "scope": 129,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 194
       }
     ]
   },
   "symbols": {
-    "129": {
+    "130": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "6360..6361"
+      ],
+      "alias": {
+        "Target": 131
+      }
+    },
+    "131": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "6909..6910"
+      ],
+      "alias": {
+        "Target": 132
+      }
+    },
+    "132": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "7450..7451"
+      ],
+      "alias": {
+        "Target": 133
+      }
+    },
+    "133": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "7983..7984"
+      ],
+      "alias": {
+        "Target": 134
+      }
+    },
+    "134": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "8508..8509"
+      ],
+      "alias": {
+        "Target": 135
+      }
+    },
+    "135": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "9025..9026"
+      ],
+      "alias": {
+        "Target": 136
+      }
+    },
+    "136": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "9534..9535"
+      ],
+      "alias": {
+        "Target": 137
+      }
+    },
+    "137": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "10035..10036"
+      ],
+      "alias": {
+        "Target": 138
+      }
+    },
+    "138": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "10528..10529"
+      ],
+      "alias": {
+        "Target": 139
+      }
+    },
+    "139": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "11013..11014"
+      ],
+      "alias": {
+        "Target": 140
+      }
+    },
+    "140": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "11490..11491"
+      ],
+      "alias": {
+        "Target": 141
+      }
+    },
+    "141": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "11959..11960"
+      ],
+      "alias": {
+        "Target": 142
+      }
+    },
+    "142": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "12420..12421"
+      ],
+      "alias": {
+        "Target": 143
+      }
+    },
+    "143": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "12873..12874"
+      ],
+      "alias": {
+        "Target": 144
+      }
+    },
+    "144": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "13318..13319"
+      ],
+      "alias": {
+        "Target": 145
+      }
+    },
+    "145": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "13755..13756"
+      ],
+      "alias": {
+        "Target": 146
+      }
+    },
+    "146": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "14184..14185"
+      ],
+      "alias": {
+        "Target": 147
+      }
+    },
+    "147": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "14605..14606"
+      ],
+      "alias": {
+        "Target": 148
+      }
+    },
+    "148": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "15018..15019"
+      ],
+      "alias": {
+        "Target": 149
+      }
+    },
+    "149": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "15423..15424"
+      ],
+      "alias": {
+        "Target": 150
+      }
+    },
+    "150": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "15820..15821"
+      ],
+      "alias": {
+        "Target": 151
+      }
+    },
+    "151": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "16209..16210"
+      ],
+      "alias": {
+        "Target": 152
+      }
+    },
+    "152": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "16590..16591"
+      ],
+      "alias": {
+        "Target": 153
+      }
+    },
+    "153": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "16963..16964"
+      ],
+      "alias": {
+        "Target": 154
+      }
+    },
+    "154": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "17328..17329"
+      ],
+      "alias": {
+        "Target": 155
+      }
+    },
+    "155": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "17685..17686"
+      ],
+      "alias": {
+        "Target": 156
+      }
+    },
+    "156": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "18034..18035"
+      ],
+      "alias": {
+        "Target": 157
+      }
+    },
+    "157": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "18375..18376"
+      ],
+      "alias": {
+        "Target": 158
+      }
+    },
+    "158": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "18708..18709"
+      ],
+      "alias": {
+        "Target": 159
+      }
+    },
+    "159": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "19033..19034"
+      ],
+      "alias": {
+        "Target": 160
+      }
+    },
+    "160": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "19350..19351"
+      ],
+      "alias": {
+        "Target": 161
+      }
+    },
+    "161": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "19659..19660"
+      ],
+      "alias": {
+        "Target": 162
+      }
+    },
+    "162": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "19960..19961"
+      ],
+      "alias": {
+        "Target": 163
+      }
+    },
+    "163": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "20253..20254"
+      ],
+      "alias": {
+        "Target": 164
+      }
+    },
+    "164": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "20538..20539"
+      ],
+      "alias": {
+        "Target": 165
+      }
+    },
+    "165": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "20815..20816"
+      ],
+      "alias": {
+        "Target": 166
+      }
+    },
+    "166": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "21084..21085"
+      ],
+      "alias": {
+        "Target": 167
+      }
+    },
+    "167": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "21345..21346"
+      ],
+      "alias": {
+        "Target": 168
+      }
+    },
+    "168": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "21598..21599"
+      ],
+      "alias": {
+        "Target": 169
+      }
+    },
+    "169": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "21843..21844"
+      ],
+      "alias": {
+        "Target": 170
+      }
+    },
+    "170": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "22080..22081"
+      ],
+      "alias": {
+        "Target": 171
+      }
+    },
+    "171": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "22309..22310"
+      ],
+      "alias": {
+        "Target": 172
+      }
+    },
+    "172": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "22530..22531"
+      ],
+      "alias": {
+        "Target": 173
+      }
+    },
+    "173": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "22743..22744"
+      ],
+      "alias": {
+        "Target": 174
+      }
+    },
+    "174": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "22948..22949"
+      ],
+      "alias": {
+        "Target": 175
+      }
+    },
+    "175": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "23145..23146"
+      ],
+      "alias": {
+        "Target": 176
+      }
+    },
+    "176": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "23334..23335"
+      ],
+      "alias": {
+        "Target": 177
+      }
+    },
+    "177": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "23515..23516"
+      ],
+      "alias": {
+        "Target": 178
+      }
+    },
+    "178": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "23688..23689"
+      ],
+      "alias": {
+        "Target": 179
+      }
+    },
+    "179": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "23853..23854"
+      ],
+      "alias": {
+        "Target": 180
+      }
+    },
+    "180": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24010..24011"
+      ],
+      "alias": {
+        "Target": 181
+      }
+    },
+    "181": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24159..24160"
+      ],
+      "alias": {
+        "Target": 182
+      }
+    },
+    "182": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24300..24301"
+      ],
+      "alias": {
+        "Target": 183
+      }
+    },
+    "183": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24433..24434"
+      ],
+      "alias": {
+        "Target": 184
+      }
+    },
+    "184": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24557..24558"
+      ],
+      "alias": {
+        "Target": 185
+      }
+    },
+    "185": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24673..24674"
+      ],
+      "alias": {
+        "Target": 186
+      }
+    },
+    "186": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24781..24782"
+      ],
+      "alias": {
+        "Target": 187
+      }
+    },
+    "187": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24881..24882"
+      ],
+      "alias": {
+        "Target": 188
+      }
+    },
+    "188": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "24973..24974"
+      ],
+      "alias": {
+        "Target": 189
+      }
+    },
+    "189": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "25057..25058"
+      ],
+      "alias": {
+        "Target": 190
+      }
+    },
+    "190": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "25133..25134"
+      ],
+      "alias": {
+        "Target": 191
+      }
+    },
+    "191": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "25201..25202"
+      ],
+      "alias": {
+        "Target": 192
+      }
+    },
+    "192": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "25261..25262"
+      ],
+      "alias": {
+        "Target": 194
+      }
+    },
+    "193": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
         "25307..25308"
       ]
+    },
+    "194": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "25343..25349"
+      ],
+      "alias": {
+        "Target": 193
+      }
     }
   },
   "scopes": {

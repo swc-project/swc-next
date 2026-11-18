@@ -31,7 +31,7 @@ namespace N {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "symbol": 2
+        "symbol": 3
       }
     ]
   },
@@ -43,7 +43,7 @@ namespace N {
         "41..49"
       ]
     },
-    "2": {
+    "3": {
       "name": "pick",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [

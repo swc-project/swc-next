@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     TsImportEqualsDeclaration, TsInterfaceDeclaration, TsModuleDeclaration, TsType,
     UnaryExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 pub(super) struct AnalysisCollector<'visit, 'ast> {
     ast: &'visit Ast<'ast>,

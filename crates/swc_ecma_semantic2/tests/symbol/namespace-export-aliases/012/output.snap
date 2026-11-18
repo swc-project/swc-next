@@ -33,7 +33,7 @@ declare namespace N {
           },
           "Y": {
             "symbol": 3,
-            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
@@ -78,13 +78,22 @@ declare namespace N {
     "Y": [
       {
         "id": 3,
-        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "80..81",
-            "scope": 2
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "102..108",
+            "scope": 2,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
-        ]
+        ],
+        "alias": {
+          "Target": 2
+        }
       },
       {
         "id": 4,

@@ -12,33 +12,39 @@ use crate::{Semantic, SymbolFlags};
 /// TypeScript relationships supplementing `SymbolTracker`.
 #[derive(Debug)]
 pub(crate) struct TsBindings<'a> {
-    /// Body scope -> canonical container symbol; exported containers use their export symbol.
-    pub(crate) container_owners: HashMap<'a, ScopeId, SymbolId>,
-    /// Enum members, namespace exports, and expando properties by container symbol.
+    /// TypeScript container body scopes and their canonical owners.
+    pub(crate) containers: HashMap<'a, ScopeId, TsContainer>,
+    /// Enum members, namespace exports, class statics, and expandos by container symbol.
     pub(crate) container_members: HashMap<'a, SymbolId, TsMemberTable<'a>>,
     /// Local symbol -> canonical export symbol for directly exported declarations.
     pub(crate) export_symbols: HashMap<'a, SymbolId, SymbolId>,
-    /// Import alias -> its target resolution.
-    pub(crate) import_aliases: HashMap<'a, SymbolId, TsImportAlias>,
+    /// Import-equals and namespace export aliases -> target resolution.
+    pub(crate) aliases: HashMap<'a, SymbolId, TsAlias>,
 }
 
 impl<'a> TsBindings<'a> {
     pub(crate) fn new_in(allocator: &'a Allocator) -> Self {
         Self {
-            container_owners: HashMap::new_in(allocator),
+            containers: HashMap::new_in(allocator),
             container_members: HashMap::new_in(allocator),
             export_symbols: HashMap::new_in(allocator),
-            import_aliases: HashMap::new_in(allocator),
+            aliases: HashMap::new_in(allocator),
         }
     }
 
     pub(crate) fn ts_owner(&self, scope: ScopeId) -> Option<SymbolId> {
-        self.container_owners.get(&scope).copied()
+        self.containers.get(&scope).map(|container| container.owner)
     }
 
     pub(crate) fn member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
         self.container_members.get(&owner)?.get(name).copied()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TsContainer {
+    pub(crate) owner: SymbolId,
+    pub(crate) ambient: bool,
 }
 
 pub(crate) type TsMemberTable<'a> = HashMap<'a, &'a [u8], TsMember>;
@@ -52,6 +58,8 @@ pub struct TsMember {
     pub enum_flags: Option<SymbolFlags>,
     /// Flags contributed by explicit or implicit namespace exports; `None` means absent.
     pub namespace_flags: Option<SymbolFlags>,
+    /// Flags contributed by named class static declarations; `None` means absent.
+    pub class_static_flags: Option<SymbolFlags>,
     /// Whether an assignment introduced this value property.
     pub expando: bool,
 }
@@ -59,16 +67,17 @@ pub struct TsMember {
 impl TsMember {
     /// Combined declaration flags for a qualified lookup.
     pub fn flags(self) -> SymbolFlags {
-        let mut flags =
-            self.enum_flags.unwrap_or_default() | self.namespace_flags.unwrap_or_default();
+        let mut flags = self.enum_flags.unwrap_or_default()
+            | self.namespace_flags.unwrap_or_default()
+            | self.class_static_flags.unwrap_or_default();
         flags.set(SymbolFlags::EXPANDO_PROPERTY, self.expando);
         flags
     }
 }
 
-/// The result of resolving a TypeScript import alias.
+/// The result of resolving a TypeScript import-equals or namespace export alias.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TsImportAlias {
+pub enum TsAlias {
     /// Known direct target; visibility follows the target and alias-chain restrictions.
     Target(SymbolId),
     /// The target could not be resolved from the available declarations.
@@ -82,8 +91,8 @@ impl<'a> Semantic<'a> {
         self.ts_bindings.ts_owner(scope)
     }
 
-    /// Finds a named member on a canonical container. Expando properties are
-    /// visible through qualified lookup.
+    /// Finds a named member on a canonical container. Use [`TsMember::flags`]
+    /// for qualified lookup, including static members and expando properties.
     pub fn ts_container_member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
         self.ts_bindings.member(owner, name)
     }
@@ -105,8 +114,8 @@ impl<'a> Semantic<'a> {
         self.ts_bindings.export_symbols.get(&local).copied()
     }
 
-    /// Returns the recorded resolution of an import alias.
-    pub fn ts_import_alias(&self, symbol: SymbolId) -> Option<TsImportAlias> {
-        self.ts_bindings.import_aliases.get(&symbol).copied()
+    /// Returns the recorded resolution of an import-equals or namespace export alias.
+    pub fn ts_alias(&self, symbol: SymbolId) -> Option<TsAlias> {
+        self.ts_bindings.aliases.get(&symbol).copied()
     }
 }

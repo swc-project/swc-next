@@ -25,7 +25,7 @@ const result: Result = "right";
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "symbol": null
+        "symbol": 2
       }
     ],
     "original": [
@@ -45,6 +45,16 @@ const result: Result = "right";
       "declarations": [
         "41..49"
       ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "71..84"
+      ],
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {
@@ -58,7 +68,7 @@ const result: Result = "right";
       "kind": "TsModule",
       "parent": 3,
       "flags": "Strict",
-      "container_owner": 2
+      "container_owner": 3
     }
   }
 }

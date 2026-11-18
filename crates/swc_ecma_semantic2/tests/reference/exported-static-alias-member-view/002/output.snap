@@ -37,28 +37,28 @@ const selected = Selected;
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       },
       {
         "span": "288..289",
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": 3
+        "symbol": 9
       },
       {
         "span": "322..323",
         "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "symbol": 3
+        "symbol": 9
       },
       {
         "span": "348..349",
         "scope": 11,
         "space": "Namespace",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       }
     ],
     "Selected": [
@@ -67,12 +67,12 @@ const selected = Selected;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 16
+        "symbol": 18
       }
     ]
   },
   "symbols": {
-    "3": {
+    "4": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | NAMESPACE_MODULE | CONST_VAR",
       "declarations": [
@@ -81,13 +81,35 @@ const selected = Selected;
         "119..120"
       ]
     },
-    "16": {
+    "8": {
+      "name": "local",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "180..185"
+      ],
+      "alias": {
+        "Target": 1
+      }
+    },
+    "9": {
+      "name": "A",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "204..214"
+      ],
+      "alias": {
+        "Target": 8
+      }
+    },
+    "18": {
       "name": "Selected",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "362..370"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 9
+      }
     }
   },
   "scopes": {
@@ -100,7 +122,7 @@ const selected = Selected;
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 6
+      "container_owner": 7
     },
     "10": {
       "kind": "Block",

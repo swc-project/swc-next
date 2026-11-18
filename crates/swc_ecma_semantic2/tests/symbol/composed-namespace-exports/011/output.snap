@@ -43,6 +43,8 @@ const nested: Alias.T = { ok: true };
           1
         ],
         "uses": [
+          "326..331",
+          "346..351",
           "385..390"
         ],
         "alias": {
@@ -82,7 +84,7 @@ const nested: Alias.T = { ok: true };
           },
           "X": {
             "symbol": 1,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         }
       }
@@ -90,16 +92,25 @@ const nested: Alias.T = { ok: true };
     "X": [
       {
         "id": 1,
-        "flags": "INTERFACE | AMBIENT | EXPORTED",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "52..53",
-            "scope": 2
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "109..122",
+            "scope": 2,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "uses": [
           "267..268"
-        ]
+        ],
+        "alias": {
+          "Target": 3
+        }
       },
       {
         "id": 2,
@@ -122,11 +133,17 @@ const nested: Alias.T = { ok: true };
     "Y": [
       {
         "id": 6,
-        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
         "declarations": [
           {
             "span": "198..199",
-            "scope": 5
+            "scope": 5,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          {
+            "span": "267..273",
+            "scope": 5,
+            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
           }
         ],
         "members": {
@@ -134,6 +151,9 @@ const nested: Alias.T = { ok: true };
             "symbol": 8,
             "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
+        },
+        "alias": {
+          "Target": 1
         }
       },
       {

@@ -39,24 +39,27 @@ const result: Result = { right: true };
         "scope": 6,
         "space": "Any",
         "access": "None",
-        "symbol": 0
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "X",
-      "flags": "INTERFACE",
-      "declarations": [
-        "21..22"
-      ]
-    },
     "2": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
         "76..77"
       ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "112..118"
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
@@ -70,7 +73,7 @@ const result: Result = { right: true };
       "kind": "TsModule",
       "parent": 5,
       "flags": "Strict",
-      "container_owner": 3
+      "container_owner": 4
     }
   }
 }

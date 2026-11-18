@@ -122,15 +122,16 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         &self,
         declaration: swc_next_ecma_ast::ExportDefaultDeclaration,
     ) -> bool {
+        declaration
+            .declaration(self.ast_ref())
+            .as_expr(self.ast_ref())
+            .is_some_and(|expression| self.export_expression_is_erased(expression))
+    }
+
+    pub(super) fn export_expression_is_erased(&self, mut expression: Expr) -> bool {
         if self.options.verbatim_module_syntax {
             return false;
         }
-        let Some(mut expression) = declaration
-            .declaration(self.ast_ref())
-            .as_expr(self.ast_ref())
-        else {
-            return false;
-        };
         while let swc_next_ecma_ast::ExprData::ParenthesizedExpression(parenthesized) =
             self.ast_ref().expr_data(expression)
         {
@@ -146,15 +147,10 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         let Some(id) = self.semantic.reference_of(node) else {
             return false;
         };
-        self.semantic.reference(id).symbol.is_some()
-            && self
-                .semantic
-                .reference_value_targets(self.ast_ref(), id)
-                .all(|target| {
-                    target
-                        .symbol()
-                        .is_some_and(|symbol| self.analysis.value_is_erased(symbol, self.semantic))
-                })
+        let reference = self.semantic.reference(id);
+        reference.symbol.is_some_and(|symbol| {
+            !reference.flags.is_read() || self.analysis.value_is_erased(symbol, self.semantic)
+        })
     }
 
     fn binding_has_runtime_usage(&self, binding: BindingIdentifier) -> bool {

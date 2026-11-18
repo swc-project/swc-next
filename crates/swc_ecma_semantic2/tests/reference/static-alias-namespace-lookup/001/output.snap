@@ -30,8 +30,8 @@ namespace N {
         "span": "184..185",
         "scope": 7,
         "space": "Namespace",
-        "access": "Read",
-        "symbol": 7,
+        "access": "None",
+        "symbol": 4,
         "import_equals": true
       },
       {
@@ -39,7 +39,7 @@ namespace N {
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": 7
+        "symbol": 8
       }
     ],
     "B": [
@@ -48,26 +48,44 @@ namespace N {
         "scope": 7,
         "space": "Namespace",
         "access": "None",
-        "symbol": 8
+        "symbol": 9
       }
     ]
   },
   "symbols": {
-    "7": {
+    "1": {
+      "name": "x",
+      "flags": "CLASS_STATIC_MEMBER",
+      "declarations": [
+        "23..36"
+      ]
+    },
+    "4": {
+      "name": "A",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "89..90"
+      ]
+    },
+    "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "162..163"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 1
+      }
     },
-    "8": {
+    "9": {
       "name": "B",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "180..181"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 4
+      }
     }
   },
   "scopes": {
@@ -75,7 +93,7 @@ namespace N {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 6
+      "container_owner": 7
     }
   }
 }

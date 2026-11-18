@@ -12,7 +12,7 @@ use swc_next_ecma_ast::{
     VariableDeclaration, VariableKind, VisitMut, VisitMutWith, VisitWith,
 };
 
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 struct Signature {
     binding: AstUtf8,

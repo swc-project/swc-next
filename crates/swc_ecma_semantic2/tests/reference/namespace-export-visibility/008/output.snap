@@ -34,24 +34,28 @@ namespace N {
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "symbol": 0
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "pick",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "17..21"
-      ]
-    },
     "2": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "63..71"
       ]
+    },
+    "3": {
+      "name": "pick",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "93..109",
+        "132..136"
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {

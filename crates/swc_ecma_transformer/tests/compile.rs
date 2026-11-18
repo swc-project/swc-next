@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     VisitMutWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, normalize::Normalizer, typescript::TypeScriptOptions,
 };

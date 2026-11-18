@@ -27,10 +27,14 @@ declare namespace N {
   "symbols": {
     "2": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS",
       "declarations": [
-        "54..55"
-      ]
+        "54..55",
+        "93..103"
+      ],
+      "alias": {
+        "Target": 4
+      }
     },
     "3": {
       "name": "X",
@@ -68,10 +72,14 @@ declare namespace N {
   "symbols": {
     "2": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS",
       "declarations": [
-        "54..55"
-      ]
+        "54..55",
+        "93..103"
+      ],
+      "alias": {
+        "Target": 4
+      }
     },
     "3": {
       "name": "X",

@@ -4,9 +4,9 @@ use swc_next_ecma_ast::{
     Ast, BindingPatternData, Expr, MemberExpression, NodeId, NodeKindData, SymbolId,
     TsEnumDeclaration, TsEnumMember, UnaryOperator, VariableDeclarator,
 };
-use swc_next_ecma_semantic::{Semantic, SymbolFlags};
+use swc_next_ecma_semantic2::{Semantic, SymbolFlags};
 
-use super::super::TypeScriptOptions;
+use super::super::{TypeScriptOptions, bindings::resolve_value_binding};
 use super::availability::AvailabilityBuilder;
 use super::constants::{
     ConstBinding, ConstBindings, EnumDeclaration, EnumMemberDeclaration, EnumMemberValue,
@@ -383,7 +383,7 @@ fn may_evaluate_const_binding(ast: &Ast<'_>, semantic: &Semantic<'_>, expression
     let symbol = match ast.kind_data(expression.node_id()) {
         NodeKindData::IdentifierReference(identifier) => semantic
             .reference_of(identifier.node_id())
-            .and_then(|reference| semantic.reference(reference).resolution().symbol()),
+            .and_then(|reference| semantic.reference(reference).symbol),
         NodeKindData::MemberExpression(member) => resolve_constant_member(ast, semantic, member),
         NodeKindData::ParenthesizedExpression(parenthesized) => {
             return may_evaluate_const_binding(ast, semantic, parenthesized.expression(ast));
@@ -408,10 +408,9 @@ fn may_evaluate_const_binding(ast: &Ast<'_>, semantic: &Semantic<'_>, expression
         }
         _ => return false,
     };
-    let Some(symbol) = symbol else {
+    let Some(symbol) = symbol.and_then(|symbol| resolve_value_binding(semantic, symbol)) else {
         return false;
     };
-    let symbol = semantic.ts_import_alias_target(symbol).unwrap_or(symbol);
     let flags = semantic.symbol(symbol).flags;
     flags.contains(SymbolFlags::CONST_VAR) && !flags.contains(SymbolFlags::AMBIENT)
 }

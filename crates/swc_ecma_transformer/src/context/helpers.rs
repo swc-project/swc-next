@@ -12,7 +12,7 @@ use swc_next_ecma_ast::{
     Argument, BindingIdentifier, BindingPattern, DUMMY_SP, Decl, Expr, ImportDeclarationSpecifier,
     ImportOrExportKind, Program, PropertyKey, ScopeId, Stmt, SubRange, VariableKind,
 };
-use swc_next_ecma_semantic::SymbolFlags;
+use swc_next_ecma_semantic2::SymbolFlags;
 
 impl TransformCtx<'_, '_> {
     /// Build a callee reference in `scope`, preparing its program-level binding

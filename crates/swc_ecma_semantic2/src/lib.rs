@@ -34,7 +34,7 @@ pub use scope::{Scope, ScopeFlags, ScopeKind};
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;
-pub use ts::{TsImportAlias, TsMember};
+pub use ts::{TsAlias, TsMember};
 
 swc_next_allocator::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -253,7 +253,7 @@ impl<'a> Semantic<'a> {
     /// from `scope`. A binding outside the space does not shadow.
     /// [`ReferenceSpace::Any`] matches by name alone. This does not query
     /// runtime object properties when the path crosses [`scope::ScopeKind::With`].
-    /// Import bindings use their declared flags. For a reference in the AST, use
+    /// Alias bindings use their declared flags. For a reference in the AST, use
     /// [`Semantic::reference`] to account for the meanings and restrictions of
     /// its alias path.
     ///

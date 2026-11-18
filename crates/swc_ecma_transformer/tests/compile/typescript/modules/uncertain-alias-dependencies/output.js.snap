@@ -5,7 +5,6 @@ var Original;
 (function(Original) {
   Original.value = 1;
 })(Original || (Original = {}));
-var Alias = Original;
 var Use;
 (function(Use) {
   var Alias = Unknown.Member;

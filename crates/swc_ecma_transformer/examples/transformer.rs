@@ -12,7 +12,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::generate;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,

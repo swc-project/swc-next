@@ -38,7 +38,7 @@ namespace N {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 3
       }
     ]
   },
@@ -48,6 +48,14 @@ namespace N {
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "62..70"
+      ],
+      "alias": "Unknown"
+    },
+    "3": {
+      "name": "value",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "98..115"
       ],
       "alias": "Unknown"
     }

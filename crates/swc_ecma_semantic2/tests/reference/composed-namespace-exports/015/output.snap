@@ -40,21 +40,21 @@ namespace N.Inner {
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 6
       },
       {
         "span": "277..278",
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 6
       },
       {
         "span": "329..330",
         "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 6
       }
     ],
     "original": [
@@ -70,10 +70,14 @@ namespace N.Inner {
   "symbols": {
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
       "declarations": [
-        "52..53"
-      ]
+        "52..53",
+        "109..122"
+      ],
+      "alias": {
+        "Target": 3
+      }
     },
     "3": {
       "name": "original",
@@ -81,6 +85,16 @@ namespace N.Inner {
       "declarations": [
         "85..93"
       ]
+    },
+    "6": {
+      "name": "Y",
+      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "declarations": [
+        "190..196"
+      ],
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

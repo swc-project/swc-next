@@ -3,9 +3,8 @@ use swc_next_ecma_ast::{
     IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
     SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
-use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
-    scope::{ScopeFlags, ScopeKind},
+use swc_next_ecma_semantic2::{
+    Reference, ReferenceFlags, ScopeFlags, ScopeKind, ScopeModel, SymbolFlags,
 };
 
 use crate::{context::TransformCtx, uid::UidGenerator};

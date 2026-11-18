@@ -12,61 +12,20 @@ use swc_next_ecma_ast::{
 };
 
 use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
-use swc_next_ecma_semantic::Semantic;
+use crate::typescript::bindings::value_binding;
+use swc_next_ecma_semantic2::Semantic;
 
 #[derive(Default)]
 pub(super) struct NamespaceState {
-    members: FxHashMap<SymbolId, Rc<NamespaceMembers>>,
+    members: FxHashMap<SymbolId, Rc<FxHashSet<SymbolId>>>,
     contexts: Vec<NamespaceContext>,
-    export_alias_depth: usize,
 }
 
 impl NamespaceState {
-    fn has_export_aliases(&self) -> bool {
-        self.export_alias_depth != 0
-    }
-
-    pub(super) fn parameter_for_symbol(
-        &self,
-        ast: &Ast<'_>,
-        semantic: &Semantic<'_>,
-        name: &[u8],
-        symbol: SymbolId,
-    ) -> Option<AstUtf8> {
-        if self.has_export_aliases() {
-            return self.parameter_for_export_alias(ast, semantic, name, symbol);
-        }
+    fn parameter_for_symbol(&self, symbol: SymbolId) -> Option<AstUtf8> {
         for context in self.contexts.iter().rev() {
-            if context.members.declared.contains(&symbol) {
+            if context.members.contains(&symbol) {
                 return (!context.local_symbols.contains(&symbol)).then_some(context.parameter);
-            }
-        }
-        None
-    }
-
-    // Inlining the export lookup increases stack/register work for every ordinary reference.
-    #[inline(never)]
-    fn parameter_for_export_alias(
-        &self,
-        ast: &Ast<'_>,
-        semantic: &Semantic<'_>,
-        name: &[u8],
-        symbol: SymbolId,
-    ) -> Option<AstUtf8> {
-        // Export specifiers can expose a declaration under a different name,
-        // including when its original name has a local runtime binding.
-        let same_name = name == ast.get_wtf8(semantic.symbol(symbol).name).as_bytes();
-        for context in self.contexts.iter().rev() {
-            let direct = same_name && context.members.declared.contains(&symbol);
-            let exported = direct
-                || context.members.export_alias_owner.is_some_and(|owner| {
-                    semantic
-                        .ts_namespace_value_targets(owner, name)
-                        .any(|target| target.candidate() == Some(symbol))
-                });
-            if exported {
-                let local = same_name && context.local_symbols.contains(&symbol);
-                return (!local).then_some(context.parameter);
             }
         }
         None
@@ -75,10 +34,9 @@ impl NamespaceState {
     fn enter(
         &mut self,
         parameter: AstUtf8,
-        members: Rc<NamespaceMembers>,
+        members: Rc<FxHashSet<SymbolId>>,
         local_symbols: FxHashSet<SymbolId>,
     ) {
-        self.export_alias_depth += usize::from(members.export_alias_owner.is_some());
         self.contexts.push(NamespaceContext {
             parameter,
             members,
@@ -87,23 +45,14 @@ impl NamespaceState {
     }
 
     fn exit(&mut self) {
-        let context = self
-            .contexts
-            .pop()
-            .expect("a namespace lowering context exists");
-        self.export_alias_depth -= usize::from(context.members.export_alias_owner.is_some());
+        self.contexts.pop().unwrap();
     }
 }
 
 pub(super) struct NamespaceContext {
     pub(super) parameter: AstUtf8,
-    members: Rc<NamespaceMembers>,
+    members: Rc<FxHashSet<SymbolId>>,
     local_symbols: FxHashSet<SymbolId>,
-}
-
-pub(super) struct NamespaceMembers {
-    declared: FxHashSet<SymbolId>,
-    export_alias_owner: Option<SymbolId>,
 }
 
 #[derive(Clone, Copy)]
@@ -241,13 +190,12 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             .members
             .entry(part.symbol)
             .or_insert_with(|| {
-                Rc::new(NamespaceMembers {
-                    declared: self.semantic.ts_namespace_members(part.symbol).collect(),
-                    export_alias_owner: self
-                        .semantic
-                        .ts_namespace_has_export_aliases(part.symbol)
-                        .then_some(part.symbol),
-                })
+                Rc::new(
+                    self.semantic
+                        .ts_container_members(part.symbol)
+                        .filter_map(|(_, member)| member.namespace_flags.map(|_| member.symbol))
+                        .collect(),
+                )
             });
         let members = Rc::clone(members);
         // Each dotted segment is an implicit exported namespace declaration
@@ -287,7 +235,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         &mut self,
         body: TsModuleBody,
         parameter: AstUtf8,
-        members: &NamespaceMembers,
+        members: &FxHashSet<SymbolId>,
     ) -> (SubRange<swc_next_ecma_ast::Directive>, SubRange<Stmt>) {
         match self.ast_ref().ts_module_body_data(body) {
             TsModuleBodyData::TsModuleBlock(block) => {
@@ -312,7 +260,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         &mut self,
         statements: SubRange<Stmt>,
         parameter: AstUtf8,
-        members: &NamespaceMembers,
+        members: &FxHashSet<SymbolId>,
     ) -> SubRange<Stmt> {
         if self.analysis.has_merged_runtime_bindings() {
             self.register_scope_runtime_bindings(statements);
@@ -341,7 +289,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         &mut self,
         export: swc_next_ecma_ast::ExportNamedDeclaration,
         parameter: AstUtf8,
-        members: &NamespaceMembers,
+        members: &FxHashSet<SymbolId>,
         output: &mut Vec<Stmt>,
     ) {
         if export.export_kind(self.ast_ref()) == ImportOrExportKind::Type {
@@ -352,7 +300,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         };
         match self.ast_ref().decl_data(declaration) {
             DeclData::VariableDeclaration(variable) => {
-                self.lower_namespace_variable(variable, parameter, &members.declared, output);
+                self.lower_namespace_variable(variable, parameter, members, output);
             }
             DeclData::Function(function) => {
                 let Some(binding) = function.id(self.ast_ref()) else {
@@ -505,18 +453,10 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         if self.namespaces.contexts.is_empty() || node.index() >= self.semantic_node_count {
             return None;
         }
-        let reference = self.semantic.reference_of(node)?;
-        let reference = self.semantic.reference(reference);
-        // Qualification preserves the selected binding, even when an opaque
-        // alias has uncertain value meaning. It does not evaluate the target or
-        // decide whether its declaration emits code.
-        let symbol = reference.resolution().candidate()?;
-        self.namespaces.parameter_for_symbol(
-            self.ast_ref(),
-            self.semantic,
-            self.ast_ref().get_utf8(reference.name).as_bytes(),
-            symbol,
-        )
+        let id = self.semantic.reference_of(node)?;
+        let symbol = self.semantic.reference(id).symbol?;
+        self.namespaces
+            .parameter_for_symbol(value_binding(self.semantic, symbol))
     }
 
     fn namespace_body_local_symbols(&self, body: TsModuleBody) -> FxHashSet<SymbolId> {
@@ -663,7 +603,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
 
 struct NamespaceBindingPatternRewriter<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
-    semantic: &'visit swc_next_ecma_semantic::Semantic<'ast>,
+    semantic: &'visit Semantic<'ast>,
     property_symbols: &'visit FxHashSet<SymbolId>,
     parameter: AstUtf8,
 }

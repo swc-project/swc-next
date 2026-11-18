@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
     BindingPattern, Decl, DeclData, ImportOrExportKind, Stmt, StmtData, SubRange, SymbolId,
     VariableKind, VisitMut,
 };
-use swc_next_ecma_semantic::SymbolFlags;
+use swc_next_ecma_semantic2::SymbolFlags;
 
 impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn runtime_binding_statement(
