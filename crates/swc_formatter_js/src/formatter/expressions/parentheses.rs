@@ -1275,17 +1275,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comment_is_type_cast(comment)
     }
 
-    pub(in crate::formatter) fn parentheses_are_removable(
-        &self,
-        boundary: SourceParentheses,
-    ) -> bool {
+    fn parentheses_are_removable(&self, boundary: SourceParentheses) -> bool {
         self.removable_parentheses_head(boundary, &mut None, &mut DiagnosticHeadState::Absent)
             .is_some()
     }
 
     /// The source layer retains its physical ranges while removed children
     /// forward the actual emitted head from the target's bottom-up preparation.
-    pub(super) fn target_parentheses_are_removable(
+    pub(in crate::formatter) fn parentheses_are_removable_for_owner(
         &self,
         boundary: SourceParentheses,
         emitted_inner: Option<Expr>,

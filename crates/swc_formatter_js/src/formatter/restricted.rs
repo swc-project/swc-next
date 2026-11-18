@@ -203,7 +203,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ArgumentEnvelope::Inline
             }
         } else {
-            let lexical_head = self.restricted_lexical_head(argument, grammar)?;
+            let lexical_head =
+                self.restricted_lexical_head(argument, content.expression.span(self.ast), grammar)?;
             let leading_requires_envelope =
                 self.restricted_head_requires_envelope(leading, span.start);
             if lexical_head.requires_envelope {
@@ -425,6 +426,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn restricted_lexical_head(
         &self,
         mut expression: Expr,
+        scope: Span,
         grammar: RestrictedGrammar,
     ) -> Result<RestrictedHeadFacts, FormatError> {
         let mut comments =
@@ -481,7 +483,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             child,
                         ),
                     };
-                    if !self.parentheses_are_removable(boundary) {
+                    if !self.parentheses_are_removable_for_owner(boundary, None, Some(scope), None)
+                    {
                         break;
                     }
                     let leading = comments.leading(boundary.inner.start);

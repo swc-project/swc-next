@@ -605,7 +605,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TargetLayerMode::Verbatim;
             }
         }
-        if self.target_parentheses_are_removable(boundary, emitted_inner, owner, external) {
+        if self.parentheses_are_removable_for_owner(boundary, emitted_inner, owner, external) {
             TargetLayerMode::Remove
         } else {
             TargetLayerMode::Retain
