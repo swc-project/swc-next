@@ -383,21 +383,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 write_argument(self, content_start, writer)
             }
             ArgumentEnvelope::Breakable | ArgumentEnvelope::Required => {
-                let write = |writer: &mut Writer<'ast>| {
-                    if matches!(envelope, ArgumentEnvelope::Required) {
+                let required = matches!(envelope, ArgumentEnvelope::Required);
+                writer.group(required, |writer| {
+                    if required {
                         writer.text("(");
                     } else {
                         writer.if_break("(");
                     }
                     let tail = writer.indent(|writer| {
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if required {
                             writer.hard_line();
                         } else {
                             writer.soft_line();
                         }
                         let tail = write_argument(self, content_start, writer)?;
-                        if matches!(envelope, ArgumentEnvelope::Required) || prepared.enclosed_tail
-                        {
+                        if required || prepared.enclosed_tail {
                             self.format_expression_tail(tail.pending, writer)?;
                             Ok(ExpressionOutput::closed(None))
                         } else {
@@ -405,24 +405,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     })?;
                     closing.write(writer, FlatSeparator::Empty, |writer| {
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if required {
                             writer.hard_line();
                         } else {
                             writer.soft_line();
                         }
                     });
-                    if matches!(envelope, ArgumentEnvelope::Required) {
+                    if required {
                         writer.text(")");
                     } else {
                         writer.if_break(")");
                     }
                     Ok(tail)
-                };
-                if matches!(envelope, ArgumentEnvelope::Breakable) {
-                    writer.group_with_flat_width(write)
-                } else {
-                    writer.group(true, write)
-                }
+                })
             }
         }
     }

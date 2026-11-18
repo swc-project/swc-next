@@ -301,26 +301,6 @@ impl<'a> Writer<'a> {
         self.group_with_id(request, None, write)
     }
 
-    /// Retains exact flat measurements and the boundary of a complete group.
-    /// Unsupported instructions keep the ordinary Auto group unchanged.
-    pub fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        let start = self.elements.len();
-        let result = self.group(false, write);
-        let Instruction::StartGroup { effect, .. } = self.elements[start] else {
-            unreachable!("group scope retains its opening instruction");
-        };
-        if !effect.preferred_breaks()
-            && let Some(summary) =
-                super::flat_summary(&self.elements[start + 1..self.elements.len() - 1])
-        {
-            self.elements[start] = Instruction::StartGroupWithFlatWidth {
-                summary,
-                end_offset: instruction_offset(self.elements.len() - start - 1),
-            };
-        }
-        result
-    }
-
     /// The returned handle refers to a group already written in this document.
     pub fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
         self.named_group_with_request(GroupRequest::from(expand), write)
@@ -389,13 +369,22 @@ impl<'a> Writer<'a> {
         let Instruction::StartGroup {
             effect: group_effect,
             end_offset,
+            id,
             ..
         } = &mut self.elements[start]
         else {
             unreachable!("group scope retains its opening instruction");
         };
+        let measure =
+            id.is_none() && matches!(request, GroupRequest::Auto) && !effect.preferred_breaks();
         *group_effect = effect;
         *end_offset = distance;
+        if measure && let Some(summary) = super::flat_summary(&self.elements[start + 1..]) {
+            self.elements[start] = Instruction::StartGroupWithFlatWidth {
+                summary,
+                end_offset: distance,
+            };
+        }
         self.elements.push(Instruction::EndGroup);
     }
 
@@ -663,7 +652,7 @@ impl<'a> Writer<'a> {
         let (grouped, value) =
             self.record_with_value(|writer| writer.group_with_request(GroupRequest::Auto, write))?;
         let [
-            Instruction::StartGroup { id: None, .. },
+            Instruction::StartGroup { id: None, .. } | Instruction::StartGroupWithFlatWidth { .. },
             ..,
             Instruction::EndGroup,
         ] = grouped.elements()

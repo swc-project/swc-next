@@ -204,7 +204,7 @@ impl<'a> RecordedGroup<'a> {
     }
 }
 
-/// Context-free ASCII measurements, saturated at the supported width limit.
+/// Context-free ASCII measurements with a width representable as `u16`.
 /// Literal text spaces remain part of `width`;
 /// only spaces contributed by `line` remain pending at the scope boundaries.
 #[derive(Debug, Clone, Copy, Default)]
@@ -235,43 +235,57 @@ impl FlatSummary {
     }
 }
 
-/// Measures a completed group once, retaining only context-free ASCII results.
-/// Literal text spaces count directly; flat line spaces stay pending until text.
-fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
+/// Combines a completed group's top-level instructions. Cached inner groups are
+/// skipped, so closing a chain of nested groups does not visit the same text again.
+fn flat_summary(mut elements: &[Instruction<'_>]) -> Option<FlatSummary> {
     let mut summary = FlatSummary::default();
-    for element in elements {
-        match element {
+    while let Some((element, rest)) = elements.split_first() {
+        elements = rest;
+        let next = match element {
             Instruction::Text { source, width } | Instruction::TextIfFlat { source, width } => {
                 let width = Text::from_parts(*source, *width).clean_ascii_width()?;
-                let width = u16::try_from(width).unwrap_or(u16::MAX);
-                if summary.has_text {
-                    summary.width = summary
-                        .width
-                        .saturating_add(u16::from(summary.ends_with_line))
-                        .saturating_add(width);
-                } else {
-                    summary.starts_with_line = summary.ends_with_line;
-                    summary.width = width;
-                    summary.has_text = true;
+                FlatSummary {
+                    width: u16::try_from(width).ok()?,
+                    has_text: true,
+                    ..FlatSummary::default()
                 }
-                summary.ends_with_line = false;
             }
-            Instruction::NormalLine => summary.ends_with_line = true,
+            Instruction::NormalLine => FlatSummary {
+                ends_with_line: true,
+                ..FlatSummary::default()
+            },
+            Instruction::StartGroupWithFlatWidth {
+                summary,
+                end_offset,
+            } => {
+                elements = &elements[*end_offset as usize..];
+                *summary
+            }
             Instruction::SoftLine
             | Instruction::TextIfBreak { .. }
-            | Instruction::StartGroup {
-                effect: BreakEffect(0),
-                id: None,
-                ..
-            }
-            | Instruction::EndGroup
             | Instruction::StartIndent
             | Instruction::StartAbsoluteIndent { .. }
             | Instruction::EndIndent
             | Instruction::StartAlign { .. }
-            | Instruction::EndAlign { .. } => {}
+            | Instruction::EndAlign { .. } => continue,
             _ => return None,
+        };
+        if !next.has_text {
+            summary.ends_with_line |= next.ends_with_line;
+            continue;
         }
+        let leading_line = summary.ends_with_line || next.starts_with_line;
+        if summary.has_text {
+            summary.width = summary
+                .width
+                .checked_add(u16::from(leading_line))?
+                .checked_add(next.width)?;
+        } else {
+            summary.starts_with_line = leading_line;
+            summary.width = next.width;
+            summary.has_text = true;
+        }
+        summary.ends_with_line = next.ends_with_line;
     }
     Some(summary)
 }
