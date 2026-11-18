@@ -122,9 +122,9 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     where
         T: VisitWith<'a, Self>,
     {
-        let previous = self.replace_reference_flags(flags);
+        let previous = replace(&mut self.reference_flags, flags);
         node.visit_with(self);
-        self.replace_reference_flags(previous);
+        self.reference_flags = previous;
     }
 
     #[inline]
@@ -162,15 +162,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             .add_identifier_reference(self.ast, node, self.current_scope, flags);
     }
 
-    fn in_type_position(&self) -> bool {
-        self.default_reference_space == ReferenceSpace::Type
-    }
-
-    /// True when the walker is currently inside a TS namespace body.
-    fn in_ts_namespace(&self) -> bool {
-        self.ts_namespace_depth > 0
-    }
-
     fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
         self.ts_namespace_depth += 1;
         self.push_scope(
@@ -197,18 +188,13 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
-    fn replace_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
-        replace(&mut self.reference_flags, flags)
-    }
-
-    #[inline]
     fn enter_type_position(&mut self) -> ReferenceSpace {
         replace(&mut self.default_reference_space, ReferenceSpace::Type)
     }
 
     #[inline]
     fn exit_type_position(&mut self, previous: ReferenceSpace) {
-        debug_assert!(self.in_type_position());
+        debug_assert!(self.default_reference_space == ReferenceSpace::Type);
         self.default_reference_space = previous;
         self.reference_flags = self.flags_with_space(self.default_reference_space);
     }
@@ -265,12 +251,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn current_scope(&self) -> Scope {
         self.scope.get(self.current_scope)
-    }
-
-    #[inline]
-    // Mutable view used while collecting strict-mode flags.
-    fn current_scope_mut(&mut self) -> &mut Scope {
-        &mut self.scope.list[self.current_scope]
     }
 
     /// Whether the current scope is in strict mode.
@@ -702,7 +682,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_directive(&mut self, node: Directive) {
         let tree = self.ast;
         if tree.get_utf8(node.value(tree)) == "use strict" {
-            self.current_scope_mut().flags.strict = true;
+            self.scope.list[self.current_scope].flags.strict = true;
         }
         self.enter_node(node.node_id());
         node.visit_children_with(self);
@@ -904,7 +884,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             node.node_id(),
             self.inherit_strict_flag(),
         );
-        self.current_scope_mut().flags.arguments_barrier = true;
+        self.scope.list[self.current_scope].flags.arguments_barrier = true;
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.exit_scope(node.node_id());

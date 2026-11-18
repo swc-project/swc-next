@@ -335,7 +335,7 @@ pub(super) fn check_contextual_await(
     if !builder.check_syntax.ts_contextual_await() {
         return;
     }
-    if builder.in_type_position()
+    if builder.default_reference_space == ReferenceSpace::Type
         || builder.symbols.in_ambient_context()
         || !builder.ast.is_module()
         || !is_in_top_level_context(builder, node)

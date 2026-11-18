@@ -490,7 +490,7 @@ pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, litera
     if !builder.check_syntax.octal_escapes() {
         return;
     }
-    if builder.in_type_position() || !builder.is_strict() {
+    if builder.default_reference_space == ReferenceSpace::Type || !builder.is_strict() {
         return;
     }
     let span = builder.ast.span(literal.node_id());
@@ -520,7 +520,7 @@ pub(super) fn check_numeric_literal(
     if !builder.check_syntax.legacy_numeric_literals() {
         return;
     }
-    if builder.in_type_position() || !builder.is_strict() {
+    if builder.default_reference_space == ReferenceSpace::Type || !builder.is_strict() {
         return;
     }
     let span = builder.ast.span(literal.node_id());
@@ -571,7 +571,7 @@ pub(super) fn check_identifier_reference(
     identifier: IdentifierReference,
     name: &[u8],
 ) {
-    if builder.in_type_position() {
+    if builder.default_reference_space == ReferenceSpace::Type {
         return;
     }
     let node_id = identifier.node_id();
@@ -596,8 +596,9 @@ pub(super) fn check_binding_identifier<'traverse>(
     if flags.is_empty() {
         return;
     }
-    let strict_binding =
-        !builder.in_type_position() && builder.is_strict() && !flags.contains(SymbolFlags::AMBIENT);
+    let strict_binding = builder.default_reference_space != ReferenceSpace::Type
+        && builder.is_strict()
+        && !flags.contains(SymbolFlags::AMBIENT);
     if strict_binding {
         check_strict_reserved(builder, name, node_id, "a binding identifier");
         if builder.check_syntax.strict_binding_names() && is_eval_or_arguments(name) {
@@ -1430,7 +1431,7 @@ pub(super) fn check_export_specifier(
     record_exported_name(builder, exported_name, specifier.node_id());
     if !builder.check_syntax.unresolved_exports()
         || specifier.export_kind(builder.ast) == ImportOrExportKind::Type
-        || builder.in_ts_namespace()
+        || builder.ts_namespace_depth > 0
     {
         return;
     }
@@ -1839,7 +1840,7 @@ fn record_exported_name<'traverse>(
         return;
     }
     // Exports inside a TS namespace are namespace-scoped, not module-scoped.
-    if !builder.ast.is_module() || builder.in_ts_namespace() {
+    if !builder.ast.is_module() || builder.ts_namespace_depth > 0 {
         return;
     }
     let first = match builder.exported_names.entry(name) {
