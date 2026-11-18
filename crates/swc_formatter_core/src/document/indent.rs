@@ -1,6 +1,19 @@
-//! Persistent indentation queues used when root and dedent scopes are present.
+//! Indentation emission and persistent queues for root and dedent scopes.
 use super::AlignText;
 use crate::{IndentStyle, PrintOptions};
+
+pub(super) fn append_whitespace(output: &mut String, style: IndentStyle, count: usize) {
+    let byte = match style {
+        IndentStyle::Space => b' ',
+        IndentStyle::Tab => b'\t',
+    };
+    let end = output
+        .len()
+        .checked_add(count)
+        .expect("indentation exceeds output capacity");
+    // SAFETY: Resizing upwards with ASCII whitespace preserves UTF-8.
+    unsafe { output.as_mut_vec().resize(end, byte) };
+}
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct State {
@@ -222,11 +235,11 @@ impl<'a> Rich<'a> {
         for part in self.scratch.iter().rev() {
             match *part {
                 Part::Empty => {}
-                Part::Spaces(n) => output.extend(std::iter::repeat_n(' ', n)),
-                Part::Tabs(n) => output.extend(std::iter::repeat_n('\t', n)),
+                Part::Spaces(n) => append_whitespace(output, IndentStyle::Space, n),
+                Part::Tabs(n) => append_whitespace(output, IndentStyle::Tab, n),
                 Part::Text(text) => output.push_str(text),
             }
         }
-        output.extend(std::iter::repeat_n(' ', queue.spaces));
+        append_whitespace(output, IndentStyle::Space, queue.spaces);
     }
 }
