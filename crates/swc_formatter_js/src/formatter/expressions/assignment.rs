@@ -1458,14 +1458,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .unwrap_or(content.expression)
                 .span(self.ast)
                 .start;
-            let span = Span::new(left_end, right_start);
             let comments = remaining;
             let count = if clear_rhs_source {
                 0
             } else if self.has_suppression && right_start == original_right_start {
                 original_count
             } else {
-                comments.partition_point(|comment| comment.span.end <= span.end)
+                comments.partition_point(|comment| comment.span.end <= right_start)
             };
             let comments = &comments[..count];
             let before_count = if self.has_suppression {
@@ -1484,6 +1483,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContentMode::Formatted
             };
+            // The verbatim RHS owns the comments inside its source opener.
+            let verbatim_opening = source_opening
+                .filter(|&opening| after_mode == ContentMode::Verbatim && opening < right_start);
+            let (right_start, comments) = if let Some(opening) = verbatim_opening {
+                let count = comments.partition_point(|comment| comment.span.end <= opening);
+                (opening, &comments[..count])
+            } else {
+                (right_start, comments)
+            };
+            let span = Span::new(left_end, right_start);
             let mut boundary = AssignmentBoundary {
                 before: &[],
                 moved: &[],
@@ -1521,7 +1530,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     removed.source.outer.start,
                     content.expression.span(self.ast).start,
                 ));
-                if head_mode == ContentMode::Formatted
+                if verbatim_opening.is_none()
+                    && head_mode == ContentMode::Formatted
                     && removed.head.binding.allows_relocation(None)
                 {
                     released_head = Some(head);
@@ -1657,7 +1667,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map_or(CommentBinding::Unbound, |removed| removed.head.binding)
                     })
             });
-            let rhs_comments = &source_comments[first + count..];
+            let rhs_comments = &remaining[comments.len()..];
             let source_clear_right = rhs_comments
                 .first()
                 .is_none_or(|comment| comment.span.start >= source_right_end);
