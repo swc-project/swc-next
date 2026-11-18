@@ -615,7 +615,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
             if adjacent_block {
                 if test.is_some() && !line {
-                    if block_ends_line {
+                    if block_ends_line
+                        && comments
+                            .iter()
+                            .all(|comment| comment.kind == CommentKind::Block)
+                    {
                         prepared.test_tail_comments = comments;
                     } else {
                         prepared.colon_comments = comments;
