@@ -202,6 +202,7 @@ pub(super) struct StatementSequence {
     pub(super) has_content: bool,
     end: u32,
     closing_gap: Option<LineConstraint>,
+    dangling_line: Option<Comment>,
 }
 
 #[derive(Clone, Copy)]
@@ -1337,6 +1338,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(StatementSequence {
             has_content: !first_statement || !dangling.is_empty() || !transferred.is_empty(),
             closing_gap,
+            dangling_line: dangling
+                .last()
+                .or_else(|| transferred.last())
+                .copied()
+                .filter(|comment| comment.kind == CommentKind::Line),
             end: dangling.last().map_or_else(
                 || previous.map_or(span.start, StatementBoundary::end),
                 |comment| comment.span.end,

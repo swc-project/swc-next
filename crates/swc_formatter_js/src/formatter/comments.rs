@@ -907,9 +907,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(());
         }
         self.comments.claim(boundary.comments)?;
-        self.format_comment_run_with_adjacency(
+        self.format_comment_run_after(
             boundary.comments,
             CommentRunLayout::SourceAfter(boundary.source_end),
+            adjacency,
+            writer,
+        )
+    }
+
+    pub(super) fn format_comment_run_after(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        adjacency: PreparedCommentAdjacency,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if comments.is_empty() {
+            return Ok(());
+        }
+        self.format_comment_run_with_adjacency(
+            comments,
+            layout,
             CommentRunStart {
                 opening: CommentOpening::Needed,
                 adjacency,
@@ -2307,15 +2325,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         if let Some(tail) = tail {
             self.comments.claim(tail.comments)?;
-            self.format_comment_run_with_adjacency(
+            self.format_comment_run_after(
                 tail.comments,
                 CommentRunLayout::SourceAfter(tail.source_end),
-                CommentRunStart {
-                    opening: CommentOpening::Needed,
-                    adjacency,
-                },
-                None,
-                None,
+                adjacency,
                 writer,
             )?;
         }

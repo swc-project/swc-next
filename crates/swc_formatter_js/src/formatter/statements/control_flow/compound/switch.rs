@@ -1,7 +1,9 @@
 //! Case heads, statement sequences, and source packets between real case owners.
 
 use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
-use crate::formatter::comments::{CommentCursor, CommentRunLayout, NodeHead};
+use crate::formatter::comments::{
+    CommentCursor, CommentRunLayout, NodeHead, PreparedCommentAdjacency,
+};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition, TailOwner};
 use crate::formatter::statements::{
@@ -285,18 +287,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         next.mode = ContentMode::Verbatim;
                     }
-                    let trailing = self.prepare_case_gap(current.trailing, pending.is_some());
-                    if current.mode == ContentMode::Verbatim {
+                    let trailing = current.trailing;
+                    let gap = self.prepare_case_gap(trailing, pending.is_some());
+                    let adjacency = if current.mode == ContentMode::Verbatim {
                         self.format_verbatim(current.node.span(ast), writer)?;
+                        PreparedCommentAdjacency::default()
                     } else {
-                        self.format_case(current, writer)?;
-                    }
-                    if pending.is_some() {
-                        self.format_case_gap(trailing, true, writer)?;
-                    } else {
-                        let terminal = trailing.source;
-                        self.format_case_gap(trailing, false, writer)?;
-                        return Ok::<_, FormatError>(terminal);
+                        self.format_case(current, writer)?
+                    };
+                    self.format_case_gap(gap, pending.is_some(), adjacency, writer)?;
+                    if pending.is_none() {
+                        return Ok::<_, FormatError>(trailing);
                     }
                 }
                 Ok(self.compound_gap(Span::new(body.end, body.end)))
@@ -333,6 +334,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         gap: CaseGap<'ast>,
         following: bool,
+        adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let source = gap.source;
@@ -372,12 +374,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comment_binding(packet, source.span, None)
                 .allows_relocation(None);
         self.comments.claim(source.comments)?;
+        self.format_comment_run_after(
+            if next_case_packet {
+                prefix
+            } else {
+                source.comments
+            },
+            CommentRunLayout::SourceAfter(source.span.start),
+            adjacency,
+            writer,
+        )?;
         if next_case_packet {
-            self.format_comment_run(
-                prefix,
-                CommentRunLayout::SourceAfter(source.span.start),
-                writer,
-            )?;
             writer.hard_line();
             let previous = prefix
                 .last()
@@ -392,11 +399,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             return Ok(());
         }
-        self.format_comment_run(
-            source.comments,
-            CommentRunLayout::SourceAfter(source.span.start),
-            writer,
-        )?;
         if following {
             let end = source
                 .comments
@@ -681,7 +683,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: PreparedCase<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<PreparedCommentAdjacency, FormatError> {
         let ast = self.ast;
         if let Some(test) = node.test {
             writer.text("case");
@@ -884,13 +886,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     has_following: node.has_following,
                 },
                 writer,
-            )?;
-            Ok::<_, FormatError>(())
+            )
         };
-        if block || first.is_none() {
+        let sequence = if block || first.is_none() {
             write_body(writer)
         } else {
             writer.indent(write_body)
-        }
+        }?;
+        Ok(PreparedCommentAdjacency::after_comments(
+            sequence.dangling_line.as_slice(),
+        ))
     }
 }
