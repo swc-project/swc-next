@@ -22,6 +22,19 @@ type F = <T extends typeof value>(value: number) => T;
         ],
         "bindings": [
           1
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+        "declarations": [
+          {
+            "span": "68..73",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
         ],
         "uses": [
           "61..66"
@@ -34,6 +47,12 @@ type F = <T extends typeof value>(value: number) => T;
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
     }
   }
 }

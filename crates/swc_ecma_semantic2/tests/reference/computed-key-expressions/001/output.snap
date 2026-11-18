@@ -13,18 +13,27 @@ type F = ({ [key + key]: v }: object) => void;
       {
         "span": "30..33",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       },
       {
         "span": "36..39",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    }
   },
   "scopes": {
     "3": {

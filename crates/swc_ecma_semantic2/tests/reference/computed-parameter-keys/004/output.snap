@@ -17,9 +17,9 @@ type F = ([
       {
         "span": "48..51",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ],
     "v": [
@@ -28,9 +28,25 @@ type F = ([
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 2
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    },
+    "2": {
+      "name": "v",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "54..55"
+      ]
+    }
   },
   "scopes": {
     "3": {

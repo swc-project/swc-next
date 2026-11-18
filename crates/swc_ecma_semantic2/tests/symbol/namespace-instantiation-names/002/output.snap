@@ -35,7 +35,7 @@ namespace Outer {
         ]
       },
       {
-        "id": 6,
+        "id": 7,
         "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -46,21 +46,21 @@ namespace Outer {
         "members": {}
       },
       {
-        "id": 7,
+        "id": 8,
         "flags": "0x0",
         "declarations": [
           {
             "span": "149..154",
             "scope": 2,
             "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
-            "node_symbol": 6,
-            "owner": 6
+            "node_symbol": 7,
+            "owner": 7
           }
         ],
         "bindings": [
           2
         ],
-        "export_symbol": 6
+        "export_symbol": 7
       }
     ],
     "Outer": [
@@ -78,11 +78,11 @@ namespace Outer {
         ],
         "members": {
           "Inner": {
-            "symbol": 6,
+            "symbol": 7,
             "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
           "selected": {
-            "symbol": 8,
+            "symbol": 9,
             "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
@@ -105,7 +105,7 @@ namespace Outer {
       "kind": "TsModule",
       "parent": 2,
       "flags": "Strict",
-      "container_owner": 6
+      "container_owner": 7
     }
   }
 }

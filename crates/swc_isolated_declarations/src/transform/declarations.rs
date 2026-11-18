@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
     GetSpan, Stmt, SymbolId, TsModuleDeclarationKind, TsModuleNameData, VariableDeclaration,
     VariableDeclarator, VariableKind, Visit, VisitWith,
 };
-use swc_next_ecma_semantic::SymbolFlags;
+use swc_next_ecma_semantic2::SymbolFlags;
 
 use super::diagnostics::{
     BINDING_ELEMENT_NOT_SUPPORTED, DEFAULT_EXPORT_TYPE_REQUIRED, VARIABLE_TYPE_REQUIRED,

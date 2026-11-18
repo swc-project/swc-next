@@ -6,7 +6,7 @@ use swc_next_ecma_ast::{
     FormalParameters, Function, GetSpan, MethodDefinitionKind, NodeId, ObjectExpression,
     ObjectPropertyKindData, PropertyKind, Span, TsFunction, TsTypeAnnotation,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 use super::keys::{PropertyIdentity, property_identity, supported_object_key};
 

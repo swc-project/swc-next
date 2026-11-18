@@ -4027,7 +4027,7 @@ dependencies = [
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
- "swc_next_ecma_semantic",
+ "swc_next_ecma_semantic2",
  "zmij_ecma",
 ]
 

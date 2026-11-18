@@ -50,7 +50,7 @@ pub struct SemanticBuilder<'traverse, 'a> {
     scope: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
     current_scope: ScopeId,
-    type_position_depth: u32,
+    default_reference_space: ReferenceSpace,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
     ast: &'traverse Ast<'a>,
@@ -73,7 +73,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             scope,
             symbols,
             current_scope,
-            type_position_depth: 0,
+            default_reference_space: ReferenceSpace::Value,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
             ast,
@@ -128,10 +128,20 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
+    fn visit_with_value_query<T>(&mut self, node: T)
+    where
+        T: VisitWith<'a, Self>,
+    {
+        let previous = std::mem::replace(&mut self.default_reference_space, ReferenceSpace::Typeof);
+        self.visit_with_reference_flags(node, self.default_reference_flags());
+        self.default_reference_space = previous;
+    }
+
+    #[inline]
     fn visit_type_member_key(&mut self, key: PropertyKey, computed: bool) {
         if computed {
-            let flags = self.flags_with_space(ReferenceSpace::Typeof);
-            self.visit_with_reference_flags(key, flags);
+            // Apply value lookup without runtime access throughout the erased key.
+            self.visit_with_value_query(key);
         } else {
             key.visit_with(self);
         }
@@ -153,15 +163,11 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     fn in_type_position(&self) -> bool {
-        self.type_position_depth > 0
+        self.default_reference_space == ReferenceSpace::Type
     }
 
     fn default_reference_flags(&self) -> ReferenceFlags {
-        ReferenceFlags::default().with_space(if self.in_type_position() {
-            ReferenceSpace::Type
-        } else {
-            ReferenceSpace::Value
-        })
+        ReferenceFlags::default().with_space(self.default_reference_space)
     }
 
     /// True when the walker is currently inside a TS namespace body.
@@ -214,14 +220,14 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
-    fn enter_type_position(&mut self) {
-        self.type_position_depth += 1;
+    fn enter_type_position(&mut self) -> ReferenceSpace {
+        std::mem::replace(&mut self.default_reference_space, ReferenceSpace::Type)
     }
 
     #[inline]
-    fn exit_type_position(&mut self) {
+    fn exit_type_position(&mut self, previous: ReferenceSpace) {
         debug_assert!(self.in_type_position());
-        self.type_position_depth -= 1;
+        self.default_reference_space = previous;
         self.reference_flags = self.default_reference_flags();
     }
 
@@ -573,7 +579,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_binding_property(&mut self, node: BindingProperty) {
         let node_flags = self.enter_node(node.node_id());
-        node.key(self.ast).visit_with(self);
+        if node_flags.space.in_type_position() {
+            self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
+        } else {
+            node.key(self.ast).visit_with(self);
+        }
         self.visit_with_reference_flags(node.value(self.ast), node_flags);
         self.leave_node(NodeKindData::BindingProperty(node));
     }
@@ -749,7 +759,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_function(&self.scope, self.current_scope);
-        node.visit_children_with(self);
+        node.id(self.ast).visit_with(self);
+        node.type_parameters(self.ast).visit_with(self);
+        node.this_param(self.ast).visit_with(self);
+        self.visit_with_value_query(node.params(self.ast));
+        node.return_type(self.ast).visit_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsFunction(node));
@@ -786,11 +800,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.leave_node(NodeKindData::FormalParameters(node));
             return;
         }
-        // Type-only signatures retain parameter labels without declaring bindings.
         self.symbols.enter_formal_parameters(self.current_scope);
-        if self.in_type_position() {
-            self.symbols.pending.flags = SymbolFlags::NONE;
-        }
         node.visit_children_with(self);
         self.symbols.exit_formal_parameters();
         self.leave_node(NodeKindData::FormalParameters(node));
@@ -942,12 +952,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.visit_type_heritage_expression(node.expression(self.ast));
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsClassImplements(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     // https://tc39.es/ecma262/#sec-static-semantics-early-errors
@@ -1190,44 +1200,44 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.visit_type_heritage_expression(node.expression(self.ast));
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsInterfaceHeritage(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsInterfaceBody(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeAnnotation(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeReference(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         let flags = self.enter_node(node.node_id());
         let space = match flags.space {
             ReferenceSpace::Value | ReferenceSpace::Type | ReferenceSpace::Namespace => {
@@ -1238,32 +1248,32 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.visit_with_reference_flags(node.left(self.ast), flags.with_space(space));
         node.right(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsQualifiedName(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         let flags = self.flags_with_space(ReferenceSpace::Typeof);
         self.visit_with_reference_flags(node.expr_name(self.ast), flags);
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsTypeQuery(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_import_type(&mut self, node: TsImportType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsImportType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_ts_type_parameter(
             self.ast,
@@ -1274,192 +1284,192 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsTypeParameter(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeParameterDeclaration(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeParameterInstantiation(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsLiteralType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTemplateLiteralType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_array_type(&mut self, node: TsArrayType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsArrayType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsIndexedAccessType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTupleType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsNamedTupleMember(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsOptionalType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsRestType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocNullableType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocNonNullableType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsJsDocUnknownType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_union_type(&mut self, node: TsUnionType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsUnionType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsIntersectionType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_infer_type(&mut self, node: TsInferType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsInferType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeOperator(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsParenthesizedType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypeLiteral(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]
     fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
         node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsPropertySignature(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.add_ts_type_predicate_reference(
             self.ast,
@@ -1469,11 +1479,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         );
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypePredicate(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.check_type(self.ast).visit_with(self);
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
@@ -1483,36 +1493,36 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.exit_scope(node.node_id());
         node.false_type(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsConditionalType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_function_type(&mut self, node: TsFunctionType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsFunctionType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsConstructorType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         let parent = self.parent();
         // Mapped type keys `[K in T]` use the same binding context as type parameters.
@@ -1522,11 +1532,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsMappedType(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
@@ -1538,43 +1548,43 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsMethodSignature(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsCallSignatureDeclaration(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsConstructSignatureDeclaration(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        self.enter_type_position();
+        let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         self.symbols.enter_signature_type(self.current_scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsIndexSignature(node));
-        self.exit_type_position();
+        self.exit_type_position(previous);
     }
 
     #[inline]

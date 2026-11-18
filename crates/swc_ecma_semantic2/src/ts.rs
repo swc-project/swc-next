@@ -99,6 +99,12 @@ impl<'a> Semantic<'a> {
         self.ts_bindings.ts_owner(scope)
     }
 
+    /// Finds a shared enum or namespace member by name on a canonical container.
+    /// Each contribution's flags describe its visibility in the corresponding body.
+    pub fn ts_container_member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
+        self.ts_bindings.member(owner, name)
+    }
+
     /// Iterates the shared members of a canonical container in unspecified order.
     pub fn ts_container_members(
         &self,

@@ -16,16 +16,16 @@ type F = <T extends typeof value>(value: number) => T;
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "symbol": 0
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "0": {
+    "3": {
       "name": "value",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [
-        "17..22"
+        "68..73"
       ]
     }
   },

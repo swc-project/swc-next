@@ -13,7 +13,7 @@ declare function f({ [key]: v }: { p: number }): typeof v;
       {
         "span": "39..42",
         "scope": 2,
-        "space": "Value",
+        "space": "Typeof",
         "access": "None",
         "symbol": 0
       }

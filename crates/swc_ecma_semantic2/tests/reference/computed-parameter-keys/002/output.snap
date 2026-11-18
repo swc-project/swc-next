@@ -14,7 +14,7 @@ type F = ({ [key]: v }) => void;
       {
         "span": "47..50",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
         "symbol": 0
       }

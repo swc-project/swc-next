@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     Ast, Class, ClassElementData, Decl, DeclData, ExportDefaultDeclarationKindData,
     MethodDefinitionKind, Stmt, StmtData, SubRange, SymbolId,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 use super::{DeclarationSurface, property_identity};
 

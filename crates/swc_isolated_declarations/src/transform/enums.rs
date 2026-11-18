@@ -2,16 +2,17 @@
 
 use std::borrow::Cow;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::{
     Ast, AstWtf8, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKey,
     PropertyKeyData, Span, SymbolId, TsEnumDeclaration, UnaryOperator,
 };
-use swc_next_ecma_semantic::{NameResolution, Semantic};
+use swc_next_ecma_semantic2::{ReferenceSpace, Semantic, SymbolFlags, TsImportAlias};
 use zmij_ecma::Buffer;
 
 use crate::surface::unparenthesized;
+use crate::value_binding;
 
 const CONST_ENUM_INITIALIZER_NOT_CONSTANT: &str =
     "const enum member initializers must be constant expressions.";
@@ -162,11 +163,12 @@ fn evaluate(
             evaluate_binary(binary.operator(ast), left, right, ast)
         }
         ExprData::IdentifierReference(identifier) => {
-            if let Some(symbol) = resolve_symbol(expression, semantic, ast) {
+            let reference = semantic.reference_of(identifier.node_id())?;
+            if let Some(symbol) = semantic.reference(reference).symbol {
+                let symbol = value_binding(semantic, symbol);
                 return previous_members.get(&symbol).copied().map(Into::into);
             }
-            let reference = semantic.reference_of(identifier.node_id())?;
-            if semantic.reference(reference).symbol.is_some() {
+            if !semantic.reference_candidates(reference).is_empty() {
                 return None;
             }
             match ast.get_utf8(identifier.name(ast)) {
@@ -264,23 +266,39 @@ fn resolve_symbol(expression: Expr, semantic: &Semantic<'_>, ast: &Ast<'_>) -> O
     match ast.expr_data(expression) {
         ExprData::IdentifierReference(identifier) => {
             let reference = semantic.reference_of(identifier.node_id())?;
-            unique_symbol(semantic.reference_value_targets(ast, reference))
+            semantic.reference(reference).symbol
         }
         ExprData::MemberExpression(member) if !member.optional(ast) => {
             let owner = resolve_symbol(member.object(ast), semantic, ast)?;
-            let owner = semantic.ts_import_alias_target(owner).unwrap_or(owner);
+            let owner = resolve_container(semantic, owner)?;
             let name = property_name(member.property(ast), ast)?;
-            unique_symbol(semantic.ts_namespace_value_targets(owner, name.as_ref()))
+            let member = semantic.ts_container_member(owner, name.as_ref())?;
+            let has_value = [member.enum_flags, member.namespace_flags]
+                .into_iter()
+                .flatten()
+                .any(|flags| flags.visible_in(ReferenceSpace::Value));
+            has_value.then_some(member.symbol)
         }
         _ => None,
     }
 }
 
-fn unique_symbol(mut targets: impl Iterator<Item = NameResolution>) -> Option<SymbolId> {
-    let symbol = targets.next()?.symbol()?;
-    targets
-        .all(|target| target.symbol() == Some(symbol))
-        .then_some(symbol)
+fn resolve_container(semantic: &Semantic<'_>, mut symbol: SymbolId) -> Option<SymbolId> {
+    let mut aliases = FxHashSet::default();
+    loop {
+        symbol = value_binding(semantic, symbol);
+        let Some(alias) = semantic.ts_import_alias(symbol) else {
+            return Some(symbol);
+        };
+        let flags = semantic.symbol(symbol).flags;
+        if flags.contains(SymbolFlags::TYPE_IMPORT) || !aliases.insert(symbol) {
+            return None;
+        }
+        let TsImportAlias::Target(target) = alias else {
+            return None;
+        };
+        symbol = target;
+    }
 }
 
 fn property_name<'ast>(key: PropertyKey, ast: &Ast<'ast>) -> Option<Cow<'ast, [u8]>> {

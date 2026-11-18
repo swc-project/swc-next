@@ -9,6 +9,31 @@ type Guard = (value: unknown) => value is string;
 ---------- Output ----------
 {
   "references": {
-    "value": []
+    "value": [
+      {
+        "span": "44..49",
+        "scope": 3,
+        "space": "Typeof",
+        "access": "None",
+        "symbol": 1
+      }
+    ]
+  },
+  "symbols": {
+    "1": {
+      "name": "value",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "25..30"
+      ]
+    }
+  },
+  "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    }
   }
 }

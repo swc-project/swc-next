@@ -22,6 +22,19 @@ type I = new (value: number) => { value: typeof value };
         ],
         "bindings": [
           1
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+        "declarations": [
+          {
+            "span": "48..53",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
         ],
         "uses": [
           "82..87"
@@ -34,6 +47,12 @@ type I = new (value: number) => { value: typeof value };
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "3": {
+      "kind": "Block",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
     }
   }
 }

@@ -23,16 +23,16 @@ type F = ({ [(k as T) + k]: v }) => void;
       {
         "span": "44..45",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 1
       },
       {
         "span": "54..55",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 1
       }
     ]
   },
@@ -42,6 +42,13 @@ type F = ({ [(k as T) + k]: v }) => void;
       "flags": "INTERFACE",
       "declarations": [
         "10..11"
+      ]
+    },
+    "1": {
+      "name": "k",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "21..22"
       ]
     }
   },
@@ -72,16 +79,16 @@ type F = ({ [(k as T) + k]: v }) => void;
       {
         "span": "44..45",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 1
       },
       {
         "span": "54..55",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 1
       }
     ]
   },
@@ -91,6 +98,13 @@ type F = ({ [(k as T) + k]: v }) => void;
       "flags": "INTERFACE",
       "declarations": [
         "10..11"
+      ]
+    },
+    "1": {
+      "name": "k",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "21..22"
       ]
     }
   },

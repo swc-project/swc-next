@@ -15,11 +15,20 @@ type F = ({ [key.p]: v }) => void;
       {
         "span": "55..58",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "10..13"
+      ]
+    }
   },
   "scopes": {
     "4": {

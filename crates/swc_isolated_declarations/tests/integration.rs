@@ -4,7 +4,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, analyze};
 use swc_next_isolated_declarations::transform;
 
 #[test]

@@ -13,18 +13,27 @@ type T = { [key + key]: number };
       {
         "span": "29..32",
         "scope": 2,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       },
       {
         "span": "35..38",
         "scope": 2,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    }
   },
   "scopes": {
     "2": {

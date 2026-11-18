@@ -18,13 +18,14 @@ use swc_next_ecma_ast::{
     TsFunction, TsGlobalDeclaration, TsMethodDefinition, TsModuleBlock, TsModuleDeclaration,
     TsParameterProperty, VariableDeclarator, Visit, VisitWith,
 };
-use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
+use swc_next_ecma_semantic2::{ReferenceSpace, Semantic};
 
 use crate::surface::{
     AccessorKey, AccessorType, DeclContext, DeclarationSurface, ExportExpression, InferredType,
     class_accessors, export_expression, inferred_type, namespace_binding, object_accessors,
     property_identity, return_expression, supported_computed_key, supported_object_key,
 };
+use crate::value_binding;
 
 bitflags! {
     /// The declaration namespaces in which a symbol is required by declaration emit.
@@ -200,7 +201,8 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             return;
         };
         let reference = semantic.reference(id);
-        let private_name = reference.resolution().symbol().is_some_and(|symbol| {
+        let candidates = semantic.reference_candidates(id);
+        let private_name = reference.symbol.is_some_and(|symbol| {
             self.erased_function_names.contains(&symbol)
                 || self.returns.iter().any(|(body, retained)| {
                     semantic.declarations(symbol).all(|declaration| {
@@ -222,24 +224,31 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             }));
         }
 
-        let usage = match reference.flags.space {
-            ReferenceSpace::Value | ReferenceSpace::Typeof => SymbolUsage::VALUE,
-            ReferenceSpace::Type | ReferenceSpace::Namespace => SymbolUsage::TYPE,
-            ReferenceSpace::Any => SymbolUsage::TYPE,
-        };
         // A candidate is a dependency, not proof that this spelling will still
         // resolve to the same declaration after private declarations are pruned.
-        for symbol in semantic.reference_candidates(id) {
-            self.add_edge(SymbolKey::new(symbol, usage));
-        }
-        if reference.flags.space == ReferenceSpace::Any {
-            for target in semantic.reference_value_targets(self.ast, id) {
-                if let Some(symbol) = target.candidate() {
-                    self.add_edge(SymbolKey::new(symbol, SymbolUsage::VALUE));
+        for symbol in reference
+            .symbol
+            .into_iter()
+            .chain(candidates.iter().copied())
+        {
+            match reference.flags.space {
+                ReferenceSpace::Value | ReferenceSpace::Typeof => {
+                    let value = value_binding(semantic, symbol);
+                    self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
+                }
+                ReferenceSpace::Type | ReferenceSpace::Namespace => {
+                    self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
+                }
+                ReferenceSpace::Any => {
+                    self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
+                    let value = value_binding(semantic, symbol);
+                    if semantic.symbol(value).flags.in_value_space() {
+                        self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
+                    }
                 }
             }
         }
-        if reference.flags.is_uncertain()
+        if !candidates.is_empty()
             && let Some(source) = self.source
         {
             self.diagnostics.push((source, Diagnostic::error("The declaration depends on a reference whose target cannot be determined without type checking.", self.ast.span(node))));
@@ -836,7 +845,7 @@ mod tests {
     use swc_next_ecma_ast::{Lang, ScopeId, SourceType};
     use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
     use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-    use swc_next_ecma_semantic::{AnalyzeOptions, ReferenceSpace, SyntaxChecks, analyze};
+    use swc_next_ecma_semantic2::{AnalyzeOptions, ReferenceSpace, SyntaxChecks, analyze};
 
     use super::TypeUsageAnalyzer;
     use crate::transform;
@@ -894,8 +903,11 @@ mod tests {
             .1;
         let scope = ScopeId::MODULE;
         let local = semantic.lookup(scope, b"X", ReferenceSpace::Type).unwrap();
-        let exported = semantic.lookup(scope, b"X", ReferenceSpace::Value).unwrap();
-        assert_ne!(local, exported);
+        assert_eq!(
+            semantic.lookup(scope, b"X", ReferenceSpace::Value),
+            Some(local)
+        );
+        let exported = semantic.ts_export_symbol(local).unwrap();
         let (used, diagnostics, _) = TypeUsageAnalyzer::analyze(unsafe { ast.ast() }, &semantic);
         assert!(diagnostics.is_empty());
         assert!(used.contains_type(local));

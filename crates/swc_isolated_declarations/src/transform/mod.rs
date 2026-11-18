@@ -18,7 +18,7 @@ use swc_next_ecma_ast::{
     Ast, AstCtx, Diagnostic, ExportDefaultDeclarationKindData, GetSpan, NodeId, Stmt, StmtData,
     SubRange,
 };
-use swc_next_ecma_semantic::{Semantic, SemanticAst};
+use swc_next_ecma_semantic2::{Semantic, SemanticAst};
 
 use crate::UsedSymbols;
 use crate::surface::{DeclContext, DeclarationSurface, ExportExpression, export_expression};

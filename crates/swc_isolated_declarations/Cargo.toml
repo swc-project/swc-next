@@ -11,9 +11,9 @@ bitflags   = { workspace = true }
 rustc-hash = { workspace = true }
 zmij_ecma  = { workspace = true }
 
-swc_next_allocator     = { workspace = true }
-swc_next_ecma_ast      = { workspace = true }
-swc_next_ecma_semantic = { workspace = true }
+swc_next_allocator      = { workspace = true }
+swc_next_ecma_ast       = { workspace = true }
+swc_next_ecma_semantic2 = { workspace = true }
 
 [dev-dependencies]
 swc_next_ecma_codegen = { workspace = true }

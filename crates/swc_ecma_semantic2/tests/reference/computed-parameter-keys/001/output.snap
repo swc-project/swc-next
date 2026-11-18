@@ -13,9 +13,9 @@ type F = ({ [key]: v }: { p: number }) => typeof v;
       {
         "span": "30..33",
         "scope": 3,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ],
     "v": [
@@ -24,9 +24,25 @@ type F = ({ [key]: v }: { p: number }) => typeof v;
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 2
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    },
+    "2": {
+      "name": "v",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "declarations": [
+        "36..37"
+      ]
+    }
   },
   "scopes": {
     "3": {

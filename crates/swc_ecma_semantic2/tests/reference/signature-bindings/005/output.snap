@@ -18,16 +18,16 @@ interface I {
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "symbol": 0
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "0": {
+    "2": {
       "name": "value",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [
-        "17..22"
+        "55..60"
       ]
     }
   },

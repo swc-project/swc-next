@@ -1064,11 +1064,11 @@ impl<'a> SymbolTracker<'a> {
     }
 
     pub fn enter_signature_type(&mut self, current_scope: ScopeId) {
-        // Signature parameter names are labels rather than declarations.
+        // Index signatures declare their parameters without a FormalParameters node.
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags::NONE,
-            excludes: SymbolFlags::NONE,
+            flags: SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::PARAMETER,
+            excludes: Excludes::PARAMETER,
             scope: current_scope,
         };
         self.export_state = ExportState::None;
@@ -1097,7 +1097,6 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         self.sync_symbol_tables_from(scope);
-        // Type-only signature parameter labels do not declare bindings.
         if self.pending.flags.is_empty() {
             return;
         }

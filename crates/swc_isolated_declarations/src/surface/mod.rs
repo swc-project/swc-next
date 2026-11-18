@@ -15,7 +15,7 @@ use swc_next_ecma_ast::{
     Ast, BindingIdentifier, FormalParameter, FormalParameterPatternData, NodeId, SourceType,
     SymbolId, TsModuleDeclaration, TsModuleName, TsModuleNameData, TsQualifiedNameLeftData, TsType,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
 
 pub(crate) use accessors::{
     AccessorKey, AccessorPair, AccessorType, class_accessors, object_accessors,

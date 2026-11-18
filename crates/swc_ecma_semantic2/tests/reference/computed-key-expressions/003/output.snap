@@ -13,18 +13,27 @@ type F = ({ [key(key)]: v }: object) => typeof v;
       {
         "span": "43..46",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       },
       {
         "span": "47..50",
         "scope": 4,
-        "space": "Type",
+        "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 0
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "key",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..9"
+      ]
+    }
   },
   "scopes": {
     "4": {

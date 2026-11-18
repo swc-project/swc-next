@@ -6,7 +6,9 @@ use swc_next_ecma_ast::{
     TemplateLiteral, TsLiteral, TsType, TsTypeData, TsTypeNameData, UnaryOperator, Visit,
     VisitWith,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic2::Semantic;
+
+use crate::is_unresolved;
 
 use super::DeclarationSurface;
 
@@ -121,11 +123,11 @@ pub(crate) fn inferred_type(
             if ast.get_utf8(identifier.name(ast)) == "undefined"
                 && semantic
                     .reference_of(identifier.node_id())
-                    .is_some_and(|id| semantic.reference(id).symbol.is_none())
+                    .is_some_and(|id| is_unresolved(semantic, id))
             {
                 InferredType::Undefined
             } else if let Some(reference) = semantic.reference_of(identifier.node_id())
-                && let Some(symbol) = semantic.reference(reference).resolution().symbol()
+                && let Some(symbol) = semantic.reference(reference).symbol
                 && let Some(annotation) = surface.annotations.get(&symbol)
             {
                 if annotation.optional {

@@ -10,8 +10,11 @@ use zmij_ecma::Buffer;
 
 use super::Transformer;
 use super::diagnostics::COMPUTED_SIGNATURE_NOT_SUPPORTED;
-use crate::surface::{
-    first_template_quasi, signed_numeric_value, supported_computed_key, unparenthesized,
+use crate::{
+    is_unresolved,
+    surface::{
+        first_template_quasi, signed_numeric_value, supported_computed_key, unparenthesized,
+    },
 };
 
 impl<'ast> Transformer<'_, 'ast> {
@@ -203,7 +206,7 @@ impl<'ast> Transformer<'_, 'ast> {
             || self
                 .semantic
                 .reference_of(global_this.node_id())
-                .is_none_or(|reference| self.semantic.reference(reference).symbol.is_some())
+                .is_none_or(|reference| !is_unresolved(self.semantic, reference))
         {
             return (key, true);
         }
