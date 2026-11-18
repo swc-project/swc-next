@@ -47,15 +47,8 @@ namespace Use {
         "bindings": [
           6
         ],
-        "uses": [
-          "142..143"
-        ],
         "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "TYPEOF"
-          ]
+          "Target": 1
         },
         "import": {
           "initializer": "120..121"

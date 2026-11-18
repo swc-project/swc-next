@@ -24,36 +24,18 @@ const value = Alias;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          6
-        ]
+        "symbol": 6
       }
     ]
   },
   "symbols": {
-    "5": {
-      "name": "Item",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
-      "declarations": [
-        "127..131"
-      ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
-    },
     "6": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "148..153"
       ],
-      "alias": {
-        "Target": 5
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

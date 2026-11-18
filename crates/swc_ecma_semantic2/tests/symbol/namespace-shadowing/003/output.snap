@@ -28,9 +28,6 @@ namespace N {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "174..179"
         ]
       },
       {
@@ -49,12 +46,7 @@ namespace N {
           "174..179"
         ],
         "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
+          "Target": 3
         },
         "import": {
           "initializer": "129..130"

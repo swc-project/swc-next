@@ -22,14 +22,7 @@ import A = N.E;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "37..38"
         }

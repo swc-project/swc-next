@@ -67,7 +67,7 @@ const selected = Selected;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 16
       }
     ]
   },
@@ -80,6 +80,14 @@ const selected = Selected;
         "97..98",
         "119..120"
       ]
+    },
+    "16": {
+      "name": "Selected",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "362..370"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

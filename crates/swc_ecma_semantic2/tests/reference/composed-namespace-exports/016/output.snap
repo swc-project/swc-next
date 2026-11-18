@@ -345,21 +345,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 132
       },
       {
         "span": "25694..25699",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 132
       },
       {
         "span": "25741..25746",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 132
       }
     ],
     "N": [
@@ -367,7 +367,7 @@ const queried: typeof Alias = 1;
         "span": "25403..25404",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       }
@@ -854,6 +854,14 @@ const queried: typeof Alias = 1;
       "declarations": [
         "25345..25353"
       ]
+    },
+    "132": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "25395..25400"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

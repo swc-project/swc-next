@@ -33,24 +33,21 @@ const nested: Alias.T = { t: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          6
-        ]
+        "symbol": 6
       },
       {
         "span": "282..287",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 6
       },
       {
         "span": "319..324",
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "symbol": null
+        "symbol": 6
       }
     ],
     "C": [
@@ -79,12 +76,7 @@ const nested: Alias.T = { t: true };
       "declarations": [
         "227..232"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

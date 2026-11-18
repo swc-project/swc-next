@@ -24,14 +24,18 @@ namespace Use {
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          5
-        ]
+        "symbol": 5
       }
     ]
   },
   "symbols": {
+    "2": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "86..87"
+      ]
+    },
     "5": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
@@ -39,11 +43,7 @@ namespace Use {
         "118..119"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
+        "Target": 2
       }
     }
   },

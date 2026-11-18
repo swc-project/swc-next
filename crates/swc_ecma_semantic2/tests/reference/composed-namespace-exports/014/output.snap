@@ -38,21 +38,21 @@ const nested: Alias.T = { ok: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 13
       },
       {
         "span": "399..404",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 13
       },
       {
         "span": "438..443",
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "symbol": null
+        "symbol": 13
       }
     ],
     "N": [
@@ -60,7 +60,7 @@ const nested: Alias.T = { ok: true };
         "span": "349..350",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 7,
         "import_equals": true
       }
@@ -116,6 +116,14 @@ const nested: Alias.T = { ok: true };
       "alias": {
         "Target": 1
       }
+    },
+    "13": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "341..346"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

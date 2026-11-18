@@ -24,9 +24,7 @@ import A = C.x;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "39..40"
         }

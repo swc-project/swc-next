@@ -4,14 +4,10 @@
 //! continue to use `SymbolTracker`'s existing storage. `TsBindings` holds the
 //! relationships that storage does not express.
 
-use swc_next_allocator::{
-    Allocator,
-    hash_map::HashMap,
-    vec::{ArenaIndexVec, ArenaVec},
-};
-use swc_next_ecma_ast::{ReferenceId, ScopeId, SymbolId};
+use swc_next_allocator::{Allocator, hash_map::HashMap};
+use swc_next_ecma_ast::{ScopeId, SymbolId};
 
-use crate::{Semantic, SymbolFlags, binder::Range};
+use crate::{Semantic, SymbolFlags};
 
 /// TypeScript relationships supplementing `SymbolTracker`.
 #[derive(Debug)]
@@ -22,13 +18,8 @@ pub(crate) struct TsBindings<'a> {
     pub(crate) container_members: HashMap<'a, SymbolId, TsMemberTable<'a>>,
     /// Local symbol -> canonical export symbol for directly exported declarations.
     pub(crate) export_symbols: HashMap<'a, SymbolId, SymbolId>,
-    /// Import alias -> direct target or possible declaration spaces.
+    /// Import alias -> its target resolution.
     pub(crate) import_aliases: HashMap<'a, SymbolId, TsImportAlias>,
-    /// Candidate ranges when `Reference.symbol` is `None`: nonempty means uncertain,
-    /// empty means unresolved. Definite references have empty ranges.
-    pub(crate) reference_symbol_ranges: ArenaIndexVec<'a, ReferenceId, Range>,
-    /// Candidates deduplicated per reference, also included in each symbol's uses.
-    pub(crate) reference_symbols: ArenaVec<'a, SymbolId>,
 }
 
 impl<'a> TsBindings<'a> {
@@ -38,8 +29,6 @@ impl<'a> TsBindings<'a> {
             container_members: HashMap::new_in(allocator),
             export_symbols: HashMap::new_in(allocator),
             import_aliases: HashMap::new_in(allocator),
-            reference_symbol_ranges: ArenaIndexVec::new_in(allocator),
-            reference_symbols: ArenaVec::new_in(allocator),
         }
     }
 
@@ -49,14 +38,6 @@ impl<'a> TsBindings<'a> {
 
     pub(crate) fn member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
         self.container_members.get(&owner)?.get(name).copied()
-    }
-
-    pub(crate) fn candidates(&self, id: ReferenceId) -> &[SymbolId] {
-        let Some(range) = self.reference_symbol_ranges.get(id) else {
-            return &[];
-        };
-        let start = range.start as usize;
-        &self.reference_symbols[start..start + range.len as usize]
     }
 }
 
@@ -73,24 +54,14 @@ pub struct TsMember {
     pub namespace_flags: Option<SymbolFlags>,
 }
 
-/// A TypeScript import alias's direct target or possible declaration spaces.
-#[derive(Debug, Clone, Copy)]
+/// The result of resolving a TypeScript import alias.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TsImportAlias {
     /// Known direct target; visibility follows the target and alias-chain restrictions.
     Target(SymbolId),
-    /// Possible spaces without a known target; empty means no usable target.
-    Unknown(TsImportAliasSpace),
-}
-
-bitflags::bitflags! {
-    /// Possible declaration spaces for an alias with no known direct target.
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-    pub struct TsImportAliasSpace: u8 {
-        const VALUE = 1 << 0;
-        const TYPE = 1 << 1;
-        const NAMESPACE = 1 << 2;
-        const TYPEOF = 1 << 3;
-    }
+    /// The target could not be resolved from the available declarations.
+    /// A reference can still resolve to the alias itself.
+    Unknown,
 }
 
 impl<'a> Semantic<'a> {
@@ -125,11 +96,5 @@ impl<'a> Semantic<'a> {
     /// Returns the recorded resolution of an import alias.
     pub fn ts_import_alias(&self, symbol: SymbolId) -> Option<TsImportAlias> {
         self.ts_bindings.import_aliases.get(&symbol).copied()
-    }
-
-    /// Returns the deduplicated candidates for an uncertain reference in unspecified order.
-    /// Definite and unresolved references have no candidates.
-    pub fn reference_candidates(&self, id: ReferenceId) -> &[SymbolId] {
-        self.ts_bindings.candidates(id)
     }
 }

@@ -24,14 +24,7 @@ namespace N {
         "bindings": [
           2
         ],
-        "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "65..71"
         }

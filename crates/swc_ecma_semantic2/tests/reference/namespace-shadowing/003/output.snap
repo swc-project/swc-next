@@ -22,11 +22,7 @@ namespace N {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          1,
-          4
-        ]
+        "symbol": 4
       }
     ],
     "B": [
@@ -35,10 +31,7 @@ namespace N {
         "scope": 2,
         "space": "Namespace",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          3
-        ],
+        "symbol": 3,
         "import_equals": true
       }
     ]
@@ -49,13 +42,6 @@ namespace N {
       "flags": "IMPORT",
       "declarations": [
         "12..18"
-      ]
-    },
-    "1": {
-      "name": "Alias",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "42..47"
       ]
     },
     "3": {
@@ -75,12 +61,7 @@ namespace N {
         "121..126"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
+        "Target": 3
       }
     }
   },

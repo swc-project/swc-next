@@ -27,10 +27,7 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          3
-        ]
+        "symbol": 3
       },
       {
         "span": "168..173",
@@ -44,10 +41,7 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          3
-        ]
+        "symbol": 3
       }
     ],
     "C": [
@@ -77,12 +71,7 @@ const queried: typeof Alias = 1;
         "86..91",
         "109..114"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

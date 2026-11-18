@@ -48,15 +48,8 @@ namespace Use {
         "bindings": [
           6
         ],
-        "uses": [
-          "159..160"
-        ],
         "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "TYPEOF"
-          ]
+          "Target": 2
         },
         "import": {
           "initializer": "137..138"

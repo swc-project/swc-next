@@ -66,16 +66,14 @@ struct TestScope {
 #[derive(Serialize)]
 pub(crate) enum TestAlias {
     Target(usize),
-    Unknown(Vec<&'static str>),
+    Unknown,
 }
 
 impl From<TsImportAlias> for TestAlias {
     fn from(alias: TsImportAlias) -> Self {
         match alias {
             TsImportAlias::Target(id) => Self::Target(id.index()),
-            TsImportAlias::Unknown(spaces) => {
-                Self::Unknown(spaces.iter_names().map(|(name, _)| name).collect())
-            }
+            TsImportAlias::Unknown => Self::Unknown,
         }
     }
 }

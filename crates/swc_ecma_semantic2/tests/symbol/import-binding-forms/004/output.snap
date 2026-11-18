@@ -22,9 +22,10 @@ import B = A;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "uses": [
+          "25..26"
+        ],
+        "alias": "Unknown",
         "import": {
           "initializer": "11..12"
         }

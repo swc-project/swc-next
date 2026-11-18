@@ -27,40 +27,25 @@ namespace N {
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          7
-        ]
+        "symbol": 7
       },
       {
         "span": "232..237",
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 5
+        "symbol": 7
       }
     ]
   },
   "symbols": {
-    "5": {
-      "name": "Alias",
-      "flags": "TYPE_ALIAS",
-      "declarations": [
-        "132..137"
-      ]
-    },
     "7": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "177..182"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

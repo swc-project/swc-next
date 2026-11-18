@@ -201,18 +201,18 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             return;
         };
         let reference = semantic.reference(id);
-        let candidates = semantic.reference_candidates(id);
-        let private_name = reference.symbol.is_some_and(|symbol| {
-            self.erased_function_names.contains(&symbol)
-                || self.returns.iter().any(|(body, retained)| {
-                    semantic.declarations(symbol).all(|declaration| {
-                        let span = self.ast.span(declaration.node);
-                        body.start <= span.start
-                            && span.end <= body.end
-                            && !(retained.start <= span.start && span.end <= retained.end)
-                    })
+        let Some(symbol) = reference.symbol else {
+            return;
+        };
+        let private_name = self.erased_function_names.contains(&symbol)
+            || self.returns.iter().any(|(body, retained)| {
+                semantic.declarations(symbol).all(|declaration| {
+                    let span = self.ast.span(declaration.node);
+                    body.start <= span.start
+                        && span.end <= body.end
+                        && !(retained.start <= span.start && span.end <= retained.end)
                 })
-        });
+            });
         if private_name && let Some(source) = self.source {
             let name = self.ast.get_utf8(reference.name);
             self.diagnostics.push((source, Diagnostic {
@@ -224,34 +224,21 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             }));
         }
 
-        // A candidate is a dependency, not proof that this spelling will still
-        // resolve to the same declaration after private declarations are pruned.
-        for symbol in reference
-            .symbol
-            .into_iter()
-            .chain(candidates.iter().copied())
-        {
-            match reference.flags.space {
-                ReferenceSpace::Value | ReferenceSpace::Typeof => {
-                    let value = value_binding(semantic, symbol);
+        match reference.flags.space {
+            ReferenceSpace::Value | ReferenceSpace::Typeof => {
+                let value = value_binding(semantic, symbol);
+                self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
+            }
+            ReferenceSpace::Type | ReferenceSpace::Namespace => {
+                self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
+            }
+            ReferenceSpace::Any => {
+                self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
+                let value = value_binding(semantic, symbol);
+                if semantic.symbol(value).flags.in_value_space() {
                     self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
                 }
-                ReferenceSpace::Type | ReferenceSpace::Namespace => {
-                    self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
-                }
-                ReferenceSpace::Any => {
-                    self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
-                    let value = value_binding(semantic, symbol);
-                    if semantic.symbol(value).flags.in_value_space() {
-                        self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
-                    }
-                }
             }
-        }
-        if !candidates.is_empty()
-            && let Some(source) = self.source
-        {
-            self.diagnostics.push((source, Diagnostic::error("The declaration depends on a reference whose target cannot be determined without type checking.", self.ast.span(node))));
         }
     }
 
@@ -986,33 +973,6 @@ mod tests {
         assert!(code.contains("namespace N"));
         assert!(code.contains("namespace Use"));
         assert!(code.contains("export import A = N.T;"));
-    }
-
-    #[test]
-    fn expando_type_dependencies() {
-        let (code, diagnostics) = declaration_output(
-            "type Alias = number; function Root(): void {} namespace Root { export function child(): void {} export namespace child { export interface Marker {} } } Root.child.value = 1; export namespace Use { import Alias = Root.child.value; export type T = Alias; }",
-        );
-        assert_eq!(diagnostics, 0);
-        assert!(code.contains("type Alias = number;"));
-        assert!(!code.contains("import Alias"));
-        assert!(!code.contains("namespace Root"));
-    }
-
-    #[test]
-    fn uncertain_declaration_dependencies() {
-        let (code, diagnostics) = declaration_output(
-            "import * as Holder from 'pkg'; type Alias = number; export namespace Use { import Alias = Holder.Member; export type T = Alias; }",
-        );
-        assert_eq!(diagnostics, 1);
-        assert!(code.contains("type Alias = number;"));
-        assert!(code.contains("import Alias = Holder.Member;"));
-
-        let (code, diagnostics) = declaration_output(
-            "import * as Holder from 'pkg'; type Alias = number; namespace Private { import Alias = Holder.Member; export type T = Alias; } export {};",
-        );
-        assert_eq!(diagnostics, 0);
-        assert!(!code.contains("namespace Private"));
     }
 
     #[test]

@@ -26,14 +26,7 @@ type Result = A;
         "uses": [
           "75..76"
         ],
-        "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "46..54"
         }

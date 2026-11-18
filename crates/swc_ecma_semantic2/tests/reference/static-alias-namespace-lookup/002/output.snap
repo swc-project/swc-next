@@ -26,10 +26,7 @@ namespace Use {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          7
-        ],
+        "symbol": 7,
         "import_equals": true
       }
     ],
@@ -39,10 +36,7 @@ namespace Use {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          8
-        ]
+        "symbol": 8
       },
       {
         "span": "179..180",
@@ -54,6 +48,20 @@ namespace Use {
     ]
   },
   "symbols": {
+    "1": {
+      "name": "N",
+      "flags": "NAMESPACE_MODULE | EXPORTED",
+      "declarations": [
+        "44..45"
+      ]
+    },
+    "3": {
+      "name": "T",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "69..70"
+      ]
+    },
     "5": {
       "name": "B",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
@@ -68,11 +76,7 @@ namespace Use {
         "118..119"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
+        "Target": 1
       }
     },
     "8": {
@@ -82,9 +86,7 @@ namespace Use {
         "136..137"
       ],
       "alias": {
-        "Unknown": [
-          "TYPE"
-        ]
+        "Target": 3
       }
     }
   },

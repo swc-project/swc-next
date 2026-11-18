@@ -28,9 +28,7 @@ import A = N.Y;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "111..112"
         }

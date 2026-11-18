@@ -22,9 +22,19 @@ type T = Alias;
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 4
       }
     ]
+  },
+  "symbols": {
+    "4": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "108..113"
+      ],
+      "alias": "Unknown"
+    }
   },
   "scopes": {
     "6": {

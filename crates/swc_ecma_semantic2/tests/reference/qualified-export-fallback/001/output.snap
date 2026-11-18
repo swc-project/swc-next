@@ -38,21 +38,21 @@ const b: B = { own: true };
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 8
+        "symbol": 10
       },
       {
         "span": "358..359",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 10
       },
       {
         "span": "386..387",
         "scope": 9,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 10
       }
     ],
     "B": [
@@ -61,7 +61,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 17
       }
     ],
     "N": [
@@ -83,12 +83,21 @@ const b: B = { own: true };
         "29..30"
       ]
     },
-    "8": {
+    "10": {
       "name": "A",
-      "flags": "TYPE_ALIAS",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "251..252"
-      ]
+        "288..289"
+      ],
+      "alias": "Unknown"
+    },
+    "17": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "398..399"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

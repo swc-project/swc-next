@@ -22,20 +22,14 @@ namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          2
-        ]
+        "symbol": 2
       },
       {
         "span": "135..143",
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          2
-        ]
+        "symbol": 2
       }
     ],
     "value": [
@@ -55,14 +49,7 @@ namespace N {
       "declarations": [
         "62..70"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

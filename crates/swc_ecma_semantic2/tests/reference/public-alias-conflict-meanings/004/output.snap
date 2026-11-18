@@ -20,7 +20,7 @@ declare const Alias: string;
         "span": "109..110",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       }

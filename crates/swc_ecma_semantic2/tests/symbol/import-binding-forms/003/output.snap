@@ -21,9 +21,7 @@ import A = Unknown.Member;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "11..18"
         }

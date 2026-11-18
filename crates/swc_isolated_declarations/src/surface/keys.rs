@@ -8,8 +8,6 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_semantic2::Semantic;
 use zmij_ecma::Buffer;
 
-use crate::is_unresolved;
-
 use super::expressions::unparenthesized;
 
 /// Property identity is separate from its spelling for diagnostics. Static names
@@ -40,12 +38,10 @@ pub(crate) fn property_identity<'ast>(
             let reference = semantic.reference_of(identifier.node_id())?;
             if let Some(symbol) = semantic.reference(reference).symbol {
                 Some(PropertyIdentity::Binding(symbol))
-            } else if semantic.reference_candidates(reference).is_empty() {
+            } else {
                 Some(PropertyIdentity::Unresolved(
                     ast.get_utf8(identifier.name(ast)),
                 ))
-            } else {
-                None
             }
         }
         ExprData::StringLiteral(literal) => Some(PropertyIdentity::Static(Cow::Borrowed(
@@ -164,7 +160,7 @@ fn well_known_symbol_object(object: Expr, ast: &Ast<'_>, semantic: &Semantic<'_>
             Some(
                 semantic
                     .reference_of(identifier.node_id())
-                    .is_some_and(|reference| is_unresolved(semantic, reference)),
+                    .is_some_and(|reference| semantic.reference(reference).symbol.is_none()),
             )
         }
         ExprData::MemberExpression(member)
@@ -183,7 +179,7 @@ fn well_known_symbol_object(object: Expr, ast: &Ast<'_>, semantic: &Semantic<'_>
             Some(
                 semantic
                     .reference_of(identifier.node_id())
-                    .is_some_and(|reference| is_unresolved(semantic, reference)),
+                    .is_some_and(|reference| semantic.reference(reference).symbol.is_none()),
             )
         }
         _ => None,

@@ -30,8 +30,8 @@ namespace N {
         "span": "184..185",
         "scope": 7,
         "space": "Namespace",
-        "access": "None",
-        "symbol": 3,
+        "access": "Read",
+        "symbol": 7,
         "import_equals": true
       },
       {
@@ -39,10 +39,7 @@ namespace N {
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          7
-        ]
+        "symbol": 7
       }
     ],
     "B": [
@@ -56,25 +53,13 @@ namespace N {
     ]
   },
   "symbols": {
-    "3": {
-      "name": "A",
-      "flags": "NAMESPACE_MODULE",
-      "declarations": [
-        "89..90"
-      ]
-    },
     "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "162..163"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     },
     "8": {
       "name": "B",
@@ -82,9 +67,7 @@ namespace N {
       "declarations": [
         "180..181"
       ],
-      "alias": {
-        "Target": 3
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

@@ -363,8 +363,7 @@ pub struct Reference {
     pub scope: ScopeId,
     /// The referencing node.
     pub node: NodeId,
-    /// The definite binding visible in the reference space. Use
-    /// [`Semantic::reference_candidates`] for an uncertain reference.
+    /// The binding visible in the reference space, or `None` if lookup failed.
     pub symbol: Option<SymbolId>,
     pub flags: ReferenceFlags,
 }
@@ -1566,9 +1565,8 @@ impl<'a> SymbolTracker<'a> {
     }
 
     /// Finalizes the tracker into a complete [`Semantic`]. Builds the
-    /// declaration, use, and node indexes and resolves references to definite
-    /// bindings or candidates. The result remains valid for the source tree's
-    /// arena lifetime.
+    /// declaration, use, and node indexes and resolves references. The result
+    /// remains valid for the source tree's arena lifetime.
     pub fn finalize(mut self, tree: &Ast<'a>, scopes: ScopeTree<'a>) -> Semantic<'a> {
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
@@ -1577,12 +1575,8 @@ impl<'a> SymbolTracker<'a> {
         use_ranges.resize(self.symbols.len(), Range::default());
 
         self.resolve_references(tree, &scopes);
-        for (id, reference) in self.references.iter_enumerated() {
-            for symbol in reference
-                .symbol
-                .into_iter()
-                .chain(self.ts_bindings.candidates(id).iter().copied())
-            {
+        for reference in &self.references {
+            if let Some(symbol) = reference.symbol {
                 use_ranges[symbol].len += 1;
             }
         }
@@ -1599,11 +1593,7 @@ impl<'a> SymbolTracker<'a> {
         use_ids.resize(count, ReferenceId::from_usize(0));
         for (id, reference) in self.references.iter_enumerated() {
             self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
-            for symbol in reference
-                .symbol
-                .into_iter()
-                .chain(self.ts_bindings.candidates(id).iter().copied())
-            {
+            if let Some(symbol) = reference.symbol {
                 let range = &mut use_ranges[symbol];
                 use_ids[(range.start + range.len) as usize] = id;
                 range.len += 1;

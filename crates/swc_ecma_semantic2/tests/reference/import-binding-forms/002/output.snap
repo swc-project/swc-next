@@ -14,11 +14,21 @@ import B = A;
         "span": "25..26",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
-        "symbol": null,
+        "access": "Read",
+        "symbol": 0,
         "import_equals": true
       }
     ]
+  },
+  "symbols": {
+    "0": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "7..8"
+      ],
+      "alias": "Unknown"
+    }
   },
   "scopes": {
     "1": {

@@ -26,11 +26,7 @@ namespace Use {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          4,
-          6
-        ]
+        "symbol": 4
       }
     ]
   },
@@ -41,20 +37,6 @@ namespace Use {
       "declarations": [
         "115..116"
       ]
-    },
-    "6": {
-      "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "147..148"
-      ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
-      }
     }
   },
   "scopes": {

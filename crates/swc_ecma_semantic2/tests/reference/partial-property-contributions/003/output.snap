@@ -30,30 +30,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          6
-        ]
+        "symbol": null
       },
       {
         "span": "231..236",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          6
-        ]
+        "symbol": 6
       },
       {
         "span": "276..281",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          6
-        ]
+        "symbol": null
       }
     ],
     "C": [
@@ -61,7 +52,7 @@ const queried: typeof Alias = 1;
         "span": "160..161",
         "scope": 5,
         "space": "Namespace",
-        "access": "Read",
+        "access": "None",
         "symbol": 1,
         "import_equals": true
       }
@@ -83,11 +74,7 @@ const queried: typeof Alias = 1;
         "153..157"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
+        "Target": 2
       }
     },
     "6": {

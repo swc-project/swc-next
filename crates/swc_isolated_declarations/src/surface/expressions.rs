@@ -8,8 +8,6 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_semantic2::Semantic;
 
-use crate::is_unresolved;
-
 use super::DeclarationSurface;
 
 pub(crate) fn unparenthesized(mut expression: Expr, ast: &Ast<'_>) -> Expr {
@@ -123,7 +121,7 @@ pub(crate) fn inferred_type(
             if ast.get_utf8(identifier.name(ast)) == "undefined"
                 && semantic
                     .reference_of(identifier.node_id())
-                    .is_some_and(|id| is_unresolved(semantic, id))
+                    .is_some_and(|reference| semantic.reference(reference).symbol.is_none())
             {
                 InferredType::Undefined
             } else if let Some(reference) = semantic.reference_of(identifier.node_id())

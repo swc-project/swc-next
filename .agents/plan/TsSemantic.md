@@ -68,35 +68,28 @@ container_members[owner][name] → canonical export symbol
 
 ## Import alias
 
-- `import_aliases` 记录 alias 的直接目标或可能的声明空间。缺少 entry 表示该
+- `import_aliases` 记录 alias 的目标解析结果。缺少 entry 表示该
   symbol 不属于此表管理的 import alias。引用保留 alias 身份。
 - `Target(symbol)` 表示直接目标身份已知，目标本身可以是 alias；可见性沿目标链
-  计算，目标身份已知时仍可能存在空间不确定性。
-- `Unknown(spaces)` 表示没有已知目标。包含的空间可能可见，查找时加入 candidate
-  并继续向外查找；未包含的空间不可见。空集合表示没有可用目标。
+  计算。
+- `Unknown` 表示无法解析目标。引用仍可在该 alias 允许的声明空间命中其词法绑定。
 - 构建期间的未解析、正在解析、已完成状态以及有效声明空间只保存在 binder
   临时数据中。`Semantic::lookup` 提供词法查找。transform 对已有 AST 引用读取
-  `Reference.symbol` 和 candidates，沿限定路径计算出的可见性已反映在这些结果中。
+  `Reference.symbol`，其中已考虑限定路径上的可见性。
 - type-only 语法属性使用 `SymbolFlags::TYPE_IMPORT`，沿链查询时累计各节点限制。
   解析 `N.X` 时也检查限定路径上 `N` 的 flags。经过 type-only alias 后移除
   `VALUE`，保留 `TYPEOF`，已知目标仍记为 `Target(X)`。
 - `export import A = ...` 参与 import alias 解析。普通 export specifier 当前只
   解析本地引用，其公开 alias target 暂不建模。
-- ES import 和 `import A = require(...)` 提供词法绑定。通过内部 alias 访问外部
-  目标时，其声明空间按可能可见处理。
+- ES import 和 `import A = require(...)` 提供词法绑定，其可见性由 import flags 决定。
+  经由它们访问文件外的限定成员时，成员目标记为 `Unknown`。
 
 ## 引用与反向索引
 
 - `Reference.symbol` 保留实际查找命中的身份。
   查询 local 的 value 含义时，对 `EXPORT_VALUE` entry 沿 `export_symbols` 跳转。
-- 原始 `uses(symbol)` 按引用实际命中的 symbol 或 candidate 建立；local/export
-  分别统计。需要整个导出实体的 uses 时再提供聚合查询，其 API 尚未设计。
-- 不确定查找遇到可能可见的绑定后，继续收集外层 fallback；遇到确定可见的绑定
-  才停止。只有一个 candidate 仍可能不确定。
-- 同一引用通过多个入口找到同一 symbol 时去重，每个 `(symbol, reference)`
-  在 uses 中只出现一次。
-- finalize 建立 uses 的计数和填充阶段都包含 definite target 和 candidates。
-- candidate 顺序是否保留最近优先尚未确定；不要让调用方提前依赖排序规则。
+- 查找在首个可见绑定处停止。找不到绑定时，`Reference.symbol` 为 `None`。
+- `uses(symbol)` 按引用实际命中的 symbol 建立，local/export 分别统计。
 
 ## Type parameters
 
@@ -133,18 +126,10 @@ container_members[owner][name] → canonical export symbol
 
 ## Class / function 属性
 
-- import-equals 先按 namespace 空间解析左侧。裸名在没有 namespace 目标或候选时，
+- import-equals 先按 namespace 空间解析左侧。裸名在没有 namespace 绑定时，
   再按 `Any` 查找。
-- 对具有 namespace 含义的合并 class/function，限定成员查找保留已知的
-  namespace 成员贡献；额外的静态属性或函数属性按可能的 value / typeof
-  贡献保守处理，并结合 alias 路径限制计算可见性。
-- 可能属性使用 `TsImportAlias::Unknown` 表示。已知的 namespace 贡献与可能属性
-  并存时，将两者的声明空间一并记为 `Unknown`。引用继续按不确定查找规则记录
-  candidates，包括适用的外层 fallback。
-- binder 在限定路径上保留已知的 namespace owner。可能的 value/typeof 属性
-  不扩展该 owner 的成员空间。
-- 属性贡献仅用于限定成员查找，namespace body 的裸名查找使用 namespace
-  声明贡献。当前不收集 class 静态成员或 function 属性事实。
+- 限定成员查找使用 namespace 和 enum 的共享成员。当前不收集 class 静态成员或
+  function 属性，找不到共享成员时，目标记为 `Unknown`。
 
 ## Declare global
 

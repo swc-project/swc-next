@@ -25,36 +25,18 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          4,
-          7
-        ]
+        "symbol": 7
       }
     ]
   },
   "symbols": {
-    "4": {
-      "name": "B",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "82..83"
-      ]
-    },
     "7": {
       "name": "B",
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "163..164"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

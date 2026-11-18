@@ -37,11 +37,7 @@ namespace N {
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          5,
-          8
-        ]
+        "symbol": 5
       }
     ],
     "B": [
@@ -50,11 +46,7 @@ namespace N {
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          6,
-          9
-        ]
+        "symbol": 6
       }
     ]
   },
@@ -72,34 +64,6 @@ namespace N {
       "declarations": [
         "156..157"
       ]
-    },
-    "8": {
-      "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "200..201"
-      ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
-      }
-    },
-    "9": {
-      "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "218..219"
-      ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
-      }
     }
   },
   "scopes": {

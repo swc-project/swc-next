@@ -27,9 +27,6 @@ namespace N {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "158..163"
         ]
       },
       {

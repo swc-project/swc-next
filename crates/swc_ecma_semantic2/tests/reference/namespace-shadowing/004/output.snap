@@ -25,21 +25,20 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          4,
-          7
-        ]
+        "symbol": 7
       }
     ]
   },
   "symbols": {
-    "4": {
-      "name": "B",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "82..83"
-      ]
+        "129..130"
+      ],
+      "alias": {
+        "Target": 0
+      }
     },
     "7": {
       "name": "B",
@@ -48,12 +47,7 @@ namespace N {
         "157..158"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
+        "Target": 6
       }
     }
   },

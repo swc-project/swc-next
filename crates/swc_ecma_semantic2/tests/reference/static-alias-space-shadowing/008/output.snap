@@ -33,34 +33,28 @@ namespace N {
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 7
       },
       {
         "span": "243..244",
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          7
-        ]
+        "symbol": 7
       },
       {
         "span": "277..278",
         "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          7
-        ]
+        "symbol": 7
       },
       {
         "span": "303..304",
         "scope": 11,
         "space": "Namespace",
         "access": "None",
-        "symbol": 3
+        "symbol": 7
       }
     ],
     "C": [
@@ -83,26 +77,13 @@ namespace N {
         "70..71"
       ]
     },
-    "3": {
-      "name": "A",
-      "flags": "TYPE_ALIAS | NAMESPACE_MODULE",
-      "declarations": [
-        "105..106",
-        "127..128"
-      ]
-    },
     "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "180..181"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

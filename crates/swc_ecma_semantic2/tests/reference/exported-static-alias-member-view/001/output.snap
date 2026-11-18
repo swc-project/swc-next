@@ -36,36 +36,28 @@ const selected = Selected;
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 7
       },
       {
         "span": "258..259",
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          3,
-          7
-        ]
+        "symbol": 7
       },
       {
         "span": "292..293",
         "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          3,
-          7
-        ]
+        "symbol": 7
       },
       {
         "span": "318..319",
         "scope": 11,
         "space": "Namespace",
         "access": "None",
-        "symbol": 3
+        "symbol": 7
       }
     ],
     "Selected": [
@@ -74,35 +66,18 @@ const selected = Selected;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          16
-        ]
+        "symbol": 16
       }
     ]
   },
   "symbols": {
-    "3": {
-      "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | NAMESPACE_MODULE | CONST_VAR",
-      "declarations": [
-        "85..86",
-        "97..98",
-        "119..120"
-      ]
-    },
     "7": {
       "name": "A",
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "179..180"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     },
     "16": {
       "name": "Selected",
@@ -110,9 +85,7 @@ const selected = Selected;
       "declarations": [
         "332..340"
       ],
-      "alias": {
-        "Target": 7
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

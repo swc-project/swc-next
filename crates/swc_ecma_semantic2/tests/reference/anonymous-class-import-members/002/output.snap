@@ -25,14 +25,14 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 5
+        "symbol": 7
       },
       {
         "span": "240..241",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 7
       }
     ],
     "Owner": [
@@ -40,7 +40,7 @@ namespace Test {
         "span": "178..183",
         "scope": 7,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 1,
         "import_equals": true
       }
@@ -54,12 +54,13 @@ namespace Test {
         "71..76"
       ]
     },
-    "5": {
+    "7": {
       "name": "A",
-      "flags": "TYPE_ALIAS",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "136..137"
-      ]
+        "174..175"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

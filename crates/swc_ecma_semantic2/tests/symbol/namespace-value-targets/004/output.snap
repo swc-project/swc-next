@@ -59,14 +59,7 @@ namespace N {
           "98..106",
           "135..143"
         ],
-        "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "73..79"
         }

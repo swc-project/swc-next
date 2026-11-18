@@ -29,8 +29,6 @@ struct TestReference {
     space: String,
     access: TestAccess,
     symbol: Option<usize>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    candidates: Vec<usize>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     import_equals: bool,
 }
@@ -58,31 +56,28 @@ fn add_symbols(
     symbols: &mut BTreeMap<usize, TestSymbol>,
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
-    targets: &[SymbolId],
+    target: SymbolId,
 ) {
-    for &target in targets {
-        let export = semantic.ts_export_symbol(target);
-        let alias = match semantic.ts_import_alias(target) {
-            Some(TsImportAlias::Target(target)) => Some(target),
-            _ => None,
-        };
-        // Include direct links while keeping long alias chains out of the snapshot.
-        for id in std::iter::once(target).chain(export).chain(alias) {
-            symbols.entry(id.index()).or_insert_with(|| {
-                let symbol = semantic.symbol(id);
-                TestSymbol {
-                    name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes())
-                        .into_owned(),
-                    flags: flags(symbol.flags),
-                    declarations: semantic
-                        .declarations(id)
-                        .map(|declaration| span(ast, declaration.node))
-                        .collect(),
-                    export_symbol: semantic.ts_export_symbol(id).map(Idx::index),
-                    alias: semantic.ts_import_alias(id).map(TestAlias::from),
-                }
-            });
-        }
+    let export = semantic.ts_export_symbol(target);
+    let alias = match semantic.ts_import_alias(target) {
+        Some(TsImportAlias::Target(target)) => Some(target),
+        _ => None,
+    };
+    // Include direct links while keeping long alias chains out of the snapshot.
+    for id in std::iter::once(target).chain(export).chain(alias) {
+        symbols.entry(id.index()).or_insert_with(|| {
+            let symbol = semantic.symbol(id);
+            TestSymbol {
+                name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes()).into_owned(),
+                flags: flags(symbol.flags),
+                declarations: semantic
+                    .declarations(id)
+                    .map(|declaration| span(ast, declaration.node))
+                    .collect(),
+                export_symbol: semantic.ts_export_symbol(id).map(Idx::index),
+                alias: semantic.ts_import_alias(id).map(TestAlias::from),
+            }
+        });
     }
 }
 
@@ -101,28 +96,14 @@ fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> Tes
                     .filter(|entry| ast.get_utf8(entry.reference.name) == name)
                     .map(|entry| {
                         let reference = entry.reference;
-                        let candidates = semantic.reference_candidates(entry.id);
-                        assert!(reference.symbol.is_none() || candidates.is_empty());
-                        let targets = reference
-                            .symbol
-                            .into_iter()
-                            .chain(candidates.iter().copied())
-                            .collect::<Vec<_>>();
-                        for &id in &targets {
+                        if let Some(id) = reference.symbol {
                             let uses = semantic.uses(id);
                             assert_eq!(
                                 uses.iter().filter(|&&use_id| use_id == entry.id).count(),
                                 1
                             );
+                            add_symbols(&mut symbols, ast, semantic, id);
                         }
-                        add_symbols(&mut symbols, ast, semantic, &targets);
-                        let mut candidates = candidates
-                            .iter()
-                            .copied()
-                            .map(Idx::index)
-                            .collect::<Vec<_>>();
-                        candidates.sort_unstable();
-                        assert!(candidates.windows(2).all(|pair| pair[0] != pair[1]));
                         TestReference {
                             span: span(ast, reference.node),
                             scope: scopes.insert(semantic, reference.scope),
@@ -134,7 +115,6 @@ fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> Tes
                                 (true, true) => TestAccess::ReadWrite,
                             },
                             symbol: reference.symbol.map(Idx::index),
-                            candidates,
                             import_equals: imports
                                 .entries
                                 .iter()

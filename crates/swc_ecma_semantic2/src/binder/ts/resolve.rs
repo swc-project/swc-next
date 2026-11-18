@@ -3,10 +3,7 @@ use std::{convert::Infallible, hash::BuildHasher};
 use swc_next_allocator::IndexSlice;
 
 use super::*;
-use crate::{
-    Scopes, SymbolTables, Symbols,
-    ts::{TsImportAlias, TsImportAliasSpace as Spaces},
-};
+use crate::{Scopes, SymbolTables, Symbols, ts::TsImportAlias};
 
 #[derive(Clone, Copy)]
 struct Binding {
@@ -14,17 +11,19 @@ struct Binding {
     flags: SymbolFlags,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Visibility {
-    Absent,
-    Possible,
-    Definite,
+bitflags::bitflags! {
+    #[derive(Clone, Copy)]
+    struct Spaces: u8 {
+        const VALUE = 1 << 0;
+        const TYPE = 1 << 1;
+        const NAMESPACE = 1 << 2;
+        const TYPEOF = 1 << 3;
+    }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 struct AliasMeaning {
-    definite: Spaces,
-    possible: Spaces,
+    spaces: Spaces,
     owner: Option<SymbolId>,
     type_only: bool,
 }
@@ -32,41 +31,46 @@ struct AliasMeaning {
 impl AliasMeaning {
     fn direct(binding: Binding) -> Self {
         let flags = binding.flags;
-        let mut definite = Spaces::empty();
-        definite.set(
+        let mut spaces = Spaces::empty();
+        spaces.set(
             Spaces::VALUE,
             flags.contains(SymbolFlags::EXPORT_VALUE) || flags.visible_in(ReferenceSpace::Value),
         );
-        definite.set(
+        spaces.set(
             Spaces::TYPEOF,
             flags.contains(SymbolFlags::EXPORT_VALUE) || flags.visible_in(ReferenceSpace::Typeof),
         );
-        definite.set(Spaces::TYPE, flags.visible_in(ReferenceSpace::Type));
-        definite.set(
+        spaces.set(Spaces::TYPE, flags.visible_in(ReferenceSpace::Type));
+        spaces.set(
             Spaces::NAMESPACE,
             flags.visible_in(ReferenceSpace::Namespace),
         );
         Self {
-            definite,
+            spaces,
             owner: flags.in_namespace_space().then_some(binding.symbol),
             type_only: flags.contains(SymbolFlags::TYPE_IMPORT),
-            ..Self::default()
+        }
+    }
+
+    fn unknown(type_only: bool) -> Self {
+        // Like tsc's unknownSymbol, an unknown target leaves its alias visible.
+        let mut spaces = Spaces::all();
+        spaces.set(Spaces::VALUE, !type_only);
+        Self {
+            spaces,
+            owner: None,
+            type_only,
         }
     }
 
     fn restrict_value(&mut self, type_only: bool) {
         if type_only {
-            self.definite.remove(Spaces::VALUE);
-            self.possible.remove(Spaces::VALUE);
+            self.spaces.remove(Spaces::VALUE);
             self.type_only = true;
         }
     }
 
-    fn spaces(self) -> Spaces {
-        self.definite | self.possible
-    }
-
-    fn visible_in(self, space: ReferenceSpace) -> Visibility {
+    fn visible_in(self, space: ReferenceSpace) -> bool {
         let spaces = match space {
             ReferenceSpace::Value => Spaces::VALUE,
             ReferenceSpace::Type => Spaces::TYPE,
@@ -74,13 +78,7 @@ impl AliasMeaning {
             ReferenceSpace::Typeof => Spaces::TYPEOF,
             ReferenceSpace::Any => Spaces::all(),
         };
-        if self.definite.intersects(spaces) {
-            Visibility::Definite
-        } else if self.possible.intersects(spaces) {
-            Visibility::Possible
-        } else {
-            Visibility::Absent
-        }
+        self.spaces.intersects(spaces)
     }
 }
 
@@ -93,13 +91,21 @@ impl Binding {
             flags: self.flags - SymbolFlags::ANY_IMPORT,
             ..self
         });
-        direct.definite |= alias.definite;
-        direct.possible = alias.possible;
+        direct.spaces |= alias.spaces;
         if direct.owner.is_none() {
             direct.owner = alias.owner;
             direct.type_only = alias.type_only;
         }
         direct
+    }
+
+    fn visible_in(self, alias: Option<AliasMeaning>, space: ReferenceSpace) -> bool {
+        if alias.is_some() && self.flags.intersects(SymbolFlags::ANY_IMPORT) {
+            return self.meaning(alias).visible_in(space);
+        }
+        self.flags.visible_in(space)
+            || (self.flags.contains(SymbolFlags::EXPORT_VALUE)
+                && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof))
     }
 }
 
@@ -119,8 +125,8 @@ impl LexicalLookup<'_, '_> {
         name: &[u8],
         space: ReferenceSpace,
     ) -> Option<SymbolId> {
-        let result = self.lookup_with(scope, name, space, &mut Vec::new(), |binding| {
-            Ok::<_, Infallible>(visibility(binding, None, space))
+        let result = self.lookup_with(scope, name, space, |binding| {
+            Ok::<_, Infallible>(binding.visible_in(None, space))
         });
         result.unwrap().map(|binding| binding.symbol)
     }
@@ -175,8 +181,7 @@ impl LexicalLookup<'_, '_> {
         scope: ScopeId,
         name: &[u8],
         space: ReferenceSpace,
-        candidates: &mut Vec<Binding>,
-        mut visibility: impl FnMut(Binding) -> Result<Visibility, E>,
+        mut visible: impl FnMut(Binding) -> Result<bool, E>,
     ) -> Result<Option<Binding>, E> {
         let hash = self.symbol_tables[ScopeId::ROOT].hasher().hash_one(name);
         let is_arguments =
@@ -196,16 +201,16 @@ impl LexicalLookup<'_, '_> {
                     && binding.flags.intersects(
                         SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION,
                     );
-                if !shadowed && add_binding(binding, visibility(binding)?, candidates) {
-                    return Ok(finish_lookup(binding, candidates));
+                if !shadowed && visible(binding)? {
+                    return Ok(Some(binding));
                 }
                 hidden = self.shadowed_internal_names.get(&symbol).copied();
             }
 
             if let Some(binding) = self.public_binding(current, name, local)
-                && add_binding(binding, visibility(binding)?, candidates)
+                && visible(binding)?
             {
-                return Ok(finish_lookup(binding, candidates));
+                return Ok(Some(binding));
             }
             if barrier {
                 break;
@@ -216,92 +221,16 @@ impl LexicalLookup<'_, '_> {
     }
 }
 
-fn visibility(binding: Binding, alias: Option<AliasMeaning>, space: ReferenceSpace) -> Visibility {
-    if alias.is_none() {
-        if binding.flags.visible_in(space)
-            || (binding.flags.contains(SymbolFlags::EXPORT_VALUE)
-                && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof))
-        {
-            return Visibility::Definite;
-        }
-        return Visibility::Absent;
-    }
-    binding.meaning(alias).visible_in(space)
-}
-
-fn insert_candidate(binding: Binding, candidates: &mut Vec<Binding>) {
-    if let Some(candidate) = candidates.iter_mut().find(|c| c.symbol == binding.symbol) {
-        candidate.flags |= binding.flags;
-    } else {
-        candidates.push(binding);
-    }
-}
-
-fn add_binding(binding: Binding, visibility: Visibility, candidates: &mut Vec<Binding>) -> bool {
-    match visibility {
-        Visibility::Absent => false,
-        Visibility::Possible => {
-            insert_candidate(binding, candidates);
-            false
-        }
-        Visibility::Definite => true,
-    }
-}
-
-fn finish_lookup(binding: Binding, candidates: &mut Vec<Binding>) -> Option<Binding> {
-    if candidates.is_empty() {
-        return Some(binding);
-    }
-    insert_candidate(binding, candidates);
-    None
-}
-
 struct ResolvedAlias {
     target: TsImportAlias,
     meaning: AliasMeaning,
     root: Option<Binding>,
-    candidates: Vec<Binding>,
-}
-
-impl ResolvedAlias {
-    fn visibility(&self, binding: Binding, space: ReferenceSpace) -> Visibility {
-        if space == ReferenceSpace::Any
-            && matches!(self.target, TsImportAlias::Target(_))
-            && !self.meaning.spaces().is_empty()
-        {
-            return Visibility::Definite;
-        }
-        visibility(binding, Some(self.meaning), space)
-    }
-
-    fn new(
-        target: Option<SymbolId>,
-        meaning: AliasMeaning,
-        root: Option<Binding>,
-        candidates: Vec<Binding>,
-    ) -> Self {
-        let mut meaning = meaning;
-        let target = match target {
-            Some(symbol) => TsImportAlias::Target(symbol),
-            None => {
-                meaning.possible |= meaning.definite;
-                meaning.definite = Spaces::empty();
-                TsImportAlias::Unknown(meaning.possible)
-            }
-        };
-        Self {
-            target,
-            meaning,
-            root,
-            candidates,
-        }
-    }
 }
 
 /// An unresolved dependency suspends an alias while the dependency is resolved.
 /// This keeps forward chains and cycles off the Rust call stack.
 struct AliasResolver<'s, 'a> {
-    lookup: LexicalLookup<'s, 'a>,
+    lookup: &'s LexicalLookup<'s, 'a>,
     tree: &'s Ast<'a>,
     references: &'s IndexSlice<ReferenceId, [Reference]>,
     aliases: &'s FxHashMap<SymbolId, ImportEquals>,
@@ -351,28 +280,17 @@ impl AliasResolver<'_, '_> {
             return Ok(Some(alias.meaning));
         }
         if self.active.contains(&symbol) {
-            return Ok(Some(AliasMeaning::default()));
+            let type_only = binding.flags.contains(SymbolFlags::TYPE_IMPORT);
+            return Ok(Some(AliasMeaning::unknown(type_only)));
         }
         Err(symbol)
     }
 
     fn target_meaning(&self, binding: Binding) -> Result<AliasMeaning, SymbolId> {
-        let alias = self.alias_meaning(binding)?;
-        let mut meaning = binding.meaning(alias);
-        if alias.is_none() && binding.flags.intersects(SymbolFlags::ANY_IMPORT) {
-            // A direct import is its own lexical binding. The meaning of its
-            // external target is only possible when used through another alias.
-            let direct = Binding {
-                flags: binding.flags - SymbolFlags::ANY_IMPORT,
-                ..binding
-            };
-            meaning.possible = meaning.definite;
-            meaning.definite = AliasMeaning::direct(direct).definite;
-        }
+        let mut meaning = binding.meaning(self.alias_meaning(binding)?);
         if let Some(export) = self.lookup.export(binding.symbol) {
             let export = export.meaning(self.alias_meaning(export)?);
-            meaning.definite |= export.definite;
-            meaning.possible |= export.possible;
+            meaning.spaces |= export.spaces;
             if meaning.owner.is_none() {
                 meaning.owner = export.owner;
                 meaning.type_only |= export.type_only;
@@ -385,107 +303,70 @@ impl AliasResolver<'_, '_> {
         let alias = &self.aliases[&symbol];
         let root = self.references[alias.root];
         let name = self.tree.get_utf8(root.name).as_bytes();
-        let mut candidates = Vec::new();
-        let lookup = |space, candidates: &mut Vec<_>| {
-            self.lookup
-                .lookup_with(root.scope, name, space, candidates, |binding| {
-                    let meaning = self.alias_meaning(binding)?;
-                    let visibility = match self.resolved.get(&binding.symbol) {
-                        Some(alias) => alias.visibility(binding, space),
-                        None => visibility(binding, meaning, space),
-                    };
-                    Ok::<_, SymbolId>(visibility)
-                })
+        let lookup = |space| -> Result<Option<Binding>, SymbolId> {
+            self.lookup.lookup_with(root.scope, name, space, |binding| {
+                Ok(binding.visible_in(self.alias_meaning(binding)?, space))
+            })
         };
-        let mut binding = lookup(ReferenceSpace::Namespace, &mut candidates)?;
-        if binding.is_none() && candidates.is_empty() && alias.members.is_empty() {
-            binding = lookup(ReferenceSpace::Any, &mut candidates)?;
+        let mut binding = lookup(ReferenceSpace::Namespace)?;
+        if binding.is_none() && alias.members.is_empty() {
+            binding = lookup(ReferenceSpace::Any)?;
         }
         let type_only = self.lookup.symbols[symbol]
             .flags
             .contains(SymbolFlags::TYPE_IMPORT);
-        if let Some(binding) = binding {
-            let (target, mut meaning) = self.resolve_path(binding, &alias.members)?;
-            meaning.restrict_value(type_only);
-            return Ok(ResolvedAlias::new(
-                target,
-                meaning,
-                Some(binding),
-                candidates,
-            ));
-        }
-
-        let mut meaning = AliasMeaning::default();
-        for &binding in &candidates {
-            let (_, path) = self.resolve_path(binding, &alias.members)?;
-            let spaces = path.spaces();
-            if spaces.is_empty() {
-                continue;
-            }
-            let previous = meaning.spaces();
-            if previous.is_empty() {
-                meaning = path;
-                continue;
-            }
-            if spaces.contains(Spaces::NAMESPACE) {
-                if !previous.contains(Spaces::NAMESPACE) {
-                    meaning.owner = path.owner;
-                } else if meaning.owner != path.owner {
-                    meaning.owner = None;
-                }
-            }
-            meaning.possible |= spaces;
-            meaning.type_only &= path.type_only;
-        }
+        let (target, mut meaning) = match binding {
+            Some(binding) => self.resolve_path(binding, &alias.members)?,
+            None => (TsImportAlias::Unknown, AliasMeaning::unknown(false)),
+        };
         meaning.restrict_value(type_only);
-        Ok(ResolvedAlias::new(None, meaning, None, candidates))
+        Ok(ResolvedAlias {
+            target,
+            meaning,
+            root: binding,
+        })
     }
 
     fn resolve_path(
         &self,
-        root: Binding,
+        mut binding: Binding,
         members: &[AstUtf8],
-    ) -> Result<(Option<SymbolId>, AliasMeaning), SymbolId> {
-        let mut target = Some(root.symbol);
-        let mut meaning = self.target_meaning(root)?;
-        for (index, &name) in members.iter().enumerate() {
+    ) -> Result<(TsImportAlias, AliasMeaning), SymbolId> {
+        let mut meaning = self.target_meaning(binding)?;
+        for &name in members {
             let name = self.tree.get_utf8(name).as_bytes();
-            let last = index + 1 == members.len();
-            let owner = meaning.owner;
-            let mut possible = if owner.is_none() && meaning.possible.contains(Spaces::NAMESPACE) {
-                Spaces::all()
-            } else {
-                Spaces::empty()
-            };
-            let member = owner.and_then(|owner| self.lookup.ts.member(owner, name));
             let type_only = meaning.type_only;
-            (target, meaning) = match member {
-                Some(member) => {
-                    let flags = member.enum_flags.unwrap_or_default()
-                        | member.namespace_flags.unwrap_or_default();
-                    let binding = Binding {
-                        symbol: member.symbol,
-                        flags,
-                    };
-                    (Some(binding.symbol), self.target_meaning(binding)?)
-                }
-                None => (None, AliasMeaning::default()),
+            let Some(member) = meaning
+                .owner
+                .and_then(|owner| self.lookup.ts.member(owner, name))
+            else {
+                return Ok((TsImportAlias::Unknown, AliasMeaning::unknown(type_only)));
             };
-            if last && let Some(owner) = owner {
-                let flags = self.lookup.symbols[owner].flags;
-                if flags.intersects(SymbolFlags::CLASS | SymbolFlags::FUNCTION) {
-                    possible |= (Spaces::VALUE | Spaces::TYPEOF) - meaning.definite;
-                }
-            }
-            if type_only {
-                possible.remove(Spaces::VALUE);
-            }
-            if !possible.is_empty() {
-                target = None;
-            }
-            meaning.possible |= possible;
+            binding = Binding {
+                symbol: member.symbol,
+                flags: member.enum_flags.unwrap_or_default()
+                    | member.namespace_flags.unwrap_or_default(),
+            };
+            meaning = self.target_meaning(binding)?;
             meaning.restrict_value(type_only);
         }
+        let symbol = binding.symbol;
+        let declared_meanings = SymbolFlags::VALUE_SPACE
+            | SymbolFlags::TYPE_SPACE
+            | SymbolFlags::NAMESPACE_SPACE
+            | SymbolFlags::EXPORT_VALUE;
+        let target = if binding.flags.intersects(SymbolFlags::ANY_IMPORT)
+            && !binding.flags.intersects(declared_meanings)
+            && (self.active.contains(&symbol)
+                || self
+                    .resolved
+                    .get(&symbol)
+                    .is_some_and(|alias| alias.target == TsImportAlias::Unknown))
+        {
+            TsImportAlias::Unknown
+        } else {
+            TsImportAlias::Target(symbol)
+        };
         Ok((target, meaning))
     }
 }
@@ -502,7 +383,7 @@ impl SymbolTracker<'_> {
         let mut aliases = FxHashMap::default();
         if !self.ts_state.aliases.is_empty() {
             let resolver = AliasResolver {
-                lookup,
+                lookup: &lookup,
                 tree,
                 references: &self.references,
                 aliases: &self.ts_state.aliases,
@@ -510,22 +391,10 @@ impl SymbolTracker<'_> {
                 resolved: FxHashMap::default(),
             };
             aliases = resolver.resolve_all(&self.ts_state.initializers);
-            for (&symbol, alias) in &aliases {
-                self.ts_bindings.import_aliases.insert(symbol, alias.target);
-            }
         }
 
-        let mut candidates = Vec::new();
-        let ts = &mut self.ts_bindings;
         for (index, reference) in self.references.iter_mut().enumerate() {
             let id = ReferenceId::from_usize(index);
-            let lookup = LexicalLookup {
-                scopes: &scopes.list,
-                symbols: &self.symbols,
-                symbol_tables: &self.symbol_tables,
-                shadowed_internal_names: &self.shadowed_internal_names,
-                ts,
-            };
             let initializer = self
                 .ts_state
                 .initializers
@@ -534,56 +403,32 @@ impl SymbolTracker<'_> {
             let space = reference.flags.space;
             let name = tree.get_utf8(reference.name).as_bytes();
             let binding = if let Some(alias) = initializer {
-                candidates.extend_from_slice(&alias.candidates);
                 alias.root
             } else {
                 lookup
-                    .lookup_with(reference.scope, name, space, &mut candidates, |binding| {
-                        let alias = aliases.get(&binding.symbol);
-                        let visibility = match alias {
-                            Some(alias) => alias.visibility(binding, space),
-                            None => visibility(binding, None, space),
-                        };
-                        Ok::<_, Infallible>(visibility)
+                    .lookup_with(reference.scope, name, space, |binding| {
+                        let alias = aliases.get(&binding.symbol).map(|alias| alias.meaning);
+                        Ok::<_, Infallible>(binding.visible_in(alias, space))
                     })
                     .unwrap()
             };
             reference.symbol = binding.map(|binding| binding.symbol);
             if let Some(alias) = initializer {
-                if !alias.meaning.spaces().contains(Spaces::VALUE)
-                    && (binding.is_some()
-                        || !candidates.is_empty()
-                        || lookup.lookup(reference.scope, name, space).is_some())
-                {
+                if !alias.meaning.visible_in(ReferenceSpace::Value) {
                     reference.flags = reference.flags.no_access();
                 }
-            } else if space == ReferenceSpace::Any && (binding.is_some() || !candidates.is_empty())
+            } else if space == ReferenceSpace::Any
+                && let Some(binding) = binding
             {
-                let reads_value =
-                    binding
-                        .into_iter()
-                        .chain(candidates.iter().copied())
-                        .any(|binding| {
-                            let alias = aliases.get(&binding.symbol).map(|alias| alias.meaning);
-                            binding.meaning(alias).spaces().contains(Spaces::VALUE)
-                        });
-                if !reads_value {
+                let alias = aliases.get(&binding.symbol).map(|alias| alias.meaning);
+                if !binding.visible_in(alias, ReferenceSpace::Value) {
                     reference.flags = reference.flags.no_access();
                 }
             }
-            if !candidates.is_empty() {
-                let ranges = &mut ts.reference_symbol_ranges;
-                if ranges.len() <= id.index() {
-                    ranges.resize(id.index() + 1, Range::default());
-                }
-                ranges[id] = Range {
-                    start: ts.reference_symbols.len() as u32,
-                    len: candidates.len() as u32,
-                };
-                for binding in candidates.drain(..) {
-                    ts.reference_symbols.push(binding.symbol);
-                }
-            }
+        }
+
+        for (symbol, alias) in aliases {
+            self.ts_bindings.import_aliases.insert(symbol, alias.target);
         }
     }
 }

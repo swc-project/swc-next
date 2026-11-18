@@ -16,10 +16,7 @@ type Result = A;
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          1
-        ]
+        "symbol": 1
       }
     ]
   },
@@ -30,14 +27,7 @@ type Result = A;
       "declarations": [
         "42..43"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "NAMESPACE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

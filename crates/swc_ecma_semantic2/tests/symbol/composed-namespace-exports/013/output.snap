@@ -35,9 +35,12 @@ const queried: typeof Alias = 1;
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "uses": [
+          "225..230",
+          "245..250",
+          "292..297"
+        ],
+        "alias": "Unknown",
         "import": {
           "initializer": "197..198"
         }

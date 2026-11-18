@@ -45,9 +45,12 @@ const nested: Alias.T = { ok: true };
         "bindings": [
           1
         ],
-        "alias": {
-          "Unknown": []
-        },
+        "uses": [
+          "377..382",
+          "399..404",
+          "438..443"
+        ],
+        "alias": "Unknown",
         "import": {
           "initializer": "349..350"
         }

@@ -31,9 +31,6 @@ namespace N {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "210..211"
         ]
       },
       {
@@ -51,14 +48,7 @@ namespace N {
         "uses": [
           "210..211"
         ],
-        "alias": {
-          "Unknown": [
-            "VALUE",
-            "TYPE",
-            "NAMESPACE",
-            "TYPEOF"
-          ]
-        },
+        "alias": "Unknown",
         "import": {
           "initializer": "167..168"
         }

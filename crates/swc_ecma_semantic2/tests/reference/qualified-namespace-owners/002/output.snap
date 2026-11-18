@@ -27,7 +27,7 @@ namespace Use {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "symbol": 6
+        "symbol": 8
       }
     ],
     "N": [
@@ -35,7 +35,7 @@ namespace Use {
         "span": "188..189",
         "scope": 6,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       }
@@ -49,12 +49,13 @@ namespace Use {
         "18..19"
       ]
     },
-    "6": {
+    "8": {
       "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "152..153"
-      ]
+        "184..185"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

@@ -29,14 +29,14 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 7
+        "symbol": 9
       },
       {
         "span": "243..244",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 9
       }
     ],
     "Owner": [
@@ -69,12 +69,13 @@ namespace Test {
         "96..97"
       ]
     },
-    "7": {
+    "9": {
       "name": "A",
-      "flags": "TYPE_ALIAS",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "149..150"
-      ]
+        "187..188"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

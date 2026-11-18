@@ -25,10 +25,7 @@ const typed: Alias = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null,
-        "candidates": [
-          5
-        ]
+        "symbol": 5
       }
     ],
     "C": [
@@ -43,7 +40,7 @@ const typed: Alias = { own: true };
         "span": "148..149",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
+        "access": "None",
         "symbol": 0,
         "import_equals": true
       }
@@ -56,6 +53,13 @@ const typed: Alias = { own: true };
       "declarations": [
         "20..21",
         "37..38"
+      ]
+    },
+    "1": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED",
+      "declarations": [
+        "60..61"
       ]
     },
     "4": {
@@ -72,11 +76,7 @@ const typed: Alias = { own: true };
         "140..145"
       ],
       "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPE",
-          "TYPEOF"
-        ]
+        "Target": 1
       }
     }
   },

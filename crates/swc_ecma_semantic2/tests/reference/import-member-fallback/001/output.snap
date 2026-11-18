@@ -28,14 +28,14 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 8
       },
       {
         "span": "225..226",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 8
       }
     ],
     "Owner": [
@@ -43,7 +43,7 @@ namespace Test {
         "span": "171..176",
         "scope": 7,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 3,
         "import_equals": true
       }
@@ -68,12 +68,13 @@ namespace Test {
         "Target": 1
       }
     },
-    "6": {
+    "8": {
       "name": "A",
-      "flags": "TYPE_ALIAS",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "129..130"
-      ]
+        "167..168"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

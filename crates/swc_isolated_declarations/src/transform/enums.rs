@@ -168,9 +168,6 @@ fn evaluate(
                 let symbol = value_binding(semantic, symbol);
                 return previous_members.get(&symbol).copied().map(Into::into);
             }
-            if !semantic.reference_candidates(reference).is_empty() {
-                return None;
-            }
             match ast.get_utf8(identifier.name(ast)) {
                 "Infinity" => Some(EvaluatedValue::Number(f64::INFINITY)),
                 "NaN" => Some(EvaluatedValue::Number(f64::NAN)),

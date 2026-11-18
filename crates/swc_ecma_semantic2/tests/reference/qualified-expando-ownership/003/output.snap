@@ -28,40 +28,25 @@ namespace Use {
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 5
       },
       {
         "span": "202..207",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "symbol": null,
-        "candidates": [
-          5
-        ]
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "Alias",
-      "flags": "TYPE_ALIAS",
-      "declarations": [
-        "5..10"
-      ]
-    },
     "5": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "136..141"
       ],
-      "alias": {
-        "Unknown": [
-          "VALUE",
-          "TYPEOF"
-        ]
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

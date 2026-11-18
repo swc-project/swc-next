@@ -35,21 +35,21 @@ const b: B = { own: true };
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 8
       },
       {
         "span": "304..305",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": null
+        "symbol": 8
       },
       {
         "span": "332..333",
         "scope": 8,
         "space": "Typeof",
         "access": "None",
-        "symbol": null
+        "symbol": 8
       }
     ],
     "B": [
@@ -58,7 +58,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 15
       }
     ],
     "N": [
@@ -66,7 +66,7 @@ const b: B = { own: true };
         "span": "243..244",
         "scope": 7,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       },
@@ -74,7 +74,7 @@ const b: B = { own: true };
         "span": "348..349",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 0,
         "import_equals": true
       }
@@ -88,12 +88,21 @@ const b: B = { own: true };
         "29..30"
       ]
     },
-    "6": {
+    "8": {
       "name": "A",
-      "flags": "TYPE_ALIAS",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "202..203"
-      ]
+        "239..240"
+      ],
+      "alias": "Unknown"
+    },
+    "15": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "344..345"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {
