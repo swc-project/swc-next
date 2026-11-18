@@ -1069,17 +1069,6 @@
         "prettierNative": "it(\"test\", function (done, result) { // note\n  return done(\n    result,\n  )\n})\n"
       }
     ],
-    "js/calls/member-continuation/array.js": [
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "space",
-          "semicolons": "as-needed"
-        },
-        "swcPlugin": "f(() => {\n  f(() => {\n    // c\n    ;[\"class\", \"data\", \".mode-%s\", \"[data-mode-%s]\", \"[data-mode='%s']\"]\n      .forEach((a) => {\n        const x = 1\n      })\n  })\n})\n",
-        "prettierNative": "f(() => {\n  f(() => {\n    // c\n    ;[\n      \"class\",\n      \"data\",\n      \".mode-%s\",\n      \"[data-mode-%s]\",\n      \"[data-mode='%s']\",\n    ].forEach((a) => {\n      const x = 1\n    })\n  })\n})\n"
-      }
-    ],
     "js/calls/structural-frames/templates.js": [
       {
         "options": {
@@ -34188,7 +34177,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "left <<\n  ((<T>`text${part}`\n    .trim()));\n",
+        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`.trim()));\n",
         "prettierNative": "left <<\n  (<T>(\n    `text${part}`.trim()\n  ));\n"
       },
       {
@@ -34197,7 +34186,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`\n    .trim()))\n",
+        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`.trim()))\n",
         "prettierNative": "left <<\n  (<\n    T\n  >`text${part}`.trim())\n"
       },
       {
@@ -34206,7 +34195,7 @@
           "indentStyle": "tab",
           "lineEnding": "crlf"
         },
-        "swcPlugin": "left <<\r\n\t((<T>`text${part}`\r\n\t\t.trim()));\r\n",
+        "swcPlugin": "left <<\r\n\t((<\r\n\t\tT\r\n\t>`text${part}`.trim()));\r\n",
         "prettierNative": "left <<\r\n\t(<T>(\r\n\t\t`text${part}`.trim()\r\n\t));\r\n"
       }
     ],
