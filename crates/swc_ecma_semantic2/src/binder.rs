@@ -22,7 +22,6 @@ use crate::{
 };
 
 mod annex_b;
-mod ts;
 
 use annex_b::AnnexBFunction;
 
@@ -118,6 +117,11 @@ bitflags::bitflags! {
         /// A function with a body, distinct from erased overload signatures.
         /// Used to reject duplicate implementations in lexical scopes.
         const FUNCTION_IMPLEMENTATION = 1 << 27;
+        /// A local value entry linked to an export symbol carrying the actual declaration flags.
+        const EXPORT_VALUE = 1 << 28;
+        /// Declaration-only marker for a const-enum-only namespace, paired with
+        /// `VALUE_MODULE`. Excluded from aggregate symbol and member flags.
+        const CONST_ENUM_ONLY_MODULE = 1 << 29;
 
         const EXPRESSION_NAME = Self::FUNCTION_EXPRESSION.bits() | Self::CLASS_EXPRESSION.bits();
         const INTERNAL_NAME = Self::EXPRESSION_NAME.bits() | Self::ANNEX_B_IF_FUNCTION.bits();

@@ -11,7 +11,7 @@ use support::{
 };
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, SymbolId};
-use swc_next_ecma_semantic2::{NameResolution, Semantic};
+use swc_next_ecma_semantic2::Semantic;
 
 #[derive(Serialize)]
 struct TestReferenceSnapshot {

@@ -18,6 +18,7 @@ use crate::{
     binder::{LexicalLookup, Range, SymbolLinks},
     builder::SemanticBuilder,
     scope::ScopeTree,
+    typescript::TsBindings,
 };
 
 mod binder;
@@ -26,6 +27,7 @@ mod ecmascript;
 mod scope;
 mod scope_model;
 mod syntax_checks;
+mod typescript;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
 pub use scope::{Scope, ScopeFlags, ScopeKind};
@@ -79,6 +81,8 @@ pub struct Semantic<'a> {
 
     /// Each node records one binding, reference, or created scope identity.
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+
+    ts_bindings: TsBindings<'a>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
