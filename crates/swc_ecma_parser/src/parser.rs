@@ -5565,7 +5565,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_export_specifier(&mut self) -> Option<ExportSpecifier> {
         let start = self.current_token.start();
         let parts = self.parse_specifier_parts()?;
-        let local = parts.property_name.unwrap_or(parts.name);
+        // Local and exported names occupy separate tree positions, even when
+        // shorthand syntax gives them the same span and string handle.
+        let local = parts
+            .property_name
+            .unwrap_or_else(|| parts.name.clone_in(&mut self.ast));
         let exported = parts.name;
         Some(self.ast.export_specifier(
             Span::new(start, exported.span(&self.ast).end),
@@ -20867,6 +20871,69 @@ mod tests {
 
         let has_errors = errors("type A = typeof import(\"x\").A;");
         assert!(!has_errors);
+    }
+
+    #[test]
+    fn module_specifiers() {
+        fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
+            let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            take_ast(parsed.ast)
+        }
+
+        fn export_specifier(ast: &Ast<'_>) -> ExportSpecifier {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_export_named_declaration(ast)
+                .unwrap()
+                .specifiers(ast)
+                .get_node(ast, 0)
+                .unwrap()
+        }
+
+        let javascript = Options::default();
+        let typescript = Options {
+            lang: Lang::Ts,
+            ..javascript
+        };
+        for options in [javascript, typescript] {
+            let allocator = Allocator::new();
+            let ast = parse(&allocator, "export { name } from 'mod';", options);
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast);
+            let exported = specifier.exported(&ast);
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(local.span(&ast), exported.span(&ast));
+            assert_eq!(
+                local.as_identifier_name(&ast).unwrap().name(&ast),
+                exported.as_identifier_name(&ast).unwrap().name(&ast)
+            );
+
+            let ast = parse(&allocator, "export { 'name' } from 'mod';", options);
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast);
+            let exported = specifier.exported(&ast);
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(local.span(&ast), exported.span(&ast));
+            assert_eq!(
+                local.as_string_literal(&ast).unwrap().value(&ast),
+                exported.as_string_literal(&ast).unwrap().value(&ast)
+            );
+
+            let ast = parse(
+                &allocator,
+                "export { name as renamed } from 'mod';",
+                options,
+            );
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast).as_identifier_name(&ast).unwrap();
+            let exported = specifier.exported(&ast).as_identifier_name(&ast).unwrap();
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(ast.get_utf8(local.name(&ast)), "name");
+            assert_eq!(ast.get_utf8(exported.name(&ast)), "renamed");
+        }
     }
 
     #[test]
