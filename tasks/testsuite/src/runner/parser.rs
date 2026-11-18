@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 
 use crate::{
     cases::Case,

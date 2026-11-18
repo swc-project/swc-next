@@ -10,7 +10,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Lang;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, analyze};
 
 fn bench_semantic(c: &mut Criterion) {
     let bench_cases = [
@@ -27,7 +27,7 @@ fn bench_semantic(c: &mut Criterion) {
     ];
     let mut group = c.benchmark_group("semantic");
     for (name, source, lang) in bench_cases {
-        group.bench_function(format!("{name}/semantic/legacy"), |b| {
+        group.bench_function(format!("{name}/semantic"), |b| {
             // Give each iteration its own allocator, and parse and drop outside the measured
             // section, so memory does not accumulate across iterations.
             b.iter_custom(|iters| {

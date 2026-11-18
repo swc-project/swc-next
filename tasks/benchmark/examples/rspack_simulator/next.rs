@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
     Visit, VisitWith, YieldExpression,
 };
 use swc_next_ecma_parser::{Options, Parser, Token, TokenParserConfig, TokenTag};
-use swc_next_ecma_semantic::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();

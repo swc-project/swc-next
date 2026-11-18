@@ -11,7 +11,7 @@ use std::cmp::Reverse;
 use rustc_hash::FxHashSet;
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, NodeId, NodeKind, SymbolId};
-use swc_next_ecma_semantic::{NameResolution, Semantic};
+use swc_next_ecma_semantic2::Semantic;
 
 use crate::dynamic::DynamicScopes;
 
@@ -176,9 +176,7 @@ fn occurrences(
     }
     for &reference in semantic.uses(id) {
         let reference = semantic.reference(reference);
-        if !matches!(reference.resolution(), NameResolution::Resolved(_))
-            || ast.node_kind(reference.node) != NodeKind::IdentifierReference
-        {
+        if ast.node_kind(reference.node) != NodeKind::IdentifierReference {
             return None;
         }
         count += 1;

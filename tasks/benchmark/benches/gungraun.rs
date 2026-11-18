@@ -14,8 +14,7 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
-use swc_next_ecma_semantic2::SemanticAst;
+use swc_next_ecma_semantic2::{AnalyzeOptions, SemanticAst, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, TransformerReturn,
     es2019::ES2019Options,
@@ -229,10 +228,10 @@ fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
     };
     // Setup owns the leaked context so the binding can borrow it outside timing.
     let ast = Box::leak(Box::new(ast));
-    let analyzed = swc_next_ecma_semantic2::analyze(
+    let analyzed = analyze(
         ast,
-        swc_next_ecma_semantic2::AnalyzeOptions {
-            check_syntax: swc_next_ecma_semantic2::SyntaxChecks::all(),
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
         },
     );
     assert!(analyzed.diagnostics.is_empty());

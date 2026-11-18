@@ -12,9 +12,7 @@ use swc_next_ecma_ast::{
     TraverseMut, TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator,
     VariableDeclaration, VariableDeclarator, VariableKind, WhileStatement,
 };
-use swc_next_ecma_semantic::{
-    AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
-};
+use swc_next_ecma_semantic2::{AnalyzeOptions, ScopeKind, SymbolFlags, analyze};
 
 use crate::{
     CompressOptions,
@@ -128,11 +126,10 @@ impl Candidates {
         }
         for entry in semantic.iter_references() {
             let reference = entry.reference;
-            match reference.resolution() {
-                NameResolution::Unresolved
-                    if options.global_defs
-                        && reference.flags.is_read_only()
-                        && !dynamic.shadows(reference.scope) =>
+            match reference.symbol {
+                None if options.global_defs
+                    && reference.flags.is_read_only()
+                    && !dynamic.shadows(reference.scope) =>
                 {
                     let global = match ast.get_utf8(reference.name).as_bytes() {
                         b"undefined" => Value::Undefined,
@@ -143,7 +140,7 @@ impl Candidates {
                     candidates.globals.insert(reference.node, global);
                     candidates.replaced.insert(reference.node);
                 }
-                NameResolution::Resolved(symbol) => {
+                Some(symbol) => {
                     if let Some(&binding) = local_vars.get(symbol) {
                         candidates.typeofs.insert(reference.node, binding);
                     }
@@ -206,7 +203,7 @@ impl Candidates {
                 .collect();
             for entry in semantic.iter_references() {
                 let reference = entry.reference;
-                if let NameResolution::Resolved(symbol) = reference.resolution()
+                if let Some(symbol) = reference.symbol
                     && reference.flags.is_read_only()
                     && pure_symbols
                         .get(symbol)

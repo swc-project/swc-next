@@ -6,7 +6,7 @@ use std::{
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, NodeKindData};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, Semantic, analyze};
 
 use crate::{
     cases::{Case, swc_resolver::SwcResolverCase},

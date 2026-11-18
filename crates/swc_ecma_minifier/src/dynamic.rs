@@ -10,7 +10,7 @@
 
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, ScopeId, SymbolId};
-use swc_next_ecma_semantic::{Semantic, scope::ScopeKind};
+use swc_next_ecma_semantic2::{ScopeKind, Semantic};
 
 /// Scopes whose names dynamic lookup can observe. Both lists are empty when
 /// the program has no dynamic lookup.

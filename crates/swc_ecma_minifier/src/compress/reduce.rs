@@ -13,9 +13,7 @@ use swc_next_ecma_ast::{
     ForStatementLeft, ForStatementLeftData, FunctionType, NodeId, NodeKind, NodeKindData, ScopeId,
     Span, StmtData, SymbolId, VariableDeclaration, VariableDeclarator, VariableKind,
 };
-use swc_next_ecma_semantic::{
-    NameResolution, ReferenceId, Semantic, SymbolFlags, scope::ScopeKind,
-};
+use swc_next_ecma_semantic2::{ReferenceId, ScopeKind, Semantic, SymbolFlags};
 
 use super::{effects::may_have_side_effects, value::Value};
 use crate::{CompressOptions, id_set::IdSet};
@@ -634,7 +632,7 @@ fn reads_follow(
 ) -> bool {
     uses.iter().all(|id| {
         let reference = semantic.reference(*id);
-        if reference.resolution() != NameResolution::Resolved(symbol)
+        if reference.symbol != Some(symbol)
             || !reference.flags.is_read_only()
             || ast.span(reference.node).start < span.end
         {

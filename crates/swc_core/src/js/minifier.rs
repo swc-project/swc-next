@@ -3,7 +3,7 @@ use swc_next_ecma_ast::{Diagnostic, Severity};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{CompressOptions, Minifier, MinifierOptions};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+use swc_next_ecma_semantic2::{SyntaxChecks, check_syntax};
 
 use super::{CommentsOption, JsMinifyApiOptions, JsOutput, serialize_source_map};
 

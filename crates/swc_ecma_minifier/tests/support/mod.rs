@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SyntaxChecks, analyze};
 
 #[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]

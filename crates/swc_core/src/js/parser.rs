@@ -160,7 +160,7 @@ pub mod bridge {
     use swc_next_bridge::{BridgeDecodeOptional, bridge};
     use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
     use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
-    use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
+    use swc_next_ecma_semantic2::{SyntaxChecks, check_syntax};
 
     use super::{JsLang, JsParseApiOptions, JsParserConfig as ParserConfig, JsSourceType};
     use crate::js::CommentsOption;

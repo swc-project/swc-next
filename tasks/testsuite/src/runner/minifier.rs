@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, Options as ParserOptions};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
+use swc_next_ecma_semantic2::{AnalyzeOptions, SyntaxChecks, analyze};
 
 use crate::{
     cases::MinifierCase,
