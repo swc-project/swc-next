@@ -1,54 +1,6 @@
-use swc_next_ecma_ast::{
-    FormalParameterPatternData, Lang, PropertyKeyData, SourceType, TsParameterProperty,
-};
+use swc_next_ecma_ast::{FormalParameterPatternData, Lang, SourceType, TsParameterProperty};
 
 use super::*;
-
-impl SemanticBuilder<'_, '_> {
-    pub(super) fn record_expando_assignment(&mut self, assignment: AssignmentExpression) {
-        let tree = self.ast;
-        let NodeKindData::MemberExpression(member) =
-            tree.kind_data(assignment.left(tree).node_id())
-        else {
-            return;
-        };
-        let PropertyKeyData::IdentifierName(property) =
-            tree.property_key_data(member.property(tree))
-        else {
-            return;
-        };
-        // The parser can strip parentheses from the assignment target.
-        if member.computed(tree)
-            || member.optional(tree)
-            || tree.span(assignment.node_id()).start != tree.span(member.node_id()).start
-        {
-            return;
-        }
-
-        // tscgo looks in the nearest block and its containing declaration.
-        // Object literals have no lexical scope here but still stop that lookup.
-        let container = self
-            .scopes
-            .ancestors(Some(self.scope))
-            .find(|&scope| self.scopes.get(scope).kind != ScopeKind::Block)
-            .unwrap();
-        let container_node = self.scopes.get(container).node;
-        if self
-            .ancestors()
-            .take_while(|&node| node != container_node)
-            .any(|node| {
-                matches!(
-                    tree.node_kind(node),
-                    NodeKind::ObjectExpression | NodeKind::JsxOpeningElement
-                )
-            })
-        {
-            return;
-        }
-        self.symbols
-            .record_expando(member.object(tree), property, self.scope, container);
-    }
-}
 
 fn ts_module_declaration_context_error(
     builder: &SemanticBuilder<'_, '_>,

@@ -156,10 +156,48 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         }
     }
 
-    #[inline]
-    fn record_identifier_reference(&mut self, node: IdentifierReference, flags: ReferenceFlags) {
+    fn record_expando_assignment(
+        &mut self,
+        assignment: AssignmentExpression,
+        member: MemberExpression,
+    ) {
+        let tree = self.ast;
+        if member.computed(tree) || member.optional(tree) {
+            return;
+        }
+        let Some(property) = member.property(tree).as_identifier_name(tree) else {
+            return;
+        };
+
+        // The assignment span still includes parentheses stripped from its target.
+        let start = tree.span(assignment.node_id()).start;
+        if tree.span(member.node_id()).start != start {
+            return;
+        }
+
+        // TypeScript looks in the nearest block and its containing declaration.
+        let mut container = self.scope;
+        let container_node = loop {
+            let scope = self.scopes.get(container);
+            if scope.kind != ScopeKind::Block {
+                break scope.node;
+            }
+            container = scope.parent.unwrap();
+        };
+
+        // Object literals and JSX opening elements stop lookup without a scope.
+        for node in self.ancestors().skip(1) {
+            if node == container_node {
+                break;
+            }
+            match tree.node_kind(node) {
+                NodeKind::ObjectExpression | NodeKind::JsxOpeningElement => return,
+                _ => {}
+            }
+        }
+
         self.symbols
-            .add_identifier_reference(self.ast, node, self.scope, flags);
+            .record_expando(member.object(tree), property, self.scope, container);
     }
 
     fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
@@ -407,8 +445,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         let left = node.left(self.ast);
         let read = node.operator(self.ast) != AssignmentOperator::Assign;
-        if !read && self.ast.is_ts() {
-            self.record_expando_assignment(node);
+        if !read
+            && self.ast.is_ts()
+            && let NodeKindData::MemberExpression(member) = self.ast.kind_data(left.node_id())
+        {
+            self.record_expando_assignment(node, member);
         }
         let flags = self.assignment_reference_flags(read);
         self.visit_with_reference_flags(left, flags);
@@ -498,17 +539,16 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        // This leaf has no children. Only syntax checks inspect its ancestry;
-        // binding still consumes the pending reference flags in either mode.
+        let flags = self.take_reference_flags();
+        self.symbols
+            .add_identifier_reference(self.ast, node, self.scope, flags);
+
+        // Only syntax checks need this leaf on the path.
         if self.check_syntax.identifier_references() {
-            let flags = self.enter_node(node.node_id());
-            self.record_identifier_reference(node, flags);
+            self.path.push(node.node_id());
             self.check(NodeKindData::IdentifierReference(node));
             let current = self.path.pop();
             debug_assert_eq!(current, Some(node.node_id()));
-        } else {
-            let flags = self.take_reference_flags();
-            self.record_identifier_reference(node, flags);
         }
     }
 
