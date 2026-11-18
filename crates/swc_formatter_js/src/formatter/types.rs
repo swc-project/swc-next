@@ -3431,7 +3431,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(head) = self.projected_suppressed_type(projection)
         {
             if !head.comments.is_empty() {
-                let _scope = self.recursion_scope(node.node)?;
+                let _scope = self.shared_recursion_scope(node.node)?;
                 let recorded = self.record_type_head(
                     PreparedTypeContent::Type(node),
                     PendingTypeHead::new(&[], node.node.span(self.ast).start, None),

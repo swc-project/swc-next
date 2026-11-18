@@ -9,7 +9,6 @@ use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionStart, Formatter,
     OperandIndent, ParenthesesOwner, SourceTailOwner, TailBoundary, TailOwner,
 };
-use crate::formatter::RecursionScope;
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
@@ -3021,10 +3020,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         entry: P,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let recursion = self.recursion;
-        let _scope = recursion
-            .enter(Some(expression.node_id()))
-            .map_err(|_| self.unsupported("nesting depth", expression))?;
+        let _scope = self.shared_recursion_scope(expression)?;
         let PreparedHeadEnclosure {
             resolved,
             frame,
@@ -3513,7 +3509,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(expression, |content| content.expression);
         let data = self.ast.expr_data(expression);
         if let ExprData::SequenceExpression(sequence) = data {
-            let _scope = self.recursion_scope(sequence)?;
+            let _scope = self.shared_recursion_scope(sequence)?;
             return self.format_sequence_output(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
@@ -4040,17 +4036,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(start)
     }
 
-    /// A renderer that consumes a prepared real pair keeps its traversal scope.
-    pub(in crate::formatter) fn source_pair_scope(
-        &self,
-        parenthesized: ParenthesizedExpression,
-    ) -> Result<Option<RecursionScope<'ast>>, FormatError> {
-        let recursion = self.recursion;
-        recursion
-            .enter(Some(parenthesized.node_id()))
-            .map_err(|_| self.unsupported("nesting depth", parenthesized))
-    }
-
     fn format_source_parentheses_with_raw_end<P: ExpressionEntry<'ast>>(
         &mut self,
         parenthesized: ParenthesizedExpression,
@@ -4060,7 +4045,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         entry: P,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let _scope = self.source_pair_scope(parenthesized)?;
+        let _scope = self.recursion_scope(parenthesized)?;
         let span = parenthesized.span(self.ast);
         let source_pair = entry.plan().and_then(|plan| match plan {
             PreparedExpressionPlan::Released { pair, .. } => Some(*pair),

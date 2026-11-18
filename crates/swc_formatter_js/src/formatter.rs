@@ -53,6 +53,7 @@ pub(crate) struct Formatter<'ast, 'source> {
 #[derive(Clone, Copy)]
 struct RecursionFrame {
     depth: usize,
+    // Recorded when another entry for this node may reuse the scope.
     node: Option<NodeId>,
 }
 
@@ -69,34 +70,39 @@ struct RecursionScope<'state> {
 struct RecursionLimit;
 
 impl RecursionState {
-    fn enter(&self, node: Option<NodeId>) -> Result<Option<RecursionScope<'_>>, RecursionLimit> {
+    fn enter_node(
+        &self,
+        node: NodeId,
+        remember_node: bool,
+    ) -> Result<Option<RecursionScope<'_>>, RecursionLimit> {
         let previous = self.current.get();
-        // Preparing and emitting the same node share one active scope.
-        if node.is_some() && node == previous.node {
+        if previous.node == Some(node) {
             return Ok(None);
         }
+        self.push(previous, remember_node.then_some(node)).map(Some)
+    }
+
+    fn enter_anonymous(&self) -> Result<RecursionScope<'_>, RecursionLimit> {
+        self.push(self.current.get(), None)
+    }
+
+    /// A generated frame adds depth while keeping the active node.
+    fn enter_frame(&self) -> Result<RecursionScope<'_>, RecursionLimit> {
+        let previous = self.current.get();
+        self.push(previous, previous.node)
+    }
+
+    fn push(
+        &self,
+        previous: RecursionFrame,
+        node: Option<NodeId>,
+    ) -> Result<RecursionScope<'_>, RecursionLimit> {
         if previous.depth == MAX_RECURSION_DEPTH {
             return Err(RecursionLimit);
         }
         self.current.set(RecursionFrame {
             depth: previous.depth + 1,
             node,
-        });
-        Ok(Some(RecursionScope {
-            state: self,
-            previous,
-        }))
-    }
-
-    /// A physical frame recurses even when its body keeps the active node.
-    fn enter_frame(&self) -> Result<RecursionScope<'_>, RecursionLimit> {
-        let previous = self.current.get();
-        if previous.depth == MAX_RECURSION_DEPTH {
-            return Err(RecursionLimit);
-        }
-        self.current.set(RecursionFrame {
-            depth: previous.depth + 1,
-            ..previous
         });
         Ok(RecursionScope {
             state: self,
@@ -280,7 +286,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: N,
         format: impl FnOnce(&mut Self) -> Result<R, FormatError>,
     ) -> Result<R, FormatError> {
-        let _scope = self.recursion_scope(node)?;
+        let _scope = self.shared_recursion_scope(node)?;
         format(self)
     }
 
@@ -291,7 +297,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<RecursionScope<'ast>>, FormatError> {
         let recursion = self.recursion;
         recursion
-            .enter(Some(node.node_id()))
+            .enter_node(node.node_id(), false)
+            .map_err(|_| self.recursion_limit_error(node))
+    }
+
+    /// Record the node so another entry for it can reuse this scope.
+    fn shared_recursion_scope<N: swc_next_ecma_ast::AstNode + GetSpan>(
+        &self,
+        node: N,
+    ) -> Result<Option<RecursionScope<'ast>>, FormatError> {
+        self.recursion
+            .enter_node(node.node_id(), true)
             .map_err(|_| self.recursion_limit_error(node))
     }
 
@@ -321,9 +337,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         format(self)
     }
 
-    fn anonymous_recursion_scope(&self) -> Result<Option<RecursionScope<'ast>>, FormatError> {
+    fn anonymous_recursion_scope(&self) -> Result<RecursionScope<'ast>, FormatError> {
         let recursion = self.recursion;
-        recursion.enter(None).map_err(|_| {
+        recursion.enter_anonymous().map_err(|_| {
             FormatError::unsupported(
                 "nesting depth",
                 None,
