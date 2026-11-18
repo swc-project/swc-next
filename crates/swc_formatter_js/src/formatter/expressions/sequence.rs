@@ -97,7 +97,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::ArrowBody | ExpressionPosition::RestrictedArgument
         )
     }
-    fn sequence_member_pair_is_enclosed(
+    pub(in crate::formatter) fn sequence_member_pair_is_enclosed(
         &self,
         expression: Expr,
         content: &ExpressionContent,

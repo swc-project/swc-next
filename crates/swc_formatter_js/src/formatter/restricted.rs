@@ -443,7 +443,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         loop {
             comments.before(expression.span(self.ast).end);
             let data = self.ast.expr_data(expression);
-            if context.is_verbatim() || self.expression_is_parenthesized(data, context) {
+            if context.is_verbatim() {
+                break;
+            }
+            // A sequence emits its first member's leading comments before
+            // its generated pair, so that pair does not shield the keyword.
+            if let ExprData::SequenceExpression(sequence) = data {
+                let Some(first) = sequence.expressions(self.ast).first() else {
+                    break;
+                };
+                let first = self.ast.get_node_in_sub_range(first);
+                let position = ExpressionPosition::SequenceMember;
+                if matches!(
+                    self.ast.expr_data(first),
+                    ExprData::ParenthesizedExpression(_)
+                ) && self.sequence_member_pair_is_enclosed(
+                    first,
+                    &self.expression_content(first),
+                    position,
+                ) {
+                    break;
+                }
+                expression = first;
+                context = ExpressionContext::at(position);
+                continue;
+            }
+            if self.expression_is_parenthesized(data, context) {
                 break;
             }
             expression = match data {
@@ -490,12 +515,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     context = child_context;
                     child
-                }
-                ExprData::SequenceExpression(sequence) => {
-                    let Some(first) = sequence.expressions(self.ast).iter().next() else {
-                        break;
-                    };
-                    self.ast.get_node_in_sub_range(first)
                 }
                 ExprData::AssignmentExpression(assignment) => {
                     let AssignmentTargetData::SimpleAssignmentTarget(target) =
