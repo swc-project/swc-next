@@ -133,7 +133,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         T: VisitWith<'a, Self>,
     {
         let previous = replace(&mut self.default_reference_space, ReferenceSpace::Typeof);
-        self.visit_with_reference_flags(node, self.default_reference_flags());
+        self.visit_with_reference_flags(node, self.flags_with_space(self.default_reference_space));
         self.default_reference_space = previous;
     }
 
@@ -164,10 +164,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn in_type_position(&self) -> bool {
         self.default_reference_space == ReferenceSpace::Type
-    }
-
-    fn default_reference_flags(&self) -> ReferenceFlags {
-        ReferenceFlags::default().with_space(self.default_reference_space)
     }
 
     /// True when the walker is currently inside a TS namespace body.
@@ -205,7 +201,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn take_reference_flags(&mut self) -> ReferenceFlags {
         let flags = self.reference_flags;
-        self.reference_flags = self.default_reference_flags();
+        self.reference_flags = self.flags_with_space(self.default_reference_space);
         flags
     }
 
@@ -223,12 +219,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     fn exit_type_position(&mut self, previous: ReferenceSpace) {
         debug_assert!(self.in_type_position());
         self.default_reference_space = previous;
-        self.reference_flags = self.default_reference_flags();
+        self.reference_flags = self.flags_with_space(self.default_reference_space);
     }
 
     #[inline]
     fn assignment_reference_flags(&self, read: bool) -> ReferenceFlags {
-        let flags = self.default_reference_flags();
+        let flags = self.flags_with_space(self.default_reference_space);
         if !flags.is_read() {
             flags
         } else if read {
@@ -240,7 +236,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     #[inline]
     fn flags_with_space(&self, space: ReferenceSpace) -> ReferenceFlags {
-        self.default_reference_flags().with_space(space)
+        ReferenceFlags::default().with_space(space)
     }
 
     #[inline]
@@ -484,7 +480,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         let argument = node.argument(self.ast);
         if node.operator(self.ast) == UnaryOperator::Delete {
-            let flags = self.default_reference_flags().no_access();
+            let flags = self
+                .flags_with_space(self.default_reference_space)
+                .no_access();
             self.visit_with_reference_flags(argument, flags);
         } else {
             argument.visit_with(self);
