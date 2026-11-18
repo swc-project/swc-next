@@ -428,7 +428,9 @@ impl<'ast> ExpressionContext<'ast> {
                 ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee => {
                     arrows::ArrowLayout::Callee
                 }
-                ExpressionPosition::AssignmentRight(_) | ExpressionPosition::Initializer(_) => {
+                ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::Initializer(_)
+                | ExpressionPosition::PropertyValue => {
                     arrows::ArrowLayout::Assignment(arrows::ArrowHeadGap::Expression)
                 }
                 ExpressionPosition::BinaryOperand { .. } => arrows::ArrowLayout::Argument,
