@@ -29,7 +29,7 @@ namespace N {
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -45,24 +45,14 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "E": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "value": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            }
+        "members": {
+          "E": {
+            "symbol": 1,
+            "namespace_flags": "CONST_ENUM | EXPORTED"
+          },
+          "value": {
+            "symbol": 4,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -74,11 +64,24 @@ namespace N {
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 2,
       "flags": "Strict",
-      "hoist_target": 2
+      "hoist_target": 2,
+      "container_owner": 1
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

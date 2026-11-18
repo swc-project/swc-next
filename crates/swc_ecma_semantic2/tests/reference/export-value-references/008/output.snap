@@ -15,18 +15,12 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
       "flags": "INTERFACE",
       "declarations": [
@@ -53,18 +47,12 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
       "flags": "INTERFACE",
       "declarations": [

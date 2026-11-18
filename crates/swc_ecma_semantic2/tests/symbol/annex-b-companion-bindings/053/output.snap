@@ -23,20 +23,30 @@ namespace N {
           {
             "span": "27..28",
             "scope": 1
-          },
-          {
-            "span": "60..61",
-            "scope": 1,
-            "flags": "FUNCTION_SCOPED_VAR",
-            "node_symbol": 2
           }
-        ],
-        "uses": [
-          "90..91"
         ]
       },
       {
         "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "60..61",
+            "scope": 1,
+            "flags": "FUNCTION_SCOPED_VAR",
+            "node_symbol": 3
+          }
+        ],
+        "bindings": [
+          1
+        ],
+        "uses": [
+          "90..91"
+        ],
+        "export_symbol": 1
+      },
+      {
+        "id": 3,
         "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
@@ -56,7 +66,8 @@ namespace N {
   "scopes": {
     "1": {
       "kind": "TsModule",
-      "parent": 0
+      "parent": 0,
+      "container_owner": 0
     },
     "2": {
       "kind": "Function",

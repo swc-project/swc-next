@@ -19,7 +19,7 @@ namespace A {
   "symbols": {
     "x": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -29,16 +29,33 @@ namespace A {
         ]
       },
       {
-        "id": 4,
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
+      },
+      {
+        "id": 5,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
             "span": "77..78",
-            "scope": 4
+            "scope": 5
           }
         ],
         "bindings": [
-          4
+          5
         ],
         "uses": [
           "121..122"
@@ -50,12 +67,14 @@ namespace A {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
-    "4": {
+    "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

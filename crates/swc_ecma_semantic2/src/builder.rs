@@ -26,14 +26,14 @@ use swc_next_ecma_ast::{
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
     TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
     TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType,
-    TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsModuleNameData,
-    TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType,
-    TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression,
-    TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion,
-    TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
-    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit,
-    VisitWith, WithStatement,
+    TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleBodyData, TsModuleDeclaration,
+    TsModuleNameData, TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression,
+    TsOptionalType, TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType,
+    TsSatisfiesExpression, TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration,
+    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
+    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
+    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
+    VariableDeclaration, VariableKind, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
@@ -56,7 +56,6 @@ pub struct SemanticBuilder<'traverse, 'a> {
     ast: &'traverse Ast<'a>,
     path: Vec<NodeId>,
     check_syntax: SyntaxChecks,
-    in_ts_module_name: bool,
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
@@ -80,7 +79,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             ast,
             path: Vec::with_capacity(64),
             check_syntax,
-            in_ts_module_name: false,
         }
     }
 
@@ -169,6 +167,38 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// True when the walker is currently inside a TS namespace body.
     fn in_ts_namespace(&self) -> bool {
         self.ts_namespace_depth > 0
+    }
+
+    fn visit_type_heritage_expression(&mut self, expression: swc_next_ecma_ast::Expr) {
+        let space = if self.ast.node_kind(expression.node_id()) == NodeKind::MemberExpression {
+            ReferenceSpace::Namespace
+        } else {
+            ReferenceSpace::Type
+        };
+        self.visit_with_reference_flags(expression, self.flags_with_space(space));
+    }
+
+    fn visit_module_block(
+        &mut self,
+        node: TsModuleBlock,
+        owner: Option<swc_next_ecma_ast::SymbolId>,
+    ) {
+        self.ts_namespace_depth += 1;
+        self.push_scope(
+            ScopeKind::TsModule,
+            node.node_id(),
+            self.inherit_strict_flag(),
+        );
+        self.enter_node(node.node_id());
+        let implicit = self.symbols.in_ambient_context()
+            && !crate::binder::ts::has_explicit_exports(self.ast, node);
+        self.symbols
+            .enter_ts_container(self.current_scope, owner, implicit);
+        node.visit_children_with(self);
+        debug_assert!(self.ts_namespace_depth > 0);
+        self.exit_scope(node.node_id());
+        self.ts_namespace_depth -= 1;
+        self.leave_node(NodeKindData::TsModuleBlock(node));
     }
 
     #[inline]
@@ -914,7 +944,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
         self.enter_type_position();
         self.enter_node(node.node_id());
-        node.visit_children_with(self);
+        self.visit_type_heritage_expression(node.expression(self.ast));
+        node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsClassImplements(node));
         self.exit_type_position();
     }
@@ -942,12 +973,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let import_kind = node.import_kind(self.ast);
         self.symbols
             .enter_ts_import_equals_declaration(import_kind, self.current_scope);
-        let mut flags = self.flags_with_space(ReferenceSpace::Any);
-        if import_kind == ImportOrExportKind::Type {
-            flags = flags.no_access();
-        }
-        self.visit_with_reference_flags(node.id(self.ast), flags);
+        let first_reference = self.symbols.next_reference();
+        let flags = self.flags_with_space(ReferenceSpace::Any);
+        node.id(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.module_reference(self.ast), flags);
+        self.symbols
+            .record_import_equals(self.ast, node, first_reference);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsImportEqualsDeclaration(node));
     }
@@ -1024,10 +1055,20 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
-        // TSC resolves unqualified member references inside the body.
-        self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
+        self.push_scope(
+            ScopeKind::TsEnum,
+            node.node_id(),
+            self.inherit_strict_flag(),
+        );
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_enum_body();
+        let owner = match self.parent().map(|parent| self.ast.kind_data(parent)) {
+            Some(NodeKindData::TsEnumDeclaration(declaration)) => self
+                .symbols
+                .symbol_of_node(declaration.id(self.ast).node_id()),
+            _ => None,
+        };
+        self.symbols
+            .enter_ts_container(self.current_scope, owner, false);
         node.visit_children_with(self);
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsEnumBody(node));
@@ -1045,29 +1086,59 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.symbols
             .enter_ts_module_declaration(self.ast, node, self.current_scope);
-        let previous = std::mem::replace(&mut self.in_ts_module_name, true);
-        node.id(self.ast).visit_with(self);
-        self.in_ts_module_name = previous;
-        node.attributes(self.ast).visit_with(self);
-        node.body(self.ast).visit_with(self);
+        let tree = self.ast;
+        let enclosing = self.current_scope;
+        let mut name = node.id(tree).node_id();
+        let mut segments = Vec::new();
+        while let NodeKindData::TsQualifiedName(qualified) = tree.kind_data(name) {
+            segments.push((name, qualified.right(tree)));
+            name = qualified.left(tree).node_id();
+        }
+
+        let mut owner = None;
+        if let NodeKindData::BindingIdentifier(identifier) = tree.kind_data(name) {
+            identifier.visit_with(self);
+            owner = self.symbols.symbol_of_node(name);
+            for (qualifier, segment) in segments.into_iter().rev() {
+                self.push_scope(ScopeKind::TsModule, qualifier, self.inherit_strict_flag());
+                self.symbols
+                    .enter_ts_container(self.current_scope, owner, false);
+                self.symbols.enter_dotted_namespace(self.current_scope);
+                self.symbols.declare_dotted_namespace(
+                    tree,
+                    &self.scope,
+                    segment.name(tree),
+                    segment.node_id(),
+                );
+                owner = self.symbols.symbol_of_node(segment.node_id());
+            }
+        } else {
+            node.id(tree).visit_with(self);
+        }
+        node.attributes(tree).visit_with(self);
+        if let Some(body) = node.body(tree) {
+            match tree.ts_module_body_data(body) {
+                TsModuleBodyData::TsModuleBlock(block) => self.visit_module_block(block, owner),
+                TsModuleBodyData::TsModuleDeclaration(child) => {
+                    self.push_scope(
+                        ScopeKind::TsModule,
+                        node.node_id(),
+                        self.inherit_strict_flag(),
+                    );
+                    self.symbols
+                        .enter_ts_container(self.current_scope, owner, false);
+                    self.symbols.enter_dotted_namespace(self.current_scope);
+                    child.visit_with(self);
+                }
+            }
+        }
+        self.current_scope = enclosing;
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsModuleDeclaration(node));
     }
 
     fn visit_ts_module_block(&mut self, node: TsModuleBlock) {
-        self.ts_namespace_depth += 1;
-        self.push_scope(
-            ScopeKind::TsModule,
-            node.node_id(),
-            self.inherit_strict_flag(),
-        );
-        self.enter_node(node.node_id());
-        self.symbols.enter_ts_module_block();
-        node.visit_children_with(self);
-        debug_assert!(self.ts_namespace_depth > 0);
-        self.exit_scope(node.node_id());
-        self.ts_namespace_depth -= 1;
-        self.leave_node(NodeKindData::TsModuleBlock(node));
+        self.visit_module_block(node, None);
     }
 
     fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
@@ -1121,7 +1192,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
         self.enter_type_position();
         self.enter_node(node.node_id());
-        node.visit_children_with(self);
+        self.visit_type_heritage_expression(node.expression(self.ast));
+        node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsInterfaceHeritage(node));
         self.exit_type_position();
     }
@@ -1155,12 +1227,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
-        if self.in_ts_module_name {
-            self.enter_node(node.node_id());
-            node.visit_children_with(self);
-            self.leave_node(NodeKindData::TsQualifiedName(node));
-            return;
-        }
         self.enter_type_position();
         let flags = self.enter_node(node.node_id());
         let space = match flags.space {
@@ -1646,7 +1712,10 @@ impl<'a> SemanticBuilder<'_, 'a> {
     }
 }
 
-fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
+fn export_expression_space(tree: &Ast<'_>, mut expression: NodeId) -> ReferenceSpace {
+    while let NodeKindData::ParenthesizedExpression(node) = tree.kind_data(expression) {
+        expression = node.expression(tree).node_id();
+    }
     if tree.node_kind(expression) == NodeKind::IdentifierReference {
         ReferenceSpace::Any
     } else {

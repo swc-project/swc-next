@@ -26,7 +26,7 @@ const queried: typeof Alias = 1;
   "symbols": {
     "Alias": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -37,20 +37,17 @@ const queried: typeof Alias = 1;
         "bindings": [
           1
         ],
-        "uses": [
-          "249..254",
-          "269..274",
-          "316..321"
-        ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "221..222"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -60,7 +57,8 @@ const queried: typeof Alias = 1;
           },
           {
             "span": "138..139",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           }
         ],
         "bindings": [
@@ -69,36 +67,21 @@ const queried: typeof Alias = 1;
         "uses": [
           "221..222"
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "Inner": {
+            "symbol": 4,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -109,6 +92,23 @@ const queried: typeof Alias = 1;
         "uses": [
           "190..191"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "original": [
@@ -139,7 +139,14 @@ const queried: typeof Alias = 1;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

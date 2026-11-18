@@ -38,47 +38,21 @@ const b: B = { own: true };
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": 8
       },
       {
         "span": "358..359",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 9
-        },
-        "candidates": [
-          9
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 9
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "386..387",
         "scope": 9,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 9
-        },
-        "candidates": [
-          9
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 9
-          }
-        ]
+        "symbol": null
       }
     ],
     "B": [
@@ -87,13 +61,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 13
-        },
-        "candidates": [
-          13
-        ],
-        "value_symbols": []
+        "symbol": null
       }
     ],
     "N": [
@@ -101,58 +69,26 @@ const b: B = { own: true };
         "span": "189..190",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "29..30"
       ]
     },
-    "4": {
-      "name": "T",
-      "flags": "INTERFACE | AMBIENT | EXPORTED",
-      "declarations": [
-        "115..116"
-      ]
-    },
-    "7": {
+    "8": {
       "name": "A",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "251..252"
       ]
-    },
-    "9": {
-      "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "288..289"
-      ]
-    },
-    "13": {
-      "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "398..399"
-      ],
-      "alias_target": 4
     }
   },
   "scopes": {
@@ -164,7 +100,8 @@ const b: B = { own: true };
     "8": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 9
     },
     "9": {
       "kind": "Block",

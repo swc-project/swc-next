@@ -13,36 +13,26 @@ type I = new (value: number) => { value: typeof value };
     "value": [
       {
         "span": "82..87",
-        "scope": 5,
+        "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "3": {
+    "0": {
       "name": "value",
-      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
-        "48..53"
+        "17..22"
       ]
     }
   },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureReturn",
-      "parent": 3,
+    "3": {
+      "kind": "Block",
+      "parent": 2,
       "flags": "Strict",
       "hoist_target": 1
     }

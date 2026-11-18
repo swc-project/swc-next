@@ -16,34 +16,27 @@ function f(
     "T": [
       {
         "span": "56..57",
-        "scope": 6,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "1": {
+    "4": {
       "name": "T",
       "flags": "TYPE_ALIAS",
       "declarations": [
-        "5..6"
+        "72..73"
       ]
     }
   },
   "scopes": {
-    "6": {
-      "kind": "TsSignatureParameter",
-      "parent": 5,
-      "flags": "Strict",
-      "hoist_target": 5
+    "4": {
+      "kind": "Function",
+      "parent": 3,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

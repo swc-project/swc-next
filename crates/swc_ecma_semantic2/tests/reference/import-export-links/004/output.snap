@@ -28,47 +28,21 @@ namespace Outer {
         "scope": 8,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 6
       },
       {
         "span": "215..216",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 6
       },
       {
         "span": "239..240",
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": 8
       }
     ],
     "F": [
@@ -77,13 +51,7 @@ namespace Outer {
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [],
+        "symbol": 3,
         "import_equals": true
       }
     ]
@@ -96,7 +64,7 @@ namespace Outer {
         "75..76"
       ]
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
       "declarations": [
@@ -104,20 +72,23 @@ namespace Outer {
         "136..137"
       ]
     },
-    "7": {
+    "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "173..174"
       ],
-      "alias_target": 3
+      "alias": {
+        "Target": 3
+      }
     }
   },
   "scopes": {
     "8": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

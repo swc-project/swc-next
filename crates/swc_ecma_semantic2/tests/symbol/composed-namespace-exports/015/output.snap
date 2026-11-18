@@ -27,7 +27,7 @@ namespace N.Inner {
   "symbols": {
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -37,7 +37,8 @@ namespace N.Inner {
           },
           {
             "span": "138..139",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           },
           {
             "span": "216..217",
@@ -47,36 +48,21 @@ namespace N.Inner {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "Inner": {
+            "symbol": 4,
+            "namespace_flags": "VALUE_MODULE | NAMESPACE_MODULE | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -85,9 +71,25 @@ namespace N.Inner {
           }
         ],
         "uses": [
-          "190..191",
-          "277..278"
+          "190..191"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "original": [
@@ -104,9 +106,7 @@ namespace N.Inner {
           2
         ],
         "uses": [
-          "109..117",
-          "252..253",
-          "329..330"
+          "109..117"
         ]
       }
     ]
@@ -120,7 +120,20 @@ namespace N.Inner {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

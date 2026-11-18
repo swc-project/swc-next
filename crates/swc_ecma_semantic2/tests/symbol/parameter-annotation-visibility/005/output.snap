@@ -12,7 +12,7 @@ function f<T>(x: T) {}
   "symbols": {
     "T": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -25,7 +25,7 @@ function f<T>(x: T) {}
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {

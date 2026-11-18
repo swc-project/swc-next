@@ -24,15 +24,17 @@ import A = N.x;
         "bindings": [
           1
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "49..50"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -46,23 +48,17 @@ import A = N.x;
         "uses": [
           "49..50"
         ],
-        "namespace": {
-          "members": {
-            "x": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "x": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
     ],
     "x": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -70,6 +66,23 @@ import A = N.x;
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -82,7 +95,8 @@ import A = N.x;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

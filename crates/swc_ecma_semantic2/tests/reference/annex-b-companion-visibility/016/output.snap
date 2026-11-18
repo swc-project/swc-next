@@ -15,17 +15,7 @@ arguments;
         "scope": 0,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },

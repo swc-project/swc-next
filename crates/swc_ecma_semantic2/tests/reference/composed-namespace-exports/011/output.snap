@@ -35,51 +35,21 @@ const nested: Alias.T = { ok: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "346..351",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "385..390",
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": 10
       }
     ],
     "N": [
@@ -87,18 +57,8 @@ const nested: Alias.T = { ok: true };
         "span": "298..299",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -108,17 +68,7 @@ const nested: Alias.T = { ok: true };
         "scope": 5,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 1
       }
     ],
     "original": [
@@ -127,22 +77,12 @@ const nested: Alias.T = { ok: true };
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE",
       "declarations": [
@@ -150,7 +90,7 @@ const nested: Alias.T = { ok: true };
         "138..139"
       ]
     },
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
@@ -164,12 +104,22 @@ const nested: Alias.T = { ok: true };
         "85..93"
       ]
     },
-    "7": {
+    "6": {
+      "name": "Y",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "declarations": [
+        "198..199"
+      ]
+    },
+    "10": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "290..295"
-      ]
+      ],
+      "alias": {
+        "Target": 6
+      }
     }
   },
   "scopes": {
@@ -181,12 +131,14 @@ const nested: Alias.T = { ok: true };
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "5": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

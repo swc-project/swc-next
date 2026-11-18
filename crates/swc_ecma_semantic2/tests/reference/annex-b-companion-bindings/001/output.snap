@@ -18,34 +18,14 @@ f;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 0
-        },
-        "candidates": [
-          0
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 0
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "50..51",
         "scope": 0,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },

@@ -17,34 +17,14 @@ const f = function n(a = n) {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       },
       {
         "span": "48..49",
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ]
   },

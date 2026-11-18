@@ -23,22 +23,12 @@ enum Outer {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "5": {
+    "4": {
       "name": "B",
       "flags": "ENUM_MEMBER",
       "declarations": [
@@ -48,10 +38,11 @@ enum Outer {
   },
   "scopes": {
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     }
   }
 }

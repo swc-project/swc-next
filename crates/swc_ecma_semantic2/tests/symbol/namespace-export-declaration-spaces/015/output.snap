@@ -19,7 +19,7 @@ namespace N {
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -43,8 +43,13 @@ namespace N {
             "scope": 4
           }
         ],
+        "bindings": [
+          4
+        ],
+        "alias": {
+          "Target": 2
+        },
         "import": {
-          "target": 3,
           "initializer": "89..90"
         }
       }
@@ -67,20 +72,14 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            },
-            "Result": {
-              "symbol": 6,
-              "value_symbols": []
-            }
+        "members": {
+          "A": {
+            "symbol": 5,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          },
+          "Result": {
+            "symbol": 6,
+            "namespace_flags": "TYPE_ALIAS | EXPORTED"
           }
         }
       }
@@ -95,7 +94,14 @@ namespace N {
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

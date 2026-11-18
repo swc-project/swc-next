@@ -17,17 +17,7 @@ if (condition)
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },

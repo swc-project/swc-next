@@ -54,8 +54,10 @@ namespace Use {
         "uses": [
           "214..215"
         ],
+        "alias": {
+          "Target": 6
+        },
         "import": {
-          "target": null,
           "initializer": "184..190"
         }
       }
@@ -70,7 +72,8 @@ namespace Use {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

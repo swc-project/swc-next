@@ -17,42 +17,26 @@ const C = class Inner<Inner> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "57..62",
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "Inner",
       "flags": "CLASS | CLASS_EXPRESSION",
       "declarations": [
         "16..21"
       ]
     },
-    "3": {
+    "2": {
       "name": "Inner",
       "flags": "TYPE_PARAMETER",
       "declarations": [

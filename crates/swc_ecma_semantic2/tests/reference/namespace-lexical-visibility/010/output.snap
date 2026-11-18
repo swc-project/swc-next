@@ -23,17 +23,7 @@ namespace A.B {}
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
@@ -50,7 +40,8 @@ namespace A.B {}
     "4": {
       "kind": "TsModule",
       "parent": 3,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

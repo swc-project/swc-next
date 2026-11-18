@@ -18,13 +18,13 @@ namespace N {
   "symbols": {
     "N": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "49..50",
             "scope": 1,
-            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
+            "flags": "NAMESPACE_MODULE | AMBIENT"
           },
           {
             "span": "169..170",
@@ -34,42 +34,17 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "erased": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "result": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "value": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Uncertain": {
-                    "candidate": 3
-                  }
-                }
-              ]
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "result": {
+            "symbol": 3,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
+          }
         }
       }
     ],
     "original": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -82,11 +57,17 @@ namespace N {
         ],
         "uses": [
           "98..106",
-          "135..143",
-          "197..202"
+          "135..143"
         ],
+        "alias": {
+          "Unknown": [
+            "VALUE",
+            "TYPE",
+            "NAMESPACE",
+            "TYPEOF"
+          ]
+        },
         "import": {
-          "target": null,
           "initializer": "73..79"
         }
       }
@@ -101,7 +82,14 @@ namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

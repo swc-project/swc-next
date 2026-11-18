@@ -27,17 +27,7 @@ namespace Use {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 6
       }
     ],
     "N": [
@@ -46,30 +36,20 @@ namespace Use {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "18..19"
       ]
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -81,7 +61,8 @@ namespace Use {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

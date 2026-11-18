@@ -16,34 +16,26 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
         "13..14"
       ]
     },
-    "2": {
+    "1": {
       "name": "X",
-      "flags": "INTERFACE",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
+        "13..14",
         "30..31"
-      ]
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {
@@ -65,34 +57,26 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
         "13..14"
       ]
     },
-    "2": {
+    "1": {
       "name": "X",
-      "flags": "INTERFACE",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
+        "13..14",
         "30..31"
-      ]
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {

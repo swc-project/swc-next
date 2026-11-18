@@ -12,20 +12,18 @@ declare function f(): typeof arguments;
     "arguments": [
       {
         "span": "71..80",
-        "scope": 2,
+        "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
   "scopes": {
-    "2": {
-      "kind": "TsSignatureReturn",
-      "parent": 1,
-      "hoist_target": 1
+    "1": {
+      "kind": "Function",
+      "parent": 0,
+      "flags": "ArgumentsBarrier"
     }
   }
 }

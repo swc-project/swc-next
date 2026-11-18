@@ -8,6 +8,21 @@ const result = 1 as const;
 ---------- Output ----------
 {
   "references": {
-    "const": []
+    "const": [
+      {
+        "span": "20..25",
+        "scope": 1,
+        "space": "Type",
+        "access": "None",
+        "symbol": null
+      }
+    ]
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
   }
 }

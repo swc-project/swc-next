@@ -16,7 +16,7 @@ const value = N.y;
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -30,16 +30,10 @@ const value = N.y;
         "uses": [
           "72..73"
         ],
-        "namespace": {
-          "members": {
-            "x": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "x": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -60,16 +54,10 @@ const value = N.y;
         "uses": [
           "93..94"
         ],
-        "namespace": {
-          "members": {
-            "y": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            }
+        "members": {
+          "y": {
+            "symbol": 4,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
           }
         }
       }
@@ -80,6 +68,18 @@ const value = N.y;
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

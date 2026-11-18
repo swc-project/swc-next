@@ -12,41 +12,22 @@ type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
     "U": [
       {
         "span": "74..75",
-        "scope": 6,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "79..80",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
-      "name": "U",
-      "flags": "TYPE_ALIAS",
-      "declarations": [
-        "5..6"
-      ]
-    },
-    "4": {
+    "3": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -55,15 +36,9 @@ type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
     }
   },
   "scopes": {
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "6": {
-      "kind": "TsConditionalExtends",
-      "parent": 5,
       "flags": "Strict",
       "hoist_target": 1
     }

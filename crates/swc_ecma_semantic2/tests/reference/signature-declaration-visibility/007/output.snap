@@ -13,38 +13,19 @@ function f<T extends typeof value>(x = 0) {
     "value": [
       {
         "span": "28..33",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": null
       }
     ]
   },
-  "symbols": {
-    "4": {
-      "name": "value",
-      "flags": "BLOCK_SCOPED_VAR",
-      "declarations": [
-        "50..55"
-      ]
-    }
-  },
   "scopes": {
-    "3": {
-      "kind": "TsTypeParameters",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier",
+      "function_body": 3
     }
   }
 }

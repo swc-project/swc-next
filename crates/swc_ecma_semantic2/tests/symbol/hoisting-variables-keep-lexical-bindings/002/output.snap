@@ -17,7 +17,7 @@ namespace N {
   "symbols": {
     "f": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "FUNCTION_SCOPED_VAR",
         "declarations": [
           {
@@ -33,7 +33,7 @@ namespace N {
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -54,7 +54,8 @@ namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "3": {
       "kind": "Block",

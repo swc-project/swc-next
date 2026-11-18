@@ -16,89 +16,57 @@ const g = function n<n>(y: n) {
     "n": [
       {
         "span": "27..28",
-        "scope": 4,
+        "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "41..42",
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       },
       {
         "span": "74..75",
-        "scope": 7,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": 6
       },
       {
         "span": "88..89",
-        "scope": 5,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "n",
       "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "19..20"
       ]
     },
-    "3": {
+    "2": {
       "name": "n",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "21..22"
       ]
     },
-    "6": {
+    "5": {
       "name": "n",
       "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "66..67"
       ]
     },
-    "7": {
+    "6": {
       "name": "n",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -112,22 +80,10 @@ const g = function n<n>(y: n) {
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
-    },
-    "5": {
+    "3": {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
-    },
-    "7": {
-      "kind": "TsSignatureParameter",
-      "parent": 5,
-      "flags": "Strict",
-      "hoist_target": 5
     }
   }
 }

@@ -12,20 +12,10 @@ type F = () => typeof arguments;
     "arguments": [
       {
         "span": "64..73",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 0
-        },
-        "candidates": [
-          0
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 0
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
@@ -39,9 +29,9 @@ type F = () => typeof arguments;
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsSignatureReturn",
-      "parent": 2,
+    "2": {
+      "kind": "Block",
+      "parent": 1,
       "hoist_target": 0
     }
   }

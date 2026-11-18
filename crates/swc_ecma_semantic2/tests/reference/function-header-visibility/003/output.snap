@@ -14,25 +14,15 @@ function f<T extends typeof value>() {
     "value": [
       {
         "span": "39..44",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "value",
       "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
       "declarations": [
@@ -41,11 +31,10 @@ function f<T extends typeof value>() {
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsTypeParameters",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

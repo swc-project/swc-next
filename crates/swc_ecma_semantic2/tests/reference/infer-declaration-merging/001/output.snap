@@ -11,16 +11,10 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
     "U": [
       {
         "span": "67..68",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
@@ -29,13 +23,12 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "52..53",
         "62..63"
       ]
     }
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 2,
       "flags": "Strict",
@@ -51,16 +44,10 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
     "U": [
       {
         "span": "67..68",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
@@ -69,13 +56,12 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "52..53",
         "62..63"
       ]
     }
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 2,
       "flags": "Strict",

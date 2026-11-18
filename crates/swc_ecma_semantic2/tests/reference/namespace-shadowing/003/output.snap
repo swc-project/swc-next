@@ -22,26 +22,10 @@ namespace N {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 5
-          }
-        },
+        "symbol": null,
         "candidates": [
-          5,
-          2
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 5
-            }
-          },
-          {
-            "Uncertain": {
-              "candidate": 2
-            }
-          }
+          1,
+          4
         ]
       }
     ],
@@ -51,58 +35,67 @@ namespace N {
         "scope": 2,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 4
-          }
-        },
+        "symbol": null,
         "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
+          3
         ],
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "0": {
+      "name": "remote",
+      "flags": "IMPORT",
+      "declarations": [
+        "12..18"
+      ]
+    },
+    "1": {
       "name": "Alias",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "42..47"
       ]
     },
-    "4": {
+    "3": {
       "name": "B",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "93..94"
-      ]
+      ],
+      "alias": {
+        "Target": 0
+      }
     },
-    "5": {
+    "4": {
       "name": "Alias",
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "121..126"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "NAMESPACE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
     },
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
     }
   }
 }

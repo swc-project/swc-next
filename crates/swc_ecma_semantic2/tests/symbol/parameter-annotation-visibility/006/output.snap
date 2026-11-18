@@ -12,7 +12,7 @@ function f(value: number, x: typeof value) {}
   "symbols": {
     "value": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -25,7 +25,7 @@ function f(value: number, x: typeof value) {}
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
         "declarations": [
           {

@@ -15,25 +15,15 @@ export default function f(value: string | number) {
     "value": [
       {
         "span": "161..166",
-        "scope": 8,
+        "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "4": {
+    "3": {
       "name": "value",
       "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [
@@ -42,7 +32,7 @@ export default function f(value: string | number) {
     }
   },
   "scopes": {
-    "8": {
+    "4": {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"

@@ -31,7 +31,7 @@ const nested: Alias.T = { ok: true };
   "symbols": {
     "Alias": [
       {
-        "id": 7,
+        "id": 10,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -43,19 +43,19 @@ const nested: Alias.T = { ok: true };
           1
         ],
         "uses": [
-          "326..331",
-          "346..351",
           "385..390"
         ],
+        "alias": {
+          "Target": 6
+        },
         "import": {
-          "target": null,
           "initializer": "298..299"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -65,7 +65,8 @@ const nested: Alias.T = { ok: true };
           },
           {
             "span": "138..139",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           }
         ],
         "bindings": [
@@ -74,36 +75,21 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "298..299"
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "Inner": {
+            "symbol": 4,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -114,11 +100,28 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "267..268"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "Y": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -126,14 +129,29 @@ const nested: Alias.T = { ok: true };
             "scope": 5
           }
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": 6,
-              "value_symbols": []
-            }
+        "members": {
+          "T": {
+            "symbol": 8,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
+      },
+      {
+        "id": 7,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "198..199",
+            "scope": 5,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+            "node_symbol": 6,
+            "owner": 6
+          }
+        ],
+        "bindings": [
+          5
+        ],
+        "export_symbol": 6
       }
     ],
     "original": [
@@ -164,12 +182,26 @@ const nested: Alias.T = { ok: true };
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     },
     "5": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
+    },
+    "6": {
+      "kind": "TsModule",
+      "parent": 5,
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

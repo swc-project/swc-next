@@ -22,17 +22,7 @@ source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 6
       }
     ]
   },

@@ -15,42 +15,22 @@ function f(): typeof value {
     "value": [
       {
         "span": "32..37",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       },
       {
         "span": "71..76",
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "value",
       "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
       "declarations": [
@@ -63,12 +43,6 @@ function f(): typeof value {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
-    },
-    "3": {
-      "kind": "TsSignatureReturn",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
     }
   }
 }

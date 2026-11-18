@@ -24,35 +24,22 @@ namespace Use {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       },
       {
         "span": "188..193",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
+        "symbol": null,
         "candidates": [
           5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
         ]
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "Alias",
       "flags": "TYPE_ALIAS",
       "declarations": [
@@ -64,14 +51,21 @@ namespace Use {
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "122..127"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     },
     "7": {
       "kind": "Block",

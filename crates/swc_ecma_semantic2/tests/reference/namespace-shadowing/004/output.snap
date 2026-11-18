@@ -25,26 +25,10 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 7
-          }
-        },
+        "symbol": null,
         "candidates": [
-          7,
-          4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 7
-            }
-          },
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
+          4,
+          7
         ]
       }
     ]
@@ -62,14 +46,23 @@ namespace N {
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "157..158"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "NAMESPACE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

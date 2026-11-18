@@ -15,26 +15,19 @@ const fn = f;
   "symbols": {
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "id": 0,
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "24..25",
-            "scope": 1,
-            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
-          },
-          {
-            "span": "56..57",
-            "scope": 1,
-            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
+            "scope": 1
           }
         ],
-        "uses": [
-          "89..90",
-          "103..104"
+        "bindings": [
+          1
         ],
-        "roles": [
-          "DefaultExport"
+        "uses": [
+          "103..104"
         ]
       }
     ]

@@ -17,7 +17,7 @@ namespace AliasSpace {
   "symbols": {
     "Public": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_ALIAS | EXPORTED",
         "declarations": [
           {
@@ -28,6 +28,23 @@ namespace AliasSpace {
         "uses": [
           "126..132"
         ]
+      },
+      {
+        "id": 3,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "61..67",
+            "scope": 2,
+            "flags": "TYPE_ALIAS | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 2
       }
     ]
   },
@@ -35,7 +52,8 @@ namespace AliasSpace {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

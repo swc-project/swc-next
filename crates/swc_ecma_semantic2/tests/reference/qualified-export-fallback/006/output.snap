@@ -31,30 +31,14 @@ namespace Use {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": 8
       },
       {
         "span": "291..292",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 6
       }
     ],
     "N": [
@@ -63,23 +47,13 @@ namespace Use {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
@@ -93,27 +67,30 @@ namespace Use {
         "115..116"
       ]
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "182..183"
       ]
     },
-    "7": {
+    "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "214..215"
       ],
-      "alias_target": 4
+      "alias": {
+        "Target": 4
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

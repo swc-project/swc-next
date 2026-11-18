@@ -19,9 +19,7 @@ declare module "foo" {
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },

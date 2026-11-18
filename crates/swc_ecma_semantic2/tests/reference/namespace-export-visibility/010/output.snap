@@ -27,17 +27,7 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 7
       }
     ],
     "Item": [
@@ -46,17 +36,7 @@ namespace N {
         "scope": 5,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -66,21 +46,18 @@ namespace N {
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
+    "0": {
+      "name": "Item",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "21..25"
+      ]
+    },
     "4": {
       "name": "Local",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
@@ -88,25 +65,29 @@ namespace N {
         "96..101"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "187..188"
       ],
-      "alias_target": 4
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     },
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

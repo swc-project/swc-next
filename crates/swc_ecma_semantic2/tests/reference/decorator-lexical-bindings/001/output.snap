@@ -14,41 +14,29 @@ class C<T> {
     "T": [
       {
         "span": "57..58",
-        "scope": 5,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "69..70",
-        "scope": 9,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "4": {
+    "3": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "40..41"
       ]
     },
-    "5": {
+    "4": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -57,17 +45,16 @@ class C<T> {
     }
   },
   "scopes": {
-    "5": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",
       "hoist_target": 1
     },
-    "9": {
-      "kind": "TsSignatureParameter",
-      "parent": 7,
-      "flags": "Strict",
-      "hoist_target": 7
+    "4": {
+      "kind": "Function",
+      "parent": 3,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

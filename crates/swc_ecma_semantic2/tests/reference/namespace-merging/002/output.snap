@@ -16,20 +16,10 @@ namespace Root.Child {
     "first": [
       {
         "span": "98..103",
-        "scope": 3,
+        "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
@@ -43,10 +33,11 @@ namespace Root.Child {
     }
   },
   "scopes": {
-    "3": {
+    "5": {
       "kind": "TsModule",
-      "parent": 1,
-      "flags": "Strict"
+      "parent": 4,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

@@ -20,25 +20,15 @@ namespace A {
     "x": [
       {
         "span": "121..122",
-        "scope": 5,
+        "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "4": {
+    "5": {
       "name": "x",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -47,10 +37,11 @@ namespace A {
     }
   },
   "scopes": {
-    "5": {
+    "6": {
       "kind": "TsModule",
-      "parent": 4,
-      "flags": "Strict"
+      "parent": 5,
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

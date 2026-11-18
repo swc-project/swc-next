@@ -24,17 +24,7 @@ const views = [<_Button />, <$Button />, <Élement />, <div />, <A-B />];
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 6
       }
     ],
     "_Button": [
@@ -43,17 +33,7 @@ const views = [<_Button />, <$Button />, <Élement />, <div />, <A-B />];
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 5
       }
     ],
     "Élement": [
@@ -62,36 +42,26 @@ const views = [<_Button />, <$Button />, <Élement />, <div />, <A-B />];
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 7
       }
     ]
   },
   "symbols": {
-    "4": {
+    "5": {
       "name": "_Button",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "127..134"
       ]
     },
-    "5": {
+    "6": {
       "name": "$Button",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "169..176"
       ]
     },
-    "6": {
+    "7": {
       "name": "Élement",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [

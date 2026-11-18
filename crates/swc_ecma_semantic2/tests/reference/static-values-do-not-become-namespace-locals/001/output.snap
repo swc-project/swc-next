@@ -21,22 +21,12 @@ namespace C {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "x",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -48,7 +38,8 @@ namespace C {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

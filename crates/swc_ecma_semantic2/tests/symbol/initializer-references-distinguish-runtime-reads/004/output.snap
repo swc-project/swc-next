@@ -10,7 +10,7 @@ import type A = require("pkg");
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -22,7 +22,6 @@ import type A = require("pkg");
           1
         ],
         "import": {
-          "target": null,
           "initializer": null
         }
       }

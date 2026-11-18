@@ -10,7 +10,7 @@ import A = require("dep");
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -22,7 +22,6 @@ import A = require("dep");
           1
         ],
         "import": {
-          "target": null,
           "initializer": null
         }
       }

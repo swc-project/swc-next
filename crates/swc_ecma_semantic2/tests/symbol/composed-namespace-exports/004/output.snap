@@ -34,18 +34,19 @@ const queried: typeof Alias = 1;
         ],
         "uses": [
           "165..170",
-          "185..190",
           "232..237"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": null,
           "initializer": "143..144"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -59,28 +60,17 @@ const queried: typeof Alias = 1;
         "uses": [
           "143..144"
         ],
-        "namespace": {
-          "members": {
-            "Original": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -88,6 +78,23 @@ const queried: typeof Alias = 1;
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "48..49",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -100,7 +107,8 @@ const queried: typeof Alias = 1;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

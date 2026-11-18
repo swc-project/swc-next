@@ -10,22 +10,29 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
   "symbols": {
     "U": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "52..53",
             "scope": 4
-          },
-          {
-            "span": "62..63",
-            "scope": 4
           }
         ],
         "bindings": [
-          4,
-          8,
-          9
+          4
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "62..63",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
         ],
         "uses": [
           "67..68"
@@ -34,9 +41,15 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
     ]
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }
@@ -49,22 +62,29 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
   "symbols": {
     "U": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "52..53",
             "scope": 4
-          },
-          {
-            "span": "62..63",
-            "scope": 4
           }
         ],
         "bindings": [
-          4,
-          8,
-          9
+          4
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "62..63",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
         ],
         "uses": [
           "67..68"
@@ -73,9 +93,15 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
     ]
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

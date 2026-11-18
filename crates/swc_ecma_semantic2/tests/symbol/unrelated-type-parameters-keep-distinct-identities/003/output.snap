@@ -11,7 +11,7 @@ declare function f<T>(value: T, extra: number): void;
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
@@ -27,16 +27,16 @@ declare function f<T>(value: T, extra: number): void;
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "58..59",
-            "scope": 6
+            "scope": 3
           }
         ],
         "bindings": [
-          6
+          3
         ],
         "uses": [
           "68..69"
@@ -50,7 +50,7 @@ declare function f<T>(value: T, extra: number): void;
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "6": {
+    "3": {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"

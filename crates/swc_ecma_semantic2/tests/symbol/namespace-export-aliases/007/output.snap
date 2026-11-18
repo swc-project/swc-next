@@ -28,16 +28,18 @@ import A = N.Y;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": 3,
           "initializer": "123..124"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -46,7 +48,7 @@ import A = N.Y;
           {
             "span": "68..69",
             "scope": 1,
-            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+            "flags": "NAMESPACE_MODULE | AMBIENT"
           }
         ],
         "bindings": [
@@ -55,28 +57,17 @@ import A = N.Y;
         "uses": [
           "123..124"
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "Y": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -84,6 +75,23 @@ import A = N.Y;
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "37..38",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       },
       {
         "id": 3,
@@ -112,12 +120,14 @@ import A = N.Y;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

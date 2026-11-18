@@ -19,18 +19,12 @@ import Unused = Unrelated;
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "Item",
       "flags": "TYPE_IMPORT",
       "declarations": [

@@ -15,25 +15,15 @@ class C {
     "value": [
       {
         "span": "83..88",
-        "scope": 6,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "4": {
+    "3": {
       "name": "value",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -42,7 +32,7 @@ class C {
     }
   },
   "scopes": {
-    "6": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

@@ -14,7 +14,7 @@ function f({ x }: T) {
   "symbols": {
     "T": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -24,13 +24,10 @@ function f({ x }: T) {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "53..54"
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -40,6 +37,9 @@ function f({ x }: T) {
         ],
         "bindings": [
           3
+        ],
+        "uses": [
+          "53..54"
         ]
       }
     ]

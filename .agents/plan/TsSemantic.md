@@ -148,15 +148,19 @@ container_members[owner][name] → canonical export symbol
 
 ## Declare global
 
-- 当前 transform 直接擦除 `declare global`，全局声明注入、跨块合并和专门的
-  owner 建模不属于当前实现范围。
+- semantic2 将声明保留在各自的块内。使用 semantic2 的 transformer 擦除
+  `declare global` 块，并按块外的词法绑定决定发射。
+- 如果 `Mode` 只在全局增补中声明，枚举初始化式中的 `Mode.Next` 保留为
+  运行时表达式。如果 `X` 只在全局增补中声明，保留 `export default X`。
+- 这些结果也适用于通过 `tsc --isolatedModules` 检查的输入。单文件发射
+  采用词法可见的声明，因此无需为上述行为注入全局声明或合并增补块。
 
 ## Export default
 
 - 具名直接声明按本地声明绑定，使用声明名和真实声明 flags。每次声明保留
   `EXPORTED | IS_DEFAULT`。
 - 匿名直接声明正常分析内部 scope。transform 从 AST 读取默认导出声明。
-- 表达式形式的 `export default x` 保留 `x` 的绑定身份。仅有类型含义时，
+- 表达式形式的 `export default x` 保留 `x` 的绑定身份。解析到的绑定仅有类型含义时，
   该引用不计为运行时读取。
 
 ## Export equals

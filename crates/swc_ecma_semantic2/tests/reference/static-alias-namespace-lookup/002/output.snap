@@ -1,0 +1,105 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+class C {}
+namespace C {
+  export namespace N {
+    export interface T {}
+  }
+}
+const B = 0;
+namespace Use {
+  import A = C.N;
+  import B = A.T;
+  type Typed = B;
+  const value = B;
+}
+---------- Options ----------
+{"names":["A","B"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "140..141",
+        "scope": 6,
+        "space": "Namespace",
+        "access": "None",
+        "symbol": null,
+        "candidates": [
+          7
+        ],
+        "import_equals": true
+      }
+    ],
+    "B": [
+      {
+        "span": "160..161",
+        "scope": 7,
+        "space": "Type",
+        "access": "None",
+        "symbol": null,
+        "candidates": [
+          8
+        ]
+      },
+      {
+        "span": "179..180",
+        "scope": 6,
+        "space": "Value",
+        "access": "Read",
+        "symbol": 5
+      }
+    ]
+  },
+  "symbols": {
+    "5": {
+      "name": "B",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "86..87"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "118..119"
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "NAMESPACE",
+          "TYPEOF"
+        ]
+      }
+    },
+    "8": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "136..137"
+      ],
+      "alias": {
+        "Unknown": [
+          "TYPE"
+        ]
+      }
+    }
+  },
+  "scopes": {
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 6
+    },
+    "7": {
+      "kind": "Block",
+      "parent": 6,
+      "flags": "Strict",
+      "hoist_target": 6
+    }
+  }
+}

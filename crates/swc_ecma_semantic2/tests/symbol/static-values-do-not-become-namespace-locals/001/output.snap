@@ -17,7 +17,7 @@ namespace C {
   "symbols": {
     "C": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "CLASS | VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -34,23 +34,17 @@ namespace C {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "y": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "y": {
+            "symbol": 2,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
     ],
     "x": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -72,6 +66,12 @@ namespace C {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

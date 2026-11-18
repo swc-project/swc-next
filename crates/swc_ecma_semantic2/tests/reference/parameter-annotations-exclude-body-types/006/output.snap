@@ -14,38 +14,27 @@ function f(this: typeof value) {
     "value": [
       {
         "span": "41..46",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "1": {
+    "2": {
       "name": "value",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "FUNCTION_SCOPED_VAR",
       "declarations": [
-        "6..11"
+        "56..61"
       ]
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

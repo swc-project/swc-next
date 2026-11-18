@@ -17,18 +17,12 @@ class C<T> {}
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "4": {
+    "3": {
       "name": "T",
       "flags": "TYPE_ALIAS",
       "declarations": [

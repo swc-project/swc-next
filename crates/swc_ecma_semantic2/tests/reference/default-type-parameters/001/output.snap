@@ -19,35 +19,29 @@ export default interface I<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "84..85",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "23..24",
+        "23..24"
+      ]
+    },
+    "3": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
         "70..71"
       ]
     }
@@ -59,7 +53,7 @@ export default interface I<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

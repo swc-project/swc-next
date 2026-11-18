@@ -16,7 +16,7 @@ namespace N {
   "symbols": {
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -27,23 +27,17 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
     ],
     "T": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -58,7 +52,7 @@ namespace N {
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -68,12 +62,20 @@ namespace N {
         ]
       },
       {
-        "id": 3,
-        "flags": "INTERFACE",
+        "id": 2,
+        "flags": "INTERFACE | EXPORT_VALUE",
         "declarations": [
           {
+            "span": "29..30",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          },
+          {
             "span": "48..49",
-            "scope": 2
+            "scope": 2,
+            "flags": "INTERFACE"
           }
         ],
         "bindings": [
@@ -81,7 +83,8 @@ namespace N {
         ],
         "uses": [
           "84..85"
-        ]
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -94,7 +97,8 @@ namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

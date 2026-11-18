@@ -22,32 +22,9 @@ type T = Alias;
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 4
-          }
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
-        ]
+        "symbol": null
       }
     ]
-  },
-  "symbols": {
-    "4": {
-      "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "108..113"
-      ]
-    }
   },
   "scopes": {
     "6": {

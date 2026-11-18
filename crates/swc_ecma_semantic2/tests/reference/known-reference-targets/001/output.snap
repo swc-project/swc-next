@@ -26,34 +26,43 @@ namespace Use {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
+        "symbol": null,
         "candidates": [
+          4,
           6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
         ]
       }
     ]
   },
   "symbols": {
+    "4": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "115..116"
+      ]
+    },
     "6": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "147..148"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

@@ -28,26 +28,10 @@ namespace Use {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 8
-          }
-        },
+        "symbol": null,
         "candidates": [
-          8,
-          4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 8
-            }
-          },
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
+          4,
+          8
         ]
       }
     ]
@@ -60,19 +44,37 @@ namespace Use {
         "99..100"
       ]
     },
+    "6": {
+      "name": "Item",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "141..145"
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
+    },
     "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "180..181"
-      ]
+      ],
+      "alias": {
+        "Target": 6
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

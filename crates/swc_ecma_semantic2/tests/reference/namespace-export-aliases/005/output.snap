@@ -21,17 +21,7 @@ import A = N.Inner.Y;
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -41,35 +31,34 @@ import A = N.Inner.Y;
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
-      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "18..19"
       ]
     },
-    "2": {
+    "1": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | AMBIENT | EXPORTED",
       "declarations": [
         "37..38",
         "60..61"
       ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "EXPORT_VALUE",
+      "declarations": [
+        "37..38",
+        "60..61"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {
@@ -81,7 +70,8 @@ import A = N.Inner.Y;
     "4": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

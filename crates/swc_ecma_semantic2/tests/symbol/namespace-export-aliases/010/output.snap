@@ -17,7 +17,7 @@ declare namespace N {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -31,24 +31,18 @@ declare namespace N {
         "uses": [
           "80..81"
         ],
-        "namespace": {
-          "members": {
-            "value": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "value": {
+            "symbol": 2,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
           }
         }
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -58,25 +52,11 @@ declare namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                },
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "Y": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 5,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
@@ -90,6 +70,23 @@ declare namespace N {
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 6,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "98..99",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+            "node_symbol": 5,
+            "owner": 5
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 5
       }
     ],
     "Y": [
@@ -108,8 +105,10 @@ declare namespace N {
         "uses": [
           "120..121"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "80..81"
         }
       }
@@ -124,7 +123,14 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

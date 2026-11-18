@@ -30,13 +30,7 @@ const result: Result = { right: true };
         "scope": 5,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ],
     "X": [
@@ -45,17 +39,18 @@ const result: Result = { right: true };
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
+    "0": {
+      "name": "X",
+      "flags": "INTERFACE",
+      "declarations": [
+        "21..22"
+      ]
+    },
     "4": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT",
@@ -68,12 +63,14 @@ const result: Result = { right: true };
     "4": {
       "kind": "TsModule",
       "parent": 3,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
     },
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

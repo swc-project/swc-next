@@ -1,4 +1,4 @@
-use std::{hash::BuildHasher, iter::successors, mem::swap};
+use std::{iter::successors, mem::swap};
 
 use swc_next_allocator::{
     Allocator, CloneIn,
@@ -16,15 +16,17 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, Scopes, Semantic,
-    ShadowedInternalNames, SymbolTable, SymbolTables, Symbols,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, Semantic, ShadowedInternalNames,
+    SymbolTable,
     scope::{Scope, ScopeKind, ScopeTree},
-    typescript::TsBindings,
+    ts::TsBindings,
 };
 
 mod annex_b;
+pub(crate) mod ts;
 
 use annex_b::AnnexBFunction;
+use ts::TsBindingState;
 
 /// A `(start, len)` window into a backing slice.
 #[derive(Debug, Default, Clone, Copy)]
@@ -361,7 +363,8 @@ pub struct Reference {
     pub scope: ScopeId,
     /// The referencing node.
     pub node: NodeId,
-    /// The lexical binding visible in the reference space.
+    /// The definite binding visible in the reference space. Use
+    /// [`Semantic::reference_candidates`] for an uncertain reference.
     pub symbol: Option<SymbolId>,
     pub flags: ReferenceFlags,
 }
@@ -591,6 +594,8 @@ pub(crate) struct SymbolTracker<'a> {
     shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
+    ts_bindings: TsBindings<'a>,
+    ts_state: TsBindingState,
 
     /// What the next `binding_identifier` will declare: its flags,
     /// redeclaration excludes, and destination scope. Valid inside an
@@ -678,6 +683,8 @@ impl<'a> SymbolTracker<'a> {
             shadowed_internal_names: ShadowedInternalNames::new_in(allocator),
             hoisting_variables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             annex_b_functions: ArenaVec::new_in(allocator),
+            ts_bindings: TsBindings::new_in(allocator),
+            ts_state: TsBindingState::default(),
             pending: PendingBinding::default(),
             export_state: ExportState::None,
             // A declaration file is ambient in its entirety.
@@ -891,14 +898,6 @@ impl<'a> SymbolTracker<'a> {
         self.export_state = ExportState::None;
     }
 
-    pub fn enter_ts_module_block(&mut self) {
-        self.export_state = ExportState::None;
-    }
-
-    pub fn enter_ts_enum_body(&mut self) {
-        self.export_state = ExportState::None;
-    }
-
     pub fn enter_import_declaration(
         &mut self,
         tree: &Ast<'a>,
@@ -1007,15 +1006,13 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         self.push_saved_context();
-        let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
+        let state = ts::namespace_state(tree, declaration.body(tree));
         self.pending = PendingBinding {
-            flags: SymbolFlags::NAMESPACE_MODULE
-                .with(SymbolFlags::VALUE_MODULE, instantiated)
-                .with(
-                    SymbolFlags::AMBIENT,
-                    declaration.declare(tree) || self.ambient,
-                ),
-            excludes: if instantiated {
+            flags: SymbolFlags::NAMESPACE_MODULE.with(
+                SymbolFlags::AMBIENT,
+                declaration.declare(tree) || self.ambient,
+            ) | state.flags(),
+            excludes: if state == ts::NamespaceState::Instantiated {
                 Excludes::VALUE_MODULE
             } else {
                 Excludes::NAMESPACE_MODULE
@@ -1138,22 +1135,30 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         self.sync_symbol_tables_from(scope);
-        if member.computed(tree) {
-            return;
-        }
         let name = match tree.kind_data(member.id(tree).node_id()) {
             NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
             NodeKindData::StringLiteral(literal) => literal.value(tree),
+            NodeKindData::TemplateLiteral(literal) if literal.expressions(tree).is_empty() => {
+                let Some(quasi) = literal.quasis(tree).iter().next() else {
+                    return;
+                };
+                tree.get_node_in_sub_range(quasi).cooked(tree)
+            }
             _ => return,
         };
-        let saved = self.pending;
-        self.pending = PendingBinding {
-            flags: SymbolFlags::ENUM_MEMBER.with(SymbolFlags::AMBIENT, self.ambient),
+        let binding = PendingBinding {
+            flags: SymbolFlags::ENUM_MEMBER.with(SymbolFlags::AMBIENT, self.in_ambient_context()),
             excludes: Excludes::ENUM_MEMBER,
             scope: current_scope,
         };
-        self.declare(tree, name, member.node_id());
-        self.pending = saved;
+        let declaration = PendingDeclaration {
+            name,
+            node: member.node_id(),
+            binding,
+        };
+        if let Some(owner) = self.ts_bindings.ts_owner(current_scope) {
+            self.declare_ts_member(tree, owner, declaration, true);
+        }
     }
 
     fn insert_scope_binding(
@@ -1204,6 +1209,11 @@ impl<'a> SymbolTracker<'a> {
                 },
             }
         };
+        if tree.is_ts()
+            && let Some(declaration) = self.declare_ts_export(tree, declaration, existing)
+        {
+            return declaration;
+        }
         let (symbol, declaration) = self.declare_symbol(tree, declaration, existing, true);
         if existing.is_none() {
             self.insert_scope_binding(tree, target, name, symbol);
@@ -1247,18 +1257,15 @@ impl<'a> SymbolTracker<'a> {
             binding,
         } = declaration;
         let declaration_flags = binding.flags;
+        let symbol_flags = declaration_flags - SymbolFlags::CONST_ENUM_ONLY_MODULE;
         debug_assert!(node.index() < tree.node_count());
         let declaration_id = self.declarations.next_idx();
         let id = if let Some(existing) = existing {
             let symbol = &mut self.symbols[existing];
             if !symbol.flags.intersects(binding.excludes) {
-                symbol.flags = merge_symbol_flags(symbol.flags, declaration_flags);
+                symbol.flags = merge_symbol_flags(symbol.flags, symbol_flags);
             }
-            let declarations = self
-                .redeclarations
-                .entry(existing)
-                .or_insert_with(|| ArenaVec::with_capacity_in(1, self.allocator));
-            declarations.push(declaration_id);
+            self.add_redeclaration(existing, declaration_id);
             existing
         } else {
             let name = {
@@ -1276,7 +1283,7 @@ impl<'a> SymbolTracker<'a> {
             };
             self.symbols.push(Symbol {
                 name,
-                flags: declaration_flags,
+                flags: symbol_flags,
                 declaration: declaration_id,
             })
         };
@@ -1295,6 +1302,13 @@ impl<'a> SymbolTracker<'a> {
             self.node_semantic[node] = NodeSemanticId::Symbol(id);
         }
         (id, declaration_id)
+    }
+
+    fn add_redeclaration(&mut self, symbol: SymbolId, declaration: DeclarationId) {
+        self.redeclarations
+            .entry(symbol)
+            .or_insert_with(|| ArenaVec::with_capacity_in(1, self.allocator))
+            .push(declaration);
     }
 
     fn sync_symbol_tables_from(&mut self, scope: &ScopeTree<'a>) {
@@ -1553,9 +1567,9 @@ impl<'a> SymbolTracker<'a> {
     }
 
     /// Finalizes the tracker into a complete [`Semantic`]. Builds the
-    /// declaration, use, and node indexes and resolves every reference
-    /// to its declaring symbol. The result aliases tracker storage and
-    /// remains valid for the source tree's arena lifetime.
+    /// declaration, use, and node indexes and resolves references to definite
+    /// bindings or candidates. The result remains valid for the source tree's
+    /// arena lifetime.
     pub fn finalize(mut self, tree: &Ast<'a>, scopes: ScopeTree<'a>) -> Semantic<'a> {
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
@@ -1563,24 +1577,14 @@ impl<'a> SymbolTracker<'a> {
         let mut use_ranges = ArenaIndexVec::with_capacity_in(self.symbols.len(), self.allocator);
         use_ranges.resize(self.symbols.len(), Range::default());
 
-        let lookup = LexicalLookup {
-            scopes: &scopes.list,
-            symbols: &self.symbols,
-            symbol_tables: &self.symbol_tables,
-            shadowed_internal_names: &self.shadowed_internal_names,
-        };
-        for reference in &mut self.references {
-            let name = tree.get_utf8(reference.name).as_bytes();
-            reference.symbol = lookup.lookup(reference.scope, name, reference.flags.space);
-            if let Some(symbol) = reference.symbol {
+        self.resolve_references(tree, &scopes);
+        for (id, reference) in self.references.iter_enumerated() {
+            for symbol in reference
+                .symbol
+                .into_iter()
+                .chain(self.ts_bindings.candidates(id).iter().copied())
+            {
                 use_ranges[symbol].len += 1;
-                let flags = self.symbols[symbol].flags;
-                if reference.flags.space == ReferenceSpace::Any
-                    && !flags.contains(SymbolFlags::IMPORT)
-                    && !flags.in_value_space()
-                {
-                    reference.flags = reference.flags.no_access();
-                }
             }
         }
 
@@ -1596,7 +1600,11 @@ impl<'a> SymbolTracker<'a> {
         use_ids.resize(count, ReferenceId::from_usize(0));
         for (id, reference) in self.references.iter_enumerated() {
             self.node_semantic[reference.node] = NodeSemanticId::Reference(id);
-            if let Some(symbol) = reference.symbol {
+            for symbol in reference
+                .symbol
+                .into_iter()
+                .chain(self.ts_bindings.candidates(id).iter().copied())
+            {
                 let range = &mut use_ranges[symbol];
                 use_ids[(range.start + range.len) as usize] = id;
                 range.len += 1;
@@ -1616,68 +1624,7 @@ impl<'a> SymbolTracker<'a> {
             shadowed_internal_names: self.shadowed_internal_names,
             hoisting_variables: self.hoisting_variables,
             node_semantic: self.node_semantic,
-            ts_bindings: TsBindings::new_in(self.allocator),
-        }
-    }
-}
-
-/// Shared by reference resolution and [`Semantic::lookup`].
-pub(super) struct LexicalLookup<'s, 'a> {
-    pub scopes: &'s Scopes,
-    pub symbols: &'s Symbols,
-    pub symbol_tables: &'s SymbolTables<'a>,
-    pub shadowed_internal_names: &'s ShadowedInternalNames<'a>,
-}
-
-impl LexicalLookup<'_, '_> {
-    /// Walk outwards, checking each scope before crossing its `arguments` barrier.
-    pub fn lookup(&self, scope: ScopeId, name: &[u8], space: ReferenceSpace) -> Option<SymbolId> {
-        // All symbol tables share a hasher; hash the name once for the whole walk.
-        let hash = self.symbol_tables[ScopeId::ROOT].hasher().hash_one(name);
-        let is_arguments =
-            name == b"arguments" && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
-        let mut ancestor = Some(scope);
-        while let Some(current) = ancestor {
-            let scope = &self.scopes[current];
-            let barrier = is_arguments && scope.flags.arguments_barrier;
-            let entry = self.symbol_tables[current]
-                .raw_entry()
-                .from_hash(hash, |candidate| *candidate == name);
-            if let Some((_, &binding)) = entry
-                && let Some(symbol) = self.lookup_binding(binding, space, barrier)
-            {
-                return Some(symbol);
-            }
-            // Implicit arguments bindings have no SymbolId but hide outer declarations.
-            // `function f() { return () => arguments; }` stops at f, even through an arrow.
-            if barrier {
-                return None;
-            }
-            ancestor = scope.parent;
-        }
-        None
-    }
-
-    /// Prefer the scope binding, then its hidden internal name in the requested space.
-    fn lookup_binding(
-        &self,
-        binding: SymbolId,
-        space: ReferenceSpace,
-        arguments_barrier: bool,
-    ) -> Option<SymbolId> {
-        let mut symbol = binding;
-        loop {
-            let flags = self.symbols[symbol].flags;
-            // `(function arguments() { return arguments; })` uses its implicit
-            // arguments object. Parameters and locals can override that object;
-            // the function's internal name cannot.
-            let internal_function = flags
-                .intersects(SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION);
-            let shadowed_by_arguments = arguments_barrier && internal_function;
-            if flags.visible_in(space) && !shadowed_by_arguments {
-                return Some(symbol);
-            }
-            symbol = *self.shadowed_internal_names.get(&symbol)?;
+            ts_bindings: self.ts_bindings,
         }
     }
 }
@@ -1691,51 +1638,6 @@ fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
         },
         excludes: Excludes::IMPORT_BINDING,
         scope,
-    }
-}
-
-fn namespace_is_instantiated(
-    tree: &Ast<'_>,
-    body: Option<swc_next_ecma_ast::TsModuleBody>,
-) -> bool {
-    let Some(body) = body else {
-        return true;
-    };
-    let body = body.node_id();
-    let NodeKindData::TsModuleBlock(block) = tree.kind_data(body) else {
-        return true;
-    };
-    if !block.directives(tree).is_empty() {
-        return true;
-    }
-    for statement in block.body(tree).iter() {
-        let statement = tree.get_node_in_sub_range(statement).node_id();
-        if is_instantiating_statement(tree, statement) {
-            return true;
-        }
-    }
-    false
-}
-
-fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
-    match tree.kind_data(node) {
-        NodeKindData::TsInterfaceDeclaration(_)
-        | NodeKindData::TsTypeAliasDeclaration(_)
-        | NodeKindData::TsImportEqualsDeclaration(_) => false,
-        NodeKindData::TsEnumDeclaration(declaration) => !declaration.is_const(tree),
-        NodeKindData::TsModuleDeclaration(module) => {
-            namespace_is_instantiated(tree, module.body(tree))
-        }
-        NodeKindData::ExportNamedDeclaration(export) => {
-            if export.export_kind(tree) == ImportOrExportKind::Type {
-                return false;
-            }
-            if let Some(declaration) = export.declaration(tree) {
-                return is_instantiating_statement(tree, declaration.node_id());
-            }
-            export.source(tree).is_some()
-        }
-        _ => true,
     }
 }
 

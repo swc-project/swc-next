@@ -19,23 +19,20 @@ export { A };
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "2": {
-      "name": "T",
-      "flags": "INTERFACE | EXPORTED",
+    "3": {
+      "name": "B",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
-        "33..34"
-      ]
+        "54..55"
+      ],
+      "alias": {
+        "Target": 1
+      }
     },
     "4": {
       "name": "A",
@@ -43,7 +40,9 @@ export { A };
       "declarations": [
         "72..73"
       ],
-      "alias_target": 2
+      "alias": {
+        "Target": 3
+      }
     }
   },
   "scopes": {

@@ -24,7 +24,7 @@ namespace E {
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -47,7 +47,7 @@ namespace E {
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
         "declarations": [
           {
@@ -64,19 +64,34 @@ namespace E {
         "uses": [
           "184..185"
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 4,
-              "value_symbols": []
-            }
+        "members": {
+          "X": {
+            "symbol": 4,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
+      },
+      {
+        "id": 3,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "79..80",
+            "scope": 4,
+            "flags": "NAMESPACE_MODULE | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "export_symbol": 2
       }
     ],
     "E": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "REGULAR_ENUM | VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -98,28 +113,11 @@ namespace E {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
-          }
-        },
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 2,
+            "enum_flags": "ENUM_MEMBER",
+            "namespace_flags": "NAMESPACE_MODULE | EXPORTED"
           }
         }
       }
@@ -134,11 +132,28 @@ namespace E {
             "scope": 5
           }
         ]
+      },
+      {
+        "id": 5,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "104..105",
+            "scope": 5,
+            "flags": "INTERFACE | EXPORTED",
+            "node_symbol": 4,
+            "owner": 4
+          }
+        ],
+        "bindings": [
+          5
+        ],
+        "export_symbol": 4
       }
     ],
     "value": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -159,25 +174,29 @@ namespace E {
       "flags": "Strict"
     },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 1
     },
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "5": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
     },
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

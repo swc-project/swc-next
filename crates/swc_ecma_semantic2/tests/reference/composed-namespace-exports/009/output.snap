@@ -35,51 +35,21 @@ const nested: Alias.T = { ok: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "333..338",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "372..377",
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       }
     ],
     "N": [
@@ -87,18 +57,8 @@ const nested: Alias.T = { ok: true };
         "span": "283..284",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -108,22 +68,12 @@ const nested: Alias.T = { ok: true };
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE",
       "declarations": [
@@ -137,20 +87,6 @@ const nested: Alias.T = { ok: true };
       "declarations": [
         "130..131"
       ]
-    },
-    "4": {
-      "name": "Original",
-      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
-      "declarations": [
-        "167..175"
-      ]
-    },
-    "7": {
-      "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "275..280"
-      ]
     }
   },
   "scopes": {
@@ -162,7 +98,8 @@ const nested: Alias.T = { ok: true };
     "3": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

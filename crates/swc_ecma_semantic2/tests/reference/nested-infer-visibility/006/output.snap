@@ -16,30 +16,24 @@ type R<T> = T extends (
     "U": [
       {
         "span": "116..117",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "4": {
+    "0": {
       "name": "U",
-      "flags": "TYPE_PARAMETER",
+      "flags": "TYPE_ALIAS",
       "declarations": [
-        "99..100"
+        "5..6"
       ]
     }
   },
   "scopes": {
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
       "flags": "Strict",

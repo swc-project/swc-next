@@ -15,9 +15,7 @@ import B = A;
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": [],
+        "symbol": null,
         "import_equals": true
       }
     ]

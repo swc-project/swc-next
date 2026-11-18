@@ -19,27 +19,25 @@ global {
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "value",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
         "13..18"
       ]
+    },
+    "1": {
+      "name": "value",
+      "flags": "EXPORT_VALUE",
+      "declarations": [
+        "13..18"
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {

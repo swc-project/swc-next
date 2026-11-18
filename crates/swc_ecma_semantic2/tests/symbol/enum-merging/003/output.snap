@@ -13,7 +13,7 @@ enum E {
   "symbols": {
     "E": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "REGULAR_ENUM",
         "declarations": [
           {
@@ -24,31 +24,21 @@ enum E {
         "bindings": [
           1
         ],
-        "enum": {
-          "members": {
-            "Other": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "value": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "Other": {
+            "symbol": 2,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "value": {
+            "symbol": 1,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
       }
     ],
     "value": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -69,10 +59,11 @@ enum E {
       "flags": "Strict"
     },
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     }
   }
 }

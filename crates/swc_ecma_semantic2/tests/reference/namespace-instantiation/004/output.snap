@@ -17,18 +17,12 @@ namespace N {
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "T",
       "flags": "INTERFACE",
       "declarations": [
@@ -40,7 +34,8 @@ namespace N {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

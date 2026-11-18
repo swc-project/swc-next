@@ -15,7 +15,7 @@ export default interface I<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
@@ -36,11 +36,11 @@ export default interface I<T> {
         "declarations": [
           {
             "span": "86..87",
-            "scope": 5
+            "scope": 3
           }
         ],
         "bindings": [
-          5
+          3
         ],
         "uses": [
           "100..101"
@@ -54,7 +54,7 @@ export default interface I<T> {
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "5": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

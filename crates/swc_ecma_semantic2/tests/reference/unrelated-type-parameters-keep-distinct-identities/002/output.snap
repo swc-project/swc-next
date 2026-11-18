@@ -19,38 +19,26 @@ const C = class Box<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "68..69",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "14..15"
       ]
     },
-    "5": {
+    "4": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -65,7 +53,7 @@ const C = class Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

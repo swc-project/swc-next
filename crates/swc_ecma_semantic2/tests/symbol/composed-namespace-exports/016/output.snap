@@ -341,7 +341,7 @@ const queried: typeof Alias = 1;
   "symbols": {
     "Alias": [
       {
-        "id": 68,
+        "id": 132,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -352,25 +352,23 @@ const queried: typeof Alias = 1;
         "bindings": [
           1
         ],
-        "uses": [
-          "25674..25679",
-          "25694..25699",
-          "25741..25746"
-        ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "25403..25404"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "21..22",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           },
           {
             "span": "25289..25290",
@@ -384,36 +382,21 @@ const queried: typeof Alias = 1;
         "uses": [
           "25403..25404"
         ],
-        "namespace": {
-          "members": {
-            "N1": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "X": {
-              "symbol": 66,
-              "value_symbols": [
-                {
-                  "Resolved": 67
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "N1": {
+            "symbol": 1,
+            "namespace_flags": "NAMESPACE_MODULE | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 129,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 66,
+        "id": 129,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -487,11 +470,28 @@ const queried: typeof Alias = 1;
           "25200..25201",
           "25260..25261"
         ]
+      },
+      {
+        "id": 130,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "25312..25313",
+            "scope": 130,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 129,
+            "owner": 129
+          }
+        ],
+        "bindings": [
+          130
+        ],
+        "export_symbol": 129
       }
     ],
     "original": [
       {
-        "id": 67,
+        "id": 131,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
         "declarations": [
           {
@@ -514,10 +514,17 @@ const queried: typeof Alias = 1;
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "130": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

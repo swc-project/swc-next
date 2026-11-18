@@ -17,18 +17,12 @@ declare module "*.txt" with { type: Attribute } {
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "Attribute",
       "flags": "TYPE_ALIAS",
       "declarations": [

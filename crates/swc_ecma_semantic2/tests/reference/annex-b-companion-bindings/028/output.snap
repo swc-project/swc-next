@@ -20,51 +20,21 @@ g();
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 0
-        },
-        "candidates": [
-          0
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 0
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "60..61",
         "scope": 0,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 2
       },
       {
         "span": "63..64",
         "scope": 0,
         "space": "Value",
         "access": "Write",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 2
       }
     ],
     "g": [
@@ -73,17 +43,7 @@ g();
         "scope": 0,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 1
       }
     ]
   },

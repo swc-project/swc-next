@@ -24,9 +24,7 @@ declare namespace N {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ],
     "PublicAlias": [
@@ -35,31 +33,27 @@ declare namespace N {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "Target",
       "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
       "declarations": [
         "34..40"
       ]
     },
-    "4": {
+    "5": {
       "name": "PublicAlias",
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "85..96"
       ],
-      "alias_target": 2
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

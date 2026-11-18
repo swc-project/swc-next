@@ -19,125 +19,70 @@ declare namespace Test {
 ---------- Output ----------
 {
   "symbols": {
-    "": [
-      {
-        "id": 0,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-        "declarations": [
-          {
-            "span": "0..220",
-            "scope": 0,
-            "node_symbol": null
-          }
-        ],
-        "roles": [
-          "SourceModule"
-        ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            },
-            "Test": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            },
-            "default": {
-              "symbol": 1,
-              "value_symbols": [
-                {
-                  "Resolved": 1
-                }
-              ]
-            },
-            "f": {
-              "symbol": 2,
-              "value_symbols": []
-            }
-          }
-        }
-      }
-    ],
+    "": [],
     "A": [
       {
-        "id": 4,
-        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT | EXPORTED",
+        "id": 3,
+        "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT",
         "declarations": [
           {
             "span": "101..102",
             "scope": 1,
-            "flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+            "flags": "TYPE_ALIAS | AMBIENT"
           },
           {
             "span": "127..128",
             "scope": 1,
-            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT"
           }
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "215..216"
         ]
       },
       {
-        "id": 6,
+        "id": 5,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
             "span": "167..168",
-            "scope": 8
+            "scope": 7
           }
         ],
         "bindings": [
-          8
+          7
         ],
         "uses": [
-          "189..190"
+          "189..190",
+          "215..216"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 2,
           "initializer": "171..172"
         }
       }
     ],
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+        "id": 0,
+        "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
         "declarations": [
           {
             "span": "24..25",
-            "scope": 1
-          }
-        ],
-        "roles": [
-          "DefaultExport"
-        ]
-      },
-      {
-        "id": 2,
-        "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED",
-        "declarations": [
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT"
+          },
           {
             "span": "40..41",
             "scope": 1,
-            "flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+            "flags": "TYPE_ALIAS | AMBIENT"
           },
           {
             "span": "70..71",
             "scope": 1,
-            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+            "flags": "NAMESPACE_MODULE | AMBIENT"
           }
         ],
         "bindings": [
@@ -146,30 +91,32 @@ declare namespace Test {
         "uses": [
           "171..172"
         ],
-        "namespace": {
-          "members": {
-            "Item": {
-              "symbol": 3,
-              "value_symbols": []
-            }
+        "members": {
+          "Item": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
       }
     ]
   },
   "scopes": {
-    "0": {
-      "kind": "Global"
-    },
     "1": {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
     },
-    "8": {
+    "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

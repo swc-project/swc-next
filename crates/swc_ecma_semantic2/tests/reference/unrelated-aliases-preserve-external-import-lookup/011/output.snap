@@ -16,31 +16,28 @@ type Result = A;
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 2
-          }
-        },
+        "symbol": null,
         "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 2
-            }
-          }
+          1
         ]
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "42..43"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "NAMESPACE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {

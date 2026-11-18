@@ -19,27 +19,16 @@ let item: f;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "1": {
+    "2": {
       "name": "f",
-      "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "TYPE_ALIAS | EXPORTED",
       "declarations": [
-        "24..25",
-        "56..57"
+        "91..92"
       ]
     }
   },

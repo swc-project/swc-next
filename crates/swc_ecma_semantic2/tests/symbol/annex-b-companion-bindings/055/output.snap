@@ -18,35 +18,44 @@ namespace N {
     "f": [
       {
         "id": 1,
-        "flags": "FUNCTION_SCOPED_VAR | FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION",
+        "flags": "FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "32..33",
-            "scope": 1,
-            "flags": "FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION"
-          },
+            "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | EXPORT_VALUE",
+        "declarations": [
           {
             "span": "74..75",
             "scope": 1,
             "flags": "FUNCTION_SCOPED_VAR",
-            "node_symbol": 3
+            "node_symbol": 4
           }
+        ],
+        "bindings": [
+          1
         ],
         "uses": [
           "104..105"
-        ]
+        ],
+        "export_symbol": 1
       },
       {
-        "id": 3,
+        "id": 4,
         "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "74..75",
-            "scope": 4
+            "scope": 3
           }
         ],
         "bindings": [
-          4
+          3
         ],
         "uses": [
           "93..94"
@@ -57,9 +66,10 @@ namespace N {
   "scopes": {
     "1": {
       "kind": "TsModule",
-      "parent": 0
+      "parent": 0,
+      "container_owner": 0
     },
-    "4": {
+    "3": {
       "kind": "Function",
       "parent": 1,
       "flags": "ArgumentsBarrier"

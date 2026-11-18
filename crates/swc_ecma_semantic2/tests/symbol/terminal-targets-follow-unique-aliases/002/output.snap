@@ -26,15 +26,17 @@ import A = N;
         "bindings": [
           1
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 1,
           "initializer": "66..67"
         }
       }
     ],
     "E": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "CONST_ENUM | EXPORTED",
         "declarations": [
           {
@@ -42,28 +44,40 @@ import A = N;
             "scope": 2
           }
         ],
-        "enum": {
-          "members": {
-            "X": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "X": {
+            "symbol": 3,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "34..35",
+            "scope": 2,
+            "flags": "CONST_ENUM | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "10..11",
-            "scope": 1
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE"
           }
         ],
         "bindings": [
@@ -72,16 +86,10 @@ import A = N;
         "uses": [
           "66..67"
         ],
-        "namespace": {
-          "members": {
-            "E": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "E": {
+            "symbol": 1,
+            "namespace_flags": "CONST_ENUM | EXPORTED"
           }
         }
       }
@@ -96,7 +104,15 @@ import A = N;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "3": {
+      "kind": "TsEnum",
+      "parent": 2,
+      "flags": "Strict",
+      "hoist_target": 2,
+      "container_owner": 1
     }
   }
 }

@@ -16,7 +16,7 @@ namespace N {
   "symbols": {
     "N": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -31,31 +31,21 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "x": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "y": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            }
+        "members": {
+          "x": {
+            "symbol": 2,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
+          },
+          "y": {
+            "symbol": 4,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
     ],
     "x": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -68,7 +58,7 @@ namespace N {
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -79,6 +69,23 @@ namespace N {
         "uses": [
           "84..85"
         ]
+      },
+      {
+        "id": 3,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "42..43",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 2
       }
     ]
   },
@@ -91,7 +98,14 @@ namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

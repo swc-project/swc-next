@@ -28,16 +28,18 @@ import A = N.Y;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": 2,
           "initializer": "111..112"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -54,28 +56,17 @@ import A = N.Y;
         "uses": [
           "111..112"
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": 3,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "Y": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "T": {
+            "symbol": 2,
+            "namespace_flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT",
         "declarations": [
           {
@@ -101,7 +92,14 @@ import A = N.Y;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

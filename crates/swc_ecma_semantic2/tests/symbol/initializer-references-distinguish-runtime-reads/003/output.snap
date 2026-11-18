@@ -11,7 +11,7 @@ import A = N.x;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -22,15 +22,22 @@ import A = N.x;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": [
+            "VALUE",
+            "TYPE",
+            "NAMESPACE",
+            "TYPEOF"
+          ]
+        },
         "import": {
-          "target": null,
           "initializer": "37..38"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT",
         "declarations": [
           {

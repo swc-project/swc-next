@@ -19,68 +19,38 @@ namespace A.B.C {
     "x": [
       {
         "span": "73..74",
-        "scope": 3,
-        "space": "Value",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
-      },
-      {
-        "span": "115..116",
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
+      },
+      {
+        "span": "115..116",
+        "scope": 7,
+        "space": "Value",
+        "access": "Read",
+        "symbol": 1
       }
     ],
     "y": [
       {
         "span": "119..120",
-        "scope": 4,
+        "scope": 7,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "x",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
         "29..30"
       ]
     },
-    "4": {
+    "5": {
       "name": "y",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
@@ -89,15 +59,17 @@ namespace A.B.C {
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsModule",
-      "parent": 1,
-      "flags": "Strict"
-    },
     "4": {
       "kind": "TsModule",
-      "parent": 1,
-      "flags": "Strict"
+      "parent": 3,
+      "flags": "Strict",
+      "container_owner": 3
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 6,
+      "flags": "Strict",
+      "container_owner": 8
     }
   }
 }

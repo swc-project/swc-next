@@ -20,38 +20,27 @@ class C {
     "T": [
       {
         "span": "39..40",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "1": {
+    "4": {
       "name": "T",
       "flags": "REGULAR_ENUM",
       "declarations": [
-        "5..6"
+        "55..56"
       ]
     }
   },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 4,
-      "flags": "Strict",
-      "hoist_target": 4
+    "4": {
+      "kind": "Function",
+      "parent": 3,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

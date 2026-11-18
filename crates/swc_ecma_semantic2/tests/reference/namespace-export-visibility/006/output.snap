@@ -25,17 +25,7 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ],
     "pick": [
@@ -44,22 +34,19 @@ declare namespace N {
         "scope": 4,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "3": {
+    "0": {
+      "name": "pick",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "17..21"
+      ]
+    },
+    "2": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
@@ -71,12 +58,14 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

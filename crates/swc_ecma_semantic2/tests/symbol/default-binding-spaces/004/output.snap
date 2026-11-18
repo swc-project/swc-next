@@ -17,8 +17,8 @@ const value = I;
   "symbols": {
     "I": [
       {
-        "id": 1,
-        "flags": "CLASS | INTERFACE | EXPORTED | IS_DEFAULT",
+        "id": 0,
+        "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | EXPORTED | IS_DEFAULT",
         "declarations": [
           {
             "span": "25..26",
@@ -26,22 +26,9 @@ const value = I;
             "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
           },
           {
-            "span": "67..68",
-            "scope": 1,
-            "flags": "CLASS | EXPORTED | IS_DEFAULT"
-          }
-        ],
-        "roles": [
-          "DefaultExport"
-        ]
-      },
-      {
-        "id": 3,
-        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-        "declarations": [
-          {
             "span": "95..96",
-            "scope": 1
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR"
           }
         ],
         "bindings": [
@@ -54,24 +41,34 @@ const value = I;
     ],
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "27..28",
             "scope": 2
-          },
-          {
-            "span": "69..70",
-            "scope": 4
           }
         ],
         "bindings": [
-          2,
-          4
+          2
         ],
         "uses": [
-          "41..42",
+          "41..42"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "69..70",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
           "84..85"
         ]
       }
@@ -89,7 +86,7 @@ const value = I;
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

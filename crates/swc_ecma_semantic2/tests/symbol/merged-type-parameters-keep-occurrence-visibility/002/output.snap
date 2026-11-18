@@ -19,7 +19,7 @@ interface Box<T> {
   "symbols": {
     "T": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -35,24 +35,34 @@ interface Box<T> {
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "23..24",
             "scope": 2
-          },
-          {
-            "span": "84..85",
-            "scope": 5
           }
         ],
         "bindings": [
-          2,
-          5
+          2
         ],
         "uses": [
-          "34..35",
+          "34..35"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "84..85",
+            "scope": 4
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "uses": [
           "98..99"
         ]
       }
@@ -70,7 +80,7 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

@@ -26,51 +26,21 @@ namespace Outer {
         "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": 7
       },
       {
         "span": "195..196",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": 7
       },
       {
         "span": "219..220",
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 5
       }
     ],
     "F": [
@@ -79,35 +49,27 @@ namespace Outer {
         "scope": 7,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ],
+        "symbol": 2,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "F",
       "flags": "FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "36..37"
       ]
     },
-    "3": {
+    "2": {
       "name": "F",
-      "flags": "NAMESPACE_MODULE",
+      "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
+        "36..37",
         "55..56"
-      ]
+      ],
+      "export_symbol": 1
     },
     "5": {
       "name": "A",
@@ -123,14 +85,17 @@ namespace Outer {
       "declarations": [
         "153..154"
       ],
-      "alias_target": 2
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
     "7": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

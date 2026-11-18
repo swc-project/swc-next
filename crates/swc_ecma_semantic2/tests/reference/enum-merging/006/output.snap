@@ -24,22 +24,12 @@ namespace E {
         "scope": 7,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "A",
       "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
       "declarations": [

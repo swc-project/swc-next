@@ -27,13 +27,7 @@ namespace Use {
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },

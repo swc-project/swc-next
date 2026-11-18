@@ -25,17 +25,7 @@ const result: Result = "right";
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": null
       }
     ],
     "original": [
@@ -44,22 +34,12 @@ const result: Result = "right";
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
@@ -71,12 +51,14 @@ const result: Result = "right";
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "4": {
       "kind": "TsModule",
       "parent": 3,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
     }
   }
 }

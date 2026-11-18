@@ -13,7 +13,7 @@ namespace N {
   "symbols": {
     "N": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -24,15 +24,7 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
-        }
+        "members": {}
       }
     ]
   },
@@ -41,6 +33,12 @@ namespace N {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

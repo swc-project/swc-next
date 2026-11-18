@@ -16,27 +16,25 @@ export type Value = typeof Foo;
         "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "0": {
       "name": "Foo",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
       "declarations": [
         "46..49"
       ]
+    },
+    "1": {
+      "name": "Foo",
+      "flags": "EXPORT_VALUE",
+      "declarations": [
+        "46..49"
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {

@@ -25,51 +25,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "185..190",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 4
       },
       {
         "span": "232..237",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": null
       }
     ],
     "N": [
@@ -77,18 +47,8 @@ const queried: typeof Alias = 1;
         "span": "143..144",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -98,26 +58,23 @@ const queried: typeof Alias = 1;
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "29..30"
+      ]
+    },
+    "1": {
+      "name": "X",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "52..53"
       ]
     },
     "3": {
@@ -132,7 +89,10 @@ const queried: typeof Alias = 1;
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "135..140"
-      ]
+      ],
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {
@@ -144,7 +104,8 @@ const queried: typeof Alias = 1;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

@@ -20,37 +20,10 @@ declare namespace Test {
 ---------- Output ----------
 {
   "symbols": {
-    "": [
-      {
-        "id": 0,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-        "declarations": [
-          {
-            "span": "0..231",
-            "scope": 0,
-            "node_symbol": null
-          }
-        ],
-        "roles": [
-          "SourceModule"
-        ],
-        "namespace": {
-          "members": {
-            "default": {
-              "symbol": 1,
-              "value_symbols": [
-                {
-                  "Resolved": 1
-                }
-              ]
-            }
-          }
-        }
-      }
-    ],
+    "": [],
     "A": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT",
         "declarations": [
           {
@@ -66,50 +39,42 @@ declare namespace Test {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "200..201"
         ]
       },
       {
-        "id": 6,
+        "id": 5,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
             "span": "178..179",
-            "scope": 8
+            "scope": 7
           }
         ],
         "bindings": [
-          8
+          7
         ],
         "uses": [
+          "200..201",
           "226..227"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 1,
           "initializer": "182..183"
         }
       }
     ],
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+        "id": 0,
+        "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
         "declarations": [
           {
             "span": "35..36",
-            "scope": 1
-          }
-        ],
-        "roles": [
-          "DefaultExport"
-        ]
-      },
-      {
-        "id": 2,
-        "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT",
-        "declarations": [
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT"
+          },
           {
             "span": "51..52",
             "scope": 1,
@@ -127,30 +92,32 @@ declare namespace Test {
         "uses": [
           "182..183"
         ],
-        "namespace": {
-          "members": {
-            "Item": {
-              "symbol": 3,
-              "value_symbols": []
-            }
+        "members": {
+          "Item": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
       }
     ]
   },
   "scopes": {
-    "0": {
-      "kind": "Global"
-    },
     "1": {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
     },
-    "8": {
+    "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

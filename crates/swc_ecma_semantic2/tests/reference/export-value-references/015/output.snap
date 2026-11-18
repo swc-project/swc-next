@@ -20,30 +20,33 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "54..55"
       ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "0x0",
+      "declarations": [
+        "54..55"
+      ],
+      "export_symbol": 2
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }
@@ -58,30 +61,33 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "54..55"
       ]
+    },
+    "3": {
+      "name": "X",
+      "flags": "0x0",
+      "declarations": [
+        "54..55"
+      ],
+      "export_symbol": 2
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

@@ -22,35 +22,37 @@ namespace Test {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "5": {
+    "0": {
+      "name": "f",
+      "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "24..25",
+        "41..42"
+      ]
+    },
+    "4": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS",
       "declarations": [
         "100..101",
         "115..116"
-      ]
+      ],
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

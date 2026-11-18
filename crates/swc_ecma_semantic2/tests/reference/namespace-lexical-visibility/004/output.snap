@@ -20,18 +20,12 @@ namespace N {
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | EXPORTED",
       "declarations": [

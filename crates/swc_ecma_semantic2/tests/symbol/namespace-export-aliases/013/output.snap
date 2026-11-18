@@ -17,7 +17,7 @@ import A = N.Inner.Y;
   "symbols": {
     "A": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -28,16 +28,18 @@ import A = N.Inner.Y;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": 2,
           "initializer": "132..133"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -50,31 +52,21 @@ import A = N.Inner.Y;
         "uses": [
           "132..133"
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "Inner": {
+            "symbol": 3,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | AMBIENT | EXPORTED"
           }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -87,10 +79,34 @@ import A = N.Inner.Y;
             "scope": 2,
             "flags": "INTERFACE | AMBIENT | EXPORTED"
           }
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "37..38",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          },
+          {
+            "span": "60..61",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
         ],
         "uses": [
           "105..106"
-        ]
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -103,7 +119,8 @@ import A = N.Inner.Y;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

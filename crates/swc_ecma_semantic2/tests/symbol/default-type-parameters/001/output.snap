@@ -15,24 +15,34 @@ export default interface I<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "23..24",
             "scope": 2
-          },
-          {
-            "span": "70..71",
-            "scope": 4
           }
         ],
         "bindings": [
-          2,
-          4
+          2
         ],
         "uses": [
-          "38..39",
+          "38..39"
+        ]
+      },
+      {
+        "id": 3,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "70..71",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
           "84..85"
         ]
       }
@@ -45,7 +55,7 @@ export default interface I<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

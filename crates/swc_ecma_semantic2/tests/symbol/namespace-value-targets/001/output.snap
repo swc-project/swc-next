@@ -16,7 +16,7 @@ declare namespace N {
   "symbols": {
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -27,40 +27,19 @@ declare namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "erased": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "mixed": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "value": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "erased": null,
+          "mixed": {
+            "symbol": 2,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           },
-          "export_aliases": true
+          "original": null
         }
       }
     ],
     "mixed": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -68,11 +47,28 @@ declare namespace N {
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 3,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "137..142",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 2
       }
     ],
     "original": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
         "declarations": [
           {
@@ -100,7 +96,8 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

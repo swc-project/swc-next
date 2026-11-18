@@ -20,50 +20,23 @@ const fn = f;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "127..128",
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "f",
-      "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "FUNCTION | TYPE_ALIAS | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "24..25",
-        "56..57"
-      ]
-    },
-    "2": {
-      "name": "f",
-      "flags": "TYPE_ALIAS",
-      "declarations": [
         "84..85"
       ]
     }

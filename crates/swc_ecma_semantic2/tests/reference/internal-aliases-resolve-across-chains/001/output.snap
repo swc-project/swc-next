@@ -20017,31 +20017,30 @@ type Result = A0.T;
         "scope": 4,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "A0",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "7..9"
       ],
-      "alias_target": 20001
+      "alias": {
+        "Target": 1
+      }
     },
-    "20001": {
-      "name": "A20000",
-      "flags": "NAMESPACE_MODULE",
+    "1": {
+      "name": "A1",
+      "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
-        "457794..457800"
-      ]
+        "23..25"
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {

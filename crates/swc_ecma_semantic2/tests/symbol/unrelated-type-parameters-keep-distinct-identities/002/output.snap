@@ -15,7 +15,7 @@ const C = class Box<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
@@ -31,16 +31,16 @@ const C = class Box<T> {
         ]
       },
       {
-        "id": 5,
+        "id": 4,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "53..54",
-            "scope": 4
+            "scope": 3
           }
         ],
         "bindings": [
-          4
+          3
         ],
         "uses": [
           "68..69"
@@ -55,7 +55,7 @@ const C = class Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

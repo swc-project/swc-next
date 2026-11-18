@@ -15,7 +15,7 @@ import Unused = Unrelated;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -30,7 +30,7 @@ import Unused = Unrelated;
     ],
     "Item": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT",
         "declarations": [
           {

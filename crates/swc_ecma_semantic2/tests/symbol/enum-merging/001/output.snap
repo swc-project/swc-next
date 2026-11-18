@@ -19,7 +19,7 @@ enum Outer {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -31,7 +31,7 @@ enum Outer {
     ],
     "B": [
       {
-        "id": 5,
+        "id": 4,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -46,7 +46,7 @@ enum Outer {
     ],
     "C": [
       {
-        "id": 6,
+        "id": 5,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -58,7 +58,7 @@ enum Outer {
     ],
     "Inner": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "REGULAR_ENUM",
         "declarations": [
           {
@@ -69,23 +69,17 @@ enum Outer {
         "bindings": [
           3
         ],
-        "enum": {
-          "members": {
-            "X": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Resolved": 4
-                }
-              ]
-            }
+        "members": {
+          "X": {
+            "symbol": 3,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
       }
     ],
     "Outer": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "REGULAR_ENUM",
         "declarations": [
           {
@@ -96,39 +90,25 @@ enum Outer {
         "bindings": [
           1
         ],
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "B": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            },
-            "C": {
-              "symbol": 6,
-              "value_symbols": [
-                {
-                  "Resolved": 6
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 1,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "B": {
+            "symbol": 4,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "C": {
+            "symbol": 5,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
       }
     ],
     "X": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -146,10 +126,11 @@ enum Outer {
       "flags": "Strict"
     },
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     },
     "3": {
       "kind": "Function",
@@ -157,10 +138,11 @@ enum Outer {
       "flags": "Strict"
     },
     "4": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 3,
       "flags": "Strict",
-      "hoist_target": 3
+      "hoist_target": 3,
+      "container_owner": 2
     }
   }
 }

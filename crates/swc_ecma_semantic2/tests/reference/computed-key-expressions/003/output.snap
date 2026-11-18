@@ -12,53 +12,24 @@ type F = ({ [key(key)]: v }: object) => typeof v;
     "key": [
       {
         "span": "43..46",
-        "scope": 6,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "47..50",
-        "scope": 6,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       }
     ]
   },
-  "symbols": {
-    "1": {
-      "name": "key",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "6..9"
-      ]
-    }
-  },
   "scopes": {
-    "6": {
-      "kind": "TsSignatureParameter",
-      "parent": 5,
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

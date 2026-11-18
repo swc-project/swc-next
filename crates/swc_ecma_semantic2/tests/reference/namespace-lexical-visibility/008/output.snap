@@ -21,27 +21,19 @@ namespace AliasSpace {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "155..161",
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "Public",
       "flags": "TYPE_ALIAS | EXPORTED",
       "declarations": [
@@ -53,7 +45,8 @@ namespace AliasSpace {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "6": {
       "kind": "Block",

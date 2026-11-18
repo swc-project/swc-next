@@ -26,9 +26,7 @@ declare namespace Outer {
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
@@ -36,7 +34,8 @@ declare namespace Outer {
     "3": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

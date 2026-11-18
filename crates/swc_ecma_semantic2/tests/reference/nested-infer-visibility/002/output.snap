@@ -11,30 +11,15 @@ type R<T> = T extends (true extends true ? infer U : never) ? U : never;
     "U": [
       {
         "span": "62..63",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
-  "symbols": {
-    "3": {
-      "name": "U",
-      "flags": "TYPE_PARAMETER",
-      "declarations": [
-        "49..50"
-      ]
-    }
-  },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 2,
       "flags": "Strict",

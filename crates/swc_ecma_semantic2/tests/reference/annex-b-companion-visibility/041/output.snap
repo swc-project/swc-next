@@ -20,31 +20,19 @@ f;
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "53..54",
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "f",
       "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
       "declarations": [

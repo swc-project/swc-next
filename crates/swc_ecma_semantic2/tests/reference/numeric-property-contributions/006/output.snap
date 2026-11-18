@@ -23,16 +23,10 @@ namespace N {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
+        "symbol": null,
         "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
+          0,
+          5
         ]
       }
     ],
@@ -42,60 +36,55 @@ namespace N {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       },
       {
         "span": "126..127",
         "scope": 2,
         "space": "Namespace",
-        "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ],
+        "access": "Read",
+        "symbol": 2,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "Alias",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "6..11"
       ]
     },
-    "3": {
+    "2": {
       "name": "C",
       "flags": "FUNCTION | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "42..43",
         "75..76"
       ]
+    },
+    "5": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "118..123"
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

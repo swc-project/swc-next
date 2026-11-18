@@ -21,17 +21,7 @@ const value = I;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 0
       }
     ],
     "T": [
@@ -40,43 +30,38 @@ const value = I;
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "84..85",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "0": {
+      "name": "I",
+      "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "25..26",
+        "95..96"
+      ]
+    },
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "27..28",
-        "69..70"
+        "27..28"
       ]
     },
     "3": {
-      "name": "I",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
       "declarations": [
-        "95..96"
+        "69..70"
       ]
     }
   },
@@ -92,7 +77,7 @@ const value = I;
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

@@ -25,13 +25,7 @@ namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 5
       }
     ],
     "pick": [
@@ -40,29 +34,19 @@ namespace N {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "pick",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "17..21"
       ]
     },
-    "4": {
+    "3": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
@@ -75,19 +59,23 @@ namespace N {
       "declarations": [
         "107..115"
       ],
-      "alias_target": 4
+      "alias": {
+        "Target": 3
+      }
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

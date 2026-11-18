@@ -15,66 +15,33 @@ interface I {
     "key": [
       {
         "span": "50..53",
-        "scope": 2,
+        "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "76..79",
-        "scope": 5,
+        "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "key",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "17..20"
       ]
-    },
-    "3": {
-      "name": "key",
-      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
-      "declarations": [
-        "55..58"
-      ]
     }
   },
   "scopes": {
-    "2": {
+    "3": {
       "kind": "Block",
-      "parent": 1,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "5": {
-      "kind": "TsSignatureReturn",
-      "parent": 3,
+      "parent": 2,
       "flags": "Strict",
       "hoist_target": 1
     }

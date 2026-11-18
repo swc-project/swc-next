@@ -12,25 +12,15 @@ type F = typeof f;
     "f": [
       {
         "span": "66..67",
-        "scope": 5,
+        "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "f",
       "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
       "declarations": [
@@ -39,7 +29,7 @@ type F = typeof f;
     }
   },
   "scopes": {
-    "5": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

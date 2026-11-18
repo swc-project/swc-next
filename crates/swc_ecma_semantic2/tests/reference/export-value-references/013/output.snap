@@ -18,18 +18,12 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
@@ -41,7 +35,8 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }
@@ -56,18 +51,12 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
@@ -79,7 +68,8 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

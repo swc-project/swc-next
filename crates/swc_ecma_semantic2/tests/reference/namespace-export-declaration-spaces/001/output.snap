@@ -26,19 +26,13 @@ namespace N {
         "scope": 6,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "A",
       "flags": "NAMESPACE_MODULE",
       "declarations": [
@@ -50,7 +44,8 @@ namespace N {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

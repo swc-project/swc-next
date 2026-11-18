@@ -16,7 +16,7 @@ declare namespace E {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "AMBIENT | ENUM_MEMBER",
         "declarations": [
           {
@@ -29,10 +29,11 @@ declare namespace E {
   },
   "scopes": {
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     }
   }
 }

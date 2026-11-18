@@ -345,51 +345,21 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 68
-        },
-        "candidates": [
-          68
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 68
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "25694..25699",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 68
-        },
-        "candidates": [
-          68
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 68
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "25741..25746",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 68
-        },
-        "candidates": [
-          68
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 68
-          }
-        ]
+        "symbol": null
       }
     ],
     "N": [
@@ -397,18 +367,8 @@ const queried: typeof Alias = 1;
         "span": "25403..25404",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -418,1088 +378,448 @@ const queried: typeof Alias = 1;
         "scope": 66,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "6359..6360",
         "scope": 67,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "6908..6909",
         "scope": 68,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "7449..7450",
         "scope": 69,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "7982..7983",
         "scope": 70,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "8507..8508",
         "scope": 71,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "9024..9025",
         "scope": 72,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "9533..9534",
         "scope": 73,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "10034..10035",
         "scope": 74,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "10527..10528",
         "scope": 75,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "11012..11013",
         "scope": 76,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "11489..11490",
         "scope": 77,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "11958..11959",
         "scope": 78,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "12419..12420",
         "scope": 79,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "12872..12873",
         "scope": 80,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "13317..13318",
         "scope": 81,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "13754..13755",
         "scope": 82,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "14183..14184",
         "scope": 83,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "14604..14605",
         "scope": 84,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "15017..15018",
         "scope": 85,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "15422..15423",
         "scope": 86,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "15819..15820",
         "scope": 87,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "16208..16209",
         "scope": 88,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "16589..16590",
         "scope": 89,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "16962..16963",
         "scope": 90,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "17327..17328",
         "scope": 91,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "17684..17685",
         "scope": 92,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "18033..18034",
         "scope": 93,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "18374..18375",
         "scope": 94,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "18707..18708",
         "scope": 95,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "19032..19033",
         "scope": 96,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "19349..19350",
         "scope": 97,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "19658..19659",
         "scope": 98,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "19959..19960",
         "scope": 99,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "20252..20253",
         "scope": 100,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "20537..20538",
         "scope": 101,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "20814..20815",
         "scope": 102,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "21083..21084",
         "scope": 103,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "21344..21345",
         "scope": 104,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "21597..21598",
         "scope": 105,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "21842..21843",
         "scope": 106,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "22079..22080",
         "scope": 107,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "22308..22309",
         "scope": 108,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "22529..22530",
         "scope": 109,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "22742..22743",
         "scope": 110,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "22947..22948",
         "scope": 111,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "23144..23145",
         "scope": 112,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "23333..23334",
         "scope": 113,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "23514..23515",
         "scope": 114,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "23687..23688",
         "scope": 115,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "23852..23853",
         "scope": 116,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24009..24010",
         "scope": 117,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24158..24159",
         "scope": 118,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24299..24300",
         "scope": 119,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24432..24433",
         "scope": 120,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24556..24557",
         "scope": 121,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24672..24673",
         "scope": 122,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24780..24781",
         "scope": 123,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24880..24881",
         "scope": 124,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "24972..24973",
         "scope": 125,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "25056..25057",
         "scope": 126,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "25132..25133",
         "scope": 127,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "25200..25201",
         "scope": 128,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       },
       {
         "span": "25260..25261",
         "scope": 129,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 129
       }
     ],
     "original": [
@@ -1508,22 +828,12 @@ const queried: typeof Alias = 1;
         "scope": 130,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 67
-        },
-        "candidates": [
-          67
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 67
-          }
-        ]
+        "symbol": 131
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE",
       "declarations": [
@@ -1531,25 +841,18 @@ const queried: typeof Alias = 1;
         "25289..25290"
       ]
     },
-    "66": {
+    "129": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "25312..25313"
       ]
     },
-    "67": {
+    "131": {
       "name": "original",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
       "declarations": [
         "25345..25353"
-      ]
-    },
-    "68": {
-      "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "25395..25400"
       ]
     }
   },
@@ -1562,327 +865,392 @@ const queried: typeof Alias = 1;
     "66": {
       "kind": "TsModule",
       "parent": 65,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 127
     },
     "67": {
       "kind": "TsModule",
       "parent": 64,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 125
     },
     "68": {
       "kind": "TsModule",
       "parent": 63,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 123
     },
     "69": {
       "kind": "TsModule",
       "parent": 62,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 121
     },
     "70": {
       "kind": "TsModule",
       "parent": 61,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 119
     },
     "71": {
       "kind": "TsModule",
       "parent": 60,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 117
     },
     "72": {
       "kind": "TsModule",
       "parent": 59,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 115
     },
     "73": {
       "kind": "TsModule",
       "parent": 58,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 113
     },
     "74": {
       "kind": "TsModule",
       "parent": 57,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 111
     },
     "75": {
       "kind": "TsModule",
       "parent": 56,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 109
     },
     "76": {
       "kind": "TsModule",
       "parent": 55,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 107
     },
     "77": {
       "kind": "TsModule",
       "parent": 54,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 105
     },
     "78": {
       "kind": "TsModule",
       "parent": 53,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 103
     },
     "79": {
       "kind": "TsModule",
       "parent": 52,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 101
     },
     "80": {
       "kind": "TsModule",
       "parent": 51,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 99
     },
     "81": {
       "kind": "TsModule",
       "parent": 50,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 97
     },
     "82": {
       "kind": "TsModule",
       "parent": 49,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 95
     },
     "83": {
       "kind": "TsModule",
       "parent": 48,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 93
     },
     "84": {
       "kind": "TsModule",
       "parent": 47,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 91
     },
     "85": {
       "kind": "TsModule",
       "parent": 46,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 89
     },
     "86": {
       "kind": "TsModule",
       "parent": 45,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 87
     },
     "87": {
       "kind": "TsModule",
       "parent": 44,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 85
     },
     "88": {
       "kind": "TsModule",
       "parent": 43,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 83
     },
     "89": {
       "kind": "TsModule",
       "parent": 42,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 81
     },
     "90": {
       "kind": "TsModule",
       "parent": 41,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 79
     },
     "91": {
       "kind": "TsModule",
       "parent": 40,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 77
     },
     "92": {
       "kind": "TsModule",
       "parent": 39,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 75
     },
     "93": {
       "kind": "TsModule",
       "parent": 38,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 73
     },
     "94": {
       "kind": "TsModule",
       "parent": 37,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 71
     },
     "95": {
       "kind": "TsModule",
       "parent": 36,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 69
     },
     "96": {
       "kind": "TsModule",
       "parent": 35,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 67
     },
     "97": {
       "kind": "TsModule",
       "parent": 34,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 65
     },
     "98": {
       "kind": "TsModule",
       "parent": 33,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 63
     },
     "99": {
       "kind": "TsModule",
       "parent": 32,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 61
     },
     "100": {
       "kind": "TsModule",
       "parent": 31,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 59
     },
     "101": {
       "kind": "TsModule",
       "parent": 30,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 57
     },
     "102": {
       "kind": "TsModule",
       "parent": 29,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 55
     },
     "103": {
       "kind": "TsModule",
       "parent": 28,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 53
     },
     "104": {
       "kind": "TsModule",
       "parent": 27,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 51
     },
     "105": {
       "kind": "TsModule",
       "parent": 26,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 49
     },
     "106": {
       "kind": "TsModule",
       "parent": 25,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 47
     },
     "107": {
       "kind": "TsModule",
       "parent": 24,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 45
     },
     "108": {
       "kind": "TsModule",
       "parent": 23,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 43
     },
     "109": {
       "kind": "TsModule",
       "parent": 22,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 41
     },
     "110": {
       "kind": "TsModule",
       "parent": 21,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 39
     },
     "111": {
       "kind": "TsModule",
       "parent": 20,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 37
     },
     "112": {
       "kind": "TsModule",
       "parent": 19,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 35
     },
     "113": {
       "kind": "TsModule",
       "parent": 18,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 33
     },
     "114": {
       "kind": "TsModule",
       "parent": 17,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 31
     },
     "115": {
       "kind": "TsModule",
       "parent": 16,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 29
     },
     "116": {
       "kind": "TsModule",
       "parent": 15,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 27
     },
     "117": {
       "kind": "TsModule",
       "parent": 14,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 25
     },
     "118": {
       "kind": "TsModule",
       "parent": 13,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 23
     },
     "119": {
       "kind": "TsModule",
       "parent": 12,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 21
     },
     "120": {
       "kind": "TsModule",
       "parent": 11,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 19
     },
     "121": {
       "kind": "TsModule",
       "parent": 10,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 17
     },
     "122": {
       "kind": "TsModule",
       "parent": 9,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 15
     },
     "123": {
       "kind": "TsModule",
       "parent": 8,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 13
     },
     "124": {
       "kind": "TsModule",
       "parent": 7,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 11
     },
     "125": {
       "kind": "TsModule",
       "parent": 6,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 9
     },
     "126": {
       "kind": "TsModule",
       "parent": 5,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     },
     "127": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     },
     "128": {
       "kind": "TsModule",
       "parent": 3,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     },
     "129": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "130": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

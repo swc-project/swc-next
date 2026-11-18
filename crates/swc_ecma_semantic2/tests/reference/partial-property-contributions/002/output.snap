@@ -27,20 +27,9 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 4
-          }
-        },
+        "symbol": null,
         "candidates": [
           4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
         ]
       },
       {
@@ -48,18 +37,9 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
+        "symbol": null,
         "candidates": [
           4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
         ]
       },
       {
@@ -67,20 +47,9 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 4
-          }
-        },
+        "symbol": null,
         "candidates": [
           4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
         ]
       }
     ],
@@ -90,23 +59,13 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ],
+        "symbol": 1,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
@@ -119,7 +78,14 @@ const queried: typeof Alias = 1;
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "125..130"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {

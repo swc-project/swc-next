@@ -3,9 +3,8 @@
 Semantic analysis for SWC Next's flat AST. It builds scopes, symbols,
 and references and reports early errors.
 
-TypeScript analysis resolves lexical declarations and references. It does not
-merge namespace or enum members across bodies, resolve alias targets, or perform
-type checking or expression type inference.
+TypeScript analysis tracks lexical bindings, merged namespace and enum members,
+and import aliases for the TypeScript-to-JavaScript transformer.
 
 See the [public semantic API](src/lib.rs). Recompute analysis after AST changes
 that invalidate bindings or references.
@@ -26,3 +25,13 @@ symbol/reference snapshots. Run the crate tests from the workspace root:
 ```sh
 cargo test -p swc_next_ecma_semantic2 --locked
 ```
+
+## Limitations
+
+- **Type checking and inference.** For `const n: string = 1`, analysis records
+  the binding for `n` and leaves the type mismatch to a type checker.
+- **Global augmentations.** In `declare global { interface X {} } export default X;`,
+  the declaration of `X` stays in the block, so the export reference is unresolved.
+- **Type parameters in merged declarations.** In `interface Box<T> { value: T }`
+  and `interface Box<T> { extra: T }`, the interfaces share a `Box` symbol and
+  each `T` has its own symbol.

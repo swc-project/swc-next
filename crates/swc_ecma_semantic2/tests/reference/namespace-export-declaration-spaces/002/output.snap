@@ -23,18 +23,12 @@ namespace N {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "A",
       "flags": "TYPE_ALIAS",
       "declarations": [

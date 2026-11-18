@@ -27,13 +27,7 @@ const result: Result = { right: true };
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ],
     "X": [
@@ -42,13 +36,7 @@ const result: Result = { right: true };
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
@@ -65,12 +53,14 @@ const result: Result = { right: true };
     "3": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

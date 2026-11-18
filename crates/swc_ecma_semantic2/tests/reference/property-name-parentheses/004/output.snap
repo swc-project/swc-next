@@ -23,16 +23,10 @@ namespace Use {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
+        "symbol": null,
         "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
+          3,
+          5
         ]
       }
     ]
@@ -44,13 +38,28 @@ namespace Use {
       "declarations": [
         "80..81"
       ]
+    },
+    "5": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "112..113"
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

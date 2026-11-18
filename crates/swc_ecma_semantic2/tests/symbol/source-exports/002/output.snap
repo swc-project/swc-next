@@ -19,41 +19,10 @@ namespace Test {
 ---------- Output ----------
 {
   "symbols": {
-    "": [
-      {
-        "id": 0,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-        "declarations": [
-          {
-            "span": "0..222",
-            "scope": 0,
-            "node_symbol": null
-          }
-        ],
-        "roles": [
-          "SourceModule"
-        ],
-        "namespace": {
-          "members": {
-            "default": {
-              "symbol": 1,
-              "value_symbols": [
-                {
-                  "Resolved": 1
-                }
-              ]
-            },
-            "f": {
-              "symbol": 2,
-              "value_symbols": []
-            }
-          }
-        }
-      }
-    ],
+    "": [],
     "A": [
       {
-        "id": 5,
+        "id": 4,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -69,14 +38,10 @@ namespace Test {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "213..214",
-          "217..218"
         ]
       },
       {
-        "id": 7,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -88,45 +53,39 @@ namespace Test {
           7
         ],
         "uses": [
-          "180..181"
+          "180..181",
+          "213..214",
+          "217..218"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 2,
           "initializer": "158..159"
         }
       }
     ],
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "id": 0,
+        "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "24..25",
-            "scope": 1
-          }
-        ],
-        "roles": [
-          "DefaultExport"
-        ]
-      },
-      {
-        "id": 2,
-        "flags": "TYPE_ALIAS | EXPORTED",
-        "declarations": [
+            "scope": 1,
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+          },
           {
             "span": "43..44",
-            "scope": 1
-          }
-        ]
-      },
-      {
-        "id": 3,
-        "flags": "NAMESPACE_MODULE",
-        "declarations": [
+            "scope": 1,
+            "flags": "TYPE_ALIAS | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          },
           {
             "span": "65..66",
-            "scope": 1
+            "scope": 1,
+            "flags": "NAMESPACE_MODULE"
           }
         ],
         "bindings": [
@@ -135,30 +94,43 @@ namespace Test {
         "uses": [
           "158..159"
         ],
-        "namespace": {
-          "members": {
-            "Item": {
-              "symbol": 4,
-              "value_symbols": []
-            }
+        "export_symbol": 1,
+        "members": {
+          "Item": {
+            "symbol": 2,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
+      },
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS | EXPORTED",
+        "declarations": [
+          {
+            "span": "43..44",
+            "scope": 1
+          }
+        ]
       }
     ]
   },
   "scopes": {
-    "0": {
-      "kind": "Global"
-    },
     "1": {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
     },
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

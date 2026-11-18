@@ -23,38 +23,26 @@ namespace N {
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "101..102",
-        "scope": 6,
+        "scope": 5,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "30..31"
       ]
     },
-    "5": {
+    "4": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -69,11 +57,11 @@ namespace N {
       "flags": "Strict",
       "hoist_target": 2
     },
-    "6": {
+    "5": {
       "kind": "Block",
-      "parent": 5,
+      "parent": 4,
       "flags": "Strict",
-      "hoist_target": 5
+      "hoist_target": 4
     }
   }
 }

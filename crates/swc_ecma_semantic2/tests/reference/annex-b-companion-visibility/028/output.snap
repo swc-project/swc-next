@@ -17,37 +17,17 @@ function outer(f = 1) {
     "f": [
       {
         "span": "73..74",
-        "scope": 4,
-        "space": "Value",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
-      },
-      {
-        "span": "91..92",
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 2
+      },
+      {
+        "span": "91..92",
+        "scope": 2,
+        "space": "Value",
+        "access": "Read",
+        "symbol": 1
       }
     ]
   },
@@ -68,13 +48,13 @@ function outer(f = 1) {
     }
   },
   "scopes": {
-    "3": {
+    "2": {
       "kind": "FunctionBody",
       "parent": 1
     },
-    "4": {
+    "3": {
       "kind": "Function",
-      "parent": 3,
+      "parent": 2,
       "flags": "ArgumentsBarrier"
     }
   }

@@ -27,16 +27,9 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
+        "symbol": null,
         "candidates": [
           3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
         ]
       },
       {
@@ -44,33 +37,16 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       },
       {
         "span": "213..218",
         "scope": 1,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
+        "symbol": null,
         "candidates": [
           3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
         ]
       }
     ],
@@ -80,23 +56,13 @@ const queried: typeof Alias = 1;
         "scope": 1,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
@@ -110,7 +76,13 @@ const queried: typeof Alias = 1;
       "declarations": [
         "86..91",
         "109..114"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {

@@ -21,17 +21,7 @@ import A = N.Y;
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -41,20 +31,14 @@ import A = N.Y;
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
-      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "18..19",
         "68..69"
@@ -77,7 +61,8 @@ import A = N.Y;
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

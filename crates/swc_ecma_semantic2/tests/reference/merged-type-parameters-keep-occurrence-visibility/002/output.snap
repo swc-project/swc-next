@@ -23,59 +23,43 @@ interface Box<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "61..62",
-        "scope": 4,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "98..99",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "T",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "6..7"
       ]
     },
+    "2": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "23..24"
+      ]
+    },
     "3": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "23..24",
         "84..85"
       ]
     }
@@ -87,12 +71,12 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Function",
       "parent": 2,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

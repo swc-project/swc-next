@@ -13,38 +13,27 @@ const f = function n<T extends typeof n>() {
     "n": [
       {
         "span": "38..39",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "3": {
       "name": "n",
-      "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
+      "flags": "FUNCTION_SCOPED_VAR",
       "declarations": [
-        "19..20"
+        "51..52"
       ]
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsTypeParameters",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

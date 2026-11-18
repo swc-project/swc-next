@@ -67,8 +67,14 @@ namespace Outer {
         "uses": [
           "198..199"
         ],
+        "alias": {
+          "Unknown": [
+            "VALUE",
+            "TYPE",
+            "TYPEOF"
+          ]
+        },
         "import": {
-          "target": null,
           "initializer": "174..175"
         }
       }
@@ -83,12 +89,14 @@ namespace Outer {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     },
     "6": {
       "kind": "TsModule",
       "parent": 5,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

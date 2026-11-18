@@ -15,7 +15,7 @@ namespace N {
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -29,12 +29,10 @@ namespace N {
         "uses": [
           "59..60"
         ],
-        "namespace": {
-          "members": {}
-        }
+        "members": {}
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "INTERFACE",
         "declarations": [
           {
@@ -49,7 +47,7 @@ namespace N {
     ],
     "N": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -60,9 +58,7 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {}
-        }
+        "members": {}
       }
     ]
   },
@@ -72,10 +68,17 @@ namespace N {
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

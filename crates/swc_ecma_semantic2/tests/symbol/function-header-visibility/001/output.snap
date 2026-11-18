@@ -15,7 +15,7 @@ function f(): typeof value {
   "symbols": {
     "value": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -25,13 +25,10 @@ function f(): typeof value {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "55..60"
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "FUNCTION_SCOPED_VAR",
         "declarations": [
           {
@@ -41,6 +38,9 @@ function f(): typeof value {
         ],
         "bindings": [
           2
+        ],
+        "uses": [
+          "55..60"
         ]
       }
     ]

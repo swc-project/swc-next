@@ -19,35 +19,29 @@ interface Box<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "58..59",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
+    "1": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "10..11"
+      ]
+    },
     "2": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "10..11",
         "44..45"
       ]
     }
@@ -59,7 +53,7 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

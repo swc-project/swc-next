@@ -17,23 +17,25 @@ export default X;
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | EXPORTED",
       "declarations": [
         "34..35"
       ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "0x0",
+      "declarations": [
+        "34..35"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {
@@ -55,23 +57,25 @@ export default X;
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | EXPORTED",
       "declarations": [
         "34..35"
       ]
+    },
+    "2": {
+      "name": "X",
+      "flags": "0x0",
+      "declarations": [
+        "34..35"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {

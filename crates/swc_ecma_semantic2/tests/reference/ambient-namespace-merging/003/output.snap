@@ -20,22 +20,12 @@ declare namespace N {
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "hidden",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
       "declarations": [
@@ -47,7 +37,8 @@ declare namespace N {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

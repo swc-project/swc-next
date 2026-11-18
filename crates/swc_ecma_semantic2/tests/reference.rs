@@ -1,6 +1,6 @@
 mod support;
 
-use std::collections::{BTreeMap, btree_map::Entry};
+use std::collections::BTreeMap;
 
 use serde::Serialize;
 use support::{
@@ -58,28 +58,30 @@ fn add_symbols(
     symbols: &mut BTreeMap<usize, TestSymbol>,
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
-    mut pending: Vec<SymbolId>,
+    targets: &[SymbolId],
 ) {
-    while let Some(id) = pending.pop() {
-        let Entry::Vacant(entry) = symbols.entry(id.index()) else {
-            continue;
+    for &target in targets {
+        let export = semantic.ts_export_symbol(target);
+        let alias = match semantic.ts_import_alias(target) {
+            Some(TsImportAlias::Target(target)) => Some(target),
+            _ => None,
         };
-        let symbol = semantic.symbol(id);
-        let export_symbol = semantic.ts_export_symbol(id);
-        let alias = semantic.ts_import_alias(id);
-        entry.insert(TestSymbol {
-            name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes()).into_owned(),
-            flags: flags(symbol.flags),
-            declarations: semantic
-                .declarations(id)
-                .map(|declaration| span(ast, declaration.node))
-                .collect(),
-            export_symbol: export_symbol.map(Idx::index),
-            alias: alias.map(TestAlias::from),
-        });
-        pending.extend(export_symbol);
-        if let Some(TsImportAlias::Target(target)) = alias {
-            pending.push(target);
+        // Include direct links while keeping long alias chains out of the snapshot.
+        for id in std::iter::once(target).chain(export).chain(alias) {
+            symbols.entry(id.index()).or_insert_with(|| {
+                let symbol = semantic.symbol(id);
+                TestSymbol {
+                    name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes())
+                        .into_owned(),
+                    flags: flags(symbol.flags),
+                    declarations: semantic
+                        .declarations(id)
+                        .map(|declaration| span(ast, declaration.node))
+                        .collect(),
+                    export_symbol: semantic.ts_export_symbol(id).map(Idx::index),
+                    alias: semantic.ts_import_alias(id).map(TestAlias::from),
+                }
+            });
         }
     }
 }
@@ -113,7 +115,7 @@ fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> Tes
                                 1
                             );
                         }
-                        add_symbols(&mut symbols, ast, semantic, targets);
+                        add_symbols(&mut symbols, ast, semantic, &targets);
                         let mut candidates = candidates
                             .iter()
                             .copied()

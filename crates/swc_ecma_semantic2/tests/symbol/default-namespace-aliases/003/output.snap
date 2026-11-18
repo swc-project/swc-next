@@ -23,7 +23,7 @@ namespace Test {
   "symbols": {
     "A": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -41,12 +41,11 @@ namespace Test {
           1
         ],
         "uses": [
-          "201..202",
           "232..233"
         ]
       },
       {
-        "id": 6,
+        "id": 5,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -58,10 +57,13 @@ namespace Test {
           6
         ],
         "uses": [
-          "173..174"
+          "173..174",
+          "201..202"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 2,
           "initializer": "151..152"
         }
       }
@@ -76,7 +78,8 @@ namespace Test {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

@@ -15,68 +15,35 @@ namespace N {
     "key": [
       {
         "span": "65..68",
-        "scope": 6,
-        "space": "Typeof",
+        "scope": 5,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 0
       }
     ],
     "v": [
       {
         "span": "101..102",
-        "scope": 7,
+        "scope": 5,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "3": {
+    "0": {
       "name": "key",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "INTERFACE",
       "declarations": [
-        "39..42"
-      ]
-    },
-    "5": {
-      "name": "v",
-      "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
-      "declarations": [
-        "71..72"
+        "10..13"
       ]
     }
   },
   "scopes": {
-    "6": {
-      "kind": "TsSignatureParameter",
-      "parent": 5,
-      "flags": "Strict",
-      "hoist_target": 3
-    },
-    "7": {
-      "kind": "TsSignatureReturn",
-      "parent": 5,
+    "5": {
+      "kind": "Block",
+      "parent": 4,
       "flags": "Strict",
       "hoist_target": 3
     }

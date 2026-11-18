@@ -13,60 +13,28 @@ let item: f;
 ---------- Output ----------
 {
   "symbols": {
-    "": [
-      {
-        "id": 0,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-        "declarations": [
-          {
-            "span": "0..116",
-            "scope": 0,
-            "node_symbol": null
-          }
-        ],
-        "roles": [
-          "SourceModule"
-        ],
-        "namespace": {
-          "members": {
-            "default": {
-              "symbol": 1,
-              "value_symbols": [
-                {
-                  "Resolved": 1
-                }
-              ]
-            },
-            "f": {
-              "symbol": 2,
-              "value_symbols": []
-            }
-          }
-        }
-      }
-    ],
+    "": [],
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "id": 0,
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "24..25",
-            "scope": 1,
-            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+            "scope": 1
           },
           {
-            "span": "56..57",
+            "span": "91..92",
             "scope": 1,
-            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
+            "flags": "TYPE_ALIAS | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
           }
         ],
-        "uses": [
-          "113..114"
+        "bindings": [
+          1
         ],
-        "roles": [
-          "DefaultExport"
-        ]
+        "export_symbol": 2
       },
       {
         "id": 2,
@@ -77,16 +45,13 @@ let item: f;
             "scope": 1
           }
         ],
-        "bindings": [
-          1
+        "uses": [
+          "113..114"
         ]
       }
     ]
   },
   "scopes": {
-    "0": {
-      "kind": "Global"
-    },
     "1": {
       "kind": "Module",
       "parent": 0,

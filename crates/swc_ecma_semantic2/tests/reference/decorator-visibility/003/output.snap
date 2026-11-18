@@ -15,21 +15,15 @@ class C<T> {
     "T": [
       {
         "span": "84..85",
-        "scope": 7,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": []
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "6": {
+    "5": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -38,7 +32,7 @@ class C<T> {
     }
   },
   "scopes": {
-    "7": {
+    "4": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

@@ -17,33 +17,43 @@ interface Box<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "10..11",
             "scope": 2
-          },
-          {
-            "span": "85..86",
-            "scope": 6
           }
         ],
         "bindings": [
-          2,
-          6
+          2
         ],
         "uses": [
-          "39..40",
-          "99..100"
+          "39..40"
         ]
       },
       {
-        "id": 3,
+        "id": 2,
         "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
         "declarations": [
           {
             "span": "36..37",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
+          "62..63"
+        ]
+      },
+      {
+        "id": 4,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "85..86",
             "scope": 4
           }
         ],
@@ -51,7 +61,7 @@ interface Box<T> {
           4
         ],
         "uses": [
-          "62..63"
+          "99..100"
         ]
       }
     ]
@@ -63,12 +73,12 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Function",
       "parent": 2,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "6": {
+    "4": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

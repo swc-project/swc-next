@@ -16,19 +16,7 @@ export { A };
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 2
-            }
-          }
-        ]
+        "symbol": 1
       }
     ],
     "remote": [
@@ -37,35 +25,28 @@ export { A };
         "scope": 1,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "remote",
       "flags": "IMPORT",
       "declarations": [
         "12..18"
       ]
     },
-    "2": {
+    "1": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "43..44"
-      ]
+      ],
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {

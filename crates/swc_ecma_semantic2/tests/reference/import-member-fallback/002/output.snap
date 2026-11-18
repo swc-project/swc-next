@@ -29,30 +29,14 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": []
+        "symbol": 7
       },
       {
         "span": "243..244",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 8
-        },
-        "candidates": [
-          8
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 8
-          }
-        ]
+        "symbol": null
       }
     ],
     "Owner": [
@@ -61,42 +45,35 @@ namespace Test {
         "scope": 1,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "Owner",
       "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
       "declarations": [
         "10..15",
         "54..59"
+      ],
+      "alias": {
+        "Target": 4
+      }
+    },
+    "4": {
+      "name": "C",
+      "flags": "CLASS | EXPORTED",
+      "declarations": [
+        "96..97"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "149..150"
-      ]
-    },
-    "8": {
-      "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "187..188"
       ]
     }
   },
@@ -109,7 +86,8 @@ namespace Test {
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 8
     }
   }
 }

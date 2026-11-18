@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+class X {}
+export = X;
+---------- Options ----------
+{"names":["X"]}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "20..21",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "symbol": 0
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "X",
+      "flags": "CLASS",
+      "declarations": [
+        "6..7"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}
+---------- Options ----------
+{"names":["X"],"preserveParens":false}
+---------- Output ----------
+{
+  "references": {
+    "X": [
+      {
+        "span": "20..21",
+        "scope": 1,
+        "space": "Any",
+        "access": "Read",
+        "symbol": 0
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "X",
+      "flags": "CLASS",
+      "declarations": [
+        "6..7"
+      ]
+    }
+  },
+  "scopes": {
+    "1": {
+      "kind": "Module",
+      "parent": 0,
+      "flags": "Strict"
+    }
+  }
+}

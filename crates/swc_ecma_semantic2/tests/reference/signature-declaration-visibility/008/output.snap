@@ -15,42 +15,29 @@ function f(x = 0): typeof value {
     "value": [
       {
         "span": "43..48",
-        "scope": 4,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "82..87",
-        "scope": 5,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "4": {
+    "0": {
+      "name": "value",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..11"
+      ]
+    },
+    "3": {
       "name": "value",
       "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
       "declarations": [
@@ -59,13 +46,13 @@ function f(x = 0): typeof value {
     }
   },
   "scopes": {
-    "4": {
-      "kind": "TsSignatureReturn",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier",
+      "function_body": 3
     },
-    "5": {
+    "3": {
       "kind": "FunctionBody",
       "parent": 2,
       "flags": "Strict"

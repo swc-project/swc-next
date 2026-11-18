@@ -13,75 +13,42 @@ type F = ({ [(k as T) + k]: v }) => void;
     "T": [
       {
         "span": "49..50",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ],
     "k": [
       {
         "span": "44..45",
-        "scope": 5,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "54..55",
-        "scope": 5,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "T",
       "flags": "INTERFACE",
       "declarations": [
         "10..11"
       ]
-    },
-    "2": {
-      "name": "k",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "21..22"
-      ]
     }
   },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 4,
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }
@@ -95,52 +62,26 @@ type F = ({ [(k as T) + k]: v }) => void;
     "T": [
       {
         "span": "49..50",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 0
-        },
-        "candidates": [
-          0
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ],
     "k": [
       {
         "span": "44..45",
-        "scope": 4,
-        "space": "Typeof",
+        "scope": 3,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "54..55",
-        "scope": 4,
-        "space": "Typeof",
+        "scope": 3,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       }
     ]
   },
@@ -151,19 +92,12 @@ type F = ({ [(k as T) + k]: v }) => void;
       "declarations": [
         "10..11"
       ]
-    },
-    "1": {
-      "name": "k",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "21..22"
-      ]
     }
   },
   "scopes": {
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 3,
+    "3": {
+      "kind": "Block",
+      "parent": 2,
       "hoist_target": 0
     }
   }

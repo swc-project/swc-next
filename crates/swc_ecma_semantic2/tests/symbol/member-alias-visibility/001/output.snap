@@ -27,7 +27,7 @@ namespace E {
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -64,12 +64,17 @@ namespace E {
             "flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
           }
         ],
+        "bindings": [
+          6
+        ],
         "uses": [
           "111..112",
           "245..246"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": null,
           "initializer": "158..164"
         }
       }
@@ -98,36 +103,15 @@ namespace E {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            }
-          }
-        },
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            },
-            "B": {
-              "symbol": 6,
-              "value_symbols": [
-                {
-                  "Resolved": 6
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 5,
+            "enum_flags": "ENUM_MEMBER",
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          },
+          "B": {
+            "symbol": 6,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
       }
@@ -140,15 +124,23 @@ namespace E {
       "flags": "Strict"
     },
     "5": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 4
     },
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

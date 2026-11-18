@@ -24,63 +24,34 @@ namespace Test {
         "scope": 6,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 5
       },
       {
         "span": "167..168",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 5
       },
       {
         "span": "189..190",
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "f",
-      "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
       "declarations": [
-        "24..25"
+        "24..25",
+        "41..42"
       ]
     },
-    "4": {
+    "3": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
       "declarations": [
@@ -88,20 +59,23 @@ namespace Test {
         "92..93"
       ]
     },
-    "6": {
+    "5": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "130..131"
       ],
-      "alias_target": 1
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

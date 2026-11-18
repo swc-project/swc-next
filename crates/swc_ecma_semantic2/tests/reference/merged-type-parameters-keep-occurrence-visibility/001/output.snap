@@ -22,26 +22,14 @@ interface Box<T, U = string> {
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "102..103",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ],
     "U": [
@@ -50,42 +38,36 @@ interface Box<T, U = string> {
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       },
       {
         "span": "114..115",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "U",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "5..6"
       ]
     },
+    "2": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "31..32"
+      ]
+    },
     "3": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "31..32",
         "76..77"
       ]
     },
@@ -104,7 +86,7 @@ interface Box<T, U = string> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

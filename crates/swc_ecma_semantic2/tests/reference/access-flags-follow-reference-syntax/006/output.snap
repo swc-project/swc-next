@@ -15,9 +15,7 @@ T;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },

@@ -24,7 +24,7 @@ const queried: typeof Alias = 1;
   "symbols": {
     "Alias": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -35,20 +35,17 @@ const queried: typeof Alias = 1;
         "bindings": [
           1
         ],
-        "uses": [
-          "225..230",
-          "245..250",
-          "292..297"
-        ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "197..198"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -62,42 +59,48 @@ const queried: typeof Alias = 1;
         "uses": [
           "197..198"
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 4,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "Inner": {
+            "symbol": 4,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
             "span": "52..53",
             "scope": 2
           }
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
         ],
         "uses": [
           "166..167"
-        ]
+        ],
+        "export_symbol": 1
       }
     ],
     "original": [
@@ -128,7 +131,8 @@ const queried: typeof Alias = 1;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

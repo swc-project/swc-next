@@ -27,12 +27,13 @@ const value = N.E.A;
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "10..11",
-            "scope": 1
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE"
           }
         ],
         "bindings": [
@@ -41,16 +42,10 @@ const value = N.E.A;
         "uses": [
           "65..66"
         ],
-        "namespace": {
-          "members": {
-            "E": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "E": {
+            "symbol": 1,
+            "namespace_flags": "CONST_ENUM | EXPORTED"
           }
         }
       }
@@ -62,11 +57,18 @@ const value = N.E.A;
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 2,
       "flags": "Strict",
-      "hoist_target": 2
+      "hoist_target": 2,
+      "container_owner": 1
     }
   }
 }

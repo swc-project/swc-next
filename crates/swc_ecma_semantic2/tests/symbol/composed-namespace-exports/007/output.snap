@@ -26,7 +26,7 @@ const nested: Alias.T = { ok: true };
   "symbols": {
     "Alias": [
       {
-        "id": 6,
+        "id": 8,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -38,19 +38,19 @@ const nested: Alias.T = { ok: true };
           1
         ],
         "uses": [
-          "227..232",
-          "249..254",
-          "288..293"
+          "249..254"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": null,
           "initializer": "205..206"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -64,28 +64,17 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "205..206"
         ],
-        "namespace": {
-          "members": {
-            "Original": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -93,6 +82,23 @@ const nested: Alias.T = { ok: true };
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -105,7 +111,8 @@ const nested: Alias.T = { ok: true };
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

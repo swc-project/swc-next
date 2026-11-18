@@ -35,26 +35,14 @@ declare namespace N {
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": 9
       },
       {
         "span": "332..333",
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": []
+        "symbol": null
       }
     ],
     "Item": [
@@ -63,13 +51,7 @@ declare namespace N {
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [],
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -79,17 +61,18 @@ declare namespace N {
         "scope": 4,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
+    "0": {
+      "name": "Item",
+      "flags": "NAMESPACE_MODULE",
+      "declarations": [
+        "21..25"
+      ]
+    },
     "4": {
       "name": "Local",
       "flags": "NAMESPACE_MODULE | AMBIENT",
@@ -97,24 +80,29 @@ declare namespace N {
         "108..113"
       ]
     },
-    "7": {
+    "9": {
       "name": "A",
       "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
         "286..287"
-      ]
+      ],
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     },
     "8": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

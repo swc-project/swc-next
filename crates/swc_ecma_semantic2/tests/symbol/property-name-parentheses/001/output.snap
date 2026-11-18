@@ -30,6 +30,9 @@ namespace Use {
         ],
         "bindings": [
           1
+        ],
+        "uses": [
+          "136..137"
         ]
       },
       {
@@ -47,8 +50,14 @@ namespace Use {
         "uses": [
           "136..137"
         ],
+        "alias": {
+          "Unknown": [
+            "VALUE",
+            "TYPE",
+            "TYPEOF"
+          ]
+        },
         "import": {
-          "target": null,
           "initializer": "114..115"
         }
       }
@@ -63,7 +72,8 @@ namespace Use {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

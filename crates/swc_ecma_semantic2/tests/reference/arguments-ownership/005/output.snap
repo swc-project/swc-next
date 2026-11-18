@@ -14,20 +14,10 @@ interface I {
     "arguments": [
       {
         "span": "70..79",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 0
-        },
-        "candidates": [
-          0
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 0
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
@@ -41,9 +31,9 @@ interface I {
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsSignatureReturn",
-      "parent": 2,
+    "2": {
+      "kind": "Block",
+      "parent": 1,
       "hoist_target": 0
     }
   }

@@ -19,36 +19,23 @@ interface Box<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "71..72",
-        "scope": 8,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "14..15",
-        "47..48"
+        "14..15"
       ]
     },
     "3": {
@@ -66,9 +53,9 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "8": {
-      "kind": "TsSignatureParameter",
-      "parent": 6,
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

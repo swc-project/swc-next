@@ -18,7 +18,7 @@ namespace Test {
   "symbols": {
     "A": [
       {
-        "id": 5,
+        "id": 4,
         "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS",
         "declarations": [
           {
@@ -38,8 +38,10 @@ namespace Test {
         "uses": [
           "145..146"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": null,
           "initializer": "104..105"
         }
       }
@@ -49,7 +51,8 @@ namespace Test {
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

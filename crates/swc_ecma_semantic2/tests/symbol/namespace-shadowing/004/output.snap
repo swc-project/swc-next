@@ -45,11 +45,21 @@ namespace N {
             "scope": 4
           }
         ],
+        "bindings": [
+          4
+        ],
         "uses": [
           "204..205"
         ],
+        "alias": {
+          "Unknown": [
+            "VALUE",
+            "TYPE",
+            "NAMESPACE",
+            "TYPEOF"
+          ]
+        },
         "import": {
-          "target": null,
           "initializer": "161..162"
         }
       }
@@ -71,26 +81,14 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "B": {
-              "symbol": 7,
-              "value_symbols": [
-                {
-                  "Uncertain": {
-                    "candidate": 7
-                  }
-                }
-              ]
-            },
-            "result": {
-              "symbol": 8,
-              "value_symbols": [
-                {
-                  "Resolved": 8
-                }
-              ]
-            }
+        "members": {
+          "B": {
+            "symbol": 7,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          },
+          "result": {
+            "symbol": 8,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -105,7 +103,14 @@ namespace N {
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

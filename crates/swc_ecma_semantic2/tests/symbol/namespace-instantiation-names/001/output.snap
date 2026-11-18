@@ -19,7 +19,7 @@ namespace Outer {
   "symbols": {
     "Inner": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -35,7 +35,7 @@ namespace Outer {
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -43,24 +43,29 @@ namespace Outer {
             "scope": 2
           }
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
-          },
-          "export_aliases": true
-        }
+        "members": {}
+      },
+      {
+        "id": 4,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "116..121",
+            "scope": 2,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+            "node_symbol": 3,
+            "owner": 3
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 3
       }
     ],
     "Outer": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -71,20 +76,14 @@ namespace Outer {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 4,
-              "value_symbols": []
-            },
-            "selected": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            }
+        "members": {
+          "Inner": {
+            "symbol": 3,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "selected": {
+            "symbol": 5,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -99,7 +98,14 @@ namespace Outer {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 2,
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

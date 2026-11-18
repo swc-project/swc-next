@@ -15,7 +15,7 @@ enum E {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -30,7 +30,7 @@ enum E {
     ],
     "B": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -42,7 +42,7 @@ enum E {
     ],
     "E": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "REGULAR_ENUM",
         "declarations": [
           {
@@ -57,24 +57,14 @@ enum E {
         "bindings": [
           1
         ],
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "B": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 1,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "B": {
+            "symbol": 2,
+            "enum_flags": "ENUM_MEMBER"
           }
         }
       }
@@ -87,16 +77,18 @@ enum E {
       "flags": "Strict"
     },
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     }
   }
 }

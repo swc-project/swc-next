@@ -16,7 +16,7 @@ namespace C {
   "symbols": {
     "x": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -27,6 +27,23 @@ namespace C {
         "uses": [
           "82..83"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "40..41",
+            "scope": 3,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "export_symbol": 1
       }
     ],
     "y": [
@@ -39,6 +56,23 @@ namespace C {
             "scope": 4
           }
         ]
+      },
+      {
+        "id": 4,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "78..79",
+            "scope": 4,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 3,
+            "owner": 3
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "export_symbol": 3
       }
     ]
   },
@@ -46,12 +80,14 @@ namespace C {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

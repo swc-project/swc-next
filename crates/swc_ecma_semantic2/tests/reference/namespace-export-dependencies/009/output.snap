@@ -340,13 +340,7 @@ declare namespace N0 {
         "scope": 130,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": 129
       }
     ],
     "X": [
@@ -355,837 +349,453 @@ declare namespace N0 {
         "scope": 66,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "6360..6361",
         "scope": 67,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "6909..6910",
         "scope": 68,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "7450..7451",
         "scope": 69,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "7983..7984",
         "scope": 70,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "8508..8509",
         "scope": 71,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "9025..9026",
         "scope": 72,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "9534..9535",
         "scope": 73,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "10035..10036",
         "scope": 74,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "10528..10529",
         "scope": 75,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "11013..11014",
         "scope": 76,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "11490..11491",
         "scope": 77,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "11959..11960",
         "scope": 78,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "12420..12421",
         "scope": 79,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "12873..12874",
         "scope": 80,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "13318..13319",
         "scope": 81,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "13755..13756",
         "scope": 82,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "14184..14185",
         "scope": 83,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "14605..14606",
         "scope": 84,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "15018..15019",
         "scope": 85,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "15423..15424",
         "scope": 86,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "15820..15821",
         "scope": 87,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "16209..16210",
         "scope": 88,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "16590..16591",
         "scope": 89,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "16963..16964",
         "scope": 90,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "17328..17329",
         "scope": 91,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "17685..17686",
         "scope": 92,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "18034..18035",
         "scope": 93,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "18375..18376",
         "scope": 94,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "18708..18709",
         "scope": 95,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "19033..19034",
         "scope": 96,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "19350..19351",
         "scope": 97,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "19659..19660",
         "scope": 98,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "19960..19961",
         "scope": 99,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "20253..20254",
         "scope": 100,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "20538..20539",
         "scope": 101,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "20815..20816",
         "scope": 102,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "21084..21085",
         "scope": 103,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "21345..21346",
         "scope": 104,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "21598..21599",
         "scope": 105,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "21843..21844",
         "scope": 106,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "22080..22081",
         "scope": 107,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "22309..22310",
         "scope": 108,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "22530..22531",
         "scope": 109,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "22743..22744",
         "scope": 110,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "22948..22949",
         "scope": 111,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "23145..23146",
         "scope": 112,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "23334..23335",
         "scope": 113,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "23515..23516",
         "scope": 114,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "23688..23689",
         "scope": 115,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "23853..23854",
         "scope": 116,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24010..24011",
         "scope": 117,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24159..24160",
         "scope": 118,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24300..24301",
         "scope": 119,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24433..24434",
         "scope": 120,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24557..24558",
         "scope": 121,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24673..24674",
         "scope": 122,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24781..24782",
         "scope": 123,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24881..24882",
         "scope": 124,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "24973..24974",
         "scope": 125,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "25057..25058",
         "scope": 126,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "25133..25134",
         "scope": 127,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "25201..25202",
         "scope": 128,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       },
       {
         "span": "25261..25262",
         "scope": 129,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 66
-        },
-        "candidates": [
-          66
-        ],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "66": {
+    "129": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
@@ -1197,327 +807,392 @@ declare namespace N0 {
     "66": {
       "kind": "TsModule",
       "parent": 65,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 127
     },
     "67": {
       "kind": "TsModule",
       "parent": 64,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 125
     },
     "68": {
       "kind": "TsModule",
       "parent": 63,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 123
     },
     "69": {
       "kind": "TsModule",
       "parent": 62,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 121
     },
     "70": {
       "kind": "TsModule",
       "parent": 61,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 119
     },
     "71": {
       "kind": "TsModule",
       "parent": 60,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 117
     },
     "72": {
       "kind": "TsModule",
       "parent": 59,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 115
     },
     "73": {
       "kind": "TsModule",
       "parent": 58,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 113
     },
     "74": {
       "kind": "TsModule",
       "parent": 57,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 111
     },
     "75": {
       "kind": "TsModule",
       "parent": 56,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 109
     },
     "76": {
       "kind": "TsModule",
       "parent": 55,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 107
     },
     "77": {
       "kind": "TsModule",
       "parent": 54,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 105
     },
     "78": {
       "kind": "TsModule",
       "parent": 53,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 103
     },
     "79": {
       "kind": "TsModule",
       "parent": 52,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 101
     },
     "80": {
       "kind": "TsModule",
       "parent": 51,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 99
     },
     "81": {
       "kind": "TsModule",
       "parent": 50,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 97
     },
     "82": {
       "kind": "TsModule",
       "parent": 49,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 95
     },
     "83": {
       "kind": "TsModule",
       "parent": 48,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 93
     },
     "84": {
       "kind": "TsModule",
       "parent": 47,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 91
     },
     "85": {
       "kind": "TsModule",
       "parent": 46,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 89
     },
     "86": {
       "kind": "TsModule",
       "parent": 45,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 87
     },
     "87": {
       "kind": "TsModule",
       "parent": 44,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 85
     },
     "88": {
       "kind": "TsModule",
       "parent": 43,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 83
     },
     "89": {
       "kind": "TsModule",
       "parent": 42,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 81
     },
     "90": {
       "kind": "TsModule",
       "parent": 41,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 79
     },
     "91": {
       "kind": "TsModule",
       "parent": 40,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 77
     },
     "92": {
       "kind": "TsModule",
       "parent": 39,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 75
     },
     "93": {
       "kind": "TsModule",
       "parent": 38,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 73
     },
     "94": {
       "kind": "TsModule",
       "parent": 37,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 71
     },
     "95": {
       "kind": "TsModule",
       "parent": 36,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 69
     },
     "96": {
       "kind": "TsModule",
       "parent": 35,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 67
     },
     "97": {
       "kind": "TsModule",
       "parent": 34,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 65
     },
     "98": {
       "kind": "TsModule",
       "parent": 33,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 63
     },
     "99": {
       "kind": "TsModule",
       "parent": 32,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 61
     },
     "100": {
       "kind": "TsModule",
       "parent": 31,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 59
     },
     "101": {
       "kind": "TsModule",
       "parent": 30,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 57
     },
     "102": {
       "kind": "TsModule",
       "parent": 29,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 55
     },
     "103": {
       "kind": "TsModule",
       "parent": 28,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 53
     },
     "104": {
       "kind": "TsModule",
       "parent": 27,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 51
     },
     "105": {
       "kind": "TsModule",
       "parent": 26,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 49
     },
     "106": {
       "kind": "TsModule",
       "parent": 25,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 47
     },
     "107": {
       "kind": "TsModule",
       "parent": 24,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 45
     },
     "108": {
       "kind": "TsModule",
       "parent": 23,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 43
     },
     "109": {
       "kind": "TsModule",
       "parent": 22,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 41
     },
     "110": {
       "kind": "TsModule",
       "parent": 21,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 39
     },
     "111": {
       "kind": "TsModule",
       "parent": 20,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 37
     },
     "112": {
       "kind": "TsModule",
       "parent": 19,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 35
     },
     "113": {
       "kind": "TsModule",
       "parent": 18,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 33
     },
     "114": {
       "kind": "TsModule",
       "parent": 17,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 31
     },
     "115": {
       "kind": "TsModule",
       "parent": 16,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 29
     },
     "116": {
       "kind": "TsModule",
       "parent": 15,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 27
     },
     "117": {
       "kind": "TsModule",
       "parent": 14,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 25
     },
     "118": {
       "kind": "TsModule",
       "parent": 13,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 23
     },
     "119": {
       "kind": "TsModule",
       "parent": 12,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 21
     },
     "120": {
       "kind": "TsModule",
       "parent": 11,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 19
     },
     "121": {
       "kind": "TsModule",
       "parent": 10,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 17
     },
     "122": {
       "kind": "TsModule",
       "parent": 9,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 15
     },
     "123": {
       "kind": "TsModule",
       "parent": 8,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 13
     },
     "124": {
       "kind": "TsModule",
       "parent": 7,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 11
     },
     "125": {
       "kind": "TsModule",
       "parent": 6,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 9
     },
     "126": {
       "kind": "TsModule",
       "parent": 5,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     },
     "127": {
       "kind": "TsModule",
       "parent": 4,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     },
     "128": {
       "kind": "TsModule",
       "parent": 3,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 3
     },
     "129": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "130": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

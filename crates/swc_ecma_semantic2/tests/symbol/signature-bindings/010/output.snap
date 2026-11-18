@@ -14,7 +14,7 @@ interface I {
   "symbols": {
     "key": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -26,22 +26,7 @@ interface I {
           1
         ],
         "uses": [
-          "50..53"
-        ]
-      },
-      {
-        "id": 3,
-        "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
-        "declarations": [
-          {
-            "span": "55..58",
-            "scope": 3
-          }
-        ],
-        "bindings": [
-          3
-        ],
-        "uses": [
+          "50..53",
           "76..79"
         ]
       }
@@ -52,12 +37,6 @@ interface I {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
-    },
-    "3": {
-      "kind": "Block",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 1
     }
   }
 }

@@ -16,7 +16,7 @@ const value = N.E.A;
   "symbols": {
     "A": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -28,12 +28,13 @@ const value = N.E.A;
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "10..11",
-            "scope": 1
+            "scope": 1,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | CONST_ENUM_ONLY_MODULE"
           }
         ],
         "bindings": [
@@ -42,19 +43,7 @@ const value = N.E.A;
         "uses": [
           "74..75"
         ],
-        "namespace": {
-          "members": {
-            "E": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
-          },
-          "export_aliases": true
-        }
+        "members": {}
       }
     ]
   },
@@ -64,11 +53,18 @@ const value = N.E.A;
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 2,
       "flags": "Strict",
-      "hoist_target": 2
+      "hoist_target": 2,
+      "container_owner": 1
     }
   }
 }

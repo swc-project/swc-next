@@ -14,7 +14,7 @@ function f(): typeof value {
   "symbols": {
     "value": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {

@@ -18,7 +18,7 @@ namespace E {
   "symbols": {
     "x": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -29,6 +29,23 @@ namespace E {
         "uses": [
           "87..88"
         ]
+      },
+      {
+        "id": 3,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "45..46",
+            "scope": 3,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "export_symbol": 2
       }
     ],
     "y": [
@@ -41,6 +58,23 @@ namespace E {
             "scope": 4
           }
         ]
+      },
+      {
+        "id": 5,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "83..84",
+            "scope": 4,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 4,
+            "owner": 4
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "export_symbol": 4
       }
     ]
   },
@@ -48,12 +82,14 @@ namespace E {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

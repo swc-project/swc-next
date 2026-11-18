@@ -14,25 +14,15 @@ function f(arg = () => value) {
     "value": [
       {
         "span": "40..45",
-        "scope": 4,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "value",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -41,9 +31,9 @@ function f(arg = () => value) {
     }
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Function",
-      "parent": 3,
+      "parent": 2,
       "flags": "Strict"
     }
   }

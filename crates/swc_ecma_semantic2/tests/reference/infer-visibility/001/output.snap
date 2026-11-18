@@ -14,54 +14,36 @@ const ok: R<[string, number]> = "ok";
     "U": [
       {
         "span": "60..61",
-        "scope": 6,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "65..66",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "69..70",
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "U",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "16..17"
       ]
     },
-    "4": {
+    "3": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -76,15 +58,9 @@ const ok: R<[string, number]> = "ok";
       "flags": "Strict",
       "hoist_target": 1
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "6": {
-      "kind": "TsConditionalExtends",
-      "parent": 5,
       "flags": "Strict",
       "hoist_target": 1
     }

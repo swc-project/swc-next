@@ -37,68 +37,28 @@ const selected = Selected;
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       },
       {
         "span": "288..289",
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       },
       {
         "span": "322..323",
         "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       },
       {
         "span": "348..349",
         "scope": 11,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 3
       }
     ],
     "Selected": [
@@ -107,17 +67,7 @@ const selected = Selected;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 11
-        },
-        "candidates": [
-          11
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 11
-          }
-        ]
+        "symbol": null
       }
     ]
   },
@@ -130,13 +80,6 @@ const selected = Selected;
         "97..98",
         "119..120"
       ]
-    },
-    "11": {
-      "name": "Selected",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "362..370"
-      ]
     }
   },
   "scopes": {
@@ -148,7 +91,8 @@ const selected = Selected;
     "9": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     },
     "10": {
       "kind": "Block",

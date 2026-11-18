@@ -22,7 +22,7 @@ namespace Test {
   "symbols": {
     "A": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -33,15 +33,10 @@ namespace Test {
         "bindings": [
           1
         ],
-        "uses": [
-          "216..217"
-        ],
-        "namespace": {
-          "members": {
-            "Item": {
-              "symbol": 5,
-              "value_symbols": []
-            }
+        "members": {
+          "Item": {
+            "symbol": 4,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
       },
@@ -59,10 +54,13 @@ namespace Test {
         ],
         "uses": [
           "165..166",
-          "194..195"
+          "194..195",
+          "216..217"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 1,
           "initializer": "142..143"
         }
       }
@@ -74,10 +72,17 @@ namespace Test {
       "parent": 0,
       "flags": "Strict"
     },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 3
+    },
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

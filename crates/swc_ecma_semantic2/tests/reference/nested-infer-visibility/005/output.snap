@@ -12,58 +12,33 @@ type R<T> = T extends (true extends true ? infer U : U) ? U : never;
     "U": [
       {
         "span": "70..71",
-        "scope": 6,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       },
       {
         "span": "75..76",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "U",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "5..6"
       ]
-    },
-    "4": {
-      "name": "U",
-      "flags": "TYPE_PARAMETER",
-      "declarations": [
-        "66..67"
-      ]
     }
   },
   "scopes": {
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "6": {
-      "kind": "TsConditionalExtends",
-      "parent": 5,
       "flags": "Strict",
       "hoist_target": 1
     }

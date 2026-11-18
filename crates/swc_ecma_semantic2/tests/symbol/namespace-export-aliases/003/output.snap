@@ -17,8 +17,8 @@ declare namespace N {
   "symbols": {
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -32,27 +32,7 @@ declare namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "a": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "b": {
-              "symbol": null,
-              "value_symbols": []
-            },
-            "x": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
-          },
-          "export_aliases": true
-        }
+        "members": {}
       }
     ]
   },
@@ -61,6 +41,18 @@ declare namespace N {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

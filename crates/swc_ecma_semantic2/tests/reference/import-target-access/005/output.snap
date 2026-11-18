@@ -19,13 +19,7 @@ export type Result = A.T;
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [],
+        "symbol": 3,
         "import_equals": true
       }
     ],
@@ -35,19 +29,13 @@ export type Result = A.T;
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "NAMESPACE_MODULE",
       "declarations": [
@@ -60,7 +48,9 @@ export type Result = A.T;
       "declarations": [
         "47..48"
       ],
-      "alias_target": 1
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {

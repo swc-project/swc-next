@@ -12,41 +12,29 @@ declare function f<T>(value: T, extra: number): void;
     "T": [
       {
         "span": "29..30",
-        "scope": 4,
+        "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "68..69",
-        "scope": 8,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "19..20"
       ]
     },
-    "4": {
+    "3": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -55,17 +43,15 @@ declare function f<T>(value: T, extra: number): void;
     }
   },
   "scopes": {
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     },
-    "8": {
-      "kind": "TsSignatureParameter",
-      "parent": 6,
-      "flags": "Strict",
-      "hoist_target": 6
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

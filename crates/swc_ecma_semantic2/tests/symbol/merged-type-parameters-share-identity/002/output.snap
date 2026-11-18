@@ -15,24 +15,34 @@ interface Box<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "10..11",
             "scope": 2
-          },
-          {
-            "span": "44..45",
-            "scope": 4
           }
         ],
         "bindings": [
-          2,
-          4
+          2
         ],
         "uses": [
-          "25..26",
+          "25..26"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "44..45",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
           "58..59"
         ]
       }
@@ -45,7 +55,7 @@ interface Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

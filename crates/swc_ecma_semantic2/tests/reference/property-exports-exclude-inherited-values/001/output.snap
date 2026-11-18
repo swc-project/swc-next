@@ -25,13 +25,10 @@ const typed: Alias = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
+        "symbol": null,
         "candidates": [
           4
-        ],
-        "value_symbols": []
+        ]
       }
     ],
     "C": [
@@ -39,36 +36,19 @@ const typed: Alias = { own: true };
         "span": "139..140",
         "scope": 1,
         "space": "Namespace",
-        "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ],
+        "access": "Read",
+        "symbol": 1,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
         "48..49",
         "76..77"
-      ]
-    },
-    "3": {
-      "name": "x",
-      "flags": "INTERFACE | EXPORTED",
-      "declarations": [
-        "99..100"
       ]
     },
     "4": {
@@ -77,7 +57,13 @@ const typed: Alias = { own: true };
       "declarations": [
         "131..136"
       ],
-      "alias_target": 3
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {

@@ -24,16 +24,10 @@ namespace N {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
+        "symbol": null,
         "candidates": [
+          0,
           5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
         ]
       }
     ],
@@ -43,23 +37,20 @@ namespace N {
         "scope": 2,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ],
+        "symbol": 2,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "3": {
+    "0": {
+      "name": "Alias",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "6..11"
+      ]
+    },
+    "2": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
@@ -72,14 +63,22 @@ namespace N {
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "133..138"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

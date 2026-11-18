@@ -16,8 +16,8 @@ const fn = f;
   "symbols": {
     "f": [
       {
-        "id": 1,
-        "flags": "FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "id": 0,
+        "flags": "FUNCTION | TYPE_ALIAS | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {
             "span": "24..25",
@@ -25,32 +25,17 @@ const fn = f;
             "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
           },
           {
-            "span": "56..57",
-            "scope": 1,
-            "flags": "INTERFACE | EXPORTED | IS_DEFAULT"
-          }
-        ],
-        "uses": [
-          "127..128"
-        ],
-        "roles": [
-          "DefaultExport"
-        ]
-      },
-      {
-        "id": 2,
-        "flags": "TYPE_ALIAS",
-        "declarations": [
-          {
             "span": "84..85",
-            "scope": 1
+            "scope": 1,
+            "flags": "TYPE_ALIAS"
           }
         ],
         "bindings": [
           1
         ],
         "uses": [
-          "109..110"
+          "109..110",
+          "127..128"
         ]
       }
     ]

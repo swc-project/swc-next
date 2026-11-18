@@ -24,15 +24,17 @@ import A = N.T;
         "bindings": [
           1
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "51..52"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -46,19 +48,17 @@ import A = N.T;
         "uses": [
           "51..52"
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": 2,
-              "value_symbols": []
-            }
+        "members": {
+          "T": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
       }
     ],
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | EXPORTED",
         "declarations": [
           {
@@ -66,6 +66,23 @@ import A = N.T;
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "33..34",
+            "scope": 2,
+            "flags": "INTERFACE | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -78,7 +95,8 @@ import A = N.T;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

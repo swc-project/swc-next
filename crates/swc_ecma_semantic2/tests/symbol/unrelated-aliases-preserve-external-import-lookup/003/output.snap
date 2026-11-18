@@ -12,7 +12,7 @@ const value = Item;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -27,7 +27,7 @@ const value = Item;
     ],
     "Item": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT",
         "declarations": [
           {

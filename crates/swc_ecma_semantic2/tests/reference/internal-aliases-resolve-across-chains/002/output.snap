@@ -20020,31 +20020,30 @@ type Result = Root.T;
         "scope": 5,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 20004
-        },
-        "candidates": [
-          20004
-        ],
-        "value_symbols": []
+        "symbol": 20005
       }
     ]
   },
   "symbols": {
-    "20002": {
-      "name": "A20000",
-      "flags": "NAMESPACE_MODULE | EXPORTED",
+    "1": {
+      "name": "A0",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
-        "677817..677823"
-      ]
+        "30..32"
+      ],
+      "alias": {
+        "Target": 2
+      }
     },
-    "20004": {
+    "20005": {
       "name": "Root",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "677865..677869"
       ],
-      "alias_target": 20002
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

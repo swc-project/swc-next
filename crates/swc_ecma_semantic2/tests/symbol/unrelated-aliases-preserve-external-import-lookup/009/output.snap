@@ -11,7 +11,7 @@ type A = typeof Item;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -26,7 +26,7 @@ type A = typeof Item;
     ],
     "Item": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -41,7 +41,6 @@ type A = typeof Item;
           "48..52"
         ],
         "import": {
-          "target": null,
           "initializer": null
         }
       }

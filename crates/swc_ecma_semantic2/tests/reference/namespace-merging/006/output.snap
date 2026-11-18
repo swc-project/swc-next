@@ -22,22 +22,12 @@ namespace E {
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "x",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
@@ -49,7 +39,8 @@ namespace E {
     "4": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

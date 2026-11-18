@@ -19,41 +19,33 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "41..42"
       ]
     },
-    "3": {
-      "name": "value",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+    "2": {
+      "name": "X",
+      "flags": "0x0",
       "declarations": [
-        "54..59"
-      ]
+        "41..42"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }
@@ -68,41 +60,33 @@ declare namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "41..42"
       ]
     },
-    "3": {
-      "name": "value",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+    "2": {
+      "name": "X",
+      "flags": "0x0",
       "declarations": [
-        "54..59"
-      ]
+        "41..42"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

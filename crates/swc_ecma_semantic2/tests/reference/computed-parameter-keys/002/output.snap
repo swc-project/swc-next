@@ -13,25 +13,15 @@ type F = ({ [key]: v }) => void;
     "key": [
       {
         "span": "47..50",
-        "scope": 5,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "key",
       "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR",
       "declarations": [
@@ -41,9 +31,9 @@ type F = ({ [key]: v }) => void;
     }
   },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 4,
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

@@ -15,7 +15,7 @@ type X = number;
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -29,12 +29,10 @@ type X = number;
         "uses": [
           "51..52"
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": 2,
-              "value_symbols": []
-            }
+        "members": {
+          "T": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
       }
@@ -45,6 +43,12 @@ type X = number;
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

@@ -13,45 +13,29 @@ const f = function n<n>(a: n) {
     "n": [
       {
         "span": "27..28",
-        "scope": 4,
+        "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       },
       {
         "span": "41..42",
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "n",
       "flags": "FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "19..20"
       ]
     },
-    "3": {
+    "2": {
       "name": "n",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -64,12 +48,6 @@ const f = function n<n>(a: n) {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
-    },
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
     }
   }
 }

@@ -25,18 +25,28 @@ namespace N {
           {
             "span": "37..38",
             "scope": 3
-          },
-          {
-            "span": "99..100",
-            "scope": 6
           }
         ],
         "bindings": [
-          3,
-          6
+          3
         ],
         "uses": [
-          "53..54",
+          "53..54"
+        ]
+      },
+      {
+        "id": 5,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "99..100",
+            "scope": 5
+          }
+        ],
+        "bindings": [
+          5
+        ],
+        "uses": [
           "115..116"
         ]
       }
@@ -49,11 +59,11 @@ namespace N {
       "flags": "Strict",
       "hoist_target": 2
     },
-    "6": {
+    "5": {
       "kind": "Block",
-      "parent": 5,
+      "parent": 4,
       "flags": "Strict",
-      "hoist_target": 5
+      "hoist_target": 4
     }
   }
 }

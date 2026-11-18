@@ -18,7 +18,7 @@ namespace A.B.C {
   "symbols": {
     "x": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -30,21 +30,55 @@ namespace A.B.C {
           "73..74",
           "115..116"
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "y": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
             "span": "69..70",
-            "scope": 3
+            "scope": 4
           }
         ],
         "uses": [
           "119..120"
         ]
+      },
+      {
+        "id": 6,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "69..70",
+            "scope": 4,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 5,
+            "owner": 5
+          }
+        ],
+        "bindings": [
+          4
+        ],
+        "export_symbol": 5
       }
     ]
   },
@@ -52,12 +86,14 @@ namespace A.B.C {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
-    "3": {
+    "4": {
       "kind": "TsModule",
-      "parent": 1,
-      "flags": "Strict"
+      "parent": 3,
+      "flags": "Strict",
+      "container_owner": 3
     }
   }
 }

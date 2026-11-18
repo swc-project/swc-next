@@ -22,7 +22,7 @@ namespace N {
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
@@ -36,17 +36,15 @@ namespace N {
         "uses": [
           "146..147"
         ],
-        "namespace": {
-          "members": {
-            "T": {
-              "symbol": 2,
-              "value_symbols": []
-            }
+        "members": {
+          "T": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
       },
       {
-        "id": 6,
+        "id": 7,
         "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
         "declarations": [
           {
@@ -54,15 +52,20 @@ namespace N {
             "scope": 5
           }
         ],
+        "bindings": [
+          5
+        ],
+        "alias": {
+          "Target": 4
+        },
         "import": {
-          "target": 4,
           "initializer": "112..113"
         }
       }
     ],
     "N": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -77,16 +80,10 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 6,
-              "value_symbols": [
-                {
-                  "Resolved": 6
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 7,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
           }
         }
       }
@@ -98,10 +95,23 @@ namespace N {
       "parent": 0,
       "flags": "Strict"
     },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
+    },
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
+    },
+    "6": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

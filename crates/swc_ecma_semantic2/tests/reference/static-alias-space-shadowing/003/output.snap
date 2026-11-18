@@ -28,88 +28,52 @@ namespace N {
     "A": [
       {
         "span": "204..205",
-        "scope": 10,
+        "scope": 9,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "236..237",
-        "scope": 10,
+        "scope": 9,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
+        "symbol": null,
         "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
+          7
         ]
       },
       {
         "span": "270..271",
-        "scope": 11,
+        "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
+        "symbol": null,
         "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
+          7
         ]
       },
       {
         "span": "296..297",
-        "scope": 12,
+        "scope": 11,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ],
     "C": [
       {
         "span": "177..178",
-        "scope": 10,
+        "scope": 9,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
@@ -125,31 +89,38 @@ namespace N {
         "120..121"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "173..174"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
-    "10": {
+    "9": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
+    },
+    "10": {
+      "kind": "Block",
+      "parent": 9,
+      "flags": "Strict",
+      "hoist_target": 9
     },
     "11": {
       "kind": "Block",
-      "parent": 10,
+      "parent": 9,
       "flags": "Strict",
-      "hoist_target": 10
-    },
-    "12": {
-      "kind": "Block",
-      "parent": 10,
-      "flags": "Strict",
-      "hoist_target": 10
+      "hoist_target": 9
     }
   }
 }

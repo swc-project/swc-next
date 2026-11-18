@@ -34,7 +34,7 @@ const nested: Alias.T = { ok: true };
   "symbols": {
     "Alias": [
       {
-        "id": 9,
+        "id": 13,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -45,26 +45,23 @@ const nested: Alias.T = { ok: true };
         "bindings": [
           1
         ],
-        "uses": [
-          "377..382",
-          "399..404",
-          "438..443"
-        ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "349..350"
         }
       }
     ],
     "N": [
       {
-        "id": 5,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+        "id": 7,
+        "flags": "NAMESPACE_MODULE",
         "declarations": [
           {
             "span": "141..142",
             "scope": 1,
-            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"
+            "flags": "NAMESPACE_MODULE | AMBIENT"
           },
           {
             "span": "266..267",
@@ -77,36 +74,21 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "349..350"
         ],
-        "namespace": {
-          "members": {
-            "Inner": {
-              "symbol": 8,
-              "value_symbols": [
-                {
-                  "Resolved": 8
-                }
-              ]
-            },
-            "X": {
-              "symbol": 6,
-              "value_symbols": [
-                {
-                  "Resolved": 7
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
+        "members": {
+          "Inner": {
+            "symbol": 11,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
           },
-          "export_aliases": true
+          "X": {
+            "symbol": 8,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 6,
+        "id": 8,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -117,11 +99,28 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "318..319"
         ]
+      },
+      {
+        "id": 9,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "164..165",
+            "scope": 5,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 8,
+            "owner": 8
+          }
+        ],
+        "bindings": [
+          5
+        ],
+        "export_symbol": 8
       }
     ],
     "original": [
       {
-        "id": 7,
+        "id": 10,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -135,8 +134,10 @@ const nested: Alias.T = { ok: true };
         "uses": [
           "237..245"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "209..215"
         }
       }
@@ -151,7 +152,14 @@ const nested: Alias.T = { ok: true };
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
+    },
+    "7": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

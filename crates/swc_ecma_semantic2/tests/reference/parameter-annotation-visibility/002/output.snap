@@ -15,21 +15,15 @@ function f(x: T = "") {
     "T": [
       {
         "span": "42..43",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "T",
       "flags": "TYPE_ALIAS",
       "declarations": [
@@ -38,11 +32,11 @@ function f(x: T = "") {
     }
   },
   "scopes": {
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 3,
-      "flags": "Strict",
-      "hoist_target": 3
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier",
+      "function_body": 4
     }
   }
 }

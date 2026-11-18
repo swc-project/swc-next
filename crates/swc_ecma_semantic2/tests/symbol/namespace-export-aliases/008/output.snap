@@ -15,7 +15,7 @@ import A = N.Y;
   "symbols": {
     "A": [
       {
-        "id": 4,
+        "id": 3,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -26,16 +26,18 @@ import A = N.Y;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": 3,
           "initializer": "99..100"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -48,28 +50,17 @@ import A = N.Y;
         "uses": [
           "99..100"
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 2,
-              "value_symbols": []
-            },
-            "Y": {
-              "symbol": null,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -79,12 +70,20 @@ import A = N.Y;
         ]
       },
       {
-        "id": 3,
-        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT",
+        "id": 2,
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
+            "span": "41..42",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          },
+          {
             "span": "54..55",
-            "scope": 2
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT"
           }
         ],
         "bindings": [
@@ -92,7 +91,8 @@ import A = N.Y;
         ],
         "uses": [
           "76..77"
-        ]
+        ],
+        "export_symbol": 1
       }
     ]
   },
@@ -105,7 +105,8 @@ import A = N.Y;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

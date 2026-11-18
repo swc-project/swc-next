@@ -16,8 +16,8 @@ declare namespace M {
   "symbols": {
     "N": [
       {
-        "id": 1,
-        "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+        "id": 0,
+        "flags": "NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
             "span": "18..19",
@@ -30,12 +30,10 @@ declare namespace M {
         "uses": [
           "90..91"
         ],
-        "namespace": {
-          "members": {
-            "x": {
-              "symbol": 2,
-              "value_symbols": []
-            }
+        "members": {
+          "x": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
       }
@@ -46,6 +44,12 @@ declare namespace M {
       "kind": "Module",
       "parent": 0,
       "flags": "Strict"
+    },
+    "2": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

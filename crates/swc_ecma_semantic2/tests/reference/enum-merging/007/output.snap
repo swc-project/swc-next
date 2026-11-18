@@ -28,56 +28,26 @@ namespace E {
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "162..163",
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       },
       {
         "span": "184..185",
         "scope": 9,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
       "declarations": [
@@ -85,7 +55,7 @@ namespace E {
         "18..19"
       ]
     },
-    "3": {
+    "2": {
       "name": "A",
       "flags": "NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER",
       "declarations": [
@@ -98,7 +68,8 @@ namespace E {
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "8": {
       "kind": "Block",

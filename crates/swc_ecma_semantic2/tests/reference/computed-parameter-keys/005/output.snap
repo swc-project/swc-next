@@ -14,36 +14,17 @@ type F = ({ [key.p]: v }) => void;
     "key": [
       {
         "span": "55..58",
-        "scope": 5,
-        "space": "Typeof",
+        "scope": 4,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       }
     ]
   },
-  "symbols": {
-    "1": {
-      "name": "key",
-      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-      "declarations": [
-        "10..13"
-      ]
-    }
-  },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 4,
+    "4": {
+      "kind": "Block",
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

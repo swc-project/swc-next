@@ -18,18 +18,12 @@ export { A };
         "scope": 1,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "INTERFACE | EXPORTED",
       "declarations": [
@@ -42,7 +36,9 @@ export { A };
       "declarations": [
         "47..48"
       ],
-      "alias_target": 2
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

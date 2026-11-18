@@ -22,18 +22,9 @@ namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
+        "symbol": null,
         "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 3
-            }
-          }
+          2
         ]
       },
       {
@@ -41,18 +32,9 @@ namespace N {
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
+        "symbol": null,
         "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 3
-            }
-          }
+          2
         ]
       }
     ],
@@ -62,43 +44,39 @@ namespace N {
         "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 3
-          }
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 3
-            }
-          }
-        ]
+        "symbol": null
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "original",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "62..70"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "NAMESPACE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

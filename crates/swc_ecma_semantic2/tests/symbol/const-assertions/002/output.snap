@@ -10,7 +10,7 @@ const result = <const>1;
   "symbols": {
     "result": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {

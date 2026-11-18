@@ -14,36 +14,17 @@ interface I {
     "key": [
       {
         "span": "41..44",
-        "scope": 4,
-        "space": "Typeof",
+        "scope": 3,
+        "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": null
       }
     ]
   },
-  "symbols": {
-    "1": {
-      "name": "key",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "6..9"
-      ]
-    }
-  },
   "scopes": {
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 3,
+    "3": {
+      "kind": "Block",
+      "parent": 2,
       "flags": "Strict",
       "hoist_target": 1
     }

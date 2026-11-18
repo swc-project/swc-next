@@ -17,7 +17,7 @@ namespace N {
   "symbols": {
     "Alias": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -33,7 +33,7 @@ namespace N {
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
         "declarations": [
           {
@@ -41,18 +41,23 @@ namespace N {
             "scope": 2
           }
         ],
+        "bindings": [
+          2
+        ],
         "uses": [
           "158..163"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": null,
           "initializer": "108..114"
         }
       }
     ],
     "N": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -67,26 +72,14 @@ namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "Alias": {
-              "symbol": 4,
-              "value_symbols": [
-                {
-                  "Uncertain": {
-                    "candidate": 4
-                  }
-                }
-              ]
-            },
-            "selected": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            }
+        "members": {
+          "Alias": {
+            "symbol": 3,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          },
+          "selected": {
+            "symbol": 4,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -101,7 +94,14 @@ namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 2
+    },
+    "3": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 2
     }
   }
 }

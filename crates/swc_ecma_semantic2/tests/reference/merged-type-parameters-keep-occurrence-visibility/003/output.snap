@@ -18,79 +18,57 @@ interface Box<T> {
     "T": [
       {
         "span": "39..40",
-        "scope": 5,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 1
       },
       {
         "span": "62..63",
-        "scope": 4,
+        "scope": 3,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 3
-          }
-        ]
+        "symbol": 2
       },
       {
         "span": "99..100",
-        "scope": 6,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": []
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
-        "10..11",
-        "85..86"
+        "10..11"
       ]
     },
-    "3": {
+    "2": {
       "name": "T",
       "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [
         "36..37"
       ]
+    },
+    "4": {
+      "name": "T",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "85..86"
+      ]
     }
   },
   "scopes": {
-    "4": {
+    "3": {
       "kind": "Function",
       "parent": 2,
       "flags": "Strict | ArgumentsBarrier"
     },
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 4,
-      "flags": "Strict",
-      "hoist_target": 4
-    },
-    "6": {
+    "4": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

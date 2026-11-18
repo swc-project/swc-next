@@ -15,24 +15,34 @@ class Box<T> {
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "14..15",
             "scope": 2
-          },
-          {
-            "span": "43..44",
-            "scope": 4
           }
         ],
         "bindings": [
-          2,
-          4
+          2
         ],
         "uses": [
-          "28..29",
+          "28..29"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "43..44",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
           "58..59"
         ]
       }
@@ -45,7 +55,7 @@ class Box<T> {
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Class",
       "parent": 1,
       "flags": "Strict",

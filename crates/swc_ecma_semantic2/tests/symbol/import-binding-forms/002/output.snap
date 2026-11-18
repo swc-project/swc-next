@@ -10,7 +10,7 @@ import type A from "dep";
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_IMPORT",
         "declarations": [
           {

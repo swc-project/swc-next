@@ -13,7 +13,7 @@ function f<T extends typeof value>() {
   "symbols": {
     "value": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
         "declarations": [
           {

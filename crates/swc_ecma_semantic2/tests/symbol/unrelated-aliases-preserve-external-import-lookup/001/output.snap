@@ -11,7 +11,7 @@ type A = Item;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -26,7 +26,7 @@ type A = Item;
     ],
     "Item": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_IMPORT",
         "declarations": [
           {

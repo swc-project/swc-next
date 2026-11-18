@@ -11,7 +11,7 @@ const result = <const>{ value };
   "symbols": {
     "value": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {

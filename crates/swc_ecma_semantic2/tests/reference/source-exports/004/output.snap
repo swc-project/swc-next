@@ -22,83 +22,57 @@ declare namespace Test {
     "A": [
       {
         "span": "189..190",
-        "scope": 8,
+        "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": []
+        "symbol": 5
       },
       {
         "span": "215..216",
-        "scope": 8,
+        "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 5
       }
     ],
     "f": [
       {
         "span": "171..172",
-        "scope": 8,
+        "scope": 7,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "0": {
       "name": "f",
-      "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+      "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
       "declarations": [
+        "24..25",
         "40..41",
         "70..71"
       ]
     },
-    "4": {
-      "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT | EXPORTED",
-      "declarations": [
-        "101..102",
-        "127..128"
-      ]
-    },
-    "6": {
+    "5": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "167..168"
       ],
-      "alias_target": 2
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
-    "8": {
+    "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

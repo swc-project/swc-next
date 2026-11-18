@@ -27,16 +27,9 @@ namespace N {
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
+        "symbol": null,
         "candidates": [
           7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
         ]
       },
       {
@@ -44,13 +37,7 @@ namespace N {
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 5
       }
     ]
   },
@@ -67,14 +54,21 @@ namespace N {
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "177..182"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "8": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     }
   }
 }

@@ -14,7 +14,7 @@ function f<T extends typeof value>(value: number): T {
   "symbols": {
     "value": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
         "declarations": [
           {
@@ -24,13 +24,10 @@ function f<T extends typeof value>(value: number): T {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "62..67"
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
         "declarations": [
           {
@@ -40,6 +37,9 @@ function f<T extends typeof value>(value: number): T {
         ],
         "bindings": [
           2
+        ],
+        "uses": [
+          "62..67"
         ]
       }
     ]

@@ -16,24 +16,34 @@ const ctor = I;
   "symbols": {
     "T": [
       {
-        "id": 2,
+        "id": 0,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "21..22",
             "scope": 2
-          },
-          {
-            "span": "68..69",
-            "scope": 4
           }
         ],
         "bindings": [
-          2,
-          4
+          2
         ],
         "uses": [
-          "36..37",
+          "36..37"
+        ]
+      },
+      {
+        "id": 2,
+        "flags": "TYPE_PARAMETER",
+        "declarations": [
+          {
+            "span": "68..69",
+            "scope": 3
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "uses": [
           "82..83"
         ]
       }
@@ -46,7 +56,7 @@ const ctor = I;
       "flags": "Strict",
       "hoist_target": 1
     },
-    "4": {
+    "3": {
       "kind": "Block",
       "parent": 1,
       "flags": "Strict",

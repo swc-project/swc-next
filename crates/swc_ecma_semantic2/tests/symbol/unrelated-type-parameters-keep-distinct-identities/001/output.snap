@@ -19,7 +19,7 @@ namespace N {
   "symbols": {
     "T": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
@@ -35,16 +35,16 @@ namespace N {
         ]
       },
       {
-        "id": 5,
+        "id": 4,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "85..86",
-            "scope": 6
+            "scope": 5
           }
         ],
         "bindings": [
-          6
+          5
         ],
         "uses": [
           "101..102"
@@ -59,11 +59,11 @@ namespace N {
       "flags": "Strict",
       "hoist_target": 2
     },
-    "6": {
+    "5": {
       "kind": "Block",
-      "parent": 5,
+      "parent": 4,
       "flags": "Strict",
-      "hoist_target": 5
+      "hoist_target": 4
     }
   }
 }

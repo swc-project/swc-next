@@ -21,11 +21,11 @@ function outer(value = 1) {
         "declarations": [
           {
             "span": "58..59",
-            "scope": 4
+            "scope": 3
           }
         ],
         "bindings": [
-          4
+          3
         ],
         "uses": [
           "77..78"
@@ -37,12 +37,12 @@ function outer(value = 1) {
         "declarations": [
           {
             "span": "58..59",
-            "scope": 3,
+            "scope": 2,
             "node_symbol": 2
           }
         ],
         "bindings": [
-          3
+          2
         ],
         "uses": [
           "95..96"
@@ -51,13 +51,13 @@ function outer(value = 1) {
     ]
   },
   "scopes": {
-    "3": {
+    "2": {
       "kind": "FunctionBody",
       "parent": 1
     },
-    "4": {
+    "3": {
       "kind": "Function",
-      "parent": 3,
+      "parent": 2,
       "flags": "ArgumentsBarrier"
     }
   }

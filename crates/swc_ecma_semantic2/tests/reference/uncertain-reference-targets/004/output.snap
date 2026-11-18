@@ -28,32 +28,11 @@ namespace Outer {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Uncertain": {
-            "candidate": 8
-          }
-        },
+        "symbol": null,
         "candidates": [
-          8,
           4,
-          6
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 8
-            }
-          },
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          },
-          {
-            "Uncertain": {
-              "candidate": 6
-            }
-          }
+          6,
+          8
         ]
       }
     ]
@@ -71,21 +50,36 @@ namespace Outer {
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "133..134"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     },
     "8": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "173..174"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 5,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     }
   }
 }

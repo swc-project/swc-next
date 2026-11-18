@@ -21,34 +21,14 @@ namespace N {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 3
       },
       {
         "span": "90..91",
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 2
       }
     ]
   },
@@ -57,11 +37,18 @@ namespace N {
       "name": "f",
       "flags": "FUNCTION_SCOPED_VAR | EXPORTED",
       "declarations": [
-        "27..28",
-        "60..61"
+        "27..28"
       ]
     },
     "2": {
+      "name": "f",
+      "flags": "FUNCTION_SCOPED_VAR | EXPORT_VALUE",
+      "declarations": [
+        "60..61"
+      ],
+      "export_symbol": 1
+    },
+    "3": {
       "name": "f",
       "flags": "FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION",
       "declarations": [
@@ -72,7 +59,8 @@ namespace N {
   "scopes": {
     "1": {
       "kind": "TsModule",
-      "parent": 0
+      "parent": 0,
+      "container_owner": 0
     },
     "2": {
       "kind": "Function",

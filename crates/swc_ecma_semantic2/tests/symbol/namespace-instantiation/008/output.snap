@@ -22,7 +22,7 @@ declare namespace Outer {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -30,35 +30,42 @@ declare namespace Outer {
             "scope": 2
           }
         ],
-        "namespace": {
-          "members": {
-            "B": {
-              "symbol": 4,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "bad": {
-              "symbol": 5,
-              "value_symbols": [
-                {
-                  "Resolved": 5
-                }
-              ]
-            }
+        "members": {
+          "B": {
+            "symbol": 5,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "X": {
+            "symbol": 3,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
+          },
+          "bad": {
+            "symbol": 7,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED"
           }
         }
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "38..39",
+            "scope": 2,
+            "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "B": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -66,20 +73,29 @@ declare namespace Outer {
             "scope": 3
           }
         ],
-        "namespace": {
-          "members": {
-            "Sibling": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
-        }
+        "members": {}
+      },
+      {
+        "id": 6,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "77..78",
+            "scope": 3,
+            "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
+            "node_symbol": 5,
+            "owner": 5
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "export_symbol": 5
       }
     ],
     "Outer": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -90,24 +106,18 @@ declare namespace Outer {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "A": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "Sibling": {
-              "symbol": 6,
-              "value_symbols": []
-            },
-            "X": {
-              "symbol": 7,
-              "value_symbols": []
-            }
+        "members": {
+          "A": {
+            "symbol": 1,
+            "namespace_flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "Sibling": {
+            "symbol": 9,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "X": {
+            "symbol": 11,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
       }
@@ -122,12 +132,20 @@ declare namespace Outer {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "3": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
+    },
+    "4": {
+      "kind": "TsModule",
+      "parent": 3,
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

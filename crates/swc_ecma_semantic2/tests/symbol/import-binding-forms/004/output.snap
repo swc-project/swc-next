@@ -11,7 +11,7 @@ import B = A;
   "symbols": {
     "A": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -22,8 +22,10 @@ import B = A;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "11..12"
         }
       }

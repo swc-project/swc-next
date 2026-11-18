@@ -14,45 +14,29 @@ const f = function n<a>(x: a) {
     "a": [
       {
         "span": "40..41",
-        "scope": 4,
+        "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "54..55",
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "a",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
         "6..7"
       ]
     },
-    "4": {
+    "3": {
       "name": "a",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -65,12 +49,6 @@ const f = function n<a>(x: a) {
       "kind": "Function",
       "parent": 1,
       "flags": "Strict | ArgumentsBarrier"
-    },
-    "4": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
     }
   }
 }

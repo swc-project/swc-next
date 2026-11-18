@@ -29,34 +29,14 @@ const typed: Alias = { own: true };
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "283..288",
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": 9
       }
     ],
     "N": [
@@ -64,18 +44,8 @@ const typed: Alias = { own: true };
         "span": "235..236",
         "scope": 1,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       }
     ],
@@ -85,17 +55,7 @@ const typed: Alias = { own: true };
         "scope": 2,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 2
       }
     ],
     "Y": [
@@ -104,55 +64,65 @@ const typed: Alias = { own: true };
         "scope": 5,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "29..30"
       ]
     },
-    "2": {
+    "1": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
       "declarations": [
         "48..49"
       ]
     },
-    "3": {
+    "2": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
+        "48..49",
         "66..67"
-      ]
+      ],
+      "export_symbol": 1
     },
-    "4": {
+    "3": {
       "name": "Y",
       "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED",
       "declarations": [
         "90..91"
       ]
     },
+    "4": {
+      "name": "Y",
+      "flags": "0x0",
+      "declarations": [
+        "90..91"
+      ],
+      "export_symbol": 3
+    },
     "7": {
+      "name": "Z",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "164..165"
+      ]
+    },
+    "9": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "227..232"
-      ]
+      ],
+      "alias": {
+        "Target": 7
+      }
     }
   },
   "scopes": {
@@ -164,12 +134,14 @@ const typed: Alias = { own: true };
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "5": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

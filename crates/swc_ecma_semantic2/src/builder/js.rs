@@ -1458,7 +1458,7 @@ fn check_redeclaration(
         !flags.intersects(SymbolFlags::INTERNAL_NAME)
     });
     if let Some(existing_id) = existing {
-        let existing_flags = builder.symbols.symbol(existing_id).flags;
+        let existing_flags = builder.symbols.local_declaration_flags(existing_id, target);
         let existing_node = builder.symbols.first_decl_of(existing_id);
         let import_value_conflict = !builder.ast.is_ts()
             && builder.ast.is_module()
@@ -1491,6 +1491,16 @@ fn check_redeclaration(
                 builder.report_redeclaration(name, node, existing_node, existing_flags);
             }
         }
+    }
+
+    if builder.ast.is_ts()
+        && let Some((node_id, flags)) =
+            builder
+                .symbols
+                .ts_export_conflict(builder.ast, name, binding)
+    {
+        builder.report_redeclaration(name, node, node_id, flags);
+        return;
     }
 
     if let Some(existing) = builder.symbols.hoisting_conflict(binding, name) {

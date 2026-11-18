@@ -14,25 +14,15 @@ class C {
     "local": [
       {
         "span": "85..90",
-        "scope": 7,
+        "scope": 4,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 5
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "5": {
+    "4": {
       "name": "local",
       "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [
@@ -41,9 +31,9 @@ class C {
     }
   },
   "scopes": {
-    "7": {
+    "4": {
       "kind": "Function",
-      "parent": 6,
+      "parent": 3,
       "flags": "Strict"
     }
   }

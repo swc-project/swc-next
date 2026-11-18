@@ -21,41 +21,10 @@ namespace Test {
 ---------- Output ----------
 {
   "symbols": {
-    "": [
-      {
-        "id": 0,
-        "flags": "VALUE_MODULE | NAMESPACE_MODULE",
-        "declarations": [
-          {
-            "span": "0..235",
-            "scope": 0,
-            "node_symbol": null
-          }
-        ],
-        "roles": [
-          "SourceModule"
-        ],
-        "namespace": {
-          "members": {
-            "I": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            },
-            "default": {
-              "symbol": 1,
-              "value_symbols": []
-            }
-          }
-        }
-      }
-    ],
+    "": [],
     "A": [
       {
-        "id": 5,
+        "id": 4,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -71,13 +40,10 @@ namespace Test {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "193..194"
         ]
       },
       {
-        "id": 7,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -89,20 +55,20 @@ namespace Test {
           6
         ],
         "uses": [
+          "193..194",
           "226..227",
           "230..231"
         ],
+        "alias": {
+          "Target": 0
+        },
         "import": {
-          "target": 2,
           "initializer": "171..172"
         }
       }
     ]
   },
   "scopes": {
-    "0": {
-      "kind": "Global"
-    },
     "1": {
       "kind": "Module",
       "parent": 0,
@@ -111,7 +77,8 @@ namespace Test {
     "6": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

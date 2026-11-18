@@ -27,7 +27,7 @@ enum E {
     ],
     "B": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -35,11 +35,28 @@ enum E {
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "29..30",
+            "scope": 2,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "E": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "REGULAR_ENUM | VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -56,28 +73,14 @@ enum E {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "B": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
-          }
-        },
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 3,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "B": {
+            "symbol": 1,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -92,13 +95,15 @@ enum E {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     },
     "3": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     }
   }
 }

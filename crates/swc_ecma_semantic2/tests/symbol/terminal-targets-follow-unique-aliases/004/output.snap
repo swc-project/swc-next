@@ -13,7 +13,7 @@ import A = C.x;
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -24,8 +24,10 @@ import A = C.x;
         "bindings": [
           1
         ],
+        "alias": {
+          "Unknown": []
+        },
         "import": {
-          "target": null,
           "initializer": "39..40"
         }
       }

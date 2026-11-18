@@ -9,24 +9,6 @@ export declare const value: number;
 ---------- Output ----------
 {
   "symbols": {
-    "Global": [
-      {
-        "id": 1,
-        "flags": "UMD_EXPORT",
-        "declarations": [
-          {
-            "span": "20..26",
-            "scope": 1
-          }
-        ]
-      }
-    ]
-  },
-  "scopes": {
-    "1": {
-      "kind": "Module",
-      "parent": 0,
-      "flags": "Strict"
-    }
+    "Global": []
   }
 }

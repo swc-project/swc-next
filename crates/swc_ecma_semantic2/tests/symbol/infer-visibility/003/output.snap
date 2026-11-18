@@ -12,7 +12,7 @@ type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
   "symbols": {
     "U": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "TYPE_ALIAS",
         "declarations": [
           {
@@ -24,26 +24,25 @@ type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
           1
         ],
         "uses": [
-          "80..81",
-          "85..86",
-          "89..90",
           "98..99"
         ]
       },
       {
-        "id": 4,
+        "id": 3,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
             "span": "57..58",
-            "scope": 5
+            "scope": 4
           }
         ],
         "bindings": [
-          5,
-          7
+          4
         ],
         "uses": [
+          "80..81",
+          "85..86",
+          "89..90",
           "94..95"
         ]
       }
@@ -55,7 +54,7 @@ type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
       "parent": 0,
       "flags": "Strict"
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
       "flags": "Strict",

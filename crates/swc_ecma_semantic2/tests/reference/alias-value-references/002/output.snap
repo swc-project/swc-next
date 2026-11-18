@@ -21,27 +21,20 @@ export { Alias };
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "3": {
-      "name": "C",
-      "flags": "CLASS | EXPORTED",
+    "1": {
+      "name": "Value",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
       "declarations": [
-        "74..75"
-      ]
+        "30..35"
+      ],
+      "alias": {
+        "Target": 2
+      }
     },
     "4": {
       "name": "Alias",
@@ -49,7 +42,9 @@ export { Alias };
       "declarations": [
         "88..93"
       ],
-      "alias_target": 3
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

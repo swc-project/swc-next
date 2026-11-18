@@ -19,24 +19,12 @@ namespace N {
     "f": [
       {
         "id": 1,
-        "flags": "TYPE_ALIAS",
+        "flags": "FUNCTION_SCOPED_VAR | TYPE_ALIAS | EXPORT_VALUE",
         "declarations": [
           {
             "span": "21..22",
-            "scope": 1
-          }
-        ],
-        "bindings": [
-          1
-        ]
-      },
-      {
-        "id": 2,
-        "flags": "FUNCTION_SCOPED_VAR | EXPORTED",
-        "declarations": [
-          {
-            "span": "46..47",
-            "scope": 1
+            "scope": 1,
+            "flags": "TYPE_ALIAS"
           },
           {
             "span": "79..80",
@@ -45,8 +33,22 @@ namespace N {
             "node_symbol": 3
           }
         ],
+        "bindings": [
+          1
+        ],
         "uses": [
           "109..110"
+        ],
+        "export_symbol": 2
+      },
+      {
+        "id": 2,
+        "flags": "FUNCTION_SCOPED_VAR | EXPORTED",
+        "declarations": [
+          {
+            "span": "46..47",
+            "scope": 1
+          }
         ]
       },
       {
@@ -70,7 +72,8 @@ namespace N {
   "scopes": {
     "1": {
       "kind": "TsModule",
-      "parent": 0
+      "parent": 0,
+      "container_owner": 0
     },
     "3": {
       "kind": "Function",

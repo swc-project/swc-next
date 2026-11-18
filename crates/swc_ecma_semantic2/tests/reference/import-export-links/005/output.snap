@@ -24,17 +24,7 @@ namespace Outer {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 6
       }
     ],
     "F": [
@@ -43,35 +33,27 @@ namespace Outer {
         "scope": 6,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ],
+        "symbol": 2,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "F",
       "flags": "FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION",
       "declarations": [
         "36..37"
       ]
     },
-    "3": {
+    "2": {
       "name": "F",
-      "flags": "NAMESPACE_MODULE",
+      "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
+        "36..37",
         "55..56"
-      ]
+      ],
+      "export_symbol": 1
     },
     "6": {
       "name": "A",
@@ -79,14 +61,18 @@ namespace Outer {
       "declarations": [
         "119..120",
         "136..137"
-      ]
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
     "6": {
       "kind": "TsModule",
       "parent": 2,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 5
     }
   }
 }

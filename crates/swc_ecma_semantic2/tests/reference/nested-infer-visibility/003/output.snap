@@ -12,41 +12,29 @@ type R<T> = T extends (true extends true ? [infer U, U] : never) ? U : never;
     "U": [
       {
         "span": "70..71",
-        "scope": 7,
-        "space": "Type",
-        "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
-      },
-      {
-        "span": "84..85",
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
+      },
+      {
+        "span": "84..85",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "U",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "5..6"
       ]
     },
-    "4": {
+    "3": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -55,15 +43,15 @@ type R<T> = T extends (true extends true ? [infer U, U] : never) ? U : never;
     }
   },
   "scopes": {
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     },
-    "7": {
+    "5": {
       "kind": "Block",
-      "parent": 6,
+      "parent": 4,
       "flags": "Strict",
       "hoist_target": 1
     }

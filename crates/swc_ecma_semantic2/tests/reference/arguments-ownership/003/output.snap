@@ -14,21 +14,18 @@ declare abstract class C {
     "arguments": [
       {
         "span": "92..101",
-        "scope": 3,
+        "scope": 2,
         "space": "Typeof",
         "access": "None",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": []
+        "symbol": null
       }
     ]
   },
   "scopes": {
-    "3": {
-      "kind": "TsSignatureReturn",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

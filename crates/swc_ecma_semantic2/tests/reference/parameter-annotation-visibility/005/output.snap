@@ -13,21 +13,15 @@ function f<T>(x: T) {}
     "T": [
       {
         "span": "45..46",
-        "scope": 5,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -36,11 +30,10 @@ function f<T>(x: T) {}
     }
   },
   "scopes": {
-    "5": {
-      "kind": "TsSignatureParameter",
-      "parent": 3,
-      "flags": "Strict",
-      "hoist_target": 3
+    "3": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier"
     }
   }
 }

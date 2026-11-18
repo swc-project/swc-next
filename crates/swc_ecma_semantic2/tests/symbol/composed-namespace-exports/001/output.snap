@@ -33,19 +33,19 @@ const queried: typeof Alias = 1;
           1
         ],
         "uses": [
-          "165..170",
-          "185..190",
-          "232..237"
+          "185..190"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": null,
           "initializer": "143..144"
         }
       }
     ],
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -59,28 +59,17 @@ const queried: typeof Alias = 1;
         "uses": [
           "143..144"
         ],
-        "namespace": {
-          "members": {
-            "X": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            },
-            "original": {
-              "symbol": null,
-              "value_symbols": []
-            }
-          },
-          "export_aliases": true
+        "members": {
+          "X": {
+            "symbol": 1,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
+          }
         }
       }
     ],
     "X": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "INTERFACE | AMBIENT | EXPORTED",
         "declarations": [
           {
@@ -88,6 +77,23 @@ const queried: typeof Alias = 1;
             "scope": 2
           }
         ]
+      },
+      {
+        "id": 2,
+        "flags": "0x0",
+        "declarations": [
+          {
+            "span": "52..53",
+            "scope": 2,
+            "flags": "INTERFACE | AMBIENT | EXPORTED",
+            "node_symbol": 1,
+            "owner": 1
+          }
+        ],
+        "bindings": [
+          2
+        ],
+        "export_symbol": 1
       }
     ],
     "original": [
@@ -118,7 +124,8 @@ const queried: typeof Alias = 1;
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

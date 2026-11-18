@@ -19,19 +19,7 @@ export { A };
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Uncertain": {
-              "candidate": 4
-            }
-          }
-        ]
+        "symbol": 3
       }
     ],
     "remote": [
@@ -40,35 +28,38 @@ export { A };
         "scope": 2,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "remote",
       "flags": "IMPORT",
       "declarations": [
         "12..18"
       ]
     },
-    "4": {
+    "2": {
+      "name": "Alias",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "66..71"
+      ],
+      "alias": {
+        "Target": 0
+      }
+    },
+    "3": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "91..92"
-      ]
+      ],
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {
@@ -80,7 +71,8 @@ export { A };
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

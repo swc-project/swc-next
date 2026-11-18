@@ -13,25 +13,15 @@ type F = <T extends typeof value>(value: number) => T;
     "value": [
       {
         "span": "61..66",
-        "scope": 4,
+        "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "value",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -40,9 +30,9 @@ type F = <T extends typeof value>(value: number) => T;
     }
   },
   "scopes": {
-    "4": {
-      "kind": "TsTypeParameters",
-      "parent": 3,
+    "3": {
+      "kind": "Block",
+      "parent": 2,
       "flags": "Strict",
       "hoist_target": 1
     }

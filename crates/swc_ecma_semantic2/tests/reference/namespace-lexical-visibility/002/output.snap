@@ -25,22 +25,12 @@ namespace N {
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | INTERFACE | CONST_VAR | EXPORTED",
       "declarations": [
@@ -50,10 +40,12 @@ namespace N {
     },
     "3": {
       "name": "X",
-      "flags": "INTERFACE",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
-        "89..90"
-      ]
+        "89..90",
+        "129..130"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {

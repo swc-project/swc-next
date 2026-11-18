@@ -16,22 +16,12 @@ export const result = X;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | TYPE_IMPORT | CONST_VAR",
       "declarations": [

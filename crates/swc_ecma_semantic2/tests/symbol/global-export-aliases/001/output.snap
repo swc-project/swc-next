@@ -12,22 +12,25 @@ export type Value = typeof Foo;
   "symbols": {
     "Foo": [
       {
-        "id": 1,
-        "flags": "UMD_EXPORT",
-        "declarations": [
-          {
-            "span": "20..23",
-            "scope": 1
-          }
-        ]
-      },
-      {
-        "id": 2,
+        "id": 0,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
         "declarations": [
           {
             "span": "46..49",
             "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "46..49",
+            "scope": 1,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED",
+            "node_symbol": 0,
+            "owner": 0
           }
         ],
         "bindings": [
@@ -35,7 +38,8 @@ export type Value = typeof Foo;
         ],
         "uses": [
           "86..89"
-        ]
+        ],
+        "export_symbol": 0
       }
     ]
   },

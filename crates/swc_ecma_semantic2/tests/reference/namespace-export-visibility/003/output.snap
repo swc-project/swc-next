@@ -24,13 +24,7 @@ namespace N {
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ],
     "Local": [
@@ -39,18 +33,19 @@ namespace N {
         "scope": 3,
         "space": "Any",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "0": {
+      "name": "Item",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "16..20"
+      ]
+    },
+    "2": {
       "name": "Local",
       "flags": "INTERFACE | AMBIENT",
       "declarations": [
@@ -62,12 +57,14 @@ namespace N {
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     },
     "5": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 1
     }
   }
 }

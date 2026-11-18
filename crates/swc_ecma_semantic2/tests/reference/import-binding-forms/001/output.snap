@@ -14,9 +14,7 @@ import A = Unknown.Member;
         "scope": 1,
         "space": "Namespace",
         "access": "Read",
-        "resolution": "Unresolved",
-        "candidates": [],
-        "value_symbols": [],
+        "symbol": null,
         "import_equals": true
       }
     ]

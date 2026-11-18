@@ -15,7 +15,7 @@ namespace E {
   "symbols": {
     "A": [
       {
-        "id": 2,
+        "id": 1,
         "flags": "ENUM_MEMBER",
         "declarations": [
           {
@@ -27,7 +27,7 @@ namespace E {
     ],
     "B": [
       {
-        "id": 3,
+        "id": 2,
         "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
         "declarations": [
           {
@@ -35,11 +35,28 @@ namespace E {
             "scope": 3
           }
         ]
+      },
+      {
+        "id": 3,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "49..50",
+            "scope": 3,
+            "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
+            "node_symbol": 2,
+            "owner": 2
+          }
+        ],
+        "bindings": [
+          3
+        ],
+        "export_symbol": 2
       }
     ],
     "E": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "REGULAR_ENUM | VALUE_MODULE | NAMESPACE_MODULE",
         "declarations": [
           {
@@ -56,28 +73,14 @@ namespace E {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "B": {
-              "symbol": 3,
-              "value_symbols": [
-                {
-                  "Resolved": 3
-                }
-              ]
-            }
-          }
-        },
-        "enum": {
-          "members": {
-            "A": {
-              "symbol": 2,
-              "value_symbols": [
-                {
-                  "Resolved": 2
-                }
-              ]
-            }
+        "members": {
+          "A": {
+            "symbol": 1,
+            "enum_flags": "ENUM_MEMBER"
+          },
+          "B": {
+            "symbol": 2,
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED"
           }
         }
       }
@@ -90,15 +93,17 @@ namespace E {
       "flags": "Strict"
     },
     "2": {
-      "kind": "Block",
+      "kind": "TsEnum",
       "parent": 1,
       "flags": "Strict",
-      "hoist_target": 1
+      "hoist_target": 1,
+      "container_owner": 0
     },
     "3": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

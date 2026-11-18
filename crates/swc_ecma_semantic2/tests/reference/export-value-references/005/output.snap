@@ -16,29 +16,21 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
-      "flags": "INTERFACE",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
-        "10..11"
-      ]
+        "10..11",
+        "28..29"
+      ],
+      "export_symbol": 1
     },
-    "2": {
+    "1": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [
@@ -65,29 +57,21 @@ export default (X);
         "scope": 1,
         "space": "Any",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "X",
-      "flags": "INTERFACE",
+      "flags": "INTERFACE | EXPORT_VALUE",
       "declarations": [
-        "10..11"
-      ]
+        "10..11",
+        "28..29"
+      ],
+      "export_symbol": 1
     },
-    "2": {
+    "1": {
       "name": "X",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED",
       "declarations": [

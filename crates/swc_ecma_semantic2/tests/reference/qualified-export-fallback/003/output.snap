@@ -34,47 +34,21 @@ const b: B = { own: true };
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 5
-        },
-        "candidates": [
-          5
-        ],
-        "value_symbols": []
+        "symbol": 6
       },
       {
         "span": "283..284",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       },
       {
         "span": "311..312",
         "scope": 8,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 7
-        },
-        "candidates": [
-          7
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 7
-          }
-        ]
+        "symbol": null
       }
     ],
     "B": [
@@ -83,13 +57,7 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 11
-        },
-        "candidates": [
-          11
-        ],
-        "value_symbols": []
+        "symbol": 15
       }
     ],
     "N": [
@@ -97,18 +65,8 @@ const b: B = { own: true };
         "span": "222..223",
         "scope": 7,
         "space": "Namespace",
-        "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "access": "None",
+        "symbol": 0,
         "import_equals": true
       },
       {
@@ -116,23 +74,13 @@ const b: B = { own: true };
         "scope": 1,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "N",
       "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
       "declarations": [
@@ -146,27 +94,22 @@ const b: B = { own: true };
         "115..116"
       ]
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "181..182"
       ]
     },
-    "7": {
-      "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
-      "declarations": [
-        "218..219"
-      ]
-    },
-    "11": {
+    "15": {
       "name": "B",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "323..324"
       ],
-      "alias_target": 4
+      "alias": {
+        "Target": 4
+      }
     }
   },
   "scopes": {
@@ -178,7 +121,8 @@ const b: B = { own: true };
     "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 7
     },
     "8": {
       "kind": "Block",

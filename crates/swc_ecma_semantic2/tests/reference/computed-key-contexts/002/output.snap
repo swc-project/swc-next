@@ -14,25 +14,15 @@ function f({ [key]: v }: { p: number }) {
     "key": [
       {
         "span": "31..34",
-        "scope": 3,
+        "scope": 2,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ]
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "key",
       "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
       "declarations": [
@@ -41,11 +31,11 @@ function f({ [key]: v }: { p: number }) {
     }
   },
   "scopes": {
-    "3": {
-      "kind": "TsSignatureParameter",
-      "parent": 2,
-      "flags": "Strict",
-      "hoist_target": 2
+    "2": {
+      "kind": "Function",
+      "parent": 1,
+      "flags": "Strict | ArgumentsBarrier",
+      "function_body": 3
     }
   }
 }

@@ -1,0 +1,139 @@
+---
+source: crates/swc_ecma_semantic2/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace M {
+  export class X {}
+}
+import type N = M;
+const A = 0;
+namespace Use {
+  import A = N.X;
+  import B = M.X;
+  type Instance = A;
+  type Constructor = typeof A;
+  const a = A;
+  const b = B;
+}
+---------- Options ----------
+{"names":["N","A","B"]}
+---------- Output ----------
+{
+  "references": {
+    "A": [
+      {
+        "span": "138..139",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "symbol": 6
+      },
+      {
+        "span": "169..170",
+        "scope": 6,
+        "space": "Typeof",
+        "access": "None",
+        "symbol": 6
+      },
+      {
+        "span": "184..185",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "symbol": 4
+      }
+    ],
+    "B": [
+      {
+        "span": "199..200",
+        "scope": 4,
+        "space": "Value",
+        "access": "Read",
+        "symbol": 7
+      }
+    ],
+    "N": [
+      {
+        "span": "97..98",
+        "scope": 4,
+        "space": "Namespace",
+        "access": "None",
+        "symbol": 3,
+        "import_equals": true
+      }
+    ]
+  },
+  "symbols": {
+    "0": {
+      "name": "M",
+      "flags": "VALUE_MODULE | NAMESPACE_MODULE",
+      "declarations": [
+        "10..11"
+      ]
+    },
+    "1": {
+      "name": "X",
+      "flags": "CLASS | EXPORTED",
+      "declarations": [
+        "29..30"
+      ]
+    },
+    "3": {
+      "name": "N",
+      "flags": "TYPE_IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "48..49"
+      ],
+      "alias": {
+        "Target": 0
+      }
+    },
+    "4": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "declarations": [
+        "61..62"
+      ]
+    },
+    "6": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "93..94"
+      ],
+      "alias": {
+        "Target": 1
+      }
+    },
+    "7": {
+      "name": "B",
+      "flags": "IMPORT | IMPORT_EQUALS",
+      "declarations": [
+        "111..112"
+      ],
+      "alias": {
+        "Target": 1
+      }
+    }
+  },
+  "scopes": {
+    "4": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 5
+    },
+    "5": {
+      "kind": "Block",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 4
+    },
+    "6": {
+      "kind": "Block",
+      "parent": 4,
+      "flags": "Strict",
+      "hoist_target": 4
+    }
+  }
+}

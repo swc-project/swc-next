@@ -23,98 +23,57 @@ declare namespace Test {
     "A": [
       {
         "span": "200..201",
-        "scope": 8,
+        "scope": 7,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 4
-          }
-        ]
+        "symbol": 5
       },
       {
         "span": "226..227",
-        "scope": 8,
+        "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
-        "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
-        ]
+        "symbol": 5
       }
     ],
     "f": [
       {
         "span": "182..183",
-        "scope": 8,
+        "scope": 7,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "f",
-      "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+      "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
       "declarations": [
-        "35..36"
-      ]
-    },
-    "2": {
-      "name": "f",
-      "flags": "TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT",
-      "declarations": [
+        "35..36",
         "51..52",
         "81..82"
       ]
     },
-    "4": {
-      "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT",
-      "declarations": [
-        "112..113",
-        "138..139"
-      ]
-    },
-    "6": {
+    "5": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "178..179"
       ],
-      "alias_target": 1
+      "alias": {
+        "Target": 0
+      }
     }
   },
   "scopes": {
-    "8": {
+    "7": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 4
     }
   }
 }

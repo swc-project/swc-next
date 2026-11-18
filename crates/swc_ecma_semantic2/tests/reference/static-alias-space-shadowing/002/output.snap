@@ -31,29 +31,16 @@ namespace N {
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "226..227",
         "scope": 8,
         "space": "Value",
         "access": "Read",
-        "resolution": {
-          "Resolved": 6
-        },
+        "symbol": null,
         "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
+          7
         ]
       },
       {
@@ -61,16 +48,9 @@ namespace N {
         "scope": 9,
         "space": "Typeof",
         "access": "None",
-        "resolution": {
-          "Resolved": 6
-        },
+        "symbol": null,
         "candidates": [
-          6
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 6
-          }
+          7
         ]
       },
       {
@@ -78,13 +58,7 @@ namespace N {
         "scope": 10,
         "space": "Namespace",
         "access": "None",
-        "resolution": {
-          "Resolved": 3
-        },
-        "candidates": [
-          3
-        ],
-        "value_symbols": []
+        "symbol": 3
       }
     ],
     "C": [
@@ -93,23 +67,13 @@ namespace N {
         "scope": 8,
         "space": "Namespace",
         "access": "Read",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 1
-          }
-        ],
+        "symbol": 0,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
       "declarations": [
@@ -125,19 +89,26 @@ namespace N {
         "110..111"
       ]
     },
-    "6": {
+    "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "163..164"
-      ]
+      ],
+      "alias": {
+        "Unknown": [
+          "VALUE",
+          "TYPEOF"
+        ]
+      }
     }
   },
   "scopes": {
     "8": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 6
     },
     "9": {
       "kind": "Block",

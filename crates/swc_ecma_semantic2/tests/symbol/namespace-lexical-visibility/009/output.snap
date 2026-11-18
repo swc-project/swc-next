@@ -20,7 +20,7 @@ declare namespace N {
   "symbols": {
     "N": [
       {
-        "id": 1,
+        "id": 0,
         "flags": "VALUE_MODULE | NAMESPACE_MODULE | AMBIENT",
         "declarations": [
           {
@@ -36,31 +36,29 @@ declare namespace N {
         "bindings": [
           1
         ],
-        "namespace": {
-          "members": {
-            "PublicAlias": {
-              "symbol": 4,
-              "value_symbols": []
-            },
-            "Target": {
-              "symbol": 2,
-              "value_symbols": []
-            },
-            "UsesPrivate": {
-              "symbol": 7,
-              "value_symbols": []
-            },
-            "UsesPublic": {
-              "symbol": 6,
-              "value_symbols": []
-            }
+        "members": {
+          "PublicAlias": {
+            "symbol": 5,
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+          },
+          "Target": {
+            "symbol": 1,
+            "namespace_flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED"
+          },
+          "UsesPrivate": {
+            "symbol": 9,
+            "namespace_flags": "TYPE_ALIAS | AMBIENT | EXPORTED"
+          },
+          "UsesPublic": {
+            "symbol": 7,
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
       }
     ],
     "PrivateAlias": [
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS",
         "declarations": [
           {
@@ -71,15 +69,17 @@ declare namespace N {
         "bindings": [
           2
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "131..137"
         }
       }
     ],
     "PublicAlias": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
         "declarations": [
           {
@@ -87,11 +87,16 @@ declare namespace N {
             "scope": 2
           }
         ],
+        "bindings": [
+          2
+        ],
         "uses": [
           "194..205"
         ],
+        "alias": {
+          "Target": 1
+        },
         "import": {
-          "target": 2,
           "initializer": "99..105"
         }
       }
@@ -106,7 +111,14 @@ declare namespace N {
     "2": {
       "kind": "TsModule",
       "parent": 1,
-      "flags": "Strict"
+      "flags": "Strict",
+      "container_owner": 0
+    },
+    "5": {
+      "kind": "TsModule",
+      "parent": 1,
+      "flags": "Strict",
+      "container_owner": 0
     }
   }
 }

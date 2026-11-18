@@ -15,10 +15,10 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{Ast, AstCtx, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
-    binder::{LexicalLookup, Range, SymbolLinks},
+    binder::{Range, SymbolLinks, ts::LexicalLookup},
     builder::SemanticBuilder,
     scope::ScopeTree,
-    typescript::TsBindings,
+    ts::TsBindings,
 };
 
 mod binder;
@@ -27,14 +27,14 @@ mod ecmascript;
 mod scope;
 mod scope_model;
 mod syntax_checks;
-mod typescript;
+mod ts;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
 pub use scope::{Scope, ScopeFlags, ScopeKind};
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;
-pub use typescript::{TsImportAlias, TsImportAliasSpace, TsMember};
+pub use ts::{TsImportAlias, TsImportAliasSpace, TsMember};
 
 swc_next_allocator::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -205,6 +205,8 @@ impl<'a> Semantic<'a> {
     ///
     /// A conflicting redeclaration is recorded here too, aliased onto
     /// the existing symbol so tooling on broken code still maps the node.
+    /// A TypeScript export and its local binding share declaration IDs.
+    /// The declaration's symbol is the canonical export.
     pub fn declarations(
         &self,
         id: SymbolId,
@@ -213,8 +215,8 @@ impl<'a> Semantic<'a> {
             .map(|declaration_id| self.declaration(declaration_id))
     }
 
-    /// Every use site of `id`, in source order. Declaration sites are returned
-    /// by [`Semantic::declarations`].
+    /// Every definite or possible use of `id`, in source order. Declaration
+    /// sites are returned by [`Semantic::declarations`].
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         let range = self.use_ranges[id];
         let start = range.start as usize;
@@ -251,6 +253,9 @@ impl<'a> Semantic<'a> {
     /// from `scope`. A binding outside the space does not shadow.
     /// [`ReferenceSpace::Any`] matches by name alone. This does not query
     /// runtime object properties when the path crosses [`scope::ScopeKind::With`].
+    /// Import bindings use their declared flags. For a reference in the AST, use
+    /// [`Semantic::reference`] and [`Semantic::reference_candidates`] to account
+    /// for the meanings and restrictions of its alias path.
     ///
     /// ## Example
     /// ```ts
@@ -271,6 +276,7 @@ impl<'a> Semantic<'a> {
             symbols: &self.symbols,
             symbol_tables: &self.symbol_tables,
             shadowed_internal_names: &self.shadowed_internal_names,
+            ts: &self.ts_bindings,
         };
         lookup.lookup(scope_id, name, space)
     }

@@ -13,80 +13,50 @@ type R<T> = T extends infer U ? (U extends [infer V, U] ? U : U) : U;
     "U": [
       {
         "span": "61..62",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
       },
       {
         "span": "81..82",
-        "scope": 9,
-        "space": "Type",
-        "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
-      },
-      {
-        "span": "86..87",
-        "scope": 8,
-        "space": "Type",
-        "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
-      },
-      {
-        "span": "90..91",
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 4
-        },
-        "candidates": [
-          4
-        ],
-        "value_symbols": []
+        "symbol": 3
+      },
+      {
+        "span": "86..87",
+        "scope": 5,
+        "space": "Type",
+        "access": "None",
+        "symbol": 3
+      },
+      {
+        "span": "90..91",
+        "scope": 4,
+        "space": "Type",
+        "access": "None",
+        "symbol": 3
       },
       {
         "span": "95..96",
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 1
-        },
-        "candidates": [
-          1
-        ],
-        "value_symbols": []
+        "symbol": 0
       }
     ]
   },
   "symbols": {
-    "1": {
+    "0": {
       "name": "U",
       "flags": "TYPE_ALIAS",
       "declarations": [
         "16..17"
       ]
     },
-    "4": {
+    "3": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
@@ -101,21 +71,15 @@ type R<T> = T extends infer U ? (U extends [infer V, U] ? U : U) : U;
       "flags": "Strict",
       "hoist_target": 1
     },
-    "5": {
+    "4": {
       "kind": "Block",
       "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     },
-    "8": {
+    "5": {
       "kind": "Block",
-      "parent": 5,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "9": {
-      "kind": "TsConditionalExtends",
-      "parent": 8,
+      "parent": 4,
       "flags": "Strict",
       "hoist_target": 1
     }

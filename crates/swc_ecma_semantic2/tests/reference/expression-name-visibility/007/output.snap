@@ -13,42 +13,22 @@ const C = class Inner<T extends Inner> {
     "Inner": [
       {
         "span": "32..37",
-        "scope": 3,
+        "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       },
       {
         "span": "50..55",
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "resolution": {
-          "Resolved": 2
-        },
-        "candidates": [
-          2
-        ],
-        "value_symbols": [
-          {
-            "Resolved": 2
-          }
-        ]
+        "symbol": 1
       }
     ]
   },
   "symbols": {
-    "2": {
+    "1": {
       "name": "Inner",
       "flags": "CLASS | CLASS_EXPRESSION",
       "declarations": [
@@ -60,12 +40,6 @@ const C = class Inner<T extends Inner> {
     "2": {
       "kind": "Class",
       "parent": 1,
-      "flags": "Strict",
-      "hoist_target": 1
-    },
-    "3": {
-      "kind": "TsTypeParameters",
-      "parent": 2,
       "flags": "Strict",
       "hoist_target": 1
     }
