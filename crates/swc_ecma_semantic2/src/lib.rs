@@ -23,7 +23,6 @@ use crate::{
 
 mod binder;
 mod builder;
-mod ecmascript;
 mod scope;
 mod scope_model;
 mod syntax_checks;

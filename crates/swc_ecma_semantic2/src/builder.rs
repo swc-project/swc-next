@@ -1,45 +1,43 @@
 //! The semantic builder, a visitor that builds the semantic model and reports
 //! the scope-dependent early errors the specification requires.
 
-mod js;
+mod check;
+mod ecmascript;
 mod regex;
-mod ts;
 
-use std::{borrow::Cow, collections::hash_map::Entry, mem::replace};
+use std::{borrow::Cow, mem::replace};
 
 use rustc_hash::FxHashMap;
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
-    AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
-    BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassElement,
-    ClassType, Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
-    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, FunctionType, IdentifierName, IdentifierReference,
-    ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier,
-    JsxOpeningElement, JsxText, Label, MemberExpression, MethodDefinition, NodeId, NodeKind,
-    NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId,
-    Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, ThisExpression,
-    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    AssignmentPattern, Ast, BindingIdentifier, BindingProperty, BindingRestElement, BlockStatement,
+    BooleanLiteral, CatchClause, Class, ClassBody, ClassElement, ClassType, Decorator, Diagnostic,
+    Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
+    ExportSpecifier, ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function,
+    FunctionBody, FunctionType, IdentifierName, IdentifierReference, ImportDeclaration,
+    ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier, JsxOpeningElement,
+    JsxText, Label, MemberExpression, NodeId, NodeKind, NodeKindData, ObjectPattern,
+    ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId, Severity, Span, StaticBlock,
+    SwitchCase, SwitchStatement, SymbolId, ThisExpression, TsArrayType, TsAsExpression,
+    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumDeclaration, TsEnumMember,
     TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration, TsImportEqualsDeclaration,
     TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType, TsInterfaceBody,
     TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType, TsJsDocNonNullableType,
     TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType, TsMethodDefinition,
-    TsMethodSignature, TsModuleBlock, TsModuleBodyData, TsModuleDeclaration, TsModuleNameData,
-    TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType,
-    TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression,
-    TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion,
-    TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
-    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit,
-    VisitWith, WithStatement,
+    TsMethodSignature, TsModuleBlock, TsModuleBodyData, TsModuleDeclaration, TsNamedTupleMember,
+    TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
+    TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
+    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
+    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
+    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
+    UpdateExpression, VariableDeclaration, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
     ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
     binder::SymbolTracker,
-    ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -341,16 +339,16 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline(always)]
     fn check(&mut self, node_data: NodeKindData) {
         match node_data {
-            NodeKindData::Program(_) => js::check_program(self),
-            NodeKindData::StringLiteral(node) => js::check_string_literal(self, node),
-            NodeKindData::NumericLiteral(node) => js::check_numeric_literal(self, node),
-            NodeKindData::RegExpLiteral(node) => js::check_reg_exp_literal(self, node),
+            NodeKindData::Program(_) => check::check_program(self),
+            NodeKindData::StringLiteral(node) => check::check_string_literal(self, node),
+            NodeKindData::NumericLiteral(node) => check::check_numeric_literal(self, node),
+            NodeKindData::RegExpLiteral(node) => check::check_reg_exp_literal(self, node),
             NodeKindData::IdentifierReference(node) => {
                 let tree = self.ast;
                 let name = tree.get_utf8(node.name(tree)).as_bytes();
-                js::check_identifier_reference(self, node, name);
+                check::check_identifier_reference(self, node, name);
                 if tree.is_ts() && name == b"await" {
-                    ts::check_contextual_await(
+                    check::check_contextual_await(
                         self,
                         node.node_id(),
                         "'await' cannot be used as an identifier here",
@@ -360,53 +358,61 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             NodeKindData::BindingIdentifier(node) if self.check_syntax.binding_identifiers() => {
                 let tree = self.ast;
                 let name = tree.get_utf8(node.name(tree)).as_bytes();
-                js::check_binding_identifier(self, node, name);
+                check::check_binding_identifier(self, node, name);
                 if tree.is_ts() && name == b"await" {
-                    ts::check_contextual_await(
+                    check::check_contextual_await(
                         self,
                         node.node_id(),
                         "'await' cannot be used as a binding identifier here",
                     );
                 }
             }
-            NodeKindData::LabelIdentifier(node) => js::check_label_identifier(self, node),
-            NodeKindData::BinaryExpression(node) => js::check_binary_expression(self, node),
-            NodeKindData::UnaryExpression(node) => js::check_unary_expression(self, node),
-            NodeKindData::UpdateExpression(node) => js::check_update_expression(self, node),
-            NodeKindData::AssignmentExpression(node) => js::check_assignment_expression(self, node),
-            NodeKindData::VariableDeclaration(node) => js::check_variable_declaration(self, node),
-            NodeKindData::SwitchStatement(node) => js::check_switch_statement(self, node),
-            NodeKindData::ForInStatement(node) => js::check_for_in_statement(self, node),
-            NodeKindData::ForOfStatement(node) => js::check_for_of_statement(self, node),
-            NodeKindData::BreakStatement(node) => js::check_break_statement(self, node),
-            NodeKindData::ContinueStatement(node) => js::check_continue_statement(self, node),
-            NodeKindData::LabeledStatement(node) => js::check_labeled_statement(self, node),
-            NodeKindData::Directive(node) => js::check_directive(self, node),
-            NodeKindData::ClassBody(node) => js::check_class_body(self, node),
-            NodeKindData::MethodDefinition(node) => ts::check_method_definition(self, node),
-            NodeKindData::Function(node) => js::check_function(self, node),
-            NodeKindData::WithStatement(node) => js::check_with_statement(self, node),
-            NodeKindData::ObjectExpression(node) => js::check_object_expression(self, node),
-            NodeKindData::MemberExpression(node) => js::check_member_expression(self, node),
-            NodeKindData::CallExpression(node) => js::check_call_expression(self, node),
-            NodeKindData::AwaitExpression(node) => js::check_await_expression(self, node),
-            NodeKindData::YieldExpression(node) => js::check_yield_expression(self, node),
-            NodeKindData::TsParameterProperty(node) => ts::check_parameter_property(self, node),
-            NodeKindData::TsOptionalType(node) => ts::check_tuple_optional_type(self, node),
-            NodeKindData::TsRestType(node) => ts::check_tuple_rest_type(self, node),
-            NodeKindData::ImportDeclaration(node) => js::check_import_declaration(self, node),
+            NodeKindData::LabelIdentifier(node) => check::check_label_identifier(self, node),
+            NodeKindData::BinaryExpression(node) => check::check_binary_expression(self, node),
+            NodeKindData::UnaryExpression(node) => check::check_unary_expression(self, node),
+            NodeKindData::UpdateExpression(node) => check::check_update_expression(self, node),
+            NodeKindData::AssignmentExpression(node) => {
+                check::check_assignment_expression(self, node)
+            }
+            NodeKindData::VariableDeclaration(node) => {
+                check::check_variable_declaration(self, node)
+            }
+            NodeKindData::SwitchStatement(node) => check::check_switch_statement(self, node),
+            NodeKindData::ForInStatement(node) => check::check_for_in_statement(self, node),
+            NodeKindData::ForOfStatement(node) => check::check_for_of_statement(self, node),
+            NodeKindData::BreakStatement(node) => check::check_break_statement(self, node),
+            NodeKindData::ContinueStatement(node) => check::check_continue_statement(self, node),
+            NodeKindData::LabeledStatement(node) => check::check_labeled_statement(self, node),
+            NodeKindData::Directive(node) => check::check_directive(self, node),
+            NodeKindData::ClassBody(node) => check::check_class_body(self, node),
+            NodeKindData::MethodDefinition(node) => check::check_method_definition(self, node),
+            NodeKindData::Function(node) => check::check_function(self, node),
+            NodeKindData::WithStatement(node) => check::check_with_statement(self, node),
+            NodeKindData::ObjectExpression(node) => check::check_object_expression(self, node),
+            NodeKindData::MemberExpression(node) => check::check_member_expression(self, node),
+            NodeKindData::CallExpression(node) => check::check_call_expression(self, node),
+            NodeKindData::AwaitExpression(node) => check::check_await_expression(self, node),
+            NodeKindData::YieldExpression(node) => check::check_yield_expression(self, node),
+            NodeKindData::TsParameterProperty(node) => check::check_parameter_property(self, node),
+            NodeKindData::TsOptionalType(node) => check::check_tuple_optional_type(self, node),
+            NodeKindData::TsRestType(node) => check::check_tuple_rest_type(self, node),
+            NodeKindData::ImportDeclaration(node) => check::check_import_declaration(self, node),
             NodeKindData::ExportNamedDeclaration(node) => {
-                js::check_export_named_declaration(self, node)
+                check::check_export_named_declaration(self, node)
             }
             NodeKindData::ExportDefaultDeclaration(node) => {
-                js::check_export_default_declaration(self, node)
+                check::check_export_default_declaration(self, node)
             }
-            NodeKindData::TsModuleDeclaration(node) => ts::check_ts_module_declaration(self, node),
-            NodeKindData::TsGlobalDeclaration(node) => ts::check_ts_global_declaration(self, node),
+            NodeKindData::TsModuleDeclaration(node) => {
+                check::check_ts_module_declaration(self, node)
+            }
+            NodeKindData::TsGlobalDeclaration(node) => {
+                check::check_ts_global_declaration(self, node)
+            }
             NodeKindData::ExportAllDeclaration(node) => {
-                js::check_export_all_declaration(self, node)
+                check::check_export_all_declaration(self, node)
             }
-            NodeKindData::ExportSpecifier(node) => js::check_export_specifier(self, node),
+            NodeKindData::ExportSpecifier(node) => check::check_export_specifier(self, node),
             _ => {}
         }
     }
@@ -640,7 +646,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             {
                 match catch.param(tree) {
                     Some(param) => {
-                        ecmascript::find_pattern_expression(tree, Some(param.node_id())).is_none()
+                        ecmascript::find_pattern_expression(tree, param.node_id()).is_none()
                     }
                     None => true,
                 }
@@ -1645,19 +1651,6 @@ fn is_annex_b_if_function(tree: &Ast<'_>, parent: Option<NodeId>, function: Func
         || statement
             .alternate(tree)
             .is_some_and(|alternate| alternate.node_id() == function)
-}
-
-/// Extracts the name from a ModuleExportName: an IdentifierName,
-/// IdentifierReference, or StringLiteral.
-fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
-    match tree.kind_data(node) {
-        NodeKindData::IdentifierName(identifier) => tree.get_utf8(identifier.name(tree)).as_bytes(),
-        NodeKindData::IdentifierReference(identifier) => {
-            tree.get_utf8(identifier.name(tree)).as_bytes()
-        }
-        NodeKindData::StringLiteral(literal) => tree.get_wtf8(literal.value(tree)).as_bytes(),
-        _ => b"",
-    }
 }
 
 struct ReportOptions {
