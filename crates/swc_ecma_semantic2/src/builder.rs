@@ -38,7 +38,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
-    binder::{SymbolTracker, ts::has_explicit_exports},
+    binder::SymbolTracker,
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -170,7 +170,27 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             self.inherit_strict_flag(),
         );
         self.enter_node(node.node_id());
-        let implicit = self.symbols.in_ambient_context() && !has_explicit_exports(self.ast, node);
+
+        let mut implicit = self.symbols.in_ambient_context();
+        if implicit {
+            for statement in node.body(self.ast).iter() {
+                let statement = self.ast.get_node_in_sub_range(statement);
+                let explicit_export = match self.ast.kind_data(statement.node_id()) {
+                    NodeKindData::ExportNamedDeclaration(export) => {
+                        export.declaration(self.ast).is_none()
+                    }
+                    NodeKindData::ExportAllDeclaration(_)
+                    | NodeKindData::ExportDefaultDeclaration(_)
+                    | NodeKindData::TsExportAssignment(_) => true,
+                    _ => false,
+                };
+                if explicit_export {
+                    implicit = false;
+                    break;
+                }
+            }
+        }
+
         self.symbols
             .enter_ts_container(self.current_scope, owner, implicit);
         node.visit_children_with(self);

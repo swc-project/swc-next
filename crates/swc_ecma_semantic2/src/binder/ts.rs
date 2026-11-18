@@ -520,19 +520,6 @@ impl<'a> SymbolTracker<'a> {
     }
 }
 
-pub(crate) fn has_explicit_exports(tree: &Ast<'_>, block: TsModuleBlock) -> bool {
-    block.body(tree).iter().any(|statement| {
-        let statement = tree.get_node_in_sub_range(statement);
-        match tree.kind_data(statement.node_id()) {
-            NodeKindData::ExportNamedDeclaration(export) => export.declaration(tree).is_none(),
-            NodeKindData::ExportAllDeclaration(_)
-            | NodeKindData::ExportDefaultDeclaration(_)
-            | NodeKindData::TsExportAssignment(_) => true,
-            _ => false,
-        }
-    })
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum NamespaceState {
     NonInstantiated,
