@@ -14,7 +14,7 @@ import A = N.T;
     "A": [
       {
         "id": 3,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "47..48",

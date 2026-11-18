@@ -54,7 +54,7 @@ declare namespace N {
         "members": {
           "X": {
             "symbol": 4,
-            "namespace_flags": "INTERFACE | IMPORT | EXPORTED | IMPORT_EQUALS"
+            "namespace_flags": "INTERFACE | IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS"
           }
         }
       }

@@ -13,12 +13,6 @@ mod resolve;
 
 pub(crate) use resolve::LexicalLookup;
 
-const EXPORT_ALIAS_FLAGS: SymbolFlags =
-    SymbolFlags::EXPORT_ALIAS.union(SymbolFlags::TYPE_EXPORT_ALIAS);
-pub(super) const ALIAS_FLAGS: SymbolFlags = SymbolFlags::ANY_IMPORT.union(EXPORT_ALIAS_FLAGS);
-const TYPE_ONLY_ALIAS_FLAGS: SymbolFlags =
-    SymbolFlags::TYPE_IMPORT.union(SymbolFlags::TYPE_EXPORT_ALIAS);
-
 #[derive(Default)]
 pub(super) struct TsBindingState {
     implicit_exports: FxHashSet<ScopeId>,
@@ -121,9 +115,9 @@ impl<'a> SymbolTracker<'a> {
             ModuleExportNameData::StringLiteral(name) => name.value(tree),
         };
         let alias_flags = if type_only {
-            SymbolFlags::TYPE_EXPORT_ALIAS
+            SymbolFlags::ALIAS | SymbolFlags::TYPE_ONLY
         } else {
-            SymbolFlags::EXPORT_ALIAS
+            SymbolFlags::ALIAS
         };
         self.sync_symbol_tables_from(scopes);
         let (symbol, _) = self.declare_ts_member(
@@ -134,7 +128,7 @@ impl<'a> SymbolTracker<'a> {
                 node: specifier.node_id(),
                 binding: PendingBinding {
                     flags: alias_flags | SymbolFlags::EXPORTED | SymbolFlags::AMBIENT,
-                    excludes: ALIAS_FLAGS,
+                    excludes: SymbolFlags::ALIAS,
                     scope,
                 },
             },
@@ -229,7 +223,7 @@ impl<'a> SymbolTracker<'a> {
 
     fn ts_direct_export(&self, binding: PendingBinding) -> bool {
         self.export_state.is_named()
-            || (!binding.flags.intersects(SymbolFlags::ANY_IMPORT)
+            || (!binding.flags.intersects(SymbolFlags::IMPORT)
                 && self.ts_state.implicit_exports.contains(&binding.scope))
     }
 
@@ -394,7 +388,7 @@ impl<'a> SymbolTracker<'a> {
                 name,
                 node: node.node_id(),
                 binding: PendingBinding {
-                    flags: SymbolFlags::CLASS_STATIC_MEMBER
+                    flags: SymbolFlags::PROPERTY
                         .with(SymbolFlags::AMBIENT, declared || self.in_ambient_context()),
                     excludes: SymbolFlags::empty(),
                     scope,
@@ -465,7 +459,7 @@ impl<'a> SymbolTracker<'a> {
                     name: name.into(),
                     node: assignment.property.node_id(),
                     binding: PendingBinding {
-                        flags: SymbolFlags::EXPANDO_PROPERTY,
+                        flags: SymbolFlags::PROPERTY,
                         excludes: SymbolFlags::empty(),
                         scope: assignment.scope,
                     },

@@ -22,7 +22,7 @@ type A = typeof Item;
   "symbols": {
     "0": {
       "name": "Item",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "7..11"
       ]

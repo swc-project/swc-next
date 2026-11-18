@@ -71,7 +71,7 @@ namespace Use {
     },
     "7": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "118..119"
       ],
@@ -81,7 +81,7 @@ namespace Use {
     },
     "8": {
       "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "136..137"
       ],

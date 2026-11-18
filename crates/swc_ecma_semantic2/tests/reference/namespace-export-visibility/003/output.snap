@@ -47,7 +47,7 @@ namespace N {
     },
     "3": {
       "name": "Item",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "114..127"
       ],

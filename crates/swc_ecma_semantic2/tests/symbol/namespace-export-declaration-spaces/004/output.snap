@@ -17,7 +17,7 @@ declare namespace E {
     "A": [
       {
         "id": 1,
-        "flags": "AMBIENT | EXPORTED | ENUM_MEMBER | TYPE_EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ENUM_MEMBER | ALIAS | TYPE_ONLY",
         "declarations": [
           {
             "span": "19..20",
@@ -27,7 +27,7 @@ declare namespace E {
           {
             "span": "79..85",
             "scope": 3,
-            "flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS | TYPE_ONLY"
           }
         ],
         "alias": {

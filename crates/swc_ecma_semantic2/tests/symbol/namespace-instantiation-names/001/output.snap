@@ -46,7 +46,7 @@ namespace Outer {
         "members": {
           "T": {
             "symbol": 5,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       },

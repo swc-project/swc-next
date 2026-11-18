@@ -71,7 +71,7 @@ const typed: Alias = { own: true };
     },
     "5": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "140..145"
       ],

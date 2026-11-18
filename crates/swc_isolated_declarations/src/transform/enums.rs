@@ -290,7 +290,7 @@ fn resolve_container(semantic: &Semantic<'_>, mut symbol: SymbolId) -> Option<Sy
         if flags.in_value_space() {
             return Some(symbol);
         }
-        if flags.intersects(SymbolFlags::TYPE_IMPORT | SymbolFlags::TYPE_EXPORT_ALIAS)
+        if flags.intersects(SymbolFlags::TYPE_ONLY)
             || !aliases.insert(symbol)
         {
             return None;

@@ -63,7 +63,7 @@ const queried: typeof Alias = 1;
     },
     "1": {
       "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "48..49",
         "109..122"
@@ -74,7 +74,7 @@ const queried: typeof Alias = 1;
     },
     "4": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "135..140"
       ],

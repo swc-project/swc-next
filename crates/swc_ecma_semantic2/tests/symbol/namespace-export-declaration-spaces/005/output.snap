@@ -35,7 +35,7 @@ declare namespace B {
         "members": {
           "X": {
             "symbol": 4,
-            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS | TYPE_ONLY"
           }
         }
       }

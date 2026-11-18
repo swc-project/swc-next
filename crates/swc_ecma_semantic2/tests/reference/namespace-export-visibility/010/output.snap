@@ -60,7 +60,7 @@ namespace N {
     },
     "7": {
       "name": "Item",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "145..158"
       ],
@@ -70,7 +70,7 @@ namespace N {
     },
     "8": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "187..188"
       ],

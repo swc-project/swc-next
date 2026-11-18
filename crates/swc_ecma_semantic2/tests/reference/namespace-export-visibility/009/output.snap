@@ -82,7 +82,7 @@ declare namespace N {
     },
     "9": {
       "name": "A",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "286..287"
       ],

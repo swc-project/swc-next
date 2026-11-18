@@ -14,7 +14,7 @@ import A = N.x;
     "A": [
       {
         "id": 3,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "45..46",

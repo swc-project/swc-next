@@ -53,7 +53,7 @@ namespace Test {
   "symbols": {
     "0": {
       "name": "Owner",
-      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
+      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "10..15",
         "54..59"
@@ -71,7 +71,7 @@ namespace Test {
     },
     "10": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "187..188"
       ],

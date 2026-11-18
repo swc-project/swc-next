@@ -36,14 +36,14 @@ export { A };
   "symbols": {
     "0": {
       "name": "remote",
-      "flags": "IMPORT",
+      "flags": "IMPORT | ALIAS",
       "declarations": [
         "12..18"
       ]
     },
     "2": {
       "name": "Alias",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "66..71"
       ],
@@ -53,7 +53,7 @@ export { A };
     },
     "3": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "91..92"
       ],

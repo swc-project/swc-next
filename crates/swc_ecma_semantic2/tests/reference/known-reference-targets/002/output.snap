@@ -38,7 +38,7 @@ namespace Use {
     },
     "5": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "118..119"
       ],

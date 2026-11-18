@@ -17,7 +17,7 @@ import B = N.E;
     "A": [
       {
         "id": 4,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "62..63",

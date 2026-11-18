@@ -55,7 +55,7 @@ namespace N {
   "symbols": {
     "1": {
       "name": "x",
-      "flags": "CLASS_STATIC_MEMBER",
+      "flags": "PROPERTY",
       "declarations": [
         "23..36"
       ]
@@ -69,7 +69,7 @@ namespace N {
     },
     "8": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "162..163"
       ],
@@ -79,7 +79,7 @@ namespace N {
     },
     "9": {
       "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "180..181"
       ],

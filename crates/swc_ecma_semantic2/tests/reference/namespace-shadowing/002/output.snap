@@ -28,14 +28,14 @@ namespace N {
   "symbols": {
     "0": {
       "name": "remote",
-      "flags": "IMPORT",
+      "flags": "IMPORT | ALIAS",
       "declarations": [
         "12..18"
       ]
     },
     "3": {
       "name": "Alias",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "100..105"
       ],

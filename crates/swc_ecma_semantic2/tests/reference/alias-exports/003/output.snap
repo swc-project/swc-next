@@ -33,14 +33,14 @@ export { A };
   "symbols": {
     "0": {
       "name": "remote",
-      "flags": "IMPORT",
+      "flags": "IMPORT | ALIAS",
       "declarations": [
         "12..18"
       ]
     },
     "1": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "43..44"
       ],

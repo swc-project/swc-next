@@ -32,7 +32,7 @@ import Unused = Unrelated;
     "Item": [
       {
         "id": 0,
-        "flags": "IMPORT",
+        "flags": "IMPORT | ALIAS",
         "declarations": [
           {
             "span": "9..13",

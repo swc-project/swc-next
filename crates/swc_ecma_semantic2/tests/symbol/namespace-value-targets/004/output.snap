@@ -37,7 +37,7 @@ namespace N {
         "members": {
           "erased": {
             "symbol": 4,
-            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS | TYPE_ONLY"
           },
           "result": {
             "symbol": 5,
@@ -45,7 +45,7 @@ namespace N {
           },
           "value": {
             "symbol": 3,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -53,7 +53,7 @@ namespace N {
     "original": [
       {
         "id": 2,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "62..70",

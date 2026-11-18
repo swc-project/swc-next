@@ -48,7 +48,7 @@ namespace N {
     },
     "3": {
       "name": "Item",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "114..127",
         "146..150"

@@ -14,7 +14,7 @@ import A = C.x;
     "A": [
       {
         "id": 2,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "35..36",

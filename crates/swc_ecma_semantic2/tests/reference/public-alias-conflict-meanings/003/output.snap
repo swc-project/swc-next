@@ -94,7 +94,7 @@ const typed: Alias = { own: true };
     },
     "3": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "90..91",
         "106..112"
@@ -113,7 +113,7 @@ const typed: Alias = { own: true };
     },
     "7": {
       "name": "Z",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "164..165",
         "204..210"
@@ -124,7 +124,7 @@ const typed: Alias = { own: true };
     },
     "9": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "227..232"
       ],

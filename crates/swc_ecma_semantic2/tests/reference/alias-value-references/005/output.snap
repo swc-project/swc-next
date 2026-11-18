@@ -32,7 +32,7 @@ export type T = typeof Alias;
     },
     "3": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "43..48"
       ],

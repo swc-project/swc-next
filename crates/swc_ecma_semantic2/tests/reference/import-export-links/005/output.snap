@@ -57,7 +57,7 @@ namespace Outer {
     },
     "6": {
       "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS",
+      "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "119..120",
         "136..137"

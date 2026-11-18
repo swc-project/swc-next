@@ -83,7 +83,7 @@ const selected = Selected;
     },
     "8": {
       "name": "local",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "180..185"
       ],
@@ -93,7 +93,7 @@ const selected = Selected;
     },
     "9": {
       "name": "A",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "204..214"
       ],
@@ -103,7 +103,7 @@ const selected = Selected;
     },
     "18": {
       "name": "Selected",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "362..370"
       ],

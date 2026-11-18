@@ -19,12 +19,12 @@ namespace Test {
     "A": [
       {
         "id": 4,
-        "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS",
+        "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "100..101",
             "scope": 5,
-            "flags": "IMPORT | IMPORT_EQUALS"
+            "flags": "IMPORT | IMPORT_EQUALS | ALIAS"
           },
           {
             "span": "115..116",

@@ -30,16 +30,16 @@ declare namespace N {
         "members": {
           "erased": {
             "symbol": 3,
-            "namespace_flags": "AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS | TYPE_ONLY"
           },
           "mixed": {
             "symbol": 4,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS"
           },
           "original": null,
           "value": {
             "symbol": 2,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -47,7 +47,7 @@ declare namespace N {
     "mixed": [
       {
         "id": 4,
-        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "137..142",
@@ -57,7 +57,7 @@ declare namespace N {
           {
             "span": "157..174",
             "scope": 2,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "alias": {

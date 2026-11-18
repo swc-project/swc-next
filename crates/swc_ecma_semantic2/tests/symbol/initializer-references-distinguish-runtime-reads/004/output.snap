@@ -11,7 +11,7 @@ import type A = require("pkg");
     "A": [
       {
         "id": 0,
-        "flags": "TYPE_IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS | TYPE_ONLY",
         "declarations": [
           {
             "span": "12..13",

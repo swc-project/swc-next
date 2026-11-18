@@ -23,7 +23,7 @@ import B = A;
   "symbols": {
     "0": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "7..8"
       ],

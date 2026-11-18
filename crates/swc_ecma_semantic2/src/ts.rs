@@ -70,7 +70,9 @@ impl TsMember {
         let mut flags = self.enum_flags.unwrap_or_default()
             | self.namespace_flags.unwrap_or_default()
             | self.class_static_flags.unwrap_or_default();
-        flags.set(SymbolFlags::EXPANDO_PROPERTY, self.expando);
+        if self.expando {
+            flags.insert(SymbolFlags::PROPERTY);
+        }
         flags
     }
 }

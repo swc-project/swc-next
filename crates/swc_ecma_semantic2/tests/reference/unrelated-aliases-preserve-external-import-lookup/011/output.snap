@@ -23,7 +23,7 @@ type Result = A;
   "symbols": {
     "1": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "42..43"
       ],

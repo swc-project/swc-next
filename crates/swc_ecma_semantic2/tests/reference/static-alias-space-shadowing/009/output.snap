@@ -80,7 +80,7 @@ namespace N {
     },
     "5": {
       "name": "Value",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "114..119"
       ],
@@ -98,7 +98,7 @@ namespace N {
     },
     "10": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "209..210"
       ],

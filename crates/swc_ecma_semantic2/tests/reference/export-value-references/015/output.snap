@@ -27,7 +27,7 @@ declare namespace N {
   "symbols": {
     "2": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS | TYPE_ONLY",
       "declarations": [
         "54..55",
         "93..103"
@@ -72,7 +72,7 @@ declare namespace N {
   "symbols": {
     "2": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS | TYPE_ONLY",
       "declarations": [
         "54..55",
         "93..103"

@@ -47,7 +47,7 @@ declare namespace N {
     },
     "5": {
       "name": "PublicAlias",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "85..96"
       ],

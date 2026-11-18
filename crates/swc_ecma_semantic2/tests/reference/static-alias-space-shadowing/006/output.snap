@@ -77,7 +77,7 @@ namespace N {
     },
     "7": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "163..164"
       ],

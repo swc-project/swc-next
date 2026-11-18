@@ -13,7 +13,7 @@ type Result = A;
     "A": [
       {
         "id": 1,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "42..43",

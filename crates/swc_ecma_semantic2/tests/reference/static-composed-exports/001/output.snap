@@ -72,7 +72,7 @@ const nested: Alias.T = { t: true };
     },
     "1": {
       "name": "x",
-      "flags": "EXPORTED | CLASS_STATIC_MEMBER | EXPORT_ALIAS",
+      "flags": "EXPORTED | PROPERTY | ALIAS",
       "declarations": [
         "23..36",
         "208..214"
@@ -83,7 +83,7 @@ const nested: Alias.T = { t: true };
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "227..232"
       ],

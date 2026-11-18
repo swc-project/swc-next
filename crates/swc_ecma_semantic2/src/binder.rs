@@ -26,7 +26,7 @@ mod annex_b;
 pub(crate) mod ts;
 
 use annex_b::AnnexBFunction;
-use ts::{ALIAS_FLAGS, NamespaceState, TsBindingState, TsMemberKind, namespace_state};
+use ts::{NamespaceState, TsBindingState, TsMemberKind, namespace_state};
 
 /// A `(start, len)` window into a backing slice.
 #[derive(Debug, Default, Clone, Copy)]
@@ -95,53 +95,47 @@ bitflags::bitflags! {
         const TYPE_PARAMETER = 1 << 9;
         const NAMESPACE_MODULE = 1 << 10;
         const IMPORT = 1 << 11;
-        const TYPE_IMPORT = 1 << 12;
-        const CONST_VAR = 1 << 13;
-        const AMBIENT = 1 << 14;
-        const PARAMETER = 1 << 15;
-        const CATCH_VAR = 1 << 16;
-        const EXPORTED = 1 << 17;
-        const IS_DEFAULT = 1 << 18;
-        const ENUM_MEMBER = 1 << 19;
+        const CONST_VAR = 1 << 12;
+        const AMBIENT = 1 << 13;
+        const PARAMETER = 1 << 14;
+        const CATCH_VAR = 1 << 15;
+        const EXPORTED = 1 << 16;
+        const IS_DEFAULT = 1 << 17;
+        const ENUM_MEMBER = 1 << 18;
         /// An async or generator implementation, which cannot participate in
         /// Annex B's ordinary function duplicate exception.
-        const NON_ANNEX_B_FUNCTION = 1 << 20;
-        /// A named property introduced by an assignment to a function container.
-        const EXPANDO_PROPERTY = 1 << 21;
-        /// A named static member declared in a TypeScript class body.
-        const CLASS_STATIC_MEMBER = 1 << 22;
+        const NON_ANNEX_B_FUNCTION = 1 << 19;
+        /// A named property or method on a function or class container.
+        const PROPERTY = 1 << 20;
         /// A TypeScript import-equals declaration, including type-only and
         /// external `require` aliases. Independent of target resolution.
-        const IMPORT_EQUALS = 1 << 23;
+        const IMPORT_EQUALS = 1 << 21;
         /// A named function expression's internal name. Same-named parameters
         /// and local declarations replace its scope binding with a new symbol.
-        const FUNCTION_EXPRESSION = 1 << 24;
+        const FUNCTION_EXPRESSION = 1 << 22;
         /// A named class expression's internal name, local to its class scope.
-        const CLASS_EXPRESSION = 1 << 25;
+        const CLASS_EXPRESSION = 1 << 23;
         /// The branch-local name of a sloppy if/else function declaration.
         /// Shares the function scope and is shadowed by parameters and locals.
-        const ANNEX_B_IF_FUNCTION = 1 << 26;
+        const ANNEX_B_IF_FUNCTION = 1 << 24;
         /// A function with a body, distinct from erased overload signatures.
         /// Used to reject duplicate implementations in lexical scopes.
-        const FUNCTION_IMPLEMENTATION = 1 << 27;
+        const FUNCTION_IMPLEMENTATION = 1 << 25;
         /// A local value entry linked to an export symbol carrying the actual declaration flags.
-        const EXPORT_VALUE = 1 << 28;
+        const EXPORT_VALUE = 1 << 26;
         /// Declaration-only marker for a const-enum-only namespace, paired with
         /// `VALUE_MODULE`. Excluded from aggregate symbol and member flags.
-        const CONST_ENUM_ONLY_MODULE = 1 << 29;
-        /// A named export specifier in an ambient namespace.
-        const EXPORT_ALIAS = 1 << 30;
-        /// A type-only export specifier in an ambient namespace.
-        const TYPE_EXPORT_ALIAS = 1 << 31;
+        const CONST_ENUM_ONLY_MODULE = 1 << 27;
+        /// An import or export alias referring to another declaration.
+        const ALIAS = 1 << 28;
+        /// A type-only alias restriction.
+        const TYPE_ONLY = 1 << 29;
 
         const EXPRESSION_NAME = Self::FUNCTION_EXPRESSION.bits() | Self::CLASS_EXPRESSION.bits();
         const INTERNAL_NAME = Self::EXPRESSION_NAME.bits() | Self::ANNEX_B_IF_FUNCTION.bits();
 
         /// `var` / `let` / `const`, parameters and catch bindings included.
         const VARIABLE = Self::FUNCTION_SCOPED_VAR.bits() | Self::BLOCK_SCOPED_VAR.bits();
-
-        /// Any import binding, value (`import x`) or type-only (`import type x`).
-        const ANY_IMPORT = Self::IMPORT.bits() | Self::TYPE_IMPORT.bits();
 
         /// Declarations that live in JS value space (visible at runtime).
         const VALUE_SPACE = Self::FUNCTION_SCOPED_VAR.bits()
@@ -152,8 +146,7 @@ bitflags::bitflags! {
             | Self::CONST_ENUM.bits()
             | Self::VALUE_MODULE.bits()
             | Self::ENUM_MEMBER.bits()
-            | Self::EXPANDO_PROPERTY.bits()
-            | Self::CLASS_STATIC_MEMBER.bits();
+            | Self::PROPERTY.bits();
 
         /// Declarations that live in TS type space.
         const TYPE_SPACE = Self::CLASS.bits()
@@ -233,11 +226,12 @@ impl SymbolFlags {
     pub fn visible_in(self, space: ReferenceSpace) -> bool {
         match space {
             ReferenceSpace::Value => {
-                self.intersects(Self::IMPORT | Self::EXPORT_ALIAS) || self.in_value_space()
+                (self.contains(Self::ALIAS) && !self.contains(Self::TYPE_ONLY))
+                    || self.in_value_space()
             }
-            ReferenceSpace::Typeof => self.intersects(ALIAS_FLAGS) || self.in_value_space(),
-            ReferenceSpace::Type => self.intersects(ALIAS_FLAGS) || self.in_type_space(),
-            ReferenceSpace::Namespace => self.intersects(ALIAS_FLAGS) || self.in_namespace_space(),
+            ReferenceSpace::Typeof => self.intersects(Self::ALIAS) || self.in_value_space(),
+            ReferenceSpace::Type => self.intersects(Self::ALIAS) || self.in_type_space(),
+            ReferenceSpace::Namespace => self.intersects(Self::ALIAS) || self.in_namespace_space(),
             ReferenceSpace::Any => true,
         }
     }
@@ -263,7 +257,7 @@ impl SymbolFlags {
             "an interface"
         } else if self.contains(Self::TYPE_ALIAS) {
             "a type alias"
-        } else if self.contains(Self::TYPE_IMPORT) {
+        } else if self.contains(Self::IMPORT | Self::TYPE_ONLY) {
             "a type import"
         } else if self.contains(Self::IMPORT) {
             "an import"
@@ -337,7 +331,7 @@ impl Excludes {
             | SymbolFlags::ENUM_MEMBER.bits(),
     );
     pub const NAMESPACE_MODULE: SymbolFlags = SymbolFlags::NONE;
-    pub const IMPORT_BINDING: SymbolFlags = SymbolFlags::ANY_IMPORT;
+    pub const IMPORT_BINDING: SymbolFlags = SymbolFlags::ALIAS;
     pub const PARAMETER: SymbolFlags =
         SymbolFlags::VALUE_SPACE.difference(SymbolFlags::FUNCTION_SCOPED_VAR);
     pub const CATCH_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
@@ -929,7 +923,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn enter_import_specifier(&mut self, tree: &Ast, specifier: ImportSpecifier) {
         self.push_saved_context();
         if specifier.import_kind(tree) == ImportOrExportKind::Type {
-            self.pending.flags = SymbolFlags::TYPE_IMPORT;
+            self.pending.flags = SymbolFlags::ALIAS | SymbolFlags::IMPORT | SymbolFlags::TYPE_ONLY;
             self.pending.excludes = Excludes::IMPORT_BINDING;
         }
     }
@@ -1625,11 +1619,8 @@ impl<'a> SymbolTracker<'a> {
 
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
     PendingBinding {
-        flags: if kind == ImportOrExportKind::Type {
-            SymbolFlags::TYPE_IMPORT
-        } else {
-            SymbolFlags::IMPORT
-        },
+        flags: (SymbolFlags::ALIAS | SymbolFlags::IMPORT)
+            .with(SymbolFlags::TYPE_ONLY, kind == ImportOrExportKind::Type),
         excludes: Excludes::IMPORT_BINDING,
         scope,
     }

@@ -76,7 +76,7 @@ namespace Use {
     },
     "9": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "214..215"
       ],

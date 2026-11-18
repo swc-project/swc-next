@@ -23,7 +23,7 @@ export { X };
   "symbols": {
     "0": {
       "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | TYPE_IMPORT | CONST_VAR",
+      "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | ALIAS | TYPE_ONLY",
       "declarations": [
         "19..20",
         "46..47"

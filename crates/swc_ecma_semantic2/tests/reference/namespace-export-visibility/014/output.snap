@@ -55,7 +55,7 @@ namespace N {
     },
     "5": {
       "name": "original",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "107..115"
       ],

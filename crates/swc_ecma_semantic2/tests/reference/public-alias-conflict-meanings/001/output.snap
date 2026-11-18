@@ -56,7 +56,7 @@ declare namespace N {
     },
     "3": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "90..91",
         "106..112"

@@ -58,7 +58,7 @@ namespace Test {
     },
     "6": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "167..168"
       ],

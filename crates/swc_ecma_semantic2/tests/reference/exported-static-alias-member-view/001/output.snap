@@ -73,7 +73,7 @@ const selected = Selected;
   "symbols": {
     "1": {
       "name": "x",
-      "flags": "CLASS_STATIC_MEMBER",
+      "flags": "PROPERTY",
       "declarations": [
         "23..36"
       ]
@@ -89,7 +89,7 @@ const selected = Selected;
     },
     "8": {
       "name": "A",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "179..180"
       ],
@@ -99,7 +99,7 @@ const selected = Selected;
     },
     "17": {
       "name": "Selected",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "332..340"
       ],

@@ -59,7 +59,7 @@ namespace Test {
     },
     "4": {
       "name": "Owner",
-      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS",
+      "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "64..69",
         "87..92"
@@ -70,7 +70,7 @@ namespace Test {
     },
     "9": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "167..168"
       ],

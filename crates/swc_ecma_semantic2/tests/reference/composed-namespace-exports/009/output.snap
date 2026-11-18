@@ -83,7 +83,7 @@ const nested: Alias.T = { ok: true };
     },
     "3": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "73..79"
       ],
@@ -93,7 +93,7 @@ const nested: Alias.T = { ok: true };
     },
     "4": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "130..131",
         "249..262"
@@ -111,7 +111,7 @@ const nested: Alias.T = { ok: true };
     },
     "11": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "275..280"
       ],

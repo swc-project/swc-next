@@ -49,7 +49,7 @@ const result: Result = "right";
     },
     "3": {
       "name": "X",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "90..103"
       ],

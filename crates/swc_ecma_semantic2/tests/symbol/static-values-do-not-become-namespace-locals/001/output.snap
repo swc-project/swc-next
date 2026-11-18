@@ -37,7 +37,7 @@ namespace C {
         "members": {
           "x": {
             "symbol": 2,
-            "class_static_flags": "CLASS_STATIC_MEMBER"
+            "class_static_flags": "PROPERTY"
           },
           "y": {
             "symbol": 3,
@@ -65,7 +65,7 @@ namespace C {
       },
       {
         "id": 2,
-        "flags": "CLASS_STATIC_MEMBER",
+        "flags": "PROPERTY",
         "declarations": [
           {
             "span": "36..49",

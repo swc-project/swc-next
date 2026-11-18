@@ -31,7 +31,7 @@ const value = Alias;
   "symbols": {
     "5": {
       "name": "Item",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "127..131"
       ],
@@ -41,7 +41,7 @@ const value = Alias;
     },
     "6": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "148..153"
       ],

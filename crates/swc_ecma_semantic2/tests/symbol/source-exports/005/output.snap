@@ -43,7 +43,7 @@ declare namespace Test {
       },
       {
         "id": 5,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "178..179",

@@ -45,7 +45,7 @@ namespace N {
   "symbols": {
     "2": {
       "name": "original",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "62..70"
       ],
@@ -53,7 +53,7 @@ namespace N {
     },
     "3": {
       "name": "value",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "98..115"
       ],

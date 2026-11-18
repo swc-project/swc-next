@@ -84,7 +84,7 @@ const queried: typeof Alias = 1;
     },
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "52..53",
         "109..122"
@@ -110,7 +110,7 @@ const queried: typeof Alias = 1;
     },
     "6": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "166..172"
       ],
@@ -120,7 +120,7 @@ const queried: typeof Alias = 1;
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "189..194"
       ],

@@ -70,7 +70,7 @@ namespace N.Inner {
   "symbols": {
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "52..53",
         "109..122"
@@ -88,7 +88,7 @@ namespace N.Inner {
     },
     "6": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "190..196"
       ],

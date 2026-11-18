@@ -35,7 +35,7 @@ namespace N {
       },
       {
         "id": 7,
-        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "163..164",
@@ -74,7 +74,7 @@ namespace N {
         "members": {
           "B": {
             "symbol": 7,
-            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS"
           },
           "result": {
             "symbol": 8,

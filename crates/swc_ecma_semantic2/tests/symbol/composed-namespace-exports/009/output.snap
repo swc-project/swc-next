@@ -32,7 +32,7 @@ const nested: Alias.T = { ok: true };
     "Alias": [
       {
         "id": 11,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "275..280",
@@ -84,7 +84,7 @@ const nested: Alias.T = { ok: true };
           },
           "X": {
             "symbol": 4,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -92,7 +92,7 @@ const nested: Alias.T = { ok: true };
     "X": [
       {
         "id": 4,
-        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "130..131",
@@ -102,7 +102,7 @@ const nested: Alias.T = { ok: true };
           {
             "span": "249..262",
             "scope": 4,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "uses": [

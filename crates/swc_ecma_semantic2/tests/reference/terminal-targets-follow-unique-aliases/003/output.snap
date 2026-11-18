@@ -23,7 +23,7 @@ import A = N.E;
   "symbols": {
     "0": {
       "name": "N",
-      "flags": "IMPORT",
+      "flags": "IMPORT | ALIAS",
       "declarations": [
         "12..13"
       ]

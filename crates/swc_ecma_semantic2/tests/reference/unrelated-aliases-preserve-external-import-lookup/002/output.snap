@@ -26,7 +26,7 @@ import Unused = Unrelated;
   "symbols": {
     "0": {
       "name": "Item",
-      "flags": "TYPE_IMPORT",
+      "flags": "IMPORT | ALIAS | TYPE_ONLY",
       "declarations": [
         "14..18"
       ]

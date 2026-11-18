@@ -44,7 +44,7 @@ export type Result = A.T;
     },
     "3": {
       "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "47..48"
       ],

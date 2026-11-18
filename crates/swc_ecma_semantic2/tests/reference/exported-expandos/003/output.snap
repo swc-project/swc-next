@@ -48,7 +48,7 @@ namespace N {
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "177..182"
       ],
@@ -58,7 +58,7 @@ namespace N {
     },
     "10": {
       "name": "x",
-      "flags": "EXPANDO_PROPERTY",
+      "flags": "PROPERTY",
       "declarations": [
         "118..119"
       ]

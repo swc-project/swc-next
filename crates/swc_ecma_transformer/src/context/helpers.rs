@@ -58,7 +58,7 @@ impl TransformCtx<'_, '_> {
             HelperKind::ToPropertyKey => "_swc_helpers",
         };
         let flags = if self.ast.is_module() {
-            SymbolFlags::IMPORT
+            SymbolFlags::ALIAS | SymbolFlags::IMPORT
         } else {
             SymbolFlags::FUNCTION_SCOPED_VAR
         };

@@ -27,7 +27,7 @@ declare namespace N {
         "members": {
           "X": {
             "symbol": 2,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -51,7 +51,7 @@ declare namespace N {
       },
       {
         "id": 2,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "48..49",

@@ -46,7 +46,7 @@ namespace N.Inner {
     },
     "3": {
       "name": "pick",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "93..109"
       ],

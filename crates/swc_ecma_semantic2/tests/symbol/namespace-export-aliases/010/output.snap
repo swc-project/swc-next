@@ -55,7 +55,7 @@ declare namespace N {
         "members": {
           "X": {
             "symbol": 5,
-            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -63,7 +63,7 @@ declare namespace N {
     "X": [
       {
         "id": 5,
-        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "98..99",
@@ -73,7 +73,7 @@ declare namespace N {
           {
             "span": "120..126",
             "scope": 2,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "alias": {
@@ -101,7 +101,7 @@ declare namespace N {
     "Y": [
       {
         "id": 4,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "76..77",

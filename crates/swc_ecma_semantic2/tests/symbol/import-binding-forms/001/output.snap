@@ -11,7 +11,7 @@ import A from "dep";
     "A": [
       {
         "id": 0,
-        "flags": "IMPORT",
+        "flags": "IMPORT | ALIAS",
         "declarations": [
           {
             "span": "7..8",

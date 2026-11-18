@@ -42,7 +42,7 @@ namespace Test {
       },
       {
         "id": 7,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "138..139",

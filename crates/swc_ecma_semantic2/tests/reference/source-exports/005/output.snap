@@ -59,7 +59,7 @@ declare namespace Test {
     },
     "5": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "178..179"
       ],

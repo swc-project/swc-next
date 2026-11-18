@@ -16,7 +16,7 @@ import A = N.Y;
     "A": [
       {
         "id": 4,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "95..96",
@@ -57,7 +57,7 @@ import A = N.Y;
           },
           "Y": {
             "symbol": 3,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       }

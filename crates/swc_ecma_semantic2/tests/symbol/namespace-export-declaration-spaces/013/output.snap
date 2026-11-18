@@ -37,7 +37,7 @@ interface Alias {}
           },
           "Y": {
             "symbol": 3,
-            "namespace_flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "AMBIENT | EXPORTED | ALIAS"
           }
         }
       }

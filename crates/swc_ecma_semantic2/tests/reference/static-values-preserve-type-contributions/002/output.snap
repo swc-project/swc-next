@@ -66,14 +66,14 @@ const queried: typeof Alias = 1;
     },
     "1": {
       "name": "x",
-      "flags": "CLASS_STATIC_MEMBER",
+      "flags": "PROPERTY",
       "declarations": [
         "23..36"
       ]
     },
     "4": {
       "name": "Alias",
-      "flags": "INTERFACE | IMPORT | IMPORT_EQUALS",
+      "flags": "INTERFACE | IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "86..91",
         "109..114"

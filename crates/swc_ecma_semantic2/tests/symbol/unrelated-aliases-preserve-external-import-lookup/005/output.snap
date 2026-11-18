@@ -27,7 +27,7 @@ type A = typeof Item;
     "Item": [
       {
         "id": 0,
-        "flags": "IMPORT",
+        "flags": "IMPORT | ALIAS",
         "declarations": [
           {
             "span": "7..11",

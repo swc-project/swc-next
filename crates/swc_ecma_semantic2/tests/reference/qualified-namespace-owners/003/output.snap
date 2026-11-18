@@ -69,7 +69,7 @@ namespace Use {
     },
     "4": {
       "name": "X",
-      "flags": "CLASS | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "CLASS | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "88..89",
         "129..140"
@@ -80,7 +80,7 @@ namespace Use {
     },
     "9": {
       "name": "Owner",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "188..193"
       ],
@@ -90,7 +90,7 @@ namespace Use {
     },
     "10": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "210..211"
       ],

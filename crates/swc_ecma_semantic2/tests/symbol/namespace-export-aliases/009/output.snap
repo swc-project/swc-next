@@ -47,7 +47,7 @@ declare namespace N {
         "members": {
           "X": {
             "symbol": 2,
-            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS"
           }
         }
       }
@@ -55,7 +55,7 @@ declare namespace N {
     "X": [
       {
         "id": 2,
-        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+        "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "55..56",
@@ -64,7 +64,7 @@ declare namespace N {
           {
             "span": "73..74",
             "scope": 2,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "bindings": [

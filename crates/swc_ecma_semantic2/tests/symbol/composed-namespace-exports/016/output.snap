@@ -342,7 +342,7 @@ const queried: typeof Alias = 1;
     "Alias": [
       {
         "id": 196,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "25395..25400",
@@ -394,7 +394,7 @@ const queried: typeof Alias = 1;
           },
           "X": {
             "symbol": 193,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -402,7 +402,7 @@ const queried: typeof Alias = 1;
     "X": [
       {
         "id": 130,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "6359..6360",
@@ -418,7 +418,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 131,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "6908..6909",
@@ -434,7 +434,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 132,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "7449..7450",
@@ -450,7 +450,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 133,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "7982..7983",
@@ -466,7 +466,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 134,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "8507..8508",
@@ -482,7 +482,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 135,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "9024..9025",
@@ -498,7 +498,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 136,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "9533..9534",
@@ -514,7 +514,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 137,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "10034..10035",
@@ -530,7 +530,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 138,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "10527..10528",
@@ -546,7 +546,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 139,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "11012..11013",
@@ -562,7 +562,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 140,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "11489..11490",
@@ -578,7 +578,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 141,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "11958..11959",
@@ -594,7 +594,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 142,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "12419..12420",
@@ -610,7 +610,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 143,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "12872..12873",
@@ -626,7 +626,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 144,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "13317..13318",
@@ -642,7 +642,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 145,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "13754..13755",
@@ -658,7 +658,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 146,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "14183..14184",
@@ -674,7 +674,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 147,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "14604..14605",
@@ -690,7 +690,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 148,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "15017..15018",
@@ -706,7 +706,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 149,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "15422..15423",
@@ -722,7 +722,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 150,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "15819..15820",
@@ -738,7 +738,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 151,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "16208..16209",
@@ -754,7 +754,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 152,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "16589..16590",
@@ -770,7 +770,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 153,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "16962..16963",
@@ -786,7 +786,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 154,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "17327..17328",
@@ -802,7 +802,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 155,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "17684..17685",
@@ -818,7 +818,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 156,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "18033..18034",
@@ -834,7 +834,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 157,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "18374..18375",
@@ -850,7 +850,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 158,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "18707..18708",
@@ -866,7 +866,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 159,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "19032..19033",
@@ -882,7 +882,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 160,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "19349..19350",
@@ -898,7 +898,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 161,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "19658..19659",
@@ -914,7 +914,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 162,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "19959..19960",
@@ -930,7 +930,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 163,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "20252..20253",
@@ -946,7 +946,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 164,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "20537..20538",
@@ -962,7 +962,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 165,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "20814..20815",
@@ -978,7 +978,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 166,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "21083..21084",
@@ -994,7 +994,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 167,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "21344..21345",
@@ -1010,7 +1010,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 168,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "21597..21598",
@@ -1026,7 +1026,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 169,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "21842..21843",
@@ -1042,7 +1042,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 170,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "22079..22080",
@@ -1058,7 +1058,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 171,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "22308..22309",
@@ -1074,7 +1074,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 172,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "22529..22530",
@@ -1090,7 +1090,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 173,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "22742..22743",
@@ -1106,7 +1106,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 174,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "22947..22948",
@@ -1122,7 +1122,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 175,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "23144..23145",
@@ -1138,7 +1138,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 176,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "23333..23334",
@@ -1154,7 +1154,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 177,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "23514..23515",
@@ -1170,7 +1170,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 178,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "23687..23688",
@@ -1186,7 +1186,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 179,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "23852..23853",
@@ -1202,7 +1202,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 180,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24009..24010",
@@ -1218,7 +1218,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 181,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24158..24159",
@@ -1234,7 +1234,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 182,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24299..24300",
@@ -1250,7 +1250,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 183,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24432..24433",
@@ -1266,7 +1266,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 184,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24556..24557",
@@ -1282,7 +1282,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 185,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24672..24673",
@@ -1298,7 +1298,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 186,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24780..24781",
@@ -1314,7 +1314,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 187,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24880..24881",
@@ -1330,7 +1330,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 188,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "24972..24973",
@@ -1346,7 +1346,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 189,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "25056..25057",
@@ -1362,7 +1362,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 190,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "25132..25133",
@@ -1378,7 +1378,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 191,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "25200..25201",
@@ -1394,7 +1394,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 192,
-        "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "25260..25261",
@@ -1410,7 +1410,7 @@ const queried: typeof Alias = 1;
       },
       {
         "id": 193,
-        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "25312..25313",
@@ -1420,7 +1420,7 @@ const queried: typeof Alias = 1;
           {
             "span": "25369..25382",
             "scope": 130,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "uses": [

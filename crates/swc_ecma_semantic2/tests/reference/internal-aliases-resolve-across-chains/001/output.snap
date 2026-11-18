@@ -20024,7 +20024,7 @@ type Result = A0.T;
   "symbols": {
     "0": {
       "name": "A0",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "7..9"
       ],
@@ -20034,7 +20034,7 @@ type Result = A0.T;
     },
     "1": {
       "name": "A1",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "23..25"
       ],

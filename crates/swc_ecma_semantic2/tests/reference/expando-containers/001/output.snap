@@ -29,7 +29,7 @@ type T = Alias;
   "symbols": {
     "4": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "104..109"
       ],

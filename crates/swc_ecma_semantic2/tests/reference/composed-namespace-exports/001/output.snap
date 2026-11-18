@@ -72,7 +72,7 @@ const queried: typeof Alias = 1;
     },
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "52..53",
         "109..122"
@@ -90,7 +90,7 @@ const queried: typeof Alias = 1;
     },
     "4": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "135..140"
       ],

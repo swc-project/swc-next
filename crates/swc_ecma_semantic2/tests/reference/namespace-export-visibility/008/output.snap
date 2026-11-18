@@ -48,7 +48,7 @@ namespace N {
     },
     "3": {
       "name": "pick",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "93..109",
         "132..136"

@@ -6,11 +6,6 @@ use swc_next_allocator::IndexSlice;
 use super::*;
 use crate::{Scopes, SymbolTables, Symbols, ts::TsAlias};
 
-const DECLARED_MEANINGS: SymbolFlags = SymbolFlags::VALUE_SPACE
-    .union(SymbolFlags::TYPE_SPACE)
-    .union(SymbolFlags::NAMESPACE_SPACE)
-    .union(SymbolFlags::EXPORT_VALUE);
-
 #[derive(Clone, Copy)]
 struct Binding {
     symbol: SymbolId,
@@ -54,7 +49,7 @@ impl AliasMeaning {
         Self {
             spaces,
             owner: flags.in_namespace_space().then_some(binding.symbol),
-            type_only: flags.intersects(TYPE_ONLY_ALIAS_FLAGS),
+            type_only: flags.intersects(SymbolFlags::TYPE_ONLY),
         }
     }
 
@@ -90,11 +85,11 @@ impl AliasMeaning {
 
 impl Binding {
     fn meaning(self, alias: Option<AliasMeaning>) -> AliasMeaning {
-        let Some(alias) = alias.filter(|_| self.flags.intersects(ALIAS_FLAGS)) else {
+        let Some(alias) = alias.filter(|_| self.flags.intersects(SymbolFlags::ALIAS)) else {
             return AliasMeaning::direct(self);
         };
         let mut direct = AliasMeaning::direct(Self {
-            flags: self.flags - ALIAS_FLAGS,
+            flags: self.flags - SymbolFlags::ALIAS,
             ..self
         });
         direct.spaces |= alias.spaces;
@@ -106,7 +101,7 @@ impl Binding {
     }
 
     fn visible_in(self, alias: Option<AliasMeaning>, space: ReferenceSpace) -> bool {
-        if alias.is_some() && self.flags.intersects(ALIAS_FLAGS) {
+        if alias.is_some() && self.flags.intersects(SymbolFlags::ALIAS) {
             return self.meaning(alias).visible_in(space);
         }
         self.flags.visible_in(space)
@@ -157,7 +152,7 @@ impl LexicalLookup<'_, '_> {
         // Qualified contributions do not add meanings to the local declaration.
         binding
             .flags
-            .remove(SymbolFlags::CLASS_STATIC_MEMBER | EXPORT_ALIAS_FLAGS);
+            .remove(SymbolFlags::PROPERTY | SymbolFlags::ALIAS);
         Some(binding)
     }
 
@@ -178,10 +173,15 @@ impl LexicalLookup<'_, '_> {
                 } else {
                     member.namespace_flags?
                 };
-                if container.ambient && flags.intersects(EXPORT_ALIAS_FLAGS) {
+                if container.ambient && flags.contains(SymbolFlags::ALIAS) && !flags.contains(SymbolFlags::IMPORT) {
                     // Export specifiers are public names outside their ambient body.
-                    flags.remove(EXPORT_ALIAS_FLAGS);
-                    if !flags.intersects(DECLARED_MEANINGS | SymbolFlags::ANY_IMPORT) {
+                    flags.remove(SymbolFlags::ALIAS);
+                    let has_declaration = flags.in_value_space()
+                        || flags.in_type_space()
+                        || flags.in_namespace_space();
+                    let has_binding =
+                        flags.intersects(SymbolFlags::EXPORT_VALUE | SymbolFlags::IMPORT);
+                    if !has_declaration && !has_binding {
                         return None;
                     }
                 }
@@ -290,14 +290,14 @@ impl AliasResolver<'_, '_> {
 
     fn alias_meaning(&self, binding: Binding) -> Result<Option<AliasMeaning>, SymbolId> {
         let symbol = binding.symbol;
-        if !binding.flags.intersects(ALIAS_FLAGS) || !self.aliases.contains_key(&symbol) {
+        if !binding.flags.intersects(SymbolFlags::ALIAS) || !self.aliases.contains_key(&symbol) {
             return Ok(None);
         }
         if let Some(alias) = self.resolved.get(&symbol) {
             return Ok(Some(alias.meaning));
         }
         if self.active.contains(&symbol) {
-            let type_only = binding.flags.intersects(TYPE_ONLY_ALIAS_FLAGS);
+            let type_only = binding.flags.intersects(SymbolFlags::TYPE_ONLY);
             return Ok(Some(AliasMeaning::unknown(type_only)));
         }
         Err(symbol)
@@ -332,7 +332,7 @@ impl AliasResolver<'_, '_> {
         }
         let type_only = self.lookup.symbols[symbol]
             .flags
-            .intersects(TYPE_ONLY_ALIAS_FLAGS);
+            .intersects(SymbolFlags::TYPE_ONLY);
         let (target, mut meaning) = match binding {
             Some(binding) => self.resolve_path(binding, &alias.members)?,
             None => (TsAlias::Unknown, AliasMeaning::unknown(false)),
@@ -368,8 +368,13 @@ impl AliasResolver<'_, '_> {
             meaning.restrict_value(type_only);
         }
         let symbol = binding.symbol;
-        let target = if binding.flags.intersects(ALIAS_FLAGS)
-            && !binding.flags.intersects(DECLARED_MEANINGS)
+        let flags = binding.flags;
+        let has_declaration =
+            flags.in_value_space() || flags.in_type_space() || flags.in_namespace_space();
+        let has_export_value = flags.contains(SymbolFlags::EXPORT_VALUE);
+        let target = if flags.contains(SymbolFlags::ALIAS)
+            && !has_declaration
+            && !has_export_value
             && (self.active.contains(&symbol)
                 || self
                     .resolved

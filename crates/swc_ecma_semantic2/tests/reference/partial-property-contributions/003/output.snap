@@ -69,7 +69,7 @@ const queried: typeof Alias = 1;
     },
     "5": {
       "name": "Item",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "153..157"
       ],
@@ -79,7 +79,7 @@ const queried: typeof Alias = 1;
     },
     "6": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "174..179"
       ],

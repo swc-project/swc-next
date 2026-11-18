@@ -33,7 +33,7 @@ declare namespace N {
           },
           "Y": {
             "symbol": 3,
-            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "namespace_flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS"
           }
         }
       }
@@ -78,7 +78,7 @@ declare namespace N {
     "Y": [
       {
         "id": 3,
-        "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+        "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
         "declarations": [
           {
             "span": "84..85",
@@ -88,7 +88,7 @@ declare namespace N {
           {
             "span": "100..106",
             "scope": 2,
-            "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS"
+            "flags": "AMBIENT | EXPORTED | ALIAS"
           }
         ],
         "alias": {

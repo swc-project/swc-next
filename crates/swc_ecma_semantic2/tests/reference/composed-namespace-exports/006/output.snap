@@ -78,7 +78,7 @@ const queried: typeof Alias = 1;
     },
     "3": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "73..79"
       ],
@@ -88,7 +88,7 @@ const queried: typeof Alias = 1;
     },
     "4": {
       "name": "X",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "126..127",
         "187..200"
@@ -106,7 +106,7 @@ const queried: typeof Alias = 1;
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "213..218"
       ],

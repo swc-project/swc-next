@@ -18,7 +18,7 @@ import A = N.Inner.Y;
     "A": [
       {
         "id": 6,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "128..129",

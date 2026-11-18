@@ -50,7 +50,7 @@ const result: Result = { right: true };
     },
     "5": {
       "name": "X",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "159..165"
       ],

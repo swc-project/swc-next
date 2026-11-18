@@ -22,7 +22,7 @@ type U = T;
   "symbols": {
     "0": {
       "name": "T",
-      "flags": "TYPE_IMPORT",
+      "flags": "IMPORT | ALIAS | TYPE_ONLY",
       "declarations": [
         "14..15"
       ]

@@ -39,14 +39,14 @@ namespace N {
   "symbols": {
     "0": {
       "name": "remote",
-      "flags": "IMPORT",
+      "flags": "IMPORT | ALIAS",
       "declarations": [
         "12..18"
       ]
     },
     "3": {
       "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "93..94"
       ],
@@ -56,7 +56,7 @@ namespace N {
     },
     "4": {
       "name": "Alias",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "121..126"
       ],

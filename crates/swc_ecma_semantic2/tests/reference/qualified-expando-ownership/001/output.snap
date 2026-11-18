@@ -48,7 +48,7 @@ namespace Use {
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "197..202"
       ],
@@ -58,7 +58,7 @@ namespace Use {
     },
     "12": {
       "name": "value",
-      "flags": "EXPANDO_PROPERTY",
+      "flags": "PROPERTY",
       "declarations": [
         "161..166"
       ]

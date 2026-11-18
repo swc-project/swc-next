@@ -97,7 +97,7 @@ const b: B = { own: true };
     },
     "10": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "239..240"
       ],
@@ -105,7 +105,7 @@ const b: B = { own: true };
     },
     "17": {
       "name": "B",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "344..345"
       ],

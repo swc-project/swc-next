@@ -92,7 +92,7 @@ const nested: Alias.T = { ok: true };
     },
     "1": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "52..53",
         "109..122"
@@ -110,7 +110,7 @@ const nested: Alias.T = { ok: true };
     },
     "6": {
       "name": "Y",
-      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "NAMESPACE_MODULE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "198..199",
         "267..273"
@@ -121,7 +121,7 @@ const nested: Alias.T = { ok: true };
     },
     "10": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "290..295"
       ],

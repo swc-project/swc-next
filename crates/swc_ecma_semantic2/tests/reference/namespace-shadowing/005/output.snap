@@ -32,7 +32,7 @@ namespace N {
   "symbols": {
     "7": {
       "name": "B",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "163..164"
       ],

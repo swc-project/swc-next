@@ -31,7 +31,7 @@ import Unused = Unrelated;
     "Item": [
       {
         "id": 0,
-        "flags": "TYPE_IMPORT",
+        "flags": "IMPORT | ALIAS | TYPE_ONLY",
         "declarations": [
           {
             "span": "14..18",

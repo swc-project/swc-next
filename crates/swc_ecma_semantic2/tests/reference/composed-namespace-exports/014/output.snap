@@ -102,7 +102,7 @@ const nested: Alias.T = { ok: true };
     },
     "8": {
       "name": "X",
-      "flags": "INTERFACE | AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "164..165",
         "237..250"
@@ -113,7 +113,7 @@ const nested: Alias.T = { ok: true };
     },
     "10": {
       "name": "original",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "198..206"
       ],
@@ -123,7 +123,7 @@ const nested: Alias.T = { ok: true };
     },
     "13": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "318..324"
       ],
@@ -133,7 +133,7 @@ const nested: Alias.T = { ok: true };
     },
     "14": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "341..346"
       ],

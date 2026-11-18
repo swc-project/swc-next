@@ -38,7 +38,7 @@ namespace Use {
       },
       {
         "id": 6,
-        "flags": "IMPORT | IMPORT_EQUALS",
+        "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "133..134",

@@ -51,7 +51,7 @@ namespace E {
       },
       {
         "id": 5,
-        "flags": "IMPORT | EXPORTED | ENUM_MEMBER | IMPORT_EQUALS",
+        "flags": "IMPORT | EXPORTED | ENUM_MEMBER | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
             "span": "97..103",
@@ -61,7 +61,7 @@ namespace E {
           {
             "span": "154..155",
             "scope": 6,
-            "flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+            "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS"
           }
         ],
         "bindings": [
@@ -107,7 +107,7 @@ namespace E {
           "A": {
             "symbol": 5,
             "enum_flags": "ENUM_MEMBER",
-            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS"
+            "namespace_flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS"
           },
           "B": {
             "symbol": 6,

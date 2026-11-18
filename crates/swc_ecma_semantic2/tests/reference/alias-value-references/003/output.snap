@@ -28,7 +28,7 @@ export { Alias };
   "symbols": {
     "3": {
       "name": "Value",
-      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "70..75"
       ],
@@ -38,7 +38,7 @@ export { Alias };
     },
     "4": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "92..97"
       ],

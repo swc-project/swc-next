@@ -61,7 +61,7 @@ const queried: typeof Alias = 1;
     },
     "6": {
       "name": "Y",
-      "flags": "AMBIENT | EXPORTED | EXPORT_ALIAS",
+      "flags": "AMBIENT | EXPORTED | ALIAS",
       "declarations": [
         "195..201"
       ],
@@ -71,7 +71,7 @@ const queried: typeof Alias = 1;
     },
     "7": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "218..223"
       ],

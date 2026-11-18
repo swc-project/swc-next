@@ -77,7 +77,7 @@ namespace N {
     },
     "1": {
       "name": "x",
-      "flags": "CLASS_STATIC_MEMBER",
+      "flags": "PROPERTY",
       "declarations": [
         "23..38"
       ]
@@ -92,7 +92,7 @@ namespace N {
     },
     "8": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "161..162"
       ],

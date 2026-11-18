@@ -35,7 +35,7 @@ declare namespace N {
         "members": {
           "x": {
             "symbol": 1,
-            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | TYPE_EXPORT_ALIAS"
+            "namespace_flags": "BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED | ALIAS | TYPE_ONLY"
           }
         }
       }

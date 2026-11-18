@@ -33,7 +33,7 @@ namespace Use {
   "symbols": {
     "2": {
       "name": "x",
-      "flags": "INTERFACE | EXPORTED | CLASS_STATIC_MEMBER",
+      "flags": "INTERFACE | EXPORTED | PROPERTY",
       "declarations": [
         "33..46",
         "102..103"
@@ -41,7 +41,7 @@ namespace Use {
     },
     "6": {
       "name": "A",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "147..148"
       ],

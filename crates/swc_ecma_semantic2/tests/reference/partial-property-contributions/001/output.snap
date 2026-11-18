@@ -74,7 +74,7 @@ const queried: typeof Alias = 1;
     },
     "5": {
       "name": "Alias",
-      "flags": "IMPORT | IMPORT_EQUALS",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "146..151"
       ],

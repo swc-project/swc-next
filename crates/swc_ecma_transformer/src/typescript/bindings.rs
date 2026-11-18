@@ -22,7 +22,7 @@ pub(super) fn resolve_value_binding(
         if flags.in_value_space() {
             return Some(symbol);
         }
-        if flags.intersects(SymbolFlags::TYPE_IMPORT | SymbolFlags::TYPE_EXPORT_ALIAS) {
+        if flags.intersects(SymbolFlags::TYPE_ONLY) {
             return None;
         }
         match semantic.ts_alias(symbol) {
