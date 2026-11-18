@@ -69,9 +69,13 @@ function compilePlugins(plugins) {
     stages[stage].push(plugin.visitor);
   }
   return {
-    afterParse: stages.afterParse.length === 0 ? null : createWalker(merge(stages.afterParse)),
-    beforeCodegen: stages.beforeCodegen.length === 0 ? null : createWalker(merge(stages.beforeCodegen)),
+    afterParse: stages.afterParse.length === 0 ? null : compileStage(stages.afterParse),
+    beforeCodegen: stages.beforeCodegen.length === 0 ? null : compileStage(stages.beforeCodegen),
   };
+}
+
+function compileStage(visitors) {
+  return createWalker(visitors.length === 1 ? visitors[0] : merge(visitors));
 }
 
 function optionObject(value, path, keys) {

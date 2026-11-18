@@ -69,6 +69,39 @@ for (const [name, transformSync] of [["core", core], ["transformer", standalone]
       assert.deepEqual(events, ["one:Program", "two:Program", "one:Identifier", "two:Identifier", "after:Program", "after:Identifier"]);
     });
 
+    test("single visitors preserve alias ordering and snapshot mutable callback arrays", () => {
+      for (const stage of ["afterParse", "beforeCodegen"]) {
+        const run = (isMerged) => {
+          const events = [];
+          const record = (label) => (node) => { events.push(`${label}:${node.type}`); };
+          const globalEnter = [record("global-enter")];
+          const concrete = { enter: [record("function-enter")], leave: [record("function-leave")] };
+          const visitor = {
+            enter: globalEnter,
+            leave: record("global-leave"),
+            FunctionDeclaration: concrete,
+            Function: { enter: record("alias-enter"), leave: record("alias-leave") },
+            Program() {
+              globalEnter.push(record("late-global"));
+              concrete.enter.push(record("late-function"));
+              visitor.Identifier = record("late-identifier");
+            },
+          };
+          const plugins = [{ name: "observe", stage, visitor }];
+          if (isMerged) plugins.push({ name: "noop", stage, visitor: {} });
+          const output = transformSync("function f() {}", { plugins });
+          return { events, output };
+        };
+        const single = run(false);
+        assert.deepEqual(single, run(true));
+        assert.ok(!single.events.some((event) => event.startsWith("late-")));
+        assert.deepEqual(single.events.filter((event) => event.endsWith(":FunctionDeclaration")), [
+          "global-enter:FunctionDeclaration", "alias-enter:FunctionDeclaration", "function-enter:FunctionDeclaration",
+          "function-leave:FunctionDeclaration", "alias-leave:FunctionDeclaration", "global-leave:FunctionDeclaration",
+        ]);
+      }
+    });
+
     test("later plugins see edits to the current node before its children", () => {
       const names = [];
       const output = transformSync("let value;", { plugins: [
