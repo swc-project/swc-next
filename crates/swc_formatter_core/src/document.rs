@@ -237,29 +237,35 @@ impl FlatSummary {
 
 /// Combines a completed group's top-level instructions. Cached inner groups are
 /// skipped, so closing a chain of nested groups does not visit the same text again.
+#[inline]
 fn flat_summary(mut elements: &[Instruction<'_>]) -> Option<FlatSummary> {
     let mut summary = FlatSummary::default();
+    let mut total_width = 0u64;
     while let Some((element, rest)) = elements.split_first() {
         elements = rest;
-        let next = match element {
+        let (width, starts_with_line, ends_with_line) = match element {
             Instruction::Text { source, width } | Instruction::TextIfFlat { source, width } => {
                 let width = Text::from_parts(*source, *width).clean_ascii_width()?;
-                FlatSummary {
-                    width: u16::try_from(width).ok()?,
-                    has_text: true,
-                    ..FlatSummary::default()
-                }
+                (width as u64, false, false)
             }
-            Instruction::NormalLine => FlatSummary {
-                ends_with_line: true,
-                ..FlatSummary::default()
-            },
+            Instruction::NormalLine => {
+                summary.ends_with_line = true;
+                continue;
+            }
             Instruction::StartGroupWithFlatWidth {
-                summary,
+                summary: child,
                 end_offset,
             } => {
                 elements = &elements[*end_offset as usize..];
-                *summary
+                if !child.has_text {
+                    summary.ends_with_line |= child.ends_with_line;
+                    continue;
+                }
+                (
+                    u64::from(child.width),
+                    child.starts_with_line,
+                    child.ends_with_line,
+                )
             }
             Instruction::SoftLine
             | Instruction::TextIfBreak { .. }
@@ -270,23 +276,15 @@ fn flat_summary(mut elements: &[Instruction<'_>]) -> Option<FlatSummary> {
             | Instruction::EndAlign { .. } => continue,
             _ => return None,
         };
-        if !next.has_text {
-            summary.ends_with_line |= next.ends_with_line;
-            continue;
-        }
-        let leading_line = summary.ends_with_line || next.starts_with_line;
-        if summary.has_text {
-            summary.width = summary
-                .width
-                .checked_add(u16::from(leading_line))?
-                .checked_add(next.width)?;
-        } else {
-            summary.starts_with_line = leading_line;
-            summary.width = next.width;
-            summary.has_text = true;
-        }
-        summary.ends_with_line = next.ends_with_line;
+        let separator = summary.ends_with_line || starts_with_line;
+        total_width += width + u64::from(summary.has_text && separator);
+        summary.starts_with_line |= !summary.has_text && separator;
+        summary.has_text = true;
+        summary.ends_with_line = ends_with_line;
     }
+    // The group length and every text length are bounded by u32. Narrow
+    // the total only at the end, including at most one separator per item.
+    summary.width = u16::try_from(total_width).ok()?;
     Some(summary)
 }
 
