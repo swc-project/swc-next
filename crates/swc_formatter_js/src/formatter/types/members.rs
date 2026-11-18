@@ -234,7 +234,6 @@ struct PreparedMember<'ast> {
     separator: Option<Span>,
     content: MemberContent<'ast>,
     before_separator: Option<TypeGap<'ast>>,
-    after_separator: Option<ExpressionTail<'ast>>,
 }
 
 struct SourceMemberGap<'ast> {
@@ -440,7 +439,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         mode = ContentMode::Verbatim;
                     }
-                    let mut prepared = self.prepare_type_member(node, mode)?;
+                    let prepared = self.prepare_type_member(node, mode)?;
                     let source = matches!(prepared.content, MemberContent::Source(_));
                     let gap_span = Span::new(prepared.content_end, next_start);
                     let role = if next.is_some() {
@@ -470,13 +469,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ) || next.is_some()
                             && self.line_constraint(gap_span.start, gap_span.end)
                                 == LineConstraint::SameLine);
-                    let after_separator = prepared.after_separator.take();
-                    let mut tail = self.format_type_member(prepared, quoting, writer)?;
-                    let adjacency = PreparedCommentAdjacency::after_tail(
-                        after_separator
+                    let after_separator = match &prepared.content {
+                        MemberContent::Property(property) => property
+                            .riding
                             .as_ref()
-                            .filter(|tail| !tail.comments.is_empty())
-                            .or(tail.as_ref()),
+                            .map(|packet| (packet.comments, packet.source_end)),
+                        _ => None,
+                    };
+                    let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let adjacency = after_separator.map_or_else(
+                        || PreparedCommentAdjacency::after_tail(tail.as_ref()),
+                        |(comments, _)| PreparedCommentAdjacency::after_comments(comments),
                     );
                     if let MemberGap::Source(source_gap) = &mut gap
                         && let Some(before) = source_gap.before_separator.take()
@@ -510,7 +513,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                     self.format_expression_tail(tail, writer)?;
-                    self.format_expression_tail(after_separator, writer)?;
+                    if let Some((comments, end)) = after_separator {
+                        self.format_comment_run(
+                            comments,
+                            CommentRunLayout::SourceAfter(end),
+                            writer,
+                        )?;
+                    }
                     if next.is_none() {
                         return match gap {
                             MemberGap::Source(source) => {
@@ -775,11 +784,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 separator,
                 content: MemberContent::Source(span),
                 before_separator: None,
-                after_separator: None,
             });
         }
         let data = handle.data;
-        let (mut content, content_end) = match data {
+        let (content, content_end) = match data {
             TsTypeElementData::TsPropertySignature(property) => {
                 let key = self.prepare_member_key(
                     property.key(ast),
@@ -852,10 +860,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             retained.then(|| self.prepare_type_gap(gap, bound))
         });
-        let after_separator = match &mut content {
-            MemberContent::Property(property) => property.riding.take(),
-            _ => None,
-        };
         let mut prepared = PreparedMember {
             content_end: if before_separator.is_some() {
                 separator.map_or(content_end, |separator| separator.start)
@@ -865,7 +869,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             separator,
             content,
             before_separator,
-            after_separator,
         };
         if !self.has_suppression {
             return Ok(prepared);
@@ -1663,6 +1666,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 PropertyAnnotationPrefix::Formatted { before, after } => {
                     self.format_type_comment_gap(&before, FlatSeparator::Empty, writer)?;
                     writer.text(":");
+                    if let Some(packet) = property.riding {
+                        self.comments.claim(packet.comments)?;
+                    }
                     self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
