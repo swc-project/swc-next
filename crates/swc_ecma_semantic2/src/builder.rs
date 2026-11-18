@@ -47,9 +47,9 @@ pub struct SemanticBuilder<'traverse, 'a> {
     exported_names: FxHashMap<&'traverse [u8], NodeId>,
     export_specifiers: Vec<ExportSpecifier>,
     diagnostics: Vec<Diagnostic>,
-    scope: ScopeTree<'a>,
+    scopes: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
-    current_scope: ScopeId,
+    scope: ScopeId,
     default_reference_space: ReferenceSpace,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
@@ -60,19 +60,19 @@ pub struct SemanticBuilder<'traverse, 'a> {
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
-        let scope = ScopeTree::init(ast);
-        let current_scope = ScopeId::from_usize(scope.list.len() - 1);
+        let scopes = ScopeTree::init(ast);
+        let scope = ScopeId::from_usize(scopes.list.len() - 1);
         let mut symbols = SymbolTracker::init(ast);
-        for (id, scope) in scope.list.iter_enumerated() {
+        for (id, scope) in scopes.list.iter_enumerated() {
             symbols.record_scope(scope.node, id);
         }
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
-            scope,
+            scopes,
             symbols,
-            current_scope,
+            scope,
             default_reference_space: ReferenceSpace::Value,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
@@ -85,7 +85,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn build(mut self) -> (Semantic<'a>, Vec<Diagnostic>) {
         self.finish();
         (
-            self.symbols.finalize(self.ast, self.scope),
+            self.symbols.finalize(self.ast, self.scopes),
             self.diagnostics,
         )
     }
@@ -96,7 +96,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     fn finish(&mut self) {
-        self.symbols.bind_annex_b_functions(self.ast, &self.scope);
+        self.symbols.bind_annex_b_functions(self.ast, &self.scopes);
         debug_assert!(self.path.is_empty());
     }
 
@@ -159,7 +159,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn record_identifier_reference(&mut self, node: IdentifierReference, flags: ReferenceFlags) {
         self.symbols
-            .add_identifier_reference(self.ast, node, self.current_scope, flags);
+            .add_identifier_reference(self.ast, node, self.scope, flags);
     }
 
     fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
@@ -191,8 +191,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             }
         }
 
-        self.symbols
-            .enter_ts_container(self.current_scope, owner, implicit);
+        self.symbols.enter_ts_container(self.scope, owner, implicit);
         node.visit_children_with(self);
         debug_assert!(self.ts_namespace_depth > 0);
         self.exit_scope(node.node_id());
@@ -238,13 +237,13 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     #[inline]
     fn push_scope(&mut self, kind: ScopeKind, node: NodeId, flags: ScopeFlags) {
-        self.current_scope = self.scope.push_scope(self.current_scope, kind, node, flags);
-        self.symbols.record_scope(node, self.current_scope);
+        self.scope = self.scopes.push_scope(self.scope, kind, node, flags);
+        self.symbols.record_scope(node, self.scope);
     }
 
     fn pop_scope(&mut self) {
         // Root and its source-type wrapper are never popped directly by the ordinary walk.
-        self.current_scope = self.current_scope().parent.unwrap();
+        self.scope = self.current_scope().parent.unwrap();
     }
 
     // Ordinary functions own arguments whether or not they have a body.
@@ -262,7 +261,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     // A node owns its lexical scopes.
     fn exit_scope(&mut self, node: NodeId) {
-        while self.current_scope.index() != 0 && self.current_scope().node == node {
+        while self.scope.index() != 0 && self.current_scope().node == node {
             self.pop_scope();
         }
     }
@@ -270,7 +269,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// The current scope.
     #[inline]
     fn current_scope(&self) -> Scope {
-        self.scope.get(self.current_scope)
+        self.scopes.get(self.scope)
     }
 
     /// Whether the current scope is in strict mode.
@@ -518,7 +517,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(NodeKindData::BindingIdentifier(node));
         self.symbols
-            .declare_binding_identifier(self.ast, node, &self.scope, self.current_scope);
+            .declare_binding_identifier(self.ast, node, &self.scopes, self.scope);
     }
 
     #[inline]
@@ -578,7 +577,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
         self.enter_node(node.node_id());
         self.symbols
-            .enter_variable_declaration(self.ast, node, &self.scope, self.current_scope);
+            .enter_variable_declaration(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::VariableDeclaration(node));
@@ -676,7 +675,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_catch_clause(&mut self, node: CatchClause) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
-        self.symbols.enter_catch_clause(self.current_scope);
+        self.symbols.enter_catch_clause(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -702,7 +701,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_directive(&mut self, node: Directive) {
         let tree = self.ast;
         if tree.get_utf8(node.value(tree)) == "use strict" {
-            self.scope.list[self.current_scope].flags.strict = true;
+            self.scopes.list[self.scope].flags.strict = true;
         }
         self.enter_node(node.node_id());
         node.visit_children_with(self);
@@ -728,13 +727,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         };
         self.push_function_scope(node.node_id(), flags);
         self.enter_node(node.node_id());
-        self.symbols.enter_function(
-            self.ast,
-            node,
-            &self.scope,
-            self.current_scope,
-            annex_b_if_body,
-        );
+        self.symbols
+            .enter_function(self.ast, node, &self.scopes, self.scope, annex_b_if_body);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::Function(node));
@@ -744,8 +738,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_function(&mut self, node: TsFunction) {
         self.push_function_scope(node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
-        self.symbols
-            .enter_ts_function(&self.scope, self.current_scope);
+        self.symbols.enter_ts_function(&self.scopes, self.scope);
         node.id(self.ast).visit_with(self);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
@@ -787,7 +780,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.leave_node(NodeKindData::FormalParameters(node));
             return;
         }
-        self.symbols.enter_formal_parameters(self.current_scope);
+        self.symbols.enter_formal_parameters(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_formal_parameters();
         self.leave_node(NodeKindData::FormalParameters(node));
@@ -808,19 +801,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             }
         };
         if split_scope {
-            let function = self.current_scope;
+            let function = self.scope;
             self.push_scope(
                 ScopeKind::FunctionBody,
                 node.node_id(),
                 self.inherit_strict_flag(),
             );
-            self.scope.list[function].function_body = Some(self.current_scope);
+            self.scopes.list[function].function_body = Some(self.scope);
         }
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        if self.scope.get(self.current_scope).kind == ScopeKind::FunctionBody {
-            self.symbols
-                .link_parameter_vars(&self.scope, self.current_scope);
+        if self.scopes.get(self.scope).kind == ScopeKind::FunctionBody {
+            self.symbols.link_parameter_vars(&self.scopes, self.scope);
         }
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::FunctionBody(node));
@@ -835,7 +827,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Class, node.node_id(), flags);
         self.enter_node(node.node_id());
         self.symbols
-            .enter_class(self.ast, node, &self.scope, self.current_scope);
+            .enter_class(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -857,12 +849,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_class_element(&mut self, node: ClassElement) {
         if self.ast.is_ts() {
-            self.symbols.declare_ts_class_static_member(
-                self.ast,
-                node,
-                &self.scope,
-                self.current_scope,
-            );
+            self.symbols
+                .declare_ts_class_static_member(self.ast, node, &self.scopes, self.scope);
         }
         node.visit_children_with(self);
     }
@@ -904,7 +892,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             node.node_id(),
             self.inherit_strict_flag(),
         );
-        self.scope.list[self.current_scope].flags.arguments_barrier = true;
+        self.scopes.list[self.scope].flags.arguments_barrier = true;
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.exit_scope(node.node_id());
@@ -916,36 +904,36 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         // Class expressions retain their name environment and use the outer
         // strictness; member decorators evaluate at the class rather than in
         // a method's parameter or body scope.
-        let saved_scope = self.current_scope;
+        let saved_scope = self.scope;
         let class = {
-            let mut ancestors = self.scope.ancestors(Some(self.current_scope));
-            ancestors.find(|&scope| self.scope.get(scope).kind == ScopeKind::Class)
+            let mut ancestors = self.scopes.ancestors(Some(self.scope));
+            ancestors.find(|&scope| self.scopes.get(scope).kind == ScopeKind::Class)
         };
         if let Some(class) = class
-            && let Some(outer) = self.scope.get(class).parent
+            && let Some(outer) = self.scopes.get(class).parent
         {
             match self.current_node().map(|parent| self.ast.kind_data(parent)) {
                 Some(NodeKindData::Class(node))
                     if node.class_type(self.ast) == ClassType::ClassDeclaration =>
                 {
-                    self.current_scope = outer;
+                    self.scope = outer;
                 }
                 Some(NodeKindData::Class(_)) => {
                     // Decorators precede ClassTail and do not inherit its strict
                     // mode, even though TS name lookup can see this class.
                     let flags = ScopeFlags {
-                        strict: self.scope.get(outer).flags.strict,
+                        strict: self.scopes.get(outer).flags.strict,
                         ..ScopeFlags::default()
                     };
-                    self.current_scope = class;
+                    self.scope = class;
                     self.push_scope(ScopeKind::ClassDecorator, node.node_id(), flags);
                 }
-                _ => self.current_scope = class,
+                _ => self.scope = class,
             }
         }
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        self.current_scope = saved_scope;
+        self.scope = saved_scope;
         self.leave_node(NodeKindData::Decorator(node));
     }
 
@@ -968,7 +956,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_import_declaration(&mut self, node: ImportDeclaration) {
         self.enter_node(node.node_id());
         self.symbols
-            .enter_import_declaration(self.ast, node, self.current_scope);
+            .enter_import_declaration(self.ast, node, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::ImportDeclaration(node));
@@ -986,7 +974,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         let import_kind = node.import_kind(self.ast);
         self.symbols
-            .enter_ts_import_equals_declaration(import_kind, self.current_scope);
+            .enter_ts_import_equals_declaration(import_kind, self.scope);
         let first_reference = self.symbols.next_reference();
         let flags = self.flags_with_space(ReferenceSpace::Any);
         node.id(self.ast).visit_with(self);
@@ -1041,12 +1029,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             flags = flags.no_access();
         }
         if declaration.is_some_and(|declaration| declaration.source(self.ast).is_none())
-            && let Some(root) =
-                self.symbols
-                    .add_local_export_reference(self.ast, node, self.current_scope, flags)
+            && let Some(root) = self
+                .symbols
+                .add_local_export_reference(self.ast, node, self.scope, flags)
         {
             self.symbols
-                .record_ts_namespace_export(self.ast, &self.scope, node, root, type_only);
+                .record_ts_namespace_export(self.ast, &self.scopes, node, root, type_only);
         }
         self.visit_with_reference_flags(node.local(self.ast), flags);
         node.exported(self.ast).visit_with(self);
@@ -1066,7 +1054,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {
         self.enter_node(node.node_id());
         self.symbols
-            .enter_ts_enum_declaration(self.ast, node, self.current_scope);
+            .enter_ts_enum_declaration(self.ast, node, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsEnumDeclaration(node));
@@ -1085,8 +1073,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 .symbol_of_node(declaration.id(self.ast).node_id()),
             _ => None,
         };
-        self.symbols
-            .enter_ts_container(self.current_scope, owner, false);
+        self.symbols.enter_ts_container(self.scope, owner, false);
         node.visit_children_with(self);
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsEnumBody(node));
@@ -1095,7 +1082,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.enter_node(node.node_id());
         self.symbols
-            .declare_ts_enum_member(self.ast, node, &self.scope, self.current_scope);
+            .declare_ts_enum_member(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsEnumMember(node));
     }
@@ -1103,9 +1090,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
         self.enter_node(node.node_id());
         self.symbols
-            .enter_ts_module_declaration(self.ast, node, self.current_scope);
+            .enter_ts_module_declaration(self.ast, node, self.scope);
         let tree = self.ast;
-        let enclosing = self.current_scope;
+        let enclosing = self.scope;
         let mut name = node.id(tree).node_id();
         let mut segments = Vec::new();
         while let NodeKindData::TsQualifiedName(qualified) = tree.kind_data(name) {
@@ -1119,12 +1106,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             owner = self.symbols.symbol_of_node(name);
             for (qualifier, segment) in segments.into_iter().rev() {
                 self.push_scope(ScopeKind::TsModule, qualifier, self.inherit_strict_flag());
-                self.symbols
-                    .enter_ts_container(self.current_scope, owner, false);
-                self.symbols.enter_dotted_namespace(self.current_scope);
+                self.symbols.enter_ts_container(self.scope, owner, false);
+                self.symbols.enter_dotted_namespace(self.scope);
                 self.symbols.declare_dotted_namespace(
                     tree,
-                    &self.scope,
+                    &self.scopes,
                     segment.name(tree),
                     segment.node_id(),
                 );
@@ -1143,14 +1129,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                         node.node_id(),
                         self.inherit_strict_flag(),
                     );
-                    self.symbols
-                        .enter_ts_container(self.current_scope, owner, false);
-                    self.symbols.enter_dotted_namespace(self.current_scope);
+                    self.symbols.enter_ts_container(self.scope, owner, false);
+                    self.symbols.enter_dotted_namespace(self.scope);
                     child.visit_with(self);
                 }
             }
         }
-        self.current_scope = enclosing;
+        self.scope = enclosing;
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsModuleDeclaration(node));
     }
@@ -1170,7 +1155,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
         self.enter_node(node.node_id());
         self.symbols
-            .enter_ts_namespace_export_declaration(self.current_scope);
+            .enter_ts_namespace_export_declaration(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsNamespaceExportDeclaration(node));
@@ -1179,12 +1164,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_type_alias_declaration(
-            self.ast,
-            node,
-            &self.scope,
-            self.current_scope,
-        );
+        self.symbols
+            .enter_ts_type_alias_declaration(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1194,12 +1175,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_interface_declaration(
-            self.ast,
-            node,
-            &self.scope,
-            self.current_scope,
-        );
+        self.symbols
+            .enter_ts_interface_declaration(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1288,12 +1265,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_ts_type_parameter(
-            self.ast,
-            self.parent(),
-            &self.scope,
-            self.current_scope,
-        );
+        self.symbols
+            .enter_ts_type_parameter(self.ast, self.parent(), &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsTypeParameter(node));
@@ -1484,12 +1457,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.add_ts_type_predicate_reference(
-            self.ast,
-            node,
-            &self.scope,
-            self.current_scope,
-        );
+        self.symbols
+            .add_ts_type_predicate_reference(self.ast, node, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypePredicate(node));
         self.exit_type_position(previous);
@@ -1513,7 +1482,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1525,7 +1494,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1540,7 +1509,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let parent = self.parent();
         // Mapped type keys `[K in T]` use the same binding context as type parameters.
         self.symbols
-            .enter_ts_type_parameter(self.ast, parent, &self.scope, self.current_scope);
+            .enter_ts_type_parameter(self.ast, parent, &self.scopes, self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1553,7 +1522,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
         node.params(self.ast).visit_with(self);
@@ -1568,7 +1537,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1580,7 +1549,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1592,7 +1561,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols.enter_signature_type(self.current_scope);
+        self.symbols.enter_signature_type(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
@@ -1613,7 +1582,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.enter_node(node.node_id());
         self.symbols
-            .add_jsx_opening_element_reference(self.ast, node, self.current_scope);
+            .add_jsx_opening_element_reference(self.ast, node, self.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxOpeningElement(node));
     }
@@ -1621,7 +1590,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
         self.enter_node(node.node_id());
         self.symbols
-            .add_jsx_closing_element_reference(self.ast, node, self.current_scope);
+            .add_jsx_closing_element_reference(self.ast, node, self.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxClosingElement(node));
     }

@@ -28,11 +28,11 @@ impl SemanticBuilder<'_, '_> {
         // tscgo looks in the nearest block and its containing declaration.
         // Object literals have no lexical scope here but still stop that lookup.
         let container = self
-            .scope
-            .ancestors(Some(self.current_scope))
-            .find(|&scope| self.scope.get(scope).kind != ScopeKind::Block)
+            .scopes
+            .ancestors(Some(self.scope))
+            .find(|&scope| self.scopes.get(scope).kind != ScopeKind::Block)
             .unwrap();
-        let container_node = self.scope.get(container).node;
+        let container_node = self.scopes.get(container).node;
         if self
             .ancestors()
             .take_while(|&node| node != container_node)
@@ -46,7 +46,7 @@ impl SemanticBuilder<'_, '_> {
             return;
         }
         self.symbols
-            .record_expando(member.object(tree), property, self.current_scope, container);
+            .record_expando(member.object(tree), property, self.scope, container);
     }
 }
 

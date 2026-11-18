@@ -1159,7 +1159,7 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
         return;
     }
     let enclosing = builder.current_scope().parent.unwrap();
-    let strict = builder.scope.get(enclosing).flags.strict;
+    let strict = builder.scopes.get(enclosing).flags.strict;
     let mut through_labels = false;
     let mut ancestors = builder.ancestors();
     let _ = ancestors.next();
@@ -1531,13 +1531,13 @@ fn check_outer_parameter_conflict(
     //
     //   function f(a = 1) { let a }   // still an error
     //   function f(a = 1) { var a }   // legal, var stays out
-    let target_scope = builder.scope.get(target);
+    let target_scope = builder.scopes.get(target);
     let Some(outer) = target_scope.parent else {
         return;
     };
     let outer_holds_parameters = match target_scope.kind {
         ScopeKind::FunctionBody => true,
-        ScopeKind::Block => match builder.ast.kind_data(builder.scope.get(outer).node) {
+        ScopeKind::Block => match builder.ast.kind_data(builder.scopes.get(outer).node) {
             NodeKindData::CatchClause(catch) => {
                 catch.body(builder.ast).node_id() == target_scope.node
             }
@@ -1575,7 +1575,7 @@ fn check_hoisting_var_conflict(
     let target = binding.scope;
     // Per 14.2.1, a hoisting var conflicts with block-scoped names
     // in any intermediate block it passes through.
-    for scope_id in builder.scope.ancestors(Some(builder.current_scope)) {
+    for scope_id in builder.scopes.ancestors(Some(builder.scope)) {
         if scope_id == target {
             break;
         }
@@ -1597,7 +1597,7 @@ fn check_hoisting_var_conflict(
             // (14.15.1): a var colliding with a catch parameter is a
             // syntax error, except for the Annex B.3.4 simple-binding
             // web-compat carve-out.
-            let catch_node = builder.scope.get(scope_id).node;
+            let catch_node = builder.scopes.get(scope_id).node;
             let NodeKindData::CatchClause(catch) = builder.ast.kind_data(catch_node) else {
                 unreachable!()
             };
