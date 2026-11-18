@@ -173,7 +173,10 @@ impl LexicalLookup<'_, '_> {
                 } else {
                     member.namespace_flags?
                 };
-                if container.ambient && flags.contains(SymbolFlags::ALIAS) && !flags.contains(SymbolFlags::IMPORT) {
+                if container.ambient
+                    && flags.contains(SymbolFlags::ALIAS)
+                    && !flags.contains(SymbolFlags::IMPORT)
+                {
                     // Export specifiers are public names outside their ambient body.
                     flags.remove(SymbolFlags::ALIAS);
                     let has_declaration = flags.in_value_space()

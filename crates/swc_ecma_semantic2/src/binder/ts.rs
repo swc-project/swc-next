@@ -164,7 +164,6 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast<'a>,
         mut declaration: PendingDeclaration,
-        local: Option<SymbolId>,
     ) -> Option<DeclarationId> {
         let scope = declaration.binding.scope;
         let owner = self.ts_bindings.ts_owner(scope);
@@ -181,12 +180,21 @@ impl<'a> SymbolTracker<'a> {
         let flags = declaration.binding.flags;
         let is_alias = flags.contains(SymbolFlags::IMPORT_EQUALS);
         let local_name = declaration.name;
+        let text = tree.get_wtf8(local_name).as_bytes();
+        let local = self.own_binding(scope, text).filter(|&id| {
+            let flags = self.symbol(id).flags;
+            !flags.intersects(SymbolFlags::INTERNAL_NAME)
+        });
         let (export, id) = if let Some(owner) = owner {
             self.declare_ts_member(tree, owner, declaration, TsMemberKind::Namespace)
         } else {
-            let existing =
-                local.and_then(|symbol| self.source_export(symbol).or(is_alias.then_some(symbol)));
-            self.declare_symbol(tree, declaration, existing, true)
+            let existing = local.and_then(|symbol| {
+                let export = self.source_export(symbol);
+                export.or(is_alias.then_some(symbol))
+            });
+            let (symbol, id) = self.declare_symbol(tree, declaration, existing);
+            self.record_symbol(declaration.node, symbol);
+            (symbol, id)
         };
 
         if local == Some(export) {
@@ -299,13 +307,10 @@ impl<'a> SymbolTracker<'a> {
         kind: TsMemberKind,
     ) -> (SymbolId, DeclarationId) {
         let name = tree.get_wtf8(declaration.name).as_bytes();
-        let previous = self.ts_bindings.member(owner, name);
-        let (symbol, id) = self.declare_symbol(
-            tree,
-            declaration,
-            previous.map(|member| member.symbol),
-            true,
-        );
+        let member = self.ts_bindings.member(owner, name);
+        let existing = member.map(|member| member.symbol);
+        let (symbol, id) = self.declare_symbol(tree, declaration, existing);
+        self.record_symbol(declaration.node, symbol);
         let table = self
             .ts_bindings
             .container_members

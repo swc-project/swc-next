@@ -1,8 +1,8 @@
 use std::{iter::successors, mem::swap};
 
 use swc_next_allocator::{
-    Allocator, CloneIn,
-    hash_map::HashMap as ArenaHashMap,
+    Allocator,
+    hash_map::{Entry, HashMap as ArenaHashMap},
     vec::{ArenaIndexVec, ArenaVec},
 };
 use swc_next_ecma_ast::{
@@ -1108,7 +1108,7 @@ impl<'a> SymbolTracker<'a> {
 
         // Register a hoisting var in every block it passes through so
         // block-scoped redeclarations see it.
-        let name = tree.get_utf8(name).as_bytes().clone_in(self.allocator);
+        let name = tree.get_utf8(name).as_bytes();
         for scope_id in scope.ancestors(Some(current_scope)) {
             if scope_id == declaration.scope {
                 break;
@@ -1166,19 +1166,21 @@ impl<'a> SymbolTracker<'a> {
         name: AstWtf8,
         id: SymbolId,
     ) {
-        let name = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
+        let name = tree.get_wtf8(name).as_bytes();
         if let Some(previous) = self.symbol_tables[scope].insert(name, id) {
-            let flags = self.symbols[previous].flags;
-            debug_assert!(flags.intersects(SymbolFlags::INTERNAL_NAME));
-            // Preserve the hidden name when a parameter or local replaces it.
-            // E.g. `(function f() { type f = string; return f; })` still uses
-            // the function's internal name in value space.
-            let internal = match self.shadowed_internal_names.get(&previous) {
-                Some(&internal) => internal,
-                None => previous,
-            };
-            self.shadowed_internal_names.insert(id, internal);
+            self.record_shadowed_internal_name(id, previous);
         }
+    }
+
+    fn record_shadowed_internal_name(&mut self, symbol: SymbolId, previous: SymbolId) {
+        let flags = self.symbol(previous).flags;
+        debug_assert!(flags.intersects(SymbolFlags::INTERNAL_NAME));
+        // Preserve the hidden name when a parameter or local replaces it.
+        // E.g. `(function f() { type f = string; return f; })` still uses
+        // the function's internal name in value space.
+        let internal = self.shadowed_internal_names.get(&previous);
+        let internal = internal.copied().unwrap_or(previous);
+        self.shadowed_internal_names.insert(symbol, internal);
     }
 
     /// Declares the pending binding for `name` at `node`. A compatible
@@ -1187,34 +1189,46 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> DeclarationId {
         let target = self.pending.scope;
-        let existing = {
-            let text = tree.get_wtf8(name).as_bytes();
-            self.own_binding(target, text).filter(|&id| {
-                let flags = self.symbols[id].flags;
-                !flags.intersects(SymbolFlags::INTERNAL_NAME)
-            })
-        };
-        let declaration = {
-            let mut flags = self.pending.flags;
-            flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
-            flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
-            PendingDeclaration {
-                name,
-                node,
-                binding: PendingBinding {
-                    flags,
-                    ..self.pending
-                },
-            }
+        let mut flags = self.pending.flags;
+        flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
+        flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
+        let mut declaration = PendingDeclaration {
+            name,
+            node,
+            binding: PendingBinding {
+                flags,
+                ..self.pending
+            },
         };
         if tree.is_ts()
-            && let Some(declaration) = self.declare_ts_export(tree, declaration, existing)
+            && let Some(declaration) = self.declare_ts_export(tree, declaration)
         {
             return declaration;
         }
-        let (symbol, declaration) = self.declare_symbol(tree, declaration, existing, true);
-        if existing.is_none() {
-            self.insert_scope_binding(tree, target, name, symbol);
+        let text = tree.get_wtf8(name).as_bytes();
+        // A fresh table entry points to the symbol added by record_declaration.
+        let next_symbol = self.symbols.next_idx();
+        let (existing, shadowed) = match self.symbol_tables[target].entry(text) {
+            Entry::Occupied(mut entry) => {
+                let id = *entry.get();
+                let symbol = self.symbols[id];
+                if symbol.flags.intersects(SymbolFlags::INTERNAL_NAME) {
+                    declaration.name = symbol.name;
+                    entry.insert(next_symbol);
+                    (None, Some(id))
+                } else {
+                    (Some(id), None)
+                }
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(next_symbol);
+                (None, None)
+            }
+        };
+        let (symbol, declaration) = self.record_declaration(declaration, existing);
+        self.record_symbol(node, symbol);
+        if let Some(previous) = shadowed {
+            self.record_shadowed_internal_name(symbol, previous);
         }
         declaration
     }
@@ -1245,9 +1259,25 @@ impl<'a> SymbolTracker<'a> {
     fn declare_symbol(
         &mut self,
         tree: &Ast<'a>,
+        mut declaration: PendingDeclaration,
+        existing: Option<SymbolId>,
+    ) -> (SymbolId, DeclarationId) {
+        if existing.is_none() {
+            let text = tree.get_wtf8(declaration.name).as_bytes();
+            if let Some(id) = self.own_binding(declaration.binding.scope, text)
+                && self.symbol(id).flags.intersects(SymbolFlags::INTERNAL_NAME)
+            {
+                declaration.name = self.symbol(id).name;
+            }
+        }
+        self.record_declaration(declaration, existing)
+    }
+
+    #[inline(always)]
+    fn record_declaration(
+        &mut self,
         declaration: PendingDeclaration,
         existing: Option<SymbolId>,
-        record_node: bool,
     ) -> (SymbolId, DeclarationId) {
         let PendingDeclaration {
             name,
@@ -1256,7 +1286,7 @@ impl<'a> SymbolTracker<'a> {
         } = declaration;
         let declaration_flags = binding.flags;
         let symbol_flags = declaration_flags - SymbolFlags::CONST_ENUM_ONLY_MODULE;
-        debug_assert!(node.index() < tree.node_count());
+        debug_assert!(node.index() < self.node_semantic.len());
         let declaration_id = self.declarations.next_idx();
         let id = if let Some(existing) = existing {
             let symbol = &mut self.symbols[existing];
@@ -1266,19 +1296,6 @@ impl<'a> SymbolTracker<'a> {
             self.add_redeclaration(existing, declaration_id);
             existing
         } else {
-            let name = {
-                let text = tree.get_wtf8(name).as_bytes();
-                match self.own_binding(binding.scope, text) {
-                    Some(id)
-                        if self.symbols[id]
-                            .flags
-                            .intersects(SymbolFlags::INTERNAL_NAME) =>
-                    {
-                        self.symbols[id].name
-                    }
-                    _ => name,
-                }
-            };
             self.symbols.push(Symbol {
                 name,
                 flags: symbol_flags,
@@ -1292,13 +1309,7 @@ impl<'a> SymbolTracker<'a> {
             scope: binding.scope,
             flags: declaration_flags,
         });
-        if record_node {
-            debug_assert!(matches!(
-                self.node_semantic[node],
-                NodeSemanticId::None | NodeSemanticId::Symbol(_)
-            ));
-            self.node_semantic[node] = NodeSemanticId::Symbol(id);
-        }
+
         (id, declaration_id)
     }
 
@@ -1507,6 +1518,16 @@ impl<'a> SymbolTracker<'a> {
 
     pub fn symbol_of_node(&self, node: NodeId) -> Option<SymbolId> {
         self.node_semantic[node].symbol()
+    }
+
+    #[inline]
+    fn record_symbol(&mut self, node: NodeId, id: SymbolId) {
+        let slot = &mut self.node_semantic[node];
+        debug_assert!(matches!(
+            *slot,
+            NodeSemanticId::None | NodeSemanticId::Symbol(_)
+        ));
+        *slot = NodeSemanticId::Symbol(id);
     }
 
     #[inline]

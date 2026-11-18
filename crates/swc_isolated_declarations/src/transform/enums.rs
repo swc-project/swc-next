@@ -290,9 +290,7 @@ fn resolve_container(semantic: &Semantic<'_>, mut symbol: SymbolId) -> Option<Sy
         if flags.in_value_space() {
             return Some(symbol);
         }
-        if flags.intersects(SymbolFlags::TYPE_ONLY)
-            || !aliases.insert(symbol)
-        {
+        if flags.intersects(SymbolFlags::TYPE_ONLY) || !aliases.insert(symbol) {
             return None;
         }
         let TsAlias::Target(target) = alias else {

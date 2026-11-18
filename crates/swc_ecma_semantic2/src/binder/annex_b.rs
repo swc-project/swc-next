@@ -171,7 +171,7 @@ impl<'a> SymbolTracker<'a> {
         };
         // The syntax node continues to identify the lexical function. The
         // companion declaration only contributes to the outer var symbol.
-        let (symbol, _) = self.declare_symbol(tree, declaration, existing, false);
+        let (symbol, _) = self.declare_symbol(tree, declaration, existing);
         let lexical = self.symbol_of_node(name.node_id()).unwrap();
         self.symbol_links.link(lexical, symbol);
         if existing.is_none() {
