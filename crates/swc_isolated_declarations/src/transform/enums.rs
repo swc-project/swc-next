@@ -270,11 +270,10 @@ fn resolve_symbol(expression: Expr, semantic: &Semantic<'_>, ast: &Ast<'_>) -> O
             let owner = resolve_container(semantic, owner)?;
             let name = property_name(member.property(ast), ast)?;
             let member = semantic.ts_container_member(owner, name.as_ref())?;
-            let has_value = [member.enum_flags, member.namespace_flags]
-                .into_iter()
-                .flatten()
-                .any(|flags| flags.visible_in(ReferenceSpace::Value));
-            has_value.then_some(member.symbol)
+            member
+                .flags()
+                .visible_in(ReferenceSpace::Value)
+                .then_some(member.symbol)
         }
         _ => None,
     }

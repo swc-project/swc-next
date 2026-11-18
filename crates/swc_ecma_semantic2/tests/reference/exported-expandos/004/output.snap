@@ -29,13 +29,25 @@ const value = Alias;
     ]
   },
   "symbols": {
+    "5": {
+      "name": "Item",
+      "flags": "IMPORT | EXPORTED | IMPORT_EQUALS",
+      "declarations": [
+        "127..131"
+      ],
+      "alias": {
+        "Target": 8
+      }
+    },
     "6": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "148..153"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 5
+      }
     }
   },
   "scopes": {

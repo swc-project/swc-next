@@ -26,7 +26,7 @@ mod annex_b;
 pub(crate) mod ts;
 
 use annex_b::AnnexBFunction;
-use ts::TsBindingState;
+use ts::{TsBindingState, TsMemberKind};
 
 /// A `(start, len)` window into a backing slice.
 #[derive(Debug, Default, Clone, Copy)]
@@ -106,6 +106,8 @@ bitflags::bitflags! {
         /// An async or generator implementation, which cannot participate in
         /// Annex B's ordinary function duplicate exception.
         const NON_ANNEX_B_FUNCTION = 1 << 20;
+        /// A named property introduced by an assignment to a function container.
+        const EXPANDO_PROPERTY = 1 << 21;
         /// A TypeScript import-equals declaration, including type-only and
         /// external `require` aliases. Independent of target resolution.
         const IMPORT_EQUALS = 1 << 23;
@@ -143,7 +145,8 @@ bitflags::bitflags! {
             | Self::REGULAR_ENUM.bits()
             | Self::CONST_ENUM.bits()
             | Self::VALUE_MODULE.bits()
-            | Self::ENUM_MEMBER.bits();
+            | Self::ENUM_MEMBER.bits()
+            | Self::EXPANDO_PROPERTY.bits();
 
         /// Declarations that live in TS type space.
         const TYPE_SPACE = Self::CLASS.bits()
@@ -1155,7 +1158,7 @@ impl<'a> SymbolTracker<'a> {
             binding,
         };
         if let Some(owner) = self.ts_bindings.ts_owner(current_scope) {
-            self.declare_ts_member(tree, owner, declaration, true);
+            self.declare_ts_member(tree, owner, declaration, TsMemberKind::Enum);
         }
     }
 
@@ -1571,6 +1574,7 @@ impl<'a> SymbolTracker<'a> {
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
         self.sync_symbol_tables(scopes.list.len());
+        self.bind_expando_assignments(tree, &scopes);
         let mut use_ranges = ArenaIndexVec::with_capacity_in(self.symbols.len(), self.allocator);
         use_ranges.resize(self.symbols.len(), Range::default());
 

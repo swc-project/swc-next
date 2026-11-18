@@ -1,5 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
-use swc_next_ecma_ast::{TsImportEqualsDeclaration, TsModuleBlock};
+use swc_next_ecma_ast::{
+    Expr, IdentifierName, PropertyKeyData, TsImportEqualsDeclaration, TsModuleBlock,
+};
 
 use super::*;
 use crate::ts::{TsMember, TsMemberTable};
@@ -13,11 +15,25 @@ pub(super) struct TsBindingState {
     implicit_exports: FxHashSet<ScopeId>,
     aliases: FxHashMap<SymbolId, ImportEquals>,
     initializers: FxHashMap<ReferenceId, SymbolId>,
+    expando_assignments: Vec<ExpandoAssignment>,
 }
 
 struct ImportEquals {
     root: ReferenceId,
     members: Vec<AstUtf8>,
+}
+
+struct ExpandoAssignment {
+    object: Expr,
+    property: IdentifierName,
+    scope: ScopeId,
+    container: ScopeId,
+}
+
+pub(super) enum TsMemberKind {
+    Enum,
+    Namespace,
+    Expando,
 }
 
 impl<'a> SymbolTracker<'a> {
@@ -112,7 +128,7 @@ impl<'a> SymbolTracker<'a> {
         let is_alias = flags.contains(SymbolFlags::IMPORT_EQUALS);
         let local_name = declaration.name;
         let (export, id) = if let Some(owner) = owner {
-            self.declare_ts_member(tree, owner, declaration, false)
+            self.declare_ts_member(tree, owner, declaration, TsMemberKind::Namespace)
         } else {
             let existing =
                 local.and_then(|symbol| self.source_export(symbol).or(is_alias.then_some(symbol)));
@@ -226,7 +242,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         owner: SymbolId,
         declaration: PendingDeclaration,
-        enum_member: bool,
+        kind: TsMemberKind,
     ) -> (SymbolId, DeclarationId) {
         let name = tree.get_wtf8(declaration.name).as_bytes();
         let previous = self.ts_bindings.member(owner, name);
@@ -245,11 +261,15 @@ impl<'a> SymbolTracker<'a> {
             symbol,
             enum_flags: None,
             namespace_flags: None,
+            expando: false,
         });
-        let contribution = if enum_member {
-            &mut member.enum_flags
-        } else {
-            &mut member.namespace_flags
+        let contribution = match kind {
+            TsMemberKind::Enum => &mut member.enum_flags,
+            TsMemberKind::Namespace => &mut member.namespace_flags,
+            TsMemberKind::Expando => {
+                member.expando = true;
+                return (symbol, id);
+            }
         };
         let flags = declaration.binding.flags - SymbolFlags::CONST_ENUM_ONLY_MODULE;
         match *contribution {
@@ -260,6 +280,121 @@ impl<'a> SymbolTracker<'a> {
             _ => {}
         }
         (symbol, id)
+    }
+
+    pub(crate) fn record_expando(
+        &mut self,
+        object: Expr,
+        property: IdentifierName,
+        scope: ScopeId,
+        container: ScopeId,
+    ) {
+        self.ts_state.expando_assignments.push(ExpandoAssignment {
+            object,
+            property,
+            scope,
+            container,
+        });
+    }
+
+    pub(super) fn bind_expando_assignments(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'_>) {
+        // The receiver can be declared after the write. Bind named members once
+        // all declaration tables exist, before resolving import aliases.
+        let mut path = Vec::new();
+        for assignment in std::mem::take(&mut self.ts_state.expando_assignments) {
+            path.clear();
+            let mut object = assignment.object.node_id();
+            while let NodeKindData::MemberExpression(member) = tree.kind_data(object) {
+                let PropertyKeyData::IdentifierName(property) =
+                    tree.property_key_data(member.property(tree))
+                else {
+                    break;
+                };
+                if member.computed(tree) || member.optional(tree) {
+                    break;
+                }
+                path.push(property.name(tree));
+                object = member.object(tree).node_id();
+            }
+            let NodeKindData::IdentifierReference(root) = tree.kind_data(object) else {
+                continue;
+            };
+            let root = tree.get_utf8(root.name(tree)).as_bytes();
+            let mut receiver = self.expando_receiver(tree, scopes, assignment.scope, root, &path);
+            if receiver.is_none() && assignment.scope != assignment.container {
+                receiver = self.expando_receiver(tree, scopes, assignment.container, root, &path);
+            }
+            let Some(owner) = receiver.filter(|&symbol| self.is_expando_function(symbol)) else {
+                continue;
+            };
+
+            let name = assignment.property.name(tree);
+            if self
+                .ts_bindings
+                .member(owner, tree.get_utf8(name).as_bytes())
+                .is_some_and(|member| !member.expando)
+            {
+                continue;
+            }
+            self.declare_ts_member(
+                tree,
+                owner,
+                PendingDeclaration {
+                    name: name.into(),
+                    node: assignment.property.node_id(),
+                    binding: PendingBinding {
+                        flags: SymbolFlags::EXPANDO_PROPERTY,
+                        excludes: SymbolFlags::empty(),
+                        scope: assignment.scope,
+                    },
+                },
+                TsMemberKind::Expando,
+            );
+        }
+    }
+
+    fn expando_receiver(
+        &self,
+        tree: &Ast<'_>,
+        scopes: &ScopeTree<'_>,
+        scope: ScopeId,
+        root: &[u8],
+        path: &[AstUtf8],
+    ) -> Option<SymbolId> {
+        let local = self.own_binding(scope, root).or_else(|| {
+            let scope = scopes.get(scope);
+            if scope.kind == ScopeKind::FunctionBody {
+                self.own_binding(scope.parent.unwrap(), root)
+            } else {
+                None
+            }
+        });
+        let mut symbol = if let Some(local) = local {
+            self.ts_bindings
+                .export_symbols
+                .get(&local)
+                .copied()
+                .unwrap_or(local)
+        } else {
+            let owner = self.ts_bindings.ts_owner(scope)?;
+            self.ts_bindings.member(owner, root)?.symbol
+        };
+
+        for &name in path.iter().rev() {
+            if !self.is_expando_function(symbol) {
+                return None;
+            }
+            symbol = self
+                .ts_bindings
+                .member(symbol, tree.get_utf8(name).as_bytes())?
+                .symbol;
+        }
+        Some(symbol)
+    }
+
+    fn is_expando_function(&self, symbol: SymbolId) -> bool {
+        let flags = self.symbols[symbol].flags;
+        flags.contains(SymbolFlags::FUNCTION) && !flags.contains(SymbolFlags::FUNCTION_EXPRESSION)
     }
 }
 

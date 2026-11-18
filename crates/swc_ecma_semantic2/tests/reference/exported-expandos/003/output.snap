@@ -34,18 +34,34 @@ namespace N {
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 7
+        "symbol": 5
       }
     ]
   },
   "symbols": {
+    "5": {
+      "name": "Alias",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "132..137"
+      ]
+    },
     "7": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "177..182"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 10
+      }
+    },
+    "10": {
+      "name": "x",
+      "flags": "EXPANDO_PROPERTY",
+      "declarations": [
+        "118..119"
+      ]
     }
   },
   "scopes": {

@@ -32,18 +32,34 @@ namespace Use {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 4
       }
     ]
   },
   "symbols": {
+    "4": {
+      "name": "Alias",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "102..107"
+      ]
+    },
     "6": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "143..148"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 9
+      }
+    },
+    "9": {
+      "name": "x",
+      "flags": "EXPANDO_PROPERTY",
+      "declarations": [
+        "90..91"
+      ]
     }
   },
   "scopes": {

@@ -344,8 +344,7 @@ impl AliasResolver<'_, '_> {
             };
             binding = Binding {
                 symbol: member.symbol,
-                flags: member.enum_flags.unwrap_or_default()
-                    | member.namespace_flags.unwrap_or_default(),
+                flags: member.flags(),
             };
             meaning = self.target_meaning(binding)?;
             meaning.restrict_value(type_only);

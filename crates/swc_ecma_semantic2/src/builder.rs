@@ -426,6 +426,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         let left = node.left(self.ast);
         let read = node.operator(self.ast) != AssignmentOperator::Assign;
+        if !read && self.ast.is_ts() {
+            self.record_expando_assignment(node);
+        }
         let flags = self.assignment_reference_flags(read);
         self.visit_with_reference_flags(left, flags);
         node.right(self.ast).visit_with(self);

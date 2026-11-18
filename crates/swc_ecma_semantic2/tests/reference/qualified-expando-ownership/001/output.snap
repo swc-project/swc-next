@@ -27,7 +27,7 @@ namespace Use {
         "scope": 9,
         "space": "Type",
         "access": "None",
-        "symbol": 7
+        "symbol": 0
       },
       {
         "span": "272..277",
@@ -39,13 +39,29 @@ namespace Use {
     ]
   },
   "symbols": {
+    "0": {
+      "name": "Alias",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..10"
+      ]
+    },
     "7": {
       "name": "Alias",
       "flags": "IMPORT | IMPORT_EQUALS",
       "declarations": [
         "197..202"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 12
+      }
+    },
+    "12": {
+      "name": "value",
+      "flags": "EXPANDO_PROPERTY",
+      "declarations": [
+        "161..166"
+      ]
     }
   },
   "scopes": {

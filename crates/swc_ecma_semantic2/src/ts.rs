@@ -14,7 +14,7 @@ use crate::{Semantic, SymbolFlags};
 pub(crate) struct TsBindings<'a> {
     /// Body scope -> canonical container symbol; exported containers use their export symbol.
     pub(crate) container_owners: HashMap<'a, ScopeId, SymbolId>,
-    /// Shared enum members and namespace exports, indexed by container symbol.
+    /// Enum members, namespace exports, and expando properties by container symbol.
     pub(crate) container_members: HashMap<'a, SymbolId, TsMemberTable<'a>>,
     /// Local symbol -> canonical export symbol for directly exported declarations.
     pub(crate) export_symbols: HashMap<'a, SymbolId, SymbolId>,
@@ -43,15 +43,27 @@ impl<'a> TsBindings<'a> {
 
 pub(crate) type TsMemberTable<'a> = HashMap<'a, &'a [u8], TsMember>;
 
-/// A shared member with at least one enum or namespace contribution.
+/// A member of a TypeScript container.
 #[derive(Debug, Clone, Copy)]
 pub struct TsMember {
-    /// Canonical identity shared by both contributions.
+    /// Canonical member identity.
     pub symbol: SymbolId,
     /// Flags contributed as an enum member; `None` means absent.
     pub enum_flags: Option<SymbolFlags>,
     /// Flags contributed by explicit or implicit namespace exports; `None` means absent.
     pub namespace_flags: Option<SymbolFlags>,
+    /// Whether an assignment introduced this value property.
+    pub expando: bool,
+}
+
+impl TsMember {
+    /// Combined declaration flags for a qualified lookup.
+    pub fn flags(self) -> SymbolFlags {
+        let mut flags =
+            self.enum_flags.unwrap_or_default() | self.namespace_flags.unwrap_or_default();
+        flags.set(SymbolFlags::EXPANDO_PROPERTY, self.expando);
+        flags
+    }
 }
 
 /// The result of resolving a TypeScript import alias.
@@ -70,8 +82,8 @@ impl<'a> Semantic<'a> {
         self.ts_bindings.ts_owner(scope)
     }
 
-    /// Finds a shared enum or namespace member by name on a canonical container.
-    /// Each contribution's flags describe its visibility in the corresponding body.
+    /// Finds a named member on a canonical container. Expando properties are
+    /// visible through qualified lookup.
     pub fn ts_container_member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
         self.ts_bindings.member(owner, name)
     }

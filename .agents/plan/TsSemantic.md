@@ -128,8 +128,9 @@ container_members[owner][name] → canonical export symbol
 
 - import-equals 先按 namespace 空间解析左侧。裸名在没有 namespace 绑定时，
   再按 `Any` 查找。
-- 限定成员查找使用 namespace 和 enum 的共享成员。当前不收集 class 静态成员或
-  function 属性，找不到共享成员时，目标记为 `Unknown`。
+- 限定成员查找使用 namespace 和 enum 的共享成员，以及点号赋值为函数声明引入的
+  value 属性。收齐普通声明后、解析别名前写入成员表。已有声明优先于 expando。
+- 计算属性和 class 静态成员尚未建模。找不到成员时，目标记为 `Unknown`。
 
 ## Declare global
 
