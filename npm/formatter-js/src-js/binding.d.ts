@@ -8,6 +8,12 @@ export declare const enum CommentMode {
   None = 'none'
 }
 
+export type CommentsOptionInputWire =
+  CommentMode
+
+export type CommentsOptionOutputWire =
+  CommentMode
+
 export interface Diagnostic {
   severity: "error" | "warning" | "hint" | "info"
   message: string
@@ -27,6 +33,18 @@ export interface DiagnosticLabel {
   end: number
 }
 
+export type JsLangInputWire =
+  Lang
+
+export type JsLangOutputWire =
+  Lang
+
+export type JsSourceTypeInputWire =
+  SourceType
+
+export type JsSourceTypeOutputWire =
+  SourceType
+
 export declare const enum Lang {
   Js = 'js',
   Ts = 'ts',
@@ -34,6 +52,9 @@ export declare const enum Lang {
   Tsx = 'tsx',
   Dts = 'dts'
 }
+
+export type OptionalParserConfigInputWire =
+  number
 
 /** JavaScript and TypeScript parser options. */
 export interface ParserConfig {
@@ -78,5 +99,13 @@ export declare const enum SourceType {
   CommonJs = 'commonjs',
   Unambiguous = 'unambiguous'
 }
+export type FormatDocOutputOutputWire =
+  Buffer
+
+export type OptionalJsFormatterConfigInputWire =
+  Buffer
+
+export type OptionalPrintConfigInputWire =
+  Buffer
 /** Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper. */
 export declare function formatDocBufferSync(source: string, parser: number, options: Uint8Array): Uint8Array

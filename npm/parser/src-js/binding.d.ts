@@ -6,6 +6,12 @@ export type CommentMode = /** Keep all comments. */
 /** Remove all comments. */
 'none';
 
+export type CommentsOptionInputWire =
+  CommentMode
+
+export type CommentsOptionOutputWire =
+  CommentMode
+
 export interface Diagnostic {
   severity: "error" | "warning" | "hint" | "info"
   message: string
@@ -24,12 +30,6 @@ export interface DiagnosticLabel {
   /** UTF-16 offset in the original source. */
   end: number
 }
-
-export type CommentsOptionInputWire =
-  CommentMode
-
-export type CommentsOptionOutputWire =
-  CommentMode
 
 export type JsLangInputWire =
   Lang
