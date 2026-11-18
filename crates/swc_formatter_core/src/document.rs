@@ -478,10 +478,11 @@ impl<'a> Doc<'a> {
         self.root.will_break()
     }
 
-    /// Replaces ordinary lines with spaces and soft lines with empty text.
+    /// Replaces ordinary lines with spaces and removes soft lines.
     /// Selects the flat branch of IfBreak and retains hard lines and groups.
-    pub fn remove_lines(self) -> Self {
-        transform::remove_lines(self)
+    pub fn remove_lines(mut self) -> Self {
+        self.root = transform::remove_lines(self.allocator, self.root);
+        self
     }
 
     /// Replaces LF within Text with a literal line and a parent break request.

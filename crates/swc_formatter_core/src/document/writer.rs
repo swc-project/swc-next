@@ -766,6 +766,12 @@ impl<'a> Writer<'a> {
         self.elements.push(Instruction::flat_fragment(fragment));
     }
 
+    /// Writes a recorded scope with optional lines removed, retaining its group IDs.
+    /// Uses the same transformation as [`Doc::remove_lines`].
+    pub fn write_fragment_without_lines(&mut self, fragment: Fragment<'a>) {
+        self.write_fragment(transform::remove_lines(self.allocator, fragment));
+    }
+
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
         self.facts.flat_fragment(fragment);
         self.elements

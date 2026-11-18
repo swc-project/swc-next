@@ -114,18 +114,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let (content, ()) = writer.record_with_value(|writer| format(self, layout, writer))?;
-        if !source_newline
-            && !content.preferred_breaks()
-            && let Some(content) = content.try_flat()
-        {
-            writer.write_flat_fragment(content);
-            Ok(())
-        } else {
-            Self::write_template_slot(layout, opening, closing, writer, |writer| {
-                writer.write_fragment(content);
-                Ok(())
-            })
+        if !source_newline && !content.preferred_breaks() {
+            if let Some(content) = content.try_flat() {
+                writer.write_flat_fragment(content);
+                return Ok(());
+            }
+            if !content.has_intrinsic_lines() {
+                // Keep local group bindings even when the slot is laid out inline.
+                writer.write_fragment_without_lines(content);
+                return Ok(());
+            }
         }
+        Self::write_template_slot(layout, opening, closing, writer, |writer| {
+            writer.write_fragment(content);
+            Ok(())
+        })
     }
 
     fn write_template_slot(
