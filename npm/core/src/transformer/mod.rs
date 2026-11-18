@@ -85,6 +85,7 @@ pub unsafe fn check_plugin_ast_sync(
     }
 }
 
+#[cfg(target_family = "wasm")]
 #[plugin_bridge]
 /// # Safety
 /// Sections must come from the matching AST encoder and remain immutable.
@@ -99,6 +100,27 @@ pub unsafe fn print_plugin_ast_sync(
 ) -> Result<Vec<u8>, String> {
     unsafe {
         swc_next::js::transformer::plugins::print_edited(
+            [header, spans, kinds, payloads, extra, strings],
+            config,
+        )
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[plugin_bridge(ts_return_type = "string")]
+/// # Safety
+/// Sections must come from the matching AST encoder and remain immutable.
+pub unsafe fn print_plugin_ast_sync(
+    header: &[u8],
+    spans: &[u8],
+    kinds: &[u8],
+    payloads: &[u8],
+    extra: &[u8],
+    strings: &[u8],
+    config: &[u8],
+) -> Result<swc_next::js::generator::GenerateOutput, String> {
+    unsafe {
+        swc_next::js::transformer::plugins::print_edited_code(
             [header, spans, kinds, payloads, extra, strings],
             config,
         )

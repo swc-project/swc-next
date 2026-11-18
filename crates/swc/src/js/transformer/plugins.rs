@@ -125,9 +125,24 @@ pub unsafe fn check_edited(parts: [&[u8]; 6], config: &[u8]) -> Result<Vec<u8>, 
 /// # Safety
 /// `parts` must come from the matching AST encoder and remain immutable.
 pub unsafe fn print_edited(parts: [&[u8]; 6], config: &[u8]) -> Result<Vec<u8>, String> {
+    let generated = unsafe { print_edited_code(parts, config) }?;
+    Ok(pack(JsOutput {
+        code: generated.code,
+        ..Default::default()
+    }))
+}
+
+/// Print a code-only native result without allocating the packed output buffer.
+///
+/// # Safety
+/// `parts` must come from the matching AST encoder and remain immutable.
+pub unsafe fn print_edited_code(
+    parts: [&[u8]; 6],
+    config: &[u8],
+) -> Result<crate::js::generator::GenerateOutput, String> {
     let options = options(config)?;
     let [header, spans, kinds, payloads, extra, strings] = parts;
-    let generated = unsafe {
+    unsafe {
         crate::js::generator::generate_from_parts(
             header,
             spans,
@@ -138,11 +153,7 @@ pub unsafe fn print_edited(parts: [&[u8]; 6], config: &[u8]) -> Result<Vec<u8>, 
             options.generator,
         )
     }
-    .map_err(|error| error.to_string())?;
-    Ok(pack(JsOutput {
-        code: generated.code,
-        ..Default::default()
-    }))
+    .map_err(|error| error.to_string())
 }
 
 fn pack(output: JsOutput) -> Vec<u8> {

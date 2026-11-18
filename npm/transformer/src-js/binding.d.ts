@@ -138,7 +138,7 @@ export declare function parseForPluginsSync(source: Uint8Array, sourceUtf16Len: 
  * # Safety
  * Sections must come from the matching AST encoder and remain immutable.
  */
-export declare function printPluginAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, config: Uint8Array): Uint8Array
+export declare function printPluginAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, config: Uint8Array): string
 
 /**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
