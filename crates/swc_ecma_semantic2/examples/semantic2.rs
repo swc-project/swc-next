@@ -102,6 +102,7 @@ fn format_scope_flags(scope: Scope) -> String {
         ScopeKind::With => names.push("With"),
         ScopeKind::StaticBlock => names.push("ClassStaticBlock"),
         ScopeKind::TsModule => names.push("TsModuleBlock"),
+        ScopeKind::TsEnum => names.push("TsEnumBody"),
     }
 
     format!("ScopeFlags({})", names.join(" | "))

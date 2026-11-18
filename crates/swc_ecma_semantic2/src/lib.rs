@@ -34,6 +34,7 @@ pub use scope::{Scope, ScopeFlags, ScopeKind};
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;
+pub use typescript::{TsImportAlias, TsImportAliasSpace, TsMember};
 
 swc_next_allocator::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.

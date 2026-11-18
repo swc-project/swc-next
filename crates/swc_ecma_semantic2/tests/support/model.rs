@@ -1,13 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use serde::Serialize;
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{
-    Ast, ExportSpecifier, ModuleExportNameData, NodeId, ReferenceId, ScopeId, SymbolId,
-    TsGlobalDeclaration, TsImportEqualsDeclaration, TsModuleDeclaration, TsModuleNameData, Visit,
-    VisitWith,
+    Ast, NodeId, NodeKindData, ReferenceId, ScopeId, SymbolId, TsImportEqualsDeclaration,
+    TsModuleReferenceData, Visit, VisitWith,
 };
-use swc_next_ecma_semantic2::{NameResolution, Semantic, SymbolFlags};
+use swc_next_ecma_semantic2::{Semantic, SymbolFlags, TsImportAlias};
 
 pub(crate) fn span(ast: &Ast<'_>, node: NodeId) -> String {
     let span = ast.span(node);
@@ -40,6 +39,7 @@ impl TestScopes {
                 flags: flags.join(" | "),
                 hoist_target: (scope.hoist_target != id).then_some(scope.hoist_target.index()),
                 function_body: scope.function_body.map(Idx::index),
+                container_owner: semantic.ts_container_owner(id).map(Idx::index),
             }
         });
         id.index()
@@ -59,23 +59,23 @@ struct TestScope {
     hoist_target: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     function_body: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    container_owner: Option<usize>,
 }
 
 #[derive(Serialize)]
-pub(crate) enum TestResolution {
-    Unresolved,
-    Resolved(usize),
-    Uncertain { candidate: usize },
+pub(crate) enum TestAlias {
+    Target(usize),
+    Unknown(Vec<&'static str>),
 }
 
-impl From<NameResolution> for TestResolution {
-    fn from(resolution: NameResolution) -> Self {
-        match resolution {
-            NameResolution::Unresolved => Self::Unresolved,
-            NameResolution::Resolved(id) => Self::Resolved(id.index()),
-            NameResolution::Uncertain { candidate } => Self::Uncertain {
-                candidate: candidate.index(),
-            },
+impl From<TsImportAlias> for TestAlias {
+    fn from(alias: TsImportAlias) -> Self {
+        match alias {
+            TsImportAlias::Target(id) => Self::Target(id.index()),
+            TsImportAlias::Unknown(spaces) => {
+                Self::Unknown(spaces.iter_names().map(|(name, _)| name).collect())
+            }
         }
     }
 }
@@ -91,76 +91,44 @@ pub(crate) fn flags(flags: SymbolFlags) -> String {
         .join(" | ")
 }
 
-/// Public export names are scoped to their source module or merged namespace.
-/// Both local and exported names are retained so private/type-only negative
-/// value-target queries remain visible alongside exported values.
-pub(crate) struct TestNodes<'a, 's> {
+/// Syntax-to-reference associations for import-equals initializers.
+pub(crate) struct TestImportEquals<'a, 's> {
     ast: &'s Ast<'a>,
     semantic: &'s Semantic<'a>,
-    owner: Option<SymbolId>,
-    pub(crate) export_names: BTreeMap<SymbolId, BTreeSet<String>>,
-    pub(crate) imports: Vec<(Option<SymbolId>, Option<ReferenceId>)>,
+    pub(crate) entries: Vec<(Option<SymbolId>, Option<ReferenceId>)>,
 }
 
-impl<'a, 's> TestNodes<'a, 's> {
+impl<'a, 's> TestImportEquals<'a, 's> {
     pub(crate) fn new(ast: &'s Ast<'a>, semantic: &'s Semantic<'a>) -> Self {
-        let mut nodes = Self {
+        let mut imports = Self {
             ast,
             semantic,
-            owner: semantic.ts_source_module_symbol(),
-            export_names: BTreeMap::new(),
-            imports: Vec::new(),
+            entries: Vec::new(),
         };
-        ast.root_program().visit_with(&mut nodes);
-        nodes
+        ast.root_program().visit_with(&mut imports);
+        imports
     }
 }
 
-impl<'a> Visit<'a> for TestNodes<'a, '_> {
+impl<'a> Visit<'a> for TestImportEquals<'a, '_> {
     fn ast(&self) -> &Ast<'a> {
         self.ast
     }
 
-    fn visit_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
-        let owner = match self.ast.ts_module_name_data(node.id(self.ast)) {
-            TsModuleNameData::BindingIdentifier(name) => self.semantic.symbol_of(name.node_id()),
-            TsModuleNameData::TsQualifiedName(name) => {
-                self.semantic.symbol_of(name.right(self.ast).node_id())
-            }
-            TsModuleNameData::StringLiteral(_) => None,
-        };
-        let previous = std::mem::replace(&mut self.owner, owner);
-        node.visit_children_with(self);
-        self.owner = previous;
-    }
-
-    fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
-        let previous = self.owner.take();
-        node.visit_children_with(self);
-        self.owner = previous;
-    }
-
-    fn visit_export_specifier(&mut self, node: ExportSpecifier) {
-        let Some(owner) = self.owner else { return };
-        for name in [node.local(self.ast), node.exported(self.ast)] {
-            let name = match self.ast.module_export_name_data(name) {
-                ModuleExportNameData::IdentifierName(name) => {
-                    self.ast.get_utf8(name.name(self.ast)).to_owned()
-                }
-                ModuleExportNameData::StringLiteral(name) => {
-                    String::from_utf8_lossy(self.ast.get_wtf8(name.value(self.ast)).as_bytes())
-                        .into_owned()
-                }
-            };
-            self.export_names.entry(owner).or_default().insert(name);
-        }
-    }
-
     fn visit_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
-        self.imports.push((
-            self.semantic.symbol_of(node.id(self.ast).node_id()),
-            self.semantic.import_equals_reference(self.ast, node),
-        ));
+        let ast = self.ast;
+        let reference = match ast.ts_module_reference_data(node.module_reference(ast)) {
+            TsModuleReferenceData::TsTypeName(name) => {
+                let mut root = name.node_id();
+                while let NodeKindData::TsQualifiedName(qualified) = ast.kind_data(root) {
+                    root = qualified.left(ast).node_id();
+                }
+                self.semantic.reference_of(root)
+            }
+            TsModuleReferenceData::TsExternalModuleReference(_) => None,
+        };
+        self.entries
+            .push((self.semantic.symbol_of(node.id(ast).node_id()), reference));
         node.visit_children_with(self);
     }
 }

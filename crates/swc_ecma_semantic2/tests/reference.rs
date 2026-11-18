@@ -1,6 +1,6 @@
 mod support;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, btree_map::Entry};
 
 use serde::Serialize;
 use support::{
@@ -11,7 +11,7 @@ use support::{
 };
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{Ast, SymbolId};
-use swc_next_ecma_semantic2::Semantic;
+use swc_next_ecma_semantic2::{Semantic, TsImportAlias};
 
 #[derive(Serialize)]
 struct TestReferenceSnapshot {
@@ -28,9 +28,9 @@ struct TestReference {
     scope: usize,
     space: String,
     access: TestAccess,
-    resolution: TestResolution,
+    symbol: Option<usize>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     candidates: Vec<usize>,
-    value_symbols: Vec<TestResolution>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     import_equals: bool,
 }
@@ -49,37 +49,36 @@ struct TestSymbol {
     flags: String,
     declarations: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    alias_target: Option<usize>,
+    export_symbol: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    alias: Option<TestAlias>,
 }
 
-/// Include directly referenced symbols and terminal alias targets, without
-/// expanding all namespace members or intermediate import-alias chains.
-fn add_symbol(
+fn add_symbols(
     symbols: &mut BTreeMap<usize, TestSymbol>,
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
-    id: SymbolId,
+    mut pending: Vec<SymbolId>,
 ) {
-    let mut pending = vec![id];
     while let Some(id) = pending.pop() {
-        if symbols.contains_key(&id.index()) {
+        let Entry::Vacant(entry) = symbols.entry(id.index()) else {
             continue;
-        }
+        };
         let symbol = semantic.symbol(id);
-        let alias_target = semantic.ts_import_alias_target(id);
-        symbols.insert(
-            id.index(),
-            TestSymbol {
-                name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes()).into_owned(),
-                flags: flags(symbol.flags),
-                declarations: semantic
-                    .declarations(id)
-                    .map(|declaration| span(ast, declaration.node))
-                    .collect(),
-                alias_target: alias_target.map(Idx::index),
-            },
-        );
-        if let Some(target) = alias_target {
+        let export_symbol = semantic.ts_export_symbol(id);
+        let alias = semantic.ts_import_alias(id);
+        entry.insert(TestSymbol {
+            name: String::from_utf8_lossy(ast.get_wtf8(symbol.name).as_bytes()).into_owned(),
+            flags: flags(symbol.flags),
+            declarations: semantic
+                .declarations(id)
+                .map(|declaration| span(ast, declaration.node))
+                .collect(),
+            export_symbol: export_symbol.map(Idx::index),
+            alias: alias.map(TestAlias::from),
+        });
+        pending.extend(export_symbol);
+        if let Some(TsImportAlias::Target(target)) = alias {
             pending.push(target);
         }
     }
@@ -88,7 +87,7 @@ fn add_symbol(
 fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> TestReferenceSnapshot {
     with_semantic(source, options, |ast, semantic| {
         let semantic = &semantic;
-        let nodes = TestNodes::new(ast, semantic);
+        let imports = TestImportEquals::new(ast, semantic);
         let mut scopes = TestScopes::default();
         let mut symbols = BTreeMap::new();
         let references = query
@@ -100,26 +99,28 @@ fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> Tes
                     .filter(|entry| ast.get_utf8(entry.reference.name) == name)
                     .map(|entry| {
                         let reference = entry.reference;
-                        let resolution = reference.resolution();
-                        let candidates =
-                            semantic.reference_candidates(entry.id).collect::<Vec<_>>();
-                        let value_symbols = semantic
-                            .reference_value_targets(ast, entry.id)
+                        let candidates = semantic.reference_candidates(entry.id);
+                        assert!(reference.symbol.is_none() || candidates.is_empty());
+                        let targets = reference
+                            .symbol
+                            .into_iter()
+                            .chain(candidates.iter().copied())
                             .collect::<Vec<_>>();
-                        for &id in &candidates {
-                            add_symbol(&mut symbols, ast, semantic, id);
+                        for &id in &targets {
+                            let uses = semantic.uses(id);
+                            assert_eq!(
+                                uses.iter().filter(|&&use_id| use_id == entry.id).count(),
+                                1
+                            );
                         }
-                        for resolution in
-                            std::iter::once(resolution).chain(value_symbols.iter().copied())
-                        {
-                            match resolution {
-                                NameResolution::Resolved(id)
-                                | NameResolution::Uncertain { candidate: id } => {
-                                    add_symbol(&mut symbols, ast, semantic, id)
-                                }
-                                NameResolution::Unresolved => {}
-                            }
-                        }
+                        add_symbols(&mut symbols, ast, semantic, targets);
+                        let mut candidates = candidates
+                            .iter()
+                            .copied()
+                            .map(Idx::index)
+                            .collect::<Vec<_>>();
+                        candidates.sort_unstable();
+                        assert!(candidates.windows(2).all(|pair| pair[0] != pair[1]));
                         TestReference {
                             span: span(ast, reference.node),
                             scope: scopes.insert(semantic, reference.scope),
@@ -130,14 +131,10 @@ fn references(source: &str, options: TestOptions, query: &FixtureOptions) -> Tes
                                 (false, true) => TestAccess::Write,
                                 (true, true) => TestAccess::ReadWrite,
                             },
-                            resolution: resolution.into(),
-                            candidates: candidates.into_iter().map(Idx::index).collect(),
-                            value_symbols: value_symbols
-                                .into_iter()
-                                .map(TestResolution::from)
-                                .collect(),
-                            import_equals: nodes
-                                .imports
+                            symbol: reference.symbol.map(Idx::index),
+                            candidates,
+                            import_equals: imports
+                                .entries
                                 .iter()
                                 .any(|(_, reference)| *reference == Some(entry.id)),
                         }

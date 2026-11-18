@@ -54,6 +54,8 @@ pub enum ScopeKind {
     /// TS namespace body. Acts as a var-hoist target so vars
     /// declared inside don't escape to the surrounding scope.
     TsModule,
+    /// A TypeScript enum body, with access to shared enum member declarations.
+    TsEnum,
     /// Separate var environment of a function body whose parameter
     /// list contains expressions (10.2.11 FunctionDeclarationInstantiation
     /// step 28):

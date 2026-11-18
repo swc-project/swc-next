@@ -1,7 +1,6 @@
 # TsBinder 实现约定
 
-本文补充 `crates/swc_ecma_semantic2/src/binder/ts.rs` 未展开的实现细节。
-目前只完成数据结构定义，声明绑定、引用解析与最终 `Semantic` 存储尚未接入。
+本文记录 `swc_ecma_semantic2` 单文件 TypeScript 绑定分析的约定。
 
 ## 容器与声明身份
 
@@ -34,9 +33,11 @@ namespace N {
 - 同名成员合法合并时，共用成员 symbol，但分别累计两种来源的 flags。
   查找使用当前 body 可见的贡献 flags。
 - namespace 非导出局部声明只进入当前 body 的词法表；隐式导出按导出规则处理。
+  ambient namespace 中，普通成员可隐式导出。独立的 export 声明或赋值会关闭
+  当前 body 的隐式导出。带 `export` 修饰的声明仍可与隐式导出共存。
 - 先判断贡献是否为 `Some`，再调用 `visible_in`。不能把 `None` 转成空 flags：
   当前 `visible_in(ReferenceSpace::Any)` 对空 flags 也返回 true。
-- 当前 flags 结构只覆盖直接声明；alias 的确定性和 type-only 路径尚待设计。
+- 成员 flags 描述直接贡献。import alias 的目标含义和 type-only 路径由引用解析计算。
 
 ## Local / export 双 symbol
 
@@ -63,7 +64,7 @@ container_members[owner][name] → canonical export symbol
   关联 symbol 与 `Declaration.symbol` 不同。
 - local 与 export 的声明冲突分别按各自的 flags 和声明范围处理；每个源码声明
   只统计一次。
-- `export { x as y }` 和 `export import A = ...` 按 alias 处理；匿名 default 声明没有 local entry。
+- `export { x as y }` 和 `export import A = ...` 按 alias 处理。default 使用下文的绑定规则。
 
 ## Import alias
 
@@ -73,11 +74,16 @@ container_members[owner][name] → canonical export symbol
   计算，目标身份已知时仍可能存在空间不确定性。
 - `Unknown(spaces)` 表示没有已知目标。包含的空间可能可见，查找时加入 candidate
   并继续向外查找；未包含的空间不可见。空集合表示没有可用目标。
-- 构建期间的未解析、正在解析、已完成状态单独存储。
+- 构建期间的未解析、正在解析、已完成状态以及有效声明空间只保存在 binder
+  临时数据中。`Semantic::lookup` 提供词法查找。transform 对已有 AST 引用读取
+  `Reference.symbol` 和 candidates，沿限定路径计算出的可见性已反映在这些结果中。
 - type-only 语法属性使用 `SymbolFlags::TYPE_IMPORT`，沿链查询时累计各节点限制。
-  `VALUE` 与 `TYPEOF` 分别记录运行时引用和类型查询的可见性。
+  解析 `N.X` 时也检查限定路径上 `N` 的 flags。经过 type-only alias 后移除
+  `VALUE`，保留 `TYPEOF`，已知目标仍记为 `Target(X)`。
 - `export import A = ...` 参与 import alias 解析。普通 export specifier 当前只
   解析本地引用，其公开 alias target 暂不建模。
+- ES import 和 `import A = require(...)` 提供词法绑定。通过内部 alias 访问外部
+  目标时，其声明空间按可能可见处理。
 
 ## 引用与反向索引
 
@@ -113,8 +119,8 @@ container_members[owner][name] → canonical export symbol
   member 的聚合 flags 时过滤该标记；`VALUE_MODULE` 正常参与合并。
 - transform 按具体声明读取状态，并结合 ambient 属性和 const enum 配置决定发射。
   同一 owner 下的不同 namespace 声明分别处理。
-- 状态计算过程使用 binder 临时数据。嵌套 namespace 和 import-equals 的状态
-  传播规则尚待细化。
+- 每个 namespace body 按语法计算实例化状态，嵌套 namespace 贡献其 body 的状态。
+  value 形式的 `export import` 使 body 实例化。引用是否读取运行时值由 alias 解析决定。
 
 ## Source module 导出
 
@@ -127,12 +133,16 @@ container_members[owner][name] → canonical export symbol
 
 ## Class / function 属性
 
-- import-equals 的限定名先按 namespace 空间解析左侧。
+- import-equals 先按 namespace 空间解析左侧。裸名在没有 namespace 目标或候选时，
+  再按 `Any` 查找。
 - 对具有 namespace 含义的合并 class/function，限定成员查找保留已知的
   namespace 成员贡献；额外的静态属性或函数属性按可能的 value / typeof
   贡献保守处理，并结合 alias 路径限制计算可见性。
-- 没有已知目标的可能属性使用 `TsImportAlias::Unknown` 表示。
-  已知贡献与可能属性并存时的结果表达，留待 alias 解析接入时确定。
+- 可能属性使用 `TsImportAlias::Unknown` 表示。已知的 namespace 贡献与可能属性
+  并存时，将两者的声明空间一并记为 `Unknown`。引用继续按不确定查找规则记录
+  candidates，包括适用的外层 fallback。
+- binder 在限定路径上保留已知的 namespace owner。可能的 value/typeof 属性
+  不扩展该 owner 的成员空间。
 - 属性贡献仅用于限定成员查找，namespace body 的裸名查找使用 namespace
   声明贡献。当前不收集 class 静态成员或 function 属性事实。
 
@@ -143,10 +153,11 @@ container_members[owner][name] → canonical export symbol
 
 ## Export default
 
-- 具名直接声明使用 local/export 双 symbol：local 使用声明名，export 使用
-  `default`，通过 `export_symbols` 关联。对声明名的引用保留 local 身份。
-- 匿名直接声明只有 export symbol。
-- 表达式形式的 `export default x` 将 `x` 作为普通引用解析，保留其现有绑定身份。
+- 具名直接声明按本地声明绑定，使用声明名和真实声明 flags。每次声明保留
+  `EXPORTED | IS_DEFAULT`。
+- 匿名直接声明正常分析内部 scope。transform 从 AST 读取默认导出声明。
+- 表达式形式的 `export default x` 保留 `x` 的绑定身份。仅有类型含义时，
+  该引用不计为运行时读取。
 
 ## Export equals
 

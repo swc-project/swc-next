@@ -181,22 +181,22 @@ fn parameter_linked_symbols() {
     assert_eq!(actual, [vec![1], vec![3]]);
 
     let actual = symbol_links("function f(a = 1) { var a; return a; }", ts_module, "a");
-    assert_eq!(actual, [vec![2, 3]]);
+    assert_eq!(actual, [vec![1, 2]]);
 
     let actual = symbol_links("function f(a = 1, read = () => a) { var a; a = 2; return read(); }", ts_module, "a");
-    assert_eq!(actual, [vec![2, 4]]);
+    assert_eq!(actual, [vec![1, 3]]);
 
     let actual = symbol_links("function f(a = 1) { try {} catch (a) { var a; } return a; }", ts_module, "a");
-    assert_eq!(actual, [vec![2, 3, 4]]);
+    assert_eq!(actual, [vec![1, 2, 3]]);
 
     let actual = symbol_links("function f(a) { var a; return a; }", ts_module, "a");
-    assert_eq!(actual, [vec![2]]);
+    assert_eq!(actual, [vec![1]]);
 
     let actual = symbol_links("function f(a = 1) { function g() { var a; } }", ts_module, "a");
-    assert_eq!(actual, [vec![2], vec![4]]);
+    assert_eq!(actual, [vec![1], vec![3]]);
 
     let actual = symbol_links("function f(a = 1) { type a = number; var a; }", ts_module, "a");
-    assert_eq!(actual, [vec![2, 3]]);
+    assert_eq!(actual, [vec![1, 2]]);
 
     let actual = symbol_links("function f(a = 1) { var a; function a() {} return a; }", js_module, "a");
     assert_eq!(actual, [vec![1], vec![2]]);

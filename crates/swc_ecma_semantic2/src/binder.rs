@@ -19,6 +19,7 @@ use crate::{
     DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, Scopes, Semantic,
     ShadowedInternalNames, SymbolTable, SymbolTables, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
+    typescript::TsBindings,
 };
 
 mod annex_b;
@@ -1615,6 +1616,7 @@ impl<'a> SymbolTracker<'a> {
             shadowed_internal_names: self.shadowed_internal_names,
             hoisting_variables: self.hoisting_variables,
             node_semantic: self.node_semantic,
+            ts_bindings: TsBindings::new_in(self.allocator),
         }
     }
 }
