@@ -2316,6 +2316,44 @@
         "prettierNative": "switch (\r\n  value\r\n) {\r\n  case 1:\r\n    // @ts-expect-error\r\n    {\r\n      missing()\r\n    }\r\n    break\r\n  default:\r\n    break\r\n}\r\n"
       }
     ],
+    "js/compound-statements/case-block-mixed-comments.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "switch (a) {\n  case 1: /* first */ // second\n  {\n    c();\n  }\n}\n",
+        "prettierNative": "switch (a) {\n  case 1 /* first */: // second\n  {\n    c();\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (a) {\n  case 1: /* first */ // second\n  {\n    c()\n  }\n}\n",
+        "prettierNative": "switch (a) {\n  case 1 /* first */: // second\n  {\n    c()\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "switch (a) {\n\tcase 1: /* first */ // second\n\t{\n\t\tc();\n\t}\n}\n",
+        "prettierNative": "switch (a) {\n\tcase 1 /* first */: // second\n\t{\n\t\tc();\n\t}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "switch (\r\n  a\r\n) {\r\n  case 1: /* first */ // second\r\n  {\r\n    c()\r\n  }\r\n}\r\n",
+        "prettierNative": "switch (\r\n  a\r\n) {\r\n  case 1 /* first */: // second\r\n  {\r\n    c()\r\n  }\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/case-block-suffix.js": [
       {
         "options": {
@@ -2430,6 +2468,44 @@
         "prettierNative": "switch (\r\n  x\r\n) {\r\n  case 1+2 /* prettier-ignore */:\r\n    f(\r\n      1,\r\n    )\r\n}\r\n"
       }
     ],
+    "js/compound-statements/case-empty-tail-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "switch (v) {\n  case 0: // first\n  /* second */\n  case 1:\n    next();\n}\n",
+        "prettierNative": "switch (v) {\n  case 0: /* second */ // first\n  case 1:\n    next();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (v) {\n  case 0: // first\n  /* second */\n  case 1:\n    next()\n}\n",
+        "prettierNative": "switch (v) {\n  case 0: /* second */ // first\n  case 1:\n    next()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "switch (v) {\n\tcase 0: // first\n\t/* second */\n\tcase 1:\n\t\tnext();\n}\n",
+        "prettierNative": "switch (v) {\n\tcase 0: /* second */ // first\n\tcase 1:\n\t\tnext();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "switch (\r\n  v\r\n) {\r\n  case 0: // first\r\n  /* second */\r\n  case 1:\r\n    next()\r\n}\r\n",
+        "prettierNative": "switch (\r\n  v\r\n) {\r\n  case 0: /* second */ // first\r\n  case 1:\r\n    next()\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/catch-before-body-ignore.js": [
       {
         "options": {
@@ -2504,6 +2580,44 @@
         },
         "swcPlugin": "switch (\r\n  x\r\n) {\r\n  default: // prettier-ignore\r\n;\r\n    f( 1 )\r\n}\r\n",
         "prettierNative": "switch (\r\n  x\r\n) {\r\n  default:\r\n    // prettier-ignore\r\n    f( 1 )\r\n}\r\n"
+      }
+    ],
+    "js/compound-statements/default-empty-tail-line-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "switch (v) {\n  default: // first\n  // second\n}\n",
+        "prettierNative": "switch (v) {\n  default: // first // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (v) {\n  default: // first\n  // second\n}\n",
+        "prettierNative": "switch (v) {\n  default: // first // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "switch (v) {\n\tdefault: // first\n\t// second\n}\n",
+        "prettierNative": "switch (v) {\n\tdefault: // first // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "switch (\r\n  v\r\n) {\r\n  default: // first\r\n  // second\r\n}\r\n",
+        "prettierNative": "switch (\r\n  v\r\n) {\r\n  default: // first // second\r\n}\r\n"
       }
     ],
     "js/compound-statements/empty-case-comments/input.js": [
@@ -6959,6 +7073,77 @@
         "prettierNative": "// @ts-expect-error\ntarget =\n first + second;\n"
       }
     ],
+    "js/expressions/assignment/ignored-compound-parenthesis-inner-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x += // operator\n  /* prettier-ignore */\n  (/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n  /* prettier-ignore */\n  /* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x += // operator\n  /* prettier-ignore */\n  (/* inside */ first + second // end\n  )\n",
+        "prettierNative": "x += // operator\n  /* prettier-ignore */\n  /* inside */ first + second // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x += // operator\n  /* prettier-ignore */\n  (/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n  /* prettier-ignore */\n  /* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x += // operator\n  /* prettier-ignore */\n  (/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n  /* prettier-ignore */\n  /* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x += // operator\n    /* prettier-ignore */\n    (/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n    /* prettier-ignore */\n    /* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x += // operator\n\t/* prettier-ignore */\n\t(/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n\t/* prettier-ignore */\n\t/* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 1
+        },
+        "swcPlugin": "x += // operator\n /* prettier-ignore */\n (/* inside */ first + second // end\n  );\n",
+        "prettierNative": "x += // operator\n /* prettier-ignore */\n /* inside */ first + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x += // operator\r\n  /* prettier-ignore */\r\n  (/* inside */ first + second // end\r\n  );\r\n",
+        "prettierNative": "x += // operator\r\n  /* prettier-ignore */\r\n  /* inside */ first + second; // end\r\n"
+      }
+    ],
     "js/expressions/assignment/ignored-parenthesis-head.js": [
       {
         "options": {
@@ -7028,6 +7213,77 @@
         },
         "swcPlugin": "target = (// prettier-ignore\r\nfirst + second);\r\n",
         "prettierNative": "target = first + second; // prettier-ignore\r\n"
+      }
+    ],
+    "js/expressions/assignment/ignored-parenthesis-inner-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = // operator\n  /* prettier-ignore */\n  (/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n  /* prettier-ignore */\n  /* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const x = // operator\n  /* prettier-ignore */\n  (/* inside */ first  + second // end\n  )\n",
+        "prettierNative": "const x = // operator\n  /* prettier-ignore */\n  /* inside */ first  + second // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = // operator\n  /* prettier-ignore */\n  (/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n  /* prettier-ignore */\n  /* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = // operator\n  /* prettier-ignore */\n  (/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n  /* prettier-ignore */\n  /* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 4
+        },
+        "swcPlugin": "const x = // operator\n    /* prettier-ignore */\n    (/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n    /* prettier-ignore */\n    /* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "const x = // operator\n\t/* prettier-ignore */\n\t(/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n\t/* prettier-ignore */\n\t/* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 1
+        },
+        "swcPlugin": "const x = // operator\n /* prettier-ignore */\n (/* inside */ first  + second // end\n  );\n",
+        "prettierNative": "const x = // operator\n /* prettier-ignore */\n /* inside */ first  + second; // end\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "const x = // operator\r\n  /* prettier-ignore */\r\n  (/* inside */ first  + second // end\r\n  );\r\n",
+        "prettierNative": "const x = // operator\r\n  /* prettier-ignore */\r\n  /* inside */ first  + second; // end\r\n"
       }
     ],
     "js/expressions/assignment/ignored-value.js": [
@@ -22505,6 +22761,33 @@
         "prettierNative": "function f() {\n  return (\n    // result member\n    foo.bar = value\n  )\n}\n"
       }
     ],
+    "js/return-throw-comment-envelope/diagnostic-binary-head.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    (/* @ts-ignore */\n      a) + b);\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-ignore */ a + b\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    (/* @ts-ignore */\n      a) + b);\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-ignore */ a + b\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  return (\n    (/* @ts-ignore */\n      a) + b)\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-ignore */ a + b\n  )\n}\n"
+      }
+    ],
     "js/return-throw-comment-envelope/postfix-target.js": [
       {
         "options": {
@@ -22613,6 +22896,33 @@
         "prettierNative": "function f() {\n  return /* marker */ object.property\n}\n"
       }
     ],
+    "js/return-throw-comment-envelope/return-sequence-head.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // first\n    a, b\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    // first\n    a,\n    b\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // first\n    a, b\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    // first\n    a,\n    b\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // first\n    a, b\n  )\n}\n",
+        "prettierNative": "function f() {\n  return (\n    // first\n    a,\n    b\n  )\n}\n"
+      }
+    ],
     "js/return-throw-comment-envelope/throw-operator-block.js": [
       {
         "options": {
@@ -22638,6 +22948,60 @@
         },
         "swcPlugin": "function f() {\n  throw object./* marker */ property\n}\n",
         "prettierNative": "function f() {\n  throw /* marker */ object.property\n}\n"
+      }
+    ],
+    "js/return-throw-comment-envelope/throw-sequence-member.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  throw (\n    // first\n    (a, b).x\n  );\n}\n",
+        "prettierNative": "function f() {\n  throw (\n    (// first\n    a,\n    b).x\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  throw (\n    // first\n    (a, b).x\n  );\n}\n",
+        "prettierNative": "function f() {\n  throw (\n    (// first\n    a,\n    b).x\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  throw (\n    // first\n    (a, b).x\n  )\n}\n",
+        "prettierNative": "function f() {\n  throw (\n    (// first\n    a,\n    b).x\n  )\n}\n"
+      }
+    ],
+    "js/return-throw-comment-envelope/yield-sequence-call.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function* f() {\n  yield (\n    // first\n    (a, b)()\n  );\n}\n",
+        "prettierNative": "function* f() {\n  yield (// first\n  a,\n  b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function* f() {\n  yield (\n    // first\n    (a, b)()\n  );\n}\n",
+        "prettierNative": "function* f() {\n  yield (// first\n  a,\n  b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function* f() {\n  yield (\n    // first\n    (a, b)()\n  )\n}\n",
+        "prettierNative": "function* f() {\n  yield (// first\n  a,\n  b)()\n}\n"
       }
     ],
     "js/sequence-member-pair/arrow-line-head.js": [
@@ -37318,6 +37682,33 @@
         },
         "swcPlugin": "function f():\n// @ts-ignore\nMissingAlpha | MissingBeta {}\n",
         "prettierNative": "function f():\n  // @ts-ignore\n  | MissingAlpha\n  | MissingBeta {}\n"
+      }
+    ],
+    "ts/return-throw-comment-envelope/diagnostic-call-head.ts": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (/* @ts-expect-error */\n    missing)();\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-expect-error */\n    missing()\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (/* @ts-expect-error */\n    missing)();\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-expect-error */\n    missing()\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  return (/* @ts-expect-error */\n    missing)()\n}\n",
+        "prettierNative": "function f() {\n  return (\n    /* @ts-expect-error */\n    missing()\n  )\n}\n"
       }
     ],
     "ts/return-throw-comment-envelope/diagnostic-target.ts": [
