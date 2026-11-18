@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A { x /* c */: number }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+class A {
+  x /* c */ : number;
+}

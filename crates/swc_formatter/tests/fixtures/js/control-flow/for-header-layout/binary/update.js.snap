@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (;; firstLongConditionName + secondLongConditionName) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+for (
+  ;
+  ;
+  firstLongConditionName +
+  secondLongConditionName
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (; ; firstLongConditionName + secondLongConditionName) {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":40}
+---------- Output ----------
+for (
+	;
+	;
+	firstLongConditionName +
+	secondLongConditionName
+) {}

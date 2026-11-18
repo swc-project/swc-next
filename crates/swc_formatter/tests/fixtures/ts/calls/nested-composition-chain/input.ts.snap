@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = () => {
+  const schema = z.string().check(
+    z.refine((val) => val.length > 1),
+    z.refine((val) => val.length > 2, { abort: true }),
+  );
+};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"quoteStyle":"single"}
+---------- Output ----------
+const f = () => {
+  const schema = z
+    .string()
+    .check(
+      z.refine(
+        (val) =>
+          val.length > 1,
+      ),
+      z.refine(
+        (val) =>
+          val.length > 2,
+        { abort: true },
+      ),
+    );
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40,"quoteStyle":"single"}
+---------- Output ----------
+const f = () => {
+  const schema = z.string().check(
+    z.refine((val) => val.length > 1),
+    z.refine((val) => val.length > 2, {
+      abort: true,
+    }),
+  );
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":60,"quoteStyle":"single"}
+---------- Output ----------
+const f = () => {
+  const schema = z.string().check(
+    z.refine((val) => val.length > 1),
+    z.refine((val) => val.length > 2, { abort: true }),
+  );
+};

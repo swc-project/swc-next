@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = c ? (
+  <div>t</div>
+  /* after */
+) : null;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const x = c ? (
+  <div>t</div>
+) : /* after */
+null;

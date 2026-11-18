@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: /* eslint-disable-line no-unused-labels */
+f();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+/* eslint-disable-line no-unused-labels */ label: f();

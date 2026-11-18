@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer /* keep */: inner: // move
+while (ready) step();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+outer /* keep */: // move
+inner: while (ready) step();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+outer /* keep */: // move
+inner: while (
+  ready
+)
+  step();

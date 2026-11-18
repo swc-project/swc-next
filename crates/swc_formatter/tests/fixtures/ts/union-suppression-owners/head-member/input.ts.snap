@@ -13,11 +13,7 @@ type T = C &
   ({ x  :  1 } | A);
 
 ---------- Options ----------
-<<<<<<<< HEAD:crates/swc_formatter/tests/fixtures/ts/union-suppression-owners/head-member.ts.snap
-{"indentStyle":"space","lineWidth":40}
-========
-{"printWidth":16}
->>>>>>>> e0eaa03e (fix(formatter): preserve source type head frames):crates/swc_ecma_formatter/tests/fixtures/ts/union-suppression-owners/head-member/input.ts.snap
+{"indentStyle":"space","lineWidth":16}
 ---------- Output ----------
 type T = C &
   // prettier-ignore
@@ -27,10 +23,7 @@ type T = C &
   );
 
 ---------- Options ----------
-<<<<<<<< HEAD:crates/swc_formatter/tests/fixtures/ts/union-suppression-owners/head-member.ts.snap
-{"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
-========
-{"printWidth":16,"useTabs":true}
+{"indentStyle":"tab","lineWidth":16}
 ---------- Output ----------
 type T = C &
 	// prettier-ignore
@@ -40,8 +33,7 @@ type T = C &
 	);
 
 ---------- Options ----------
-{"semi":false}
->>>>>>>> e0eaa03e (fix(formatter): preserve source type head frames):crates/swc_ecma_formatter/tests/fixtures/ts/union-suppression-owners/head-member/input.ts.snap
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = C &
   // prettier-ignore

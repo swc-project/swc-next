@@ -1,9 +1,0 @@
----
-source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
----
----------- Input ----------
-first();/* eslint-disable-line no-undef */second();
----------- Options ----------
-{}
----------- Output ----------
-first();/* eslint-disable-line no-undef */second();

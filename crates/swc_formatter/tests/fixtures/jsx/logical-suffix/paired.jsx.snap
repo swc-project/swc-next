@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = <div>{x // c
+ ?? (<C />)}</div>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const a = (
+  <div>
+    {x ?? ( // c
+      <C />
+    )}
+  </div>
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const a = (
+  <div>
+    {x ?? ( // c
+      <C />
+    )}
+  </div>
+)

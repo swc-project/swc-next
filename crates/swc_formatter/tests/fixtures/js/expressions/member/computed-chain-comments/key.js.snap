@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const y = a.b(1).c[/* key */ d](2).e;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+const y = a.b(1).c[/* key */ d](2).e;

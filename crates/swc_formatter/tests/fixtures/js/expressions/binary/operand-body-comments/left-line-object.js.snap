@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = someLongConditionName // c
+&& { aLongPropertyName: 1, anotherLongPropertyName: 2, third: 3 };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const x = someLongConditionName && // c
+{
+  aLongPropertyName: 1,
+  anotherLongPropertyName: 2,
+  third: 3,
+};

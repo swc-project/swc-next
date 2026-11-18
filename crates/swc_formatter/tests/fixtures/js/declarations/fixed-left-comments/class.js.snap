@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const C // comment
+= class { /**/ };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const C = // comment
+  class {
+    /**/
+  };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const C = // comment
+  class {
+    /**/
+  }

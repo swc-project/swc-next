@@ -1,16 +1,16 @@
 ---
-source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+source: crates/swc_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 first(); /* eslint-disable-line no-undef */ ; second(); third(); /* eslint-disable-line no-undef */
 ---------- Options ----------
-{}
+{"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 first(); /* eslint-disable-line no-undef */
 ; second(); third(); /* eslint-disable-line no-undef */
 
 ---------- Options ----------
-{"semi":false}
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 first() /* eslint-disable-line no-undef */
 ; second(); third(); /* eslint-disable-line no-undef */

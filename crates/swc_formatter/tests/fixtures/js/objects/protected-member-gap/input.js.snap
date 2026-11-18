@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object = {
+	first: 1,
+	// @ts-ignore
+	second: 2,
+};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const object = {
+  first: 1,
+  // @ts-ignore
+  second: 2,
+};
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+const object = {
+	first: 1,
+	// @ts-ignore
+	second: 2,
+};

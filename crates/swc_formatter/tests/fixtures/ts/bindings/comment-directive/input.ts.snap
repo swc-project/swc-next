@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const {
+/* eslint-disable-next-line no-undef */
+} = missing;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":58}
+---------- Output ----------
+const { /* eslint-disable-next-line no-undef */ } =
+  missing;

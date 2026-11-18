@@ -1,9 +1,0 @@
----
-source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
----
----------- Input ----------
-import * /* note */ as name from "module";
----------- Options ----------
-{}
----------- Output ----------
-import * as /* note */ name from "module";

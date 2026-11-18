@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = f(a)(b).terminal;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":9}
+---------- Output ----------
+const x =
+  f(a)(
+    b,
+  ).terminal;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const x =
+  f(a)(b).terminal;

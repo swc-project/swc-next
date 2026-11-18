@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function C() {
+  useEffect(() => {
+    // @ts-ignore
+    missing();
+  }, [alpha, beta, gamma, delta, epsilon, zeta, eta, theta]);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function C() {
+  useEffect(() => {
+    // @ts-ignore
+    missing();
+  }, [alpha, beta, gamma, delta, epsilon, zeta, eta, theta]);
+}

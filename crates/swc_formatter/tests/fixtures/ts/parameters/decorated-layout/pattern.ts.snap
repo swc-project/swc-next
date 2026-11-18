@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(@a @b { x }: { x: string }) {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+class C {
+  constructor(
+    @a
+    @b
+    { x }: { x: string },
+  ) {}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  constructor(@a @b { x }: { x: string }) {}
+}

@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+receiver
+ 	// prettier-ignore
+ 	.bbbbbbbbbbbbbbbb(dddddddddddddddd, dddddddddddddddd).cccccccccccccccc();
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":2,"lineWidth":40}
+---------- Output ----------
+receiver
+ 	// prettier-ignore
+ 	.bbbbbbbbbbbbbbbb(
+ 		dddddddddddddddd,
+ 		dddddddddddddddd,
+ 	)
+ 	.cccccccccccccccc();

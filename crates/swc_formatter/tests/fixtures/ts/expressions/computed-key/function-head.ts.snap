@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = { [() => {
+  // comment
+  return key;
+}]: 1 };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = {
+  [() => {
+    // comment
+    return key;
+  }]: 1,
+};

@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// explanation
+import name from 'module'; // eslint-disable-line no-unused-vars
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// explanation
+import name from "module"; // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// explanation
+import name from "module" // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+// explanation
+import name from 'module'; // eslint-disable-line no-unused-vars
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+// explanation
+import name from 'module' // eslint-disable-line no-unused-vars

@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (var value = // note
+(name in object) in source) { consume(value); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (var value = (name in object) in source) // note
+{
+  consume(value);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+for (var value = // note
+  (name in
+    object) in source) {
+  consume(value);
+}

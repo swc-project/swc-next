@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try { g(); } catch /* eslint-disable-line no-undef */ (error) { h(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try { g(); } catch /* eslint-disable-line no-undef */ (error) { h(); }

@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function l(){return!!(te.flags&(4/* String  */|8/* Number */|4096/* ESSymbol */))}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function l() {
+  return !!(
+    te.flags &
+    (4 /* String  */ | 8 /* Number */ | 4096) /* ESSymbol */
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function l() {
+  return !!(te.flags & (4 /* String  */ | 8 /* Number */ | 4096) /* ESSymbol */)
+}

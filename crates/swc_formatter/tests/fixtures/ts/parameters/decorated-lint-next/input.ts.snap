@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(
+// eslint-disable-next-line no-undef
+@a @b private x?: string | null) {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    // eslint-disable-next-line no-undef
+    @a @b private x?: string | null) {}
+}

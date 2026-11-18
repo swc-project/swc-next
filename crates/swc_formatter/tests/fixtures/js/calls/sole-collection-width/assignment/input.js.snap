@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = f({ a: 1 });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":2}
+---------- Output ----------
+const x =
+  f(
+    {
+      a: 1,
+    },
+  );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12}
+---------- Output ----------
+const x = f(
+  { a: 1 },
+);
