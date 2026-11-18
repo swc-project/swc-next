@@ -14,7 +14,7 @@ use swc_next_ecma_ast::{
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
     BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassElement,
     ClassType, Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
-    ExportNamedDeclaration, ExportSpecifier, Expr, ForInStatement, ForOfStatement, ForStatement,
+    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
     FormalParameters, Function, FunctionBody, FunctionType, IdentifierName, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier,
     JsxOpeningElement, JsxText, Label, MemberExpression, MethodDefinition, NodeId, NodeKind,
@@ -169,15 +169,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// True when the walker is currently inside a TS namespace body.
     fn in_ts_namespace(&self) -> bool {
         self.ts_namespace_depth > 0
-    }
-
-    fn visit_type_heritage_expression(&mut self, expression: Expr) {
-        let space = if self.ast.node_kind(expression.node_id()) == NodeKind::MemberExpression {
-            ReferenceSpace::Namespace
-        } else {
-            ReferenceSpace::Type
-        };
-        self.visit_with_reference_flags(expression, self.flags_with_space(space));
     }
 
     fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
@@ -962,7 +953,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.visit_type_heritage_expression(node.expression(self.ast));
+        let expression = node.expression(self.ast);
+        let space = match self.ast.node_kind(expression.node_id()) {
+            NodeKind::MemberExpression => ReferenceSpace::Namespace,
+            _ => ReferenceSpace::Type,
+        };
+        self.visit_with_reference_flags(expression, self.flags_with_space(space));
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsClassImplements(node));
         self.exit_type_position(previous);
@@ -1214,7 +1210,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.visit_type_heritage_expression(node.expression(self.ast));
+        let expression = node.expression(self.ast);
+        let space = match self.ast.node_kind(expression.node_id()) {
+            NodeKind::MemberExpression => ReferenceSpace::Namespace,
+            _ => ReferenceSpace::Type,
+        };
+        self.visit_with_reference_flags(expression, self.flags_with_space(space));
         node.type_arguments(self.ast).visit_with(self);
         self.leave_node(NodeKindData::TsInterfaceHeritage(node));
         self.exit_type_position(previous);
