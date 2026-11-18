@@ -1,6 +1,6 @@
 mod support;
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, iter::once};
 
 use serde::Serialize;
 use support::{
@@ -64,7 +64,7 @@ fn add_symbols(
         _ => None,
     };
     // Include direct links while keeping long alias chains out of the snapshot.
-    for id in std::iter::once(target).chain(export).chain(alias) {
+    for id in once(target).chain(export).chain(alias) {
         symbols.entry(id.index()).or_insert_with(|| {
             let symbol = semantic.symbol(id);
             TestSymbol {

@@ -1,7 +1,9 @@
+use std::{collections::hash_map::Entry, iter::once, mem::take};
+
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    ClassElement, ClassElementData, Expr, IdentifierName, PropertyKeyData,
-    TsImportEqualsDeclaration, TsModuleBlock,
+    ClassElement, ClassElementData, Expr, IdentifierName, ModuleExportNameData, PropertyKeyData,
+    TsImportEqualsDeclaration, TsModuleBlock, TsModuleBody, TsModuleBodyData,
 };
 
 use super::*;
@@ -115,8 +117,8 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let name = match tree.module_export_name_data(specifier.exported(tree)) {
-            swc_next_ecma_ast::ModuleExportNameData::IdentifierName(name) => name.name(tree).into(),
-            swc_next_ecma_ast::ModuleExportNameData::StringLiteral(name) => name.value(tree),
+            ModuleExportNameData::IdentifierName(name) => name.name(tree).into(),
+            ModuleExportNameData::StringLiteral(name) => name.value(tree),
         };
         let alias_flags = if type_only {
             SymbolFlags::TYPE_EXPORT_ALIAS
@@ -142,9 +144,7 @@ impl<'a> SymbolTracker<'a> {
     }
 
     fn record_alias(&mut self, symbol: SymbolId, root: ReferenceId, members: Vec<AstUtf8>) {
-        if let std::collections::hash_map::Entry::Vacant(entry) =
-            self.ts_state.aliases.entry(symbol)
-        {
+        if let Entry::Vacant(entry) = self.ts_state.aliases.entry(symbol) {
             entry.insert(Alias { root, members });
             self.ts_state.initializers.insert(root, symbol);
         }
@@ -286,7 +286,7 @@ impl<'a> SymbolTracker<'a> {
     }
 
     fn declarations_of(&self, symbol: SymbolId) -> impl Iterator<Item = Declaration> {
-        std::iter::once(self.symbols[symbol].declaration)
+        once(self.symbols[symbol].declaration)
             .chain(
                 self.redeclarations
                     .get(&symbol)
@@ -423,7 +423,7 @@ impl<'a> SymbolTracker<'a> {
         // The receiver can be declared after the write. Bind named members once
         // all declaration tables exist, before resolving import aliases.
         let mut path = Vec::new();
-        for assignment in std::mem::take(&mut self.ts_state.expando_assignments) {
+        for assignment in take(&mut self.ts_state.expando_assignments) {
             path.clear();
             let mut object = assignment.object.node_id();
             while let NodeKindData::MemberExpression(member) = tree.kind_data(object) {
@@ -552,7 +552,7 @@ impl NamespaceState {
 
 pub(super) fn namespace_state(
     tree: &Ast<'_>,
-    body: Option<swc_next_ecma_ast::TsModuleBody>,
+    body: Option<TsModuleBody>,
     ambient: bool,
 ) -> NamespaceState {
     use NamespaceState::*;
@@ -561,7 +561,7 @@ pub(super) fn namespace_state(
         return NonInstantiated;
     };
     match tree.ts_module_body_data(body) {
-        swc_next_ecma_ast::TsModuleBodyData::TsModuleBlock(block) => {
+        TsModuleBodyData::TsModuleBlock(block) => {
             if !block.directives(tree).is_empty() {
                 return Instantiated;
             }
@@ -578,7 +578,7 @@ pub(super) fn namespace_state(
             }
             state
         }
-        swc_next_ecma_ast::TsModuleBodyData::TsModuleDeclaration(child) => {
+        TsModuleBodyData::TsModuleDeclaration(child) => {
             namespace_state(tree, child.body(tree), ambient || child.declare(tree))
         }
     }

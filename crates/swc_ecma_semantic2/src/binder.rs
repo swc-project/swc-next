@@ -26,7 +26,7 @@ mod annex_b;
 pub(crate) mod ts;
 
 use annex_b::AnnexBFunction;
-use ts::{TsBindingState, TsMemberKind};
+use ts::{ALIAS_FLAGS, NamespaceState, TsBindingState, TsMemberKind, namespace_state};
 
 /// A `(start, len)` window into a backing slice.
 #[derive(Debug, Default, Clone, Copy)]
@@ -235,11 +235,9 @@ impl SymbolFlags {
             ReferenceSpace::Value => {
                 self.intersects(Self::IMPORT | Self::EXPORT_ALIAS) || self.in_value_space()
             }
-            ReferenceSpace::Typeof => self.intersects(ts::ALIAS_FLAGS) || self.in_value_space(),
-            ReferenceSpace::Type => self.intersects(ts::ALIAS_FLAGS) || self.in_type_space(),
-            ReferenceSpace::Namespace => {
-                self.intersects(ts::ALIAS_FLAGS) || self.in_namespace_space()
-            }
+            ReferenceSpace::Typeof => self.intersects(ALIAS_FLAGS) || self.in_value_space(),
+            ReferenceSpace::Type => self.intersects(ALIAS_FLAGS) || self.in_type_space(),
+            ReferenceSpace::Namespace => self.intersects(ALIAS_FLAGS) || self.in_namespace_space(),
             ReferenceSpace::Any => true,
         }
     }
@@ -1017,11 +1015,11 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         let ambient = declaration.declare(tree) || self.ambient;
-        let state = ts::namespace_state(tree, declaration.body(tree), ambient);
+        let state = namespace_state(tree, declaration.body(tree), ambient);
         self.pending = PendingBinding {
             flags: SymbolFlags::NAMESPACE_MODULE.with(SymbolFlags::AMBIENT, ambient)
                 | state.flags(),
-            excludes: if state == ts::NamespaceState::Instantiated {
+            excludes: if state == NamespaceState::Instantiated {
                 Excludes::VALUE_MODULE
             } else {
                 Excludes::NAMESPACE_MODULE

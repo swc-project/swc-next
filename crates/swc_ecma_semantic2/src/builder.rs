@@ -5,7 +5,7 @@ mod js;
 mod regex;
 mod ts;
 
-use std::{borrow::Cow, collections::hash_map::Entry};
+use std::{borrow::Cow, collections::hash_map::Entry, mem::replace};
 
 use rustc_hash::FxHashMap;
 use swc_next_allocator::Idx;
@@ -14,13 +14,13 @@ use swc_next_ecma_ast::{
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
     BlockStatement, BooleanLiteral, CallExpression, CatchClause, Class, ClassBody, ClassElement,
     ClassType, Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
-    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
+    ExportNamedDeclaration, ExportSpecifier, Expr, ForInStatement, ForOfStatement, ForStatement,
     FormalParameters, Function, FunctionBody, FunctionType, IdentifierName, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxIdentifier,
     JsxOpeningElement, JsxText, Label, MemberExpression, MethodDefinition, NodeId, NodeKind,
     NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId,
-    Severity, Span, StaticBlock, SwitchCase, SwitchStatement, ThisExpression, TsArrayType,
-    TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, ThisExpression,
+    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -38,7 +38,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags, SyntaxChecks,
-    binder::SymbolTracker,
+    binder::{SymbolTracker, ts::has_explicit_exports},
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -132,7 +132,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     where
         T: VisitWith<'a, Self>,
     {
-        let previous = std::mem::replace(&mut self.default_reference_space, ReferenceSpace::Typeof);
+        let previous = replace(&mut self.default_reference_space, ReferenceSpace::Typeof);
         self.visit_with_reference_flags(node, self.default_reference_flags());
         self.default_reference_space = previous;
     }
@@ -175,7 +175,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         self.ts_namespace_depth > 0
     }
 
-    fn visit_type_heritage_expression(&mut self, expression: swc_next_ecma_ast::Expr) {
+    fn visit_type_heritage_expression(&mut self, expression: Expr) {
         let space = if self.ast.node_kind(expression.node_id()) == NodeKind::MemberExpression {
             ReferenceSpace::Namespace
         } else {
@@ -184,11 +184,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         self.visit_with_reference_flags(expression, self.flags_with_space(space));
     }
 
-    fn visit_module_block(
-        &mut self,
-        node: TsModuleBlock,
-        owner: Option<swc_next_ecma_ast::SymbolId>,
-    ) {
+    fn visit_module_block(&mut self, node: TsModuleBlock, owner: Option<SymbolId>) {
         self.ts_namespace_depth += 1;
         self.push_scope(
             ScopeKind::TsModule,
@@ -196,8 +192,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             self.inherit_strict_flag(),
         );
         self.enter_node(node.node_id());
-        let implicit = self.symbols.in_ambient_context()
-            && !crate::binder::ts::has_explicit_exports(self.ast, node);
+        let implicit = self.symbols.in_ambient_context() && !has_explicit_exports(self.ast, node);
         self.symbols
             .enter_ts_container(self.current_scope, owner, implicit);
         node.visit_children_with(self);
@@ -216,12 +211,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     #[inline]
     fn replace_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
-        std::mem::replace(&mut self.reference_flags, flags)
+        replace(&mut self.reference_flags, flags)
     }
 
     #[inline]
     fn enter_type_position(&mut self) -> ReferenceSpace {
-        std::mem::replace(&mut self.default_reference_space, ReferenceSpace::Type)
+        replace(&mut self.default_reference_space, ReferenceSpace::Type)
     }
 
     #[inline]

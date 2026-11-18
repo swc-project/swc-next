@@ -1,5 +1,6 @@
 use std::{convert::Infallible, hash::BuildHasher};
 
+use bitflags::bitflags;
 use swc_next_allocator::IndexSlice;
 
 use super::*;
@@ -16,7 +17,7 @@ struct Binding {
     flags: SymbolFlags,
 }
 
-bitflags::bitflags! {
+bitflags! {
     #[derive(Clone, Copy)]
     struct Spaces: u8 {
         const VALUE = 1 << 0;

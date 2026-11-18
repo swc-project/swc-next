@@ -1,3 +1,5 @@
+use std::iter::once;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use swc_next_ecma_ast::{
@@ -10,6 +12,7 @@ use super::super::{
     TypeScriptOptions,
     bindings::{resolve_value_binding, value_binding},
 };
+use super::enums::EnumAnalysis;
 
 pub(super) struct ModuleCollector {
     initializer_references: FxHashSet<NodeId>,
@@ -35,7 +38,7 @@ impl ModuleCollector {
         }
     }
 
-    pub(super) fn apply_enum_policy(&mut self, enums: &super::enums::EnumAnalysis<'_>) {
+    pub(super) fn apply_enum_policy(&mut self, enums: &EnumAnalysis<'_>) {
         self.alias_dependencies.retain(|_, dependency| {
             let erased = dependency
                 .target
@@ -181,7 +184,7 @@ impl ModuleAnalysis {
     }
 
     fn has_direct_runtime_usage(&self, symbol: SymbolId, semantic: &Semantic<'_>) -> bool {
-        std::iter::once(symbol)
+        once(symbol)
             .chain(
                 self.export_locals
                     .get(&symbol)
