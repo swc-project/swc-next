@@ -13,31 +13,50 @@ mod resolve;
 
 pub(crate) use resolve::LexicalLookup;
 
+/// Temporary TypeScript binding data used to collect declarations and resolve aliases.
 #[derive(Default)]
 pub(super) struct TsBindingState<'a> {
+    /// Ambient namespace scopes whose declarations can be exported implicitly.
     implicit_exports: FxHashSet<ScopeId>,
+    /// Unresolved targets keyed by alias symbol.
     aliases: FxHashMap<SymbolId, Alias>,
+    /// Reverse index from initializer references to alias symbols.
     initializers: FxHashMap<ReferenceId, SymbolId>,
+    /// Candidate property writes to bind after collecting declarations.
     expando_assignments: Vec<ExpandoAssignment>,
+    /// Reusable set of local value `import =` names for one ambient namespace block.
     namespace_imports: FxHashSet<&'a str>,
 }
 
+/// The unresolved target of an internal import-equals or a namespace export alias.
 struct Alias {
+    /// Reference to the leftmost identifier, such as `A` in `A.B.C`.
     root: ReferenceId,
+    /// Member names after the root in lookup order, such as `B` then `C`.
     members: Vec<AstUtf8>,
 }
 
+/// A dotted assignment that may add a property to a function declaration.
 struct ExpandoAssignment {
+    /// Receiver expression, such as `a.b` in `a.b.c = value`.
     object: Expr,
+    /// Identifier of the assigned property, such as `c` in `a.b.c = value`.
     property: IdentifierName,
+    /// Lexical scope of the assignment and the first scope searched.
     scope: ScopeId,
+    /// Nearest non-block scope used as a fallback for receiver lookup.
     container: ScopeId,
 }
 
+/// How a declaration contributes to a TypeScript container member.
 pub(super) enum TsMemberKind {
+    /// An enum member declaration.
     Enum,
+    /// An explicit or implicit namespace export.
     Namespace,
+    /// A named static class member.
     ClassStatic,
+    /// A function property introduced by a dotted assignment.
     Expando,
 }
 
@@ -403,10 +422,14 @@ impl<'a> SymbolTracker<'a> {
     }
 }
 
+/// A namespace body's contribution to the namespace's value binding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum NamespaceState {
+    /// The body contributes no value binding.
     NonInstantiated,
+    /// The body's value contributions come only from const enums.
     ConstEnumOnly,
+    /// The body contributes a value binding independently of const enums.
     Instantiated,
 }
 
@@ -423,9 +446,10 @@ impl NamespaceState {
 // Redeclaration checks, lookups, and namespace classification.
 impl<'a> SymbolTracker<'a> {
     fn is_ts_direct_export(&self, binding: PendingBinding) -> bool {
-        self.export_state.is_named()
-            || (!binding.flags.intersects(SymbolFlags::IMPORT)
-                && self.ts_state.implicit_exports.contains(&binding.scope))
+        let export = self.export_state.is_named();
+        let import = binding.flags.intersects(SymbolFlags::IMPORT);
+        let implicit_import = self.ts_state.implicit_exports.contains(&binding.scope);
+        export || (!import && implicit_import)
     }
 
     fn source_export_symbol(&self, local: SymbolId) -> Option<SymbolId> {
@@ -433,9 +457,10 @@ impl<'a> SymbolTracker<'a> {
             return Some(export);
         }
         let flags = self.symbols[local].flags;
-        flags
-            .contains(SymbolFlags::IMPORT_EQUALS | SymbolFlags::EXPORTED)
-            .then_some(local)
+        if flags.contains(SymbolFlags::IMPORT_EQUALS | SymbolFlags::EXPORTED) {
+            return Some(local);
+        }
+        None
     }
 
     /// Finds a conflict for an explicit or implicit named TypeScript export.
@@ -513,15 +538,16 @@ impl<'a> SymbolTracker<'a> {
                 None
             }
         });
-        let mut symbol = if let Some(local) = local {
-            self.ts_bindings
-                .export_symbols
-                .get(&local)
-                .copied()
-                .unwrap_or(local)
-        } else {
-            let owner = self.ts_bindings.ts_owner(scope)?;
-            self.ts_bindings.member(owner, root)?.symbol
+
+        let mut symbol = match local {
+            Some(local) => {
+                let export_symbols = self.ts_bindings.export_symbols.get(&local);
+                export_symbols.copied().unwrap_or(local)
+            }
+            None => {
+                let owner = self.ts_bindings.ts_owner(scope)?;
+                self.ts_bindings.member(owner, root)?.symbol
+            }
         };
 
         for &name in path.iter().rev() {
