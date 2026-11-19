@@ -3047,6 +3047,32 @@
         "prettierNative": "for (\n  initialize();\n  ;\n)\n  /* own line */\n  consume()\n"
       }
     ],
+    "js/control-flow/for-header-layout/binary/no-in.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      }
+    ],
     "js/control-flow/for-header-layout/operator-suffixes/declaration.js": [
       {
         "options": {
@@ -39719,6 +39745,42 @@
         },
         "swcPlugin": "const result = (!callee<Type>) + suffix;\n",
         "prettierNative": "const result = !callee<Type> + suffix;\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/relational/comparison.ts": [
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (a <\n    b) >\n  c;\n",
+        "prettierNative": "x =\n  a <\n  b >\n  c;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = (a < b) > c;\n",
+        "prettierNative": "x = a < b > c;\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/relational/ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  (a\n    // prettier-ignore\n    < T) >\n  b;\n",
+        "prettierNative": "const x =\n  a <\n  // prettier-ignore\n  T >\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  (a\n    // prettier-ignore\n    < T) >\n  b;\n",
+        "prettierNative": "const x =\n  a <\n  // prettier-ignore\n  T >\n  b;\n"
       }
     ],
     "ts/type-argument-tail-packets/instantiation.ts": [

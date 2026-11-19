@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (a = (b in c) < d;;);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+for (a = (b in c) < d; ;);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (a = (b in c) < d; ;);
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":40}
+---------- Output ----------
+for (a = (b in c) < d; ;);
