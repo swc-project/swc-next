@@ -1,26 +1,29 @@
-use std::{collections::hash_map::Entry, iter::once, mem::take};
+use std::{collections::hash_map::Entry, convert::Infallible, iter::once, mem::take};
 
+use bitflags::bitflags;
 use rustc_hash::{FxHashMap, FxHashSet};
+use swc_next_allocator::IndexSlice;
 use swc_next_ecma_ast::{
     ClassElement, ClassElementData, Expr, IdentifierName, ModuleExportNameData, PropertyKeyData,
     TsImportEqualsDeclaration, TsModuleBlock, TsModuleBody, TsModuleBodyData,
 };
 
 use super::*;
-use crate::ts::{TsContainer, TsMember, TsMemberTable};
-
-mod resolve;
-
-pub(crate) use resolve::LexicalLookup;
+use crate::{
+    Scopes, SymbolTables, Symbols,
+    ts::{TsAlias, TsContainer, TsMember, TsMemberTable},
+};
 
 /// Temporary TypeScript binding data used to collect declarations and resolve aliases.
 #[derive(Default)]
 pub(super) struct TsBindingState<'a> {
     /// Ambient namespace scopes whose declarations can be exported implicitly.
     implicit_exports: FxHashSet<ScopeId>,
-    /// Unresolved targets keyed by alias symbol.
+    /// Unresolved targets keyed by alias symbol. In `import A = N.E`,
+    /// the symbol ID of `A` maps to the reference to `N` and the member name `E`.
     aliases: FxHashMap<SymbolId, Alias>,
-    /// Reverse index from initializer references to alias symbols.
+    /// Maps each initializer's root reference ID to its alias symbol ID.
+    /// In `import A = N.E`, the reference ID of `N` maps to the symbol ID of `A`.
     initializers: FxHashMap<ReferenceId, SymbolId>,
     /// Candidate property writes to bind after collecting declarations.
     expando_assignments: Vec<ExpandoAssignment>,
@@ -30,9 +33,9 @@ pub(super) struct TsBindingState<'a> {
 
 /// The unresolved target of an internal import-equals or a namespace export alias.
 struct Alias {
-    /// Reference to the leftmost identifier, such as `A` in `A.B.C`.
+    /// Reference to the leftmost identifier, such as `N` in `import A = N.E`.
     root: ReferenceId,
-    /// Member names after the root in lookup order, such as `B` then `C`.
+    /// Member names after the root in lookup order, such as `E` in `import A = N.E`.
     members: Vec<AstUtf8>,
 }
 
@@ -365,6 +368,8 @@ impl<'a> SymbolTracker<'a> {
         });
     }
 
+    #[cold]
+    #[inline(never)]
     pub(super) fn declare_ts_expando_members(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'_>) {
         // The receiver can be declared after the write. Bind named members once
         // all declaration tables exist, before resolving import aliases.
@@ -707,5 +712,427 @@ impl<'a> SymbolTracker<'a> {
             }
         }
         false
+    }
+}
+
+impl SymbolTracker<'_> {
+    pub(super) fn resolve_references(&mut self, tree: &Ast<'_>, scopes: &ScopeTree<'_>) {
+        if !self.ts_state.aliases.is_empty() {
+            self.resolve_references_with_aliases(tree, scopes);
+            return;
+        }
+
+        let lookup = LexicalLookup {
+            scopes: &scopes.list,
+            symbols: &self.symbols,
+            symbol_tables: &self.symbol_tables,
+            shadowed_internal_names: &self.shadowed_internal_names,
+            ts: &self.ts_bindings,
+        };
+
+        // Without recorded alias targets, visibility follows declaration flags.
+        for reference in self.references.iter_mut() {
+            let name = tree.get_utf8(reference.name).as_bytes();
+            let space = reference.flags.space;
+            let binding = lookup.lookup(reference.scope, name, space);
+            reference.symbol = binding.map(|(symbol, _)| symbol);
+            if space == ReferenceSpace::Any
+                && reference.flags.is_read()
+                && let Some((_, flags)) = binding
+                && !flags.contains(SymbolFlags::EXPORT_VALUE)
+                && !flags.visible_in(ReferenceSpace::Value)
+            {
+                reference.flags = reference.flags.no_access();
+            }
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn resolve_references_with_aliases(&mut self, tree: &Ast<'_>, scopes: &ScopeTree<'_>) {
+        let lookup = LexicalLookup {
+            scopes: &scopes.list,
+            symbols: &self.symbols,
+            symbol_tables: &self.symbol_tables,
+            shadowed_internal_names: &self.shadowed_internal_names,
+            ts: &self.ts_bindings,
+        };
+
+        // Resolve alias dependencies once, before deciding which bindings each reference can see.
+        let mut resolver = AliasResolver {
+            lookup: &lookup,
+            tree,
+            aliases: &self.ts_state.aliases,
+            resolved: FxHashMap::default(),
+        };
+        resolver.resolve_all(&self.references);
+
+        // Keep the identity found at the use site. The reverse index is built from these IDs.
+        for (id, reference) in self.references.iter_mut_enumerated() {
+            let initializer = self.ts_state.initializers.get(&id).copied();
+            resolver.resolve_reference(reference, initializer);
+        }
+
+        // Only direct alias links outlive the binder.
+        for (symbol, alias) in resolver.resolved {
+            self.ts_bindings.aliases.insert(symbol, alias.target);
+        }
+    }
+}
+
+/// The lexical table and the TypeScript contributions visible from each scope.
+pub(crate) struct LexicalLookup<'s, 'a> {
+    pub(crate) scopes: &'s Scopes,
+    pub(crate) symbols: &'s Symbols,
+    pub(crate) symbol_tables: &'s SymbolTables<'a>,
+    pub(crate) shadowed_internal_names: &'s ShadowedInternalNames<'a>,
+    pub(crate) ts: &'s TsBindings<'a>,
+}
+
+impl LexicalLookup<'_, '_> {
+    pub(crate) fn lookup(
+        &self,
+        scope: ScopeId,
+        name: &[u8],
+        space: ReferenceSpace,
+    ) -> Option<(SymbolId, SymbolFlags)> {
+        self.lookup_inner(scope, name, space, |_, flags| {
+            Ok::<_, Infallible>(flags.visible_in(space))
+        })
+        .unwrap()
+    }
+
+    /// Walk outwards until a binding contributes the requested meaning.
+    /// The visibility check can suspend alias resolution on a dependency,
+    /// as in `import A = B.C` while `import B = N` is still unresolved.
+    fn lookup_inner<E>(
+        &self,
+        start: ScopeId,
+        name: &[u8],
+        space: ReferenceSpace,
+        mut visible: impl FnMut(SymbolId, SymbolFlags) -> Result<bool, E>,
+    ) -> Result<Option<(SymbolId, SymbolFlags)>, E> {
+        let arguments = name == b"arguments"
+            && matches!(
+                space,
+                ReferenceSpace::Value | ReferenceSpace::Typeof | ReferenceSpace::Any
+            );
+        for id in successors(Some(start), |&id| self.scopes[id].parent) {
+            let scope = self.scopes[id];
+            let barrier = arguments && scope.flags.arguments_barrier;
+            if let Some(&local) = self.symbol_tables[id].get(name) {
+                let flags = self.symbols[local].flags;
+
+                // The implicit arguments object hides the function expression's name.
+                // `const f = function arguments() { return arguments; };`
+                if barrier && flags.intersects(SymbolFlags::INTERNAL_NAME) {
+                    return Ok(None);
+                }
+
+                // The local binding matches the requested space.
+                // `const x = 1; x;` or `export const x = 1; x;`
+                let exported_value = flags.contains(SymbolFlags::EXPORT_VALUE)
+                    && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
+                if exported_value || visible(local, flags)? {
+                    return Ok(Some((local, flags)));
+                }
+
+                // The hidden name still supplies the requested meaning.
+                // `const f = function n() { type n = string; return n; };`
+                if let Some(&internal) = self.shadowed_internal_names.get(&local) {
+                    let flags = self.symbols[internal].flags;
+                    if !barrier && visible(internal, flags)? {
+                        return Ok(Some((internal, flags)));
+                    }
+                }
+
+                // The module's export symbol supplies the missing meaning.
+                // `export interface T {} type U = T;`
+                if scope.kind == ScopeKind::Module
+                    && let Some(&export) = self.ts.export_symbols.get(&local)
+                {
+                    let flags = self.symbols[export].flags;
+                    if visible(export, flags)? {
+                        return Ok(Some((export, flags)));
+                    }
+                }
+            }
+
+            // The arguments barrier blocks lookup in outer scopes.
+            // `var arguments; function f() { return arguments; }`
+            if barrier {
+                return Ok(None);
+            }
+
+            // A shared TS member is visible across merged bodies.
+            // `enum E { A = 1 } enum E { B = A }`
+            // `namespace N { export type T = string; } namespace N { type U = T; }`
+            if matches!(scope.kind, ScopeKind::TsEnum | ScopeKind::TsModule)
+                && let Some((symbol, flags)) = self.lookup_container_member(id, scope.kind, name)
+                && visible(symbol, flags)?
+            {
+                std::hint::cold_path();
+                return Ok(Some((symbol, flags)));
+            }
+        }
+        Ok(None)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn lookup_container_member(
+        &self,
+        scope: ScopeId,
+        kind: ScopeKind,
+        name: &[u8],
+    ) -> Option<(SymbolId, SymbolFlags)> {
+        let container = self.ts.containers.get(&scope)?;
+        let member = self.ts.member(container.owner, name)?;
+        // Merged bodies share only the contributions of their own kind.
+        let mut flags = match kind {
+            ScopeKind::TsEnum => member.enum_flags,
+            ScopeKind::TsModule => member.namespace_flags,
+            _ => None,
+        }?;
+        if container.ambient
+            && flags.contains(SymbolFlags::ALIAS)
+            && !flags.contains(SymbolFlags::IMPORT_EQUALS)
+        {
+            // An ambient export specifier introduces a public name only.
+            flags.remove(SymbolFlags::ALIAS | SymbolFlags::TYPE_ONLY);
+            if !flags.intersects(
+                SymbolFlags::VALUE_SPACE | SymbolFlags::TYPE_SPACE | SymbolFlags::NAMESPACE_SPACE,
+            ) {
+                return None;
+            }
+        }
+        Some((member.symbol, flags))
+    }
+}
+
+bitflags! {
+    #[derive(Clone, Copy)]
+    struct Spaces: u8 {
+        const VALUE = 1;
+        const TYPE = 2;
+        const NAMESPACE = 4;
+        const TYPEOF = 8;
+    }
+}
+
+impl Spaces {
+    fn declared(flags: SymbolFlags) -> Self {
+        let mut spaces = Self::empty();
+        spaces.set(Self::VALUE | Self::TYPEOF, flags.in_value_space());
+        spaces.set(Self::TYPE, flags.in_type_space());
+        spaces.set(Self::NAMESPACE, flags.in_namespace_space());
+        spaces
+    }
+
+    fn visible_in(self, space: ReferenceSpace) -> bool {
+        match space {
+            ReferenceSpace::Value => self.contains(Self::VALUE),
+            ReferenceSpace::Type => self.contains(Self::TYPE),
+            ReferenceSpace::Namespace => self.contains(Self::NAMESPACE),
+            ReferenceSpace::Typeof => self.contains(Self::TYPEOF),
+            ReferenceSpace::Any => true,
+        }
+    }
+}
+
+/// The direct target is public. The remaining fields describe what a use
+/// through this particular alias path can see.
+#[derive(Clone, Copy)]
+struct ResolvedAlias {
+    target: TsAlias,
+    spaces: Spaces,
+    owner: Option<SymbolId>,
+    type_only: bool,
+}
+
+impl ResolvedAlias {
+    const UNKNOWN: Self = Self {
+        target: TsAlias::Unknown,
+        spaces: Spaces::all(),
+        owner: None,
+        type_only: false,
+    };
+
+    fn restrict_value(&mut self) {
+        self.type_only = true;
+        self.spaces.remove(Spaces::VALUE);
+    }
+}
+
+struct AliasResolver<'s, 'a> {
+    lookup: &'s LexicalLookup<'s, 'a>,
+    tree: &'s Ast<'a>,
+    aliases: &'s FxHashMap<SymbolId, Alias>,
+    resolved: FxHashMap<SymbolId, ResolvedAlias>,
+}
+
+impl AliasResolver<'_, '_> {
+    fn resolve_all(&mut self, references: &IndexSlice<ReferenceId, [Reference]>) {
+        let mut stack = Vec::new();
+        let mut active = FxHashSet::default();
+        for &symbol in self.aliases.keys() {
+            if self.resolved.contains_key(&symbol) {
+                continue;
+            }
+            stack.push(symbol);
+            active.insert(symbol);
+            while let Some(&current) = stack.last() {
+                let alias = &self.aliases[&current];
+                match self.resolve_alias(alias, references[alias.root]) {
+                    Ok(result) => {
+                        self.resolved.insert(current, result);
+                        stack.pop();
+                        active.remove(&current);
+                    }
+                    // Finish a forward dependency, then retry the suspended alias.
+                    Err(dependency) if active.insert(dependency) => stack.push(dependency),
+                    Err(dependency) => {
+                        // Every alias on this cycle has an unknown target.
+                        while let Some(cyclic) = stack.pop() {
+                            self.resolved.insert(cyclic, ResolvedAlias::UNKNOWN);
+                            active.remove(&cyclic);
+                            if cyclic == dependency {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn find(
+        &self,
+        reference: &Reference,
+        space: ReferenceSpace,
+    ) -> Result<Option<(SymbolId, SymbolFlags)>, SymbolId> {
+        let name = self.tree.get_utf8(reference.name).as_bytes();
+        self.lookup
+            .lookup_inner(reference.scope, name, space, |symbol, flags| {
+                if space == ReferenceSpace::Any || !flags.contains(SymbolFlags::ALIAS) {
+                    return Ok(flags.visible_in(space));
+                }
+                Ok(self.meaning(symbol, flags)?.spaces.visible_in(space))
+            })
+    }
+
+    fn root(
+        &self,
+        reference: &Reference,
+        bare: bool,
+    ) -> Result<Option<(SymbolId, SymbolFlags)>, SymbolId> {
+        let space = reference.flags.space;
+        let binding = self.find(reference, space)?;
+        if binding.is_none() && bare && space == ReferenceSpace::Namespace {
+            return self.find(reference, ReferenceSpace::Any);
+        }
+        Ok(binding)
+    }
+
+    fn resolve_alias(
+        &self,
+        alias: &Alias,
+        reference: Reference,
+    ) -> Result<ResolvedAlias, SymbolId> {
+        // Import-equals prefers a namespace root. A bare name may denote any declaration.
+        let Some((symbol, flags)) = self.root(&reference, alias.members.is_empty())? else {
+            return Ok(ResolvedAlias::UNKNOWN);
+        };
+        let mut result = self.meaning(symbol, flags)?;
+        if let Some(&export) = self.lookup.ts.export_symbols.get(&symbol) {
+            // Keep the local identity, but use the owner that actually declared the namespace.
+            let exported = self.lookup.symbols[export].flags;
+            result.spaces |= Spaces::declared(exported);
+            if result.owner.is_none() && exported.in_namespace_space() {
+                result.owner = Some(export);
+            }
+        }
+        for &name in &alias.members {
+            // Each qualifier supplies the owner for the next public member.
+            let member = result.owner.and_then(|owner| {
+                let ts = self.lookup.ts;
+                ts.member(owner, self.tree.get_utf8(name).as_bytes())
+            });
+            let type_only = result.type_only;
+            result = match member {
+                Some(member) => self.meaning(member.symbol, member.flags())?,
+                None => ResolvedAlias::UNKNOWN,
+            };
+            if type_only {
+                result.restrict_value();
+            }
+        }
+        Ok(result)
+    }
+
+    fn meaning(&self, symbol: SymbolId, flags: SymbolFlags) -> Result<ResolvedAlias, SymbolId> {
+        // Resolve only the alias contribution. Merged declarations keep their
+        // own meanings, including a value merged with a type-only import.
+        let mut result = if flags.contains(SymbolFlags::ALIAS) {
+            let mut alias = if let Some(&resolved) = self.resolved.get(&symbol) {
+                resolved
+            } else if self.aliases.contains_key(&symbol) {
+                return Err(symbol);
+            } else {
+                // An external import itself is known even though its members are not.
+                ResolvedAlias {
+                    target: TsAlias::Target(symbol),
+                    ..ResolvedAlias::UNKNOWN
+                }
+            };
+            if flags.contains(SymbolFlags::TYPE_ONLY) {
+                alias.restrict_value();
+            }
+            alias
+        } else {
+            ResolvedAlias {
+                target: TsAlias::Target(symbol),
+                spaces: Spaces::empty(),
+                owner: None,
+                type_only: false,
+            }
+        };
+        if let TsAlias::Target(_) = result.target {
+            result.target = TsAlias::Target(symbol);
+        }
+        result.spaces |= Spaces::declared(flags);
+        if flags.in_namespace_space() {
+            result.owner = Some(symbol);
+        }
+        Ok(result)
+    }
+
+    fn resolve_reference(&self, reference: &mut Reference, initializer: Option<SymbolId>) {
+        let bare = initializer.is_some_and(|symbol| self.aliases[&symbol].members.is_empty());
+        let binding = self.root(reference, bare).unwrap();
+        reference.symbol = binding.map(|(symbol, _)| symbol);
+
+        // Runtime access for an initializer depends on its final member. For
+        // export expressions and specifiers it depends on the lexical binding.
+        if !reference.flags.is_read() {
+            return;
+        }
+        let reads_value = if let Some(symbol) = initializer {
+            self.resolved[&symbol].spaces.contains(Spaces::VALUE)
+        } else if reference.flags.space == ReferenceSpace::Any
+            && let Some((symbol, flags)) = binding
+        {
+            flags.contains(SymbolFlags::EXPORT_VALUE)
+                || self
+                    .meaning(symbol, flags)
+                    .unwrap()
+                    .spaces
+                    .contains(Spaces::VALUE)
+        } else {
+            true
+        };
+        if !reads_value {
+            reference.flags = reference.flags.no_access();
+        }
     }
 }

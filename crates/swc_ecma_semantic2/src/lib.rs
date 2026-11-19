@@ -277,7 +277,8 @@ impl<'a> Semantic<'a> {
             shadowed_internal_names: &self.shadowed_internal_names,
             ts: &self.ts_bindings,
         };
-        lookup.lookup(scope_id, name, space)
+        let (symbol, _) = lookup.lookup(scope_id, name, space)?;
+        Some(symbol)
     }
 
     /// Iterates every `(id, scope)` pair in creation order.

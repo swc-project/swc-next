@@ -121,7 +121,7 @@ fn format_symbol_flags(flags: SymbolFlags) -> String {
         (SymbolFlags::FUNCTION_EXPRESSION, "FunctionExpression"),
         (SymbolFlags::ANNEX_B_IF_FUNCTION, "AnnexBIfFunction"),
         (SymbolFlags::IMPORT, "Import"),
-        (SymbolFlags::TYPE_IMPORT, "TypeImport"),
+        (SymbolFlags::IMPORT | SymbolFlags::TYPE_ONLY, "TypeImport"),
         (SymbolFlags::TYPE_ALIAS, "TypeAlias"),
         (SymbolFlags::INTERFACE, "Interface"),
         (SymbolFlags::REGULAR_ENUM, "RegularEnum"),
