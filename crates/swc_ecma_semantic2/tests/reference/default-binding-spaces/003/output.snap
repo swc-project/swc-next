@@ -20,25 +20,33 @@ const fn = f;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 1
       },
       {
         "span": "127..128",
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 0
+        "symbol": 1
       }
     ]
   },
   "symbols": {
     "0": {
       "name": "f",
-      "flags": "FUNCTION | TYPE_ALIAS | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "declarations": [
+        "24..25"
+      ]
+    },
+    "1": {
+      "name": "f",
+      "flags": "TYPE_ALIAS | EXPORT_VALUE",
       "declarations": [
         "24..25",
         "84..85"
-      ]
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {

@@ -7,7 +7,6 @@ mod regex;
 
 use std::{borrow::Cow, mem::replace};
 
-use rustc_hash::FxHashMap;
 use swc_next_allocator::Idx;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
@@ -42,7 +41,6 @@ use crate::{
 };
 
 pub struct SemanticBuilder<'traverse, 'a> {
-    exported_names: FxHashMap<&'traverse [u8], NodeId>,
     export_specifiers: Vec<ExportSpecifier>,
     diagnostics: Vec<Diagnostic>,
     scopes: ScopeTree<'a>,
@@ -66,7 +64,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             symbols.record_scope(scope.node, id);
         }
         Self {
-            exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
             scopes,

@@ -24,34 +24,35 @@ namespace Test {
         "scope": 6,
         "space": "Typeof",
         "access": "None",
-        "symbol": 5
+        "symbol": 6
       },
       {
         "span": "167..168",
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "symbol": 5
+        "symbol": 6
       },
       {
         "span": "189..190",
         "scope": 6,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "0": {
+    "1": {
       "name": "f",
-      "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
         "24..25",
         "41..42"
-      ]
+      ],
+      "export_symbol": 0
     },
-    "3": {
+    "4": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
       "declarations": [
@@ -59,14 +60,14 @@ namespace Test {
         "92..93"
       ]
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "130..131"
       ],
       "alias": {
-        "Target": 0
+        "Target": 1
       }
     }
   },
@@ -75,7 +76,7 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 4
+      "container_owner": 5
     }
   }
 }

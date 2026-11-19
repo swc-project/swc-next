@@ -18,12 +18,12 @@ export default function f(value: string | number) {
         "scope": 4,
         "space": "Value",
         "access": "Read",
-        "symbol": 3
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "3": {
+    "4": {
       "name": "value",
       "flags": "FUNCTION_SCOPED_VAR | PARAMETER",
       "declarations": [

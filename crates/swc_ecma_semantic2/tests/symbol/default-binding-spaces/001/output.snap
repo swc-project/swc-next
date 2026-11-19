@@ -22,13 +22,27 @@ const fn = f;
             "span": "24..25",
             "scope": 1
           }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1,
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+            "node_symbol": 0,
+            "owner": 0
+          }
         ],
         "bindings": [
           1
         ],
         "uses": [
           "103..104"
-        ]
+        ],
+        "export_symbol": 0
       }
     ]
   },

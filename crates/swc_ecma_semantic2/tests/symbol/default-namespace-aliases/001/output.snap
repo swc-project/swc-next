@@ -20,7 +20,7 @@ namespace Test {
   "symbols": {
     "A": [
       {
-        "id": 3,
+        "id": 4,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -42,7 +42,7 @@ namespace Test {
         ]
       },
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
@@ -58,7 +58,7 @@ namespace Test {
           "167..168"
         ],
         "alias": {
-          "Target": 0
+          "Target": 1
         },
         "import": {
           "initializer": "134..135"
@@ -76,7 +76,7 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 4
+      "container_owner": 5
     }
   }
 }

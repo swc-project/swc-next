@@ -1,4 +1,4 @@
-use super::super::{JsxImportOptions, bindings::value_binding};
+use super::super::JsxImportOptions;
 use crate::jsx::pragma::{PragmaKind, pragmas};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
@@ -54,12 +54,12 @@ pub(in crate::typescript) fn dependencies(
     let mut dependencies = FxHashSet::default();
     for (scope, has_fragment) in collector.usages {
         if let Some(symbol) = semantic.lookup(scope, factory, ReferenceSpace::Value) {
-            dependencies.insert(value_binding(semantic, symbol));
+            dependencies.insert(semantic.ts_value_binding(symbol));
         }
         if has_fragment
             && let Some(symbol) = semantic.lookup(scope, fragment, ReferenceSpace::Value)
         {
-            dependencies.insert(value_binding(semantic, symbol));
+            dependencies.insert(semantic.ts_value_binding(symbol));
         }
     }
     dependencies

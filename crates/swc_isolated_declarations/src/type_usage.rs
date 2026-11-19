@@ -25,7 +25,6 @@ use crate::surface::{
     class_accessors, export_expression, inferred_type, namespace_binding, object_accessors,
     property_identity, return_expression, supported_computed_key, supported_object_key,
 };
-use crate::value_binding;
 
 bitflags! {
     /// The declaration namespaces in which a symbol is required by declaration emit.
@@ -226,7 +225,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
 
         match reference.flags.space {
             ReferenceSpace::Value | ReferenceSpace::Typeof => {
-                let value = value_binding(semantic, symbol);
+                let value = semantic.ts_value_binding(symbol);
                 self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
             }
             ReferenceSpace::Type | ReferenceSpace::Namespace => {
@@ -234,7 +233,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             }
             ReferenceSpace::Any => {
                 self.add_edge(SymbolKey::new(symbol, SymbolUsage::TYPE));
-                let value = value_binding(semantic, symbol);
+                let value = semantic.ts_value_binding(symbol);
                 if semantic.symbol(value).flags.in_value_space() {
                     self.add_edge(SymbolKey::new(value, SymbolUsage::VALUE));
                 }

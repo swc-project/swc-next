@@ -12,7 +12,6 @@ use swc_next_ecma_semantic2::{ReferenceSpace, Semantic, SymbolFlags, TsAlias};
 use zmij_ecma::Buffer;
 
 use crate::surface::unparenthesized;
-use crate::value_binding;
 
 const CONST_ENUM_INITIALIZER_NOT_CONSTANT: &str =
     "const enum member initializers must be constant expressions.";
@@ -165,7 +164,7 @@ fn evaluate(
         ExprData::IdentifierReference(identifier) => {
             let reference = semantic.reference_of(identifier.node_id())?;
             if let Some(symbol) = semantic.reference(reference).symbol {
-                let symbol = value_binding(semantic, symbol);
+                let symbol = semantic.ts_value_binding(symbol);
                 return previous_members.get(&symbol).copied().map(Into::into);
             }
             match ast.get_utf8(identifier.name(ast)) {
@@ -282,7 +281,7 @@ fn resolve_symbol(expression: Expr, semantic: &Semantic<'_>, ast: &Ast<'_>) -> O
 fn resolve_container(semantic: &Semantic<'_>, mut symbol: SymbolId) -> Option<SymbolId> {
     let mut aliases = FxHashSet::default();
     loop {
-        symbol = value_binding(semantic, symbol);
+        symbol = semantic.ts_value_binding(symbol);
         let Some(alias) = semantic.ts_alias(symbol) else {
             return Some(symbol);
         };

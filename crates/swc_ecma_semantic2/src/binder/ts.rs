@@ -13,7 +13,7 @@ use swc_next_ecma_ast::{
 use super::*;
 use crate::{
     Scopes, SymbolTables, Symbols,
-    ts::{TsAlias, TsContainer, TsMember, TsMemberTable},
+    ts::{TsAlias, TsContainer, TsDefaultExport, TsMember, TsMemberTable},
 };
 
 /// Temporary TypeScript binding data used to collect declarations and resolve aliases.
@@ -133,7 +133,13 @@ impl<'a> SymbolTracker<'a> {
         }
 
         let binding = declaration.binding;
-        if binding.flags.contains(SymbolFlags::IS_DEFAULT) || !self.is_ts_direct_export(binding) {
+        let is_default = binding.flags.contains(SymbolFlags::IS_DEFAULT);
+        let is_export = if is_default {
+            source_module && binding.flags.contains(SymbolFlags::FUNCTION)
+        } else {
+            self.is_ts_direct_export(binding)
+        };
+        if !is_export {
             return None;
         }
         declaration.binding.flags.insert(SymbolFlags::EXPORTED);
@@ -148,12 +154,15 @@ impl<'a> SymbolTracker<'a> {
         let (export, id) = if let Some(owner) = owner {
             self.declare_ts_member(tree, owner, declaration, TsMemberKind::Namespace)
         } else {
-            let existing = local.and_then(|symbol| {
-                let export = self.source_export_symbol(symbol);
-                export.or(is_alias.then_some(symbol))
-            });
+            let name = if is_default { b"default" } else { text };
+            let existing = match self.exported.get(name) {
+                Some(&node) => Some(self.symbol_of_node(node).unwrap()),
+                None if is_alias => local,
+                None => None,
+            };
             let (symbol, id) = self.declare_symbol(tree, declaration, existing);
             self.record_symbol(declaration.node, symbol);
+            self.record_export(name, declaration.node);
             (symbol, id)
         };
 
@@ -164,28 +173,46 @@ impl<'a> SymbolTracker<'a> {
             if local.is_none() {
                 self.insert_scope_binding(tree, scope, local_name, export);
             }
-        } else {
-            let local_flags =
-                SymbolFlags::empty().with(SymbolFlags::EXPORT_VALUE, flags.in_value_space());
-            let local = match local {
-                Some(local) => {
-                    self.symbols[local].flags |= local_flags;
-                    self.add_redeclaration(local, id);
-                    local
-                }
-                None => {
-                    let local = self.symbols.push(Symbol {
-                        name: local_name,
-                        flags: local_flags,
-                        declaration: id,
-                    });
-                    self.insert_scope_binding(tree, scope, local_name, local);
-                    local
-                }
-            };
-            self.ts_bindings.export_symbols.insert(local, export);
+            return Some(id);
         }
 
+        let has_value = flags.in_value_space();
+        let local_flags = SymbolFlags::empty().with(SymbolFlags::EXPORT_VALUE, has_value);
+        let local = match local {
+            Some(local) => {
+                self.symbols[local].flags |= local_flags;
+                self.add_redeclaration(local, id);
+                local
+            }
+            None => {
+                let local = self.symbols.push(Symbol {
+                    name: local_name,
+                    flags: local_flags,
+                    declaration: id,
+                });
+                self.insert_scope_binding(tree, scope, local_name, local);
+                local
+            }
+        };
+        if is_default {
+            let default = TsDefaultExport {
+                symbol: export,
+                local,
+            };
+            self.ts_bindings.default_export.get_or_insert(default);
+            // tsc binds functions first, so an existing export with another
+            // declaration kind keeps the alias link.
+            let non_function = (SymbolFlags::VALUE_SPACE - SymbolFlags::FUNCTION)
+                | SymbolFlags::TYPE_SPACE
+                | SymbolFlags::NAMESPACE_SPACE
+                | SymbolFlags::ALIAS;
+            if let Some(&previous) = self.ts_bindings.export_symbols.get(&local)
+                && self.symbols[previous].flags.intersects(non_function)
+            {
+                return Some(id);
+            }
+        }
+        self.ts_bindings.export_symbols.insert(local, export);
         Some(id)
     }
 
@@ -489,53 +516,27 @@ impl<'a> SymbolTracker<'a> {
         export || (!import && implicit_import)
     }
 
-    fn source_export_symbol(&self, local: SymbolId) -> Option<SymbolId> {
-        if let Some(&export) = self.ts_bindings.export_symbols.get(&local) {
-            return Some(export);
-        }
-        let flags = self.symbols[local].flags;
-        if flags.contains(SymbolFlags::IMPORT_EQUALS | SymbolFlags::EXPORTED) {
-            return Some(local);
-        }
-        None
-    }
-
-    /// Finds a conflict for an explicit or implicit named TypeScript export.
-    /// Namespace blocks share a member table, so the conflict can come from
-    /// another block of the same namespace. The redeclaration check uses the
-    /// returned node and flags for its diagnostic.
-    pub(crate) fn ts_export_conflict(
+    /// Finds an existing explicit or implicit named TypeScript export.
+    pub(crate) fn ts_named_export(
         &self,
         tree: &Ast<'_>,
         name: &[u8],
         binding: PendingBinding,
-    ) -> Option<(NodeId, SymbolFlags)> {
+    ) -> Option<(SymbolId, SymbolFlags)> {
         if !self.is_ts_direct_export(binding) || self.export_state.is_default() {
             return None;
         }
         let scope = binding.scope;
-        let (symbol, flags) = if let Some(owner) = self.ts_bindings.ts_owner(scope) {
+        if let Some(owner) = self.ts_bindings.ts_owner(scope) {
             let member = self.ts_bindings.member(owner, name)?;
-            (member.symbol, member.namespace_flags?)
+            Some((member.symbol, member.namespace_flags?))
         } else if tree.is_module() && scope == ScopeId::MODULE {
-            let symbol = self.source_export_symbol(self.own_binding(scope, name)?)?;
-            (symbol, self.symbols[symbol].flags)
+            let node = *self.exported.get(name)?;
+            let symbol = self.symbol_of_node(node)?;
+            Some((symbol, self.symbols[symbol].flags))
         } else {
-            return None;
-        };
-        if let Some(previous) = self.ts_class_function_conflict(symbol, flags, binding.flags, None)
-        {
-            return Some((previous.node, previous.flags));
+            None
         }
-        if !flags.intersects(binding.excludes) {
-            return None;
-        }
-        for declaration in self.declarations_of(symbol) {
-            if declaration.flags.intersects(binding.excludes) {
-                return Some((declaration.node, flags));
-            }
-        }
-        Some((self.first_decl_of(symbol), flags))
     }
 
     pub(crate) fn ts_class_function_conflict(
@@ -579,7 +580,7 @@ impl<'a> SymbolTracker<'a> {
             .fold(flags, |flags, declaration| flags | declaration.flags)
     }
 
-    fn declarations_of(&self, symbol: SymbolId) -> impl Iterator<Item = Declaration> {
+    pub(crate) fn declarations_of(&self, symbol: SymbolId) -> impl Iterator<Item = Declaration> {
         once(self.symbols[symbol].declaration)
             .chain(
                 self.redeclarations
@@ -610,8 +611,16 @@ impl<'a> SymbolTracker<'a> {
 
         let mut symbol = match local {
             Some(local) => {
-                let export_symbols = self.ts_bindings.export_symbols.get(&local);
-                export_symbols.copied().unwrap_or(local)
+                let export = self.ts_bindings.export_symbols.get(&local);
+                let export = *export.unwrap_or(&local);
+                if let Some(default) = self.ts_bindings.default_export
+                    && default.local == local
+                    && !self.is_expando_function(export)
+                {
+                    default.symbol
+                } else {
+                    export
+                }
             }
             None => {
                 let owner = self.ts_bindings.ts_owner(scope)?;

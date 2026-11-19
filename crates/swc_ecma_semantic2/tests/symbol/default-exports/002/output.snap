@@ -31,10 +31,38 @@ export default function f(value: string | number) {
             "span": "124..125",
             "scope": 1
           }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "EXPORT_VALUE",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+            "node_symbol": 0,
+            "owner": 0
+          },
+          {
+            "span": "74..75",
+            "scope": 1,
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+            "node_symbol": 0,
+            "owner": 0
+          },
+          {
+            "span": "124..125",
+            "scope": 1,
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+            "node_symbol": 0,
+            "owner": 0
+          }
         ],
         "bindings": [
           1
-        ]
+        ],
+        "export_symbol": 0
       }
     ]
   },

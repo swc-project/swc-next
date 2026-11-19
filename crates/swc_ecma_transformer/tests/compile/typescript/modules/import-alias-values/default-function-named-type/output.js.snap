@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export default function f() {
+}
+const A = 1;
+export var Test;
+(function(Test) {
+  Test.scalar = A;
+})(Test || (Test = {}));

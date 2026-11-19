@@ -8,10 +8,7 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_semantic2::{ScopeKind, Semantic, SymbolFlags};
 
-use super::super::{
-    TypeScriptOptions,
-    bindings::{resolve_value_binding, value_binding},
-};
+use super::super::{TypeScriptOptions, bindings::resolve_value_binding};
 use super::enums::EnumAnalysis;
 
 pub(super) struct ModuleCollector {
@@ -93,7 +90,7 @@ impl ModuleCollector {
         let global = semantic.scope(reference.scope).kind == ScopeKind::Global;
         let root = reference
             .symbol
-            .map(|symbol| value_binding(semantic, symbol));
+            .map(|symbol| semantic.ts_value_binding(symbol));
         // The root preserves initialization dependencies; the terminal target
         // also keeps an otherwise erased namespace object available.
         let target = resolve_value_binding(semantic, alias);
@@ -142,7 +139,7 @@ impl ModuleAnalysis {
         }
         for entry in semantic.iter_symbols() {
             if entry.symbol.flags.contains(SymbolFlags::EXPORT_VALUE) {
-                let export = value_binding(semantic, entry.id);
+                let export = semantic.ts_value_binding(entry.id);
                 analysis
                     .export_locals
                     .entry(export)

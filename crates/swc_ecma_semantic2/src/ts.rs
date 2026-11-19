@@ -18,6 +18,8 @@ pub(crate) struct TsBindings<'a> {
     pub(crate) container_members: HashMap<'a, SymbolId, TsMemberTable<'a>>,
     /// Local symbol -> canonical export symbol for directly exported declarations.
     pub(crate) export_symbols: HashMap<'a, SymbolId, SymbolId>,
+    /// The source module's default function export.
+    pub(crate) default_export: Option<TsDefaultExport>,
     /// Import-equals and namespace export aliases -> target resolution.
     pub(crate) aliases: HashMap<'a, SymbolId, TsAlias>,
 }
@@ -28,6 +30,7 @@ impl<'a> TsBindings<'a> {
             containers: HashMap::new_in(allocator),
             container_members: HashMap::new_in(allocator),
             export_symbols: HashMap::new_in(allocator),
+            default_export: None,
             aliases: HashMap::new_in(allocator),
         }
     }
@@ -39,6 +42,13 @@ impl<'a> TsBindings<'a> {
     pub(crate) fn member(&self, owner: SymbolId, name: &[u8]) -> Option<TsMember> {
         self.container_members.get(&owner)?.get(name).copied()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TsDefaultExport {
+    pub(crate) symbol: SymbolId,
+    /// The lexical binding of the default export's first named declaration.
+    pub(crate) local: SymbolId,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -111,9 +121,25 @@ impl<'a> Semantic<'a> {
             .flat_map(|members| members.iter().map(|(&name, &member)| (name, member)))
     }
 
-    /// Returns the canonical export symbol linked to a local symbol.
+    /// Returns the export symbol linked to a local symbol for alias resolution.
     pub fn ts_export_symbol(&self, local: SymbolId) -> Option<SymbolId> {
         self.ts_bindings.export_symbols.get(&local).copied()
+    }
+
+    /// Returns the export that owns a lexical value's declaration.
+    pub fn ts_value_binding(&self, local: SymbolId) -> SymbolId {
+        if !self.symbol(local).flags.contains(SymbolFlags::EXPORT_VALUE) {
+            return local;
+        }
+        let export = self.ts_export_symbol(local).unwrap();
+        if self.symbol(export).flags.in_value_space() {
+            return export;
+        }
+        // A same-named type export can replace the alias link of a named default.
+        match self.ts_bindings.default_export {
+            Some(export) if export.local == local => return export.symbol,
+            _ => export,
+        }
     }
 
     /// Returns the recorded resolution of an import-equals or namespace export alias.

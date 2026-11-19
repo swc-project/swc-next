@@ -1,5 +1,6 @@
 use std::{iter::successors, mem::swap};
 
+use rustc_hash::FxHashMap;
 use swc_next_allocator::{
     Allocator,
     hash_map::{Entry, HashMap as ArenaHashMap},
@@ -593,6 +594,8 @@ pub(crate) struct SymbolTracker<'a> {
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
     symbol_tables: ArenaIndexVec<'a, ScopeId, SymbolTable<'a>>,
+    /// Public source-module export name -> first declaration or specifier.
+    exported: FxHashMap<&'a [u8], NodeId>,
     shadowed_internal_names: ShadowedInternalNames<'a>,
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
     annex_b_functions: ArenaVec<'a, AnnexBFunction>,
@@ -682,6 +685,7 @@ impl<'a> SymbolTracker<'a> {
             redeclarations: Redeclarations::new_in(allocator),
             node_semantic,
             symbol_tables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            exported: FxHashMap::default(),
             shadowed_internal_names: ShadowedInternalNames::new_in(allocator),
             hoisting_variables: ArenaIndexVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             annex_b_functions: ArenaVec::new_in(allocator),
@@ -1521,6 +1525,17 @@ impl<'a> SymbolTracker<'a> {
 
     pub fn symbol_of_node(&self, node: NodeId) -> Option<SymbolId> {
         self.node_semantic[node].symbol()
+    }
+
+    /// Registers the first export of a public name and returns any earlier export.
+    pub(crate) fn record_export(&mut self, name: &'a [u8], node: NodeId) -> Option<NodeId> {
+        match self.exported.entry(name) {
+            std::collections::hash_map::Entry::Occupied(entry) => Some(*entry.get()),
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(node);
+                None
+            }
+        }
     }
 
     #[inline]

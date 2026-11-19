@@ -17,12 +17,24 @@ const fn = f;
     "f": [
       {
         "id": 0,
-        "flags": "FUNCTION | TYPE_ALIAS | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS | EXPORT_VALUE",
         "declarations": [
           {
             "span": "24..25",
             "scope": 1,
-            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+            "node_symbol": 0,
+            "owner": 0
           },
           {
             "span": "84..85",
@@ -36,7 +48,8 @@ const fn = f;
         "uses": [
           "109..110",
           "127..128"
-        ]
+        ],
+        "export_symbol": 0
       }
     ]
   },

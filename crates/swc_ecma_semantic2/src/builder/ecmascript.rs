@@ -208,7 +208,7 @@ pub(super) fn import_attribute_name<'a>(tree: &'a Ast<'_>, key: NodeId) -> Optio
 
 /// Extracts the name from a ModuleExportName: an IdentifierName,
 /// IdentifierReference, or StringLiteral.
-pub(super) fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
+pub(super) fn module_export_name<'a>(tree: &Ast<'a>, node: NodeId) -> &'a [u8] {
     match tree.kind_data(node) {
         NodeKindData::IdentifierName(identifier) => tree.get_utf8(identifier.name(tree)).as_bytes(),
         NodeKindData::IdentifierReference(identifier) => {

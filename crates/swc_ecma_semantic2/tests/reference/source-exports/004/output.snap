@@ -25,14 +25,14 @@ declare namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 5
+        "symbol": 6
       },
       {
         "span": "215..216",
         "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "symbol": 5
+        "symbol": 6
       }
     ],
     "f": [
@@ -41,7 +41,7 @@ declare namespace Test {
         "scope": 7,
         "space": "Namespace",
         "access": "None",
-        "symbol": 0,
+        "symbol": 1,
         "import_equals": true
       }
     ]
@@ -49,21 +49,29 @@ declare namespace Test {
   "symbols": {
     "0": {
       "name": "f",
-      "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
+      "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+      "declarations": [
+        "24..25"
+      ]
+    },
+    "1": {
+      "name": "f",
+      "flags": "TYPE_ALIAS | NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
         "24..25",
         "40..41",
         "70..71"
-      ]
+      ],
+      "export_symbol": 0
     },
-    "5": {
+    "6": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "167..168"
       ],
       "alias": {
-        "Target": 0
+        "Target": 1
       }
     }
   },
@@ -72,7 +80,7 @@ declare namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 4
+      "container_owner": 5
     }
   }
 }

@@ -22,20 +22,21 @@ namespace Test {
         "scope": 5,
         "space": "Value",
         "access": "Read",
-        "symbol": 4
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "0": {
+    "1": {
       "name": "f",
-      "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
         "24..25",
         "41..42"
-      ]
+      ],
+      "export_symbol": 0
     },
-    "4": {
+    "5": {
       "name": "A",
       "flags": "BLOCK_SCOPED_VAR | IMPORT | CONST_VAR | IMPORT_EQUALS | ALIAS",
       "declarations": [
@@ -43,7 +44,7 @@ namespace Test {
         "115..116"
       ],
       "alias": {
-        "Target": 0
+        "Target": 1
       }
     }
   },
@@ -52,7 +53,7 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 3
+      "container_owner": 4
     }
   }
 }

@@ -22,7 +22,7 @@ namespace Test {
     "": [],
     "A": [
       {
-        "id": 4,
+        "id": 5,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
         "declarations": [
           {
@@ -38,10 +38,14 @@ namespace Test {
         ],
         "bindings": [
           1
+        ],
+        "uses": [
+          "213..214",
+          "217..218"
         ]
       },
       {
-        "id": 6,
+        "id": 7,
         "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
@@ -53,12 +57,10 @@ namespace Test {
           7
         ],
         "uses": [
-          "180..181",
-          "213..214",
-          "217..218"
+          "180..181"
         ],
         "alias": {
-          "Target": 0
+          "Target": 1
         },
         "import": {
           "initializer": "158..159"
@@ -68,19 +70,31 @@ namespace Test {
     "f": [
       {
         "id": 0,
-        "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
         "declarations": [
           {
             "span": "24..25",
             "scope": 1,
-            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"
+            "flags": "FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+            "node_symbol": 0,
+            "owner": 0
           },
           {
             "span": "43..44",
             "scope": 1,
             "flags": "TYPE_ALIAS | EXPORTED",
-            "node_symbol": 1,
-            "owner": 1
+            "node_symbol": 2,
+            "owner": 2
           },
           {
             "span": "65..66",
@@ -94,16 +108,16 @@ namespace Test {
         "uses": [
           "158..159"
         ],
-        "export_symbol": 1,
+        "export_symbol": 2,
         "members": {
           "Item": {
-            "symbol": 2,
+            "symbol": 3,
             "namespace_flags": "INTERFACE | EXPORTED"
           }
         }
       },
       {
-        "id": 1,
+        "id": 2,
         "flags": "TYPE_ALIAS | EXPORTED",
         "declarations": [
           {
@@ -124,13 +138,13 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 0
+      "container_owner": 1
     },
     "7": {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 5
+      "container_owner": 6
     }
   }
 }

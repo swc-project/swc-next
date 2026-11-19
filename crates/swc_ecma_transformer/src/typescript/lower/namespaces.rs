@@ -12,7 +12,6 @@ use swc_next_ecma_ast::{
 };
 
 use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
-use crate::typescript::bindings::value_binding;
 use swc_next_ecma_semantic2::Semantic;
 
 #[derive(Default)]
@@ -456,7 +455,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         let id = self.semantic.reference_of(node)?;
         let symbol = self.semantic.reference(id).symbol?;
         self.namespaces
-            .parameter_for_symbol(value_binding(self.semantic, symbol))
+            .parameter_for_symbol(self.semantic.ts_value_binding(symbol))
     }
 
     fn namespace_body_local_symbols(&self, body: TsModuleBody) -> FxHashSet<SymbolId> {

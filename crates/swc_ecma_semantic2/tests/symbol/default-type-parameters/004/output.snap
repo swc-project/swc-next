@@ -15,7 +15,7 @@ export default interface I<T> {
   "symbols": {
     "T": [
       {
-        "id": 1,
+        "id": 2,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {
@@ -31,7 +31,7 @@ export default interface I<T> {
         ]
       },
       {
-        "id": 4,
+        "id": 5,
         "flags": "TYPE_PARAMETER",
         "declarations": [
           {

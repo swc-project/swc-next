@@ -19,12 +19,12 @@ let item: f;
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": 2
+        "symbol": 3
       }
     ]
   },
   "symbols": {
-    "2": {
+    "3": {
       "name": "f",
       "flags": "TYPE_ALIAS | EXPORTED",
       "declarations": [

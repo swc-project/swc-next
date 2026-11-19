@@ -25,21 +25,21 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 6
+        "symbol": 7
       },
       {
         "span": "213..214",
         "scope": 7,
         "space": "Typeof",
         "access": "None",
-        "symbol": 6
+        "symbol": 5
       },
       {
         "span": "217..218",
         "scope": 7,
         "space": "Value",
         "access": "Read",
-        "symbol": 6
+        "symbol": 5
       }
     ],
     "f": [
@@ -47,38 +47,46 @@ namespace Test {
         "span": "158..159",
         "scope": 7,
         "space": "Namespace",
-        "access": "Read",
-        "symbol": 0,
+        "access": "None",
+        "symbol": 1,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "0": {
+    "1": {
       "name": "f",
-      "flags": "FUNCTION | NAMESPACE_MODULE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION",
+      "flags": "NAMESPACE_MODULE | EXPORT_VALUE",
       "declarations": [
         "24..25",
         "43..44",
         "65..66"
       ],
-      "export_symbol": 1
+      "export_symbol": 2
     },
-    "1": {
+    "2": {
       "name": "f",
       "flags": "TYPE_ALIAS | EXPORTED",
       "declarations": [
         "43..44"
       ]
     },
-    "6": {
+    "5": {
+      "name": "A",
+      "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR",
+      "declarations": [
+        "103..104",
+        "121..122"
+      ]
+    },
+    "7": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "154..155"
       ],
       "alias": {
-        "Target": 0
+        "Target": 1
       }
     }
   },
@@ -87,7 +95,7 @@ namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 5
+      "container_owner": 6
     }
   }
 }

@@ -15,7 +15,7 @@ type F = typeof f;
         "scope": 3,
         "space": "Typeof",
         "access": "None",
-        "symbol": 0
+        "symbol": 1
       }
     ]
   },
@@ -26,6 +26,14 @@ type F = typeof f;
       "declarations": [
         "24..25"
       ]
+    },
+    "1": {
+      "name": "f",
+      "flags": "EXPORT_VALUE",
+      "declarations": [
+        "24..25"
+      ],
+      "export_symbol": 0
     }
   },
   "scopes": {

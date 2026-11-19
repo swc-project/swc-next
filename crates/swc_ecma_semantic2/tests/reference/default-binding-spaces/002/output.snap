@@ -26,7 +26,7 @@ const fn = f;
         "scope": 1,
         "space": "Value",
         "access": "Read",
-        "symbol": 1
+        "symbol": 2
       }
     ]
   },
@@ -37,6 +37,14 @@ const fn = f;
       "declarations": [
         "72..73"
       ]
+    },
+    "2": {
+      "name": "f",
+      "flags": "EXPORT_VALUE",
+      "declarations": [
+        "72..73"
+      ],
+      "export_symbol": 1
     }
   },
   "scopes": {

@@ -22,7 +22,7 @@ declare namespace Test {
     "": [],
     "A": [
       {
-        "id": 3,
+        "id": 4,
         "flags": "BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR | AMBIENT",
         "declarations": [
           {
@@ -41,7 +41,7 @@ declare namespace Test {
         ]
       },
       {
-        "id": 5,
+        "id": 6,
         "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
         "declarations": [
           {
@@ -57,7 +57,7 @@ declare namespace Test {
           "215..216"
         ],
         "alias": {
-          "Target": 0
+          "Target": 1
         },
         "import": {
           "initializer": "171..172"
@@ -67,12 +67,24 @@ declare namespace Test {
     "f": [
       {
         "id": 0,
-        "flags": "FUNCTION | TYPE_ALIAS | NAMESPACE_MODULE | AMBIENT | EXPORTED | IS_DEFAULT",
+        "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+        "declarations": [
+          {
+            "span": "24..25",
+            "scope": 1
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "flags": "TYPE_ALIAS | NAMESPACE_MODULE | EXPORT_VALUE",
         "declarations": [
           {
             "span": "24..25",
             "scope": 1,
-            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT"
+            "flags": "FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT",
+            "node_symbol": 0,
+            "owner": 0
           },
           {
             "span": "40..41",
@@ -91,9 +103,10 @@ declare namespace Test {
         "uses": [
           "171..172"
         ],
+        "export_symbol": 0,
         "members": {
           "Item": {
-            "symbol": 1,
+            "symbol": 2,
             "namespace_flags": "INTERFACE | AMBIENT | EXPORTED"
           }
         }
@@ -110,13 +123,13 @@ declare namespace Test {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 0
+      "container_owner": 1
     },
     "7": {
       "kind": "TsModule",
       "parent": 1,
       "flags": "Strict",
-      "container_owner": 4
+      "container_owner": 5
     }
   }
 }

@@ -162,10 +162,10 @@ pub(super) fn check_identifier_reference(
 /// "use strict";
 /// let eval;
 /// ```
-pub(super) fn check_binding_identifier<'traverse>(
-    builder: &mut SemanticBuilder<'traverse, '_>,
+pub(super) fn check_binding_identifier<'a>(
+    builder: &mut SemanticBuilder<'_, 'a>,
     identifier: BindingIdentifier,
-    name: &'traverse [u8],
+    name: &'a [u8],
 ) {
     let node_id = identifier.node_id();
     let flags = builder.symbols.pending.flags;
@@ -200,7 +200,7 @@ pub(super) fn check_binding_identifier<'traverse>(
         utils::check_redeclaration(builder, node_id, name, builder.symbols.pending);
     }
     if builder.symbols.export_state.is_named() {
-        utils::record_exported_name(builder, name, node_id);
+        utils::check_duplicate_export(builder, name, node_id);
     }
 }
 
@@ -1187,7 +1187,7 @@ pub(super) fn check_export_default_declaration(
         "'export default' declaration",
         "'export default' declaration",
     );
-    utils::record_exported_name(builder, b"default", declaration.node_id());
+    utils::check_duplicate_export(builder, b"default", declaration.node_id());
 }
 
 /// Checks wildcard export placement, attributes, and any exported namespace name.
@@ -1209,7 +1209,7 @@ pub(super) fn check_export_all_declaration(
     );
     if let Some(exported) = declaration.exported(builder.ast) {
         let name = ecmascript::module_export_name(builder.ast, exported.node_id());
-        utils::record_exported_name(builder, name, declaration.node_id());
+        utils::check_duplicate_export(builder, name, declaration.node_id());
     }
     utils::check_duplicate_with_attributes(builder, declaration.attributes(builder.ast));
 }
@@ -1228,7 +1228,7 @@ pub(super) fn check_export_specifier(
 ) {
     let exported_name =
         ecmascript::module_export_name(builder.ast, specifier.exported(builder.ast).node_id());
-    utils::record_exported_name(builder, exported_name, specifier.node_id());
+    utils::check_duplicate_export(builder, exported_name, specifier.node_id());
     if !builder.check_syntax.unresolved_exports()
         || specifier.export_kind(builder.ast) == ImportOrExportKind::Type
         || builder.ts_namespace_depth > 0
@@ -1353,8 +1353,6 @@ pub(super) fn check_tuple_rest_type(builder: &mut SemanticBuilder<'_, '_>, rest:
 }
 
 mod utils {
-    use std::collections::hash_map::Entry;
-
     use swc_next_ecma_ast::{
         FunctionType, Lang, NodeId, NodeKind, NodeKindData, ScopeId, TsGlobalDeclaration,
         TsModuleDeclaration, TsModuleNameData, VariableKind,
@@ -1560,10 +1558,7 @@ mod utils {
             }
         }
 
-        if tree.is_ts()
-            && let Some((node_id, flags)) = builder.symbols.ts_export_conflict(tree, name, binding)
-        {
-            builder.report_redeclaration(name, node, node_id, flags);
+        if tree.is_ts() && check_ts_export_redeclaration(builder, node, name, binding) {
             return;
         }
 
@@ -1578,6 +1573,33 @@ mod utils {
         if flags.is_hoisting_var() {
             check_hoisting_var_conflict(builder, node, name, binding);
         }
+    }
+
+    fn check_ts_export_redeclaration(
+        builder: &mut SemanticBuilder<'_, '_>,
+        node: NodeId,
+        name: &[u8],
+        binding: PendingBinding,
+    ) -> bool {
+        let symbols = &builder.symbols;
+        let Some((symbol, flags)) = symbols.ts_named_export(builder.ast, name, binding) else {
+            return false;
+        };
+        if let Some(previous) =
+            symbols.ts_class_function_conflict(symbol, flags, binding.flags, None)
+        {
+            builder.report_redeclaration(name, node, previous.node, previous.flags);
+            return true;
+        }
+        if !flags.intersects(binding.excludes) {
+            return false;
+        }
+        let previous = symbols
+            .declarations_of(symbol)
+            .find(|declaration| declaration.flags.intersects(binding.excludes));
+        let previous = previous.map_or_else(|| symbols.first_decl_of(symbol), |decl| decl.node);
+        builder.report_redeclaration(name, node, previous, flags);
+        true
     }
 
     fn check_outer_parameter_conflict(
@@ -2229,9 +2251,9 @@ mod utils {
     }
 
     /// Records an exported name and reports a duplicate if one already exists.
-    pub(super) fn record_exported_name<'traverse>(
-        builder: &mut SemanticBuilder<'traverse, '_>,
-        name: &'traverse [u8],
+    pub(super) fn check_duplicate_export<'a>(
+        builder: &mut SemanticBuilder<'_, 'a>,
+        name: &'a [u8],
         node: NodeId,
     ) {
         if !builder.check_syntax.duplicate_exports() {
@@ -2246,12 +2268,8 @@ mod utils {
         if !builder.ast.is_module() || builder.ts_namespace_depth > 0 {
             return;
         }
-        let first = match builder.exported_names.entry(name) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                entry.insert(node);
-                return;
-            }
+        let Some(first) = builder.symbols.record_export(name, node) else {
+            return;
         };
         let message = format!("Duplicate export of '{}'", String::from_utf8_lossy(name));
         builder.report(

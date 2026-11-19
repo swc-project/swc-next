@@ -19,26 +19,26 @@ export default interface I<T> {
         "scope": 2,
         "space": "Type",
         "access": "None",
-        "symbol": 1
+        "symbol": 2
       },
       {
         "span": "100..101",
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": 4
+        "symbol": 5
       }
     ]
   },
   "symbols": {
-    "1": {
+    "2": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
         "26..27"
       ]
     },
-    "4": {
+    "5": {
       "name": "T",
       "flags": "TYPE_PARAMETER",
       "declarations": [
