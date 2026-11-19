@@ -101,6 +101,66 @@ macro_rules! identity_native_abi {
 #[cfg(not(target_family = "wasm"))]
 identity_native_abi!((), u32, i32, f64, bool);
 
+/// Shared, call-scoped access to a JavaScript buffer.
+///
+/// Only use the bytes during the synchronous native call. The backing store must
+/// remain attached and immutable for the duration of the borrow. Unlike
+/// `BufferSlice`, this input never constructs an exclusive slice, so overlapping
+/// read-only inputs may share the same backing store.
+#[cfg(not(target_family = "wasm"))]
+#[doc(hidden)]
+pub struct NativeBytes<'env>(&'env [u8]);
+
+#[cfg(not(target_family = "wasm"))]
+impl TypeName for NativeBytes<'_> {
+    fn type_name() -> &'static str {
+        <Buffer as TypeName>::type_name()
+    }
+
+    fn value_type() -> napi::ValueType {
+        <Buffer as TypeName>::value_type()
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl ValidateNapiValue for NativeBytes<'_> {
+    unsafe fn validate(
+        env: sys::napi_env,
+        value: sys::napi_value,
+    ) -> napi::Result<sys::napi_value> {
+        unsafe { <Buffer as ValidateNapiValue>::validate(env, value) }
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl FromNapiValue for NativeBytes<'_> {
+    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> napi::Result<Self> {
+        let mut data = std::ptr::null_mut();
+        let mut length = 0;
+        napi::check_status!(unsafe {
+            sys::napi_get_buffer_info(env, value, &mut data, &mut length)
+        })?;
+        let bytes = if length == 0 {
+            &[]
+        } else {
+            // SAFETY: N-API keeps the argument alive during this call. The
+            // synchronous caller must keep its backing store attached and
+            // immutable. Shared slices allow overlapping input views.
+            unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length) }
+        };
+        Ok(Self(bytes))
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl std::ops::Deref for NativeBytes<'_> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
+
 /// Allocate initialized bytes owned by Node, without an external-buffer finalizer.
 #[cfg(not(target_family = "wasm"))]
 pub fn create_buffer(env: &napi::Env, length: usize) -> napi::Result<Buffer> {

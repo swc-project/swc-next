@@ -25,7 +25,10 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
         let ident = &pattern.ident;
         let semantic_type = &argument.ty;
         if is_byte_slice(semantic_type) {
-            native_arguments.push(quote!(#ident: napi::bindgen_prelude::Buffer));
+            // The generated adapter is synchronous, and the semantic function only
+            // borrows these bytes until it returns. A persistent JS reference
+            // is unnecessary for this call-scoped input.
+            native_arguments.push(quote!(#ident: ::swc_next_bridge::NativeBytes<'_>));
             call_arguments.push(quote!(&#ident));
             continue;
         }

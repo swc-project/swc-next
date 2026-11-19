@@ -36,7 +36,7 @@ pub unsafe fn parse_sync(
 /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
 pub unsafe fn parse_sync(
     env: napi::Env,
-    source: napi::bindgen_prelude::Buffer,
+    source: swc_next_bridge::NativeBytes<'_>,
     source_utf16_len: u32,
     options: u32,
 ) -> napi::Result<napi::bindgen_prelude::Buffer> {

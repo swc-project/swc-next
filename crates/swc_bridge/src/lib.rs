@@ -19,7 +19,7 @@ pub use wire::{BridgeDecode, BridgeDecodeOptional, BridgeEncode, BridgeWire};
 
 #[cfg(not(target_family = "wasm"))]
 #[doc(hidden)]
-pub use {napi, napi_derive, wire::NativeAbi};
+pub use {napi, napi_derive, wire::NativeAbi, wire::NativeBytes};
 
 #[cfg(not(target_family = "wasm"))]
 pub use wire::create_buffer;

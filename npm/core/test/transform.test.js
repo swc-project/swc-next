@@ -56,6 +56,15 @@ test("transform validates configuration values", () => {
   }
 });
 
+test("transform borrows overlapping source and configuration views", () => {
+  const source = "const value = 1;";
+  const config = encodeTransformApiOptions({ filename: source });
+  const bytes = new Uint8Array(config);
+  const sourceBytes = bytes.subarray(20);
+  const output = decodeJsOutput(transformNative(sourceBytes, source.length, bytes));
+  assert.deepEqual(output, { code: "const value = 1;\n", diagnostics: [] });
+});
+
 test("standalone transform loads without runtime protocol dependencies", () => {
   const entry = import.meta.resolve("@swc-next/transformer");
   execFileSync(process.execPath, ["--input-type=module", "--eval", `
