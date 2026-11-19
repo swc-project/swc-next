@@ -11,8 +11,8 @@ use super::arguments::{
     ArgumentGroup, ChainArgumentExpansion, ChainArgumentFacts, SourceArguments,
 };
 use super::members::{
-    MemberBoundary, MemberCalleeFrame, MemberHead, MemberLookupLayout, MemberLookupOwner,
-    PreparedMember, SourceMember,
+    MemberBoundary, MemberCalleeFrame, MemberLookupLayout, MemberLookupOwner, PreparedMember,
+    SourceMember,
 };
 use super::parentheses::{
     ExpressionContent, ParenthesisInner, RemovedExpressionParentheses, ResolvedExpressionHead,
@@ -44,25 +44,47 @@ pub(super) enum RhsCallChainOwnership {
     Fluent,
 }
 
+#[derive(Clone, Copy, Default)]
+enum ChainHeadEnd {
+    #[default]
+    Root,
+    Named(IdentifierName),
+    Computed(Expr),
+    Other,
+}
+
+impl ChainHeadEnd {
+    fn member(name: Option<IdentifierName>, key: Option<Expr>) -> Self {
+        if let Some(name) = name {
+            Self::Named(name)
+        } else {
+            key.map_or(Self::Other, Self::Computed)
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChainHeadMerge {
+    Separate,
+    Attach,
+    /// The first computed lookup immediately follows the root expression.
+    BareComputed,
+}
+
 /// Reverse summaries of the head printer's two incoming `leading` states.
 /// Only source-clear chains can use topology in place of recorded boundary facts.
 #[derive(Clone, Copy, Default)]
 struct ChainHeadPrefix {
-    parts: usize,
-    last_name: Option<IdentifierName>,
+    end: ChainHeadEnd,
     pending_computed: bool,
 }
 
 impl ChainHeadPrefix {
-    fn prepend(self, name: Option<IdentifierName>) -> Self {
-        Self {
-            parts: self.parts + 1,
-            last_name: if self.parts == 0 {
-                name
-            } else {
-                self.last_name
-            },
-            pending_computed: self.pending_computed,
+    fn prepend(self, end: ChainHeadEnd) -> Self {
+        if matches!(self.end, ChainHeadEnd::Root) {
+            Self { end, ..self }
+        } else {
+            self
         }
     }
 
@@ -89,28 +111,29 @@ impl RhsChainHead {
     fn call(&mut self, continues_chain: bool) {
         self.atomic_call = !continues_chain;
         self.leading = if continues_chain {
-            self.leading.prepend(None)
+            self.leading.prepend(ChainHeadEnd::Other)
         } else {
             self.call_head
         };
-        self.call_head = self.call_head.prepend(None);
-        self.following = self.following.prepend(None);
+        self.call_head = self.call_head.prepend(ChainHeadEnd::Other);
+        self.following = self.following.prepend(ChainHeadEnd::Other);
         self.next_is_member = false;
     }
 
-    fn member(&mut self, member: &MemberHead, numeric: bool) {
+    fn member(&mut self, end: ChainHeadEnd, numeric: bool) {
+        let computed = matches!(end, ChainHeadEnd::Computed(_));
         self.call_head = if numeric {
-            self.call_head.prepend(member.name())
+            self.call_head.prepend(end)
         } else {
-            ChainHeadPrefix::pending(member.is_computed())
+            ChainHeadPrefix::pending(computed)
         };
         let following = if self.next_is_member {
-            self.following.prepend(member.name())
+            self.following.prepend(end)
         } else {
-            ChainHeadPrefix::pending(member.is_computed())
+            ChainHeadPrefix::pending(computed)
         };
         self.leading = if numeric {
-            self.leading.prepend(member.name())
+            self.leading.prepend(end)
         } else {
             following
         };
@@ -578,7 +601,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         return None;
                     }
-                    let numeric = head.key().is_some_and(|key| {
+                    let key = head.key();
+                    let numeric = key.is_some_and(|key| {
                         matches!(self.ast.expr_data(key), ExprData::NumericLiteral(_))
                     });
                     grouping.member(numeric);
@@ -590,7 +614,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if self.source_clear_member_has_chain_barrier(&head).ok()? {
                         return None;
                     }
-                    prefix.member(&head, numeric);
+                    prefix.member(ChainHeadEnd::member(head.name(), key), numeric);
                     context = head.receiver_context(context);
                     head.object
                 }
@@ -696,11 +720,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     let head = prefix.leading;
                     let attach = self.chain_head_attaches(data, ExpressionPosition::Nested);
-                    let factory = head
-                        .last_name
-                        .is_some_and(|name| factory_name(self.ast.get_utf8(name.name(self.ast))));
                     let merge = !prefix.atomic_call
-                        && merge_chain_head(head.parts, factory, head.pending_computed, attach);
+                        && self.merge_chain_head(head.end, head.pending_computed, attach)
+                            != ChainHeadMerge::Separate;
                     return Some(if short_chain(grouping.groups, merge) {
                         RhsCallChainOwnership::Compact
                     } else {
@@ -747,6 +769,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             <= usize::from(self.options.indent_width.value())
             }
             _ => false,
+        }
+    }
+
+    fn merge_chain_head(&self, end: ChainHeadEnd, computed: bool, attach: bool) -> ChainHeadMerge {
+        match end {
+            ChainHeadEnd::Root if computed => ChainHeadMerge::BareComputed,
+            ChainHeadEnd::Root if attach => ChainHeadMerge::Attach,
+            ChainHeadEnd::Named(name)
+                if computed || factory_name(self.ast.get_utf8(name.name(self.ast))) =>
+            {
+                ChainHeadMerge::Attach
+            }
+            ChainHeadEnd::Computed(key)
+                if computed
+                    && matches!(self.expression_data(key), ExprData::IdentifierReference(_)) =>
+            {
+                ChainHeadMerge::Attach
+            }
+            _ => ChainHeadMerge::Separate,
         }
     }
 
@@ -1267,16 +1308,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut source,
                 writer,
             )?;
-            // A computed lookup followed by another call-bearing group may
-            // break before the lookup rather than inside its brackets.
-            let first_computed = source
-                .pending
-                .as_ref()
-                .is_some_and(|member| member.member.source.is_computed());
             source.head_argument_frame = MemberCalleeFrame::Inline;
             // Merging the head leaves at most two groups in a short chain. Source
             // boundaries may split those groups, but already require expansion.
-            if merge_head && chain.groups <= 3 {
+            if merge_head != ChainHeadMerge::Separate && chain.groups <= 3 {
                 source.argument_layout = ChainArgumentLayout::ByWidth;
             }
             let mut tail = Vec::new();
@@ -1284,9 +1319,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 tail.push(self.record_chain_group(&mut source, writer)?);
             }
             let mut groups = ChainGroups { head, tail };
-            let merge_head = merge_head
-                && !(first_computed && groups.tail.len() > 1 && !atomic_chain_head(head_data))
-                && !groups.head.facts.has_boundary_comments
+            let merge_head = match merge_head {
+                ChainHeadMerge::Separate => false,
+                ChainHeadMerge::Attach => true,
+                ChainHeadMerge::BareComputed => {
+                    groups.tail.len() <= 1 || atomic_chain_head(head_data)
+                }
+            } && !groups.head.facts.has_boundary_comments
                 && groups.tail.first().is_some_and(|group| {
                     !group.facts.has_boundary_comments && !group.facts.source_break
                 });
@@ -1539,7 +1578,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: ChainHead<'ast>,
         source: &mut ChainSource<'ast, '_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(ChainGroup<'ast>, bool), FormatError> {
+    ) -> Result<(ChainGroup<'ast>, ChainHeadMerge), FormatError> {
         let mut facts = GroupFacts {
             has_boundary_comments: head.has_comments,
             source_break: matches!(
@@ -1549,9 +1588,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ..GroupFacts::default()
         };
         let mut leading = true;
-        let mut head_parts = 0;
         let mut call_head = false;
-        let mut last_name: Option<IdentifierName> = None;
+        let mut end = ChainHeadEnd::Root;
         let write_head = |writer: &mut Writer<'ast>| {
             source.tail =
                 self.format_chain_head(head.expression, head.prepared, head.context, writer)?;
@@ -1568,24 +1606,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 break;
                             }
                         }
-                        last_name = member.member.source.name();
+                        let member_source = &member.member.source;
+                        end = ChainHeadEnd::member(member_source.name(), member_source.key());
                         self.write_chain_member(member, false, &mut facts, writer)?;
-                        head_parts += 1;
                     }
                     ChainOperation::Call { call, arguments } => {
-                        if self.call_continues_chain(
+                        if !self.call_continues_chain(
                             arguments.callee,
                             arguments
                                 .callee_context(ExpressionContext::at(ExpressionPosition::Nested)),
                         ) {
-                            head_parts += 1;
-                        } else {
-                            // Keep the prepared call and its argument facts, but
-                            // count the complete atomic call as the group head.
+                            // An atomic call already owns the complete head.
                             call_head = true;
-                            head_parts = 0;
                         }
-                        last_name = None;
+                        end = ChainHeadEnd::Other;
                         self.write_chain_call(call, arguments, source, &mut facts, writer)?;
                     }
                     ChainOperation::NonNull(non_null) => {
@@ -1597,16 +1631,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let (doc, ()) = writer.record_with_value(write_head)?;
         facts.preferred_breaks = doc.preferred_breaks();
-        let factory =
-            last_name.is_some_and(|name| factory_name(self.ast.get_utf8(name.name(self.ast))));
-        let pending_computed = source
-            .pending
-            .as_ref()
-            .is_some_and(|member| member.member.source.is_computed());
-        let merge_head = !call_head
+        let merge_head = if let Some(pending) = source.pending.as_ref()
+            && !call_head
             && !head.has_comments
-            && source.pending.is_some()
-            && merge_chain_head(head_parts, factory, pending_computed, head.attach);
+        {
+            self.merge_chain_head(end, pending.member.source.is_computed(), head.attach)
+        } else {
+            ChainHeadMerge::Separate
+        };
         Ok((ChainGroup::new(doc, None, facts), merge_head))
     }
 
@@ -1781,14 +1813,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         facts.source_break |= output.has_outside_prefix;
         source.tail = output.tail;
         Ok(())
-    }
-}
-
-fn merge_chain_head(parts: usize, factory: bool, computed: bool, attach: bool) -> bool {
-    if parts == 0 {
-        attach || computed
-    } else {
-        factory
     }
 }
 
