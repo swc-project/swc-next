@@ -1515,6 +1515,17 @@ mod utils {
         });
         if let Some(existing_id) = existing {
             let existing_flags = builder.symbols.local_declaration_flags(existing_id, target);
+            if tree.is_ts()
+                && let Some(previous) = builder.symbols.ts_class_function_conflict(
+                    existing_id,
+                    existing_flags,
+                    flags,
+                    Some(target),
+                )
+            {
+                builder.report_redeclaration(name, node, previous.node, previous.flags);
+                return;
+            }
             let existing_node = builder.symbols.first_decl_of(existing_id);
             let import_value_conflict = !tree.is_ts()
                 && tree.is_module()

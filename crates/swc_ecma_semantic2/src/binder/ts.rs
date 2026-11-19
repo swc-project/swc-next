@@ -523,6 +523,10 @@ impl<'a> SymbolTracker<'a> {
         } else {
             return None;
         };
+        if let Some(previous) = self.ts_class_function_conflict(symbol, flags, binding.flags, None)
+        {
+            return Some((previous.node, previous.flags));
+        }
         if !flags.intersects(binding.excludes) {
             return None;
         }
@@ -532,6 +536,34 @@ impl<'a> SymbolTracker<'a> {
             }
         }
         Some((self.first_decl_of(symbol), flags))
+    }
+
+    pub(crate) fn ts_class_function_conflict(
+        &self,
+        symbol: SymbolId,
+        existing: SymbolFlags,
+        incoming: SymbolFlags,
+        scope: Option<ScopeId>,
+    ) -> Option<Declaration> {
+        let conflicting_kind = if incoming.contains(SymbolFlags::FUNCTION) {
+            SymbolFlags::CLASS
+        } else if incoming.contains(SymbolFlags::CLASS) && !incoming.contains(SymbolFlags::AMBIENT)
+        {
+            SymbolFlags::FUNCTION
+        } else {
+            return None;
+        };
+        if !existing.contains(conflicting_kind) {
+            return None;
+        }
+        // A function implementation can clear the merged symbol's AMBIENT
+        // flag while its class declaration remains ambient.
+        self.declarations_of(symbol).find(|declaration| {
+            scope.is_none_or(|scope| declaration.scope == scope)
+                && declaration.flags.contains(conflicting_kind)
+                && (conflicting_kind != SymbolFlags::CLASS
+                    || !declaration.flags.contains(SymbolFlags::AMBIENT))
+        })
     }
 
     /// Returns the flags of an existing binding for the local redeclaration check.

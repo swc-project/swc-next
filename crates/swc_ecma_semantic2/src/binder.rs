@@ -849,13 +849,12 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
-        let ambient = class.declare(tree) || self.ambient;
         self.pending = PendingBinding {
             flags: SymbolFlags::CLASS
                 .with(SymbolFlags::CLASS_EXPRESSION, !is_declaration)
-                .with(SymbolFlags::AMBIENT, ambient),
-            // An ambient TypeScript class can merge with a same-named function.
-            excludes: Excludes::CLASS.with(SymbolFlags::FUNCTION, !(tree.is_ts() && ambient)),
+                .with(SymbolFlags::AMBIENT, class.declare(tree) || self.ambient),
+            // Keep both declarations available for TypeScript's ambient class check.
+            excludes: Excludes::CLASS.with(SymbolFlags::FUNCTION, !tree.is_ts()),
             scope: if is_declaration {
                 scope.get(current_scope).parent.unwrap()
             } else {
