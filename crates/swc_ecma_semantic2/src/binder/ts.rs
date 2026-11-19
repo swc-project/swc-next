@@ -890,7 +890,7 @@ impl LexicalLookup<'_, '_> {
         name: &[u8],
         space: ReferenceSpace,
     ) -> Option<(SymbolId, SymbolFlags)> {
-        self.lookup_inner(scope, name, space, |_, flags| {
+        self.lookup_inner(scope, name, space, |_, flags, _| {
             Ok::<_, Infallible>(flags.visible_in(space))
         })
         .unwrap()
@@ -899,12 +899,13 @@ impl LexicalLookup<'_, '_> {
     /// Walk outwards until a binding contributes the requested meaning.
     /// The visibility check can suspend alias resolution on a dependency,
     /// as in `import A = B.C` while `import B = N` is still unresolved.
+    /// Its last argument marks a binding from the shared namespace exports.
     fn lookup_inner<E>(
         &self,
         start: ScopeId,
         name: &[u8],
         space: ReferenceSpace,
-        mut visible: impl FnMut(SymbolId, SymbolFlags) -> Result<bool, E>,
+        mut visible: impl FnMut(SymbolId, SymbolFlags, bool) -> Result<bool, E>,
     ) -> Result<Option<(SymbolId, SymbolFlags)>, E> {
         let arguments = name == b"arguments"
             && matches!(
@@ -931,7 +932,7 @@ impl LexicalLookup<'_, '_> {
                 // `const x = 1; x;` or `export const x = 1; x;`
                 let exported_value = flags.contains(SymbolFlags::EXPORT_VALUE)
                     && matches!(space, ReferenceSpace::Value | ReferenceSpace::Typeof);
-                if exported_value || visible(local, flags)? {
+                if exported_value || visible(local, flags, false)? {
                     return Ok(Some((local, flags)));
                 }
 
@@ -939,7 +940,7 @@ impl LexicalLookup<'_, '_> {
                 // `const f = function n() { type n = string; return n; };`
                 if let Some(&internal) = self.shadowed_internal_names.get(&local) {
                     let flags = self.symbols[internal].flags;
-                    if !barrier && visible(internal, flags)? {
+                    if !barrier && visible(internal, flags, false)? {
                         return Ok(Some((internal, flags)));
                     }
                 }
@@ -950,7 +951,7 @@ impl LexicalLookup<'_, '_> {
                     && let Some(&export) = self.ts.export_symbols.get(&local)
                 {
                     let flags = self.symbols[export].flags;
-                    if visible(export, flags)? {
+                    if visible(export, flags, false)? {
                         return Ok(Some((export, flags)));
                     }
                 }
@@ -967,7 +968,7 @@ impl LexicalLookup<'_, '_> {
             // `namespace N { export type T = string; } namespace N { type U = T; }`
             if matches!(scope.kind, ScopeKind::TsEnum | ScopeKind::TsModule)
                 && let Some((symbol, flags)) = self.lookup_container_member(id, scope.kind, name)
-                && visible(symbol, flags)?
+                && visible(symbol, flags, scope.kind == ScopeKind::TsModule)?
             {
                 std::hint::cold_path();
                 return Ok(Some((symbol, flags)));
@@ -1016,13 +1017,22 @@ bitflags! {
         const TYPE = 2;
         const NAMESPACE = 4;
         const TYPEOF = 8;
+        const PROPERTY_VALUE = 16;
+        const PROPERTY_TYPEOF = 32;
     }
 }
 
 impl Spaces {
     fn declared(flags: SymbolFlags) -> Self {
         let mut spaces = Self::empty();
-        spaces.set(Self::VALUE | Self::TYPEOF, flags.in_value_space());
+        spaces.set(
+            Self::VALUE | Self::TYPEOF,
+            (flags - SymbolFlags::PROPERTY).in_value_space(),
+        );
+        spaces.set(
+            Self::PROPERTY_VALUE | Self::PROPERTY_TYPEOF,
+            flags.contains(SymbolFlags::PROPERTY),
+        );
         spaces.set(Self::TYPE, flags.in_type_space());
         spaces.set(Self::NAMESPACE, flags.in_namespace_space());
         spaces
@@ -1030,10 +1040,10 @@ impl Spaces {
 
     fn visible_in(self, space: ReferenceSpace) -> bool {
         match space {
-            ReferenceSpace::Value => self.contains(Self::VALUE),
+            ReferenceSpace::Value => self.intersects(Self::VALUE | Self::PROPERTY_VALUE),
             ReferenceSpace::Type => self.contains(Self::TYPE),
             ReferenceSpace::Namespace => self.contains(Self::NAMESPACE),
-            ReferenceSpace::Typeof => self.contains(Self::TYPEOF),
+            ReferenceSpace::Typeof => self.intersects(Self::TYPEOF | Self::PROPERTY_TYPEOF),
             ReferenceSpace::Any => true,
         }
     }
@@ -1067,13 +1077,13 @@ impl ResolvedAlias {
     };
 
     const UNBOUND_PROPERTY: Self = Self {
-        spaces: Spaces::VALUE.union(Spaces::TYPEOF),
+        spaces: Spaces::PROPERTY_VALUE.union(Spaces::PROPERTY_TYPEOF),
         ..Self::UNKNOWN
     };
 
     fn restrict_value(&mut self) {
         self.type_only = true;
-        self.spaces.remove(Spaces::VALUE);
+        self.spaces.remove(Spaces::VALUE | Spaces::PROPERTY_VALUE);
         for owner in [&mut self.namespace_owner, &mut self.property_owner]
             .into_iter()
             .flatten()
@@ -1132,13 +1142,24 @@ impl AliasResolver<'_, '_> {
         space: ReferenceSpace,
     ) -> Result<Option<(SymbolId, SymbolFlags)>, SymbolId> {
         let name = self.tree.get_utf8(reference.name).as_bytes();
-        self.lookup
-            .lookup_inner(reference.scope, name, space, |symbol, flags| {
+        self.lookup.lookup_inner(
+            reference.scope,
+            name,
+            space,
+            |symbol, flags, namespace_member| {
                 if space == ReferenceSpace::Any || !flags.contains(SymbolFlags::ALIAS) {
                     return Ok(flags.visible_in(space));
                 }
-                Ok(self.meaning(symbol, flags)?.spaces.visible_in(space))
-            })
+                let mut spaces = self.meaning(symbol, flags)?.spaces;
+                if namespace_member {
+                    // A shared namespace export contributes declaration meanings to
+                    // bare names. Properties are accessible through qualified names
+                    // or an alias declared in the current body's lexical scope.
+                    spaces.remove(Spaces::PROPERTY_VALUE | Spaces::PROPERTY_TYPEOF);
+                }
+                Ok(spaces.visible_in(space))
+            },
+        )
     }
 
     fn root(
@@ -1288,7 +1309,9 @@ impl AliasResolver<'_, '_> {
             return;
         }
         let reads_value = if let Some(symbol) = initializer {
-            self.resolved[&symbol].spaces.contains(Spaces::VALUE)
+            self.resolved[&symbol]
+                .spaces
+                .visible_in(ReferenceSpace::Value)
         } else if reference.flags.space == ReferenceSpace::Any
             && let Some((symbol, flags)) = binding
         {
@@ -1297,7 +1320,7 @@ impl AliasResolver<'_, '_> {
                     .meaning(symbol, flags)
                     .unwrap()
                     .spaces
-                    .contains(Spaces::VALUE)
+                    .visible_in(ReferenceSpace::Value)
         } else {
             true
         };

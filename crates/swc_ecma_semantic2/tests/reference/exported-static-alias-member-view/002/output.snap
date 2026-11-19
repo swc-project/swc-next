@@ -44,14 +44,14 @@ const selected = Selected;
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": 9
+        "symbol": 4
       },
       {
         "span": "322..323",
         "scope": 10,
         "space": "Typeof",
         "access": "None",
-        "symbol": 9
+        "symbol": 4
       },
       {
         "span": "348..349",
@@ -80,16 +80,6 @@ const selected = Selected;
         "97..98",
         "119..120"
       ]
-    },
-    "8": {
-      "name": "local",
-      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
-      "declarations": [
-        "180..185"
-      ],
-      "alias": {
-        "Target": 1
-      }
     },
     "9": {
       "name": "A",
