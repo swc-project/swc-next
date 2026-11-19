@@ -33393,6 +33393,33 @@
         "prettierNative": "const value = 1 /* prettier-ignore */ as const\n"
       }
     ],
+    "ts/control-flow/for-header-layout/as-initializer-head.ts": [
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      }
+    ],
     "ts/control-flow/for-header-layout/ignored-no-in-assertions.ts": [
       {
         "options": {
@@ -33418,6 +33445,33 @@
         },
         "swcPlugin": "for (\n  (/* prettier-ignore */ name  in object as boolean);\n  false;\n);\nfor (\n  (/* prettier-ignore */ name  in object satisfies boolean);\n  false;\n);\nfor (\n  (/* prettier-ignore */ value = left in right as boolean);\n  false;\n) {}\nfor (\n  (/* prettier-ignore */ value = left in right satisfies boolean);\n  false;\n) {}\nfor (\n  (/* prettier-ignore */ value = left in right as boolean\n  ),\n    second = true;\n  false;\n) {}\nfor (\n  value = false,\n    (/* prettier-ignore */ second = left in right satisfies boolean\n    );\n  false;\n) {}\nfor (\n  let picked =\n    (/* prettier-ignore */ value = left in right as boolean\n    );\n  false;\n) {}\n",
         "prettierNative": "for (\n  /* prettier-ignore */ name  in object as boolean;\n  false;\n);\nfor (\n  /* prettier-ignore */ name  in object satisfies boolean;\n  false;\n);\nfor (\n  /* prettier-ignore */ value = left in right as boolean;\n  false;\n) {}\nfor (\n  /* prettier-ignore */ value = left in right satisfies boolean;\n  false;\n) {}\nfor (\n  /* prettier-ignore */ value = left in right as boolean,\n    second = true;\n  false;\n) {}\nfor (\n  value = false,\n    /* prettier-ignore */ second = left in right satisfies boolean;\n  false;\n) {}\nfor (\n  let picked =\n    /* prettier-ignore */ (value = left in right as boolean);\n  false;\n) {}\n"
+      }
+    ],
+    "ts/control-flow/for-header-layout/satisfies-initializer-head.ts": [
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  (using) satisfies T;\n  ;\n) {}\n",
+        "prettierNative": "for (\n  using satisfies T;\n  ;\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((using) satisfies T; ;) {}\n",
+        "prettierNative": "for (using satisfies T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (\n  (using) satisfies T;\n  ;\n) {}\n",
+        "prettierNative": "for (\n  using satisfies T;\n  ;\n) {}\n"
       }
     ],
     "ts/declarations/binding-groups/diagnostic.ts": [
@@ -34560,6 +34614,16 @@
         },
         "swcPlugin": "foo<A  |  B> /* prettier-ignore */\n(x + 1);\n",
         "prettierNative": "foo<A  |  B> /* prettier-ignore */(x + 1);\n"
+      }
+    ],
+    "ts/expressions/statement-head-modifier.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(static) as T;\n(readonly) satisfies T;\n(accessor) as const;\n(public) as T as U;\n(private) as T;\nif (ok) {\n  (protected) satisfies T;\n}\nif (ok) static as T;\nfor (static as T; ok; step()) {}\n",
+        "prettierNative": "static as T;\nreadonly satisfies T;\naccessor as const;\npublic as T as U;\nprivate as T;\nif (ok) {\n  protected satisfies T;\n}\nif (ok) static as T;\nfor (static as T; ok; step()) {}\n"
       }
     ],
     "ts/expressions/unary-retained-diagnostic/covered-tail.ts": [

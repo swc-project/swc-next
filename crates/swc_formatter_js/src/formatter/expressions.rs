@@ -1106,8 +1106,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
                 || matches!(context.position, ExpressionPosition::TypeBinaryOperand)
-                    && context.expression_start.is_statement()
-                    && self.type_binary_head_needs_parentheses(data)
+                    && self.type_binary_head_needs_parentheses(data, context.expression_start)
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
@@ -1116,6 +1115,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(data, ExprData::Function(_) | ExprData::Class(_))
                     && context.expression_start.is_statement()
                 || matches!((data, context.expression_head), (ExprData::IdentifierReference(node), ExpressionHead::Iteration(head)) if node == head))
+    }
+
+    /// Keep identifier heads that could start a declaration or a keyword expression.
+    fn type_binary_head_needs_parentheses(&self, data: ExprData, start: ExpressionStart) -> bool {
+        let statement = start.is_statement();
+        if !statement && start != ExpressionStart::ForInitializer {
+            return false;
+        }
+        let ExprData::IdentifierReference(identifier) = data else {
+            return false;
+        };
+        let name = self.ast.get_utf8(identifier.name(self.ast));
+        match name {
+            "await" | "using" | "yield" | "let" => true,
+            "interface" | "module" | "namespace" | "type" => statement,
+            // TypeScript's statement-list lookahead rejects these modifiers
+            // before another keyword on the same line.
+            "accessor" | "private" | "protected" | "public" | "readonly" | "static" => {
+                statement && start != ExpressionStart::StatementBody
+            }
+            _ => false,
+        }
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.

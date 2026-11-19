@@ -538,17 +538,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    /// These identifier tokens could expose a declaration or reserved statement head.
-    pub(super) fn type_binary_head_needs_parentheses(&self, data: ExprData) -> bool {
-        let ExprData::IdentifierReference(identifier) = data else {
-            return false;
-        };
-        matches!(
-            self.ast.get_utf8(identifier.name(self.ast)),
-            "await" | "interface" | "module" | "namespace" | "using" | "yield" | "let" | "type"
-        )
-    }
-
     pub(super) fn format_binary_type_expression_output(
         &mut self,
         expression: Expr,
