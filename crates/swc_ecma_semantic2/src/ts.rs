@@ -82,7 +82,7 @@ impl TsMember {
 pub enum TsAlias {
     /// Known direct target; visibility follows the target and alias-chain restrictions.
     Target(SymbolId),
-    /// The target could not be resolved from the available declarations.
+    /// No unique target symbol is known.
     /// A reference can still resolve to the alias itself.
     Unknown,
 }

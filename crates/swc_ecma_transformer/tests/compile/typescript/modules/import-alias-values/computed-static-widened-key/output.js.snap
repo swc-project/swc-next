@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const key = "x";
+class C {
+  static [key] = 1;
+}
+const Alias = 0;
+var Use;
+(function(Use) {
+  var Alias = C.x;
+  Use.result = Alias;
+})(Use || (Use = {}));
+export {};

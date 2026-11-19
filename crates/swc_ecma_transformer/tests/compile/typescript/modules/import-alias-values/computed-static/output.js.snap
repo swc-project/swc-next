@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export {};
+const key = "x";
+class C {
+  static [key] = 1;
+}
+var Alias = C.x;
+const runtime = Alias;
+const typed = { own: true };
+const queried = 1;

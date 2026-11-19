@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+const Alias = 0;
+var N;
+(function(N) {
+  class C {
+    static 1e400 = 1;
+  }
+  var Alias = C.Infinity;
+  N.result = Alias;
+})(N || (N = {}));
+export {};

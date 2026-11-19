@@ -12,10 +12,10 @@ type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
     "U": [
       {
         "span": "74..75",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 0
       },
       {
         "span": "79..80",
@@ -27,6 +27,13 @@ type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
     ]
   },
   "symbols": {
+    "0": {
+      "name": "U",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "5..6"
+      ]
+    },
     "3": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
@@ -36,6 +43,12 @@ type R<T> = T extends (infer U extends unknown ? never : U) ? U : never;
     }
   },
   "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
     "4": {
       "kind": "Block",
       "parent": 3,

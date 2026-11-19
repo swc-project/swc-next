@@ -14,9 +14,18 @@ type R<T> = T extends (true extends true ? infer U : never) ? U : never;
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 2
       }
     ]
+  },
+  "symbols": {
+    "2": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "49..50"
+      ]
+    }
   },
   "scopes": {
     "3": {

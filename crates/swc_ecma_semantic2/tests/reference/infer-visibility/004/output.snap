@@ -20,7 +20,7 @@ type R<T> = T extends infer U ? (U extends [infer V, U] ? U : U) : U;
       },
       {
         "span": "81..82",
-        "scope": 5,
+        "scope": 4,
         "space": "Type",
         "access": "None",
         "symbol": 3

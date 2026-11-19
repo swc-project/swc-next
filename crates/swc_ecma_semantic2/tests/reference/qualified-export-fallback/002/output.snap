@@ -35,7 +35,7 @@ const b: B = { own: true };
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 10
+        "symbol": 8
       },
       {
         "span": "301..302",
@@ -80,11 +80,25 @@ const b: B = { own: true };
         "29..30"
       ]
     },
+    "2": {
+      "name": "x",
+      "flags": "AMBIENT | PROPERTY",
+      "declarations": [
+        "56..73"
+      ]
+    },
     "5": {
       "name": "T",
       "flags": "INTERFACE | AMBIENT | EXPORTED",
       "declarations": [
         "115..116"
+      ]
+    },
+    "8": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "199..200"
       ]
     },
     "10": {
@@ -93,7 +107,9 @@ const b: B = { own: true };
       "declarations": [
         "236..237"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 2
+      }
     },
     "17": {
       "name": "B",

@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export {};
+var Alias = N.Inner.Y;
+const value = Alias;
+const typed = { right: true };
+const queried = 1;

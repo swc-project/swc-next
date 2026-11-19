@@ -24,7 +24,7 @@ namespace N {
         "scope": 2,
         "space": "Value",
         "access": "Read",
-        "symbol": 0
+        "symbol": 5
       }
     ],
     "C": [
@@ -32,20 +32,13 @@ namespace N {
         "span": "139..140",
         "scope": 2,
         "space": "Namespace",
-        "access": "None",
+        "access": "Read",
         "symbol": 2,
         "import_equals": true
       }
     ]
   },
   "symbols": {
-    "0": {
-      "name": "Alias",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
-      "declarations": [
-        "6..11"
-      ]
-    },
     "2": {
       "name": "C",
       "flags": "CLASS | NAMESPACE_MODULE",
@@ -53,6 +46,14 @@ namespace N {
         "39..40",
         "81..82"
       ]
+    },
+    "5": {
+      "name": "Alias",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
+      "declarations": [
+        "131..136"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

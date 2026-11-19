@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+class C {
+  static 1e400 = 1;
+}
+var Alias = C.Infinity;
+const runtime = Alias;
+const typed = { own: true };
+const queried = 1;
+export {};

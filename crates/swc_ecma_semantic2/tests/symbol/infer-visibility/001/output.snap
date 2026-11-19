@@ -25,6 +25,7 @@ const ok: R<[string, number]> = "ok";
           1
         ],
         "uses": [
+          "60..61",
           "69..70"
         ]
       },
@@ -41,7 +42,6 @@ const ok: R<[string, number]> = "ok";
           4
         ],
         "uses": [
-          "60..61",
           "65..66"
         ]
       }

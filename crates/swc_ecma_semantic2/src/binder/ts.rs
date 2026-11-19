@@ -27,6 +27,8 @@ pub(super) struct TsBindingState<'a> {
     /// Maps each initializer's root reference ID to its alias symbol ID.
     /// In `import A = N.E`, the reference ID of `N` maps to the symbol ID of `A`.
     initializers: FxHashMap<ReferenceId, SymbolId>,
+    /// Static properties without symbol IDs. `None` means a computed key may match any name.
+    unbound_class_statics: FxHashMap<SymbolId, Option<FxHashSet<String>>>,
     /// Candidate property writes to bind after collecting declarations.
     expando_assignments: Vec<ExpandoAssignment>,
     /// Reusable set of local value `import =` names for one ambient namespace block.
@@ -63,6 +65,23 @@ pub(super) enum TsMemberKind {
     ClassStatic,
     /// A function property introduced by a dotted assignment.
     Expando,
+}
+
+fn is_late_bindable_name(tree: &Ast<'_>, mut node: NodeId) -> bool {
+    // Identifiers and dotted paths can name static members through their types.
+    loop {
+        node = match tree.kind_data(node) {
+            NodeKindData::IdentifierReference(_) => return true,
+            NodeKindData::MemberExpression(member) if !member.computed(tree) => {
+                member.object(tree).node_id()
+            }
+            NodeKindData::ParenthesizedExpression(parentheses) => {
+                parentheses.expression(tree).node_id()
+            }
+            NodeKindData::ChainExpression(chain) => chain.expression(tree).node_id(),
+            _ => return false,
+        };
+    }
 }
 
 // TypeScript binding and traversal context.
@@ -302,30 +321,20 @@ impl<'a> SymbolTracker<'a> {
         scopes: &ScopeTree<'a>,
         scope: ScopeId,
     ) {
-        let (key, declared) = match tree.class_element_data(node) {
-            ClassElementData::PropertyDefinition(property)
-                if property.r#static(tree) && !property.computed(tree) =>
-            {
-                (
-                    property.key(tree),
-                    property.declare(tree) || property.r#abstract(tree),
-                )
+        let (key, computed, declared) = match tree.class_element_data(node) {
+            ClassElementData::PropertyDefinition(property) if property.r#static(tree) => (
+                property.key(tree),
+                property.computed(tree),
+                property.declare(tree) || property.r#abstract(tree),
+            ),
+            ClassElementData::MethodDefinition(method) if method.r#static(tree) => {
+                (method.key(tree), method.computed(tree), false)
             }
-            ClassElementData::MethodDefinition(method)
-                if method.r#static(tree) && !method.computed(tree) =>
-            {
-                (method.key(tree), false)
-            }
-            ClassElementData::TsMethodDefinition(method)
-                if method.r#static(tree) && !method.computed(tree) =>
-            {
-                (method.key(tree), method.r#abstract(tree))
-            }
-            _ => return,
-        };
-        let name = match tree.kind_data(key.node_id()) {
-            NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
-            NodeKindData::StringLiteral(literal) => literal.value(tree),
+            ClassElementData::TsMethodDefinition(method) if method.r#static(tree) => (
+                method.key(tree),
+                method.computed(tree),
+                method.r#abstract(tree),
+            ),
             _ => return,
         };
         let NodeKindData::Class(class) = tree.kind_data(scopes.get(scope).node) else {
@@ -336,6 +345,27 @@ impl<'a> SymbolTracker<'a> {
             .and_then(|id| self.symbol_of_node(id.node_id()))
         else {
             return;
+        };
+        let name = match tree.kind_data(key.node_id()) {
+            NodeKindData::IdentifierName(identifier) if !computed => identifier.name(tree).into(),
+            NodeKindData::StringLiteral(literal) => literal.value(tree),
+            NodeKindData::NumericLiteral(literal) => {
+                if let Some(names) = self
+                    .ts_state
+                    .unbound_class_statics
+                    .entry(owner)
+                    .or_insert_with(|| Some(FxHashSet::default()))
+                {
+                    let mut buffer = zmij_ecma::Buffer::new();
+                    names.insert(buffer.format(literal.value(tree)).to_owned());
+                }
+                return;
+            }
+            _ if computed && is_late_bindable_name(tree, key.node_id()) => {
+                self.ts_state.unbound_class_statics.insert(owner, None);
+                return;
+            }
+            _ => return,
         };
         self.sync_symbol_tables_from(scopes);
         self.declare_ts_member(
@@ -779,6 +809,7 @@ impl SymbolTracker<'_> {
             lookup: &lookup,
             tree,
             aliases: &self.ts_state.aliases,
+            unbound_class_statics: &self.ts_state.unbound_class_statics,
             resolved: FxHashMap::default(),
         };
         resolver.resolve_all(&self.references);
@@ -924,22 +955,23 @@ impl LexicalLookup<'_, '_> {
         let container = self.ts.containers.get(&scope)?;
         let member = self.ts.member(container.owner, name)?;
         // Merged bodies share only the contributions of their own kind.
-        let mut flags = match kind {
+        let flags = match kind {
             ScopeKind::TsEnum => member.enum_flags,
             ScopeKind::TsModule => member.namespace_flags,
             _ => None,
         }?;
         if container.ambient
             && flags.contains(SymbolFlags::ALIAS)
-            && !flags.contains(SymbolFlags::IMPORT_EQUALS)
+            && !flags.intersects(
+                SymbolFlags::IMPORT_EQUALS
+                    | SymbolFlags::VALUE_SPACE
+                    | SymbolFlags::TYPE_SPACE
+                    | SymbolFlags::NAMESPACE_SPACE,
+            )
         {
-            // An ambient export specifier introduces a public name only.
-            flags.remove(SymbolFlags::ALIAS | SymbolFlags::TYPE_ONLY);
-            if !flags.intersects(
-                SymbolFlags::VALUE_SPACE | SymbolFlags::TYPE_SPACE | SymbolFlags::NAMESPACE_SPACE,
-            ) {
-                return None;
-            }
+            // A bare name can see a merged declaration with its alias meanings.
+            // An export specifier on its own only introduces a public name.
+            return None;
         }
         Some((member.symbol, flags))
     }
@@ -975,13 +1007,21 @@ impl Spaces {
     }
 }
 
+#[derive(Clone, Copy)]
+struct QualifiedOwner {
+    symbol: SymbolId,
+    type_only: bool,
+}
+
 /// The direct target is public. The remaining fields describe what a use
 /// through this particular alias path can see.
 #[derive(Clone, Copy)]
 struct ResolvedAlias {
     target: TsAlias,
     spaces: Spaces,
-    owner: Option<SymbolId>,
+    namespace_owner: Option<QualifiedOwner>,
+    property_owner: Option<QualifiedOwner>,
+    /// Restriction to carry when no owner is known for a qualified lookup.
     type_only: bool,
 }
 
@@ -989,13 +1029,25 @@ impl ResolvedAlias {
     const UNKNOWN: Self = Self {
         target: TsAlias::Unknown,
         spaces: Spaces::all(),
-        owner: None,
+        namespace_owner: None,
+        property_owner: None,
         type_only: false,
+    };
+
+    const UNBOUND_PROPERTY: Self = Self {
+        spaces: Spaces::VALUE.union(Spaces::TYPEOF),
+        ..Self::UNKNOWN
     };
 
     fn restrict_value(&mut self) {
         self.type_only = true;
         self.spaces.remove(Spaces::VALUE);
+        for owner in [&mut self.namespace_owner, &mut self.property_owner]
+            .into_iter()
+            .flatten()
+        {
+            owner.type_only = true;
+        }
     }
 }
 
@@ -1003,6 +1055,7 @@ struct AliasResolver<'s, 'a> {
     lookup: &'s LexicalLookup<'s, 'a>,
     tree: &'s Ast<'a>,
     aliases: &'s FxHashMap<SymbolId, Alias>,
+    unbound_class_statics: &'s FxHashMap<SymbolId, Option<FxHashSet<String>>>,
     resolved: FxHashMap<SymbolId, ResolvedAlias>,
 }
 
@@ -1080,29 +1133,72 @@ impl AliasResolver<'_, '_> {
         };
         let mut result = self.meaning(symbol, flags)?;
         if let Some(&export) = self.lookup.ts.export_symbols.get(&symbol) {
-            // Keep the local identity, but use the owner that actually declared the namespace.
-            let exported = self.lookup.symbols[export].flags;
-            result.spaces |= Spaces::declared(exported);
-            if result.owner.is_none() && exported.in_namespace_space() {
-                result.owner = Some(export);
-            }
+            // Keep the local identity while including the public declaration's meanings.
+            let exported = self.meaning(export, self.lookup.symbols[export].flags)?;
+            result.spaces |= exported.spaces;
+            result.namespace_owner = result.namespace_owner.or(exported.namespace_owner);
+            result.property_owner = result.property_owner.or(exported.property_owner);
+            result.type_only |= exported.type_only;
         }
         for &name in &alias.members {
-            // Each qualifier supplies the owner for the next public member.
-            let member = result.owner.and_then(|owner| {
-                let ts = self.lookup.ts;
-                ts.member(owner, self.tree.get_utf8(name).as_bytes())
-            });
-            let type_only = result.type_only;
-            result = match member {
-                Some(member) => self.meaning(member.symbol, member.flags())?,
-                None => ResolvedAlias::UNKNOWN,
-            };
-            if type_only {
-                result.restrict_value();
-            }
+            result = self.qualified_member(result, self.tree.get_utf8(name))?;
         }
         Ok(result)
+    }
+
+    fn qualified_member(
+        &self,
+        qualifier: ResolvedAlias,
+        name: &str,
+    ) -> Result<ResolvedAlias, SymbolId> {
+        // Search the namespace owner before the aliased class or function.
+        for owner in [qualifier.namespace_owner, qualifier.property_owner]
+            .into_iter()
+            .flatten()
+        {
+            if let Some(mut result) = self.member_meaning(owner.symbol, name)? {
+                if owner.type_only {
+                    result.restrict_value();
+                }
+                return Ok(result);
+            }
+        }
+
+        let mut result = ResolvedAlias::UNKNOWN;
+        let type_only = qualifier
+            .namespace_owner
+            .or(qualifier.property_owner)
+            .map_or(qualifier.type_only, |owner| owner.type_only);
+        if type_only {
+            result.restrict_value();
+        }
+        Ok(result)
+    }
+
+    fn member_meaning(
+        &self,
+        owner: SymbolId,
+        name: &str,
+    ) -> Result<Option<ResolvedAlias>, SymbolId> {
+        let member = self.lookup.ts.member(owner, name.as_bytes());
+        let unbound_property = self
+            .unbound_class_statics
+            .get(&owner)
+            .is_some_and(|names| names.as_ref().is_none_or(|names| names.contains(name)));
+        match (member, unbound_property) {
+            (None, false) => Ok(None),
+            (None, true) => Ok(Some(ResolvedAlias::UNBOUND_PROPERTY)),
+            (Some(member), _) => {
+                let mut result = self.meaning(member.symbol, member.flags())?;
+                if unbound_property {
+                    // The declared member supplies its own meanings, but its
+                    // symbol alone does not account for the static property.
+                    result.spaces |= ResolvedAlias::UNBOUND_PROPERTY.spaces;
+                    result.target = TsAlias::Unknown;
+                }
+                Ok(Some(result))
+            }
+        }
     }
 
     fn meaning(&self, symbol: SymbolId, flags: SymbolFlags) -> Result<ResolvedAlias, SymbolId> {
@@ -1128,16 +1224,23 @@ impl AliasResolver<'_, '_> {
             ResolvedAlias {
                 target: TsAlias::Target(symbol),
                 spaces: Spaces::empty(),
-                owner: None,
-                type_only: false,
+                ..ResolvedAlias::UNKNOWN
             }
         };
         if let TsAlias::Target(_) = result.target {
             result.target = TsAlias::Target(symbol);
         }
         result.spaces |= Spaces::declared(flags);
+        // Direct declarations do not inherit restrictions from merged aliases.
+        let owner = Some(QualifiedOwner {
+            symbol,
+            type_only: false,
+        });
         if flags.in_namespace_space() {
-            result.owner = Some(symbol);
+            result.namespace_owner = owner;
+        }
+        if flags.intersects(SymbolFlags::CLASS | SymbolFlags::FUNCTION) {
+            result.property_owner = owner;
         }
         Ok(result)
     }

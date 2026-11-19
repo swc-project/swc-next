@@ -28,7 +28,7 @@ namespace Test {
         "scope": 7,
         "space": "Type",
         "access": "None",
-        "symbol": 9
+        "symbol": 7
       },
       {
         "span": "225..226",
@@ -57,6 +57,13 @@ namespace Test {
         "29..30"
       ]
     },
+    "3": {
+      "name": "x",
+      "flags": "PROPERTY",
+      "declarations": [
+        "37..50"
+      ]
+    },
     "4": {
       "name": "Owner",
       "flags": "NAMESPACE_MODULE | IMPORT | IMPORT_EQUALS | ALIAS",
@@ -68,13 +75,22 @@ namespace Test {
         "Target": 1
       }
     },
+    "7": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "129..130"
+      ]
+    },
     "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "167..168"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 3
+      }
     }
   },
   "scopes": {

@@ -36,7 +36,7 @@ const b: B = { own: true };
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": 9
+        "symbol": 7
       },
       {
         "span": "307..308",
@@ -97,13 +97,29 @@ const b: B = { own: true };
         "70..71"
       ]
     },
+    "6": {
+      "name": "x",
+      "flags": "AMBIENT | PROPERTY",
+      "declarations": [
+        "148..165"
+      ]
+    },
+    "7": {
+      "name": "A",
+      "flags": "TYPE_ALIAS",
+      "declarations": [
+        "205..206"
+      ]
+    },
     "9": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "242..243"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 6
+      }
     },
     "16": {
       "name": "B",

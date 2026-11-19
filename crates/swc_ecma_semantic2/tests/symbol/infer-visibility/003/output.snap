@@ -24,6 +24,9 @@ type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
           1
         ],
         "uses": [
+          "80..81",
+          "85..86",
+          "89..90",
           "98..99"
         ]
       },
@@ -40,9 +43,6 @@ type R<T> = T extends [infer U, T extends [infer V, U] ? U : U] ? U : U;
           4
         ],
         "uses": [
-          "80..81",
-          "85..86",
-          "89..90",
           "94..95"
         ]
       }

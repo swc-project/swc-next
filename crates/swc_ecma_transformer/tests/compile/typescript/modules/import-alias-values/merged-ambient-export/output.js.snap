@@ -1,0 +1,7 @@
+---
+source: crates/swc_ecma_transformer/tests/compile.rs
+---
+export {};
+var Alias = N.Inner.Z;
+const value = Alias;
+const typed = { own: true };

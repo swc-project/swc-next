@@ -37,7 +37,7 @@ namespace N {
         "scope": 9,
         "space": "Value",
         "access": "Read",
-        "symbol": 5
+        "symbol": 8
       }
     ],
     "B": [
@@ -51,11 +51,12 @@ namespace N {
     ]
   },
   "symbols": {
-    "5": {
-      "name": "A",
-      "flags": "FUNCTION | FUNCTION_IMPLEMENTATION",
+    "1": {
+      "name": "x",
+      "flags": "INTERFACE | EXPORTED | PROPERTY",
       "declarations": [
-        "126..127"
+        "12..48",
+        "85..86"
       ]
     },
     "6": {
@@ -64,6 +65,16 @@ namespace N {
       "declarations": [
         "156..157"
       ]
+    },
+    "8": {
+      "name": "A",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
+      "declarations": [
+        "200..201"
+      ],
+      "alias": {
+        "Target": 1
+      }
     }
   },
   "scopes": {

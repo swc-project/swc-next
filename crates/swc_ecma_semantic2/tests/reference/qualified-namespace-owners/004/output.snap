@@ -36,7 +36,7 @@ namespace Use {
         "span": "213..214",
         "scope": 7,
         "space": "Namespace",
-        "access": "Read",
+        "access": "None",
         "symbol": 0,
         "import_equals": true
       }
@@ -50,13 +50,22 @@ namespace Use {
         "18..19"
       ]
     },
+    "2": {
+      "name": "x",
+      "flags": "INTERFACE | AMBIENT | EXPORTED",
+      "declarations": [
+        "64..65"
+      ]
+    },
     "10": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "209..210"
       ],
-      "alias": "Unknown"
+      "alias": {
+        "Target": 2
+      }
     }
   },
   "scopes": {

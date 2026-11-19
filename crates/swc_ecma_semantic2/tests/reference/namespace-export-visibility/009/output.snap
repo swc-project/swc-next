@@ -42,7 +42,7 @@ declare namespace N {
         "scope": 8,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 9
       }
     ],
     "Item": [
@@ -51,7 +51,7 @@ declare namespace N {
         "scope": 8,
         "space": "Namespace",
         "access": "None",
-        "symbol": 0,
+        "symbol": 7,
         "import_equals": true
       }
     ],
@@ -66,19 +66,23 @@ declare namespace N {
     ]
   },
   "symbols": {
-    "0": {
-      "name": "Item",
-      "flags": "NAMESPACE_MODULE",
-      "declarations": [
-        "21..25"
-      ]
-    },
     "4": {
       "name": "Local",
       "flags": "NAMESPACE_MODULE | AMBIENT",
       "declarations": [
         "108..113"
       ]
+    },
+    "7": {
+      "name": "Item",
+      "flags": "INTERFACE | AMBIENT | EXPORTED | ALIAS",
+      "declarations": [
+        "181..194",
+        "217..221"
+      ],
+      "alias": {
+        "Target": 4
+      }
     },
     "9": {
       "name": "A",
@@ -87,7 +91,7 @@ declare namespace N {
         "286..287"
       ],
       "alias": {
-        "Target": 0
+        "Target": 7
       }
     }
   },

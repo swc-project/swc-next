@@ -14,15 +14,16 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
+        "52..53",
         "62..63"
       ]
     }
@@ -47,15 +48,16 @@ type R<T> = T extends (boolean extends true ? infer U : infer U) ? U : never;
         "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 2
       }
     ]
   },
   "symbols": {
-    "3": {
+    "2": {
       "name": "U",
       "flags": "TYPE_PARAMETER",
       "declarations": [
+        "52..53",
         "62..63"
       ]
     }

@@ -30,9 +30,6 @@ namespace Use {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "136..137"
         ]
       },
       {
@@ -46,6 +43,9 @@ namespace Use {
         ],
         "bindings": [
           6
+        ],
+        "uses": [
+          "136..137"
         ],
         "alias": {
           "Target": 1

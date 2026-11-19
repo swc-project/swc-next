@@ -12,7 +12,7 @@ type R<T> = T extends (true extends true ? infer U : U) ? U : never;
     "U": [
       {
         "span": "70..71",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
         "symbol": 0
@@ -22,7 +22,7 @@ type R<T> = T extends (true extends true ? infer U : U) ? U : never;
         "scope": 4,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 3
       }
     ]
   },
@@ -33,9 +33,22 @@ type R<T> = T extends (true extends true ? infer U : U) ? U : never;
       "declarations": [
         "5..6"
       ]
+    },
+    "3": {
+      "name": "U",
+      "flags": "TYPE_PARAMETER",
+      "declarations": [
+        "66..67"
+      ]
     }
   },
   "scopes": {
+    "3": {
+      "kind": "Block",
+      "parent": 1,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
     "4": {
       "kind": "Block",
       "parent": 3,

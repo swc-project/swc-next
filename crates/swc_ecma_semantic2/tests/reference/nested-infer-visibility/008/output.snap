@@ -17,16 +17,16 @@ type R<T> = T extends { [K in "x"]: true extends true ? infer U : never }
         "scope": 4,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "0": {
+    "4": {
       "name": "U",
-      "flags": "TYPE_ALIAS",
+      "flags": "TYPE_PARAMETER",
       "declarations": [
-        "5..6"
+        "79..80"
       ]
     }
   },

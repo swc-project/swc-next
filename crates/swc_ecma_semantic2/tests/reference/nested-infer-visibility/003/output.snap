@@ -15,14 +15,14 @@ type R<T> = T extends (true extends true ? [infer U, U] : never) ? U : never;
         "scope": 5,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 0
       },
       {
         "span": "84..85",
         "scope": 4,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 3
       }
     ]
   },
@@ -51,7 +51,7 @@ type R<T> = T extends (true extends true ? [infer U, U] : never) ? U : never;
     },
     "5": {
       "kind": "Block",
-      "parent": 4,
+      "parent": 3,
       "flags": "Strict",
       "hoist_target": 1
     }

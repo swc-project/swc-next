@@ -48,6 +48,7 @@ pub struct SemanticBuilder<'traverse, 'a> {
     scopes: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
     scope: ScopeId,
+    infer_scope: Option<ScopeId>,
     default_reference_space: ReferenceSpace,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
@@ -71,6 +72,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             scopes,
             symbols,
             scope,
+            infer_scope: None,
             default_reference_space: ReferenceSpace::Value,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
@@ -1312,9 +1314,29 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        self.symbols
-            .enter_ts_type_parameter(self.ast, self.parent(), &self.scopes, self.scope);
-        node.visit_children_with(self);
+        let scope = match self.parent() {
+            Some(parent) if self.ast.node_kind(parent) == NodeKind::TsInferType => {
+                self.infer_scope.unwrap_or(self.scope)
+            }
+            _ => self.scope,
+        };
+        self.symbols.enter_ts_type_parameter(scope);
+        let name = node.name(self.ast);
+        name.visit_with(self);
+        let constraint = node.constraint(self.ast);
+        let default = node.default(self.ast);
+        // An infer parameter is also visible in its own constraint.
+        let scoped_constraint = scope != self.scope && (constraint.is_some() || default.is_some());
+        if scoped_constraint {
+            self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
+            self.symbols
+                .bind_infer_constraint(self.ast, &self.scopes, self.scope, name);
+        }
+        constraint.visit_with(self);
+        default.visit_with(self);
+        if scoped_constraint {
+            self.pop_scope();
+        }
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsTypeParameter(node));
         self.exit_type_position(previous);
@@ -1515,9 +1537,15 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
         node.check_type(self.ast).visit_with(self);
+        let outer_scope = self.scope;
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
-        let extends = node.extends_type(self.ast);
-        extends.visit_with(self);
+        // The extends type declares infer parameters in the true branch
+        // while resolving its own references in the enclosing scope.
+        let true_scope = replace(&mut self.scope, outer_scope);
+        let outer_infer_scope = self.infer_scope.replace(true_scope);
+        node.extends_type(self.ast).visit_with(self);
+        self.infer_scope = outer_infer_scope;
+        self.scope = true_scope;
         node.true_type(self.ast).visit_with(self);
         self.exit_scope(node.node_id());
         node.false_type(self.ast).visit_with(self);
@@ -1553,10 +1581,8 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         let previous = self.enter_type_position();
         self.enter_node(node.node_id());
-        let parent = self.parent();
         // Mapped type keys `[K in T]` use the same binding context as type parameters.
-        self.symbols
-            .enter_ts_type_parameter(self.ast, parent, &self.scopes, self.scope);
+        self.symbols.enter_ts_type_parameter(self.scope);
         node.visit_children_with(self);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());

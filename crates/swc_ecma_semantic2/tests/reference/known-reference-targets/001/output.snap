@@ -31,23 +31,13 @@ namespace Use {
     ]
   },
   "symbols": {
-    "2": {
-      "name": "x",
-      "flags": "INTERFACE | EXPORTED | PROPERTY",
-      "declarations": [
-        "33..46",
-        "102..103"
-      ]
-    },
     "6": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "147..148"
       ],
-      "alias": {
-        "Target": 2
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

@@ -15,16 +15,16 @@ type R<T> = T extends (<V>() => true extends true ? infer U : never) ? U : never
         "scope": 4,
         "space": "Type",
         "access": "None",
-        "symbol": 0
+        "symbol": 4
       }
     ]
   },
   "symbols": {
-    "0": {
+    "4": {
       "name": "U",
-      "flags": "TYPE_ALIAS",
+      "flags": "TYPE_PARAMETER",
       "declarations": [
-        "5..6"
+        "75..76"
       ]
     }
   },

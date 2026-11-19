@@ -13,17 +13,17 @@ type R<T> = T extends [infer U extends { value: U }, U] ? U : U;
     "U": [
       {
         "span": "76..77",
-        "scope": 4,
+        "scope": 5,
         "space": "Type",
         "access": "None",
         "symbol": 3
       },
       {
         "span": "81..82",
-        "scope": 4,
+        "scope": 3,
         "space": "Type",
         "access": "None",
-        "symbol": 3
+        "symbol": 0
       },
       {
         "span": "86..87",
@@ -65,6 +65,12 @@ type R<T> = T extends [infer U extends { value: U }, U] ? U : U;
       "hoist_target": 1
     },
     "4": {
+      "kind": "Block",
+      "parent": 3,
+      "flags": "Strict",
+      "hoist_target": 1
+    },
+    "5": {
       "kind": "Block",
       "parent": 3,
       "flags": "Strict",

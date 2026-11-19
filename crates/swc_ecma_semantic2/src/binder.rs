@@ -1037,29 +1037,26 @@ impl<'a> SymbolTracker<'a> {
         };
     }
 
-    pub fn enter_ts_type_parameter(
-        &mut self,
-        tree: &Ast<'a>,
-        parent: Option<NodeId>,
-        scope: &ScopeTree<'a>,
-        current_scope: ScopeId,
-    ) {
+    pub fn enter_ts_type_parameter(&mut self, scope: ScopeId) {
         self.push_saved_context();
-        let target = if parent.is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
-        {
-            scope
-                .ancestors(Some(current_scope))
-                .find(|&id| tree.node_kind(scope.get(id).node) == NodeKind::TsConditionalType)
-                .unwrap_or(current_scope)
-        } else {
-            current_scope
-        };
         self.pending = PendingBinding {
             flags: SymbolFlags::TYPE_PARAMETER,
             excludes: Excludes::TYPE_PARAMETER,
-            scope: target,
+            scope,
         };
         self.export_state = ExportState::None;
+    }
+
+    pub(crate) fn bind_infer_constraint(
+        &mut self,
+        tree: &Ast<'a>,
+        scopes: &ScopeTree<'a>,
+        scope: ScopeId,
+        name: BindingIdentifier,
+    ) {
+        self.sync_symbol_tables_from(scopes);
+        let symbol = self.symbol_of_node(name.node_id()).unwrap();
+        self.insert_scope_binding(tree, scope, name.name(tree).into(), symbol);
     }
 
     pub fn enter_signature_type(&mut self, current_scope: ScopeId) {

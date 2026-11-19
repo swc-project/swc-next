@@ -40,7 +40,7 @@ const nested: Alias.T = { t: true };
         "scope": 1,
         "space": "Type",
         "access": "None",
-        "symbol": null
+        "symbol": 7
       },
       {
         "span": "319..324",

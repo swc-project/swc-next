@@ -25,17 +25,18 @@ namespace Use {
         "scope": 6,
         "space": "Value",
         "access": "Read",
-        "symbol": 4
+        "symbol": 6
       }
     ]
   },
   "symbols": {
-    "4": {
+    "6": {
       "name": "A",
-      "flags": "BLOCK_SCOPED_VAR | CONST_VAR",
+      "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
-        "101..102"
-      ]
+        "133..134"
+      ],
+      "alias": "Unknown"
     }
   },
   "scopes": {

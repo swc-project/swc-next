@@ -36,7 +36,9 @@ const queried: typeof Alias = 1;
           1
         ],
         "uses": [
-          "245..250"
+          "225..230",
+          "245..250",
+          "292..297"
         ],
         "alias": {
           "Target": 6

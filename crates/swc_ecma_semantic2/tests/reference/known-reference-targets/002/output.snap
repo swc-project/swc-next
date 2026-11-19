@@ -29,22 +29,13 @@ namespace Use {
     ]
   },
   "symbols": {
-    "2": {
-      "name": "x",
-      "flags": "INTERFACE | EXPORTED",
-      "declarations": [
-        "86..87"
-      ]
-    },
     "5": {
       "name": "A",
       "flags": "IMPORT | IMPORT_EQUALS | ALIAS",
       "declarations": [
         "118..119"
       ],
-      "alias": {
-        "Target": 2
-      }
+      "alias": "Unknown"
     }
   },
   "scopes": {

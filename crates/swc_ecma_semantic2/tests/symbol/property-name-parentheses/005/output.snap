@@ -31,9 +31,6 @@ namespace Use {
         ],
         "bindings": [
           1
-        ],
-        "uses": [
-          "159..160"
         ]
       },
       {
@@ -48,9 +45,10 @@ namespace Use {
         "bindings": [
           6
         ],
-        "alias": {
-          "Target": 2
-        },
+        "uses": [
+          "159..160"
+        ],
+        "alias": "Unknown",
         "import": {
           "initializer": "137..138"
         }
