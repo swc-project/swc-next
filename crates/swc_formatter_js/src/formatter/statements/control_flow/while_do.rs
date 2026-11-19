@@ -5,8 +5,11 @@ use swc_next_ecma_ast::{DoWhileStatement, GetSpan, Span, WhileStatement};
 use super::super::{
     EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementPunctuation,
 };
-use super::{ConditionPrefix, ControlledBodyEnd, ControlledBodyRole};
-use crate::formatter::diagnostics::LineConstraint;
+use super::{
+    Condition, ConditionHeader, ConditionLineSuffix, ConditionPrefix, ControlledBodyEnd,
+    ControlledBodyRole, ControlledBodyShape,
+};
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, Semicolons, document::Writer};
 
@@ -76,7 +79,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     mode: boundary.following,
                 }
             });
-        let condition =
+        let mut condition =
             self.prepare_condition_with_prefix(expression, keyword.end, span.end, prefix)?;
         let closing = condition.closing;
         if self.trailing_content_mode(Span::new(closing + 1, span.end), true)
@@ -114,6 +117,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         body = self.with_controlled_body_keyword_fence(body, keyword);
         let keyword_boundary = self.prepare_body_keyword(&body, keyword);
+        let body_suffix = body.condition_suffix();
+        let condition_suffix = self.prepare_do_condition_suffix(&mut condition);
+        let statement_suffix = boundary.source.is_none()
+            && matches!(body.shape, ControlledBodyShape::Block)
+            && self
+                .prepare_controlled_body_tail(
+                    span,
+                    closing + 1,
+                    ControlledBodyEnd::Enclosing(span.end),
+                    ControlledBodyShape::Single,
+                )
+                .is_some_and(|tail| {
+                    tail.binding.allows_relocation(None)
+                        && ConditionLineSuffix::new(tail.tail.comments).is_some()
+                });
+        if body_suffix.is_some() || condition_suffix.is_some() || statement_suffix {
+            condition.inline = false;
+            writer.group(false, |writer| {
+                writer.text("do");
+                let mut printed = self.format_controlled_body(body, writer)?;
+                if let Some(suffix) = body_suffix {
+                    self.format_condition_line_suffix(suffix, FlatSeparator::Space, writer)?;
+                    if let Some(last) = suffix.comments.last() {
+                        printed.boundary = printed.boundary.with_end(last.span.end);
+                    }
+                    printed.pending = None;
+                }
+                self.format_body_keyword(keyword_boundary, "while", printed, writer)?;
+                self.format_condition_with_suffix(condition, condition_suffix, writer)
+            })?;
+            return self.finish_statement(closing + 1, None, punctuation, writer);
+        }
         let printed = writer.group(false, |writer| {
             writer.text("do");
             let printed = self.format_controlled_body(body, writer)?;
@@ -127,6 +162,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_condition(condition, writer)
         })?;
         self.finish_statement(closing + 1, None, punctuation, writer)
+    }
+
+    fn prepare_do_condition_suffix(
+        &self,
+        condition: &mut Condition<'ast>,
+    ) -> Option<ConditionLineSuffix<'ast>> {
+        let ConditionHeader::Canonical {
+            keyword_end,
+            opening,
+            ..
+        } = &condition.header
+        else {
+            return None;
+        };
+        if condition.mode != ContentMode::Formatted {
+            return None;
+        }
+        let mut split = 0;
+        let mut previous = *opening + 1;
+        for comment in condition.leading {
+            if comment.span.start > *opening {
+                if self.line_breaks(previous, comment.span.start) != 0 {
+                    break;
+                }
+                previous = comment.span.start;
+            }
+            split += 1;
+        }
+        let comments = &condition.leading[..split];
+        let suffix = ConditionLineSuffix::new(comments)?;
+        if !self
+            .comment_binding(
+                comments,
+                Span::new(*keyword_end, condition.expression.span(self.ast).start),
+                None,
+            )
+            .allows_relocation(None)
+        {
+            return None;
+        }
+        condition.leading = &condition.leading[split..];
+        Some(suffix)
     }
 
     pub(super) fn prepare_loop_boundary(&self, gap: Span, separator: Span) -> LoopBoundary {

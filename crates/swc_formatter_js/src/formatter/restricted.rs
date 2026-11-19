@@ -127,8 +127,8 @@ struct RestrictedArgument<'ast> {
     keyword_end: u32,
     mode: ContentMode,
     envelope: ArgumentEnvelope,
-    closing: LineConstraint,
     grammar: RestrictedGrammar,
+    enclosed_tail: bool,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -175,6 +175,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mode = self.content_mode(leading);
         let protected_opening = self.diagnostic_line_is_sensitive(span.start);
         let content = self.expression_content(argument);
+        // A line-bearing operator tail needs the replacement restricted frame.
+        // Inline block tails retain the statement owner on both formatting passes.
+        let tail_start = content.expression.span(self.ast).end;
+        let enclosed_tail = matches!(grammar, RestrictedGrammar::ReturnOrThrow)
+            && content.expression != argument
+            && matches!(
+                content.data,
+                ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+            )
+            && self
+                .comments
+                .in_range(Span::new(tail_start, span.end))
+                .iter()
+                .any(|comment| {
+                    comment.kind == CommentKind::Line
+                        || self.source_line_breaks(tail_start, comment.span.end) != 0
+                });
         let mut head = RestrictedHead {
             expression: argument,
             comments: leading,
@@ -186,7 +203,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ArgumentEnvelope::Inline
             }
         } else {
-            let lexical_head = self.restricted_lexical_head(argument, grammar)?;
+            let lexical_head =
+                self.restricted_lexical_head(argument, content.expression.span(self.ast), grammar)?;
             let leading_requires_envelope =
                 self.restricted_head_requires_envelope(leading, span.start);
             if lexical_head.requires_envelope {
@@ -201,11 +219,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if leading_requires_envelope || lexical_head.requires_envelope {
                 ArgumentEnvelope::Required
             } else {
-                match content.data {
-                    ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) => {
-                        ArgumentEnvelope::Breakable
-                    }
-                    ExprData::ParenthesizedExpression(_) => ArgumentEnvelope::Source,
+                match (grammar, content.data) {
+                    (
+                        RestrictedGrammar::ReturnOrThrow,
+                        ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_),
+                    ) => ArgumentEnvelope::Breakable,
+                    (_, ExprData::ParenthesizedExpression(_)) => ArgumentEnvelope::Source,
                     _ => ArgumentEnvelope::Inline,
                 }
             }
@@ -216,8 +235,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             keyword_end,
             mode,
             envelope,
-            closing: self.line_constraint(span.end, span.end),
             grammar,
+            enclosed_tail: enclosed_tail && !protected_opening && mode == ContentMode::Formatted,
         };
         if !protected_opening
             && mode == ContentMode::Formatted
@@ -340,17 +359,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head,
             keyword_end,
             envelope,
-            closing,
             ..
         } = prepared;
         let content_start = head.expression.span(self.ast).start;
-        let first = match envelope {
-            ArgumentEnvelope::Inline | ArgumentEnvelope::Source => head
-                .comments
-                .first()
-                .map_or(content_start, |comment| comment.span.start),
+        let (first, closing) = match envelope {
+            ArgumentEnvelope::Inline | ArgumentEnvelope::Source => (
+                head.comments
+                    .first()
+                    .map_or(content_start, |comment| comment.span.start),
+                LineConstraint::Unconstrained,
+            ),
             ArgumentEnvelope::Breakable | ArgumentEnvelope::Required => {
-                argument.span(self.ast).start
+                let span = argument.span(self.ast);
+                (span.start, self.line_constraint(span.end, span.end))
             }
         };
         self.line_constraint(*keyword_end, first).write(
@@ -363,20 +384,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 write_argument(self, content_start, writer)
             }
             ArgumentEnvelope::Breakable | ArgumentEnvelope::Required => {
-                let write = |writer: &mut Writer<'ast>| {
-                    if matches!(envelope, ArgumentEnvelope::Required) {
+                let required = matches!(envelope, ArgumentEnvelope::Required);
+                writer.group(required, |writer| {
+                    if required {
                         writer.text("(");
                     } else {
                         writer.if_break("(");
                     }
                     let tail = writer.indent(|writer| {
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if required {
                             writer.hard_line();
                         } else {
                             writer.soft_line();
                         }
                         let tail = write_argument(self, content_start, writer)?;
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if required || prepared.enclosed_tail {
                             self.format_expression_tail(tail.pending, writer)?;
                             Ok(ExpressionOutput::closed(None))
                         } else {
@@ -384,24 +406,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     })?;
                     closing.write(writer, FlatSeparator::Empty, |writer| {
-                        if matches!(envelope, ArgumentEnvelope::Required) {
+                        if required {
                             writer.hard_line();
                         } else {
                             writer.soft_line();
                         }
                     });
-                    if matches!(envelope, ArgumentEnvelope::Required) {
+                    if required {
                         writer.text(")");
                     } else {
                         writer.if_break(")");
                     }
                     Ok(tail)
-                };
-                if matches!(envelope, ArgumentEnvelope::Breakable) {
-                    writer.group_with_flat_width(write)
-                } else {
-                    writer.group(true, write)
-                }
+                })
             }
         }
     }
@@ -409,6 +426,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn restricted_lexical_head(
         &self,
         mut expression: Expr,
+        scope: Span,
         grammar: RestrictedGrammar,
     ) -> Result<RestrictedHeadFacts, FormatError> {
         let mut comments =
@@ -427,7 +445,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         loop {
             comments.before(expression.span(self.ast).end);
             let data = self.ast.expr_data(expression);
-            if context.is_verbatim() || self.expression_is_parenthesized(data, context) {
+            if context.is_verbatim() {
+                break;
+            }
+            // A sequence emits its first member's leading comments before
+            // its generated pair, so that pair does not shield the keyword.
+            if let ExprData::SequenceExpression(sequence) = data {
+                let Some(first) = sequence.expressions(self.ast).first() else {
+                    break;
+                };
+                let first = self.ast.get_node_in_sub_range(first);
+                let position = ExpressionPosition::SequenceMember;
+                if matches!(
+                    self.ast.expr_data(first),
+                    ExprData::ParenthesizedExpression(_)
+                ) && self.sequence_member_pair_is_enclosed(
+                    first,
+                    &self.expression_content(first),
+                    position,
+                ) {
+                    break;
+                }
+                expression = first;
+                context = ExpressionContext::at(position);
+                continue;
+            }
+            if self.expression_is_parenthesized(data, context) {
                 break;
             }
             expression = match data {
@@ -440,7 +483,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             child,
                         ),
                     };
-                    if !self.parentheses_are_removable(boundary) {
+                    if !self.parentheses_are_removable_for_owner(boundary, None, Some(scope), None)
+                    {
                         break;
                     }
                     let leading = comments.leading(boundary.inner.start);
@@ -463,7 +507,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         };
                         let lookup = self.member_lookup_comments(comments, gap, operator, false);
                         requires_envelope |= lookup.iter().any(|comment| {
-                            self.line_breaks(comment.span.start, comment.span.end) != 0
+                            self.source_line_breaks(comment.span.start, comment.span.end) != 0
                                 || self.source_position_starts_line(comment.span.start)
                         });
                     }
@@ -474,12 +518,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     context = child_context;
                     child
-                }
-                ExprData::SequenceExpression(sequence) => {
-                    let Some(first) = sequence.expressions(self.ast).iter().next() else {
-                        break;
-                    };
-                    self.ast.get_node_in_sub_range(first)
                 }
                 ExprData::AssignmentExpression(assignment) => {
                     let AssignmentTargetData::SimpleAssignmentTarget(target) =
@@ -530,8 +568,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments.iter().enumerate().any(|(index, comment)| {
             let next = comments.get(index + 1).map_or(end, |next| next.span.start);
             comment.kind == CommentKind::Line
-                || self.line_breaks(comment.span.start, comment.span.end) != 0
-                || self.line_breaks(comment.span.end, next) != 0
+                || self.source_line_breaks(comment.span.start, comment.span.end) != 0
+                || self.source_line_breaks(comment.span.end, next) != 0
         })
     }
 }

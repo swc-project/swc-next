@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (a = 1, b = // c
+2; false;) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (
+  a = 1, b = 2; // c
+  false;
+) {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+for (
+	a = 1, b = 2; // c
+	false;
+) {}

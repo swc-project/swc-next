@@ -200,6 +200,15 @@ impl DiagnosticLines {
             .get(index)
             .is_some_and(|line| line.span.start <= position && line.sensitive_start <= position)
     }
+
+    /// Coverage starts on a later physical line; the directive's own suffix is
+    /// sensitive to layout but is not itself a covered line.
+    fn covered_at(&self, position: u32) -> bool {
+        let index = self.lines.partition_point(|line| line.span.end < position);
+        self.lines.get(index).is_some_and(|line| {
+            line.span.start <= position && line.sensitive_start == line.span.start
+        })
+    }
 }
 
 // Each covered line and parser comment is visited monotonically. Unknown
@@ -397,8 +406,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> LineConstraint {
         let constraint = self.terminal_close_constraint(boundary, end);
         if end <= comma && matches!(constraint, LineConstraint::NewLine(_)) {
-            let before = self.line_breaks(end, comma);
-            let after = self.line_breaks(comma + 1, boundary.close);
+            let before = self.source_line_breaks(end, comma);
+            let after = self.source_line_breaks(comma + 1, boundary.close);
             // The post-comma exterior belongs to the close, not the source packet.
             LineConstraint::NewLine(before.max(after.min(1)))
         } else {
@@ -410,6 +419,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.diagnostic_lines.sensitive_at(position)
     }
 
+    pub(super) fn diagnostic_line_is_covered(&self, position: u32) -> bool {
+        self.diagnostic_lines.covered_at(position)
+    }
+
     pub(super) fn line_constraint(&self, start: u32, end: u32) -> LineConstraint {
         if !self.diagnostic_line_is_sensitive(start) {
             LineConstraint::Unconstrained
@@ -419,7 +432,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn source_line_constraint(&self, start: u32, end: u32) -> LineConstraint {
-        match self.line_breaks(start, end) {
+        match self.source_line_breaks(start, end) {
             0 => LineConstraint::SameLine,
             count => LineConstraint::NewLine(count),
         }
@@ -474,7 +487,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ends = &self.diagnostic_lines.directive_ends;
         let count = ends.partition_point(|&end| end <= last.span.end);
         let &end = count.checked_sub(1).and_then(|index| ends.get(index))?;
-        if end < first.span.end || self.line_breaks(end, head) == 0 {
+        if end < first.span.end || self.source_line_breaks(end, head) == 0 {
             return None;
         }
         let lines = &self.diagnostic_lines.lines;

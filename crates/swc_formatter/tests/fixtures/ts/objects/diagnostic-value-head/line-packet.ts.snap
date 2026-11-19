@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+// @ts-ignore
+k /* a */ // l
+
+// B
+: 1 });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+({
+  // @ts-ignore
+  k
+
+  : /* a */ // l
+
+    // B
+    1,
+});
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+({
+	// @ts-ignore
+	k
+
+	: /* a */ // l
+
+		// B
+		1,
+});

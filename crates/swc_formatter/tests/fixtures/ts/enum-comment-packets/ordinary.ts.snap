@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+enum E { /* first */ /* second */ }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+enum E {
+  /* first */
+  /* second */
+}

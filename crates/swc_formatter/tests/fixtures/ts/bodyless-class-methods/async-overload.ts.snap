@@ -1,0 +1,65 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {
+  public async method<T>(value: T): Promise<T>;
+  public async method(value: unknown) { return value; }
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  public async method<T>(value: T): Promise<T>;
+  public async method(value: unknown) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class C {
+  public async method<
+    T,
+  >(
+    value: T,
+  ): Promise<T>;
+  public async method(
+    value: unknown,
+  ) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+class C {
+  public async method<
+    T
+  >(
+    value: T
+  ): Promise<T>
+  public async method(
+    value: unknown
+  ) {
+    return value
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+class C {
+  public async method<
+    T,
+  >(
+    value: T,
+  ): Promise<T>;
+  public async method(
+    value: unknown,
+  ) {
+    return value;
+  }
+}

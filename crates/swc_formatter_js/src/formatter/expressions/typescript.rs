@@ -10,8 +10,8 @@ use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{
-    AccessKind, ExpressionContext, ExpressionOutput, ExpressionPosition, ParenthesesOwner,
-    TailOwner,
+    AccessKind, ExpressionContext, ExpressionLayout, ExpressionOutput, ExpressionPosition,
+    ParenthesesOwner, TailOwner,
 };
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
@@ -28,7 +28,7 @@ use crate::formatter::types::{
 };
 use crate::{
     FormatError,
-    document::{GroupRequest, Writer, WriterExt},
+    document::{Fragment, GroupRequest, Writer, WriterExt},
 };
 
 #[derive(Clone, Copy)]
@@ -150,7 +150,8 @@ struct TypeAssertionOperand<'ast> {
 
 impl TypeAssertionOperandHead<'_> {
     fn has_leading_separator(&self) -> bool {
-        matches!(self, Self::Prepared { head, .. } if !head.head.comments.is_empty())
+        matches!(self, Self::Prepared { head, .. }
+            if head.head.comments.first().is_some_and(|comment| comment.kind == CommentKind::Line))
     }
 }
 
@@ -202,6 +203,24 @@ struct BinaryTypeBoundary<'ast> {
     operator: TypeBinaryOperator,
     left_mode: ContentMode,
     layout: BinaryTypeLayout<'ast>,
+}
+
+pub(super) struct PreparedBinaryTypeExpression<'ast> {
+    boundary: BinaryTypeBoundary<'ast>,
+    annotation: PreparedType,
+    tail_owner: TailOwner,
+}
+
+impl PreparedBinaryTypeExpression<'_> {
+    pub(super) fn operand_mode(&self) -> ContentMode {
+        self.boundary.left_mode
+    }
+}
+
+pub(super) struct RecordedTypeWrappedArgument<'ast> {
+    pub(super) normal: Fragment<'ast>,
+    pub(super) forced: Option<Fragment<'ast>>,
+    pub(super) tail: Option<ExpressionTail<'ast>>,
 }
 
 enum BinaryTypeLayout<'ast> {
@@ -470,25 +489,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator: BinaryOperatorKind,
         mut mode: ContentMode,
     ) -> bool {
-        if !matches!(
-            operator,
-            BinaryOperatorKind::Binary(
-                BinaryOperator::Add
-                    | BinaryOperator::Subtract
-                    | BinaryOperator::Modulo
-                    | BinaryOperator::LessThan
-                    | BinaryOperator::GreaterThan
-                    | BinaryOperator::GreaterThanOrEqual
-                    | BinaryOperator::RightShift
-                    | BinaryOperator::UnsignedRightShift,
-            )
-        ) {
+        if !instantiation_tail_conflicts(operator) {
             return false;
         }
-        // Expression-start tokens (`+`, `-`, and Babel's `%`) can turn the suffix
-        // into relational syntax. Single angles and right-angle operators also
-        // conflict with parsing the type-argument close. Follow only the printed
-        // right spine, stopping at a grammar pair that already closes it.
+        // Expression-start tokens and single angles can turn the suffix into
+        // relational syntax. Follow only the printed right spine, stopping at
+        // a grammar pair that already closes it.
         loop {
             let (expression, position) = match data {
                 ExprData::TsInstantiationExpression(_) => return true,
@@ -551,10 +557,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
-        let boundary = self.prepare_binary_type_boundary(
+        let source = self.prepare_binary_type_expression(
             expression,
-            &mut type_node,
+            annotation,
             operator,
             context.tail_owner,
         )?;
@@ -565,19 +570,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context
                         .type_operand(
                             ExpressionPosition::TypeBinaryOperand,
-                            boundary.left_mode,
+                            source.operand_mode(),
                             TailOwner::ParentOperation,
                         )
                         .with_conditional_envelope(context.conditional_envelope.terminal_head()),
                     writer,
                 )?;
-                self.format_expression_tail(tail, writer)?;
-                self.format_binary_type_right_output(
-                    boundary,
-                    type_node,
-                    context.tail_owner == TailOwner::ParentOperation,
-                    writer,
-                )
+                self.format_binary_type_expression_suffix(source, tail, writer)
             };
             let receiver = context.is_call_or_member_receiver()
                 || matches!(context.position, ExpressionPosition::NewCallee);
@@ -591,6 +590,76 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 write(writer)
             }
+        })
+    }
+
+    pub(super) fn prepare_binary_type_expression(
+        &self,
+        expression: Expr,
+        annotation: TsType,
+        operator: TypeBinaryOperator,
+        tail_owner: TailOwner,
+    ) -> Result<PreparedBinaryTypeExpression<'ast>, FormatError> {
+        let mut annotation = self.prepare_type(annotation, ContentMode::Formatted);
+        let boundary =
+            self.prepare_binary_type_boundary(expression, &mut annotation, operator, tail_owner)?;
+        Ok(PreparedBinaryTypeExpression {
+            boundary,
+            annotation,
+            tail_owner,
+        })
+    }
+
+    fn format_binary_type_expression_suffix(
+        &mut self,
+        source: PreparedBinaryTypeExpression<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_tail(tail, writer)?;
+        self.format_binary_type_right_output(
+            source.boundary,
+            source.annotation,
+            source.tail_owner == TailOwner::ParentOperation,
+            writer,
+        )
+    }
+
+    pub(super) fn record_type_wrapped_argument(
+        &mut self,
+        mut normal: Fragment<'ast>,
+        mut forced: Option<Fragment<'ast>>,
+        wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
+        layout: ExpressionLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedTypeWrappedArgument<'ast>, FormatError> {
+        let mut tail = None;
+        if !wrappers.is_empty() {
+            for source in wrappers.into_iter().rev() {
+                let (suffix, output) = writer.record_with_value(|writer| {
+                    self.format_binary_type_expression_suffix(source, tail.take(), writer)
+                })?;
+                tail = output.pending;
+                normal = writer.join_fragments(normal, false, suffix);
+                normal = writer.group_fragment(false, normal);
+                forced = forced.map(|value| {
+                    let value = writer.join_fragments(value, false, suffix);
+                    writer.group_fragment(false, value)
+                });
+            }
+            if layout == ExpressionLayout::Flat {
+                let (value, ()) = writer.record_with_value(|writer| {
+                    layout.write(writer, |writer| writer.write_fragment(normal));
+                    Ok::<_, FormatError>(())
+                })?;
+                normal = value;
+                forced = None;
+            }
+        }
+        Ok(RecordedTypeWrappedArgument {
+            normal,
+            forced,
+            tail,
         })
     }
 
@@ -1393,7 +1462,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(layout, CommentRunLayout::Leading(_)) {
                     let breaks = self.line_breaks(comment.span.end, next);
                     if breaks > 1
-                        || breaks == 1 && self.source_position_starts_line(comment.span.start)
+                        || breaks == 1 && self.layout_position_starts_line(comment.span.start)
                     {
                         return true;
                     }
@@ -1516,8 +1585,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(closing) = self.find_token(suffix, comments, ">") else {
             return Err(self.unsupported("type assertion closing token", node));
         };
-        Ok(self.line_breaks(closing + 1, expression_span.start) != 0
-            || self.raw_type_assertion_head_needs_grammar_barrier(self.ast.expr_data(expression)))
+        Ok(
+            self.source_line_breaks(closing + 1, expression_span.start) != 0
+                || self
+                    .raw_type_assertion_head_needs_grammar_barrier(self.ast.expr_data(expression)),
+        )
     }
 
     /// A raw subtree keeps its actual openings and never re-enters formatted owners.
@@ -1613,10 +1685,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if boundary.is_empty() && body.starts_with_type_parameters(self.ast) {
                         writer.space();
                     }
-                    self.format_comment_boundary(&boundary, writer)?;
-                    boundary
-                        .gap()
-                        .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    if let Some(first) = boundary.comments().first() {
+                        self.line_constraint(boundary.source_end(), first.span.start)
+                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                        self.format_comment_boundary_with_layout(
+                            &boundary,
+                            CommentRunLayout::FlatLeading(body.source_start()),
+                            writer,
+                        )?;
+                    } else {
+                        boundary
+                            .gap()
+                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    }
                     self.format_prepared_delimited_type(
                         body,
                         TypeContext::Root,
@@ -1684,7 +1765,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             TypeAssertionOperandHead::Boundary { before, content } => {
-                self.format_type_expression_gap(before, FlatSeparator::Empty, writer)?;
+                match before {
+                    TypeExpressionGap::Formatted(boundary)
+                        if boundary.comments().first().is_some_and(|comment| {
+                            comment.kind == CommentKind::Block
+                                && self
+                                    .source_line_breaks(boundary.source_end(), comment.span.start)
+                                    == 0
+                        }) =>
+                    {
+                        self.format_comment_boundary_after_separator(&boundary, writer)?;
+                        boundary
+                            .gap()
+                            .write(writer, FlatSeparator::Space, Writer::space);
+                    }
+                    before => {
+                        self.format_type_expression_gap(before, FlatSeparator::Empty, writer)?;
+                    }
+                }
                 self.format_expression_prepared_output(
                     operand.expression,
                     content,
@@ -1747,7 +1845,6 @@ pub(super) fn type_expression_needs_parentheses(
             ExpressionPosition::UnaryArgument(_)
                 | ExpressionPosition::ParenthesizedUnaryArgument(_)
                 | ExpressionPosition::AwaitArgument
-                | ExpressionPosition::YieldArgument
                 | ExpressionPosition::SpreadArgument
                 | ExpressionPosition::BinaryOperand { .. }
                 | ExpressionPosition::MemberObject(_)
@@ -1796,25 +1893,33 @@ pub(super) fn type_expression_needs_parentheses(
                     side: OperandSide::Left,
                 }
         )),
-        ExprData::TsInstantiationExpression(_)
-            if matches!(
-                position,
-                ExpressionPosition::MemberObject(_)
-                    | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::TemplateTag
-                    | ExpressionPosition::NewCallee
-                    | ExpressionPosition::Superclass
-                    | ExpressionPosition::NonNullOperand
-                    | ExpressionPosition::InstantiationOperand
-                    | ExpressionPosition::BinaryOperand {
-                        operator: BinaryOperatorKind::Binary(_),
-                        side: OperandSide::Left,
-                    }
-            ) =>
-        {
-            Some(true)
-        }
+        ExprData::TsInstantiationExpression(_) => Some(match position {
+            ExpressionPosition::MemberObject(_)
+            | ExpressionPosition::MemberAssignmentObject
+            | ExpressionPosition::TemplateTag
+            | ExpressionPosition::NonNullOperand
+            | ExpressionPosition::InstantiationOperand => true,
+            ExpressionPosition::BinaryOperand {
+                operator,
+                side: OperandSide::Left,
+            } => instantiation_tail_conflicts(operator),
+            _ => false,
+        }),
         _ => None,
     }
+}
+
+fn instantiation_tail_conflicts(operator: BinaryOperatorKind) -> bool {
+    matches!(
+        operator,
+        BinaryOperatorKind::Binary(
+            BinaryOperator::Add
+                | BinaryOperator::Subtract
+                | BinaryOperator::LessThan
+                | BinaryOperator::GreaterThan
+                | BinaryOperator::GreaterThanOrEqual
+                | BinaryOperator::RightShift
+                | BinaryOperator::UnsignedRightShift,
+        )
+    )
 }

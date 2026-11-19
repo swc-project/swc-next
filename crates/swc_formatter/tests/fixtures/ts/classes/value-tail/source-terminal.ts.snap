@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a // note
+= 0XfF
+// prettier-ignore
+; b = 2; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  a = // note
+    0XfF
+// prettier-ignore
+;
+  b = 2;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class C {
+  a = // note
+    0XfF
+// prettier-ignore
+;
+  b = 2
+}

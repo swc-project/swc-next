@@ -6,41 +6,34 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-/* before */
-item /* after */
+/* before */ item /* after */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */
 
 ---------- Options ----------
 {"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
-/* before */
-item; /* after */
+/* before */ item; /* after */

@@ -1,6 +1,6 @@
 //! Shared source-ordered argument slots and comma/comment boundaries.
 
-use super::callbacks::TestCallback;
+use super::callbacks::{SelectedArgument, TestCallback};
 use super::calls::CallCallee;
 use super::typescript::ExpressionTypeArguments;
 use super::{
@@ -12,7 +12,8 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
-    ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
+    CommentDirective, ContentMode, DelimitedFollowing, DelimitedSuppression, LintLineDirective,
+    SuppressionPosition,
 };
 use crate::{
     FormatError, TrailingCommas,
@@ -105,6 +106,7 @@ struct ItemComments<'item, 'ast> {
     array: Option<&'item mut ArrayCommentOwner<'ast>>,
     /// The preceding boundary's certificate for borrowing the leading comment packet.
     separator_transition: Option<SourceSeparatorTransition>,
+    runtime: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -139,8 +141,11 @@ pub(in crate::formatter) struct PreparedItem {
     pub(in crate::formatter) mode: ContentMode,
     has_leading_comments: bool,
     trailing_comma: TrailingCommaPolicy,
+    omit_source_terminal_comma: bool,
     suppression: Option<DelimitedSuppression>,
     separator_spacing: SeparatorSpacing,
+    /// The following node's gap retains its source punctuation and spacing.
+    source_following: bool,
 }
 
 impl PreparedItem {
@@ -150,6 +155,10 @@ impl PreparedItem {
 
     pub(in crate::formatter) fn set_trailing_comma(&mut self, policy: TrailingCommaPolicy) {
         self.trailing_comma = policy;
+    }
+
+    pub(in crate::formatter) fn omit_source_terminal_comma(&mut self) {
+        self.omit_source_terminal_comma = true;
     }
 
     pub(in crate::formatter) fn set_leading_mode(&mut self, mode: ContentMode) {
@@ -273,6 +282,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         slot: ArrayArgumentSlot,
         span: Span,
         trailing_comma: TrailingCommaPolicy,
+        protect_runtime_items: bool,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
@@ -301,10 +311,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head: CommentRunLayout::Source,
                 array: array_comments.as_deref_mut(),
                 separator_transition: transition,
+                runtime: protect_runtime_items,
             },
             writer,
         )?;
         item.set_leading_mode(mode);
+        if protect_runtime_items {
+            self.protect_runtime_item(&mut item);
+        }
         item.set_trailing_comma(trailing_comma);
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
@@ -341,6 +355,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head: CommentRunLayout::Source,
                 array: None,
                 separator_transition: transition,
+                runtime: false,
             },
             writer,
         )
@@ -355,15 +370,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         transition: Option<SourceSeparatorTransition>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
+        self.prepare_call_argument_item_with_policy(
+            item_span,
+            following,
+            span,
+            CallArgumentPolicy {
+                trailing_comma,
+                protect_runtime_items: true,
+            },
+            transition,
+            writer,
+        )
+    }
+
+    fn prepare_call_argument_item_with_policy(
+        &mut self,
+        item_span: Span,
+        following: FollowingItem,
+        span: Span,
+        policy: CallArgumentPolicy,
+        transition: Option<SourceSeparatorTransition>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedItem, FormatError> {
         self.prepare_delimited_item_with_comments(
             item_span,
             following,
             span,
-            trailing_comma,
+            policy.trailing_comma,
             ItemComments {
                 head: CommentRunLayout::GroupedLeading(item_span.start),
                 array: None,
                 separator_transition: transition,
+                runtime: policy.protect_runtime_items,
             },
             writer,
         )
@@ -425,6 +463,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             span,
             mode,
             has_leading_comments,
+            omit_source_terminal_comma: false,
             trailing_comma: if trailing_comma {
                 TrailingCommaPolicy::IfBreak(ConditionTarget::Current)
             } else {
@@ -432,11 +471,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             suppression,
             separator_spacing: SeparatorSpacing::SourcePacket,
+            source_following: false,
         };
         if !has_leading_comments {
             return Ok(item);
         }
-        let source_head = comments.head.is_source()
+        let source_marker = comments.runtime
+            && leading.last().is_some_and(|&comment| {
+                matches!(
+                    self.comment_directive(comment),
+                    Some(CommentDirective::LintLine(LintLineDirective::SameLine))
+                ) && self.source_line_breaks(comment.span.start, comment.span.end) == 0
+            });
+        let source_head = source_marker
+            || comments.head.is_source()
             || !matches!(
                 self.comment_binding(
                     leading,
@@ -465,7 +513,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(end) = head.gap_end
             && let Some(last) = head.comments.last()
         {
-            self.comment_gap_with_packet(last.span.end, end, packet.as_ref(), writer);
+            if source_marker {
+                self.source_line_constraint(last.span.end, end).write(
+                    writer,
+                    FlatSeparator::Space,
+                    |_| {},
+                );
+            } else {
+                self.comment_gap_after_with_packet(*last, end, packet.as_ref(), writer);
+            }
         }
         Ok(item)
     }
@@ -573,8 +629,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             span,
             mode,
             trailing_comma,
+            omit_source_terminal_comma,
             suppression,
             separator_spacing,
+            source_following,
             ..
         } = item;
         let following_span = following.node();
@@ -589,6 +647,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .map_or(ContentMode::Formatted, |source| source.following);
         let preceding = suppression.as_ref().and_then(|source| source.preceding);
+        if let (true, Some(following_start)) = (source_following, following_start) {
+            let gap = Span::new(item_span.end, following_start);
+            self.format_expression_tail_with_array_comments(
+                tail,
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+            let mut source = self.prepare_delimited_source_gap(gap, DelimitedFollowing::Node);
+            source.following = self.source_line_constraint(source.end, gap.end);
+            let source = self.format_prepared_delimited_source_gap(source, writer)?;
+            return Ok(ItemBoundary {
+                end: source.end,
+                separator: Separator::Source(source.following),
+                following_mode: ContentMode::Verbatim,
+                transition: None,
+                terminal_close: None,
+                elisions: match following {
+                    FollowingItem::Elision { holes, .. } => ElisionLayout::Source(holes),
+                    _ => ElisionLayout::Formatted,
+                },
+            });
+        }
         if matches!(following, FollowingItem::ResolvedTerminal(_))
             || preceding.is_some()
                 && (following_span.is_some() || matches!(following, FollowingItem::Elision { .. }))
@@ -700,8 +780,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 None => {
                     let constraint = self.terminal_close_constraint(closing, end);
-                    if release_terminal
-                        && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+                    // A generated optional comma owns the same terminal exterior
+                    // as a real comma on the next pass, even for a covered item.
+                    if matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
                         && matches!(constraint, LineConstraint::NewLine(_))
                     {
                         Some(LineConstraint::NewLine(1))
@@ -787,9 +868,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let preserve_comma =
             constrained || matches!(following, FollowingItem::Elision { .. }) && elision.is_none();
-        // A directive-covered separator owns the comments on its source side.
-        let protected_comma =
-            comma.filter(|&position| constrained && self.diagnostic_line_is_sensitive(position));
+        // An option that forbids call or parameter commas also owns a covered
+        // terminal comma; other diagnostic boundaries retain their source token.
+        let protected_comma = comma.filter(|&position| {
+            constrained
+                && self.diagnostic_line_is_sensitive(position)
+                && (has_more
+                    || !omit_source_terminal_comma
+                    || mode != ContentMode::Formatted
+                    || suppression.is_some())
+        });
         let trailing_limit = if let Some(elision) = &elision {
             elision.comma
         } else if matches!(following, FollowingItem::Elision { .. }) {
@@ -833,8 +921,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             |elision| elision.before_separator,
         );
         let (trailing_count, physical_break, inline_line) = if elision.is_some() {
-            // The actual separator, not an AST trailing attachment, divides
-            // this packet. Its before side must be printed before punctuation.
+            // The source separator divides the packet; comments on its
+            // before side stay before punctuation rather than becoming suffixes.
             (0, false, false)
         } else if ordinary_attachment {
             let (trailing, leading) = self.split_separator_comments(
@@ -970,7 +1058,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let layout = if bare_gap {
                 LineConstraint::Unconstrained
             } else {
-                self.source_separator_constraint(end, owner_start, Some(transition))
+                // A moved comma does not consume the gap after its queued Line.
+                let gap_start = if separator_coverage_released && inline_line {
+                    boundary_end
+                } else {
+                    end
+                };
+                self.source_separator_constraint(gap_start, owner_start, Some(transition))
             };
             transition.following_gap = Some(PreparedSeparatorGap {
                 owner_start,
@@ -1015,7 +1109,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         // Fill must retain the leading packet's own-line attachment for blocks too.
         let mut separator = if comments[boundary_count..].iter().any(|comment| {
-            comment.kind == CommentKind::Line || self.source_line_starts_line(comment.span.start)
+            comment.kind == CommentKind::Line || self.layout_line_starts_line(comment.span.start)
         }) {
             Separator::OwnLineComment
         } else {
@@ -1089,11 +1183,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let own_line = self.comments.between(Span::new(end, span.end))?;
             let own_line = self.comments.take(own_line.len());
             if let Some(first) = own_line.first() {
+                // The real comma separates this packet from the item's source
+                // gap, even when its optional output is owned by the call group.
+                let gap_start = comma
+                    .filter(|&comma| comma < first.span.start)
+                    .map_or(end, |comma| end.max(comma + 1));
                 if constrained {
-                    self.comment_gap(end, first.span.start, writer);
+                    self.comment_gap(gap_start, first.span.start, writer);
                 } else {
                     writer.hard_line();
-                    if self.previous_line_is_empty(end, first.span.start) {
+                    if self.previous_line_is_empty(gap_start, first.span.start) {
                         writer.hard_line();
                     }
                 }
@@ -1146,7 +1245,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        // Both commas are source syntax. The real item consumes only its
+        // Both commas are source syntax. The real item owns only its
         // before-separator packet; the hole owns the packet after that comma.
         Some(PreparedElision {
             comma,
@@ -1304,6 +1403,7 @@ pub(super) struct SourceArguments<'ast> {
     pub(super) allow_composition: bool,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) binary_indent: OperandIndent,
+    pub(super) constructor: bool,
 }
 
 struct ArgumentPunctuation {
@@ -1326,6 +1426,17 @@ struct CallArgumentSlot {
     following: Option<Argument>,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct CallArgumentPolicy {
+    pub(super) trailing_comma: bool,
+    pub(super) protect_runtime_items: bool,
+}
+
+pub(super) struct SelectedArgumentSequence {
+    pub(super) arguments: SubRange<Argument>,
+    pub(super) content: Span,
+}
+
 pub(super) struct ArgumentHead {
     pub(super) first_mode: ContentMode,
     pub(super) source_opening: Option<SourceArgumentOpening>,
@@ -1334,6 +1445,7 @@ pub(super) struct ArgumentHead {
     pub(super) closing: DelimitedClose,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) independent_callback: Option<ArrowFunctionExpression>,
+    pub(super) constructor: bool,
     pub(super) binary_indent: OperandIndent,
 }
 
@@ -1852,6 +1964,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             curried_callee: None,
             jsx_call: None,
             binary_indent: OperandIndent::Expression,
+            constructor: false,
         };
         list.frame = self.structural_argument_frame(&list);
         Some(list)
@@ -1988,7 +2101,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let outside_line = comments.iter().any(|comment| {
             comment.kind == CommentKind::Line
-                && (!self.source_line_starts_line(comment.span.start)
+                && (!self.layout_line_starts_line(comment.span.start)
                     || !matches!(binding, CommentBinding::Unbound))
         });
         let prefix = if comments.is_empty()
@@ -2035,7 +2148,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut previous_end = source_end;
         let mut pending_line = false;
         for comment in comments {
-            let own_line = self.source_position_starts_line(comment.span.start);
+            let own_line = if self.comment_semantics(*comment).is_ordinary() {
+                self.layout_position_starts_line(comment.span.start)
+            } else {
+                self.source_position_starts_line(comment.span.start)
+            };
             let gap_start = operator
                 .filter(|operator| {
                     previous_end <= operator.start && operator.end <= comment.span.start
@@ -2100,7 +2217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::TaggedTemplateExpression(tagged) => tagged.quasi(ast),
             _ => return false,
         };
-        if self.source_position_starts_line(prepared.expression.span(ast).start) {
+        if self.layout_position_starts_line(prepared.expression.span(ast).start) {
             return false;
         }
         let multiline = template.quasis(ast).iter().any(|id| {
@@ -2134,26 +2251,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return false;
         }
-        let content = Span::new(list.callee_span.end, list.delimiters.end - 1);
-        if self.diagnostic_range_is_sensitive(content) {
-            return false;
-        }
-        let mut previous = content.start;
+        let boundary_is_clear = |gap| {
+            !self.diagnostic_range_is_sensitive(gap) && self.comments.in_range(gap).is_empty()
+        };
+        let mut previous = list.callee_span.end;
         for id in list.arguments.iter() {
             let argument: Argument = self.ast.get_node_in_sub_range(id);
             let span = argument.span(self.ast);
-            if !self
-                .comments
-                .in_range(Span::new(previous, span.start))
-                .is_empty()
-            {
+            if !boundary_is_clear(Span::new(previous, span.start)) {
                 return false;
             }
             previous = span.end;
         }
-        self.comments
-            .in_range(Span::new(previous, content.end))
-            .is_empty()
+        boundary_is_clear(Span::new(previous, list.delimiters.end - 1))
     }
 
     /// The module frame owns delimiters; each argument retains its document
@@ -2283,6 +2393,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             frame,
             jsx_call,
             binary_indent,
+            constructor,
             allow_composition,
             ..
         } = list;
@@ -2416,16 +2527,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
         }
+        // A prefix may have been borrowed into the argument list before its
+        // opener. Include that packet and both source delimiters in the proof.
+        let protect_runtime_items = !arguments.is_empty()
+            && self.runtime_list_has_line_directive(Span::new(
+                content.start.min(opening),
+                delimiters.end,
+            ));
+        let covered_opening = if protect_runtime_items && source_opening.is_none() {
+            first.and_then(|argument| {
+                self.lint_opening_constraint(opening + 1, argument.node.span(ast).start)
+            })
+        } else {
+            None
+        };
         let fixed_frame = frame.is_fixed();
-        let hugged = fixed_frame
-            || source_opening.is_none()
-                && arguments.len() == 1
-                && self.comments.in_range(content).is_empty()
-                && !self.diagnostic_range_is_sensitive(content)
-                && first.is_some_and(|argument| match ast.argument_data(argument.node) {
-                    ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
-                    ArgumentData::SpreadElement(_) => false,
-                });
         // An emitted empty separator expands the actual call group below.
         let expand =
             !fixed_frame && allow_composition && self.arguments_are_function_composition(arguments);
@@ -2435,13 +2551,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 DelimitedClose::Terminal(closing)
             };
-        if !fixed_frame
-            && !expand
-            && let Some(selected) = self.select_argument_layout(arguments, !hugged)
-        {
-            let tail = self.format_selected_arguments(
-                arguments,
-                content,
+        let format_selected = |formatter: &mut Self,
+                               selected: SelectedArgument<'ast>,
+                               chain_facts: Option<&mut ChainArgumentFacts>,
+                               writer: &mut Writer<'ast>| {
+            let tail = formatter.format_selected_arguments(
+                SelectedArgumentSequence { arguments, content },
                 ArgumentHead {
                     first_mode,
                     source_opening,
@@ -2449,17 +2564,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     closing,
                     jsx_call,
                     independent_callback: frame.independent_callback(),
+                    constructor,
                     binary_indent,
                 },
+                protect_runtime_items,
                 selected,
                 chain_facts,
                 writer,
             )?;
-            return Ok(FormattedArguments {
+            Ok(FormattedArguments {
                 tail,
                 has_outside_prefix,
-            });
+            })
+        };
+        let formatted_selection = !fixed_frame
+            && covered_opening.is_none()
+            && !expand
+            && first_mode == ContentMode::Formatted
+            && callee_mode == ContentMode::Formatted
+            && prefix_mode == ContentMode::Formatted;
+        if formatted_selection && let Some(selected) = self.select_argument_layout(arguments) {
+            return format_selected(self, selected, chain_facts, writer);
         }
+        let hugged = fixed_frame
+            || source_opening.is_none()
+                && arguments.len() == 1
+                && self.comments.in_range(content).is_empty()
+                && !self.diagnostic_range_is_sensitive(content)
+                && first.is_some_and(|argument| match ast.argument_data(argument.node) {
+                    ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
+                    ArgumentData::SpreadElement(_) => false,
+                });
+        if !fixed_frame
+            && covered_opening.is_none()
+            && !expand
+            && !formatted_selection
+            && !hugged
+            && let Some(selected) = self.select_argument_layout(arguments)
+        {
+            return format_selected(self, selected, chain_facts, writer);
+        }
+        let policy = CallArgumentPolicy {
+            trailing_comma: !hugged && self.options.trailing_commas == TrailingCommas::All,
+            protect_runtime_items,
+        };
         let tail = group.write(expand, writer, |writer| {
             if let Some(opening) = source_opening {
                 self.format_verbatim(opening.span, writer)?;
@@ -2473,11 +2621,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .following
                             .write(writer, FlatSeparator::Empty, Writer::soft_line);
                     } else {
-                        self.opening_line_constraint(content).write(
-                            writer,
-                            FlatSeparator::Empty,
-                            Writer::soft_line,
-                        );
+                        let opening = covered_opening
+                            .unwrap_or_else(|| self.opening_line_constraint(content));
+                        opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                     }
                 }
                 let mut arguments = arguments
@@ -2494,8 +2640,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         slot,
                         previous,
                         content,
-                        !hugged && self.options.trailing_commas == TrailingCommas::All,
                         frame,
+                        policy,
                         writer,
                     )?;
                     if previous.is_none() && first_mode == ContentMode::Verbatim {
@@ -2551,7 +2697,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(None)
         })?;
-        if fixed_frame && let Some(facts) = chain_facts {
+        // A fixed or structurally expanded argument frame already owns its
+        // collection preferences; they must not expand the enclosing chain.
+        if (fixed_frame || expand)
+            && let Some(facts) = chain_facts
+        {
             facts.source_expanded_object = false;
         }
         Ok(FormattedArguments {
@@ -2565,7 +2715,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<Argument>,
         previous: Option<ItemBoundary>,
         content: Span,
-        trailing_comma: bool,
+        policy: CallArgumentPolicy,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         let slot = CallArgumentSlot {
@@ -2576,8 +2726,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             slot,
             previous,
             content,
-            trailing_comma,
             CallArgumentFrame::Ordinary,
+            policy,
             writer,
         )
     }
@@ -2587,8 +2737,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         slot: CallArgumentSlot,
         previous: Option<ItemBoundary>,
         content: Span,
-        trailing_comma: bool,
         frame: CallArgumentFrame,
+        policy: CallArgumentPolicy,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         let CallArgumentSlot { node, following } = slot;
@@ -2617,7 +2767,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .iter()
                         .any(|comment| comment.kind == CommentKind::Line)
                     || leading.first().is_some_and(|comment| {
-                        self.source_position_starts_line(comment.span.start)
+                        self.layout_position_starts_line(comment.span.start)
                     }) && leading
                         .last()
                         .is_some_and(|comment| self.line_breaks(comment.span.end, span.start) != 0))
@@ -2635,19 +2785,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let following = following.map_or(FollowingItem::End, |argument| {
             FollowingItem::Node(argument.span(self.ast))
         });
-        let mut item = self.prepare_call_argument_item(
+        let mut item = self.prepare_call_argument_item_with_policy(
             span,
             following,
             Span::new(end, content.end),
-            trailing_comma,
+            policy,
             previous.and_then(|boundary| boundary.transition),
             writer,
         )?;
         item.separator_spacing = separator_spacing;
+        if self.options.trailing_commas != TrailingCommas::All {
+            item.omit_source_terminal_comma();
+        }
         if let Some(previous) = previous {
             item.set_leading_mode(previous.following_mode);
         }
+        if policy.protect_runtime_items {
+            self.protect_runtime_item(&mut item);
+        }
         Ok(item)
+    }
+
+    /// Runtime items retain their covered source line and punctuation.
+    /// A line-scoped marker also owns its adjoining source gap.
+    pub(in crate::formatter) fn protect_runtime_item(&self, item: &mut PreparedItem) {
+        let left = item.item_span.end;
+        let covered_line = left.checked_sub(1).and_then(|end| self.lint_line_at(end));
+        if item.item_span.start < left
+            && covered_line.is_some_and(|line| line.start <= item.item_span.start)
+        {
+            item.set_leading_mode(ContentMode::Verbatim);
+        }
+        let Some(next) = item.following.node() else {
+            return;
+        };
+        let right = next.start;
+        if left == 0 || left > right || right as usize >= self.ast.source().len() {
+            return;
+        }
+        let gap = Span::new(left, right);
+        // Covered-line spans exclude terminators, so containment also proves
+        // that this source gap has no semantic line break.
+        let covered = covered_line.is_some_and(|line| right <= line.end);
+        let semantic_gap = !covered && self.has_line_directive_in(gap);
+        if covered || semantic_gap {
+            item.set_leading_mode(ContentMode::Verbatim);
+            item.source_following = true;
+        }
     }
 
     /// Inline comments belong to the argument's final line; an own-line packet ends it.

@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function g() { return x > 0 // c
+ && <span>y</span>; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function g() {
+  return (
+    x > 0 && ( // c
+      <span>y</span>
+    )
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function g() {
+  return (
+    x > 0 && ( // c
+      <span>y</span>
+    )
+  )
+}

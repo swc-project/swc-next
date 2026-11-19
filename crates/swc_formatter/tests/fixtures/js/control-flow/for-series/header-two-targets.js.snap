@@ -10,7 +10,7 @@ for(var x=1+2
 ---------- Output ----------
 for (
   var x = 1 + 2
-/* prettier-ignore */
+  /* prettier-ignore */
 ; /* prettier-ignore */ test();
   step()
 ) {}
@@ -20,7 +20,7 @@ for (
 ---------- Output ----------
 for (
   var x = 1 + 2
-/* prettier-ignore */
+  /* prettier-ignore */
 ; /* prettier-ignore */ test();
   step()
 ) {}
@@ -30,7 +30,7 @@ for (
 ---------- Output ----------
 for (
   var x = 1 + 2
-/* prettier-ignore */
+  /* prettier-ignore */
 ; /* prettier-ignore */ test();
   step()
 ) {}
@@ -40,7 +40,7 @@ for (
 ---------- Output ----------
 for (
   var x = 1 + 2
-/* prettier-ignore */
+  /* prettier-ignore */
 ; /* prettier-ignore */ test();
   step()
 ) {}

@@ -11,7 +11,7 @@ use super::comments::{CommentBinding, CommentRunLayout, NodeHead};
 use super::diagnostics::FlatSeparator;
 use super::expressions::{ExpressionContext, ExpressionPosition};
 use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
-use super::suppression::ContentMode;
+use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -90,7 +90,9 @@ pub(super) enum DecoratorLayout {
     Class,
     Member,
     Parameter,
+    ParameterShared,
     ParameterProperty,
+    ParameterPropertyShared,
 }
 
 pub(super) struct RemovedDecoratorHead<'ast> {
@@ -335,6 +337,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &'ast [Comment],
         previous: Span,
         next: Span,
+        allow_suppression_relocation: bool,
     ) -> Option<(&'ast [Comment], &'ast [Comment])> {
         if comments.is_empty()
             || previous.start >= previous.end
@@ -364,10 +367,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .get(end as usize..next.start as usize)?
             .chars()
             .all(is_source_whitespace)
-            || !matches!(
-                self.comment_binding(comments, Span::new(previous.end, next.start), None),
-                CommentBinding::Unbound
-            )
+            || !self
+                .comment_binding(
+                    comments,
+                    Span::new(previous.end, next.start),
+                    allow_suppression_relocation.then_some(next),
+                )
+                .allows_relocation(Some(next))
         {
             return None;
         }
@@ -391,120 +397,204 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap.is_some_and(|source| {
                     source
                         .trim_start_matches(is_source_horizontal_whitespace)
-                        .starts_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                        .starts_with(['\n', '\r'])
                         || source
                             .trim_end_matches(is_source_horizontal_whitespace)
-                            .ends_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                            .ends_with(['\n', '\r'])
                 })
             });
-        if matches!(layout, DecoratorLayout::Class) {
-            // The complete class frame owns the mandatory decorator break.
-            writer.break_parent();
-        }
-        writer.group(
-            matches!(layout, DecoratorLayout::Class) || source_break,
-            |writer| {
-                let mut current = prefix.first;
-                let mut remaining = prefix.remaining;
-                loop {
-                    let next = remaining.first().map(|id| ast.get_node_in_sub_range(id));
-                    let span = current.span(ast);
-                    let following = next.map_or(core_start, |node| node.span(ast).start);
-                    if following < span.end {
+        // Class separators supply their actual hard lines. A covered same-line
+        // separator must not expand the complete decorated-class frame.
+        let mut write_sequence = |writer: &mut Writer<'ast>| {
+            let mut current = prefix.first;
+            let mut remaining = prefix.remaining;
+            let mut incoming_mode = ContentMode::Formatted;
+            loop {
+                let next = remaining.first().map(|id| ast.get_node_in_sub_range(id));
+                let span = current.span(ast);
+                let following = next.map_or(core_start, |node| node.span(ast).start);
+                if following < span.end {
+                    return Err(FormatError::unsupported(
+                        "decorator source order",
+                        None,
+                        prefix.envelope,
+                    ));
+                }
+                let (preceding_is_suppressed, following_mode, allow_suppression_relocation) =
+                    if self.has_suppression {
+                        let comments = self.comments.in_range(Span::new(span.end, following));
+                        let mut following_is_suppressed = false;
+                        let mut preceding_is_suppressed = false;
+                        for position in self.suppression_positions(comments, following) {
+                            if next.is_none() {
+                                preceding_is_suppressed |= match layout {
+                                    DecoratorLayout::Class
+                                    | DecoratorLayout::ParameterProperty
+                                    | DecoratorLayout::ParameterPropertyShared => true,
+                                    DecoratorLayout::Member => {
+                                        !matches!(position, SuppressionPosition::Inline)
+                                    }
+                                    DecoratorLayout::Parameter
+                                    | DecoratorLayout::ParameterShared => {
+                                        !matches!(position, SuppressionPosition::OwnLine)
+                                    }
+                                };
+                            } else {
+                                match position {
+                                    SuppressionPosition::EndOfLine => {
+                                        preceding_is_suppressed = true
+                                    }
+                                    SuppressionPosition::OwnLine
+                                        if matches!(
+                                            layout,
+                                            DecoratorLayout::Member
+                                                | DecoratorLayout::ParameterProperty
+                                                | DecoratorLayout::ParameterPropertyShared
+                                        ) =>
+                                    {
+                                        preceding_is_suppressed = true;
+                                    }
+                                    SuppressionPosition::OwnLine | SuppressionPosition::Inline => {
+                                        following_is_suppressed = true;
+                                    }
+                                }
+                            }
+                        }
+                        (
+                            preceding_is_suppressed,
+                            if following_is_suppressed {
+                                ContentMode::Verbatim
+                            } else {
+                                ContentMode::Formatted
+                            },
+                            following_is_suppressed && !preceding_is_suppressed,
+                        )
+                    } else {
+                        (false, ContentMode::Formatted, false)
+                    };
+                let keep_inline_suppression = allow_suppression_relocation
+                    && matches!(
+                        layout,
+                        DecoratorLayout::Member
+                            | DecoratorLayout::ParameterProperty
+                            | DecoratorLayout::ParameterPropertyShared
+                    )
+                    && self.source_line_breaks(span.end, following) == 0;
+                let expression = current.expression(ast);
+                let marker_end = span.start + u32::from(self.source(span).starts_with('@'));
+                let expression_span = expression.span(ast);
+                let physical_head =
+                    if expression_span.start >= marker_end && expression_span.end <= span.end {
+                        Span::new(marker_end, expression_span.start)
+                    } else {
+                        Span::new(marker_end, span.end.max(marker_end))
+                    };
+                let comments = self.comments.between(physical_head)?;
+                if expression_span.start < marker_end || expression_span.end > span.end {
+                    let binding = self.comment_binding(comments, physical_head, None);
+                    if !binding.allows_relocation(None) {
                         return Err(FormatError::unsupported(
-                            "decorator source order",
+                            "replaced decorator unknown source binding",
                             None,
-                            prefix.envelope,
+                            span,
                         ));
                     }
-                    let expression = current.expression(ast);
-                    let marker_end = span.start + u32::from(self.source(span).starts_with('@'));
-                    let expression_span = expression.span(ast);
-                    let physical_head =
-                        if expression_span.start >= marker_end && expression_span.end <= span.end {
-                            Span::new(marker_end, expression_span.start)
-                        } else {
-                            Span::new(marker_end, span.end.max(marker_end))
-                        };
-                    let comments = self.comments.between(physical_head)?;
-                    if expression_span.start < marker_end || expression_span.end > span.end {
-                        let binding = self.comment_binding(comments, physical_head, None);
-                        if !binding.allows_relocation(None) {
-                            return Err(FormatError::unsupported(
-                                "replaced decorator unknown source binding",
-                                None,
-                                span,
-                            ));
-                        }
-                    }
-                    let expression_start = physical_head.end;
-                    let content = self.expression_content(expression);
-                    let mode = if self.has_suppression {
-                        self.content_mode(comments)
-                    } else {
-                        ContentMode::Formatted
-                    };
-                    self.comments.claim(comments)?;
-                    writer.text("@");
-                    let tail = self.format_prepared_expression_with_leading_comments(
-                        expression,
-                        content,
-                        NodeHead {
-                            comments,
-                            content_start: expression_start,
-                            layout: CommentRunLayout::Source,
-                            gap_end: (!comments.is_empty()).then_some(expression_start),
-                        },
-                        ExpressionContext::at(ExpressionPosition::Decorator)
-                            .with_content_mode(mode),
-                        writer,
-                    )?;
-                    self.format_expression_tail(tail, writer)?;
-                    let comments = self.comments.between(Span::new(span.end, following))?;
-                    let (trailing, leading) = next
-                        .and_then(|node| {
-                            self.split_decorator_comments(comments, span, node.span(ast))
-                        })
-                        .unwrap_or((comments, &[]));
-                    let leading_start = leading
-                        .first()
-                        .map_or(following, |comment| comment.span.start);
-                    let boundary = self.prepare_comment_boundary(trailing, span.end, leading_start);
-                    self.format_comment_boundary(&boundary, writer)?;
-                    boundary
-                        .gap()
-                        .write(writer, FlatSeparator::Space, |writer| {
-                            if matches!(layout, DecoratorLayout::Class) {
-                                writer.hard_line();
-                            } else {
-                                writer.line();
-                            }
-                        });
-                    if !leading.is_empty() {
-                        self.comments.claim(leading)?;
-                        if matches!(
-                            layout,
-                            DecoratorLayout::Member | DecoratorLayout::ParameterProperty
-                        ) {
-                            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
-                            self.prepare_comment_boundary(leading, leading_start, following)
-                                .gap()
-                                .write(writer, FlatSeparator::Space, Writer::line);
-                        } else {
-                            self.format_comment_run(
-                                leading,
-                                CommentRunLayout::Leading(following),
-                                writer,
-                            )?;
-                        }
-                    }
-                    let Some(node) = next else { break };
-                    current = node;
-                    remaining = remaining.split_off(1);
                 }
-                Ok(())
-            },
-        )
+                let expression_start = physical_head.end;
+                let content = self.expression_content(expression);
+                let mode = if incoming_mode == ContentMode::Verbatim || preceding_is_suppressed {
+                    ContentMode::Verbatim
+                } else if self.has_suppression {
+                    self.content_mode(comments)
+                } else {
+                    ContentMode::Formatted
+                };
+                self.comments.claim(comments)?;
+                writer.text("@");
+                let tail = self.format_prepared_expression_with_leading_comments(
+                    expression,
+                    content,
+                    NodeHead {
+                        comments,
+                        content_start: expression_start,
+                        layout: CommentRunLayout::Source,
+                        gap_end: (!comments.is_empty()).then_some(expression_start),
+                    },
+                    ExpressionContext::at(ExpressionPosition::Decorator).with_content_mode(mode),
+                    writer,
+                )?;
+                self.format_expression_tail(tail, writer)?;
+                let comments = self.comments.between(Span::new(span.end, following))?;
+                let (trailing, leading) = next
+                    .and_then(|node| {
+                        self.split_decorator_comments(
+                            comments,
+                            span,
+                            node.span(ast),
+                            allow_suppression_relocation,
+                        )
+                    })
+                    .unwrap_or((comments, &[]));
+                let leading_start = leading
+                    .first()
+                    .map_or(following, |comment| comment.span.start);
+                let boundary = self.prepare_comment_boundary(trailing, span.end, leading_start);
+                self.format_comment_boundary(&boundary, writer)?;
+                boundary
+                    .gap()
+                    .write(writer, FlatSeparator::Space, |writer| {
+                        if keep_inline_suppression {
+                            writer.space();
+                        } else if matches!(layout, DecoratorLayout::Class) {
+                            writer.hard_line();
+                        } else {
+                            writer.line();
+                        }
+                    });
+                if !leading.is_empty() {
+                    self.comments.claim(leading)?;
+                    if matches!(
+                        layout,
+                        DecoratorLayout::Member
+                            | DecoratorLayout::ParameterProperty
+                            | DecoratorLayout::ParameterPropertyShared
+                    ) {
+                        self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
+                        self.prepare_comment_boundary(leading, leading_start, following)
+                            .gap()
+                            .write(writer, FlatSeparator::Space, |writer| {
+                                if keep_inline_suppression {
+                                    writer.space();
+                                } else {
+                                    writer.line();
+                                }
+                            });
+                    } else {
+                        self.format_comment_run(
+                            leading,
+                            CommentRunLayout::Leading(following),
+                            writer,
+                        )?;
+                    }
+                }
+                let Some(node) = next else { break };
+                current = node;
+                remaining = remaining.split_off(1);
+                incoming_mode = following_mode;
+            }
+            Ok(())
+        };
+        if matches!(
+            layout,
+            DecoratorLayout::ParameterShared | DecoratorLayout::ParameterPropertyShared
+        ) {
+            if source_break {
+                writer.break_parent();
+            }
+            write_sequence(writer)
+        } else {
+            writer.group(source_break, write_sequence)
+        }
     }
 
     pub(super) fn decorator_expression_is_unparenthesized(&self, mut data: ExprData) -> bool {

@@ -7,11 +7,11 @@ second);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-(/* @ts-expect-error */ first +
-  second);
+/* @ts-expect-error */ first +
+  second;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-;(/* @ts-expect-error */ first +
-  second)
+/* @ts-expect-error */ first +
+  second

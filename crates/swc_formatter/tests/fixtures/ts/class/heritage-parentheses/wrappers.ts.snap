@@ -9,26 +9,26 @@ class Instantiated extends Base<string> {}
 {"indentStyle":"space","lineWidth":40,"semicolons":"always"}
 ---------- Output ----------
 class Nested extends ({}!!) {}
-class CastBase extends ((Base as typeof Base)!) {}
+class CastBase extends (Base as typeof Base)! {}
 class Instantiated extends Base<string> {}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 class Nested extends ({}!!) {}
-class CastBase extends ((Base as typeof Base)!) {}
+class CastBase extends (Base as typeof Base)! {}
 class Instantiated extends Base<string> {}
 
 ---------- Options ----------
 {"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 class Nested extends ({}!!) {}
-class CastBase extends ((Base as typeof Base)!) {}
+class CastBase extends (Base as typeof Base)! {}
 class Instantiated extends Base<string> {}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"trailingCommas":"none"}
 ---------- Output ----------
 class Nested extends ({}!!) {}
-class CastBase extends ((Base as typeof Base)!) {}
+class CastBase extends (Base as typeof Base)! {}
 class Instantiated extends Base<string> {}

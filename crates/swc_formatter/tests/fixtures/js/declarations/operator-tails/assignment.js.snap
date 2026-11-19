@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = // note
+1 // tail
+;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+target = 1; // note
+// tail

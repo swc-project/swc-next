@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(
+  a,
+  // @ts-expect-error
+  b,
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"all"}
+---------- Output ----------
+f(
+  a,
+  // @ts-expect-error
+  b,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
+---------- Output ----------
+f(
+  a,
+  // @ts-expect-error
+  b
+);

@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do { foo(); } // marker
+while (aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit + anotherCondition);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+do {
+  foo();
+} while ( // marker
+  aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
+  anotherCondition
+);

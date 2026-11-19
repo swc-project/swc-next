@@ -1,6 +1,8 @@
 //! Binding and assignment patterns with source-owned defaults and delimiters.
 use super::Formatter;
-use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{
+    CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, SourceSeparatorTransition,
+};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
 use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
@@ -46,7 +48,8 @@ pub(super) enum DefaultOwner<'ast> {
     Formatted {
         boundary: AssignmentBoundary<'ast>,
         rhs_layout: RhsLayout,
-        head: Option<NodeHead<'ast>>,
+        // The boundary already owns this packet's Leading destination.
+        head_comments: Option<&'ast [Comment]>,
     },
 }
 
@@ -348,6 +351,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn empty_binding_has_line_comment(&self, pattern: BindingPattern) -> bool {
+        let ast = self.ast;
+        let empty = match ast.binding_pattern_data(pattern) {
+            BindingPatternData::ObjectPattern(object) => {
+                object.properties(ast).is_empty() && object.rest(ast).is_none()
+            }
+            BindingPatternData::ArrayPattern(array) => {
+                array.elements(ast).is_empty() && array.rest(ast).is_none()
+            }
+            _ => false,
+        };
+        if !empty {
+            return false;
+        }
+        let span = pattern.span(ast);
+        let comments = ast.comments();
+        let start = comments.partition_point(|comment| comment.span.start < span.start);
+        comments[start..]
+            .iter()
+            .take_while(|comment| comment.span.end <= span.end)
+            .any(|comment| comment.kind == CommentKind::Line)
+    }
+
     pub(super) fn format_declaration_binding(
         &mut self,
         pattern: BindingPattern,
@@ -513,12 +539,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(None)
             }
             BindingPatternData::ArrayPattern(array) => {
+                let _scope = self.recursion_scope(array)?;
                 self.format_array_binding(array, writer).map(|()| None)
             }
-            BindingPatternData::ObjectPattern(object) => self
-                .format_object_binding_with_group(object, group, writer)
-                .map(|()| None),
+            BindingPatternData::ObjectPattern(object) => {
+                let _scope = self.recursion_scope(object)?;
+                self.format_object_binding_with_group(object, group, writer)
+                    .map(|()| None)
+            }
             BindingPatternData::AssignmentPattern(default) => {
+                let _scope = self.recursion_scope(default)?;
                 let default = self.prepare_binding_default(
                     default.left(self.ast),
                     default.right(self.ast),
@@ -527,6 +557,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_binding_default(default, writer)
             }
             BindingPatternData::BindingRestElement(rest) => {
+                let _scope = self.recursion_scope(rest)?;
                 writer.text("...");
                 let argument = rest.argument(self.ast);
                 let leading = self.comments.between(Span::new(
@@ -676,14 +707,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_breaks(right_end, comment.span.start) == 0 && matches!(gap, "" | ",")
                 })
                 .map_or(right_end, |comment| comment.span.end);
-            let rhs = self.assignment_rhs(&content);
+            let rhs = self.assignment_rhs(right, &content);
+            let initializer_context = ExpressionContext::binding_initializer();
             let mut boundary = self.assignment_boundary(
                 left_end,
                 &rhs,
                 operator,
                 source_end,
-                ExpressionContext::binding_initializer(),
+                initializer_context,
             )?;
+            self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
             let first = source_comments.partition_point(|comment| comment.span.start < left.start);
             let source_clear_left = source_comments
                 .get(first)
@@ -691,7 +724,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self
                 .comments
                 .in_range(Span::new(left_end, boundary.binding_head_end()));
-            let head = if source_clear_left
+            let head_comments = if source_clear_left
                 && !comments.is_empty()
                 && boundary.before.is_empty()
                 && boundary.operator_line.is_empty()
@@ -706,14 +739,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
                 && boundary.take_binding_head(
                     comments,
-                    self.source_position_starts_line(comments[0].span.start),
+                    self.layout_position_starts_line(comments[0].span.start),
                 ) {
-                Some(NodeHead {
-                    comments,
-                    content_start: boundary.binding_head_end(),
-                    layout: CommentRunLayout::Leading(boundary.binding_head_end()),
-                    gap_end: None,
-                })
+                Some(comments)
             } else {
                 None
             };
@@ -725,7 +753,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DefaultOwner::Formatted {
                 boundary,
                 rhs_layout,
-                head,
+                head_comments,
             }
         };
         Ok(owner)
@@ -759,17 +787,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DefaultOwner::Formatted {
                 boundary,
                 rhs_layout,
-                head,
-            } => (
-                InitializerLayout::Formatted {
-                    boundary,
-                    rhs_layout,
-                },
-                ContentMode::Formatted,
-                head,
-            ),
+                head_comments,
+            } => {
+                let head = head_comments.map(|comments| NodeHead {
+                    comments,
+                    content_start: boundary.binding_head_end(),
+                    layout: CommentRunLayout::Leading(boundary.binding_head_end()),
+                    gap_end: None,
+                });
+                (
+                    InitializerLayout::Formatted {
+                        boundary,
+                        rhs_layout,
+                    },
+                    ContentMode::Formatted,
+                    head,
+                )
+            }
         };
         if let Some(head) = head {
+            writer.break_parent();
             self.comments.claim(head.comments)?;
             self.format_comment_run(head.comments, head.layout, writer)?;
         }
@@ -944,6 +981,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 rhs_layout,
             } => (boundary, rhs_layout),
         };
+        let boundary = boundary.with_operator_tail_destination(context.operator_tail_destination());
         self.comments.claim(boundary.before)?;
         self.format_comment_run(
             boundary.before,
@@ -989,70 +1027,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context = context.with_operand_indent(rhs_layout.operand_indent());
         }
         let write_right = |writer: &mut Writer<'ast>| {
-            self.comments.claim(boundary.moved)?;
-            self.format_comment_run(
-                boundary.moved,
-                if boundary.own_line {
-                    CommentRunLayout::Source
-                } else {
-                    CommentRunLayout::FlatLeading(boundary.layout_start)
-                },
-                writer,
-            )?;
-            if boundary.own_line
-                && let Some(last) = boundary.moved.last()
-            {
-                let next = boundary
-                    .leading
-                    .first()
-                    .map_or(boundary.layout_start, |comment| comment.span.start);
-                let breaks = self
-                    .line_breaks(last.span.end, boundary.operator_span.start)
-                    .max(self.line_breaks(boundary.operator_span.end, next));
-                match breaks {
-                    0 => writer.space(),
-                    1 => writer.hard_line(),
-                    _ => {
-                        writer.hard_line();
-                        writer.hard_line();
-                    }
-                }
-            }
-            self.comments.claim(boundary.leading)?;
-            self.comments.claim(boundary.trailing)?;
-            match content {
-                Some(content) => match boundary.resolved_right_head() {
-                    Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
-                        right, content, head, context, writer,
-                    ),
-                    None => self.format_prepared_expression_with_leading_comments_and_raw_end(
-                        right,
-                        content,
-                        boundary.right_head(),
-                        context,
-                        writer,
-                    ),
-                },
-                None => self.format_expression_with_leading_comments_and_raw_end(
-                    right,
-                    boundary.right_head(),
-                    context,
-                    None,
-                    writer,
-                ),
-            }
+            self.format_assignment_right_output(right, content, &boundary, context, writer)
         };
         if !boundary.trailing.is_empty() {
-            let (right, tail) = writer.record_with_value(write_right)?;
-            self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
+            let (right, mut tail) = writer.record_with_value(write_right)?;
+            tail.operator_tail =
+                self.format_operator_comment_tail(&boundary, rhs_layout, right, writer)?;
             return Ok(tail);
         }
         let tail = if matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) {
             writer.group(false, |writer| {
-                rhs_layout.write(writer, separator, write_right)
+                rhs_layout.write_with_operator_constraint(
+                    writer,
+                    boundary.after_operator,
+                    separator,
+                    write_right,
+                )
             })
         } else {
-            rhs_layout.write(writer, separator, write_right)
+            rhs_layout.write_with_operator_constraint(
+                writer,
+                boundary.after_operator,
+                separator,
+                write_right,
+            )
         }?;
         Ok(tail)
     }
@@ -1232,19 +1230,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| ast.get_node_in_sub_range(id))
             .peekable();
         let rest = object.rest(ast);
+        let comments = self.comments.in_range(content);
         if properties.peek().is_none()
             && rest.is_none()
-            && self.content_mode(self.comments.in_range(content)) == ContentMode::Verbatim
+            && self.content_mode(comments) == ContentMode::Verbatim
         {
             return self.format_verbatim(span, writer);
         }
         let write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let has_items = properties.peek().is_some() || rest.is_some();
-            let has_comments = !self.comments.in_range(content).is_empty();
+            let has_comments = !comments.is_empty();
+            let spaced = self.options.bracket_spacing
+                && (has_items
+                    || comments.iter().any(|&comment| {
+                        !self.comment_semantics(comment).is_ordinary()
+                            || self.comment_directive(comment).is_some()
+                    }));
             let end = writer.indent(|writer| {
                 if has_items || has_comments {
-                    self.binding_brace_line(content, writer);
+                    self.binding_brace_line(content, spaced, writer);
                 }
                 let mut end = content.start;
                 let mut transition = None;
@@ -1253,13 +1258,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut following_mode = None;
                 while let Some(property) = properties.next() {
                     if has_previous {
-                        binding_separator(
+                        self.object_binding_separator(
                             separator,
-                            self.source_separator_constraint(
-                                end,
-                                property.span(ast).start,
-                                transition.as_ref(),
-                            ),
+                            end,
+                            property.span(ast).start,
+                            transition.as_ref(),
                             writer,
                         );
                     }
@@ -1294,13 +1297,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 if let Some(rest) = rest {
                     if has_previous {
-                        binding_separator(
+                        self.object_binding_separator(
                             separator,
-                            self.source_separator_constraint(
-                                end,
-                                rest.span(ast).start,
-                                transition.as_ref(),
-                            ),
+                            end,
+                            rest.span(ast).start,
+                            transition.as_ref(),
                             writer,
                         );
                     }
@@ -1336,9 +1337,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if has_items || has_comments {
                 self.line_constraint(end, content.end).write(
                     writer,
-                    FlatSeparator::Space,
+                    if spaced {
+                        FlatSeparator::Space
+                    } else {
+                        FlatSeparator::Empty
+                    },
                     |writer| {
-                        if self.options.bracket_spacing {
+                        if spaced {
                             writer.line();
                         } else {
                             writer.soft_line();
@@ -1352,15 +1357,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         group.write(writer, write)
     }
 
-    fn binding_brace_line(&self, content: Span, writer: &mut Writer<'ast>) {
-        self.opening_line_constraint(content)
-            .write(writer, FlatSeparator::Space, |writer| {
-                if self.options.bracket_spacing {
+    fn object_binding_separator(
+        &self,
+        separator: Separator,
+        start: u32,
+        next_start: u32,
+        transition: Option<&SourceSeparatorTransition>,
+        writer: &mut Writer<'ast>,
+    ) {
+        // The following head prints its internal gaps; this separator stops at
+        // its first unclaimed comment instead of measuring through the head.
+        let head_start = self
+            .comments
+            .first()
+            .filter(|comment| comment.span.end <= next_start)
+            .map_or(next_start, |comment| comment.span.start);
+        binding_separator(
+            separator,
+            self.source_separator_constraint(start, head_start, transition),
+            writer,
+        );
+    }
+
+    fn binding_brace_line(&self, content: Span, spaced: bool, writer: &mut Writer<'ast>) {
+        self.opening_line_constraint(content).write(
+            writer,
+            if spaced {
+                FlatSeparator::Space
+            } else {
+                FlatSeparator::Empty
+            },
+            |writer| {
+                if spaced {
                     writer.line();
                 } else {
                     writer.soft_line();
                 }
-            });
+            },
+        );
     }
 
     fn format_binding_property(
@@ -1421,27 +1455,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let computed = property
             .computed(ast)
             .then_some(Span::new(property.span(ast).start, key_end));
-        self.format_property_key(key, computed, suppression.key, quoting, writer)?;
-        self.comments.claim(before)?;
-        self.format_comment_run(before, CommentRunLayout::SourceAfter(key_end), writer)?;
-        let end = before.last().map_or(key_end, |comment| comment.span.end);
-        if before
-            .last()
-            .is_some_and(|comment| comment.kind == CommentKind::Line)
-        {
-            writer.hard_line();
-        } else {
-            self.line_constraint(end, colon)
-                .write(writer, FlatSeparator::Empty, |_| {});
-        }
-        writer.text(":");
-        value_prefix.write(writer, FlatSeparator::Space, Writer::space);
-        self.comments.claim(after)?;
-        self.format_comment_run(
-            after,
-            CommentRunLayout::FlatLeading(value_span.start),
-            writer,
-        )?;
-        self.format_declaration_binding(value, mode, writer)
+        writer.group(false, |writer| {
+            let clean_width = writer.write_with_clean_text_width(|writer| {
+                self.format_property_key(key, computed, suppression.key, quoting, writer)?;
+                self.comments.claim(before)?;
+                self.format_comment_run(before, CommentRunLayout::SourceAfter(key_end), writer)?;
+                let end = before.last().map_or(key_end, |comment| comment.span.end);
+                if before
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                {
+                    writer.hard_line();
+                } else {
+                    self.line_constraint(end, colon)
+                        .write(writer, FlatSeparator::Empty, |_| {});
+                }
+                Ok::<_, FormatError>(())
+            })?;
+            let overlap = usize::from(self.options.indent_width.value()) + 3;
+            let layout = if clean_width.is_some_and(|width| width >= overlap)
+                && after.is_empty()
+                && suppression.key == ContentMode::Formatted
+                && mode == ContentMode::Formatted
+            {
+                RhsLayout::Fluid
+            } else {
+                RhsLayout::NeverBreakAfterOperator
+            };
+            writer.text(":");
+            layout.write(
+                writer,
+                |writer| {
+                    value_prefix.write(writer, FlatSeparator::Space, |writer| {
+                        if matches!(layout, RhsLayout::NeverBreakAfterOperator) {
+                            writer.space();
+                        } else {
+                            writer.line();
+                        }
+                    });
+                },
+                |writer| {
+                    self.comments.claim(after)?;
+                    self.format_comment_run(
+                        after,
+                        CommentRunLayout::FlatLeading(value_span.start),
+                        writer,
+                    )?;
+                    self.format_declaration_binding(value, mode, writer)
+                },
+            )
+        })
     }
 }

@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(
+  a: string,
+  // @ts-expect-error
+  b: Missing,
+) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"all"}
+---------- Output ----------
+function f(
+  a: string,
+  // @ts-expect-error
+  b: Missing,
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
+---------- Output ----------
+function f(
+  a: string,
+  // @ts-expect-error
+  b: Missing
+) {}

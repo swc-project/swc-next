@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: /* c8 ignore next */
+f();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+label: /* c8 ignore next */
+f();

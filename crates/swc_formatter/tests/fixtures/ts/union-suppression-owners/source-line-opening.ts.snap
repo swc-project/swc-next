@@ -11,24 +11,24 @@ type T = A // prettier-ignore
 ---------- Output ----------
 type T = A // prettier-ignore
 & (
-  // prettier-ignore
-  { raw  :  1 } | B
-);
+    // prettier-ignore
+    { raw  :  1 } | B
+  );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 type T = A // prettier-ignore
 & (
-  // prettier-ignore
-  { raw  :  1 } | B
-);
+    // prettier-ignore
+    { raw  :  1 } | B
+  );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
 type T = A // prettier-ignore
 & (
-  // prettier-ignore
-  { raw  :  1 } | B
-)
+    // prettier-ignore
+    { raw  :  1 } | B
+  )

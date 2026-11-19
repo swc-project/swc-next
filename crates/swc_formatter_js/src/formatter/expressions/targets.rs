@@ -605,7 +605,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TargetLayerMode::Verbatim;
             }
         }
-        if self.target_parentheses_are_removable(boundary, emitted_inner, owner, external) {
+        if self.parentheses_are_removable_for_owner(boundary, emitted_inner, owner, external) {
             TargetLayerMode::Remove
         } else {
             TargetLayerMode::Retain
@@ -726,13 +726,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         context,
                         writer,
                         |formatter, context, writer| {
-                            formatter.format_target_layers(
-                                target,
-                                remaining,
-                                boundary.inner.end,
-                                context,
-                                writer,
-                            )
+                            formatter.with_recursion_scope(|formatter| {
+                                formatter.format_target_layers(
+                                    target,
+                                    remaining,
+                                    boundary.inner.end,
+                                    context,
+                                    writer,
+                                )
+                            })
                         },
                     )?;
                     break (boundary.outer.end, tail);

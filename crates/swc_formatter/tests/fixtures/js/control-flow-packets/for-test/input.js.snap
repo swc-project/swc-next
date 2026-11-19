@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (/* note */ ; i < 10; ) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+for (
+  ;
+  /* note */ i < 10;
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (; /* note */ i < 10;) {}

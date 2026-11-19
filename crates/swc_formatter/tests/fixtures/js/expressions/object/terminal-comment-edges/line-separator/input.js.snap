@@ -7,6 +7,5 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 ({
-  first: 1,
-  /* b */ // c
+  first: 1 /* b */, // c
 });

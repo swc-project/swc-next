@@ -24,8 +24,8 @@ type A = Left &
 ---------- Output ----------
 type A =
   Left &
-// prettier-ignore
-{value:   string} & Right
+  // prettier-ignore
+  {value:   string} & Right
 
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}

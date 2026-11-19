@@ -111,8 +111,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         content: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
+        let required = context.jsx_field_initializer;
         if !Self::jsx_expression_has_optional_frame(context)
-            || self.line_constraint(span.start, span.end) == LineConstraint::SameLine
+            || !required && self.line_constraint(span.start, span.end) == LineConstraint::SameLine
         {
             return content(self, writer);
         }
@@ -120,13 +121,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let opening = self.line_constraint(span.start, span.start);
         let closing = self.line_constraint(span.end, span.end);
         writer.group(callback_body, |writer| {
-            writer.if_break("(");
+            if required {
+                writer.text("(");
+            } else {
+                writer.if_break("(");
+            }
             let result = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 content(self, writer)
             })?;
             closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
-            writer.if_break(")");
+            if required {
+                writer.text(")");
+            } else {
+                writer.if_break(")");
+            }
             Ok(result)
         })
     }
@@ -401,7 +410,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         if node.attributes(self.ast).is_empty() {
-            self.format_jsx_opening_content(node, writer)?;
+            if !jsx_has_source_comments(self.ast.comments(), node.span(self.ast)) {
+                self.format_jsx_opening_content(node, writer)?;
+            } else {
+                writer.group(false, |writer| {
+                    self.format_jsx_opening_content(node, writer)
+                })?;
+            }
             return Ok(());
         }
         let (opening, _) = self.record_jsx_opening(node, writer)?;
@@ -502,13 +517,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if node.self_closing(ast) {
                 boundary
                     .gap()
-                    .write(writer, FlatSeparator::Space, Writer::space);
+                    .write(writer, FlatSeparator::Space, |writer| {
+                        let head_blocks = name_head_is_unbound
+                            && !name_head.is_empty()
+                            && name_head
+                                .iter()
+                                .all(|comment| comment.kind == CommentKind::Block);
+                        if comments.is_empty() && !head_blocks {
+                            writer.space();
+                        } else {
+                            writer.line();
+                        }
+                    });
                 writer.text("/>");
             } else {
                 boundary
                     .gap()
                     .write(writer, FlatSeparator::Empty, |writer| {
-                        if name_head_is_unbound && !name_head.is_empty() {
+                        if !comments.is_empty() || name_head_is_unbound && !name_head.is_empty() {
                             writer.soft_line();
                         }
                     });
@@ -516,33 +542,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             return Ok(JsxOpeningLayout::default());
         }
-        if let Some((attribute, _, _)) = first_attribute {
-            let start = attribute.span(ast).start;
-            let comments = self.comments.between(Span::new(end, start))?;
-            if let Some(trailing) =
-                self.prepare_delimited_trailing_run(comments, end, start, true, None)
-            {
-                self.claim_prepared_trailing_run(trailing, writer)?;
-            }
-        }
         let format_attributes = |writer: &mut Writer<'ast>| {
             let mut after_attribute = false;
-            for (attribute, data, string_has_lf) in
-                first_attribute.into_iter().chain(attribute_nodes)
-            {
+            let mut attributes = first_attribute
+                .into_iter()
+                .chain(attribute_nodes)
+                .peekable();
+            let mut all_comments = first_attribute.map_or(&[][..], |(attribute, _, _)| {
+                self.comments
+                    .in_range(Span::new(end, attribute.span(ast).start))
+            });
+            while let Some((attribute, data, string_has_lf)) = attributes.next() {
                 let span = attribute.span(ast);
-                let comments = self.comments.between(Span::new(end, span.start))?;
+                // Prepare the next boundary before the current attribute consumes
+                // its own comments, so its ownership does not depend on the cursor.
+                let next_comments = attributes.peek().map_or(&[][..], |(next, _, _)| {
+                    self.comments
+                        .in_range(Span::new(span.end, next.span(ast).start))
+                });
+                let blocks = if after_attribute && !all_comments.is_empty() {
+                    self.jsx_trailing_block_count(all_comments, end, span.start)
+                } else {
+                    0
+                };
+                let trailing = if blocks == 0 && !all_comments.is_empty() {
+                    self.prepare_delimited_trailing_run(all_comments, end, span.start, true, None)
+                } else {
+                    None
+                };
+                let trailing_count = trailing.as_ref().map_or(blocks, |trailing| trailing.len());
+                let (trailing_comments, comments) = all_comments.split_at(trailing_count);
+                let trailing_line = trailing_comments
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line);
+                if let Some(trailing) = trailing {
+                    self.claim_prepared_trailing_run(trailing, writer)?;
+                } else if !trailing_comments.is_empty() {
+                    let boundary =
+                        self.prepare_comment_boundary(trailing_comments, end, span.start);
+                    self.format_comment_boundary(&boundary, writer)?;
+                }
+                let separator_start = trailing_comments
+                    .last()
+                    .map_or(end, |comment| comment.span.end);
                 let first = comments
                     .first()
                     .map_or(span.start, |comment| comment.span.start);
                 if single_string {
                     writer.space();
+                } else if trailing_line {
+                    writer.hard_line();
+                    if after_attribute && self.next_line_is_empty(separator_start, first) {
+                        writer.hard_line();
+                    }
                 } else {
-                    self.line_constraint(end, first).write(
+                    self.line_constraint(separator_start, first).write(
                         writer,
                         FlatSeparator::Space,
                         |writer| {
-                            if after_attribute && self.next_line_is_empty(end, first) {
+                            if after_attribute && self.next_line_is_empty(separator_start, first) {
                                 writer.hard_line();
                                 writer.hard_line();
                             } else if single_attribute_per_line {
@@ -583,6 +641,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 end = span.end;
                 after_attribute = true;
+                all_comments = next_comments;
             }
             let comments = self.comments.between(Span::new(end, closing))?;
             let boundary = self.prepare_comment_boundary(comments, end, closing);
@@ -594,7 +653,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.indent(format_attributes)
         }?;
-        closing_gap.write(writer, FlatSeparator::Empty, |writer| {
+        let closing_flat = if node.self_closing(ast) {
+            FlatSeparator::Space
+        } else {
+            FlatSeparator::Empty
+        };
+        closing_gap.write(writer, closing_flat, |writer| {
             if single_string {
                 if node.self_closing(ast) {
                     writer.space();
@@ -609,6 +673,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(JsxOpeningLayout {
             multiple_attributes: attributes.len() > 1,
         })
+    }
+
+    /// Blocks followed by a source line break trail the previous attribute.
+    fn jsx_trailing_block_count(&self, comments: &[Comment], start: u32, next: u32) -> usize {
+        let mut end = start;
+        let mut count = 0;
+        for &comment in comments {
+            if comment.kind != CommentKind::Block
+                || self.source_line_breaks(end, comment.span.start) != 0
+                || !self.comment_semantics(comment).is_ordinary()
+            {
+                break;
+            }
+            count += 1;
+            end = comment.span.end;
+        }
+        let next = comments
+            .get(count)
+            .map_or(next, |comment| comment.span.start);
+        if count != 0 && self.source_line_breaks(end, next) != 0 {
+            count
+        } else {
+            0
+        }
     }
 
     /// The tag name owns its complete leading packet and any line continuation.
@@ -640,7 +728,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.hard_line();
             }
         } else {
-            if !comments.is_empty() {
+            if closing && !comments.is_empty() {
                 writer.space();
             }
             write(writer)?;
@@ -668,6 +756,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn format_jsx_member(
+        &mut self,
+        member: JsxMemberExpression,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.with_recursion(member, |formatter| {
+            formatter.format_jsx_member_inner(member, writer)
+        })
+    }
+
+    fn format_jsx_member_inner(
         &mut self,
         member: JsxMemberExpression,
         writer: &mut Writer<'ast>,
@@ -985,6 +1083,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                 }
             });
+            writer.line_suffix_boundary();
             writer.text("}");
             Ok(())
         })
@@ -1216,6 +1315,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                 }
             });
+            writer.line_suffix_boundary();
             writer.text("}");
             Ok(())
         })
@@ -1271,9 +1371,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut child = matches!(role, JsxBraceRole::Child);
         loop {
             match data {
-                ExprData::ObjectExpression(_)
-                | ExprData::ArrayExpression(_)
-                | ExprData::CallExpression(_)
+                ExprData::ObjectExpression(object) => {
+                    return !object.properties(self.ast).is_empty()
+                        || !jsx_has_source_comments(self.ast.comments(), object.span(self.ast));
+                }
+                ExprData::ArrayExpression(array) => {
+                    return !array.elements(self.ast).is_empty()
+                        || !jsx_has_source_comments(self.ast.comments(), array.span(self.ast));
+                }
+                ExprData::CallExpression(_)
                 | ExprData::Function(_)
                 | ExprData::ArrowFunctionExpression(_)
                 | ExprData::TemplateLiteral(_)
@@ -1316,6 +1422,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => JsxCallbackContext::Ordinary,
         }
     }
+}
+
+/// Check the complete source comment table, independent of the print cursor.
+fn jsx_has_source_comments(comments: &[Comment], span: Span) -> bool {
+    let first = comments.partition_point(|comment| comment.span.start < span.start);
+    comments
+        .get(first)
+        .is_some_and(|comment| comment.span.end <= span.end)
 }
 
 /// The lexer keeps JSX attribute entities in its raw value. The emitted LF
@@ -1400,4 +1514,29 @@ fn jsx_attribute_lines_match(raw: &str, ending: LineEnding) -> bool {
         }
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::formatter::comments::CommentCursor;
+
+    #[test]
+    fn jsx_source_comments() {
+        let comments = [
+            Comment::new(Span::new(3, 8), CommentKind::Block),
+            Comment::new(Span::new(10, 14), CommentKind::Line),
+        ];
+        let span = Span::new(2, 9);
+        let mut cursor = CommentCursor::new(&comments);
+
+        assert!(jsx_has_source_comments(&comments, span));
+        cursor.claim(&comments[..1]).unwrap();
+        assert!(cursor.in_range(span).is_empty());
+        assert!(jsx_has_source_comments(&comments, span));
+
+        assert!(!jsx_has_source_comments(&comments, Span::new(8, 10)));
+        assert!(jsx_has_source_comments(&comments, Span::new(10, 14)));
+        assert!(!jsx_has_source_comments(&comments, Span::new(4, 7)));
+    }
 }

@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x:
+/* note */
+number[] = [];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const x: /* note */ number[] = [];

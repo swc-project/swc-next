@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = A extends (B // comment
+        ) ? C : D;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T = A extends (B // comment
+)
+  ? C
+  : D;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type T =
+  A extends (B // comment
+  )
+    ? C
+    : D;

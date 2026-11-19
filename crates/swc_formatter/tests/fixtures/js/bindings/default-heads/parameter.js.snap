@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function unpack({ a, b } =
+/* note */
+user) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function unpack(
+  /* note */
+  { a, b } = user,
+) {}

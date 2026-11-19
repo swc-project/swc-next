@@ -4,6 +4,7 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, Span, TaggedTemplateExpression, TemplateLiteral,
 };
 
+use super::arrays::ArrayLayout;
 use super::{
     AccessKind, ExpressionContext, ExpressionPosition, ExpressionTypeArguments, OperandIndent,
     TailOwner,
@@ -99,6 +100,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(content) => self.template_expression_slot_layout(content.data),
             None => TemplateSlotLayout::Boundaries(mode),
         };
+        let head_layout = self.template_slot_head_layout(leading, span.start);
         self.format_template_slot(
             slot,
             opening,
@@ -110,14 +112,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let head = NodeHead {
                     comments: leading,
                     content_start: span.start,
-                    layout: CommentRunLayout::Leading(span.start),
+                    layout: head_layout,
                     gap_end: None,
                 };
                 let operand_indent = match layout {
                     TemplateSlotLayout::Child => OperandIndent::Expression,
                     TemplateSlotLayout::Boundaries(_) => OperandIndent::Parent,
                 };
+                let array_layout = if slot.source_newline {
+                    ArrayLayout::Normal
+                } else {
+                    ArrayLayout::InlineTemplateSlot
+                };
                 let context = ExpressionContext::at(ExpressionPosition::TemplateInterpolation)
+                    .with_array_layout(array_layout)
                     .with_operand_indent(operand_indent)
                     .with_content_mode(mode)
                     .with_tail_owner(TailOwner::ParentOperation);
@@ -129,8 +137,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         expression, head, context, None, writer,
                     ),
                 }?;
-                formatter.format_expression_tail(tail, writer)?;
-                formatter.format_comment_boundary(&after, writer)
+                let adjacency = formatter.format_expression_tail_adjacency(tail, writer)?;
+                formatter.format_comment_boundary_after(&after, adjacency, writer)
             },
         )
     }

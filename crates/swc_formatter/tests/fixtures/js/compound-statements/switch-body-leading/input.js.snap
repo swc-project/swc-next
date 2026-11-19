@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (a) { /* B */ case 1: break; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+switch (a) {
+  /* B */ case 1:
+    break;
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+switch (a) {
+	/* B */ case 1:
+		break;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+switch (
+  a
+) {
+  /* B */ case 1:
+    break;
+}

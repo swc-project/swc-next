@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = // prettier-ignore
+B  |  C<D  , E>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type A = // prettier-ignore
+  B  |  C<D  , E>;

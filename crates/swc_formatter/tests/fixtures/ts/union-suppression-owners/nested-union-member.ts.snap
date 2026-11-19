@@ -14,8 +14,8 @@ type T = A
 ---------- Output ----------
 type T =
   | A
-// prettier-ignore
-| (
+  // prettier-ignore
+  | (
   | { raw  :  1 }
   | { next  :  2 }
 )
@@ -26,8 +26,8 @@ type T =
 ---------- Output ----------
 type T =
   | A
-// prettier-ignore
-| (
+  // prettier-ignore
+  | (
   | { raw  :  1 }
   | { next  :  2 }
 )
@@ -38,8 +38,8 @@ type T =
 ---------- Output ----------
 type T =
   | A
-// prettier-ignore
-| (
+  // prettier-ignore
+  | (
   | { raw  :  1 }
   | { next  :  2 }
 )

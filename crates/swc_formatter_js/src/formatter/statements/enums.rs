@@ -205,18 +205,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut remaining = body.members(ast);
         let Some(first) = remaining.first().map(|id| ast.get_node_in_sub_range(id)) else {
             let comments = self.comments.between(content)?;
+            if self.content_mode(comments) == ContentMode::Verbatim {
+                return self.format_verbatim(span, writer);
+            }
             let boundary = self.prepare_comment_boundary(comments, content.start, content.end);
             self.comments.claim(comments)?;
             writer.text("{");
             if !comments.is_empty() {
-                writer.group(false, |writer| {
+                let multiline = comments.len() > 1;
+                writer.group(multiline, |writer| {
                     writer.indent(|writer| {
                         self.opening_line_constraint(content).write(
                             writer,
                             FlatSeparator::Empty,
                             Writer::soft_line,
                         );
-                        self.format_comment_run(comments, CommentRunLayout::Source, writer)
+                        self.format_comment_run(
+                            comments,
+                            if multiline {
+                                CommentRunLayout::CanonicalDangling
+                            } else {
+                                CommentRunLayout::Source
+                            },
+                            writer,
+                        )
                     })?;
                     boundary
                         .gap()
@@ -372,13 +384,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .find_token(gap, comments, "=")
             .ok_or_else(|| self.unsupported("enum initializer boundary", member.node))?;
         let content = self.expression_content(right);
-        let rhs = self.assignment_rhs(&content);
+        let rhs = self.assignment_rhs(right, &content);
+        let initializer_context = ExpressionContext::at(ExpressionPosition::EnumInitializer);
         let mut boundary = self.assignment_boundary(
             key_end,
             &rhs,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
-            ExpressionContext::at(ExpressionPosition::EnumInitializer),
+            initializer_context,
         )?;
         let mut left_mode = ContentMode::Formatted;
         if self.has_suppression {
@@ -397,6 +410,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
         let rhs_layout = if boundary.own_line || !boundary.operator_line.is_empty() {
             RhsLayout::BreakAfterOperator
         } else {

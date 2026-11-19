@@ -5,8 +5,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::Formatter;
-use super::comments::{CommentBinding, CommentBoundary, CommentRunLayout};
-use super::diagnostics::FlatSeparator;
+use super::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLayout};
+use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, ItemBoundary};
 use super::expressions::{AccessKind, ExpressionContext, ExpressionPosition, TailOwner};
 use super::suppression::{ContentMode, SuppressionPosition};
@@ -56,6 +56,7 @@ enum HeritagePrefixLayout<'ast> {
         leading: HeritageLeading,
         inline_target: bool,
         first_start: u32,
+        keyword_gap: CommentGap,
     },
 }
 
@@ -68,6 +69,24 @@ enum HeritageLeading {
 }
 
 impl HeritagePrefix<'_> {
+    pub(super) fn with_class_preceding_line(mut self) -> Self {
+        if let HeritagePrefixLayout::Formatted {
+            leading: leading @ HeritageLeading::None,
+            after,
+            inline_target: false,
+            ..
+        } = &mut self.layout
+            && !after.is_empty()
+            && after
+                .comments()
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Line)
+        {
+            *leading = HeritageLeading::Preceding;
+        }
+        self
+    }
+
     pub(super) fn with_preceding_owner(mut self) -> Self {
         if !self.has_comments {
             return self;
@@ -93,6 +112,12 @@ impl HeritagePrefix<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn heritage_has_directive(&self, comments: &[Comment]) -> bool {
+        comments
+            .iter()
+            .any(|&comment| self.comment_directive(comment).is_some())
+    }
+
     /// Source parentheses and chain wrappers do not change the header's operand shape.
     pub(super) fn heritage_expression_is_member(&self, mut expression: Expr) -> bool {
         loop {
@@ -175,7 +200,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && (matches!(after_binding, CommentBinding::BoundTo(_))
                 || after
                     .first()
-                    .is_some_and(|comment| self.source_position_starts_line(comment.span.start)));
+                    .is_some_and(|comment| self.layout_position_starts_line(comment.span.start)));
         PreparedHeritagePrefix {
             prefix: HeritagePrefix {
                 has_comments: !comments.is_empty(),
@@ -194,6 +219,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.prepare_comment_boundary(after, keyword.end, gap.end),
                         )
                     };
+                    let keyword_gap = after.comments().last().map_or(
+                        CommentGap::Source(LineConstraint::Unconstrained),
+                        |comment| match self
+                            .prepare_leading_comment_gap(
+                                comment.span,
+                                comment.kind,
+                                first.start,
+                                false,
+                            )
+                            .gap
+                        {
+                            CommentGap::Source(LineConstraint::NewLine(_)) => {
+                                CommentGap::Source(LineConstraint::NewLine(1))
+                            }
+                            gap => gap,
+                        },
+                    );
                     HeritagePrefixLayout::Formatted {
                         before,
                         after,
@@ -204,6 +246,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         },
                         inline_target: first_mode == ContentMode::Verbatim,
                         first_start: first.start,
+                        keyword_gap,
                     }
                 },
             },
@@ -246,7 +289,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         body: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
-        let (before, after, leading, inline_target, first_start) = match prefix.layout {
+        let (before, after, leading, inline_target, first_start, keyword_gap) = match prefix.layout
+        {
             HeritagePrefixLayout::Source(span) => {
                 self.format_verbatim(span, writer)?;
                 return body(self, writer);
@@ -257,7 +301,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading,
                 inline_target,
                 first_start,
-            } => (before, after, leading, inline_target, first_start),
+                keyword_gap,
+            } => (
+                before,
+                after,
+                leading,
+                inline_target,
+                first_start,
+                keyword_gap,
+            ),
         };
         self.format_comment_boundary(&before, writer)?;
         if matches!(leading, HeritageLeading::Preceding) {
@@ -285,11 +337,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
                 writer.hard_line();
             } else {
-                self.format_comment_boundary_with_layout(
-                    &after,
-                    CommentRunLayout::GroupedLeading(first_start),
-                    writer,
-                )?;
+                self.format_comment_boundary_with_layout(&after, CommentRunLayout::Source, writer)?;
+                keyword_gap.write(writer, FlatSeparator::Space, Writer::line);
             }
         }
         let write = |formatter: &mut Self, writer: &mut Writer<'ast>| {

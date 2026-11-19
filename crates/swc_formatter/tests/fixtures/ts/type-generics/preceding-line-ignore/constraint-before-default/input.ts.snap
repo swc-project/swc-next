@@ -9,5 +9,5 @@ type T<A extends \u0042 = // prettier-ignore
 ---------- Output ----------
 type T<
   A extends \u0042 = // prettier-ignore
-C,
+    C,
 > = A;

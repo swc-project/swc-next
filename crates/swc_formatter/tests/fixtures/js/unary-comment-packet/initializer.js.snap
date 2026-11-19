@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = void
+/* note */
+ (/*#__PURE__*/ value).b();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const result =
+  void (
+    /* note */
+    /*#__PURE__*/ value.b()
+  );

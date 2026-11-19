@@ -6,7 +6,7 @@ left << <T>((/* head */ receiver).property);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-left << (<T> /* head */ receiver.property);
+left << (<T>/* head */ receiver.property);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
@@ -14,7 +14,7 @@ left << (<T> /* head */ receiver.property);
 left <<
   (<
     T
-  > /* head */ receiver.property);
+  >/* head */ receiver.property);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
@@ -22,7 +22,7 @@ left <<
 left <<
   (<
     T
-  > /* head */ receiver.property)
+  >/* head */ receiver.property)
 
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
@@ -30,4 +30,4 @@ left <<
 left <<
 	(<
 		T
-	> /* head */ receiver.property);
+	>/* head */ receiver.property);

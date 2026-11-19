@@ -589,13 +589,10 @@ impl<'a> IndentModel<'a> for SimpleIndent {
     }
     fn emit(&mut self, s: Indentation, text: &mut String, o: PrintOptions) {
         match o.indent_style {
-            IndentStyle::Space => text.extend(std::iter::repeat_n(
-                ' ',
-                s.levels * usize::from(o.indent_width.value()) + s.alignment,
-            )),
+            IndentStyle::Space => indent::append_whitespace(text, IndentStyle::Space, s.width(o)),
             IndentStyle::Tab => {
-                text.extend(std::iter::repeat_n('\t', s.levels));
-                text.extend(std::iter::repeat_n(' ', s.alignment));
+                indent::append_whitespace(text, IndentStyle::Tab, s.levels);
+                indent::append_whitespace(text, IndentStyle::Space, s.alignment);
             }
         }
     }

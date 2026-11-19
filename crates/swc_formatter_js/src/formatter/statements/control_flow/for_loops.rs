@@ -12,11 +12,13 @@ use super::{
 };
 use crate::formatter::comments::{
     CommentBinding, CommentCursor, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+    PreparedCommentAdjacency,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
 use crate::formatter::expressions::targets::SourceTarget;
 use crate::formatter::expressions::{
-    ExpressionContext, ExpressionPosition, ForInitializerGrammar, TailOwner,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ForInitializerGrammar, TailOwner,
 };
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::formatter::variables::VariableContext;
@@ -119,6 +121,7 @@ enum HeaderGapOutput<'ast> {
         start: u32,
         leading: &'ast [Comment],
         following: CommentGap,
+        adjacency: PreparedCommentAdjacency,
         head_gap: Option<LineConstraint>,
         head_layout: CommentRunLayout,
     },
@@ -132,6 +135,7 @@ struct PreparedHeaderItem<'ast, 'header> {
     node: &'header HeaderNode<'ast>,
     before: HeaderGap<'ast>,
     mode: ContentMode,
+    operator_tail_destination: OperatorTailDestination,
 }
 
 // Prepared owners stay borrowed while printing consumes only the comment cursor.
@@ -187,8 +191,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|node| self.for_expression_node(node, ExpressionPosition::ForTest));
         let update = node
             .update(ast)
-            .map(|node| self.for_expression_node(node, ExpressionPosition::ForHead));
+            .map(|node| self.for_expression_node(node, ExpressionPosition::ForUpdate));
         let keyword_end = node.span(ast).start + 3;
+        if init.is_none() {
+            let end = test
+                .as_ref()
+                .or(update.as_ref())
+                .map_or(body_start, |node| node.span.start);
+            if self.has_comment_directive_in(Span::new(keyword_end, end)) {
+                let statement = super::super::StatementItem::Statement(Stmt::ForStatement(node));
+                let content = self.statement_content(statement);
+                return self.format_verbatim_statement_with_source_fence(
+                    node.span(ast),
+                    content.into(),
+                    punctuation,
+                    Some((statement, source_candidate)),
+                    writer,
+                );
+            }
+        }
         let comments =
             CommentCursor::new(self.comments.in_range(Span::new(keyword_end, body_start)));
         let token = |span: Span, text: &'static str| {
@@ -554,6 +575,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         nodes: &'header [Option<HeaderNode<'ast>>; 3],
         body: Stmt,
     ) -> PreparedHeader<'ast, 'header> {
+        let empty_init = syntax.classic && nodes[0].is_none();
         let mut nodes = nodes
             .iter()
             .enumerate()
@@ -583,7 +605,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .partition_point(|comment| comment.span.end <= syntax.opening.start);
         let before_opening = &before.comments[..count];
-        let relocate = !before_opening.is_empty()
+        let relocate = (!before_opening.is_empty() || empty_init && !before.comments.is_empty())
             && self
                 .for_prefix_binding(before.comments, before.span, syntax.opening, target)
                 .allows_relocation(Some(target));
@@ -636,7 +658,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContentMode::Formatted
             };
-            items[index] = Some(PreparedHeaderItem { node, before, mode });
+            let operator_tail_destination = if syntax.classic
+                && index != 1
+                && mode == ContentMode::Formatted
+                && !after.source
+                && after.following == ContentMode::Formatted
+            {
+                OperatorTailDestination::ForHeader
+            } else {
+                OperatorTailDestination::Local
+            };
+            items[index] = Some(PreparedHeaderItem {
+                node,
+                before,
+                mode,
+                operator_tail_destination,
+            });
             before = after;
         }
         let body_mode = before.following;
@@ -807,27 +844,72 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 EmptyBlock::Expanded
             })
             .with_enclosing_boundary(punctuation, source_candidate);
+        let operator_tail_destination = self.iteration_operator_tail_destination(header, &body);
         writer.group(false, |writer| {
-            if header.classic {
-                writer.group(false, |writer| self.format_for_header(header, writer))?;
+            let operator_tail = if header.classic {
+                writer.group(false, |writer| {
+                    self.format_for_header(header, operator_tail_destination, writer)
+                })?
             } else {
-                self.format_for_header(header, writer)?;
-            }
-            self.format_controlled_body(body, writer)
+                self.format_for_header(header, operator_tail_destination, writer)?
+            };
+            self.format_controlled_body(body.with_operator_tail(operator_tail), writer)
         })
+    }
+
+    fn iteration_operator_tail_destination(
+        &self,
+        header: &PreparedHeader<'ast, '_>,
+        body: &super::ControlledBody<'ast>,
+    ) -> OperatorTailDestination {
+        let Some(first) = header.items[0].as_ref() else {
+            return OperatorTailDestination::Local;
+        };
+        if header.classic
+            || !matches!(
+                first.node.data,
+                HeaderData::Variable {
+                    context: VariableContext::ForIn,
+                    ..
+                }
+            )
+            || body.mode != ContentMode::Formatted
+            || matches!(body.shape, super::ControlledBodyShape::Empty)
+            || header.trailing.source
+            || header
+                .items
+                .iter()
+                .flatten()
+                .any(|item| item.mode != ContentMode::Formatted || item.before.source)
+            || self.diagnostic_range_is_sensitive(Span::new(first.node.span.start, body.span.start))
+            || !self
+                .comment_binding(
+                    body.leading,
+                    Span::new(body.head_end, body.span.start),
+                    Some(body.span),
+                )
+                .allows_relocation(Some(body.span))
+        {
+            OperatorTailDestination::Local
+        } else {
+            OperatorTailDestination::ControlledBody
+        }
     }
 
     fn format_for_header(
         &mut self,
         header: &PreparedHeader<'ast, '_>,
+        iteration_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<&'ast DeferredOperatorTail<'ast>>, FormatError> {
         let classic = header.classic;
         let empty = header.empty;
         let closing = header.closing;
         writer.text("for");
+        let mut body_operator_tail = None;
         let mut write = |writer: &mut Writer<'ast>| {
             let mut pending = None;
+            let mut operator_tail = None;
             for (index, item) in header.items.iter().enumerate() {
                 let Some(item) = item else {
                     continue;
@@ -843,7 +925,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?
                 } else {
-                    self.format_for_gap(&item.before, &header.tokens, pending, writer)?
+                    self.format_for_gap(
+                        &item.before,
+                        &header.tokens,
+                        pending,
+                        operator_tail,
+                        writer,
+                    )?
                 };
                 let first = index == 0;
                 let flat = if first {
@@ -901,9 +989,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     layout,
                     gap_end: None,
                 };
-                pending = self.format_for_header_item(item.node, item.mode, head, writer)?;
+                let output = self.format_for_header_item(
+                    item.node,
+                    item.mode,
+                    head,
+                    if index == 0 && !classic {
+                        iteration_destination
+                    } else {
+                        item.operator_tail_destination
+                    },
+                    writer,
+                )?;
+                pending = output.pending;
+                operator_tail = output.operator_tail;
+                if operator_tail.is_some_and(|tail| {
+                    tail.destination() == OperatorTailDestination::ControlledBody
+                }) {
+                    debug_assert!(body_operator_tail.is_none());
+                    body_operator_tail = operator_tail.take();
+                }
             }
-            self.format_for_final_gap(header, pending, writer)
+            self.format_for_final_gap(header, pending, operator_tail, writer)
         };
         let tail = if classic && !empty {
             writer.indent(write)?
@@ -922,10 +1028,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 start,
                 leading,
                 following,
+                adjacency,
                 ..
             } => {
-                self.comments.claim(leading)?;
-                self.format_comment_run(leading, CommentRunLayout::SourceAfter(start), writer)?;
+                let boundary = self.prepare_comment_boundary(leading, start, closing.start);
+                self.format_comment_boundary_after(&boundary, adjacency, writer)?;
                 let closing_gap = if leading.is_empty() {
                     following
                 } else {
@@ -945,16 +1052,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         writer.text(")");
-        Ok(())
+        Ok(body_operator_tail)
     }
 
     fn format_for_final_gap(
         &mut self,
         header: &PreparedHeader<'ast, '_>,
         pending: Option<ExpressionTail<'ast>>,
+        operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<HeaderGapOutput<'ast>, FormatError> {
         let gap = &header.trailing;
+        if let Some(operator) = operator_tail {
+            if header.tokens[gap.tokens.start..gap.tokens.end]
+                .iter()
+                .flatten()
+                .any(|prepared| prepared.token.ends_node)
+            {
+                return self.format_for_gap(gap, &header.tokens, pending, Some(operator), writer);
+            }
+            let pending = self.capture_expression_tail(gap.span, pending)?;
+            let completion = self.prepare_operator_tail_completion(pending);
+            self.format_expression_tail(completion.prefix, writer)?;
+            let adjacency = self.format_deferred_operator_tail(operator, writer)?;
+            return Ok(HeaderGapOutput::Canonical {
+                start: completion
+                    .following
+                    .as_ref()
+                    .map_or(gap.span.end, |tail| tail.source_end),
+                leading: completion.following.map_or(&[], |tail| tail.comments),
+                following: CommentGap::LineComment,
+                adjacency,
+                head_gap: None,
+                head_layout: CommentRunLayout::Source,
+            });
+        }
         let final_tail = header.final_tail.filter(|_| {
             // A child line suffix and the following packet need one source
             // boundary so a later comment cannot overtake the leased tail.
@@ -985,11 +1117,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 start: gap.span.end,
                 leading: &[],
                 following: CommentGap::Source(LineConstraint::Unconstrained),
+                adjacency: PreparedCommentAdjacency::default(),
                 head_gap: None,
                 head_layout: CommentRunLayout::Source,
             });
         }
-        self.format_for_gap(gap, &header.tokens, pending, writer)
+        self.format_for_gap(gap, &header.tokens, pending, None, writer)
     }
 
     fn format_iteration_gap(
@@ -1005,7 +1138,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || gap.preceding != ContentMode::Formatted
             || gap.following != ContentMode::Formatted
         {
-            return self.format_for_gap(gap, tokens, pending, writer);
+            return self.format_for_gap(gap, tokens, pending, None, writer);
         }
         let start = pending
             .as_ref()
@@ -1020,7 +1153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound
             );
         if !head {
-            return self.format_for_gap(gap, tokens, pending, writer);
+            return self.format_for_gap(gap, tokens, pending, None, writer);
         }
         // This complete packet has a RHS owner. Its final Line is emitted here,
         // so it cannot become a suffix that crosses a later statement comment.
@@ -1030,6 +1163,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             start: iteration.operator.span.end,
             leading: comments,
             following: CommentGap::Source(LineConstraint::Unconstrained),
+            adjacency: PreparedCommentAdjacency::default(),
             head_gap: None,
             head_layout: CommentRunLayout::FlatLeading(gap.span.end),
         })
@@ -1040,8 +1174,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: &HeaderGap<'ast>,
         tokens: &[Option<PreparedHeaderToken<'ast, '_>>; 4],
         pending: Option<ExpressionTail<'ast>>,
+        mut operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<HeaderGapOutput<'ast>, FormatError> {
+        debug_assert!(!gap.source || operator_tail.is_none());
         if gap.source {
             self.format_expression_tail(pending, writer)?;
             let source =
@@ -1057,6 +1193,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut start = pending
             .as_ref()
             .map_or(gap.span.start, |tail| tail.source_end);
+        let mut pending = pending;
         let mut following = None;
         for prepared in tokens[gap.tokens.start..gap.tokens.end].iter().flatten() {
             let PreparedHeaderToken {
@@ -1069,6 +1206,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &before[before.partition_point(|comment| comment.span.end <= start)..]
             } else {
                 &before[..0]
+            };
+            let completion = if token.ends_node && operator_tail.is_some() {
+                let tail = self
+                    .capture_expression_tail(Span::new(start, token.span.start), pending.take())?;
+                let completion = self.prepare_operator_tail_completion(tail);
+                if let Some(prefix) = completion.prefix.as_ref() {
+                    start = prefix
+                        .comments
+                        .last()
+                        .map_or(start, |comment| comment.span.end);
+                }
+                self.format_expression_tail(completion.prefix, writer)?;
+                completion.following
+            } else {
+                None
+            };
+            let before = if token.ends_node && operator_tail.is_some() {
+                &before[..0]
+            } else {
+                before
             };
             let canonical = if token.ends_node && !before.is_empty() {
                 self.prepare_delimited_trailing_run(before, start, token.span.start, true, None)
@@ -1121,12 +1278,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 constraint.write(writer, FlatSeparator::Empty, |_| {});
             }
             writer.text(token.text);
+            let completed_line = completion
+                .as_ref()
+                .and_then(|tail| tail.comments.last())
+                .is_none_or(|comment| comment.kind == CommentKind::Line);
+            let adjacency = if token.ends_node {
+                operator_tail
+                    .take()
+                    .map(|operator| {
+                        self.format_operator_tail_with_pending(operator, completion, writer)
+                    })
+                    .transpose()?
+            } else {
+                None
+            };
             let trailing = if matches!(gap.owner, HeaderGapOwner::Syntax) {
                 trailing
             } else {
                 &trailing[..0]
             };
-            self.comments.claim(trailing)?;
             let source_end = if riding {
                 before
                     .last()
@@ -1134,18 +1304,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 token.span.end
             };
-            self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
+            let boundary = self.prepare_comment_boundary(trailing, source_end, gap.span.end);
+            self.format_comment_boundary_after(&boundary, adjacency.unwrap_or_default(), writer)?;
             start = trailing
                 .last()
                 .map_or(token.span.end, |comment| comment.span.end);
-            following = Some(if riding && trailing.is_empty() {
-                CommentGap::LineComment
-            } else if matches!(gap.owner, HeaderGapOwner::Syntax) {
-                *after
-            } else {
-                CommentGap::Source(LineConstraint::Unconstrained)
-            });
+            following = Some(
+                if (riding || adjacency.is_some() && completed_line) && trailing.is_empty() {
+                    CommentGap::LineComment
+                } else if matches!(gap.owner, HeaderGapOwner::Syntax) {
+                    *after
+                } else {
+                    CommentGap::Source(LineConstraint::Unconstrained)
+                },
+            );
         }
+        debug_assert!(operator_tail.is_none());
         let leading = match gap.owner {
             HeaderGapOwner::Body => &gap.comments[..0],
             HeaderGapOwner::Node => gap.comments,
@@ -1169,6 +1343,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             start,
             leading,
             following,
+            adjacency: PreparedCommentAdjacency::default(),
             head_gap: gap.head_gap,
             head_layout: CommentRunLayout::GroupedLeading(gap.span.end),
         })
@@ -1179,8 +1354,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: &HeaderNode<'ast>,
         mode: ContentMode,
         head: NodeHead<'ast>,
+        operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let initializer = match &node.data {
             HeaderData::Expression { context, .. }
             | HeaderData::SourceExpression { context, .. } => context.is_for_initializer(),
@@ -1191,10 +1367,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if initializer {
             return self.with_for_initializer(Some(node.span), |formatter| {
-                formatter.format_for_header_content(node, mode, head, writer)
+                formatter.format_for_header_content(
+                    node,
+                    mode,
+                    head,
+                    operator_tail_destination,
+                    writer,
+                )
             });
         }
-        self.format_for_header_content(node, mode, head, writer)
+        self.format_for_header_content(node, mode, head, operator_tail_destination, writer)
     }
 
     fn format_for_header_content(
@@ -1202,22 +1384,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: &HeaderNode<'ast>,
         mode: ContentMode,
         head: NodeHead<'ast>,
+        operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.comments.claim(head.comments)?;
         if mode == ContentMode::Verbatim {
             self.format_comment_run(head.comments, head.layout, writer)?;
             self.format_verbatim(node.span, writer)?;
-            return Ok(None);
+            return Ok(ExpressionOutput::closed(None));
         }
         match &node.data {
             HeaderData::Expression { node, context } => self
-                .format_expression_with_leading_comments(
+                .format_expression_with_leading_comments_and_raw_end(
                     *node,
                     head,
                     context
                         .with_content_mode(mode)
-                        .with_tail_owner(TailOwner::ParentOperation),
+                        .with_tail_owner(TailOwner::ParentOperation)
+                        .with_operator_tail_destination(operator_tail_destination),
                     None,
                     writer,
                 ),
@@ -1236,7 +1420,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comments.claim(before)?;
                     self.format_comment_run(before, CommentRunLayout::Leading(span.start), writer)?;
                     self.format_verbatim(span, writer)?;
-                    return self.capture_expression_tail(Span::new(span.end, node.span.end), None);
+                    return self
+                        .capture_expression_tail(Span::new(span.end, node.span.end), None)
+                        .map(ExpressionOutput::unreported);
                 }
                 self.comments.claim(leading)?;
                 self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
@@ -1257,14 +1443,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
                 self.capture_expression_tail(Span::new(span.end, node.span.end), tail)
+                    .map(ExpressionOutput::unreported)
             }
             HeaderData::Variable {
                 node: declaration,
                 context,
             } => {
                 self.format_comment_run(head.comments, head.layout, writer)?;
-                self.format_variable_declaration_with_context(*declaration, *context, writer)
-                    .map(|(_, tail)| tail)
+                let output = self.format_variable_declaration_parts(
+                    *declaration,
+                    *context,
+                    None,
+                    false,
+                    operator_tail_destination,
+                    writer,
+                )?;
+                let mut tail = ExpressionOutput::unreported(output.tail);
+                tail.operator_tail = output.operator_tail;
+                Ok(tail)
             }
             HeaderData::Target {
                 node: target,
@@ -1272,10 +1468,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => {
                 self.format_comment_run(head.comments, head.layout, writer)?;
                 self.format_source_target(target, context.with_content_mode(mode), writer)
+                    .map(ExpressionOutput::unreported)
             }
             HeaderData::Pattern(pattern) => {
                 self.format_comment_run(head.comments, head.layout, writer)?;
                 self.format_declaration_binding(*pattern, mode, writer)
+                    .map(ExpressionOutput::unreported)
             }
         }
     }

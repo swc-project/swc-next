@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+enum E {  /* prettier-ignore */    /* note */   }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+enum E {  /* prettier-ignore */    /* note */   }

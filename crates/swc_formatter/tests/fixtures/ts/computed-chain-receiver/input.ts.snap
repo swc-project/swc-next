@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new Observable<number>((subscriber) => subscriber.error(failure))[distinctUntilChanged]().subscribe({ error: (error) => errors.push(error) });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new Observable<number>((subscriber) => subscriber.error(failure))
+  [distinctUntilChanged]()
+  .subscribe({ error: (error) => errors.push(error) });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":200}
+---------- Output ----------
+new Observable<number>((subscriber) => subscriber.error(failure))[distinctUntilChanged]().subscribe({ error: (error) => errors.push(error) });

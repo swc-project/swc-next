@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class X { aaaaaaaaaaaaaaaa = `a${bbbbbbbbbbbbbbbb}b`; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+class X {
+  aaaaaaaaaaaaaaaa = `a${bbbbbbbbbbbbbbbb}b`;
+}

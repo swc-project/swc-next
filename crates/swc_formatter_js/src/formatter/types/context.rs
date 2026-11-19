@@ -2,6 +2,8 @@
 
 use swc_next_ecma_ast::{Ast, TsLiteralData, TsType, TsTypeData, TsTypeNameData};
 
+use crate::document::BodyOpening;
+
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeContext {
     Root,
@@ -18,7 +20,10 @@ pub(in crate::formatter) enum TypeContext {
     JsDocEnclosedPostfixOperand,
     CompoundMember,
     UnionMember,
-    IntersectionMember { line_continuation: bool },
+    IntersectionMember {
+        line_continuation: bool,
+        body_opening: BodyOpening,
+    },
     ConditionalCheck,
     ConditionalExtends,
     TypeConstraint,
@@ -28,6 +33,22 @@ pub(in crate::formatter) enum TypeContext {
 pub(super) enum TypeEnclosure {
     None,
     Parentheses,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TypeFrame {
+    None,
+    Tight,
+    Block,
+}
+
+impl TypeFrame {
+    pub(super) fn tight(self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::Tight | Self::Block => Self::Tight,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -42,6 +63,25 @@ enum TypePrecedence {
 }
 
 impl TypeContext {
+    pub(super) fn body_opening(self) -> BodyOpening {
+        match self {
+            Self::IntersectionMember { body_opening, .. } => body_opening,
+            _ => BodyOpening::Plain,
+        }
+    }
+
+    pub(super) fn without_body_opening(self) -> Self {
+        match self {
+            Self::IntersectionMember {
+                line_continuation, ..
+            } => Self::IntersectionMember {
+                line_continuation,
+                body_opening: BodyOpening::Plain,
+            },
+            _ => self,
+        }
+    }
+
     /// A required union envelope owns the head inside its grouping pair.
     pub(super) fn preserves_union_head(self, mut node: TsType, ast: &Ast<'_>) -> bool {
         if !matches!(
@@ -84,6 +124,20 @@ impl TypeContext {
             TypeEnclosure::Parentheses
         } else {
             TypeEnclosure::None
+        }
+    }
+
+    pub(super) fn frame(self, data: TsTypeData, ast: &Ast<'_>) -> TypeFrame {
+        if !self.needs_parentheses(data, ast) {
+            return TypeFrame::None;
+        }
+        match (data, self) {
+            (TsTypeData::TsUnionType(_), _)
+            | (
+                TsTypeData::TsConditionalType(_),
+                Self::ConditionalCheck | Self::ConditionalExtends,
+            ) => TypeFrame::Block,
+            _ => TypeFrame::Tight,
         }
     }
 

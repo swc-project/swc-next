@@ -1,0 +1,17 @@
+[
+  {
+    "lineWidth": 30,
+    "indentStyle": "space",
+    "quoteStyle": "single"
+  },
+  {
+    "lineWidth": 40,
+    "indentStyle": "space",
+    "quoteStyle": "single"
+  },
+  {
+    "lineWidth": 60,
+    "indentStyle": "space",
+    "quoteStyle": "single"
+  }
+]

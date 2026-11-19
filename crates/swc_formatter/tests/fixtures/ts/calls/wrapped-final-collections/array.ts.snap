@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a, [key1xxxxxxx, key2xxxxxxx, key3xxxxxxx] satisfies T);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+f(a, [
+  key1xxxxxxx,
+  key2xxxxxxx,
+  key3xxxxxxx,
+] satisfies T);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f(a, [key1xxxxxxx, key2xxxxxxx, key3xxxxxxx] satisfies T);

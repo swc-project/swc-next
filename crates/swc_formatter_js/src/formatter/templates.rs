@@ -1,9 +1,11 @@
 //! Borrowed template text and physical quasi/slot delimiter geometry.
 
-use swc_next_ecma_ast::{AstNode, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral};
+use swc_next_ecma_ast::{
+    AstNode, Comment, GetSpan, Span, SubRange, TemplateElement, TemplateLiteral,
+};
 
 use super::Formatter;
-use super::comments::CommentGap;
+use super::comments::{CommentGap, CommentRunLayout, HeadGapPlacement};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -38,6 +40,7 @@ impl TemplateQuasi<'_> {
 pub(super) struct TemplateSlot {
     pub(super) content: Span,
     pub(super) interior: Span,
+    pub(super) source_newline: bool,
 }
 
 /// The child or its interpolation boundaries own finite-width layout.
@@ -48,6 +51,22 @@ pub(super) enum TemplateSlotLayout {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn template_slot_head_layout(
+        &self,
+        comments: &[Comment],
+        next: u32,
+    ) -> CommentRunLayout {
+        let placement = if comments
+            .first()
+            .is_some_and(|comment| self.layout_position_starts_line(comment.span.start))
+        {
+            HeadGapPlacement::OwnLine
+        } else {
+            HeadGapPlacement::Inline
+        };
+        CommentRunLayout::SourceLeading { next, placement }
+    }
+
     fn template_quasi(&self, node: TemplateElement) -> TemplateQuasi<'ast> {
         TemplateQuasi {
             span: node.span(self.ast),
@@ -83,9 +102,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 format(self, layout, writer)
             });
         }
-        let source_newline = self
-            .source(slot.interior)
-            .contains(['\r', '\n', '\u{2028}', '\u{2029}']);
+        let source_newline = slot.source_newline;
         if source_newline
             && matches!(
                 layout,
@@ -97,18 +114,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let (content, ()) = writer.record_with_value(|writer| format(self, layout, writer))?;
-        if !source_newline
-            && !content.preferred_breaks()
-            && let Some(content) = content.try_flat()
-        {
-            writer.write_flat_fragment(content);
-            Ok(())
-        } else {
-            Self::write_template_slot(layout, opening, closing, writer, |writer| {
-                writer.write_fragment(content);
-                Ok(())
-            })
+        if !source_newline && !content.preferred_breaks() {
+            if let Some(content) = content.try_flat() {
+                writer.write_flat_fragment(content);
+                return Ok(());
+            }
+            if !content.has_intrinsic_lines() {
+                // Keep local group bindings even when the slot is laid out inline.
+                writer.write_fragment_without_lines(content);
+                return Ok(());
+            }
         }
+        Self::write_template_slot(layout, opening, closing, writer, |writer| {
+            writer.write_fragment(content);
+            Ok(())
+        })
     }
 
     fn write_template_slot(
@@ -243,9 +263,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ));
             }
             indentation = current.indentation(indentation, tab_width);
+            let interior = Span::new(current.span.end + 2, next.span.start - 1);
             let geometry = TemplateSlot {
                 content: slot_span,
-                interior: Span::new(current.span.end + 2, next.span.start - 1),
+                interior,
+                source_newline: self.source(interior).contains(['\r', '\n']),
             };
             let absolute = indentation > 0 || current.raw.ends_with('\n');
             writer.text("${");

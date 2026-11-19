@@ -59,6 +59,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_ambient_declaration_prefix(&head, writer)?;
         }
         let content_end = declaration.signature.content_end;
+        let trailing = if matches!(punctuation, StatementPunctuation::Canonical(_)) {
+            node.return_type(ast).and_then(|annotation| {
+                self.prepare_declaration_type_tail(
+                    node.span(ast),
+                    annotation.type_annotation(ast).span(ast),
+                )
+            })
+        } else {
+            None
+        };
         let tail = writer.group(false, |writer| {
             if let Some(gap) = declaration.async_prefix {
                 writer.text("async");
@@ -81,6 +91,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_bodyless_signature_suffix(declaration.signature, writer)
         })?;
+        let (content_end, tail) = if let Some(trailing) = trailing.filter(|_| tail.is_none()) {
+            self.format_comment_boundary(&trailing, writer)?;
+            (trailing.end(), None)
+        } else {
+            (content_end, tail)
+        };
         let mut printed = self.finish_statement(content_end, tail, punctuation, writer)?;
         printed.boundary = printed.boundary.type_declaration();
         Ok(printed)

@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => { return ast; });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(
+  <A extends AST>(ast: A): A => {
+    return ast;
+  },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":120}
+---------- Output ----------
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => {
+  return ast;
+});

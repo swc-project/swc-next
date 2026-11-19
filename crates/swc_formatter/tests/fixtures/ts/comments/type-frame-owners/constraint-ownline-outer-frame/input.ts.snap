@@ -9,7 +9,7 @@ type T<K extends
 ---------- Output ----------
 type T<
   K extends
-/* prettier-ignore */ (/* frame */ (\u0041 | B)),
+    /* prettier-ignore */ (/* frame */ (\u0041 | B)),
 > = K;
 
 ---------- Options ----------
@@ -17,6 +17,6 @@ type T<
 ---------- Output ----------
 type T<
   K extends
-/* prettier-ignore */ (/* frame */ (| \u0041
+    /* prettier-ignore */ (/* frame */ (| \u0041
       | B)),
 > = K;

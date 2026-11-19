@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(): void /* c */;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function f(): void /* c */;

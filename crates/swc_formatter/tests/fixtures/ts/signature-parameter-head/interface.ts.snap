@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { m<T> /* c */ (a: T): void; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+interface I {
+  m<T>(/* c */ a: T): void;
+}

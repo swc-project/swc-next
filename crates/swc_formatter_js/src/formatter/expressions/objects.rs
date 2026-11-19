@@ -21,7 +21,7 @@ use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
     FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
-    document::{Fragment, Writer},
+    document::{BodyOpening, Fragment, Writer},
 };
 
 /// A whole key group resolves `consistent` once before formatting any member.
@@ -49,6 +49,12 @@ pub(in crate::formatter) enum PropertyKeyContext {
     TypeProperty,
     TypeMethod,
     ClassMethod(ConstructorKeyGrammar),
+}
+
+/// The real brackets and their borrowed leading packet form one source frame.
+pub(in crate::formatter) struct ComputedKeySource<'ast> {
+    pub(in crate::formatter) span: Span,
+    pub(in crate::formatter) leading: &'ast [Comment],
 }
 
 enum SourceObject<'ast> {
@@ -96,6 +102,7 @@ pub(in crate::formatter) struct PropertySuppression {
 
 struct PreparedComputedKey<'ast> {
     transparent: bool,
+    indent_inner: bool,
     inner: Fragment<'ast>,
     opening: LineConstraint,
     closing: LineConstraint,
@@ -120,7 +127,11 @@ impl<'ast> PreparedComputedKey<'ast> {
         } else {
             writer.text("[");
             self.opening.write(writer, FlatSeparator::Empty, |_| {});
-            writer.write_fragment(self.inner);
+            if self.indent_inner {
+                writer.indent(|writer| writer.write_fragment(self.inner));
+            } else {
+                writer.write_fragment(self.inner);
+            }
             self.closing.write(writer, FlatSeparator::Empty, |_| {});
             writer.text("]");
         }
@@ -239,14 +250,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_object(
         &mut self,
         object: ObjectExpression,
+        opening: BodyOpening,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match self.source_object(object)? {
             SourceObject::Verbatim(span) => self.format_verbatim(span, writer),
             SourceObject::Formatted(source) => {
+                let opening = if matches!(&source.contents, ObjectContents::Empty { comments, .. }
+                    if comments.is_empty())
+                {
+                    BodyOpening::Plain
+                } else {
+                    opening
+                };
                 if self.source_object_layout.observing && source.expand {
                     let ((), intrinsic_lines) = writer.write_with_intrinsic_lines(|writer| {
-                        writer.group(true, |writer| {
+                        opening.group(writer, true.into(), None, |writer| {
                             self.format_object_contents(source.contents, writer)
                         })
                     })?;
@@ -255,7 +274,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     return Ok(());
                 }
-                writer.group(source.expand, |writer| {
+                opening.group(writer, source.expand.into(), None, |writer| {
                     self.format_object_contents(source.contents, writer)
                 })
             }
@@ -444,7 +463,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.comments.claim(leading)?;
                         self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                         if let Some(last) = leading.last() {
-                            self.comment_gap(last.span.end, property_span.start, writer);
+                            self.comment_gap_after(*last, property_span.start, writer);
                         }
                         let tail = if mode == ContentMode::Verbatim {
                             self.format_verbatim(property_span, writer)?;
@@ -507,9 +526,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             if comma_before_tail {
                                 write_comma(writer);
                             }
-                            self.format_expression_tail(tail, writer)?;
+                            let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                             self.comments.claim(boundary.inline)?;
-                            self.format_inline_trailing_comments(boundary.inline, writer)?;
+                            self.format_inline_trailing_comments_after(
+                                boundary.inline,
+                                adjacency,
+                                writer,
+                            )?;
                             if !comma_before_tail {
                                 write_comma(writer);
                             }
@@ -1048,22 +1071,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let line_before_colon = before
             .last()
             .is_some_and(|comment| comment.kind == CommentKind::Line);
-        let mut count = 0;
-        let mut previous = colon.end;
-        for (index, comment) in after.iter().enumerate() {
-            if promoted || self.line_breaks(previous, comment.span.start) != 0 {
-                break;
-            }
-            if comment.kind == CommentKind::Line {
-                count = index + 1;
-                break;
-            }
-            previous = comment.span.end;
-        }
+        let count = if promoted {
+            0
+        } else {
+            self.property_operator_line_count(after, colon.end)
+        };
         let (operator_line, leading) = after.split_at(count);
         let (before, operator_line, operator_line_start, leading) =
             if relocatable_before && line_before_colon {
-                (&[][..], before, key_end, after)
+                // Only the key's inline packet follows the emitted colon.
+                // Later own-line comments already belong to the indented value.
+                let inline_count = self.property_operator_line_count(before, key_end);
+                (
+                    &[][..],
+                    &before[..inline_count],
+                    key_end,
+                    &comments[inline_count..],
+                )
             } else {
                 (before, operator_line, colon.end, leading)
             };
@@ -1097,24 +1121,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let after_colon = operator_line
             .last()
             .map_or(colon.end, |comment| comment.span.end);
-        let moved_join = moved.last().map_or(LineConstraint::SameLine, |last| {
-            let before = self.line_breaks(last.span.end, colon.start);
+        let moved_gap = |end| {
+            let before = self.line_breaks(end, colon.start);
             let after = self.line_breaks(colon.end, prefix_start);
             match before.max(after) {
                 0 => LineConstraint::SameLine,
                 count => LineConstraint::NewLine(count),
             }
-        });
+        };
+        let moved_join = moved
+            .last()
+            .map_or(LineConstraint::SameLine, |last| moved_gap(last.span.end));
         boundary.value = PropertyValueHead {
             operator_line,
             operator_line_start,
             leading,
             moved_join: CommentGap::Source(moved_join),
-            separator: self.line_constraint(after_colon, prefix_start),
+            separator: if after_colon < colon.start && colon.end <= prefix_start {
+                // The moved colon occupied this source gap. Its line is not an
+                // empty line in the packet's final exit boundary.
+                moved_gap(after_colon)
+            } else if operator_line.is_empty() {
+                self.line_constraint(after_colon, prefix_start)
+            } else {
+                self.source_line_constraint(after_colon, prefix_start)
+            },
             layout: PropertyHeadLayout::required(line_after_colon),
         };
         boundary.line_before_colon = line_before_colon;
         Ok(boundary)
+    }
+
+    fn property_operator_line_count(&self, comments: &[Comment], start: u32) -> usize {
+        let mut previous = start;
+        for (index, comment) in comments.iter().enumerate() {
+            if self.line_breaks(previous, comment.span.start) != 0 {
+                return index;
+            }
+            if comment.kind == CommentKind::Line {
+                return index + 1;
+            }
+            previous = comment.span.end;
+        }
+        0
     }
 
     fn property_packet(
@@ -1270,7 +1319,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         self.format_comment_run(header.before, CommentRunLayout::Source, writer)?;
         if let (Some(before), Some(after)) = (header.before.last(), header.after.first()) {
-            self.comment_gap(before.span.end, after.span.start, writer);
+            self.comment_gap_after(*before, after.span.start, writer);
         }
         self.format_comment_run(header.after, CommentRunLayout::Source, writer)?;
         match header.gap {
@@ -1549,14 +1598,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quoting: PropertyKeyQuoting,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_property_key_context_with_leading(
+            key,
+            computed.map(|span| ComputedKeySource { span, leading: &[] }),
+            mode,
+            context,
+            quoting,
+            writer,
+        )
+    }
+
+    pub(in crate::formatter) fn format_property_key_context_with_leading(
+        &mut self,
+        key: PropertyKey,
+        computed: Option<ComputedKeySource<'ast>>,
+        mode: ContentMode,
+        context: PropertyKeyContext,
+        quoting: PropertyKeyQuoting,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let key_span = key.span(ast);
-        if let Some(computed) = computed {
+        if let Some(ComputedKeySource {
+            span: computed,
+            leading,
+        }) = computed
+        {
             let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
                 return Err(self.unsupported("computed object key", key));
             };
-            self.prepare_computed_property_key(expression, computed, mode, context, writer)?
-                .write(writer);
+            self.prepare_computed_property_key(
+                expression, computed, leading, mode, context, writer,
+            )?
+            .write(writer);
             return Ok(());
         }
         if mode == ContentMode::Verbatim {
@@ -1610,6 +1684,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         computed: Span,
+        prefix: &'ast [Comment],
         mode: ContentMode,
         context: PropertyKeyContext,
         writer: &mut Writer<'ast>,
@@ -1617,8 +1692,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let key_span = expression.span(self.ast);
         let closing = computed.end - 1;
         let content = Span::new(computed.start + 1, closing);
-        let comments = self.comments.in_range(content);
+        let leading_start = prefix
+            .first()
+            .map_or(content.start, |comment| comment.span.start);
+        let comments = self.comments.in_range(Span::new(leading_start, closing));
         let has_comments = !comments.is_empty();
+        let expression_content = self.expression_content(expression);
+        let child_span = expression_content.expression.span(self.ast);
+        let function_owns_comments = matches!(
+            expression_content.data,
+            ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+        ) && comments
+            .first()
+            .is_some_and(|comment| child_span.start <= comment.span.start)
+            && comments
+                .last()
+                .is_some_and(|comment| comment.span.end <= child_span.end);
         let opening_constraint = self.opening_line_constraint(content);
         let closing_constraint = if self.has_suppression {
             let comments = self.comments.in_range(Span::new(key_span.end, closing));
@@ -1632,22 +1721,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        // Source packets select the bracket owner before child width decisions.
-        // Inline ordinary Blocks do not acquire a frame when their expression breaks.
+        // A function owns comments within its own span; other packets select
+        // the bracket frame before child width decisions.
         let transparent = !has_comments
             || (mode == ContentMode::Formatted
                 && opening_constraint == LineConstraint::Unconstrained
                 && !self.diagnostic_range_is_sensitive(computed)
-                && comments.iter().all(|comment| {
-                    comment.kind == CommentKind::Block
-                        && self.line_breaks(comment.span.start, comment.span.end) == 0
-                        && !self.source_line_starts_line(comment.span.start)
-                        && self.comment_semantics(*comment).is_ordinary()
-                        && !self.comment_is_jsdoc_binding(*comment)
-                })
-                && self
-                    .comment_binding(comments, content, None)
-                    .allows_relocation(None));
+                && (function_owns_comments
+                    || (comments.iter().all(|comment| {
+                        comment.kind == CommentKind::Block
+                            && self.line_breaks(comment.span.start, comment.span.end) == 0
+                            && (!self.layout_line_starts_line(comment.span.start)
+                                || child_span.start <= comment.span.start
+                                    && comment.span.end <= child_span.end)
+                            && self.comment_semantics(*comment).is_ordinary()
+                            && !self.comment_is_jsdoc_binding(*comment)
+                            && self.comment_directive(*comment).is_none()
+                    }) && self
+                        .comment_binding(comments, content, None)
+                        .allows_relocation(None))));
         let method = matches!(
             context,
             PropertyKeyContext::ObjectMethod
@@ -1658,11 +1750,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PropertyKeyContext::TypeProperty => ExpressionPosition::TypePropertyKey,
             _ => ExpressionPosition::Nested,
         };
-        let (inner, tail_constraint) = writer.record_with_value(|writer| {
+        let (inner, (tail_constraint, indent_inner)) = writer.record_with_value(|writer| {
             let leading = self
                 .comments
-                .between(Span::new(computed.start + 1, key_span.start))?;
-            let content = self.expression_content(expression);
+                .between(Span::new(leading_start, key_span.start))?;
+            let content = expression_content;
+            let indent_inner = transparent
+                && matches!(context, PropertyKeyContext::TypeProperty)
+                && matches!(
+                    content.data,
+                    ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+                );
             let binding = self.expression_head_binding(leading, expression);
             let binding = content
                 .parentheses
@@ -1709,11 +1807,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 closing,
             );
             self.format_expression_tail(tail, writer)?;
-            Ok::<_, FormatError>(tail_constraint)
+            Ok::<_, FormatError>((tail_constraint, indent_inner))
         })?;
         let closing_constraint = closing_constraint.unwrap_or(tail_constraint);
         Ok(PreparedComputedKey {
             transparent,
+            indent_inner,
             inner,
             opening: opening_constraint,
             closing: closing_constraint,

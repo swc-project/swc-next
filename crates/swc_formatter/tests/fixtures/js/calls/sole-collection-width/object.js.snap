@@ -1,0 +1,25 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f({ a: 1 });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":2}
+---------- Output ----------
+f(
+  {
+    a: 1,
+  },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":3}
+---------- Output ----------
+f({
+  a: 1,
+});
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12}
+---------- Output ----------
+f({ a: 1 });

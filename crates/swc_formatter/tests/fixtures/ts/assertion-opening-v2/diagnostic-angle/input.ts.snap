@@ -12,4 +12,4 @@ Missing | string>y;
 declare const y: unknown;
 const x = <
   // @ts-expect-error
-  | Missing | string>y;
+  Missing | string>y;

@@ -34,7 +34,7 @@ mod writer;
 pub use decode::DocumentBufferError;
 pub use line::{LineMode, LineOptions};
 pub use printer::{CursorError, PrintResult};
-pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
+pub use writer::{FillEntry, FillSeparatorPolicy, GroupScope, IndentScope, Writer};
 
 use std::num::NonZeroU32;
 
@@ -204,7 +204,7 @@ impl<'a> RecordedGroup<'a> {
     }
 }
 
-/// Context-free ASCII measurements, saturated at the supported width limit.
+/// Context-free ASCII measurements with a width representable as `u16`.
 /// Literal text spaces remain part of `width`;
 /// only spaces contributed by `line` remain pending at the scope boundaries.
 #[derive(Debug, Clone, Copy, Default)]
@@ -235,44 +235,56 @@ impl FlatSummary {
     }
 }
 
-/// Measures a completed group once, retaining only context-free ASCII results.
-/// Literal text spaces count directly; flat line spaces stay pending until text.
-fn flat_summary(elements: &[Instruction<'_>]) -> Option<FlatSummary> {
+/// Combines a completed group's top-level instructions. Cached inner groups are
+/// skipped, so closing a chain of nested groups does not visit the same text again.
+#[inline]
+fn flat_summary(mut elements: &[Instruction<'_>]) -> Option<FlatSummary> {
     let mut summary = FlatSummary::default();
-    for element in elements {
-        match element {
+    let mut total_width = 0u64;
+    while let Some((element, rest)) = elements.split_first() {
+        elements = rest;
+        let (width, starts_with_line, ends_with_line) = match element {
             Instruction::Text { source, width } | Instruction::TextIfFlat { source, width } => {
                 let width = Text::from_parts(*source, *width).clean_ascii_width()?;
-                let width = u16::try_from(width).unwrap_or(u16::MAX);
-                if summary.has_text {
-                    summary.width = summary
-                        .width
-                        .saturating_add(u16::from(summary.ends_with_line))
-                        .saturating_add(width);
-                } else {
-                    summary.starts_with_line = summary.ends_with_line;
-                    summary.width = width;
-                    summary.has_text = true;
-                }
-                summary.ends_with_line = false;
+                (width as u64, false, false)
             }
-            Instruction::NormalLine => summary.ends_with_line = true,
+            Instruction::NormalLine => {
+                summary.ends_with_line = true;
+                continue;
+            }
+            Instruction::StartGroupWithFlatWidth {
+                summary: child,
+                end_offset,
+            } => {
+                elements = &elements[*end_offset as usize..];
+                if !child.has_text {
+                    summary.ends_with_line |= child.ends_with_line;
+                    continue;
+                }
+                (
+                    u64::from(child.width),
+                    child.starts_with_line,
+                    child.ends_with_line,
+                )
+            }
             Instruction::SoftLine
             | Instruction::TextIfBreak { .. }
-            | Instruction::StartGroup {
-                effect: BreakEffect(0),
-                id: None,
-                ..
-            }
-            | Instruction::EndGroup
             | Instruction::StartIndent
             | Instruction::StartAbsoluteIndent { .. }
             | Instruction::EndIndent
             | Instruction::StartAlign { .. }
-            | Instruction::EndAlign { .. } => {}
+            | Instruction::EndAlign { .. } => continue,
             _ => return None,
-        }
+        };
+        let separator = summary.ends_with_line || starts_with_line;
+        total_width += width + u64::from(summary.has_text && separator);
+        summary.starts_with_line |= !summary.has_text && separator;
+        summary.has_text = true;
+        summary.ends_with_line = ends_with_line;
     }
+    // The group length and every text length are bounded by u32. Narrow
+    // the total only at the end, including at most one separator per item.
+    summary.width = u16::try_from(total_width).ok()?;
     Some(summary)
 }
 
@@ -464,10 +476,11 @@ impl<'a> Doc<'a> {
         self.root.will_break()
     }
 
-    /// Replaces ordinary lines with spaces and soft lines with empty text.
+    /// Replaces ordinary lines with spaces and removes soft lines.
     /// Selects the flat branch of IfBreak and retains hard lines and groups.
-    pub fn remove_lines(self) -> Self {
-        transform::remove_lines(self)
+    pub fn remove_lines(mut self) -> Self {
+        self.root = transform::remove_lines(self.allocator, self.root);
+        self
     }
 
     /// Replaces LF within Text with a literal line and a parent break request.

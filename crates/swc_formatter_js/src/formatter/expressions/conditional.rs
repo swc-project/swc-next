@@ -85,6 +85,11 @@ struct PreparedConditional<'ast> {
     colon: ConditionalBoundary<'ast>,
 }
 
+struct PreparedConditionalTest<'ast> {
+    content: ExpressionContent,
+    context: ExpressionContext<'ast>,
+}
+
 struct ConditionalBranch<'ast> {
     operand: ConditionalOperand,
     operand_indent: OperandIndent,
@@ -249,8 +254,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => ConditionalLayout::Root,
         };
         let chain = self.resolve_conditional_chain(context.conditional_chain, &prepared);
+        let operand_indent = match context.position {
+            ExpressionPosition::Nested
+            | ExpressionPosition::RestrictedArgument
+            | ExpressionPosition::CallCallee { .. }
+            | ExpressionPosition::NewCallee => context.operand_indent,
+            _ => OperandIndent::Parent,
+        };
+        let mut test = PreparedConditionalTest {
+            content: self.expression_content(prepared.test.original),
+            context: ExpressionContext::at(ExpressionPosition::ConditionalTest)
+                .with_parent_head(context)
+                .with_operand_indent(operand_indent)
+                .with_conditional_chain(self.conditional_test_chain(chain, prepared.test.original))
+                .with_content_mode(prepared.question.previous_mode())
+                .with_tail_owner(TailOwner::ParentOperation),
+        };
+        test.context = self.with_head_scope(test.context, &test.content);
+        if let Some(released) = self.prepare_released_source_cast_head(
+            prepared.test.original,
+            &test.content,
+            test.context,
+        ) {
+            test.context = self.format_released_source_cast_head(released, test.context, writer)?;
+        }
         let write = |writer: &mut Writer<'ast>| {
-            self.format_conditional_contents(prepared, context, layout, chain, writer)
+            self.format_conditional_contents(prepared, test, context, layout, chain, writer)
         };
         match layout {
             ConditionalLayout::Root | ConditionalLayout::Test => writer.group(false, write),
@@ -365,6 +394,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_conditional_contents(
         &mut self,
         prepared: PreparedConditional<'ast>,
+        prepared_test: PreparedConditionalTest<'ast>,
         context: ExpressionContext<'ast>,
         layout: ConditionalLayout,
         chain: ConditionalChain,
@@ -389,21 +419,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             LineConstraint::Unconstrained
         };
-        let test_chain = self.conditional_test_chain(chain, test.original);
-        let mut write_test = |writer: &mut Writer<'ast>| {
-            let mut test_context = ExpressionContext::at(ExpressionPosition::ConditionalTest)
-                .with_parent_head(context)
-                .with_operand_indent(operand_indent)
-                .with_conditional_chain(test_chain)
-                .with_content_mode(question.previous_mode())
-                .with_tail_owner(TailOwner::ParentOperation);
+        let write_test = |writer: &mut Writer<'ast>| {
+            let mut test_context = prepared_test.context;
             if question.previous_mode() == ContentMode::Verbatim {
                 test_context.ignored_parentheses_closing =
                     Some(Span::new(test.operand_end, test.source_end));
             }
             self.format_prepared_expression_with_leading_comments(
                 test.original,
-                self.expression_content(test.original),
+                prepared_test.content,
                 NodeHead {
                     comments: &[],
                     content_start: test.source_start,
@@ -467,6 +491,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         Ok(ExpressionOutput {
                             pending: None,
                             right_edge: tail.right_edge,
+                            operator_tail: None,
                         })
                     } else {
                         Ok(tail)
@@ -662,7 +687,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut trailing = 0;
         let mut offset = 0;
         for run in comments.chunk_by(|left, right| {
-            self.line_breaks(left.span.end, right.span.start) == 0
+            self.source_line_breaks(left.span.end, right.span.start) == 0
                 && self
                     .source(Span::new(left.span.end, right.span.start))
                     .chars()
@@ -676,7 +701,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(following_start, |comment| comment.span.start);
             let ends_line = self.comment_run_ends_line(last, next);
             if self.source_position_starts_line(first.span.start)
-                || ends_line && self.line_breaks(operand_end, first.span.start) != 0
+                || ends_line && self.source_line_breaks(operand_end, first.span.start) != 0
             {
                 break;
             }
@@ -706,7 +731,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let inner_count =
             comments.partition_point(|comment| comment.span.end <= source_range.start);
         let inner = &comments[..inner_count];
-        if !suppression.previous.is_empty()
+        if suppression
+            .previous
+            .iter()
+            .any(|&comment| !self.comment_semantics(comment).is_ordinary())
             || self.diagnostic_range_is_sensitive(Span::new(source_end, source_range.start))
             || inner
                 .iter()
@@ -796,11 +824,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 (split, Some(inner_count))
                             } else {
                                 (
-                                    self.split_separator_comments(
+                                    self.split_conditional_comments(
                                         comments,
                                         before_count,
                                         source_end,
-                                        Some(boundary.source_range.end),
+                                        boundary.source_range.end,
+                                        enclosed && boundary.source_enclosed,
                                     ),
                                     None,
                                 )
@@ -841,11 +870,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     let before_count =
                         comments.partition_point(|comment| comment.span.end <= operator_start);
-                    let (trailing, leading) = self.split_separator_comments(
+                    let (trailing, leading) = self.split_conditional_comments(
                         comments,
                         before_count,
                         source_end,
-                        Some(boundary.source_range.end),
+                        boundary.source_range.end,
+                        enclosed && boundary.source_enclosed,
                     );
                     (
                         trailing,
@@ -1031,6 +1061,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             after_operator,
             deferred_tail,
         })
+    }
+
+    fn split_conditional_comments(
+        &self,
+        comments: &'ast [Comment],
+        before_operator: usize,
+        source_end: u32,
+        following_start: u32,
+        source_enclosed: bool,
+    ) -> (&'ast [Comment], &'ast [Comment]) {
+        let (trailing, _) = self.split_separator_comments(
+            comments,
+            before_operator,
+            source_end,
+            Some(following_start),
+        );
+        // A released source pair cannot reclaim the following operator's head.
+        let trailing_count = if source_enclosed {
+            trailing.len().min(before_operator)
+        } else {
+            trailing.len()
+        };
+        comments.split_at(trailing_count)
     }
 
     fn format_conditional_tail(

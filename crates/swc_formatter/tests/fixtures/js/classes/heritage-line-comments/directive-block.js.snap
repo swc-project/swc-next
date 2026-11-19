@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends /* eslint-disable-next-line no-undef */
+Missing(aaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbb) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class C extends /* eslint-disable-next-line no-undef */
+Missing(aaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbb) {}

@@ -1,12 +1,14 @@
 //! Conditional type children retain their grammar roles and prepared token gaps.
 
-use swc_next_ecma_ast::{GetSpan, Span, TsConditionalType, TsTypeData, TsTypeNameData};
+use swc_next_ecma_ast::{
+    CommentKind, GetSpan, Span, TsConditionalType, TsTypeData, TsTypeNameData,
+};
 
 use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, SuppressedTypeHead,
-    SuppressedTypeHeadRole, TypeLayout, TypeOperatorSlot,
+    SuppressedTypeHeadRole, TypeLayout, TypeOperatorSlot, TypeOutput,
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -36,6 +38,17 @@ struct ConditionalTypeBoundary<'ast> {
     layout: ConditionalTypeLayout<'ast>,
 }
 
+struct ConditionalTypeBranch<'ast> {
+    boundary: ConditionalTypeBoundary<'ast>,
+    node: PreparedType,
+    role: ConditionalBranchRole<'ast>,
+}
+
+enum ConditionalBranchRole<'ast> {
+    Consequent(Option<CommentBoundary<'ast>>),
+    Alternate,
+}
+
 enum ConditionalTypeLayout<'ast> {
     Source {
         span: Span,
@@ -55,6 +68,12 @@ enum ConditionalTypeLayout<'ast> {
 pub(super) struct PreparedConditionalType<'ast> {
     check: ConditionalCheck<'ast>,
     body: ConditionalBody<'ast>,
+}
+
+impl PreparedConditionalType<'_> {
+    pub(super) fn node(&self) -> TsConditionalType {
+        self.body.node
+    }
 }
 
 struct ConditionalBody<'ast> {
@@ -157,24 +176,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedConditionalType { check, body })
     }
 
-    pub(super) fn format_conditional_type(
+    pub(super) fn format_conditional_type_body(
         &mut self,
         node: TsConditionalType,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let (check, body) = self.prepare_conditional_type(node)?;
-        self.format_conditional_members(ConditionalCheck::Type(check), body, layout, writer)
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_conditional_type_body_with_tail(node, layout, None, writer)
     }
 
-    pub(super) fn format_prepared_conditional_type(
+    fn format_conditional_type_body_with_tail(
+        &mut self,
+        node: TsConditionalType,
+        layout: TypeLayout,
+        trailing: Option<CommentBoundary<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        let (check, body) = self.prepare_conditional_type(node)?;
+        self.format_conditional_members(
+            ConditionalCheck::Type(check),
+            body,
+            layout,
+            trailing,
+            writer,
+        )
+    }
+
+    pub(super) fn format_prepared_conditional_type_body(
         &mut self,
         conditional: PreparedConditionalType<'ast>,
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context(
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_prepared_conditional_type_body_with_tail(
+            conditional,
+            context,
+            layout,
+            None,
+            writer,
+        )
+    }
+
+    fn format_prepared_conditional_type_body_with_tail(
+        &mut self,
+        conditional: PreparedConditionalType<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        trailing: Option<CommentBoundary<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        self.format_type_body_in_context(
             TsTypeData::TsConditionalType(conditional.body.node),
             context,
             layout,
@@ -184,6 +236,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     conditional.check,
                     conditional.body,
                     layout,
+                    trailing,
                     writer,
                 )
             },
@@ -195,8 +248,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         check: ConditionalCheck<'ast>,
         body: ConditionalBody<'ast>,
         layout: TypeLayout,
+        trailing: Option<CommentBoundary<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let options = self.options;
         let ConditionalBody {
             node,
@@ -205,7 +259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             alternate,
             head,
             question,
-            colon,
+            mut colon,
             ..
         } = body;
         let content = |writer: &mut Writer<'ast>| {
@@ -214,37 +268,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let print_head = |writer: &mut Writer<'ast>| {
                 let span = node.check_type(self.ast).span(self.ast);
-                let output =
-                    self.format_type_before_continuation(span, writer, |formatter, writer| {
-                        let tail = match check {
-                            ConditionalCheck::Type(check) => {
-                                let layout =
-                                    formatter.continuation_type_layout(span, TypeLayout::Root);
-                                formatter.format_prepared_type_with_layout(
-                                    check,
-                                    TypeContext::ConditionalCheck,
-                                    layout,
-                                    writer,
-                                )?
-                            }
-                            ConditionalCheck::Prepared(check) => {
-                                let layout = formatter
-                                    .continuation_type_layout(span, check.opening_layout());
-                                formatter.format_prepared_type_content(
-                                    *check,
-                                    TypeContext::ConditionalCheck,
-                                    layout,
-                                    writer,
-                                )?
-                            }
-                        };
-                        Ok(crate::formatter::expressions::ExpressionOutput::unreported(
-                            tail,
-                        ))
-                    })?;
+                let output = self.format_type_body_before_continuation(
+                    span,
+                    writer,
+                    |formatter, writer| match check {
+                        ConditionalCheck::Type(check) => {
+                            let layout = formatter.continuation_type_layout(span, TypeLayout::Root);
+                            formatter.format_prepared_type_body(
+                                check,
+                                TypeContext::ConditionalCheck,
+                                layout,
+                                writer,
+                            )
+                        }
+                        ConditionalCheck::Prepared(check) => {
+                            let layout =
+                                formatter.continuation_type_layout(span, check.opening_layout());
+                            formatter.format_prepared_type_content_body(
+                                *check,
+                                TypeContext::ConditionalCheck,
+                                layout,
+                                writer,
+                            )
+                        }
+                    },
+                )?;
                 self.format_expression_tail(output.pending, writer)?;
-                let tail = self.format_conditional_type_extends(head, extends, writer)?;
-                self.format_expression_tail(tail, writer)?;
+                let extends = self.format_conditional_type_extends(head, extends, writer)?;
+                self.format_expression_tail(extends.pending, writer)?;
                 Ok::<_, FormatError>(())
             };
             if layout == TypeLayout::ConditionalAlternate {
@@ -253,24 +304,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 print_head(writer)?;
             }
             let branches = |writer: &mut Writer<'ast>| {
+                let consequent_tail = self.take_conditional_consequent_tail(consequent, &mut colon);
                 self.format_conditional_type_branch(
-                    question,
-                    consequent,
-                    TypeLayout::ConditionalConsequent,
-                    true,
+                    ConditionalTypeBranch {
+                        boundary: question,
+                        node: consequent,
+                        role: ConditionalBranchRole::Consequent(consequent_tail),
+                    },
                     writer,
                     |formatter, tail, writer| formatter.format_expression_tail(tail, writer),
                 )?;
-                self.format_conditional_type_branch(
-                    colon,
-                    alternate,
-                    TypeLayout::ConditionalAlternate,
-                    false,
+                let tail = self.format_conditional_type_branch(
+                    ConditionalTypeBranch {
+                        boundary: colon,
+                        node: alternate,
+                        role: ConditionalBranchRole::Alternate,
+                    },
                     writer,
                     |_, tail, _| Ok(tail),
-                )
+                )?;
+                Ok::<_, FormatError>(TypeOutput::from_pending(tail))
             };
-            let tail = match layout {
+            let output = match layout {
                 TypeLayout::ConditionalConsequent => match options.indent_style {
                     IndentStyle::Space => writer.align(
                         usize::from(options.indent_width.value()).saturating_sub(2),
@@ -282,11 +337,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => writer.indent(branches),
             }?;
             if layout == TypeLayout::ConditionalConsequent {
-                self.format_expression_tail(tail, writer)?;
+                self.format_expression_tail(output.pending, writer)?;
+                if let Some(trailing) = trailing {
+                    self.format_comment_boundary(&trailing, writer)?;
+                }
                 writer.if_flat(")");
-                Ok(None)
+                Ok(TypeOutput::closed())
             } else {
-                Ok(tail)
+                Ok(TypeOutput::from_pending(output.pending))
             }
         };
         if matches!(
@@ -297,6 +355,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.group(false, content)
         }
+    }
+
+    fn take_conditional_consequent_tail(
+        &self,
+        consequent: PreparedType,
+        colon: &mut ConditionalTypeBoundary<'ast>,
+    ) -> Option<CommentBoundary<'ast>> {
+        // Only the consequent's own optional frame may enclose this packet.
+        // Bound comments and source line constraints stay with the separator.
+        if consequent.source_owner.is_some()
+            || consequent.source_head.is_some()
+            || !matches!(consequent.data, TsTypeData::TsConditionalType(_))
+        {
+            return None;
+        }
+        let ConditionalTypeLayout::Formatted { before, after } = &mut colon.layout else {
+            return None;
+        };
+        let comments = before.comments();
+        if comments.is_empty()
+            || comments.iter().any(|&comment| {
+                comment.kind != CommentKind::Block
+                    || !self.comment_semantics(comment).is_ordinary()
+                    || self.comment_is_jsdoc_binding(comment)
+            })
+            || self.source_line_breaks(before.source_end(), after.source_end()) != 0
+            || self
+                .diagnostic_range_is_sensitive(Span::new(before.source_end(), after.source_end()))
+        {
+            return None;
+        }
+        let replacement = self.prepare_comment_boundary(&[], before.end(), after.source_end() - 1);
+        Some(std::mem::replace(before, replacement))
     }
 
     fn prepare_conditional_type_boundary(
@@ -455,10 +546,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     /// The separator owns the complete following packet, including escaped type heads.
     fn format_conditional_type_branch<T>(
         &mut self,
-        boundary: ConditionalTypeBoundary<'ast>,
-        node: PreparedType,
-        layout: TypeLayout,
-        continuation: bool,
+        branch: ConditionalTypeBranch<'ast>,
         writer: &mut Writer<'ast>,
         finish: impl FnOnce(
             &mut Self,
@@ -466,6 +554,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
+        let ConditionalTypeBranch {
+            boundary,
+            node,
+            role,
+        } = branch;
+        let (layout, continuation, trailing) = match role {
+            ConditionalBranchRole::Consequent(trailing) => {
+                (TypeLayout::ConditionalConsequent, true, trailing)
+            }
+            ConditionalBranchRole::Alternate => (TypeLayout::ConditionalAlternate, false, None),
+        };
         let context = TypeContext::Root;
         let head = self.type_movable_head(node, context);
         let emitted_prefix = !matches!(&boundary.layout, ConditionalTypeLayout::Source { .. });
@@ -506,18 +605,46 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let content = self.format_movable_type_head(node, &mut pending, context, writer)?;
             let span = node.node.span(self.ast);
-            let tail = if continuation {
-                let layout = self.continuation_type_layout(span, layout);
-                self.format_type_before_continuation(span, writer, |formatter, writer| {
-                    formatter
-                        .format_prepared_type_content(content, context, layout, writer)
-                        .map(crate::formatter::expressions::ExpressionOutput::unreported)
-                })?
-                .pending
-            } else {
-                self.format_prepared_type_content(content, context, layout, writer)?
+            let print = |formatter: &mut Self, layout: TypeLayout, writer: &mut Writer<'ast>| {
+                let Some(trailing) = trailing else {
+                    return formatter
+                        .format_prepared_type_content_body(content, context, layout, writer);
+                };
+                formatter.with_recursion_scope(|formatter| match content {
+                    PreparedTypeContent::Conditional(conditional) => formatter
+                        .format_prepared_conditional_type_body_with_tail(
+                            conditional,
+                            context,
+                            layout,
+                            Some(trailing),
+                            writer,
+                        ),
+                    PreparedTypeContent::Type(node) => {
+                        let TsTypeData::TsConditionalType(conditional) = node.data else {
+                            return Err(
+                                formatter.unsupported("conditional consequent tail", node.node)
+                            );
+                        };
+                        let _scope = formatter.recursion_scope(conditional)?;
+                        formatter.format_conditional_type_body_with_tail(
+                            conditional,
+                            layout,
+                            Some(trailing),
+                            writer,
+                        )
+                    }
+                    _ => Err(formatter.unsupported("conditional consequent tail", node.node)),
+                })
             };
-            finish(self, tail, writer)
+            let output = if continuation {
+                let layout = self.continuation_type_layout(span, layout);
+                self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                    print(formatter, layout, writer)
+                })?
+            } else {
+                print(self, layout, writer)?
+            };
+            finish(self, output.pending, writer)
         };
         match indent_style {
             IndentStyle::Space => writer.align(2, print),
@@ -530,7 +657,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: ConditionalTypeBoundary<'ast>,
         node: PreparedType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let layout = match boundary.layout {
             ConditionalTypeLayout::Suppressed(head) => {
                 writer.space();
@@ -554,19 +681,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(boundary.separator.token());
                 writer.space();
                 let span = node.node.span(self.ast);
-                return self
-                    .format_type_before_continuation(span, writer, |formatter, writer| {
-                        formatter
-                            .format_binary_type_rhs_head(
-                                node,
-                                TypeContext::ConditionalExtends,
-                                &after,
-                                head,
-                                writer,
-                            )
-                            .map(crate::formatter::expressions::ExpressionOutput::unreported)
-                    })
-                    .map(|output| output.pending);
+                return self.format_type_body_before_continuation(
+                    span,
+                    writer,
+                    |formatter, writer| {
+                        formatter.format_binary_type_rhs_head_body(
+                            node,
+                            TypeContext::ConditionalExtends,
+                            &after,
+                            head,
+                            writer,
+                        )
+                    },
+                );
             }
             ConditionalTypeLayout::Source { span, opening } => {
                 self.format_source_gap(span, writer)?;
@@ -593,14 +720,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let span = node.node.span(self.ast);
         let layout = self.continuation_type_layout(span, layout);
-        self.format_type_before_continuation(span, writer, |formatter, writer| {
-            formatter.format_prepared_type_output(
+        self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+            formatter.format_prepared_type_body(
                 node,
                 TypeContext::ConditionalExtends,
                 layout,
                 writer,
             )
         })
-        .map(|output| output.pending)
     }
 }

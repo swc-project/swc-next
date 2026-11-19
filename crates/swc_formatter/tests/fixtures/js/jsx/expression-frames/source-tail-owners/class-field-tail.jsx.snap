@@ -7,14 +7,14 @@ class Render {node=(/* ordinary */ <Item value={61}/> /* source tail */);}
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class Render {
-  node = /* ordinary */ <Item value={61} />; /* source tail */
+  node = (/* ordinary */ <Item value={61} />); /* source tail */
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class Render {
-  node = /* ordinary */ <Item value={61} /> /* source tail */
+  node = (/* ordinary */ <Item value={61} />) /* source tail */
 }
 
 ---------- Options ----------

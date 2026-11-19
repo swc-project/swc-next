@@ -1,12 +1,12 @@
 //! Ambient prefixes retain the real keyword and the actual following declaration owner.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, Decl, DeclData, GetSpan, IdentifierName, Span, TsModuleDeclarationKind,
-    TsModuleName, VariableDeclarator,
+    BindingIdentifier, CommentKind, Decl, DeclData, GetSpan, IdentifierName, Span,
+    TsModuleDeclarationKind, TsModuleName, VariableDeclarator,
 };
 
 use super::Formatter;
-use crate::formatter::comments::CommentBoundary;
+use crate::formatter::comments::{CommentBinding, CommentBoundary};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -79,6 +79,30 @@ pub(super) struct AmbientDeclarationHead<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(in crate::formatter) fn prepare_declaration_type_tail(
+        &self,
+        declaration: Span,
+        content: Span,
+    ) -> Option<CommentBoundary<'ast>> {
+        let end = self
+            .statement_source_terminator(declaration)
+            .map_or(declaration.end, |terminator| terminator.start());
+        let comments = self.comments.in_range(Span::new(content.end, end));
+        let last = comments.last()?;
+        if self.line_breaks(content.end, last.span.start) != 0
+            || !comments
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block)
+            || !matches!(
+                self.comment_binding(comments, declaration, Some(content)),
+                CommentBinding::Unbound
+            )
+        {
+            return None;
+        }
+        Some(self.prepare_comment_boundary(comments, content.end, end))
+    }
+
     pub(super) fn prepare_ambient_declaration_keyword(
         &self,
         declaration: Decl,

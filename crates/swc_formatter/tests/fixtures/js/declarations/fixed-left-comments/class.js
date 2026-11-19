@@ -1,0 +1,2 @@
+const C // comment
+= class { /**/ };

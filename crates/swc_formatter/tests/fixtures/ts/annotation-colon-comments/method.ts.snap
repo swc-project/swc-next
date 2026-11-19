@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A { m() /* c */: void {} }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+class A {
+  m() /* c */ : void {}
+}

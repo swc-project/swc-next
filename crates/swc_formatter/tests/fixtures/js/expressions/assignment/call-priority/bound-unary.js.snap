@@ -14,9 +14,10 @@ const assignedValueName =
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
-const assignedValueName = !(
-  /* @__PURE__ */ receiver.branch.method()
-);
+const assignedValueName =
+  !(
+    /* @__PURE__ */ receiver.branch.method()
+  );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}

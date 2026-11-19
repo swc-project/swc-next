@@ -39,6 +39,44 @@ fn line_document(options: PrintOptions) -> String {
     writer.finish().print(options)
 }
 
+fn resumed_scope_document(request: GroupRequest, options: PrintOptions) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.next_group_id();
+    let outer = writer.begin_group(GroupRequest::Auto, Some(id));
+    writer.text("A(");
+    let indent = writer.begin_indent();
+    writer.soft_line();
+    let inner = writer.begin_group(request, None);
+    writer.text("x");
+    writer.line();
+    writer.text("y");
+    writer.end_group(inner);
+    writer.end_indent(indent);
+    writer.soft_line();
+    writer.text(")");
+    writer.end_group(outer);
+    writer.if_break_for(ConditionTarget::Group(id), "!");
+    writer.finish().print(options)
+}
+
+#[test]
+fn resumed_scopes() {
+    let options = PrintOptions::default();
+    let flat = resumed_scope_document(GroupRequest::Auto, options);
+    assert_eq!(flat, "A(x y)");
+
+    let narrow = PrintOptions {
+        line_width: 4,
+        ..options
+    };
+    let broken = resumed_scope_document(GroupRequest::Auto, narrow);
+    assert_eq!(broken, "A(\n  x\n  y\n)!");
+
+    let expanded = resumed_scope_document(GroupRequest::Expanded, options);
+    assert_eq!(expanded, "A(\n  x\n  y\n)!");
+}
+
 fn line_request_document<'a>(
     allocator: &'a Allocator,
     line: impl FnOnce(&mut Writer<'a>),
@@ -426,7 +464,7 @@ fn flat_width_layout(width: u16) -> String {
         writer.group(false, |writer| {
             writer.text("return");
             writer.space();
-            writer.group_with_flat_width(|writer| {
+            writer.group(false, |writer| {
                 writer.if_break("(");
                 writer.indent(|writer| {
                     writer.soft_line();
@@ -463,7 +501,7 @@ fn prepared_boundary(
 ) -> String {
     flat_width_document(width, |writer| {
         writer.text(before);
-        writer.group_with_flat_width(write);
+        writer.group(false, write);
         writer.text(after);
     })
 }
@@ -484,7 +522,7 @@ fn prepared_empty_continuation(width: u16) -> String {
         writer.group(false, |writer| {
             writer.text("a");
             writer.line();
-            writer.group_with_flat_width(|_| {});
+            writer.group(false, |_| {});
             writer.text("b");
         });
     })
@@ -492,16 +530,31 @@ fn prepared_empty_continuation(width: u16) -> String {
 
 fn prepared_nested_continuation(width: u16) -> String {
     flat_width_document(width, |writer| {
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.text("a");
             writer.line();
-            writer.group_with_flat_width(|writer| {
+            writer.group(false, |writer| {
                 writer.text("b");
                 writer.line();
                 writer.text("c");
             });
         });
         writer.text(" d");
+    })
+}
+
+fn nested_group_boundaries(width: u16, prefix: &str) -> String {
+    flat_width_document(width, |writer| {
+        writer.group(false, |writer| {
+            writer.text_copied(prefix);
+            writer.group(false, |writer| {
+                writer.line();
+                writer.text("b");
+                writer.line();
+            });
+            writer.text("c");
+        });
+        writer.text("d");
     })
 }
 
@@ -532,17 +585,18 @@ fn prepared_group_continuations() {
     assert_eq!(prepared_nested_continuation(6), "a\nb c d");
 
     assert_eq!(prepared_nested_continuation(4), "a\nb\nc d");
+
+    assert_eq!(nested_group_boundaries(6, "a"), "a b cd");
+
+    assert_eq!(nested_group_boundaries(5, "a"), "a\nb\ncd");
 }
 
-fn flat_width_spaces(literal: bool) -> String {
-    flat_width_document(5, |writer| {
+#[test]
+fn prepared_group_spaces() {
+    let spaces = flat_width_document(5, |writer| {
         writer.text("a");
-        if literal {
-            writer.text(" ");
-        } else {
-            writer.space();
-        }
-        writer.group_with_flat_width(|writer| {
+        writer.space();
+        writer.group(false, |writer| {
             writer.space();
             writer.if_break("(");
             writer.text("b");
@@ -554,19 +608,13 @@ fn flat_width_spaces(literal: bool) -> String {
         });
         writer.hard_line();
         writer.text("d");
-    })
-}
-
-#[test]
-fn prepared_group_spaces() {
-    assert_eq!(flat_width_spaces(false), "a  (b  c )\nd");
-
-    assert_eq!(flat_width_spaces(true), "a  (b  c )\nd");
+    });
+    assert_eq!(spaces, "a  (b  c )\nd");
 
     let empty_leading = flat_width_document(4, |writer| {
         writer.text("a");
         writer.text(" ");
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.if_flat("");
             writer.space();
             writer.if_break("(");
@@ -579,7 +627,7 @@ fn prepared_group_spaces() {
     assert_eq!(empty_leading, "a  b\nc");
 
     let empty_middle = flat_width_document(4, |writer| {
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.if_break("(");
             writer.text("a");
             writer.space();
@@ -594,7 +642,7 @@ fn prepared_group_spaces() {
     let empty_trailing = flat_width_document(3, |writer| {
         writer.text("a");
         writer.space();
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.if_break("(");
             writer.text("b");
             writer.space();
@@ -611,7 +659,7 @@ fn flat_width_text(text: &str, width: u16) -> String {
     flat_width_document(width, |writer| {
         writer.text("a");
         writer.space();
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.if_break("(");
             writer.indent(|writer| {
                 writer.soft_line();
@@ -642,7 +690,7 @@ fn prepared_group_columns() {
 #[test]
 fn prepared_group_fallbacks() {
     let hard_line = flat_width_document(2, |writer| {
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             writer.text("a");
             writer.hard_line();
             writer.text("long");
@@ -651,7 +699,7 @@ fn prepared_group_fallbacks() {
     assert_eq!(hard_line, "a\nlong");
 
     let named = flat_width_document(3, |writer| {
-        writer.group_with_flat_width(|writer| {
+        writer.group(false, |writer| {
             let group = writer.named_group(false, |writer| {
                 writer.text("aa");
                 writer.line();
@@ -664,13 +712,17 @@ fn prepared_group_fallbacks() {
         });
     });
     assert_eq!(named, "aa\nbb\n  c");
+
+    let prefix = "a".repeat(usize::from(u16::MAX) - 3);
+    let overlong = nested_group_boundaries(u16::MAX, &prefix);
+    assert_eq!(overlong.strip_prefix(prefix.as_str()), Some("\nb\ncd"));
 }
 
 #[test]
 fn prepared_group_flat_views() {
     let flat = flat_width_document(4, |writer| {
         let fragment = record(writer, |writer| {
-            writer.group_with_flat_width(|writer| {
+            writer.group(false, |writer| {
                 writer.if_break("(");
                 writer.text("first");
                 writer.line();
@@ -2122,6 +2174,14 @@ fn cached_text_columns() {
     );
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
+    assert_eq!(pair_document("a\u{2028}b", "c", 9), "[a\u{2028}b, c];");
+    assert_eq!(
+        pair_document("a\u{2028}b", "c", 8),
+        "[\n  a\u{2028}b,\n  c,\n];"
+    );
+
+    assert_eq!(pair_document("a\u{2029}b", "c", 9), "[a\u{2029}b, c];");
+
     let tab = super::text::Text::new("a\u{7f}\té");
     assert_eq!(tab.clean_width(), Some(4));
     assert_eq!(tab.advance_column(0), 4);
@@ -2394,7 +2454,7 @@ fn fill_separator_layouts() {
     let summarized_separator = fill_entry_document(5, |writer| {
         writer.fill_entry(|writer| writer.text("a"));
         writer.fill_entry(|writer| {
-            writer.group_with_flat_width(|writer| {
+            writer.group(false, |writer| {
                 writer.line();
                 writer.line();
             });
@@ -2952,9 +3012,9 @@ fn fragment_capabilities() {
     });
     assert!(flat_lines.has_intrinsic_lines());
 
-    let multiline = record(&mut writer, |writer| writer.text("first\u{2028}last"));
-    assert!(multiline.try_neutral().is_none());
-    assert!(multiline.try_flat().is_none());
+    let separators = record(&mut writer, |writer| writer.text("first\u{2028}last"));
+    assert!(separators.try_neutral().is_some());
+    assert!(separators.try_flat().is_some());
 
     let choices = record(&mut writer, |writer| {
         writer.write_alternatives(&[atom], expanded);
@@ -3611,10 +3671,10 @@ fn retained_flat_scopes() {
     assert!(carriage_return.try_flat().is_none());
 
     let line_separator = record(&mut writer, |writer| writer.text("a\u{2028}b"));
-    assert!(line_separator.try_flat().is_none());
+    assert!(line_separator.try_flat().is_some());
 
     let paragraph_separator = record(&mut writer, |writer| writer.text("a\u{2029}b"));
-    assert!(paragraph_separator.try_flat().is_none());
+    assert!(paragraph_separator.try_flat().is_some());
 
     let unicode = record(&mut writer, |writer| writer.text("宽文字"));
     assert!(unicode.try_flat().is_some());
@@ -4092,10 +4152,18 @@ fn remeasured_value(writer: &mut Writer<'_>) {
     writer.text("}");
 }
 
+fn remeasured_group(writer: &mut Writer<'_>) {
+    writer.group(false, remeasured_value);
+}
+
+fn remeasured_group_fragment(writer: &mut Writer<'_>) {
+    let value = record(writer, remeasured_value);
+    writer.write_fragment(writer.group_fragment(false, value));
+}
+
 fn remeasurement_document(
     write_line: impl FnOnce(&mut Writer<'_>),
-    fill: bool,
-    bounded: bool,
+    write_value: impl FnOnce(&mut Writer<'_>),
 ) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -4105,18 +4173,7 @@ fn remeasurement_document(
         // A standard conditional group contains the branch's break propagation,
         // so this physical line still prints in an inherited flat mode.
         writer.write_alternatives(&[line], line);
-        let value = |writer: &mut Writer<'_>| {
-            if bounded {
-                writer.group_with_flat_width(remeasured_value);
-            } else {
-                writer.group(false, remeasured_value);
-            }
-        };
-        if fill {
-            writer.fill(|writer| writer.fill_entry(value));
-        } else {
-            value(writer);
-        }
+        write_value(writer);
         writer.text(" tail");
     });
     writer.finish().print(PrintOptions {
@@ -4127,24 +4184,26 @@ fn remeasurement_document(
 
 #[test]
 fn forced_line_remeasurement() {
+    let expected = "head\n{\n  longName\n} tail";
+
     assert_eq!(
-        remeasurement_document(|writer| writer.hard_line(), false, false),
-        "head\n{\n  longName\n} tail"
+        remeasurement_document(|writer| writer.hard_line(), remeasured_group),
+        expected
     );
 
     assert_eq!(
-        remeasurement_document(|writer| writer.literal_line(), false, false),
-        "head\n{\n  longName\n} tail"
+        remeasurement_document(|writer| writer.literal_line(), remeasured_group),
+        expected
     );
 
     assert_eq!(
-        remeasurement_document(|writer| writer.literal_text("\r\n"), false, false),
-        "head\n{\n  longName\n} tail"
+        remeasurement_document(|writer| writer.literal_text("\r\n"), remeasured_group),
+        expected
     );
 
     assert_eq!(
-        remeasurement_document(|writer| writer.hard_line(), false, true),
-        "head\n{\n  longName\n} tail"
+        remeasurement_document(|writer| writer.hard_line(), remeasured_group_fragment),
+        expected
     );
 }
 
@@ -4161,10 +4220,11 @@ fn fill_suffix_document(write: impl FnOnce(&mut Writer<'_>)) -> String {
 
 #[test]
 fn fill_measurement_boundaries() {
-    assert_eq!(
-        remeasurement_document(|writer| writer.literal_line(), true, false),
-        "head\n{\n  longName\n} tail"
+    let forced = remeasurement_document(
+        |writer| writer.literal_line(),
+        |writer| writer.fill(|writer| writer.fill_entry(remeasured_group)),
     );
+    assert_eq!(forced, "head\n{\n  longName\n} tail");
 
     let propagated = flat_width_document(12, |writer| {
         writer.group(false, |writer| {
@@ -5457,7 +5517,7 @@ fn trim_during_group_measurement() {
         ..PrintOptions::default()
     };
     let document = doc(&allocator, |writer| {
-        writer.group_with_flat_width(|writer| writer.text("a  "));
+        writer.group(false, |writer| writer.text("a  "));
         writer.trim();
         writer.text("bc");
         writer.group(false, |writer| {
@@ -5473,7 +5533,7 @@ fn trim_during_group_measurement() {
 
     let document = doc(&allocator, |writer| {
         writer.group(false, |writer| {
-            writer.group_with_flat_width(|writer| writer.text("a  "));
+            writer.group(false, |writer| writer.text("a  "));
             writer.trim();
             writer.text("bc");
             writer.if_flat("F");

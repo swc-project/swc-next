@@ -42,10 +42,12 @@ model = types
 ---------- Output ----------
 model =
   types
-    .model({
-      something:
-        mxSomething,
-    })
+    .model(
+      {
+        something:
+          mxSomething,
+      },
+    )
     .volatile(
       (
         self,

@@ -16,9 +16,8 @@ pub(super) fn key(elements: &[Instruction<'_>]) -> FragmentKey {
     (elements.as_ptr() as usize, elements.len())
 }
 
-pub(super) fn remove_lines(doc: Doc<'_>) -> Doc<'_> {
-    let root = rewrite(doc.allocator, doc.root, Operation::RemoveLines);
-    Doc { root, ..doc }
+pub(super) fn remove_lines<'a>(allocator: &'a Allocator, root: Fragment<'a>) -> Fragment<'a> {
+    rewrite(allocator, root, Operation::RemoveLines)
 }
 
 pub(super) fn replace_end_of_line<'a>(doc: Doc<'a>, replacement: Option<Doc<'a>>) -> Doc<'a> {
@@ -175,6 +174,20 @@ fn rewrite<'a>(
                 ends.pop();
             }
             if let [element] = scope {
+                if matches!(operation, Operation::RemoveLines)
+                    && matches!(
+                        element,
+                        Instruction::SoftLine
+                            | Instruction::SoftLiteralLine
+                            | Instruction::SoftLineIfGroupBreaks(_)
+                            | Instruction::TextIfBreak { .. }
+                    )
+                {
+                    // A removed break has no text and needs no printer state.
+                    changed = true;
+                    source_index += 1;
+                    continue;
+                }
                 // These nodes carry identity across distinct fragment views.
                 let node = element.group_key();
                 let mut map = || map_element(allocator, *element, operation, lookup, &mut texts);
@@ -257,12 +270,6 @@ pub(super) fn map_element<'a>(
     if matches!(operation, Operation::RemoveLines) {
         match element {
             I::NormalLine | I::NormalLiteralLine => return Some(I::text(Text::new(" "))),
-            I::SoftLine
-            | I::SoftLiteralLine
-            | I::SoftLineIfGroupBreaks(_)
-            | I::TextIfBreak { .. } => {
-                return Some(I::text(Text::new("")));
-            }
             I::TextIfFlat { source, width } => return Some(I::Text { source, width }),
             I::IfBreak(c) => return Some(I::fragment(lookup(c.flat))),
             I::FlatIfBreak(c) => return Some(I::flat_fragment(FlatFragment(lookup(c.flat)))),

@@ -182,7 +182,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_terminator.filter(|_| self.content_mode(before) == ContentMode::Verbatim);
         let following_gap = match (modes.following, after.is_empty(), terminator, relation) {
             (ContentMode::Verbatim, true, Some(terminator), StatementTailRelation::Statement) => {
-                Some(match self.line_breaks(terminator.start + 1, limit) {
+                Some(match self.source_line_breaks(terminator.start + 1, limit) {
                     0 => LineConstraint::SameLine,
                     count => LineConstraint::NewLine(count),
                 })
@@ -238,7 +238,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let end = remaining
             .rfind(';')
             .map_or(previous, |offset| previous + offset as u32 + 1);
-        let following = match self.line_breaks(end, limit) {
+        let following = match self.source_line_breaks(end, limit) {
             0 => LineConstraint::SameLine,
             count => LineConstraint::NewLine(count),
         };
@@ -448,7 +448,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let count = comments
                 .windows(2)
                 .position(|pair| {
-                    self.line_breaks(pair[0].span.end, pair[1].span.start) != 0
+                    self.source_line_breaks(pair[0].span.end, pair[1].span.start) != 0
                         || self
                             .source(Span::new(pair[0].span.end, pair[1].span.start))
                             .contains(';')

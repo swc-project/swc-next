@@ -12,8 +12,8 @@ const value0=<MissingPanel>
 // @ts-ignore
 const value0 = (<MissingPanel>
 
-    </MissingPanel>
-  );
+  </MissingPanel>
+);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
@@ -39,8 +39,8 @@ const value0 = (<MissingPanel>
 // @ts-ignore
 const value0 = (<MissingPanel>
 
-		</MissingPanel>
-	)
+	</MissingPanel>
+)
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}

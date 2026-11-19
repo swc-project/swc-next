@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<X extends
+// keep
+A | B> = 1;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    | A
+    | B,
+> = 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    A | B,
+> = 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8,"semicolons":"as-needed"}
+---------- Output ----------
+type T<
+  X extends
+    // keep
+    | A
+    | B,
+> = 1

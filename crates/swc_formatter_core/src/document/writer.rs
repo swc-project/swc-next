@@ -16,7 +16,24 @@ pub struct Writer<'a> {
     facts: Facts,
     flattening: bool,
     group_count: u32,
+    last_unmeasured_group_end: usize,
 }
+
+/// An open group belonging to the writer that created it.
+///
+/// Close scopes in reverse opening order with [`Writer::end_group`].
+#[must_use]
+pub struct GroupScope {
+    start: usize,
+    request: GroupRequest,
+    outer_effect: BreakEffect,
+}
+
+/// An open indentation scope belonging to the writer that created it.
+///
+/// Close scopes in reverse opening order with [`Writer::end_indent`].
+#[must_use]
+pub struct IndentScope(());
 
 /// A completed entry can retain a suffix while it is still the final scope.
 pub struct FillEntry {
@@ -47,6 +64,7 @@ impl<'a> Writer<'a> {
             facts: Facts::default(),
             flattening: false,
             group_count: 0,
+            last_unmeasured_group_end: 0,
         }
     }
 
@@ -285,26 +303,6 @@ impl<'a> Writer<'a> {
         self.group_with_id(request, None, write)
     }
 
-    /// Retains exact flat measurements and the boundary of a complete group.
-    /// Unsupported instructions keep the ordinary Auto group unchanged.
-    pub fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        let start = self.elements.len();
-        let result = self.group(false, write);
-        let Instruction::StartGroup { effect, .. } = self.elements[start] else {
-            unreachable!("group scope retains its opening instruction");
-        };
-        if !effect.preferred_breaks()
-            && let Some(summary) =
-                super::flat_summary(&self.elements[start + 1..self.elements.len() - 1])
-        {
-            self.elements[start] = Instruction::StartGroupWithFlatWidth {
-                summary,
-                end_offset: instruction_offset(self.elements.len() - start - 1),
-            };
-        }
-        result
-    }
-
     /// The returned handle refers to a group already written in this document.
     pub fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
         self.named_group_with_request(GroupRequest::from(expand), write)
@@ -335,6 +333,16 @@ impl<'a> Writer<'a> {
         id: Option<GroupId>,
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
+        let scope = self.begin_group(request, id);
+        let result = write(self);
+        self.end_group(scope);
+        result
+    }
+
+    /// Opens a group for an iterative producer. Close all inner scopes before
+    /// passing its handle back to this writer's [`Self::end_group`].
+    #[inline]
+    pub fn begin_group(&mut self, request: GroupRequest, id: Option<GroupId>) -> GroupScope {
         let start = self.elements.len();
         let outer_effect = self.facts.begin_group();
         self.elements.push(Instruction::StartGroup {
@@ -343,21 +351,49 @@ impl<'a> Writer<'a> {
             id,
             end_offset: 0,
         });
-        let result = write(self);
+        GroupScope {
+            start,
+            request,
+            outer_effect,
+        }
+    }
+
+    /// Closes the innermost open group and completes its cached break effect.
+    #[inline]
+    pub fn end_group(&mut self, scope: GroupScope) {
+        let GroupScope {
+            start,
+            request,
+            outer_effect,
+        } = scope;
         let effect = self.facts.end_group(request, outer_effect);
         let distance = instruction_offset(self.elements.len() - start);
         let Instruction::StartGroup {
             effect: group_effect,
             end_offset,
+            id,
             ..
         } = &mut self.elements[start]
         else {
             unreachable!("group scope retains its opening instruction");
         };
+        let measure =
+            id.is_none() && matches!(request, GroupRequest::Auto) && !effect.preferred_breaks();
         *group_effect = effect;
         *end_offset = distance;
+        if measure
+            && self.last_unmeasured_group_end <= start
+            && let Some(summary) = super::flat_summary(&self.elements[start + 1..])
+        {
+            self.elements[start] = Instruction::StartGroupWithFlatWidth {
+                summary,
+                end_offset: distance,
+            };
+        } else {
+            // An enclosing summary cannot cross a child without flat measurements.
+            self.last_unmeasured_group_end = self.elements.len() + 1;
+        }
         self.elements.push(Instruction::EndGroup);
-        result
     }
 
     /// Removes optional layout breaks in one complete scope. Required source
@@ -381,10 +417,24 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
-        self.elements.push(Instruction::StartIndent);
+        let scope = self.begin_indent();
         let result = write(self);
-        self.elements.push(Instruction::EndIndent);
+        self.end_indent(scope);
         result
+    }
+
+    /// Opens an indentation scope for an iterative producer. Close all inner
+    /// scopes before passing its handle to this writer's [`Self::end_indent`].
+    #[inline]
+    pub fn begin_indent(&mut self) -> IndentScope {
+        self.elements.push(Instruction::StartIndent);
+        IndentScope(())
+    }
+
+    /// Closes the innermost open indentation scope.
+    #[inline]
+    pub fn end_indent(&mut self, _scope: IndentScope) {
+        self.elements.push(Instruction::EndIndent);
     }
 
     /// Gives a complete scope its own root-relative indentation.
@@ -610,7 +660,7 @@ impl<'a> Writer<'a> {
         let (grouped, value) =
             self.record_with_value(|writer| writer.group_with_request(GroupRequest::Auto, write))?;
         let [
-            Instruction::StartGroup { id: None, .. },
+            Instruction::StartGroup { id: None, .. } | Instruction::StartGroupWithFlatWidth { .. },
             ..,
             Instruction::EndGroup,
         ] = grouped.elements()
@@ -722,6 +772,12 @@ impl<'a> Writer<'a> {
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.facts.flat_fragment(fragment.0);
         self.elements.push(Instruction::flat_fragment(fragment));
+    }
+
+    /// Writes a recorded scope with optional lines removed, retaining its group IDs.
+    /// Uses the same transformation as [`Doc::remove_lines`].
+    pub fn write_fragment_without_lines(&mut self, fragment: Fragment<'a>) {
+        self.write_fragment(transform::remove_lines(self.allocator, fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {

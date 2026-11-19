@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function d(g) {
+  const s = g._sources
+    // @ts-ignore
+    .reduce((acc, val, idx) => ((acc[val] = idx), acc), {});
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+function d(g) {
+  const s = g._sources
+    // @ts-ignore
+    .reduce((acc, val, idx) => ((acc[val] = idx), acc), {});
+}
