@@ -624,20 +624,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.finish_statement(list.span.end, None, punctuation, writer);
             }
         }
-        let comments = self
-            .comments
-            .in_range(Span::new(keyword_end, list.span.start));
-        let mode = self.content_mode(comments);
+        let header = Span::new(keyword_end, list.span.start);
+        // Suppression of the first specifier includes comments before the type keyword.
+        let mode = if self.has_suppression {
+            self.content_mode(self.comments.in_range(header))
+        } else {
+            ContentMode::Formatted
+        };
         writer.text("export");
         let head_end = if type_only {
-            self.format_module_keyword_prefix(
-                Span::new(keyword_end, list.span.start),
-                "type",
-                writer,
-            )?
+            self.format_module_keyword_prefix(header, "type", writer)?
         } else {
             keyword_end
         };
+        let list_header = Span::new(head_end, list.span.start);
+        let comments = self.comments.in_range(list_header);
         let mut leading = None;
         let empty_header = source
             .as_ref()
@@ -648,15 +649,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             let dangling = first.is_none()
                 && source.is_none()
-                && self
-                    .comments
-                    .in_range(Span::new(keyword_end, list.span.start))
+                && comments
                     .last()
                     .is_some_and(|comment| comment.kind == CommentKind::Line);
-            if type_only
-                && first.is_some()
-                && !self.diagnostic_range_is_sensitive(Span::new(head_end, list.span.start))
-            {
+            if type_only && first.is_some() && !self.diagnostic_range_is_sensitive(list_header) {
                 leading = Some(comments);
                 writer.space();
             } else {

@@ -42534,6 +42534,60 @@
         "prettierNative": "// @ts-expect-error\nimport type {\n  // comment\n  Model as Record,\n} from \"m\";\n"
       }
     ],
+    "ts/type-only-modules/diagnostic-export-header-ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\";\n",
+        "prettierNative": "// @ts-ignore\nexport type { /* prettier-ignore */ a   as Name } from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\";\n",
+        "prettierNative": "// @ts-ignore\nexport type {\n  /* prettier-ignore */ a   as Name,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\"\n",
+        "prettierNative": "// @ts-ignore\nexport type {\n  /* prettier-ignore */ a   as Name,\n} from \"m\"\n"
+      }
+    ],
+    "ts/type-only-modules/diagnostic-export-header.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\";\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\";\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\"\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\"\n"
+      }
+    ],
     "ts/type-only-modules/diagnostic-header.ts": [
       {
         "options": {
