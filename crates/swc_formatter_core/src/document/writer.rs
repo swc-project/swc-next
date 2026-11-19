@@ -16,6 +16,7 @@ pub struct Writer<'a> {
     facts: Facts,
     flattening: bool,
     group_count: u32,
+    last_unmeasured_group_end: usize,
 }
 
 /// An open group belonging to the writer that created it.
@@ -63,6 +64,7 @@ impl<'a> Writer<'a> {
             facts: Facts::default(),
             flattening: false,
             group_count: 0,
+            last_unmeasured_group_end: 0,
         }
     }
 
@@ -379,11 +381,17 @@ impl<'a> Writer<'a> {
             id.is_none() && matches!(request, GroupRequest::Auto) && !effect.preferred_breaks();
         *group_effect = effect;
         *end_offset = distance;
-        if measure && let Some(summary) = super::flat_summary(&self.elements[start + 1..]) {
+        if measure
+            && self.last_unmeasured_group_end <= start
+            && let Some(summary) = super::flat_summary(&self.elements[start + 1..])
+        {
             self.elements[start] = Instruction::StartGroupWithFlatWidth {
                 summary,
                 end_offset: distance,
             };
+        } else {
+            // An enclosing summary cannot cross a child without flat measurements.
+            self.last_unmeasured_group_end = self.elements.len() + 1;
         }
         self.elements.push(Instruction::EndGroup);
     }
