@@ -2513,6 +2513,72 @@ fn fill_separator_layouts() {
 }
 
 #[test]
+fn fill_trailing_separator() {
+    let allocator = Allocator::new();
+    let document = |pairs| {
+        doc(&allocator, |writer| {
+            writer.group(false, |writer| {
+                writer.indent(|writer| {
+                    writer.fill(|writer| {
+                        for _ in 0..pairs {
+                            writer.fill_entry(|writer| writer.text("aaa"));
+                            writer.fill_entry(|writer| {
+                                writer.text(",");
+                                writer.line();
+                            });
+                        }
+                    });
+                });
+            });
+        })
+    };
+    let options = |line_width| PrintOptions {
+        line_width,
+        ..PrintOptions::default()
+    };
+    let print = |width, pairs| document(pairs).print(options(width));
+    assert_eq!(print(2, 1), "aaa,\n  ");
+
+    assert_eq!(print(3, 1), "aaa, ");
+
+    assert_eq!(print(4, 1), "aaa, ");
+
+    assert_eq!(print(5, 2), "aaa,\n  aaa, ");
+
+    assert_eq!(print(8, 2), "aaa, aaa, ");
+
+    let retained = document(2).clean();
+    let bytes = Doc { ..retained }.encode();
+    assert_eq!(retained.print(options(8)), "aaa, aaa, ");
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(decoded.print(options(8)), "aaa, aaa, ");
+
+    let literal = fill_entry_document(2, |writer| {
+        writer.fill_entry(|writer| {
+            writer.text("a ");
+            writer.literal_line_without_break_parent();
+            writer.if_flat("F");
+            writer.if_break("B");
+        });
+        writer.fill_entry(Writer::line);
+    });
+    assert_eq!(literal, "a \nF ");
+
+    let suffix = fill_entry_document(4, |writer| {
+        writer.fill_entry(|writer| {
+            writer.text("a");
+            writer.line_suffix(|writer| writer.text("!"));
+        });
+        writer.fill_entry(|writer| {
+            writer.if_flat("F");
+            writer.if_break("B");
+            writer.line_suffix_boundary();
+        });
+    });
+    assert_eq!(suffix, "aF!\n");
+}
+
+#[test]
 fn flat_scopes() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);

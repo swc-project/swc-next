@@ -66,7 +66,14 @@ trait ProbeKind {
         None
     }
 
-    fn start_entry(&mut self, _column: usize, _pending_line: bool) {}
+    fn start_entry(
+        &mut self,
+        _column: usize,
+        _pending_line: bool,
+        _ends_fill: impl FnOnce() -> bool,
+    ) -> bool {
+        false
+    }
 
     fn end_entry(&mut self) -> bool {
         false
@@ -128,12 +135,23 @@ impl ProbeKind for FillProbe<'_> {
         None
     }
 
-    fn start_entry(&mut self, column: usize, pending_line: bool) {
-        self.entry_depth += 1;
-        if self.entry_depth == 1 && self.completed_entries.is_multiple_of(2) {
-            self.next_item_in_bounds =
-                column.saturating_add(usize::from(pending_line)) <= self.line_width;
+    fn start_entry(
+        &mut self,
+        column: usize,
+        pending_line: bool,
+        ends_fill: impl FnOnce() -> bool,
+    ) -> bool {
+        if self.entry_depth == 0 {
+            if self.completed_entries.is_multiple_of(2) {
+                self.next_item_in_bounds =
+                    column.saturating_add(usize::from(pending_line)) <= self.line_width;
+            } else if ends_fill() {
+                // The trailing separator shares the preceding content's mode.
+                return self.end_fill();
+            }
         }
+        self.entry_depth += 1;
+        false
     }
 
     fn end_entry(&mut self) -> bool {
@@ -410,6 +428,18 @@ impl<'a> ProbeCursor<'a, '_> {
                 self.current = self.parents[index];
             }
         }
+    }
+
+    fn ends_fill_after_part(&self, end_offset: u32) -> bool {
+        let next = self.current.remaining.get(end_offset as usize).or_else(|| {
+            // A shared entry can end its frame before the Fill closes.
+            self.frames
+                .iter()
+                .rev()
+                .chain(self.parents[..self.parent_len].iter().rev())
+                .find_map(|frame| frame.remaining.first())
+        });
+        matches!(next, Some(Instruction::EndFill))
     }
 }
 
@@ -1642,7 +1672,13 @@ impl<'a, const SOURCE: bool, const EXTENDED: bool> Probe<'a, SOURCE, EXTENDED> {
                         return true;
                     }
                 }
-                Instruction::StartFillPart { .. } => kind.start_entry(column, pending_line_space),
+                Instruction::StartFillPart { end_offset } => {
+                    if kind.start_entry(column, pending_line_space, || {
+                        cursor.ends_fill_after_part(end_offset)
+                    }) {
+                        return true;
+                    }
+                }
                 Instruction::EndFillPart => {
                     if kind.end_entry() {
                         return true;
