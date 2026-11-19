@@ -623,8 +623,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         writer.text("export");
+        let header = Span::new(keyword_end, list.span.start);
+        // A suppression in this header still covers the specifier list after the
+        // type prefix claims the comments it prints.
+        let mode = self.content_mode(self.comments.in_range(header));
         let head_end = if type_only {
-            self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
+            self.format_module_type_prefix(header, writer)?
         } else {
             keyword_end
         };
@@ -632,7 +636,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // and `type`. Collect what remains afterwards, as imports do, so those
         // comments are not claimed a second time.
         let comments = self.comments.in_range(Span::new(head_end, list.span.start));
-        let mode = self.content_mode(comments);
         let mut leading = None;
         let empty_header = source
             .as_ref()
