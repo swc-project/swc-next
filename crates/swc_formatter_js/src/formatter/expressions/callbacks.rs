@@ -13,7 +13,7 @@ use super::arguments::{
     ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
-use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
+use super::arrows::{ArrowBodyGroup, ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
 use super::parentheses::ExpressionContent;
 use super::{
@@ -957,6 +957,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let recorded = match self.record_arrow(
                     source,
                     selected.prepared_body.take(),
+                    if selected.role == CallbackRole::Last {
+                        ArrowBodyGroup::TerminalArgument
+                    } else {
+                        ArrowBodyGroup::Independent
+                    },
                     context,
                     writer,
                 )? {
