@@ -18,6 +18,8 @@ mod context;
 mod helpers;
 mod uid;
 
+pub use helpers::HelperMode;
+
 pub mod assumptions;
 pub mod es2019;
 pub mod es2022;
@@ -28,6 +30,8 @@ pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    /// How to emit runtime helpers. Modules default to imports, and scripts inline helpers.
+    pub helpers: HelperMode,
     pub filename: Option<String>,
     pub assumptions: Assumptions,
     pub proposal: proposal::ProposalOptions,
@@ -42,6 +46,7 @@ pub struct TransformerOptions {
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
+    /// Error diagnostics prevent emitting the transformed program.
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -79,7 +84,7 @@ impl Transformer {
             transformer.analyze();
         }
 
-        let semantic = ECMAScriptTransformer::transform(transformer, &options);
+        let semantic = ECMAScriptTransformer::transform(transformer, &options, &mut diagnostics);
         TransformerReturn {
             semantic,
             diagnostics,
@@ -126,10 +131,11 @@ impl ECMAScriptTransformer {
     fn transform<'a>(
         multi_pass: MultiPassTransformer<'_, 'a>,
         options: &TransformerOptions,
+        diagnostics: &mut Vec<Diagnostic>,
     ) -> ScopeModel<'a> {
         let MultiPassTransformer { ctx: ast, semantic } = multi_pass;
         let program = ast.root_program();
-        let state = TransformerState::new(ScopeModel::new(semantic));
+        let state = TransformerState::new(ScopeModel::new(semantic), options.helpers);
         let mut transformer = Self {
             es2019: es2019::ES2019::new(options.es2019),
             es2022: es2022::ES2022::new(options.es2022, options.proposal),
@@ -141,6 +147,7 @@ impl ECMAScriptTransformer {
         let mut ctx = TraverseMutCtx::new(unsafe { ast.ast_mut() }, state);
         let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
         TransformCtx::new(&mut ctx).finish();
+        diagnostics.extend(ctx.state.diagnostics);
         ctx.state.semantic
     }
 }
@@ -172,6 +179,7 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<Program> {
         let mut transform = TransformCtx::new(ctx);
+        transform.protect_helper_globals();
         transform.inject_helpers(node);
         transform.inject_statements_to(node.node_id());
         ctx.state.scope_stack.pop().unwrap();

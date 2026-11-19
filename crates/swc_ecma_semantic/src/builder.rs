@@ -63,10 +63,14 @@ pub struct SemanticBuilder<'traverse, 'a> {
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
-        let scope = ScopeTree::init(ast);
+    pub fn new(
+        ast: &'traverse Ast<'a>,
+        nodes: std::ops::Range<usize>,
+        check_syntax: SyntaxChecks,
+    ) -> Self {
+        let scope = ScopeTree::init(ast, nodes.len());
         let current_scope = ScopeId::from_usize(scope.list.len() - 1);
-        let mut symbols = SymbolTracker::init(ast);
+        let mut symbols = SymbolTracker::init(ast, nodes);
         for (id, scope) in scope.list.iter_enumerated() {
             symbols.record_scope(scope.node, id);
         }

@@ -72,7 +72,8 @@ fn main() -> Result<(), String> {
         },
     );
     report_diagnostics(path, &analyzed.diagnostics)?;
-    Transformer::transform(analyzed.semantic, options);
+    let transformed = Transformer::transform(analyzed.semantic, options);
+    report_diagnostics(path, &transformed.diagnostics)?;
 
     let result = generate(&ast, Default::default());
     print!("{}", result.code);

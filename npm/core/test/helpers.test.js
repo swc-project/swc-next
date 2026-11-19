@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  _set_class_name as setClassName,
   _set_function_name as setFunctionName,
   _to_property_key as toPropertyKey,
 } from "@swc-next/helpers";
@@ -72,3 +73,27 @@ test("helper exports set function names", () => {
   assert.equal(frozen.name, "original");
 });
 
+test("helper exports restore class names before static fields", () => {
+  const Renamed = class {
+    static #name = setClassName(this, "Original");
+    static value = this.name;
+  };
+  assert.equal(Renamed.value, "Original");
+
+  const key = "name";
+  const Method = class {
+    static #name = setClassName(this, "Original");
+    static [key]() { return "method"; }
+    static value = this.name();
+  };
+  assert.equal(Method.value, "method");
+
+  let reads = 0;
+  const Accessor = class {
+    static #name = setClassName(this, "Original");
+    static get [key]() { reads++; return "accessor"; }
+    static value = this.name;
+  };
+  assert.equal(Accessor.value, "accessor");
+  assert.equal(reads, 1);
+});

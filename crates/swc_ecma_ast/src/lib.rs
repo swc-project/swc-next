@@ -45,6 +45,17 @@ use swc_next_allocator::vec::multi_index_vec;
 
 use crate::strings::StringPool;
 
+/// A detached JavaScript module appended to an existing AST.
+///
+/// The program and all its descendants belong to the originating AST and have
+/// node indices within `nodes`. Later appends do not extend this range.
+#[derive(Clone, Debug)]
+pub struct SyntheticModule {
+    pub program: Program,
+    /// Half-open range of node indices allocated while parsing the module.
+    pub nodes: std::ops::Range<usize>,
+}
+
 /// AST context that stores everything about the flattening AST.
 ///
 /// # Safety
@@ -366,6 +377,14 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn span(&self, node_id: NodeId) -> Span {
         *self.nodes.span(node_id)
+    }
+
+    /// Mark appended nodes as synthesized without changing earlier spans.
+    pub fn clear_spans_from(&mut self, start: usize) {
+        assert!(start <= self.node_count());
+        for index in start..self.node_count() {
+            *self.nodes.span_mut(NodeId::from_usize_unchecked(index)) = DUMMY_SP;
+        }
     }
 }
 

@@ -10,8 +10,8 @@ use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
-    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
-    Semantic, Symbol, SymbolFlags, SymbolIterator,
+    NodeSemanticId, NodeSemanticIndex, Redeclarations, Reference, ReferenceIterator, ScopeIterator,
+    ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -32,10 +32,71 @@ pub struct ScopeModel<'a> {
     /// Independently growable use lists, indexed by SymbolId.
     uses: ArenaIndexVec<'a, SymbolId, ArenaVec<'a, ReferenceId>>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
-    node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    node_semantic: NodeSemanticIndex<'a>,
 }
 
 impl<'a> ScopeModel<'a> {
+    /// Rename a symbol in binding maps and reference records, preserving its
+    /// identities, flags, declarations and uses. The caller updates AST names
+    /// and any linked symbols, and must choose a name that cannot be captured.
+    pub fn rename_symbol(&mut self, symbol: SymbolId, name: AstUtf8, text: &'a str) {
+        for map in self.scope_maps.iter_mut() {
+            let key = map
+                .iter()
+                .find_map(|(key, &value)| (value == symbol).then_some(*key));
+            if let Some(key) = key {
+                debug_assert!(
+                    map.get(text.as_bytes())
+                        .is_none_or(|&existing| existing == symbol)
+                );
+                map.remove(key);
+                map.insert(text.as_bytes(), symbol);
+            }
+        }
+        self.symbols[symbol].name = name.into();
+        for &reference in &self.uses[symbol] {
+            if self.references[reference].symbol == Some(symbol) {
+                self.references[reference].name = name;
+            }
+        }
+    }
+
+    /// Remove a direct export wrapper's flag from a declaration. An explicit
+    /// export specifier contributes a reference instead.
+    pub fn clear_direct_export(&mut self, id: DeclarationId) {
+        let declaration = &mut self.declarations[id];
+        declaration.flags.remove(SymbolFlags::EXPORTED);
+        let symbol = declaration.symbol;
+        let exported = self
+            .declarations(symbol)
+            .any(|declaration| declaration.flags.contains(SymbolFlags::EXPORTED));
+        self.symbols[symbol]
+            .flags
+            .set(SymbolFlags::EXPORTED, exported);
+    }
+
+    /// Move the branch-local declaration of a sloppy if/else function into an
+    /// explicit block. The linked Annex B var declaration keeps its scope.
+    pub fn move_annex_b_if_binding_to_block(
+        &mut self,
+        symbol: SymbolId,
+        block: ScopeId,
+        name: &'a str,
+    ) {
+        let declaration = &mut self.declarations[self.symbols[symbol].declaration];
+        debug_assert!(declaration.flags.contains(SymbolFlags::ANNEX_B_IF_FUNCTION));
+        let previous = &mut self.scope_maps[declaration.scope];
+        if previous.get(name.as_bytes()) == Some(&symbol) {
+            previous.remove(name.as_bytes());
+        }
+        declaration.scope = block;
+        declaration.flags.remove(SymbolFlags::ANNEX_B_IF_FUNCTION);
+        self.symbols[symbol]
+            .flags
+            .remove(SymbolFlags::ANNEX_B_IF_FUNCTION);
+        self.scope_maps[block].insert(name.as_bytes(), symbol);
+    }
+
     /// Consumes Semantic, moving its basic indexes and expanding its compact
     /// use index into one arena vector per symbol.
     pub fn new(semantic: Semantic<'a>) -> Self {
@@ -204,9 +265,7 @@ impl<'a> ScopeModel<'a> {
     /// ```
     pub fn grow_to(&mut self, node_count: usize) {
         // Never truncate indexes when an already registered node is reused.
-        if node_count > self.node_semantic.len() {
-            self.node_semantic.resize(node_count, NodeSemanticId::None);
-        }
+        self.node_semantic.grow_to(node_count);
     }
 
     /// Register a declaration and its scope binding using the caller-supplied name, text and flags.
@@ -303,6 +362,14 @@ impl<'a> ScopeModel<'a> {
             self.uses[symbol].push(id);
         }
         id
+    }
+
+    /// Set a previously unresolved reference's lexical target.
+    pub fn bind_unresolved_reference(&mut self, reference: ReferenceId, symbol: SymbolId) {
+        let record = &mut self.references[reference];
+        debug_assert!(record.symbol.is_none());
+        record.symbol = Some(symbol);
+        self.uses[symbol].push(reference);
     }
 }
 
