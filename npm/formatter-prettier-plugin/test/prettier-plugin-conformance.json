@@ -3405,6 +3405,26 @@
         "prettierNative": "for (/* prettier-ignore */ (name  in object); false;);\n"
       }
     ],
+    "js/control-flow/for-series/iteration-head/inside-opening.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (/*a*/ x in y);\n",
+        "prettierNative": "for (/*a*/\nx in y);\n"
+      }
+    ],
+    "js/control-flow/for-series/iteration-head/relocated.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (/*a*/ x of y) x();\n",
+        "prettierNative": "for (/*a*/\nx of y)\n  x();\n"
+      }
+    ],
     "js/control-flow/for-series/iteration-source-tail.js": [
       {
         "options": {
