@@ -1986,6 +1986,66 @@
         "prettierNative": "[\n  effect() /* ordinary */ /* @__PURE__ */, // line\n  factory()\n];\n"
       }
     ],
+    "js/comments/conditional-released-test-head/alternate.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a\n  ? b\n  : // test\n    c\n    ? d\n    : e;\n",
+        "prettierNative": "a\n  ? b\n  : // test\n      c\n    ? d\n    : e;\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/argument.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f(\n  // test\n  a ? b : c,\n);\n",
+        "prettierNative": "f(\n  // test\n  a\n    ? b\n    : c,\n);\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/array-hole.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  ,\n  // test\n  a ? b : c,\n];\n",
+        "prettierNative": "[\n  ,\n  // test\n  a\n    ? b\n    : c,\n];\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/control.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (\n  // test\n  a ? b : c\n)\n  d();\n",
+        "prettierNative": "if (\n  // test\n  a\n    ? b\n    : c\n)\n  d();\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/restricted.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // test\n    a ? b : c\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    // test\n    a\n      ? b\n      : c\n  );\n}\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/statement.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// test\na ? b : c;\n",
+        "prettierNative": "// test\na\n  ? b\n  : c;\n"
+      }
+    ],
     "js/comments/diagnostic-head-frontier/covered-prefix/input.js": [
       {
         "options": {
@@ -2236,6 +2296,46 @@
         },
         "swcPlugin": "for (;;) continue\n// tail\n\nnext()\n",
         "prettierNative": "for (;;) continue\n\n// tail\nnext()\n"
+      }
+    ],
+    "js/comments/released-expression-head/assignment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  // value\n  a + b + c;\n",
+        "prettierNative": "x =\n  // value\n  a +\n  b +\n  c;\n"
+      }
+    ],
+    "js/comments/released-expression-head/conditional-property.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "({\n  // test\n  k: a ? b : c,\n});\n",
+        "prettierNative": "({\n  k: // test\n  a\n    ? b\n    : c,\n});\n"
+      }
+    ],
+    "js/comments/released-expression-head/conditional-rhs.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = // test\n  a ? b : c;\n",
+        "prettierNative": "x = // test\na\n  ? b\n  : c;\n"
+      }
+    ],
+    "js/comments/released-expression-head/initializer.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  // value\n  (a + b) * c;\n",
+        "prettierNative": "const x =\n  // value\n  (a + b) *\n  c;\n"
       }
     ],
     "js/comments/terminal-comment-runs/diagnostic-source-control/input.js": [

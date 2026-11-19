@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
 
 use super::assignment::RhsLayout;
 use super::parentheses::{
-    EmittedHeadAnnotation, OptionalJsxHeadFrame, PreparedGeneratedEnclosure,
+    EmittedHeadAnnotation, ExpressionContent, OptionalJsxHeadFrame, PreparedGeneratedEnclosure,
     ResolvedExpressionHead, SourceOpeningPacket,
 };
 use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent};
@@ -689,13 +689,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             return Ok(None);
         }
-        let boundary = self.object_property_boundary(property)?;
+        let value = property.value(ast);
+        let content = self.expression_content(value);
+        let boundary = self.object_property_boundary(property, &content)?;
         if boundary.suppression.enclosing == ContentMode::Verbatim {
             self.format_verbatim(property.span(ast), writer)?;
             return Ok(None);
         }
-        let value = property.value(ast);
-        let content = self.expression_content(value);
         // Prepare the physical prefix before the RHS when its diagnostic frame
         // needs a pending comment lease. Unaffected properties stay on the direct path.
         let prepare_key = !boundary.header.is_empty()
@@ -851,6 +851,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut context = context;
                 if context.is_formatted_conditional_rhs(content.data) {
                     context = context.with_operand_indent(layout.operand_indent());
+                    if boundary.value_start > value.span(ast).start {
+                        context.claimed_head_end = boundary.value_start;
+                    }
                 }
                 if let Some(opening) = boundary.opening {
                     self.format_comment_run(
@@ -938,10 +941,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn object_property_boundary(
         &self,
         property: ObjectProperty,
+        content: &ExpressionContent,
     ) -> Result<ObjectPropertyBoundary<'ast>, FormatError> {
-        let value_start = property.value(self.ast).span(self.ast).start;
+        let value = property.value(self.ast);
+        let value_start = value.span(self.ast).start;
         let key_span = property.key(self.ast).span(self.ast);
-        let opening = self.source_opening_packet(property.value(self.ast));
+        let opening = self.source_opening_packet(value);
         let inspection_end = opening.map_or(value_start, |packet| packet.content_start);
         let inspected = self
             .comments
@@ -1002,19 +1007,74 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             value_start,
             line_before_colon: false,
         };
-        if comments.is_empty() {
+        let context = ExpressionContext::at(ExpressionPosition::PropertyValue);
+        // The property can lay out its complete value head or the opening of
+        // a test. A nested operation still owns its own operand packet.
+        let release_source = if opening.is_none()
+            && boundary.suppression.value == ContentMode::Formatted
+            && boundary.suppression.enclosing == ContentMode::Formatted
+        {
+            content
+                .parentheses
+                .filter(|removed| {
+                    removed.head.has_comments
+                        && !self.expression_head_has_optional_jsx_frame(
+                            true,
+                            || content.data,
+                            CommentBinding::Unbound,
+                            context,
+                        )
+                })
+                .map(|removed| removed.source.outer)
+                .or_else(|| match content.data {
+                    ExprData::ConditionalExpression(node) => {
+                        let test = node.test(self.ast);
+                        test.as_parenthesized_expression(self.ast)
+                            .map(|pair| pair.span(self.ast))
+                    }
+                    _ => None,
+                })
+        } else {
+            None
+        };
+        if comments.is_empty() && release_source.is_none() {
+            boundary.value.separator = self.line_constraint(colon.end, value_start);
+            return Ok(boundary);
+        }
+        let key_covered =
+            self.diagnostic_range_is_sensitive(Span::new(property.span(self.ast).start, key_end));
+        let relocatable = self
+            .comment_binding(comments, gap, None)
+            .allows_relocation(None);
+        if let Some(release_source) = release_source
+            && relocatable
+            && !key_covered
+        {
+            let source_comments = self.ast.comments();
+            let first = source_comments.partition_point(|comment| comment.span.start < value_start);
+            if let Some(head) = self.ordinary_released_expression_head(
+                value,
+                content,
+                context,
+                &source_comments[first..],
+            )? && head.source == release_source
+            {
+                // Reuse the ordinary colon packet split with the removed
+                // opener's head included. The source key still claims first.
+                boundary.comments =
+                    &source_comments[first - comments.len()..first + head.comments.len()];
+                boundary.value_start = head.content_start;
+            }
+        }
+        if boundary.comments.is_empty() {
             boundary.value.separator = self.line_constraint(colon.end, value_start);
             return Ok(boundary);
         }
         // Both packet paths must preserve the covered key's preceding directive.
-        let key_covered =
-            self.diagnostic_range_is_sensitive(Span::new(property.span(self.ast).start, key_end));
-        if self
-            .comment_binding(comments, gap, None)
-            .allows_relocation(None)
-        {
+        if relocatable {
             let before_packet = self.property_packet(before, key_end, colon.start);
-            let after_packet = self.property_packet(after, colon.end, value_start);
+            let after_packet =
+                self.property_packet(&boundary.comments[count..], colon.end, boundary.value_start);
             if !key_covered || before_packet.header.is_empty() && after_packet.header.is_empty() {
                 self.prepare_ordinary_property_packets(&mut boundary, before_packet, after_packet);
                 return Ok(boundary);

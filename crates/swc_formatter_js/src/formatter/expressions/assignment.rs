@@ -633,12 +633,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         right: Expr,
         content: Option<ExpressionContent>,
         boundary: &AssignmentBoundary<'ast>,
-        context: ExpressionContext<'ast>,
+        mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.comments.claim(boundary.moved)?;
         self.comments.claim(boundary.leading)?;
         self.comments.claim(boundary.trailing)?;
+        if boundary.layout_start > boundary.right_start
+            && content
+                .as_ref()
+                .is_some_and(|content| matches!(content.data, ExprData::ConditionalExpression(_)))
+        {
+            context.claimed_head_end = boundary.layout_start;
+        }
         let content = if boundary.moved.is_empty() {
             content
         } else {
@@ -1493,6 +1500,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 (right_start, comments)
             };
             let span = Span::new(left_end, right_start);
+            let exposed = if !clear_rhs_source
+                && projected.is_none()
+                && before_mode == ContentMode::Formatted
+                && after_mode == ContentMode::Formatted
+                && content
+                    .parentheses
+                    .is_none_or(|removed| !removed.head.has_comments)
+                && matches!(
+                    content.data,
+                    ExprData::BinaryExpression(_)
+                        | ExprData::LogicalExpression(_)
+                        | ExprData::ConditionalExpression(_)
+                )
+                && self
+                    .comment_binding(comments, span, None)
+                    .allows_relocation(None)
+            {
+                self.ordinary_released_expression_head(
+                    rhs.expression,
+                    content,
+                    context,
+                    &remaining[comments.len()..],
+                )?
+            } else {
+                None
+            };
+            // Inline logical collections already own their continuation.
+            // The operator-leading packet belongs to the breaking RHS path.
+            let exposed = exposed.filter(|_| {
+                !matches!(content.data, ExprData::LogicalExpression(_))
+                    || self.assignment_right_fluid_content(content.data).is_none()
+            });
+            let comments = exposed.as_ref().map_or(comments, |head| {
+                &remaining[..comments.len() + head.comments.len()]
+            });
             let mut boundary = AssignmentBoundary {
                 before: &[],
                 moved: &[],
@@ -1502,7 +1544,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 left_end,
                 operator_span,
                 right_start,
-                layout_start: right_start,
+                layout_start: exposed
+                    .as_ref()
+                    .map_or(right_start, |head| head.content_start),
                 before_operator: LineConstraint::Unconstrained,
                 after_operator: LineConstraint::Unconstrained,
                 own_line: false,
@@ -1630,7 +1674,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         jsx_head
                             || sensitive && self.diagnostic_head_has_frame(content, *head_context)
                     })
-                    .map_or(right_start, |removed| removed.source.outer.start);
+                    .map_or_else(
+                        || {
+                            // A breaking RHS normally places its head within
+                            // the continuation. Only an inline RHS exposes
+                            // the released head on the operator's source line.
+                            if exposed.is_some()
+                                && self.assignment_right_fluid_content(content.data).is_some()
+                            {
+                                boundary.layout_start
+                            } else {
+                                right_start
+                            }
+                        },
+                        |removed| removed.source.outer.start,
+                    );
                 let mut end = boundary.operator_span.end;
                 for (index, comment) in after.iter().enumerate() {
                     if comment.span.start >= operator_tail_end
@@ -1776,13 +1834,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading
             };
             boundary.leading = leading;
-            if let Some(opening) = source_opening.or_else(|| {
-                content
-                    .parentheses
-                    .map(|removed| removed.source.outer.start)
-            }) && leading
-                .last()
-                .is_none_or(|comment| comment.span.end <= opening)
+            if exposed.is_none()
+                && let Some(opening) = source_opening.or_else(|| {
+                    content
+                        .parentheses
+                        .map(|removed| removed.source.outer.start)
+                })
+                && leading
+                    .last()
+                    .is_none_or(|comment| comment.span.end <= opening)
             {
                 // A delimiter before the head owns its inner source line breaks.
                 boundary.layout_start = opening;
@@ -1876,7 +1936,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .transpose()?;
             boundary.released_head = released.map_or(&[], |head| head.comments);
             let joining = self.assignment_joining_gap(&boundary, leading_packet, released);
-            boundary.own_line |= !leading.is_empty() && before_line || leading_packet.own_line;
+            boundary.own_line |= !leading.is_empty() && (before_line || exposed.is_some())
+                || leading_packet.own_line;
             if let Some(head) = released {
                 boundary.own_line |= if boundary.mode == ContentMode::Formatted {
                     head.own_line

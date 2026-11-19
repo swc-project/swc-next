@@ -254,6 +254,19 @@ pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
     pub(in crate::formatter) binding: CommentBinding,
 }
 
+/// The borrowed head and its following source token, for the enclosing layout.
+pub(super) struct ReleasedExpressionHead<'ast> {
+    pub(super) comments: &'ast [Comment],
+    pub(super) content_start: u32,
+    pub(super) source: Span,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ExposedHeadPurpose {
+    Binding,
+    Layout,
+}
+
 /// A removed wrapper releases a complete head to its retained lexical pair.
 pub(super) struct ReleasedSourceCastHead<'ast> {
     source: Expr,
@@ -3024,6 +3037,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             exterior,
         } = plan;
         let ResolvedExpressionHead { head, binding } = resolved;
+        if let Some(last) = head.comments.last() {
+            // The caller can supply an interior prefix from removed openers.
+            // Carry that ownership when the expression delegates its lexical head.
+            context.claimed_head_end = context.claimed_head_end.max(last.span.end);
+        }
         let binding = context.resolve_emitted_head_binding(&head, binding);
         if let Some((frame, mut content)) =
             frame.and_then(|frame| prepared.take().map(|content| (frame, content)))
@@ -5110,46 +5128,137 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     /// The original expression renderer retains ownership of the borrowed packet.
     pub(super) fn exposed_expression_head(
         &self,
-        mut expression: Expr,
-        mut context: ExpressionContext<'ast>,
+        expression: Expr,
+        context: ExpressionContext<'ast>,
     ) -> Result<Option<ResolvedExpressionHead<'ast>>, FormatError> {
-        let owner = expression;
-        if self.comments.in_range(expression.span(self.ast)).is_empty() {
+        let span = expression.span(self.ast);
+        // Each projected operand begins at the same source token. Only a
+        // source opener can release a parenthesis packet onto that head.
+        if self.ast.source().as_bytes().get(span.start as usize) != Some(&b'(') {
+            return Ok(None);
+        }
+        let Some((removed, comments)) = self.exposed_expression_parentheses(
+            expression,
+            None,
+            context,
+            self.comments.in_range(span),
+            ExposedHeadPurpose::Binding,
+        )?
+        else {
+            return Ok(None);
+        };
+        let content_start = removed.source.inner.start;
+        Ok(Some(ResolvedExpressionHead {
+            head: NodeHead {
+                comments,
+                content_start,
+                layout: CommentRunLayout::GroupedLeading(content_start),
+                gap_end: None,
+            },
+            binding: self.prospective_expression_head_binding(
+                comments,
+                expression,
+                removed.head.binding,
+            ),
+        }))
+    }
+
+    /// A layout owner may take a breaking packet from an erased opener. Use
+    /// the immutable source window so claims cannot change this decision.
+    pub(super) fn ordinary_released_expression_head(
+        &self,
+        expression: Expr,
+        content: &ExpressionContent,
+        context: ExpressionContext<'ast>,
+        source_comments: &'ast [Comment],
+    ) -> Result<Option<ReleasedExpressionHead<'ast>>, FormatError> {
+        let span = expression.span(self.ast);
+        let Some(first) = source_comments.first() else {
+            return Ok(None);
+        };
+        if first.span.start < span.start
+            || first.span.end > span.end
+            || self.ast.source().as_bytes()[span.start as usize] != b'('
+            || !self
+                .source(Span::new(span.start, first.span.start))
+                .chars()
+                .all(|character| character == '(' || is_source_whitespace(character))
+        {
+            return Ok(None);
+        }
+        let Some((removed, comments)) = self.exposed_expression_parentheses(
+            expression,
+            Some(content),
+            context,
+            source_comments,
+            ExposedHeadPurpose::Layout,
+        )?
+        else {
+            return Ok(None);
+        };
+        let content_start = removed.source.inner.start;
+        if !removed.head.binding.allows_relocation(None)
+            || !self
+                .comment_binding(comments, Span::new(span.start, content_start), None)
+                .allows_relocation(None)
+        {
+            return Ok(None);
+        }
+        let breaks = comments.iter().any(|comment| {
+            comment.kind == CommentKind::Line
+                || self.line_breaks(comment.span.start, comment.span.end) != 0
+        });
+        Ok(breaks.then_some(ReleasedExpressionHead {
+            comments,
+            content_start,
+            source: removed.source.outer,
+        }))
+    }
+
+    fn exposed_expression_parentheses(
+        &self,
+        mut expression: Expr,
+        mut prepared: Option<&ExpressionContent>,
+        mut context: ExpressionContext<'ast>,
+        source_comments: &'ast [Comment],
+        purpose: ExposedHeadPurpose,
+    ) -> Result<Option<(RemovedExpressionParentheses, &'ast [Comment])>, FormatError> {
+        if source_comments.is_empty() {
             return Ok(None);
         }
         loop {
             if context.content_mode != ContentMode::Formatted {
                 return Ok(None);
             }
+            let prepared = prepared.take();
             let data = self.ast.expr_data(expression);
             if let ExprData::ParenthesizedExpression(node) = data {
-                let Some(content) = self.prepare_chain_parentheses_head(node, context) else {
-                    return Ok(None);
+                let owned;
+                let content = if let Some(content) = prepared {
+                    if !self.source_parentheses_head_is_removable(node, content, context)
+                        || self.diagnostic_head_has_frame(content, context)
+                    {
+                        return Ok(None);
+                    }
+                    content
+                } else {
+                    let Some(content) = self.prepare_chain_parentheses_head(node, context) else {
+                        return Ok(None);
+                    };
+                    owned = content;
+                    &owned
                 };
                 let Some(removed) = content.parentheses else {
                     return Ok(None);
                 };
-                if matches!(removed.head.binding, CommentBinding::SourceBound) {
-                    return Ok(None);
-                }
-                let comments = self.comments.in_range(Span::new(
-                    removed.source.outer.start,
-                    removed.source.inner.start,
-                ));
+                let start = source_comments
+                    .partition_point(|comment| comment.span.start < removed.source.outer.start);
+                let remaining = &source_comments[start..];
+                let count = remaining
+                    .partition_point(|comment| comment.span.end <= removed.source.inner.start);
+                let comments = &remaining[..count];
                 if !comments.is_empty() {
-                    return Ok(Some(ResolvedExpressionHead {
-                        head: NodeHead {
-                            comments,
-                            content_start: removed.source.inner.start,
-                            layout: CommentRunLayout::GroupedLeading(removed.source.inner.start),
-                            gap_end: None,
-                        },
-                        binding: self.prospective_expression_head_binding(
-                            comments,
-                            owner,
-                            removed.head.binding,
-                        ),
-                    }));
+                    return Ok(Some((removed, comments)));
                 }
                 // A replacement grammar pair follows the released source head.
                 // Without a packet, that pair still stops head projection.
@@ -5170,6 +5279,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let Some((child, child_context)) = self.expression_head_operand(data, context)? else {
                 return Ok(None);
             };
+            if purpose == ExposedHeadPurpose::Layout && self.has_suppression {
+                // A following operator packet can own the left/test operand.
+                // That owner keeps its raw contents, including the head.
+                let following = super::binary::BinaryLike::from_data(data, self.ast)
+                    .map(|binary| binary.right)
+                    .or_else(|| match data {
+                        ExprData::ConditionalExpression(conditional) => {
+                            Some(conditional.consequent(self.ast))
+                        }
+                        _ => None,
+                    });
+                if let Some(following) = following {
+                    let end = child.span(self.ast).end;
+                    let start = following.span(self.ast).start;
+                    let first = source_comments.partition_point(|comment| comment.span.start < end);
+                    let remaining = &source_comments[first..];
+                    let count = remaining.partition_point(|comment| comment.span.end <= start);
+                    if self.content_mode(&remaining[..count]) == ContentMode::Verbatim {
+                        return Ok(None);
+                    }
+                }
+            }
             expression = child;
             context = child_context;
         }

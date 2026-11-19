@@ -301,6 +301,8 @@ pub(super) struct ExpressionContext<'ast> {
     content_mode: ContentMode,
     parentheses_owner: ParenthesesOwner,
     head_comments: HeadComments,
+    /// End of the source prefix assigned to an enclosing expression layout.
+    claimed_head_end: u32,
     head_gap: Option<&'ast PreparedHeadGaps>,
     head_destination: Option<&'ast parentheses::PreparedHeadDestination>,
     head_scope: Option<parentheses::HeadScopeOwner>,
@@ -446,6 +448,7 @@ impl<'ast> ExpressionContext<'ast> {
             content_mode: ContentMode::Formatted,
             parentheses_owner: ParenthesesOwner::Expression,
             head_comments: HeadComments::Pending,
+            claimed_head_end: 0,
             head_gap: None,
             head_destination: None,
             head_scope: None,
@@ -508,6 +511,7 @@ impl<'ast> ExpressionContext<'ast> {
     pub(super) fn with_parent_head(mut self, parent: Self) -> Self {
         self.expression_start = parent.expression_start;
         self.expression_head = parent.expression_head;
+        self.claimed_head_end = parent.claimed_head_end;
         self.protected_head_start = parent.protected_head_start;
         self.emitted_head_binding = parent.emitted_head_binding;
         self.head_gap = parent.head_gap;
