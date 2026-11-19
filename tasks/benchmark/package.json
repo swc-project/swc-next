@@ -1,0 +1,11 @@
+{
+  "name": "@swc-next/benchmark",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "2.11.4",
+    "@swc-next/core": "workspace:*",
+    "@swc-next/walker": "workspace:*",
+    "@swc-next/walker2": "workspace:*"
+  }
+}
