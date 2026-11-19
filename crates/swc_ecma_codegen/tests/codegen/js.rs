@@ -532,7 +532,8 @@ fn numeric_literal_value_invalidates_raw() {
     let allocator = Allocator::new();
     // SAFETY: All handles used below belong to this AST and remain valid.
     let mut ast = unsafe { Ast::new("0x1", &allocator) };
-    let raw = ast.source_slice(0, 3);
+    // SAFETY: The range covers the entire ASCII source.
+    let raw = unsafe { ast.source_slice(0, 3) };
     let expression = ast.expr_numeric_literal(DUMMY_SP, 1.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
         unreachable!();
@@ -560,7 +561,8 @@ fn numeric_literal_value_compares_float_bits() {
     let allocator = Allocator::new();
     // SAFETY: All handles used below belong to this AST and remain valid.
     let mut ast = unsafe { Ast::new("0", &allocator) };
-    let raw = ast.source_slice(0, 1);
+    // SAFETY: The range covers the entire ASCII source.
+    let raw = unsafe { ast.source_slice(0, 1) };
     let expression = ast.expr_numeric_literal(DUMMY_SP, 0.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
         unreachable!();
