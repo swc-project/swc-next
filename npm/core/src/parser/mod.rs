@@ -7,7 +7,7 @@ use swc_next_bridge::{napi, napi_derive::napi};
 use swc_next_ecma_ast::{Lang, SourceType};
 
 #[cfg(target_family = "wasm")]
-#[bridge]
+#[bridge(ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: number")]
 /// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
 ///
 /// # Safety

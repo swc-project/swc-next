@@ -4,9 +4,6 @@ export interface GenerateOutput {
   code: string
 }
 
-export type GenerateOutputOutputWire =
-  string
-
 /**
  * JavaScript code generation options.
  *
@@ -22,9 +19,6 @@ export interface GeneratorConfig {
   /** Print compact code independently of AST compression and mangling. */
   minify?: boolean
 }
-
-export type OptionalGeneratorConfigInputWire =
-  number
 /**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
  *
