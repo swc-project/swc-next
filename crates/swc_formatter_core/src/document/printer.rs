@@ -40,6 +40,16 @@ enum FitState {
     Remeasure,
 }
 
+impl FitState {
+    fn invalidate_line(&mut self, mode: Mode) {
+        if mode == Mode::Flat {
+            *self = Self::Remeasure;
+        } else if *self == Self::Measured {
+            *self = Self::Unmeasured;
+        }
+    }
+}
+
 /// Selects the probe boundary and initial scope together, with static dispatch.
 trait ProbeKind {
     const BOUNDED: bool;
@@ -718,7 +728,14 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
     loop {
         let Some((source_element, flat)) = cursor.next(&mut mode, &mut indent) else {
             if !suffixes.is_empty() {
-                flush_suffixes(&mut suffixes, &mut cursor, None, &mut mode, &mut indent);
+                flush_suffixes(
+                    &mut suffixes,
+                    &mut cursor,
+                    None,
+                    &mut mode,
+                    &mut indent,
+                    &mut output.view.fit_state,
+                );
                 continue;
             }
             break;
@@ -807,6 +824,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                             Some(source_element),
                             &mut mode,
                             &mut indent,
+                            &mut output.view.fit_state,
                         );
                         continue;
                     }
@@ -859,6 +877,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                         Some(source_element),
                         &mut mode,
                         &mut indent,
+                        &mut output.view.fit_state,
                     );
                     continue;
                 }
@@ -876,6 +895,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                         Some(source_element),
                         &mut mode,
                         &mut indent,
+                        &mut output.view.fit_state,
                     );
                     continue;
                 }
@@ -1142,14 +1162,6 @@ impl<'a, M: IndentModel<'a>, const EXTENDED: bool> Output<'a, M, EXTENDED> {
         }
     }
 
-    fn invalidate_line(&mut self, mode: Mode) {
-        if mode == Mode::Flat {
-            self.view.fit_state = FitState::Remeasure;
-        } else if self.view.fit_state == FitState::Measured {
-            self.view.fit_state = FitState::Unmeasured;
-        }
-    }
-
     #[inline]
     fn write_indent(&mut self, options: PrintOptions) {
         if !self.model.is_empty(self.pending_indent) {
@@ -1218,7 +1230,7 @@ impl<'a, M: IndentModel<'a>, const EXTENDED: bool> Output<'a, M, EXTENDED> {
 
     fn literal_line(&mut self, indent: M::State, options: PrintOptions, mode: Mode) {
         self.write_indent(options);
-        self.invalidate_line(mode);
+        self.view.fit_state.invalidate_line(mode);
         self.text.push_str(options.line_ending.as_str());
         self.view.column = self.model.width(indent, options);
         self.pending_indent = indent;
@@ -1251,9 +1263,12 @@ fn flush_suffixes<'a, S: Copy>(
     line: Option<&'a Instruction<'a>>,
     mode: &mut Mode,
     indent: &mut S,
+    fit_state: &mut FitState,
 ) {
     debug_assert!(!suffixes.is_empty(), "flush requires pending suffixes");
     if let Some(line) = line {
+        // The line invalidates the fit before the suffixes it flushes run.
+        fit_state.invalidate_line(*mode);
         cursor.enter(std::slice::from_ref(line), false, None);
     }
     for suffix in suffixes.drain(..).rev() {

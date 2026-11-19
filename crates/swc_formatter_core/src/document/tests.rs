@@ -1984,6 +1984,52 @@ fn line_suffix_contexts() {
 }
 
 #[test]
+fn line_suffix_remeasurement() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 2,
+        ..wide
+    };
+    let exact = PrintOptions {
+        line_width: 3,
+        ..wide
+    };
+    for line in [
+        Writer::hard_line_without_break_parent,
+        Writer::literal_line_without_break_parent,
+    ] {
+        let print = |options| {
+            doc(&allocator, |writer| {
+                writer.group(false, |writer| {
+                    writer.text("a");
+                    writer.line_suffix(|writer| {
+                        writer.group(false, |writer| {
+                            writer.text("(");
+                            writer.soft_line();
+                            writer.text(")");
+                        });
+                    });
+                    line(writer);
+                });
+            })
+            .print(options)
+        };
+        assert_eq!(print(narrow), "a(\n)\n");
+        assert_eq!(print(exact), "a()\n");
+        assert_eq!(print(wide), "a()\n");
+
+        let document = doc(&allocator, |writer| {
+            writer.group(false, |writer| {
+                writer.text("a");
+                line(writer);
+            });
+        });
+        assert_eq!(document.print(narrow), "a\n");
+    }
+}
+
+#[test]
 fn flat_line_suffix_boundaries() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
