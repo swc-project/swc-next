@@ -8385,6 +8385,26 @@
         "prettierNative": "(a+b) /* prettier-ignore */(\n  /* leading */ a,\n);\n"
       }
     ],
+    "js/expressions/call-prefix-ownership/callee-tail-tagged-template.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const x = a.b(\n  // c\n  tag`a\\n${y}\n  b`,\n)\n",
+        "prettierNative": "const x = a.b(// c\ntag`a\\n${y}\n  b`)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "const x = a.b(\n  // c\n  tag`a\\n${y}\n  b`,\n);\n",
+        "prettierNative": "const x = a.b(// c\ntag`a\\n${y}\n  b`);\n"
+      }
+    ],
     "js/expressions/call-prefix-ownership/prefix-blank-line.js": [
       {
         "options": {
