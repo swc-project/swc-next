@@ -37,12 +37,13 @@
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
     "build:js": "pnpm --filter @swc-next/ast2 build && pnpm -w exec rslib build --lib core --lib core-ffi2",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir dist",
-    "test": "pnpm -w build:js && node --test test/*.test.js && pnpm test:walk",
+    "test": "pnpm -w build:js && node --test test/*.test.js && pnpm test:walk && pnpm test:ffi2",
     "test:walk": "rstest run --include \"test/walk/*.test.js\"",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && pnpm build:js && node ./test/estree-conformance.ts",
     "test:codec": "pnpm build --release && pnpm build:js && node ./test/codec-conformance.ts",
-    "prepack": "pnpm build:js"
+    "prepack": "pnpm build:js",
+    "test:ffi2": "tsc -p test/tsconfig.ast-api.json && rstest run --include \"test/walk2/*.test.js\""
   },
   "keywords": [],
   "author": "",
@@ -71,7 +72,8 @@
   "dependencies": {
     "@swc-next/types": "workspace:*",
     "@swc-next/walker": "workspace:*",
-    "@swc-next/ast2": "workspace:*"
+    "@swc-next/ast2": "workspace:*",
+    "@swc-next/walker2": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-core",

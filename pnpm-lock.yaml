@@ -297,6 +297,9 @@ importers:
       '@swc-next/walker':
         specifier: workspace:*
         version: link:../../packages/walker
+      '@swc-next/walker2':
+        specifier: workspace:*
+        version: link:../../packages/walker2
     devDependencies:
       '@babel/parser':
         specifier: 'catalog:'
@@ -504,6 +507,12 @@ importers:
   packages/types: {}
 
   packages/walker: {}
+
+  packages/walker2:
+    dependencies:
+      '@swc-next/ast2':
+        specifier: workspace:*
+        version: link:../ast2
 
   website/docs:
     devDependencies:

@@ -11,6 +11,7 @@ import {
   transformSync as __transformSync,
 } from "./binding.js";
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
+export * from "@swc-next/walker2";
 
 export function parseBufferSync(source, options) {
   const config = encodeParserConfig(options);

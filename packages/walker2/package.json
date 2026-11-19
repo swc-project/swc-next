@@ -1,0 +1,47 @@
+{
+  "name": "@swc-next/walker2",
+  "version": "0.8.1",
+  "description": "Synchronous ESTree traversal and editing for JavaScript and TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/walker2"
+  },
+  "main": "index.js",
+  "type": "module",
+  "sideEffects": false,
+  "dependencies": {
+    "@swc-next/ast2": "workspace:*"
+  },
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "hook-compiler.js",
+    "child-visitors.js",
+    "visitor-keys.js",
+    "visitor-keys.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "ast",
+    "estree",
+    "javascript",
+    "swc",
+    "typescript",
+    "walker"
+  ],
+  "license": "Apache-2.0"
+}

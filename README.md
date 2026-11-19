@@ -40,7 +40,7 @@ console.log(generateSync(program).code);
 ```
 
 To opt into buffer-backed AST views, use the `@swc-next/core/ffi2` entry point
-with [`@swc-next/ast2`](packages/ast2).
+with [`@swc-next/ast2`](packages/ast2) and [`@swc-next/walker2`](packages/walker2).
 The default JavaScript API still accepts and returns plain ESTree objects.
 
 ## Roadmap
