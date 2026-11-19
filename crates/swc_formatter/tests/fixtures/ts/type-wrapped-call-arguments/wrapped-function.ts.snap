@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(function(){x()} as T);
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+f(function () {
+  x();
+} as T);

@@ -16,10 +16,8 @@ use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
 use super::parentheses::ExpressionContent;
-use super::typescript::{PreparedBinaryTypeExpression, TypeBinaryOperator};
 use super::{
     ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
-    TailOwner,
 };
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
@@ -62,45 +60,62 @@ pub(super) struct SelectedCallback {
     prepared_body: Option<PreparedArrowBody>,
 }
 
-pub(super) struct SelectedObject<'ast> {
+pub(super) struct SelectedObject {
     argument: Argument,
     expression: Expr,
     object: ObjectExpression,
-    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) struct SelectedArray<'ast> {
+pub(super) struct SelectedArray {
     argument: Argument,
     expression: Expr,
     array: ArrayExpression,
     arity: ArrayArgumentArity,
-    wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
 }
 
-pub(super) enum SelectedArgument<'ast> {
+pub(super) struct SelectedTypeWrapped {
+    argument: Argument,
+    expression: Expr,
+    content: ExpressionContent,
+}
+
+pub(super) enum SelectedArgument {
     Callback(SelectedCallback),
-    FinalObject(SelectedObject<'ast>),
-    FinalArray(SelectedArray<'ast>),
+    FinalObject(SelectedObject),
+    FinalArray(SelectedArray),
+    TypeWrapped(SelectedTypeWrapped),
+}
+
+impl SelectedArgument {
+    fn argument(&self) -> Argument {
+        match self {
+            Self::Callback(selected) => selected.argument,
+            Self::FinalObject(selected) => selected.argument,
+            Self::FinalArray(selected) => selected.argument,
+            Self::TypeWrapped(selected) => selected.argument,
+        }
+    }
 }
 
 enum SelectionOutcome {
     Callback,
     FinalObject { has_forced: bool },
     FinalArray { has_forced: bool },
+    TypeWrapped { has_forced: bool },
     Ordinary,
 }
 
 #[derive(Clone, Copy)]
 enum GroupingPolicy {
     Callback,
-    FinalObject,
-    FinalArray,
+    FinalValue,
 }
 
 enum RecordedValue<'a> {
     Ordinary(Fragment<'a>),
     FinalObject(RecordedObject<'a>),
     FinalArray(RecordedArray<'a>),
+    TypeWrapped(Fragment<'a>),
     Callback {
         signature: Option<GroupedSignature<'a>>,
         body: CallbackBody<'a>,
@@ -136,6 +151,7 @@ enum GroupedValue<'a> {
     Retained(Fragment<'a>),
     FinalObject(RecordedObject<'a>),
     FinalArray(RecordedArray<'a>),
+    TypeWrapped(Fragment<'a>),
     Callback {
         signature: GroupedSignature<'a>,
         body: CallbackBody<'a>,
@@ -170,6 +186,7 @@ impl<'a> RecordedArgument<'a> {
             }
             RecordedValue::FinalObject(value) => GroupedValue::FinalObject(value),
             RecordedValue::FinalArray(value) => GroupedValue::FinalArray(value),
+            RecordedValue::TypeWrapped(value) => GroupedValue::TypeWrapped(value),
             RecordedValue::Callback {
                 signature,
                 body,
@@ -198,11 +215,7 @@ impl<'a> RecordedArgument<'a> {
 }
 
 fn grouping_view(fragment: Fragment<'_>, policy: GroupingPolicy) -> Option<FlatFragment<'_>> {
-    if matches!(
-        policy,
-        GroupingPolicy::FinalObject | GroupingPolicy::FinalArray
-    ) && fragment.preferred_breaks()
-    {
+    if matches!(policy, GroupingPolicy::FinalValue) && fragment.preferred_breaks() {
         return None;
     }
     fragment.try_flat()
@@ -398,7 +411,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             RecordedValue::Callback { normal, .. } | RecordedValue::Ordinary(normal) => {
                 writer.write_fragment(normal);
             }
-            RecordedValue::FinalObject(_) | RecordedValue::FinalArray(_) => unreachable!(
+            RecordedValue::FinalObject(_)
+            | RecordedValue::FinalArray(_)
+            | RecordedValue::TypeWrapped(_) => unreachable!(
                 "record_callback only records callback or source-owned ordinary content"
             ),
         }
@@ -493,7 +508,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn select_argument_layout(
         &self,
         arguments: SubRange<Argument>,
-    ) -> Option<SelectedArgument<'ast>> {
+    ) -> Option<SelectedArgument> {
         let ast = self.ast;
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let first = items.next()?;
@@ -513,58 +528,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let argument = items.next_back()?;
-        let data = ast.argument_data(argument);
-        let ArgumentData::Expr(expression) = data else {
+        let ArgumentData::Expr(expression) = ast.argument_data(argument) else {
             return None;
         };
-        let mut content = self.expression_content(expression);
-        let mut wrappers = Vec::new();
-        let mut context = ExpressionContext::at(ExpressionPosition::Nested);
-        let mut allow_final_collection = content
+        let content = self.expression_content(expression);
+        let clear_parentheses = content
             .parentheses
             .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
-        while arguments.len() > 1 && allow_final_collection {
-            let (operand, annotation, operator) = match content.data {
-                ExprData::TsAsExpression(assertion) => (
-                    assertion.expression(ast),
-                    assertion.type_annotation(ast),
-                    TypeBinaryOperator::As,
-                ),
-                ExprData::TsSatisfiesExpression(assertion) => (
-                    assertion.expression(ast),
-                    assertion.type_annotation(ast),
-                    TypeBinaryOperator::Satisfies,
-                ),
-                _ => break,
-            };
-            let source = self
-                .prepare_binary_type_expression(operand, annotation, operator, context.tail_owner)
-                .ok()?;
-            if source.operand_mode() != ContentMode::Formatted {
-                return None;
-            }
-            wrappers.push(source);
-            content = self.expression_content(operand);
-            allow_final_collection = content
-                .parentheses
-                .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
-            context = context.type_operand(
-                ExpressionPosition::TypeBinaryOperand,
-                ContentMode::Formatted,
-                TailOwner::ParentOperation,
-            );
-        }
         let callback = match content.data {
             ExprData::ArrowFunctionExpression(_)
             | ExprData::Function(_)
-            | ExprData::ParenthesizedExpression(_) => {
-                if wrappers.is_empty() {
-                    self.callback_content(&content)?
-                } else {
-                    self.callback_data(data)?
-                }
+            | ExprData::ParenthesizedExpression(_) => self.callback_content(&content)?,
+            ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_)
+                if clear_parentheses =>
+            {
+                return self.select_type_wrapped_argument(
+                    argument,
+                    expression,
+                    content,
+                    items.next_back(),
+                    arguments.len(),
+                );
             }
-            ExprData::ObjectExpression(object) if allow_final_collection => {
+            ExprData::ObjectExpression(object) if clear_parentheses => {
                 if let Some(previous) = items.next_back()
                     && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
                         if matches!(self.expression_data(expression), ExprData::ObjectExpression(_)))
@@ -585,10 +571,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     argument,
                     expression,
                     object,
-                    wrappers,
                 }));
             }
-            ExprData::ArrayExpression(array) if allow_final_collection => {
+            ExprData::ArrayExpression(array) if clear_parentheses => {
                 if let Some(previous) = items.next_back()
                     && let ArgumentData::Expr(expression) = ast.argument_data(previous)
                 {
@@ -619,7 +604,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         ArrayArgumentArity::Multiple
                     },
-                    wrappers,
                 }));
             }
             _ => return None,
@@ -640,6 +624,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             role: CallbackRole::Last,
             prepared_body,
         }))
+    }
+
+    /// An assertion is the argument's layout owner. Inspect its operand for
+    /// eligibility, then record the assertion through its normal expression path.
+    fn select_type_wrapped_argument(
+        &self,
+        argument: Argument,
+        expression: Expr,
+        content: ExpressionContent,
+        previous: Option<Argument>,
+        arity: usize,
+    ) -> Option<SelectedArgument> {
+        let ast = self.ast;
+        let outer_kind = std::mem::discriminant(&content.data);
+        let mut data = content.data;
+        loop {
+            let operand = match data {
+                ExprData::TsAsExpression(assertion) => assertion.expression(ast),
+                ExprData::TsSatisfiesExpression(assertion) => assertion.expression(ast),
+                _ => break,
+            };
+            let operand = self.expression_content(operand);
+            // An exposed head can become a call-slot comment after printing.
+            // Exposed tails stay inside the assertion's operator boundary.
+            if operand
+                .parentheses
+                .is_some_and(|removed| removed.head.has_comments)
+            {
+                return None;
+            }
+            data = operand.data;
+        }
+        let previous = previous.and_then(|argument| self.call_argument_data(argument));
+        let sole_with_comments = || !self.comments.in_range(argument.span(ast)).is_empty();
+        let eligible = match data {
+            ExprData::ObjectExpression(object) => {
+                previous.is_none_or(|data| !matches!(data, ExprData::ObjectExpression(_)))
+                    && if arity == 1 {
+                        sole_with_comments()
+                    } else {
+                        !object.properties(ast).is_empty()
+                            || !self.comments.in_range(object.span(ast)).is_empty()
+                    }
+            }
+            ExprData::ArrayExpression(array) => {
+                previous.is_none_or(|data| {
+                    !matches!(data, ExprData::ArrayExpression(_))
+                        && !(arity == 2 && matches!(data, ExprData::ArrowFunctionExpression(_)))
+                }) && if arity == 1 {
+                    sole_with_comments()
+                } else {
+                    !array.elements(ast).is_empty()
+                        || !self.comments.in_range(array.span(ast)).is_empty()
+                }
+            }
+            ExprData::Function(_) => true,
+            ExprData::ArrowFunctionExpression(arrow) => self.callback_can_expand(arrow).is_some(),
+            _ => false,
+        };
+        (eligible && previous.is_none_or(|data| std::mem::discriminant(&data) != outer_kind))
+            .then_some(SelectedArgument::TypeWrapped(SelectedTypeWrapped {
+                argument,
+                expression,
+                content,
+            }))
     }
 
     fn callback_can_expand(&self, arrow: ArrowFunctionExpression) -> Option<PreparedArrowBody> {
@@ -1036,7 +1085,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         sequence: SelectedArgumentSequence,
         head: ArgumentHead,
         protect_runtime_items: bool,
-        mut selected: SelectedArgument<'ast>,
+        selected: SelectedArgument,
         chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -1049,17 +1098,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .transpose()?
             .map(|(fragment, ())| fragment);
-        let (selected_argument, mut outcome) = match &selected {
-            SelectedArgument::Callback(selected) => (selected.argument, SelectionOutcome::Callback),
-            SelectedArgument::FinalObject(selected) => (
-                selected.argument,
-                SelectionOutcome::FinalObject { has_forced: false },
-            ),
-            SelectedArgument::FinalArray(selected) => (
-                selected.argument,
-                SelectionOutcome::FinalArray { has_forced: false },
-            ),
-        };
+        let selected_argument = selected.argument();
+        let mut selected = Some(selected);
+        let mut outcome = SelectionOutcome::Ordinary;
         let (opening, ()) = writer.record_with_value(|writer| {
             if let Some(opening) = head.source_opening {
                 opening
@@ -1102,12 +1143,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 item.set_leading_mode(head.first_mode);
             }
             let source_generation = self.source_object_layout.generation;
-            let (value, tail) = match &mut selected {
-                SelectedArgument::Callback(selected)
-                    if argument == selected.argument
-                        && item.mode == ContentMode::Formatted
-                        && (selected.role != CallbackRole::First
-                            || !self.first_callback_has_boundary_comments(&item))
+            let selection = selected
+                .take_if(|_| argument == selected_argument && item.mode == ContentMode::Formatted);
+            let (value, tail) = match selection {
+                Some(SelectedArgument::Callback(mut selected))
+                    if (selected.role != CallbackRole::First
+                        || !self.first_callback_has_boundary_comments(&item))
                         && (selected.role != CallbackRole::Last
                             || !self.argument_has_boundary_comments(&item)) =>
                 {
@@ -1115,7 +1156,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         facts.has_function = true;
                     }
                     let (mut value, tail) = self.record_callback(
-                        selected,
+                        &mut selected,
                         sole_argument,
                         head.constructor,
                         head.jsx_call,
@@ -1127,40 +1168,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         value = RecordedValue::Ordinary(normal);
                     }
-                    if matches!(value, RecordedValue::Ordinary(_)) {
-                        outcome = SelectionOutcome::Ordinary;
+                    if matches!(value, RecordedValue::Callback { .. }) {
+                        outcome = SelectionOutcome::Callback;
                     }
                     (value, tail)
                 }
-                SelectedArgument::FinalObject(selected)
-                    if argument == selected.argument
-                        && item.mode == ContentMode::Formatted
-                        && !self.argument_has_boundary_comments(&item) =>
+                Some(SelectedArgument::FinalObject(selected))
+                    if !self.argument_has_boundary_comments(&item) =>
                 {
                     let object =
                         self.record_object_argument(selected.expression, selected.object, writer)?;
-                    let object = self.record_type_wrapped_argument(
-                        object.normal,
-                        object.forced,
-                        std::mem::take(&mut selected.wrappers),
-                        self.expression_layout(selected.expression),
-                        writer,
-                    )?;
                     outcome = SelectionOutcome::FinalObject {
                         has_forced: object.forced.is_some(),
                     };
-                    (
-                        RecordedValue::FinalObject(RecordedObject {
-                            normal: object.normal,
-                            forced: object.forced,
-                        }),
-                        object.tail,
-                    )
+                    (RecordedValue::FinalObject(object), None)
                 }
-                SelectedArgument::FinalArray(selected)
-                    if argument == selected.argument
-                        && item.mode == ContentMode::Formatted
-                        && !self.argument_has_boundary_comments(&item) =>
+                Some(SelectedArgument::FinalArray(selected))
+                    if !self.argument_has_boundary_comments(&item) =>
                 {
                     match self.record_array_argument(
                         selected.expression,
@@ -1169,41 +1193,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )? {
                         RecordedArrayArgument::Selected(array) => {
-                            let array = self.record_type_wrapped_argument(
-                                array.normal,
-                                array.forced,
-                                std::mem::take(&mut selected.wrappers),
-                                self.expression_layout(selected.expression),
-                                writer,
-                            )?;
                             outcome = SelectionOutcome::FinalArray {
                                 has_forced: array.forced.is_some(),
                             };
-                            (
-                                RecordedValue::FinalArray(RecordedArray {
-                                    normal: array.normal,
-                                    forced: array.forced,
-                                }),
-                                array.tail,
-                            )
+                            (RecordedValue::FinalArray(array), None)
                         }
                         RecordedArrayArgument::Ordinary(value) => {
-                            let value = self.record_type_wrapped_argument(
-                                value,
-                                None,
-                                std::mem::take(&mut selected.wrappers),
-                                self.expression_layout(selected.expression),
-                                writer,
-                            )?;
-                            outcome = SelectionOutcome::Ordinary;
-                            (RecordedValue::Ordinary(value.normal), value.tail)
+                            (RecordedValue::Ordinary(value), None)
                         }
                     }
                 }
+                Some(SelectedArgument::TypeWrapped(selected))
+                    if !self.argument_has_boundary_comments(&item) =>
+                {
+                    let (value, tail) = writer.record_with_value(|writer| {
+                        self.format_expression_prepared(
+                            selected.expression,
+                            Some(selected.content),
+                            ExpressionContext::at(ExpressionPosition::Nested),
+                            writer,
+                        )
+                    })?;
+                    outcome = SelectionOutcome::TypeWrapped {
+                        has_forced: !value.preferred_breaks(),
+                    };
+                    (RecordedValue::TypeWrapped(value), tail)
+                }
                 _ => {
-                    if argument == selected_argument {
-                        outcome = SelectionOutcome::Ordinary;
-                    }
                     let (value, tail) = writer.record_with_value(|writer| {
                         self.format_argument_with_chain_facts(
                             argument,
@@ -1219,9 +1235,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             if let Some(facts) = argument_facts.as_deref_mut() {
                 let normal = match &value {
-                    RecordedValue::Ordinary(normal) | RecordedValue::Callback { normal, .. } => {
-                        *normal
-                    }
+                    RecordedValue::Ordinary(normal)
+                    | RecordedValue::TypeWrapped(normal)
+                    | RecordedValue::Callback { normal, .. } => *normal,
                     RecordedValue::FinalObject(object) => object.normal,
                     RecordedValue::FinalArray(array) => array.normal,
                 };
@@ -1284,7 +1300,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     for item in &recorded {
                         writer.write_fragment(item.prefix);
                         match item.value {
-                            RecordedValue::Ordinary(value) => {
+                            RecordedValue::Ordinary(value) | RecordedValue::TypeWrapped(value) => {
                                 writer.write_fragment(value);
                             }
                             RecordedValue::FinalObject(object) => {
@@ -1303,8 +1319,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         let policy = match outcome {
             SelectionOutcome::Callback => GroupingPolicy::Callback,
-            SelectionOutcome::FinalObject { .. } => GroupingPolicy::FinalObject,
-            SelectionOutcome::FinalArray { .. } => GroupingPolicy::FinalArray,
+            SelectionOutcome::FinalObject { .. }
+            | SelectionOutcome::FinalArray { .. }
+            | SelectionOutcome::TypeWrapped { .. } => GroupingPolicy::FinalValue,
             SelectionOutcome::Ordinary => {
                 writer.write_fragment(fallback);
                 return Ok(None);
@@ -1339,6 +1356,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 outcome,
                 SelectionOutcome::FinalObject { has_forced: true }
                     | SelectionOutcome::FinalArray { has_forced: true }
+                    | SelectionOutcome::TypeWrapped { has_forced: true }
             ) || matches!(outcome, SelectionOutcome::Callback)
                 && grouped_items
                     .iter()
@@ -1381,6 +1399,13 @@ fn write_grouped_arguments<'a>(
         match item.value {
             GroupedValue::Ordinary(value) => writer.write_flat_fragment(value),
             GroupedValue::Retained(value) => writer.write_fragment(value),
+            GroupedValue::TypeWrapped(value) => {
+                if expand_body {
+                    writer.group(true, |writer| writer.write_fragment(value));
+                } else {
+                    writer.write_fragment(value);
+                }
+            }
             GroupedValue::FinalObject(object) => {
                 let value = if expand_body {
                     object.forced.unwrap_or(object.normal)

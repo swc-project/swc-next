@@ -2552,7 +2552,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DelimitedClose::Terminal(closing)
             };
         let format_selected = |formatter: &mut Self,
-                               selected: SelectedArgument<'ast>,
+                               selected: SelectedArgument,
                                chain_facts: Option<&mut ChainArgumentFacts>,
                                writer: &mut Writer<'ast>| {
             let tail = formatter.format_selected_arguments(
