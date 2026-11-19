@@ -33,7 +33,7 @@ export const visitorKeys = Object.freeze({
   FunctionDeclaration: Object.freeze(["id", "typeParameters", "params", "returnType", "body"]),
   FunctionExpression: Object.freeze(["id", "typeParameters", "params", "returnType", "body"]),
   Hashbang: Object.freeze([]),
-  Identifier: Object.freeze(["decorators", "typeAnnotation"]),
+  Identifier: Object.freeze(["typeAnnotation", "decorators"]),
   IfStatement: Object.freeze(["test", "consequent", "alternate"]),
   ImportAttribute: Object.freeze(["key", "value"]),
   ImportDeclaration: Object.freeze(["specifiers", "source", "attributes"]),

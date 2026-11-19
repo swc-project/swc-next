@@ -5,7 +5,7 @@ description: parseSync inputs, parser options, results, and diagnostics.
 
 # Parser
 
-`parseSync` parses JavaScript, TypeScript, and JSX into an ESTree-based program. It is exported by `@swc-next/core`, `@swc-next/parser`, and the initialized `@swc-next/core-browser` package.
+`parseSync` parses JavaScript, TypeScript, and JSX into editable AST views. It is exported by `@swc-next/core`, `@swc-next/parser`, and the initialized `@swc-next/core-browser` package.
 
 ## Signature
 
@@ -13,7 +13,7 @@ description: parseSync inputs, parser options, results, and diagnostics.
 declare function parseSync(
   source: string,
   options?: ParseApiOptions | null,
-): ParseResult;
+): AstView;
 ```
 
 `source` is the complete source text. Omitting `options` or passing `null` uses the defaults below. Parsing is synchronous. By default, the first diagnostic is thrown; enable `errorRecovery` to return diagnostics and a recovered AST.
@@ -104,13 +104,13 @@ Keep parentheses as `ParenthesizedExpression` nodes and, for TypeScript types, `
 import { parseSync } from "@swc-next/core";
 
 const preserved = parseSync("(answer);", { preserveParens: true });
-preserved.program.body[0].expression.type;
+preserved.program.body.get(0).expression.type;
 // "ParenthesizedExpression"
-preserved.program.body[0].expression.expression.type;
+preserved.program.body.get(0).expression.expression.type;
 // "Identifier"
 
 const unwrapped = parseSync("(answer);", { preserveParens: false });
-unwrapped.program.body[0].expression.type;
+unwrapped.program.body.get(0).expression.type;
 // "Identifier"
 ```
 
@@ -174,11 +174,7 @@ Enabling this option adds diagnostics without changing the AST. It does not expo
 ## ParseResult
 
 ```ts
-interface ParseResult {
-  readonly program: Program;
-  readonly comments: Comment[];
-  readonly diagnostics: Diagnostic[];
-}
+type ParseResult = AstView;
 ```
 
 | Field | Contents |
@@ -187,7 +183,9 @@ interface ParseResult {
 | `comments` | Flat comments with `type: "Line" \| "Block"`, delimiter-free `value`, `start`, and `end`. Empty when collection is disabled. |
 | `diagnostics` | Syntax diagnostics and, with `semanticErrors`, semantic early errors. Check these before using recovered output. |
 
-The program and comments are decoded lazily when accessed. Diagnostics are decoded lazily when `errorRecovery` is enabled. See [AST types](/api/javascript/types) for node declarations.
+Node fields read live binary storage. Lists use `AstList.get()` and list mutation methods. Comments and diagnostics expose UTF-16 offsets lazily. See [AST types](/api/javascript/types) for node declarations and [`@swc-next/ast`](https://github.com/swc-project/swc-next/tree/main/packages/ast) for view and editing APIs.
+
+Source text is encoded as UTF-8: literal unpaired surrogates become U+FFFD. Escaped surrogate values in strings are retained as WTF-8.
 
 ## Diagnostics and positions
 

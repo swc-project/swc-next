@@ -1,4 +1,4 @@
-import type { Diagnostic } from "@swc-next/protocol/ast/decode";
+import type { AstDiagnostic as Diagnostic } from "@swc-next/ast";
 import type { Lang, Program, SourceType } from "@swc-next/types";
 
 export interface Options {
@@ -24,7 +24,7 @@ export type CompileResponse =
       id: number;
       code: string;
       ast: Program;
-      diagnostics: Diagnostic[];
+      diagnostics: readonly Diagnostic[];
       duration: number;
     }
   | { id: number; error: string };

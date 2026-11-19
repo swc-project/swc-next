@@ -349,6 +349,9 @@ importers:
 
   npm/core-browser:
     dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../../packages/ast
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -408,6 +411,9 @@ importers:
 
   npm/generator:
     dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../../packages/ast
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -424,6 +430,9 @@ importers:
 
   npm/parser:
     dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../../packages/ast
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -508,6 +517,9 @@ importers:
 
   website/playground:
     dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../../packages/ast
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types

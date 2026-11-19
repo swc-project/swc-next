@@ -10,17 +10,29 @@
   "main": "index.js",
   "type": "module",
   "sideEffects": false,
+  "dependencies": {
+    "@swc-next/ast": "workspace:*"
+  },
   "types": "./index.d.ts",
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "import": "./index.js",
       "default": "./index.js"
+    },
+    "./ast": {
+      "types": "./ast.d.ts",
+      "import": "./ast.js",
+      "default": "./ast.js"
     }
   },
   "files": [
     "index.js",
     "index.d.ts",
+    "ast.js",
+    "ast.d.ts",
+    "ast-projection.js",
+    "hook-compiler.js",
     "child-visitors.js",
     "visitor-keys.js",
     "visitor-keys.d.ts",

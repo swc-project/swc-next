@@ -200,9 +200,9 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
                     } else {
                         "visitListKnown"
                     };
-                    writeln!(children, "    if (node instanceof NodeView) {{\n      if (walker.visitListField(node, {field:?}{dispatch})) return true;\n    }} else {{\n      const child{index} = node.{field};\n      if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) return true;\n    }}").unwrap();
+                    writeln!(children, "    if (node instanceof NodeView) {{\n      if (walker.visitListField(node, {field:?}{dispatch})) {{ return true; }}\n    }} else {{\n      const child{index} = node.{field};\n      if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) {{ return true; }}\n    }}").unwrap();
                 } else {
-                    writeln!(children, "    const child{index} = node.{field};\n    if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) return true;").unwrap();
+                    writeln!(children, "    const child{index} = node.{field};\n    if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) {{ return true; }}").unwrap();
                 }
             }
             writeln!(children, "    return false;\n  }},").unwrap();
@@ -238,15 +238,15 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
                 } else {
                     "visitListKnown"
                 };
-                writeln!(children, "  if (node instanceof NodeView) {{\n    if (walker.visitListField(node, {field:?}{dispatch})) return index;\n  }} else {{\n    const child{index} = node.{field};\n    if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) return index;\n  }}").unwrap();
+                writeln!(children, "  if (node instanceof NodeView) {{\n    if (walker.visitListField(node, {field:?}{dispatch})) {{ return index; }}\n  }} else {{\n    const child{index} = node.{field};\n    if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) {{ return index; }}\n  }}").unwrap();
             } else {
-                writeln!(children, "  const child{index} = node.{field};\n  if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) return index;").unwrap();
+                writeln!(children, "  const child{index} = node.{field};\n  if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) {{ return index; }}").unwrap();
             }
         }
-        writeln!(children, "  if (node.type !== {name:?}) return walker.leaveChanged(node, parent, key, list, index);\n  return index;\n}}").unwrap();
+        writeln!(children, "  if (node.type !== {name:?}) {{ return walker.leaveChanged(node, parent, key, list, index); }}\n  return index;\n}}").unwrap();
     }
     for name in dispatch_types {
-        writeln!(children, "\nconst dispatch{name} = function(node, walker, parent, key, list, index, walkers) {{\n  const type = node.type;\n  if (type !== {name:?}) {{\n    if (typeof type !== \"string\") throw new TypeError(`Unsupported AST node type: ${{type}}`);\n    const fallback = walkers[type];\n    if (fallback === undefined) throw new TypeError(`Unsupported AST node type: ${{type}}`);\n    return fallback === null ? index : fallback(node, walker, parent, key, list, index);\n  }}\n  const visit = walkers.{name};\n  return visit === null ? index : visit(node, walker, parent, key, list, index);\n}};\n").unwrap();
+        writeln!(children, "\nconst dispatch{name} = function(node, walker, parent, key, list, index, walkers) {{\n  const type = node.type;\n  if (type !== {name:?}) {{\n    if (typeof type !== \"string\") {{ throw new TypeError(`Unsupported AST node type: ${{type}}`); }}\n    const fallback = walkers[type];\n    if (fallback === undefined) {{ throw new TypeError(`Unsupported AST node type: ${{type}}`); }}\n    return fallback === null ? index : fallback(node, walker, parent, key, list, index);\n  }}\n  const visit = walkers.{name};\n  return visit === null ? index : visit(node, walker, parent, key, list, index);\n}};\n").unwrap();
     }
     // Partition large same-length groups by the most distinguishing character.
     // Full-name guards preserve rejection of unsupported names; each known type
@@ -288,7 +288,7 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
                         continue;
                     }
                     if lists[&(name.clone(), field.clone())] {
-                        writeln!(body, "  if (walker.visitListField(id, {field:?})) return true;").unwrap();
+                        writeln!(body, "  if (walker.visitListField(id, {field:?})) {{ return true; }}").unwrap();
                         continue;
                     }
                     if rule != "Native" { return None; }
@@ -300,7 +300,7 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
                     }
                     let optional = matches!(schema.types[native.type_id], AstType::Option(_));
                     body.push_str("  {\n    if (ast._editVersion !== version) {\n");
-                    writeln!(body, "      const node = ast.node(id), child = node.{field};\n      if (child != null && walker.visitScalar(child, node, {field:?})) return true;\n    }} else {{").unwrap();
+                    writeln!(body, "      const node = ast.node(id), child = node.{field};\n      if (child != null && walker.visitScalar(child, node, {field:?})) {{ return true; }}\n    }} else {{").unwrap();
                     body.push_str("      const row = ast.row(id), payload = ast._payloadAt(id, row);\n      let view = row === -1 ? ast._view : ast._arena.view;\n");
                     match ast.layout.fields[index] {
                         FieldLocation::Payload { offset, .. } => {
@@ -308,10 +308,10 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
                         }
                         FieldLocation::Extra { index } => {
                             writeln!(body, "      const extra = view.getUint32(payload + {}, true) + {index};", ast.layout.extra_start_offset().unwrap()).unwrap();
-                            body.push_str("      if (extra >= ast.extraDataCount) throw new RangeError(\"AST extra-data reference out of bounds\");\n      const offset = extra < ast._extraCount ? ast._extra + extra * 4 : ast._arena.extraAddress(extra);\n      view = extra < ast._extraCount ? ast._view : ast._arena.view;\n");
+                            body.push_str("      if (extra >= ast.extraDataCount) { throw new RangeError(\"AST extra-data reference out of bounds\"); }\n      const offset = extra < ast._extraCount ? ast._extra + extra * 4 : ast._arena.extraAddress(extra);\n      view = extra < ast._extraCount ? ast._view : ast._arena.view;\n");
                         }
                     }
-                    writeln!(body, "      const child = ast.childAt(id, offset, {optional}, view);\n      if (child !== 0xffffffff && walker.visitScalarId(child, id, {field:?})) return true;\n    }}\n  }}").unwrap();
+                    writeln!(body, "      const child = ast.childAt(id, offset, {optional}, view);\n      if (child !== 0xffffffff && walker.visitScalarId(child, id, {field:?})) {{ return true; }}\n    }}\n  }}").unwrap();
                 }
                 body.push_str("  return false;\n");
                 Some(body)

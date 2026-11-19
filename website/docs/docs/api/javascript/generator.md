@@ -11,14 +11,14 @@ description: generateSync AST inputs, formatting options, and output.
 
 ```ts
 declare function generateSync(
-  program: Program,
+  program: AstNode<Program>,
   options?: GenerateApiOptions | null,
 ): GenerateOutput;
 ```
 
 | Input | Meaning |
 | --- | --- |
-| `program` | A valid program AST, usually returned by `parseSync` and optionally edited with `walk`. |
+| `program` | The root Program view returned by `parseSync` or `readAst`, optionally edited with `walk`. |
 | `options` | Formatting options. Omit or pass `null` for defaults. |
 
 Input nodes follow the [AST declarations](/api/javascript/types) shared with the parser.
@@ -96,7 +96,7 @@ generateSync(program, { minify: true }).code;
 
 `minify` does not evaluate `1 + 2`, remove unused declarations, or shorten variable names. Compression and name mangling belong to the separate [Minifier component](/api/components/minifier). Printing preserves TypeScript and JSX syntax with either setting.
 
-Printing infers JavaScript or TypeScript from the AST and reads source type from `program.sourceType`. It preserves TypeScript types and JSX syntax. Single type parameter arrow functions without a constraint receive a trailing comma, so their output is valid in both TS and TSX.
+Printing uses the language recorded in AST storage and reads source type from `program.sourceType`. It preserves TypeScript types and JSX syntax. Single type parameter arrow functions without a constraint receive a trailing comma, so their output is valid in both TS and TSX.
 
 ## GenerateOutput
 

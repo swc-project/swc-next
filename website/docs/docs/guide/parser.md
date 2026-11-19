@@ -27,7 +27,7 @@ Choose the language explicitly:
 import { parseSync } from "@swc-next/core";
 
 const result = parseSync("const answer: number = 42;", { lang: "ts" });
-console.log(result.program.body[0].type); // VariableDeclaration
+console.log(result.program.body.get(0).type); // VariableDeclaration
 ```
 
 Use `jsx` or `tsx` for JSX input, and `dts` for declaration files. Parsing TypeScript preserves its types; it does not compile them away.
