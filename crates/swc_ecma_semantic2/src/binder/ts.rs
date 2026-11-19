@@ -1,4 +1,6 @@
-use std::{collections::hash_map::Entry, convert::Infallible, iter::once, mem::take};
+use std::{
+    collections::hash_map::Entry, convert::Infallible, hash::BuildHasher, iter::once, mem::take,
+};
 
 use bitflags::bitflags;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -730,10 +732,24 @@ impl SymbolTracker<'_> {
             ts: &self.ts_bindings,
         };
 
+        // Recovered or edited JavaScript ASTs can contain TypeScript bindings.
+        let all_value_bindings = !tree.is_ts()
+            && !self.references.is_empty()
+            && self.ts_bindings.containers.is_empty()
+            && self.symbols.iter().all(|symbol| {
+                symbol.flags.contains(SymbolFlags::EXPORT_VALUE)
+                    || symbol.flags.visible_in(ReferenceSpace::Value)
+            });
+
         // Without recorded alias targets, visibility follows declaration flags.
         for reference in self.references.iter_mut() {
             let name = tree.get_utf8(reference.name).as_bytes();
             let space = reference.flags.space;
+            // An implicit arguments object can hide an outer binding.
+            if all_value_bindings && space == ReferenceSpace::Value && name != b"arguments" {
+                reference.symbol = lookup.lookup_javascript_value(reference.scope, name);
+                continue;
+            }
             let binding = lookup.lookup(reference.scope, name, space);
             reference.symbol = binding.map(|(symbol, _)| symbol);
             if space == ReferenceSpace::Any
@@ -790,6 +806,21 @@ pub(crate) struct LexicalLookup<'s, 'a> {
 }
 
 impl LexicalLookup<'_, '_> {
+    fn lookup_javascript_value(&self, start: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        let hash = self.symbol_tables[ScopeId::ROOT].hasher().hash_one(name);
+        let mut scope = Some(start);
+        while let Some(id) = scope {
+            if let Some((_, &symbol)) = self.symbol_tables[id]
+                .raw_entry()
+                .from_hash(hash, |candidate| *candidate == name)
+            {
+                return Some(symbol);
+            }
+            scope = self.scopes[id].parent;
+        }
+        None
+    }
+
     pub(crate) fn lookup(
         &self,
         scope: ScopeId,
@@ -817,10 +848,14 @@ impl LexicalLookup<'_, '_> {
                 space,
                 ReferenceSpace::Value | ReferenceSpace::Typeof | ReferenceSpace::Any
             );
+        let hash = self.symbol_tables[ScopeId::ROOT].hasher().hash_one(name);
         for id in successors(Some(start), |&id| self.scopes[id].parent) {
             let scope = self.scopes[id];
             let barrier = arguments && scope.flags.arguments_barrier;
-            if let Some(&local) = self.symbol_tables[id].get(name) {
+            if let Some((_, &local)) = self.symbol_tables[id]
+                .raw_entry()
+                .from_hash(hash, |candidate| *candidate == name)
+            {
                 let flags = self.symbols[local].flags;
 
                 // The implicit arguments object hides the function expression's name.
