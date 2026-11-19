@@ -622,16 +622,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.finish_statement(list.span.end, None, punctuation, writer);
             }
         }
-        let comments = self
-            .comments
-            .in_range(Span::new(keyword_end, list.span.start));
-        let mode = self.content_mode(comments);
         writer.text("export");
         let head_end = if type_only {
             self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
         } else {
             keyword_end
         };
+        // The diagnostic-sensitive type prefix claims comments between `export`
+        // and `type`. Collect what remains afterwards, as imports do, so those
+        // comments are not claimed a second time.
+        let comments = self.comments.in_range(Span::new(head_end, list.span.start));
+        let mode = self.content_mode(comments);
         let mut leading = None;
         let empty_header = source
             .as_ref()
