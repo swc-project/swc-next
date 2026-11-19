@@ -3107,7 +3107,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "for (\n  ;\n  ;\n  a = 1, b = 2 // operator\n// value\n) {}\n",
+        "swcPlugin": "for (\n  ;\n  ;\n  a = 1, b = 2 // operator\n  // value\n) {}\n",
         "prettierNative": "for (\n  ;\n  ;\n  a = 1,\n    b = 2 // operator // value\n) {}\n"
       },
       {
@@ -3115,7 +3115,7 @@
           "lineWidth": 80,
           "indentStyle": "tab"
         },
-        "swcPlugin": "for (\n\t;\n\t;\n\ta = 1, b = 2 // operator\n// value\n) {}\n",
+        "swcPlugin": "for (\n\t;\n\t;\n\ta = 1, b = 2 // operator\n\t// value\n) {}\n",
         "prettierNative": "for (\n\t;\n\t;\n\ta = 1,\n\t\tb = 2 // operator // value\n) {}\n"
       }
     ],
