@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13609/13728 (99.13%)
+Positive Passed: 13614/13728 (99.17%)
 Negative Passed: 1693/3207 (52.79%)
 Panicked: 0/16935 (0.00%)
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -72,7 +72,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/binaryArithmatic2.
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/binaryArithmatic3.ts - binaryArithmatic3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/binaryArithmatic4.ts - binaryArithmatic4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/bindingPatternCannotBeOnlyInferenceSource.ts - bindingPatternCannotBeOnlyInferenceSource.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/callOnInstance.ts - callOnInstance.ts: semantic: Identifier 'D' has already been declared at 54..55
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/callOverloads1.ts - callOverloads1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/callOverloads2.ts - callOverloads2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/capturedParametersInInitializers1.ts - capturedParametersInInitializers1.ts: expected a parse or early error, but pipeline succeeded
@@ -97,8 +96,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classExtendsInterf
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classExtendsNull.ts - classExtendsNull.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classExtendsNull2.ts - classExtendsNull2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classFieldSuperNotAccessibleJs.ts - index.js: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classFunctionMerging.ts - classFunctionMerging.ts: semantic: Identifier 'Foo' has already been declared at 205..208
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classFunctionMerging2.ts - classFunctionMerging2.ts: semantic: Identifier 'B' has already been declared at 121..122
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classImplementsClass6.ts - classImplementsClass6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classOverloadForFunction.ts - classOverloadForFunction.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/classStaticPropertyAccess.ts - classStaticPropertyAccess.ts: expected a parse or early error, but pipeline succeeded
@@ -135,7 +132,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorArgsErr
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorArgsErrors4.ts - constructorArgsErrors4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads1.ts - constructorOverloads1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads3.ts - constructorOverloads3.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads5.ts - constructorOverloads5.ts: semantic: Identifier 'RegExp' has already been declared at 187..193
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads6.ts - constructorOverloads6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads7.ts - constructorOverloads7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/constructorOverloads8.ts - constructorOverloads8.ts: expected a parse or early error, but pipeline succeeded
@@ -359,7 +355,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/genericReduce.ts -
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/genericSpecializations2.ts - genericSpecializations2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/genericUnboundedTypeParamAssignability.ts - genericUnboundedTypeParamAssignability.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/genericsWithDuplicateTypeParameters1.ts - genericsWithDuplicateTypeParameters1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/getAccessorWithImpliedReturnTypeAndFunctionClassMerge.ts - getAccessorWithImpliedReturnTypeAndFunctionClassMerge.ts: semantic: Identifier '_' has already been declared at 355..356
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/getterMissingReturnError.ts - getterMissingReturnError.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/gettersAndSetters.ts - gettersAndSetters.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/globalArrayAugmentationWithAmbientModuleReexportMerge1.ts - /a.d.ts: expected a parse or early error, but pipeline succeeded
