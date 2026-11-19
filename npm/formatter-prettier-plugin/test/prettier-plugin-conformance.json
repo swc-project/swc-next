@@ -35110,6 +35110,16 @@
         "prettierNative": "result =\r\n\tfn<number> +\r\n\tother;\r\n"
       }
     ],
+    "ts/instantiation-expression/canonical/operator-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const postfix = (a++)<T>;\ncall((a--)<T, U>);\nconst prefix = (++a)<T>;\nconst unary = (!a)<T>;\n",
+        "prettierNative": "const postfix = a++<T>;\ncall(a--<T, U>);\nconst prefix = ++a<T>;\nconst unary = !a<T>;\n"
+      }
+    ],
     "ts/instantiation-expression/nested-instantiation.ts": [
       {
         "options": {

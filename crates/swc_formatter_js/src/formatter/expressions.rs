@@ -1387,12 +1387,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             return Some(needed || exposed_tail);
         }
-        if matches!(position, ExpressionPosition::NonNullOperand)
-            && matches!(
-                data,
-                ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
-            )
-        {
+        // Both TypeScript suffixes attach to left-hand-side expressions.
+        if matches!(
+            position,
+            ExpressionPosition::NonNullOperand | ExpressionPosition::InstantiationOperand
+        ) && matches!(
+            data,
+            ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+        ) {
             return Some(true);
         }
         if matches!(
