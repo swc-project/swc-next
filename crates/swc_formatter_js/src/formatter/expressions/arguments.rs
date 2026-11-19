@@ -17,7 +17,7 @@ use crate::formatter::suppression::{
 };
 use crate::{
     FormatError, TrailingCommas,
-    document::{ConditionTarget, Writer},
+    document::{ConditionTarget, FlatFragment, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
@@ -1701,10 +1701,19 @@ impl<'ast> SourceArguments<'ast> {
 /// Facts needed only while recording fluent-chain arguments. Source-dependent
 /// collection policy stays in the language builder, outside document fitting.
 #[derive(Default)]
-pub(super) struct ChainArgumentFacts {
+pub(super) struct ChainArgumentFacts<'ast> {
     pub(super) has_function: bool,
+    pub(super) expansion: Option<ChainArgumentExpansion<'ast>>,
     /// An argument contains source-expanded objects without intrinsic newlines.
     pub(super) source_expanded_object: bool,
+}
+
+pub(super) enum ChainArgumentExpansion<'ast> {
+    Array(Fragment<'ast>),
+    Object {
+        flat: FlatFragment<'ast>,
+        expanded: Fragment<'ast>,
+    },
 }
 
 /// The actual prefix owner reports its emitted boundary after receiving a tail.
@@ -2005,7 +2014,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         binary_indent: OperandIndent,
         jsx_call: Option<CallExpression>,
-        chain_facts: &mut Option<&mut ChainArgumentFacts>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if binary_indent == OperandIndent::Expression
@@ -2380,7 +2389,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        chain_facts: Option<&mut ChainArgumentFacts>,
+        chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         let observing = self.source_object_layout.observing;
@@ -2396,7 +2405,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        mut chain_facts: Option<&mut ChainArgumentFacts>,
+        mut chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         if let Some(facts) = chain_facts.as_deref_mut() {
@@ -2581,7 +2590,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         let format_selected = |formatter: &mut Self,
                                selected: SelectedArgument,
-                               chain_facts: Option<&mut ChainArgumentFacts>,
+                               chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
                                writer: &mut Writer<'ast>| {
             let tail = formatter.format_selected_arguments(
                 SelectedArgumentSequence { arguments, content },

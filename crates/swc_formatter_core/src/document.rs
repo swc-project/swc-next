@@ -446,6 +446,14 @@ impl FragmentCapabilities {
 #[derive(Debug, Clone, Copy)]
 pub struct FlatFragment<'a>(Fragment<'a>);
 
+impl FlatFragment<'_> {
+    /// Whether the flat projection exceeds the width even at column zero.
+    /// Layout dependencies outside the fragment leave the result conservative.
+    pub fn exceeds_line_width(self, line_width: u16) -> bool {
+        !printer::standalone_flat_fits(self.0, line_width)
+    }
+}
+
 pub struct Doc<'a> {
     /// Arena owning instruction storage; no Prettier field.
     allocator: &'a swc_next_allocator::Allocator,

@@ -8886,16 +8886,6 @@
         "prettierNative": "abc.b().c({ veryLongPropertyName: someVeryLongValue })(\n  x,\n);\n"
       }
     ],
-    "js/expressions/call/source-expanded-chain/source-object/input.js": [
-      {
-        "options": {
-          "lineWidth": 58,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n",
-        "prettierNative": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n"
-      }
-    ],
     "js/expressions/call/terminal-close/ignored-last/input.js": [
       {
         "options": {
@@ -11069,14 +11059,14 @@
         "prettierNative": "result =\r\n\tFactory.first(\r\n\t\t// prettier-ignore\r\n\t\t{ one :1, two:2 },\r\n\t\t(arg) => {\r\n\t\t\ttrace.push(\r\n\t\t\t\targ,\r\n\t\t\t);\r\n\t\t\treturn arg;\r\n\t\t},\r\n\t).second(other);\r\n"
       }
     ],
-    "js/expressions/fluent-chain/canonical-collection/multiline.js": [
+    "js/expressions/fluent-chain/canonical-collection/collapsed.js": [
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n",
-        "prettierNative": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n"
+        "swcPlugin": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n",
+        "prettierNative": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n"
       }
     ],
     "js/expressions/fluent-chain/cast-head/input.mjs": [
@@ -11087,6 +11077,27 @@
         },
         "swcPlugin": "/** @type {any} */ (\n  aFunction.b\n).c().c.d();\n",
         "prettierNative": "(aFunction.b)\n  .c/** @type {any} */ ()\n  .c.d();\n"
+      }
+    ],
+    "js/expressions/fluent-chain/last-collection/array-flat.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "chain.plugin('extra-define').use(rspack.DefinePlugin, [\n  { ENABLE_TEST: JSON.stringify(true) },\n]);\n",
+        "prettierNative": "chain\n  .plugin('extra-define')\n  .use(rspack.DefinePlugin, [{ ENABLE_TEST: JSON.stringify(true) }]);\n"
+      }
+    ],
+    "js/expressions/fluent-chain/last-collection/nested-array/input.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "abc\n  .b()\n  .c(\n    foo.bar().baz([\n      { enabled: JSON.stringify(true) },\n    ]),\n  );\n",
+        "prettierNative": "abc\n  .b()\n  .c(\n    foo\n      .bar()\n      .baz([\n        {\n          enabled: JSON.stringify(true),\n        },\n      ]),\n  );\n"
       }
     ],
     "js/expressions/fluent-chain/source-head/function-annotation.js": [

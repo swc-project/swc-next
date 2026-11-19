@@ -1,0 +1,13 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f(){await app.use(value).listen({text:tag`raw\n${value}`})}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":58}
+---------- Output ----------
+async function f() {
+  await app
+    .use(value)
+    .listen({ text: tag`raw\n${value}` });
+}

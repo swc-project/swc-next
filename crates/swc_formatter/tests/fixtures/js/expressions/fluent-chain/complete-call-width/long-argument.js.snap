@@ -1,0 +1,13 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer(a.veryLongFirstOperationName(firstArgument).veryLongSecondOperationName({key:true}));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+outer(
+  a
+    .veryLongFirstOperationName(firstArgument)
+    .veryLongSecondOperationName({ key: true }),
+);

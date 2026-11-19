@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
 
 use super::arguments::{
     ArgumentGroup, ArgumentHead, CallArgumentFrame, CallArgumentPolicy, CallFrameRole,
-    ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
+    ChainArgumentExpansion, ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyGroup, ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
@@ -381,7 +381,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         callback: TestCallback,
         jsx_call: Option<CallExpression>,
-        chain_facts: &mut Option<&mut ChainArgumentFacts>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if let Some(facts) = chain_facts.as_deref_mut() {
@@ -1091,7 +1091,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: ArgumentHead,
         protect_runtime_items: bool,
         selected: SelectedArgument,
-        chain_facts: Option<&mut ChainArgumentFacts>,
+        mut chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -1286,7 +1286,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } => true,
                 _ => false,
             });
-        if let Some(facts) = chain_facts {
+        if let Some(facts) = chain_facts.as_deref_mut() {
             facts.has_function |= observed_facts.has_function;
             // A locally expanded fallback owns its argument breaks. Only source
             // preferences that escape that frame can expand the enclosing chain.
@@ -1357,7 +1357,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 Ok::<_, FormatError>(())
             })?;
-            if matches!(
+            let expanded = if matches!(
                 outcome,
                 SelectionOutcome::FinalObject { has_forced: true }
                     | SelectionOutcome::FinalArray { has_forced: true }
@@ -1378,6 +1378,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                     Ok::<_, FormatError>(())
                 })?;
+                Some(expanded)
+            } else {
+                None
+            };
+            if let Some(facts) = chain_facts {
+                let expanded = expanded.unwrap_or(grouped);
+                facts.expansion = match outcome {
+                    SelectionOutcome::FinalArray { .. } => {
+                        Some(ChainArgumentExpansion::Array(expanded))
+                    }
+                    SelectionOutcome::FinalObject { .. } => grouped
+                        .try_flat()
+                        .map(|flat| ChainArgumentExpansion::Object { flat, expanded }),
+                    _ => None,
+                };
+            }
+            if let Some(expanded) = expanded {
                 writer.write_alternatives(&[grouped, expanded], fallback);
             } else {
                 writer.write_alternatives(&[grouped], fallback);
