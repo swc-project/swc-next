@@ -1,5 +1,7 @@
 //! Visual line boundaries and ECMAScript source line queries.
 
+use std::ops::Range;
+
 use swc_next_ecma_ast::{Comment, Span};
 
 use super::Formatter;
@@ -16,14 +18,20 @@ pub(super) fn is_source_horizontal_whitespace(character: char) -> bool {
     )
 }
 
+// Layout uses CR/LF. Semantic source queries use the ECMAScript terminators.
+#[inline]
+fn layout_line_ending(source: &[u8]) -> Option<Range<usize>> {
+    let start = memchr::memchr2(b'\n', b'\r', source)?;
+    let end = start + 1;
+    let crlf = source[start] == b'\r' && source.get(end) == Some(&b'\n');
+    Some(start..end + usize::from(crlf))
+}
+
 pub(super) fn split_line(source: &str) -> (&str, Option<&str>) {
-    // Comment text follows document lines; syntax queries retain all JS terminators.
-    let bytes = source.as_bytes();
-    let Some(index) = memchr::memchr2(b'\n', b'\r', bytes) else {
+    let Some(ending) = layout_line_ending(source.as_bytes()) else {
         return (source, None);
     };
-    let length = 1 + usize::from(bytes[index] == b'\r' && bytes.get(index + 1) == Some(&b'\n'));
-    (&source[..index], Some(&source[index + length..]))
+    (&source[..ending.start], Some(&source[ending.end..]))
 }
 
 pub(super) fn lines(source: &str) -> impl Iterator<Item = &str> {
@@ -111,23 +119,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn next_line_is_empty(&self, start: u32, end: u32) -> bool {
-        let mut characters = self.source(Span::new(start, end)).chars().peekable();
-        while let Some(character) = characters.next() {
-            match character {
-                '\r' => {
-                    if characters.peek() == Some(&'\n') {
-                        characters.next();
-                    }
-                }
-                '\n' => {}
-                _ => continue,
-            }
-            // A separator on the next line is content, not an empty source line.
-            return characters
-                .find(|character| !matches!(character, ' ' | '\t'))
-                .is_some_and(|character| matches!(character, '\r' | '\n'));
-        }
-        false
+        let source = &self.ast.source().as_bytes()[start as usize..end as usize];
+        let Some(ending) = layout_line_ending(source) else {
+            return false;
+        };
+        source[ending.end..]
+            .iter()
+            .find(|byte| !matches!(byte, b' ' | b'\t'))
+            .is_some_and(|byte| matches!(byte, b'\r' | b'\n'))
     }
 
     pub(super) fn previous_line_is_empty(&self, start: u32, end: u32) -> bool {
@@ -147,10 +146,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Layout counts CR/LF independently of semantic source line boundaries.
     pub(super) fn line_breaks(&self, start: u32, end: u32) -> u8 {
-        let (_, Some(rest)) = split_line(self.source(Span::new(start, end))) else {
+        let source = &self.ast.source().as_bytes()[start as usize..end as usize];
+        let Some(ending) = layout_line_ending(source) else {
             return 0;
         };
-        1 + u8::from(split_line(rest).1.is_some())
+        1 + u8::from(memchr::memchr2(b'\n', b'\r', &source[ending.end..]).is_some())
     }
 
     /// Syntax and tool directives retain every ECMAScript line terminator.
