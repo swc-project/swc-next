@@ -396,7 +396,7 @@ pub(super) fn check_member_expression(
             }
             builder.report(
                 builder.ast.span(expression.node_id()),
-                "'super' keyword unexpected here",
+                "Private fields cannot be accessed on 'super'",
                 ReportOptions::default(),
             );
         } else if builder.check_syntax.private_name_references()

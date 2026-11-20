@@ -526,6 +526,21 @@ fn class_definition_super_calls() {
 
 #[test]
 #[rustfmt::skip]
+fn class_definition_super_private_fields() {
+    let js_module = TestOptions::new(Lang::Js, SourceType::Module);
+
+    let actual = error_spans("class A { m() { super.x; } }", js_module);
+    assert_eq!(actual, []);
+
+    let diagnostics = syntax_diagnostics("class A { m() { super.#x; } }", js_module, 0);
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].span.start, 16);
+    assert_eq!(diagnostics[0].span.end, 24);
+    assert_eq!(&diagnostics[0].message, "Private fields cannot be accessed on 'super'");
+}
+
+#[test]
+#[rustfmt::skip]
 fn global_augmentation() {
     let ts_script = TestOptions::new(Lang::Ts, SourceType::Script);
     let ts_module = TestOptions::new(Lang::Ts, SourceType::Module);
