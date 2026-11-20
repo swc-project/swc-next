@@ -1,6 +1,6 @@
 //! Try blocks, catch bindings, and finally boundaries retain distinct owners.
 
-use super::{CompoundBlock, CompoundGap, Formatter};
+use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
 use crate::formatter::bindings::{BindingGroup, PreparedAnnotatedBinding};
 use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
@@ -66,7 +66,6 @@ struct FinallyBoundary<'ast> {
     keyword: Span,
     before: CompoundGap<'ast>,
     after: CompoundGap<'ast>,
-    packet: CompoundGap<'ast>,
 }
 
 struct CatchHead<'ast> {
@@ -97,7 +96,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut body = CompoundBlock::new(node.block(ast), EmptyBlock::Expanded);
-        let mut head = self.compound_gap(Span::new(span.start + 3, body.node.span(ast).start));
+        let mut head = self.exception_gap(Span::new(span.start + 3, body.node.span(ast).start));
         self.prepare_block_head(head, &mut body);
         self.transfer_block_leading(&mut head, &mut body);
         let handler = node.handler(ast);
@@ -105,7 +104,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .finalizer(ast)
             .map(|body| CompoundBlock::new(body, EmptyBlock::Expanded));
         let mut catch_gap = handler.map(|handler| {
-            self.compound_gap(Span::new(body.node.span(ast).end, handler.span(ast).start))
+            self.exception_gap(Span::new(body.node.span(ast).end, handler.span(ast).start))
         });
         let mut handler_mode = ContentMode::Formatted;
         let mut handler_first = ContentMode::Formatted;
@@ -124,8 +123,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut finally_head = if let Some(finalizer) = finalizer.as_ref() {
             let start = handler.map_or(body.node.span(ast).end, |handler| handler.span(ast).end);
             let limit = Span::new(start, finalizer.node.span(ast).start);
-            let packet = self.compound_gap(limit);
-            let comments = packet.comments;
+            let comments = self.comments.in_range(limit);
             let Some(keyword) = self.find_token(limit, comments, "finally") else {
                 return Err(FormatError::unsupported(
                     "finally keyword boundary",
@@ -136,9 +134,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let keyword = Span::new(keyword, keyword + 7);
             Some(FinallyBoundary {
                 keyword,
-                before: self.compound_gap(Span::new(start, keyword.start)),
-                after: self.compound_gap(Span::new(keyword.end, limit.end)),
-                packet,
+                before: self.exception_gap(Span::new(start, keyword.start)),
+                after: self.exception_gap(Span::new(keyword.end, limit.end)),
             })
         } else {
             None
@@ -163,18 +160,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             self.prepare_block_head(boundary.after, finalizer);
-            if boundary.after.comments.is_empty() {
-                self.transfer_block_leading(&mut boundary.before, finalizer);
-            } else if self.block_leading_start(boundary.before) == Some(0)
-                && self.block_leading_start(boundary.after) == Some(0)
-                && self.transfer_block_leading(&mut boundary.packet, finalizer)
-            {
-                boundary.before.comments = &[];
-                boundary.after.comments = &[];
-            } else {
-                // A later header packet cannot be overtaken by an earlier body packet.
-                self.transfer_block_leading(&mut boundary.after, finalizer);
-            }
+            self.transfer_handler_leading(&mut boundary.before, &mut boundary.after, finalizer);
         }
         let mut handler = handler
             .map(|handler| {
@@ -183,11 +169,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .transpose()?;
         if let (Some(gap), Some(handler)) = (catch_gap.as_mut(), handler.as_mut())
             && let Some(head) = handler.head.as_mut()
-            // A header comment cannot be overtaken by the earlier body packet.
-            && self.comments.in_range(Span::new(handler.node.span(ast).start, head.body.node.span(ast).start)).is_empty()
-            && self.transfer_block_leading(gap, &mut head.body)
         {
-            head.leading_before_parameter = true;
+            if head.binding.is_none() {
+                self.transfer_handler_leading(gap, &mut head.body_head, &mut head.body);
+            } else if self
+                .comments
+                .in_range(Span::new(
+                    handler.node.span(ast).start,
+                    head.body.node.span(ast).start,
+                ))
+                .is_empty()
+            {
+                head.leading_before_parameter = self.transfer_block_leading(gap, &mut head.body);
+            }
         }
         writer.text("try");
         self.format_compound_gap(head, FlatSeparator::Space, Writer::space, writer)?;
@@ -208,6 +202,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end: span.end,
             has_terminator: false,
         })
+    }
+
+    fn exception_gap(&self, span: Span) -> CompoundGap<'ast> {
+        let mut gap = self.compound_gap(span);
+        if !gap.retains_source()
+            && !gap.comments.is_empty()
+            && (self.has_line_directive_in(span) || self.lint_line_intersects(span))
+        {
+            gap.layout = GapLayout::LintLines;
+        }
+        gap
+    }
+
+    fn transfer_handler_leading(
+        &self,
+        before: &mut CompoundGap<'ast>,
+        after: &mut CompoundGap<'ast>,
+        body: &mut CompoundBlock<'ast>,
+    ) {
+        if after.comments.is_empty() {
+            self.transfer_block_leading(before, body);
+            return;
+        }
+        let Some(after_start) = self.block_leading_start(*after) else {
+            return;
+        };
+        // Move a contiguous suffix in source order when it spans the keyword.
+        // An earlier packet stays where it is if part of the later one stays.
+        if after_start == 0
+            && !before.retains_source()
+            && !after.retains_source()
+            && let Some(before_start) = self.block_leading_start(*before)
+        {
+            let span = Span::new(before.span.start, after.span.end);
+            let mut packet = CompoundGap {
+                span,
+                comments: self.comments.in_range(span),
+                layout: GapLayout::Formatted,
+            };
+            if self.transfer_block_leading_from(&mut packet, before_start, body) {
+                before.comments = packet.comments;
+                after.comments = &[];
+                return;
+            }
+        }
+        self.transfer_block_leading_from(after, after_start, body);
     }
 
     fn prepare_catch(
@@ -259,7 +299,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         tail.span,
                     ));
                 };
-                let mut mode = ContentMode::Formatted;
+                let mut mode = self.catch_binding_mode(span);
                 if self.has_suppression {
                     let before_close = self.comments.in_range(Span::new(span.end, closing));
                     if head.has_suppression()
@@ -318,7 +358,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        let mut body_head = self.compound_gap(Span::new(
+        let body_head = self.exception_gap(Span::new(
             binding
                 .as_ref()
                 .map_or(keyword_end, |binding| match binding {
@@ -329,9 +369,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ));
         if binding.is_none() {
             self.prepare_block_head(body_head, &mut body);
-        }
-        if binding.is_none() {
-            self.transfer_block_leading(&mut body_head, &mut body);
         }
         if incoming_first == ContentMode::Verbatim {
             self.protect_block_first(&mut body);
@@ -384,7 +421,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body_gap_start = parameter_tail
             .last()
             .map_or(closing + 1, |comment| comment.span.end.max(closing + 1));
-        let mut mode = ContentMode::Formatted;
+        let mut mode = self.catch_binding_mode(span);
         if self.has_suppression {
             if self.content_mode(head_comments) == ContentMode::Verbatim
                 || self.content_mode(parameter_tail) == ContentMode::Verbatim
@@ -428,7 +465,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comment.kind == CommentKind::Line
                     || self.source_line_breaks(span.end, comment.span.start) != 0
             }));
-        let body_head = self.compound_gap(Span::new(
+        let body_head = self.exception_gap(Span::new(
             if matches!(tail, CatchParameterTail::Source(_)) {
                 body_start
             } else {
@@ -452,6 +489,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body_head,
             expanded,
         })
+    }
+
+    fn catch_binding_mode(&self, span: Span) -> ContentMode {
+        // The binding and its body can share the covered catch line. The
+        // pattern cannot expand out of it while the brace stays on that line.
+        if self.lint_line_intersects(span) {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
     }
 
     fn format_annotated_catch_binding(

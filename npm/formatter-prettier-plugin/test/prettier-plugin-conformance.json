@@ -2544,6 +2544,82 @@
         "prettierNative": "try {\r\n} catch (e /* prettier-ignore */) {\r\n  g(\r\n    2,\r\n  )\r\n}\r\n"
       }
     ],
+    "js/compound-statements/catch-lint-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try { missing(); } // eslint-disable-line no-undef\ncatch {\n  present();\n}\n",
+        "prettierNative": "try {\n  missing();\n} catch {\n  // eslint-disable-line no-undef\n  present();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try { missing() } // eslint-disable-line no-undef\ncatch {\n  present()\n}\n",
+        "prettierNative": "try {\n  missing()\n} catch {\n  // eslint-disable-line no-undef\n  present()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try { missing(); } // eslint-disable-line no-undef\ncatch {\n\tpresent();\n}\n",
+        "prettierNative": "try {\n\tmissing();\n} catch {\n\t// eslint-disable-line no-undef\n\tpresent();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try { missing() } // eslint-disable-line no-undef\r\ncatch {\r\n  present()\r\n}\r\n",
+        "prettierNative": "try {\r\n  missing()\r\n} catch {\r\n  // eslint-disable-line no-undef\r\n  present()\r\n}\r\n"
+      }
+    ],
+    "js/compound-statements/catch-lint-next-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  present();\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present(); }\n",
+        "prettierNative": "try {\n  present();\n} catch ({ unused = fallback() }) {\n  // eslint-disable-next-line no-unused-vars\n  present();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  present()\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present() }\n",
+        "prettierNative": "try {\n  present()\n} catch ({\n  unused = fallback(),\n}) {\n  // eslint-disable-next-line no-unused-vars\n  present()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\tpresent();\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present(); }\n",
+        "prettierNative": "try {\n\tpresent();\n} catch ({ unused = fallback() }) {\n\t// eslint-disable-next-line no-unused-vars\n\tpresent();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  present()\r\n} // eslint-disable-next-line no-unused-vars\r\ncatch ({ unused = fallback() }) { present() }\r\n",
+        "prettierNative": "try {\r\n  present()\r\n} catch ({\r\n  unused = fallback(),\r\n}) {\r\n  // eslint-disable-next-line no-unused-vars\r\n  present()\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/default-empty-prefix-ignore.js": [
       {
         "options": {
@@ -2683,6 +2759,44 @@
         },
         "swcPlugin": "switch (\r\n  0\r\n) { /* @ts-expect-error */ /* packet */\r\n}; insideMissing\r\noutsideMissing\r\n",
         "prettierNative": "switch (\r\n  0\r\n) {\r\n  /* @ts-expect-error */\r\n  /* packet */\r\n}\r\ninsideMissing\r\noutsideMissing\r\n"
+      }
+    ],
+    "js/compound-statements/finally-lint-next-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  present();\n} /* eslint-disable-next-line no-undef */\nfinally { missing(); }\n",
+        "prettierNative": "try {\n  present();\n} finally {\n  /* eslint-disable-next-line no-undef */\n  missing();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  present()\n} /* eslint-disable-next-line no-undef */\nfinally { missing() }\n",
+        "prettierNative": "try {\n  present()\n} finally {\n  /* eslint-disable-next-line no-undef */\n  missing()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\tpresent();\n} /* eslint-disable-next-line no-undef */\nfinally { missing(); }\n",
+        "prettierNative": "try {\n\tpresent();\n} finally {\n\t/* eslint-disable-next-line no-undef */\n\tmissing();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  present()\r\n} /* eslint-disable-next-line no-undef */\r\nfinally { missing() }\r\n",
+        "prettierNative": "try {\r\n  present()\r\n} finally {\r\n  /* eslint-disable-next-line no-undef */\r\n  missing()\r\n}\r\n"
       }
     ],
     "js/compound-statements/switch-body-tail-ignore.js": [

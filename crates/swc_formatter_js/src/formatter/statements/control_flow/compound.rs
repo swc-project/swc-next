@@ -18,6 +18,7 @@ use swc_next_ecma_ast::{BlockStatement, Comment, CommentKind, GetSpan, Span, Wit
 enum GapLayout {
     Formatted,
     Source,
+    LintLines,
 }
 
 #[derive(Clone, Copy)]
@@ -30,6 +31,10 @@ struct CompoundGap<'ast> {
 impl CompoundGap<'_> {
     fn has_suppression(self) -> bool {
         matches!(self.layout, GapLayout::Source)
+    }
+
+    fn retains_source(self) -> bool {
+        !matches!(self.layout, GapLayout::Formatted)
     }
 }
 
@@ -106,7 +111,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         default: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        if gap.has_suppression() {
+        if gap.retains_source() {
             let printed =
                 self.format_delimited_source_gap(gap.span, DelimitedFollowing::Node, writer)?;
             printed.following.write(writer, flat, default);
@@ -191,7 +196,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: &mut CompoundGap<'ast>,
         body: &mut CompoundBlock<'ast>,
     ) -> bool {
-        if gap.comments.is_empty()
+        let Some(start) = self.block_leading_start(*gap) else {
+            return false;
+        };
+        self.transfer_block_leading_from(gap, start, body)
+    }
+
+    fn transfer_block_leading_from(
+        &self,
+        gap: &mut CompoundGap<'ast>,
+        start: usize,
+        body: &mut CompoundBlock<'ast>,
+    ) -> bool {
+        if gap.retains_source()
             || body.mode == ContentMode::Verbatim
             || !body.leading.comments().is_empty()
             || !self
@@ -200,9 +217,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return false;
         }
-        let Some(start) = self.block_leading_start(*gap) else {
-            return false;
-        };
         let target = body
             .node
             .body(self.ast)
