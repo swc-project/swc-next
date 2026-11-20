@@ -274,11 +274,10 @@ export const layouts: readonly NodeLayout[] = Object.freeze<NodeLayout[]>([
     rest: [false, 8, "node", true],
     kind: [false, 12, "enum:FormalParameterKind", false],
   } },
-  { name: "FormalParameter", type: "FormalParameter", extra: 12, fields: {
-    decorators: [true, 0, "list", false],
-    pattern: [false, 0, "node", false],
-    initializer: [false, 4, "node", true],
-    optional: [false, 8, "bool", false],
+  { name: "FormalParameter", type: "FormalParameter", extra: null, fields: {
+    decorators: [false, 0, "list", false],
+    pattern: [false, 8, "node", false],
+    initializer: [false, 12, "node", true],
   } },
   { name: "FormalParameterRest", type: "RestElement", extra: null, fields: {
     decorators: [false, 0, "list", false],
@@ -943,7 +942,7 @@ export const NodeKind = Object.freeze({
   JsxText: 174,
   JsxSpreadChild: 175,
 } as const);
-export const nativeExtraCounts: readonly number[] = Object.freeze([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 3, 5, 0, 4, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 4, 0, 2, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+export const nativeExtraCounts: readonly number[] = Object.freeze([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 3, 5, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 4, 0, 2, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 export const enums: Readonly<Record<string, readonly EnumValue[]>> & { readonly Lang: readonly Lang[]; readonly SourceType: readonly SourceType[] } = Object.freeze({
   Lang: Object.freeze(["js", "ts", "jsx", "tsx", "dts"] as const),
   SourceType: Object.freeze(["module", "script", "commonjs", "unambiguous"] as const),

@@ -470,6 +470,18 @@ test("projected object fields and list elisions update storage immediately", () 
   expectCode(hole.code, "const value = [, 2];");
 });
 
+test("optional pattern end projection includes the marker", () => {
+  const left = parseSync("function f(x? = 0) {}", typescript).program.body.at(0).params.at(0).left;
+  assert.equal(left.end, 13);
+  assert.throws(() => { left.end = 12; }, RangeError);
+  left.end = 14;
+  assert.equal(left.end, 14);
+  assert.throws(() => { left.end = 12; }, RangeError);
+
+  const spaced = parseSync("function f(x ? = 0) {}", typescript).program.body.at(0).params.at(0).left;
+  assert.equal(spaced.end, 14);
+});
+
 test("TypeScript parameter wrappers and annotations survive incremental edits", () => {
   const annotation = transform(
     'const x: string = "value";',

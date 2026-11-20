@@ -114,7 +114,8 @@ export function spanLocation(ast: AstView, id: number, field: "start" | "end", k
   if (field === "end" && ts &&
       (name === "BindingIdentifier" || name === "ArrayPattern" || name === "ObjectPattern") &&
       ast.value(id, "optional")) {
-    return { id, field, adjustment: 1 };
+    const marker = optionalMarkerEnd(ast, id);
+    if (marker !== -1) { return { id, field, adjustment: marker - ast.end(id) }; }
   }
   return { id, field, adjustment: 0 };
 }
@@ -166,8 +167,11 @@ export function projectedField(ast: AstView, id: number, field: string, kind = a
     case ReadRule.Text: return ast.value(id, "value");
     case ReadRule.Init: return "init";
     case ReadRule.Optional: return ast.value(id, "optional") ?? false;
-    case ReadRule.ParameterOptional:
-      return ast.ref(id, "initializer") === NONE ? ast.value(id, "optional") : false;
+    case ReadRule.ParameterOptional: {
+      if (ast.ref(id, "initializer") !== NONE) { return false; }
+      const pattern = ast.ref(id, "pattern");
+      return ast.value(pattern, "optional", ast.kind(pattern));
+    }
     case ReadRule.ParameterAnnotation: {
       if (ast.ref(id, "initializer") !== NONE) { return null; }
       const pattern = ast.ref(id, "pattern");
@@ -261,6 +265,34 @@ function programStart(ast: AstView, id: number): SpanLocation {
 
 function ownsAnnotation(name: string): boolean {
   return name === "BindingIdentifier" || name === "ArrayPattern" || name === "ObjectPattern" || name === "AssignmentPattern" || name === "BindingRestElement";
+}
+
+/** Locate the `?` after an optional pattern, skipping trivia. */
+export function optionalMarkerEnd(ast: AstView, id: number): number {
+  return scanOptionalMarker(ast, ast.byteEnd(id));
+}
+
+/** Scan trivia from a source byte offset and return the UTF-16 end after `?`. */
+export function scanOptionalMarker(ast: AstView, byte: number): number {
+  const source = ast.sourceBytes;
+  let index = byte;
+  while (index < source.length) {
+    const code = source[index];
+    if (code === 32 || code === 9 || code === 10 || code === 13 || code === 11 || code === 12) { index++; continue; }
+    if (code === 47 && source[index + 1] === 47) {
+      index += 2;
+      while (index < source.length && source[index] !== 10 && source[index] !== 13) { index++; }
+      continue;
+    }
+    if (code === 47 && source[index + 1] === 42) {
+      index += 2;
+      while (index < source.length && !(source[index] === 42 && source[index + 1] === 47)) { index++; }
+      index += 2;
+      continue;
+    }
+    break;
+  }
+  return source[index] === 63 ? ast.utf16Offset(index + 1) : -1;
 }
 
 function readBigInt(ast: AstView, id: number) {

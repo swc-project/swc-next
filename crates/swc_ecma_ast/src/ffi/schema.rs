@@ -2488,10 +2488,9 @@ pub(super) fn validate_fields(
             input.enumeration(Field::Payload(12usize), 4usize, false)?;
         }
         NodeKind::FormalParameter => {
-            input.extra(12usize, 2usize)?;
-            input.list(Field::Extra(0usize), &[NodeKind::Decorator], false)?;
+            input.list(Field::Payload(0usize), &[NodeKind::Decorator], false)?;
             input.node(
-                Field::Payload(0usize),
+                Field::Payload(8usize),
                 &[
                     NodeKind::BindingIdentifier,
                     NodeKind::ArrayPattern,
@@ -2500,7 +2499,7 @@ pub(super) fn validate_fields(
                 false,
             )?;
             input.node(
-                Field::Payload(4usize),
+                Field::Payload(12usize),
                 &[
                     NodeKind::IdentifierReference,
                     NodeKind::ThisExpression,
@@ -2545,7 +2544,6 @@ pub(super) fn validate_fields(
                 ],
                 true,
             )?;
-            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::FormalParameterRest => {
             input.list(Field::Payload(0usize), &[NodeKind::Decorator], false)?;

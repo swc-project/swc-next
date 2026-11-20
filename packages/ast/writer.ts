@@ -6,7 +6,7 @@ import { NodeView } from "./node.ts";
 import { layouts, enums, NodeKind } from "./schema.ts";
 import { writeNode, setSpan, fieldLocation, ensureArena } from "./storage.ts";
 import { ReadRule, kindFlags, typeKinds } from "./protocol.ts";
-import { fieldRule, spanLocation } from "./projection.ts";
+import { fieldRule, spanLocation, scanOptionalMarker } from "./projection.ts";
 import { NONE } from "./layout.ts";
 
 const EMPTY = new Uint8Array();
@@ -43,10 +43,14 @@ export function writeField(ast: AstView, id: number, key: string, value: unknown
     return;
   } else if (kind === NodeKind.TsIndexSignatureParameter && writeIndexSignatureParameterField(ast, id, key, value)) {
     return;
-  } else if (key === "optional" && (kindFlags[kind] & 1)) {
-    // This projected field is a constant; there is no native slot to write.
-    if (value) { throw new TypeError("Field has no native storage"); }
-    return;
+  } else if (key === "optional") {
+    const rule = fieldRule(ast._isTs, kind, key);
+    if (rule === ReadRule.False || rule === ReadRule.Missing) {
+      // This projected field is a constant; there is no native slot to write.
+      if (value) { throw new TypeError("Field has no native storage"); }
+      return;
+    }
+    if (!directWrite(ast, id, kind, key, value)) { throw new TypeError("Field cannot be assigned directly"); }
   } else {
     const rule = fieldRule(ast._isTs, kind, key);
     if (rule === ReadRule.Missing) { throw new TypeError("Field is not part of the public projection"); }
@@ -314,6 +318,17 @@ function publish(ast: AstView) {
 }
 
 function writeSpan(ast: AstView, id: number, key: "start" | "end", value: unknown, kind: number) {
+  const name = layouts[kind].name;
+  if (key === "end" &&
+      (name === "BindingIdentifier" || name === "ArrayPattern" || name === "ObjectPattern") &&
+      ast.ref(id, "typeAnnotation") === NONE && ast.value(id, "optional")) {
+    const start = ast.byteStart(id), end = ast.utf8Offset(value as number);
+    if (end < start) { throw new RangeError("AST span ends before it starts"); }
+    if (scanOptionalMarker(ast, end) !== -1) { throw new RangeError("Optional pattern end must include the ? marker"); }
+    setSpan(ast, id, start, end);
+    committed(ast);
+    return;
+  }
   const location = spanLocation(ast, id, key, kind);
   const byte = ast.utf8Offset((value as number) - location.adjustment);
   const start = location.field === "start" ? byte : ast.byteStart(location.id);
@@ -360,7 +375,11 @@ function writeParameterField(ast: AstView, id: number, key: string, value: unkno
       writeNativeField(ast, pattern, "typeAnnotation", value);
       return true;
     case "optional":
-      writeNativeField(ast, id, "optional", value);
+      if (initializer) {
+        if (value) { throw new TypeError("AssignmentPattern cannot be optional"); }
+        return true;
+      }
+      writeNativeField(ast, pattern, "optional", value);
       return true;
     default:
       return false;

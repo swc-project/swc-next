@@ -567,11 +567,9 @@ pub(crate) struct FormalParametersPayload {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FormalParameterPayload {
+    pub(crate) decorators: SubRange<Decorator>,
     pub(crate) pattern: FormalParameterPattern,
     pub(crate) initializer: u32,
-    pub(crate) optional: bool,
-    pub(crate) _pad0: [u8; 3usize],
-    pub(crate) extra_data_start: ExtraDataId,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -1637,14 +1635,12 @@ const _: () = {
     assert!(std::mem::size_of::<FormalParameterKind>() == 1usize);
     assert!(std::mem::offset_of!(FormalParametersPayload, kind) == 12usize);
     assert!(std::mem::size_of::<FormalParameterPayload>() == 16);
+    assert!(std::mem::size_of::<SubRange<Decorator>>() == 8usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, decorators) == 0usize);
     assert!(std::mem::size_of::<FormalParameterPattern>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 0usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 8usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, initializer) == 4usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, optional) == 8usize);
-    assert!(std::mem::size_of::<ExtraDataId>() == 4);
-    assert!(std::mem::offset_of!(FormalParameterPayload, extra_data_start) == 12usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, initializer) == 12usize);
     assert!(std::mem::size_of::<FormalParameterRestPayload>() == 16);
     assert!(std::mem::size_of::<SubRange<Decorator>>() == 8usize);
     assert!(std::mem::offset_of!(FormalParameterRestPayload, decorators) == 0usize);
@@ -2470,6 +2466,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::FormalParameter => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::FormalParameterRest => {

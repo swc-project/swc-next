@@ -654,6 +654,17 @@ impl FormalParameterPattern {
             _ => {}
         }
     }
+
+    /// Returns the optional marker on this parameter pattern.
+    #[inline]
+    pub fn optional(self, ast: &crate::Ast<'_>) -> bool {
+        match ast.node_kind(self.node_id()) {
+            crate::NodeKind::BindingIdentifier => BindingIdentifier(self.node_id()).optional(ast),
+            crate::NodeKind::ArrayPattern => ArrayPattern(self.node_id()).optional(ast),
+            crate::NodeKind::ObjectPattern => ObjectPattern(self.node_id()).optional(ast),
+            _ => false,
+        }
+    }
 }
 
 #[ast(repr)]
@@ -1859,8 +1870,20 @@ pub struct FormalParameter {
     /// The default value expression, evaluated when the corresponding argument
     /// is omitted or `undefined`. `None` when no default is written.
     initializer: Option<Expr>,
-    /// Whether the parameter has a TypeScript `?` marker.
-    optional: bool,
+}
+
+impl FormalParameter {
+    /// Returns the optional marker stored on the parameter pattern.
+    #[inline]
+    pub fn optional(self, ast: &crate::Ast<'_>) -> bool {
+        self.pattern(ast).optional(ast)
+    }
+
+    /// Sets the optional marker on the parameter pattern.
+    #[inline]
+    pub fn set_optional(self, ast: &mut crate::Ast<'_>, optional: bool) {
+        self.pattern(ast).set_optional(ast, optional);
+    }
 }
 
 /// A rest parameter collecting the remaining arguments of a call.

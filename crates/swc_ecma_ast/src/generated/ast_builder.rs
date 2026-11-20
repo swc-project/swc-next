@@ -3421,10 +3421,9 @@ impl<'a> Ast<'a> {
         decorators: SubRange<Decorator>,
         pattern: FormalParameterPattern,
         initializer: Option<Expr>,
-        optional: bool,
     ) -> FormalParameterItem {
         FormalParameterItem::FormalParameter(
-            self.formal_parameter(span, decorators, pattern, initializer, optional)
+            self.formal_parameter(span, decorators, pattern, initializer)
                 .into(),
         )
     }
@@ -5391,26 +5390,15 @@ impl<'a> Ast<'a> {
         decorators: SubRange<Decorator>,
         pattern: FormalParameterPattern,
         initializer: Option<Expr>,
-        optional: bool,
     ) -> FormalParameter {
-        let _extra_field0 = unsafe {
-            (ExtraData {
-                sub_range: SubRange::new((decorators).start, (decorators).end),
-            })
-            .units
-        };
-        let _extra_data = [_extra_field0[0], _extra_field0[1]];
-        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         FormalParameter(self.add_node(
             span,
             NodeKind::FormalParameter,
             NodePayload {
                 formal_parameter: FormalParameterPayload {
+                    decorators,
                     pattern,
                     initializer: initializer.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    optional,
-                    _pad0: [0; 3usize],
-                    extra_data_start: _extra_data_start,
                 },
             },
         ))

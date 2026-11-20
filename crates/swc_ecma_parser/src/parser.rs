@@ -4357,7 +4357,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             parameter_decorators,
             pattern,
             initializer,
-            optional,
         );
         if modifiers.present {
             let property = self.ast.ts_parameter_property(
@@ -10819,7 +10818,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         pattern.set_optional(&mut self.ast, optional);
         Some(FormalParameterItem::FormalParameter(
             self.ast
-                .formal_parameter(span, SubRange::empty(), pattern, initializer, optional),
+                .formal_parameter(span, SubRange::empty(), pattern, initializer),
         ))
     }
 
