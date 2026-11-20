@@ -1,14 +1,26 @@
 import { expect, test } from "@rstest/core";
-import { parseSync, generateSync, walk } from "@swc-next/core";
-
-const ast = (source) => parseSync(source).program;
+import { parseSync, generateSync, walk, NodeKind } from "@swc-next/core";
 
 test("edits round-trip through the core encoder and parser", () => {
-  const replacement = ast("replacement(nested());").body[0].expression;
-  const before = ast("before();").body[0];
-  const after = ast("after();").body[0];
+  const ast = parseSync("#!/usr/bin/env node\ndebugger; original(); tail();");
+  const program = ast.program;
+  function call(name, argument) {
+    const callee = ast.new_node(NodeKind.IdentifierReference);
+    callee.name = name;
+    const node = ast.new_node(NodeKind.CallExpression);
+    node.callee = callee;
+    if (argument) { node.arguments.push(argument); }
+    return node;
+  }
+  function statement(name) {
+    const node = ast.new_node(NodeKind.ExpressionStatement);
+    node.expression = call(name);
+    return node;
+  }
+  const replacement = call("replacement", call("nested"));
+  const before = statement("before");
+  const after = statement("after");
   const seen = [];
-  const { program } = parseSync("#!/usr/bin/env node\ndebugger; original(); tail();");
   walk(program, {
     Hashbang(node) {
       seen.push("hashbang");
@@ -23,7 +35,7 @@ test("edits round-trip through the core encoder and parser", () => {
     },
     CallExpression(node, ctx) {
       seen.push(node.callee.name);
-      if (node.callee.name === "original") ctx.replace(replacement);
+      if (node.callee.name === "original") { ctx.replace(replacement); }
     },
   });
   const { code } = generateSync(program);
@@ -35,26 +47,27 @@ test("edits round-trip through the core encoder and parser", () => {
 function expectProjectionCoverage(source, options) {
   const { program, diagnostics } = parseSync(source, options);
   expect(diagnostics).toEqual([]);
-  const expected = new Map();
+  const expected = [];
   function collect(node) {
-    expected.set(node, (expected.get(node) ?? 0) + 1);
+    expected.push([node.type, node.start, node.end]);
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) {
-        for (const child of value) if (typeof child?.type === "string") collect(child);
+        for (const child of value) {
+          if (typeof child?.type === "string") { collect(child); }
+        }
       } else if (typeof value?.type === "string") {
         collect(value);
       }
     }
   }
-  collect(program);
-  const actual = new Map();
-  walk(program, { enter(node) { actual.set(node, (actual.get(node) ?? 0) + 1); } });
-  expect(actual).toEqual(expected);
+  collect(program.ast.materialize(program));
+  const actual = [];
+  walk(program, { enter(node) { actual.push([node.type, node.start, node.end]); } });
+  const sortVisits = (left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right));
+  expect(actual.sort(sortVisits)).toEqual(expected.sort(sortVisits));
   const identifiers = [];
-  walk(program, { Identifier(node) { identifiers.push(node); } });
-  expect(new Set(identifiers)).toEqual(
-    new Set([...expected.keys()].filter((node) => node.type === "Identifier")),
-  );
+  walk(program, { Identifier(node) { identifiers.push([node.type, node.start, node.end]); } });
+  expect(identifiers.sort(sortVisits)).toEqual(expected.filter(([type]) => type === "Identifier"));
 }
 
 test("traverses parser-projected JavaScript, JSX and TypeScript children", () => {

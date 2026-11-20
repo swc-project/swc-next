@@ -194,7 +194,6 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         let declarator = self.ast().variable_declarator(
             span,
             BindingPattern::BindingIdentifier(binding),
-            None,
             Some(initializer),
             false,
         );

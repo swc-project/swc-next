@@ -122,16 +122,15 @@ export interface TransformApiOptions {
   /** Generator configuration. */
   generator?: GeneratorConfig
 }
+
 /**
- * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
- *
  * # Safety
- *
- * Sections must be produced by the matching JavaScript encoder and satisfy
- * the validity, alignment, and immutability contracts of
- * `swc_next::js::generator::generate_from_parts`.
+ * Buffers must come from the matching parser/AST encoder and stay immutable.
  */
-export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: number): string
+export declare function generateSyncUnchecked(base: Uint8Array, extension: Uint8Array, options: number): string
+
+/** Generate from a validated base buffer and its edit extension. */
+export declare function generateSync(base: Uint8Array, extension: Uint8Array, options: number): string
 
 export declare function langFromPath(path: string): Lang
 
@@ -141,9 +140,8 @@ export declare function langFromPath(path: string): Lang
  * # Safety
  *
  * The caller must ensure that `source` contains valid UTF-8.
- * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options: number): Uint8Array
+export declare function parseSync(source: Uint8Array, options: number): Uint8Array
 
 export declare function sourceTypeFromPath(path: string): SourceType
 

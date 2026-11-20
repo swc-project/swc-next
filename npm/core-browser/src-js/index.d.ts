@@ -1,8 +1,9 @@
+export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast";
+import type { AstView, AstNode } from "@swc-next/ast";
 import type { Lang, Program, SourceType } from "@swc-next/types";
 export type * from "@swc-next/types";
 
 import type {
-  Diagnostic,
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
@@ -28,33 +29,17 @@ export interface ParseApiOptions extends ParserConfig {
   errorRecovery?: boolean;
 }
 
-export interface Comment {
-  type: "Line" | "Block";
-  value: string;
-  start: number;
-  end: number;
-}
+export type ParseResult = AstView;
 
-export interface ParseResult {
-  readonly program: Program;
-  readonly comments: Comment[];
-  /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
-  readonly diagnostics: Diagnostic[];
-}
-
-/**
- * Initializes the WebAssembly binding. Call this once before using the browser API.
- * Only the first call performs initialization; subsequent calls are idempotent no-ops.
- */
 export default function init(): Promise<void>;
 
 export declare function parseSync(
   source: string,
   options?: ParseApiOptions | undefined | null,
-): ParseResult;
+): AstView;
 
 export declare function generateSync(
-  program: Program,
+  program: AstNode<Program>,
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;
 
@@ -72,3 +57,8 @@ export declare function transformSync(
   source: string,
   options?: TransformApiOptions | undefined | null,
 ): JsOutput;
+
+/** Parse source into a self-contained AST buffer, retaining diagnostics. */
+export declare function parseBufferSync(source: string, options?: Omit<ParseApiOptions, "errorRecovery"> | null): Uint8Array;
+
+export declare function generateBuffersSync(buffer: Uint8Array, extension?: Uint8Array | null, options?: GenerateApiOptions | null): GenerateOutput;

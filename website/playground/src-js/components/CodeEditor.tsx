@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor/editor.js";
 import "monaco-editor/features/register.all.js";
 import "monaco-editor/languages/definitions/typescript/register.js";
 import "monaco-editor/languages/definitions/javascript/register.js";
-import type { Diagnostic } from "@swc-next/protocol/ast/decode";
+import type { AstDiagnostic as Diagnostic } from "@swc-next/ast";
 import type { SourceRange } from "../types";
 
 globalThis.MonacoEnvironment = {
@@ -54,7 +54,7 @@ interface Props {
   readOnly?: boolean;
   onChange?: (value: string) => void;
   onCursor?: (offset: number, line: number, column: number) => void;
-  diagnostics?: Diagnostic[];
+  diagnostics?: readonly Diagnostic[];
   selection?: SourceRange;
 }
 

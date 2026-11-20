@@ -1,7 +1,8 @@
-import type { Program } from "@swc-next/types";
+export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast";
+import type { AstView } from "@swc-next/ast";
 export type * from "@swc-next/types";
 
-import type { Diagnostic, ParserConfig } from "./binding.js";
+import type { ParserConfig } from "./binding.js";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export type { CommentMode, Diagnostic, DiagnosticLabel, ParserConfig } from "./binding.js";
@@ -11,21 +12,12 @@ export interface ParseApiOptions extends ParserConfig {
   errorRecovery?: boolean;
 }
 
-export interface Comment {
-  type: "Line" | "Block";
-  value: string;
-  start: number;
-  end: number;
-}
-
-export interface ParseResult {
-  readonly program: Program;
-  readonly comments: Comment[];
-  /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
-  readonly diagnostics: Diagnostic[];
-}
+export type ParseResult = AstView;
 
 export declare function parseSync(
   source: string,
   options?: ParseApiOptions | undefined | null,
-): ParseResult;
+): AstView;
+
+/** Parse source into a self-contained AST buffer, retaining diagnostics. */
+export declare function parseBufferSync(source: string, options?: Omit<ParseApiOptions, "errorRecovery"> | null): Uint8Array;

@@ -4,13 +4,105 @@ use std::{
 };
 
 use super::estree::{estree_field_name, estree_type};
+use super::ffi_protocol::field_rule;
 use crate::{
     output::RawOutput,
-    schema::{AstType, Schema, TypeId},
+    schema::{AstType, FieldLocation, Schema, TypeId},
 };
 
+/// ESTree type names a native node projects to. Dynamic projections return
+/// every possible public name; `None` means the native node is never public.
+pub(super) fn public_types(name: &str) -> Option<Vec<String>> {
+    Some(match name {
+        "FormalParameter" | "FormalParameters" | "TsIndexSignatureParameter" => return None,
+        "Program" => vec!["Program".into()],
+        "FunctionBody" => vec!["BlockStatement".into()],
+        "TsModuleBlock" => vec!["TSModuleBlock".into()],
+        "Function" => vec!["FunctionDeclaration".into(), "FunctionExpression".into()],
+        "TsFunction" => vec![
+            "TSDeclareFunction".into(),
+            "TSEmptyBodyFunctionExpression".into(),
+        ],
+        "ArrowFunctionExpression" => vec![name.into()],
+        "Class" => vec!["ClassDeclaration".into(), "ClassExpression".into()],
+        "MethodDefinition" | "TsMethodDefinition" => vec![
+            "MethodDefinition".into(),
+            "TSAbstractMethodDefinition".into(),
+        ],
+        "PropertyDefinition" => vec![
+            "PropertyDefinition".into(),
+            "AccessorProperty".into(),
+            "TSAbstractPropertyDefinition".into(),
+            "TSAbstractAccessorProperty".into(),
+        ],
+        "Directive" => vec!["ExpressionStatement".into()],
+        "StringLiteral" | "NumericLiteral" | "BigIntLiteral" | "BooleanLiteral" | "NullLiteral"
+        | "RegExpLiteral" => vec!["Literal".into()],
+        "TemplateElement" => vec![name.into()],
+        "FormalParameterRest" | "BindingRestElement" => vec!["RestElement".into()],
+        "BindingProperty" | "ObjectProperty" => vec!["Property".into()],
+        "ArrayPattern" => vec![name.into()],
+        "ObjectPattern" => vec![name.into()],
+        "AssignmentPattern" => vec![name.into()],
+        "VariableDeclarator" => vec![name.into()],
+        "CatchClause" => vec![name.into()],
+        "TsThisParameter" => vec!["Identifier".into()],
+        "TsGlobalDeclaration" => vec!["TSModuleDeclaration".into()],
+        "TsFunctionType"
+        | "TsConstructorType"
+        | "TsCallSignatureDeclaration"
+        | "TsConstructSignatureDeclaration" => vec![estree_type(name)],
+        "TsMethodSignature" => vec![estree_type(name)],
+        _ => vec![estree_type(name)],
+    })
+}
+
+/// Visitor key overrides for projections which flatten or merge fields.
+fn special_fields(name: &str) -> Option<&'static [&'static str]> {
+    Some(match name {
+        "Program" => &["hashbang", "body"],
+        "FunctionBody" => &["body"],
+        "TsModuleBlock" => &["body"],
+        "Function" => &["id", "typeParameters", "params", "returnType", "body"],
+        "TsFunction" => &["id", "typeParameters", "params", "returnType", "body"],
+        "ArrowFunctionExpression" => &["typeParameters", "params", "returnType", "body"],
+        "Class" => &[
+            "decorators",
+            "id",
+            "typeParameters",
+            "superClass",
+            "superTypeArguments",
+            "implements",
+            "body",
+        ],
+        "MethodDefinition" | "TsMethodDefinition" => &["decorators", "key", "value"],
+        "PropertyDefinition" => &["decorators", "key", "typeAnnotation", "value"],
+        "Directive" => &["expression"],
+        "StringLiteral" | "NumericLiteral" | "BigIntLiteral" | "BooleanLiteral" | "NullLiteral"
+        | "RegExpLiteral" => &[],
+        "TemplateElement" => &[],
+        "FormalParameterRest" | "BindingRestElement" => {
+            &["decorators", "argument", "typeAnnotation"]
+        }
+        "BindingProperty" | "ObjectProperty" => &["key", "value"],
+        "ArrayPattern" => &["decorators", "elements", "typeAnnotation"],
+        "ObjectPattern" => &["decorators", "properties", "typeAnnotation"],
+        "AssignmentPattern" => &["decorators", "left", "typeAnnotation", "right"],
+        "VariableDeclarator" => &["id", "init"],
+        "CatchClause" => &["param", "body"],
+        "TsThisParameter" => &["decorators", "typeAnnotation"],
+        "TsGlobalDeclaration" => &["id", "body"],
+        "TsFunctionType"
+        | "TsConstructorType"
+        | "TsCallSignatureDeclaration"
+        | "TsConstructSignatureDeclaration" => &["typeParameters", "params", "returnType"],
+        "TsMethodSignature" => &["key", "typeParameters", "params", "returnType"],
+        _ => return None,
+    })
+}
+
 // ESTree projections which flatten, merge, or synthesize internal AST nodes.
-// Keep these aligned with write_special_node in estree_decoder.
+// Keep these aligned with the generated AST projection rules.
 pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
     let mut keys: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut lists = BTreeMap::new();
@@ -19,97 +111,10 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
     for ty in &schema.types {
         let AstType::Struct(ast) = ty else { continue };
         let name = ast.name.as_str();
-        let (names, special): (Vec<String>, Option<&[&str]>) = match name {
-            "FormalParameter" | "FormalParameters" | "TsIndexSignatureParameter" => continue,
-            "Program" => (vec!["Program".into()], Some(&["hashbang", "body"])),
-            "FunctionBody" => (vec!["BlockStatement".into()], Some(&["body"])),
-            "TsModuleBlock" => (vec!["TSModuleBlock".into()], Some(&["body"])),
-            "Function" => (
-                vec!["FunctionDeclaration".into(), "FunctionExpression".into()],
-                Some(&["id", "typeParameters", "params", "returnType", "body"]),
-            ),
-            "TsFunction" => (
-                vec![
-                    "TSDeclareFunction".into(),
-                    "TSEmptyBodyFunctionExpression".into(),
-                ],
-                Some(&["id", "typeParameters", "params", "returnType", "body"]),
-            ),
-            "ArrowFunctionExpression" => (
-                vec![name.into()],
-                Some(&["typeParameters", "params", "returnType", "body"]),
-            ),
-            "Class" => (
-                vec!["ClassDeclaration".into(), "ClassExpression".into()],
-                Some(&[
-                    "decorators",
-                    "id",
-                    "typeParameters",
-                    "superClass",
-                    "superTypeArguments",
-                    "implements",
-                    "body",
-                ]),
-            ),
-            "MethodDefinition" | "TsMethodDefinition" => (
-                vec![
-                    "MethodDefinition".into(),
-                    "TSAbstractMethodDefinition".into(),
-                ],
-                Some(&["decorators", "key", "value"]),
-            ),
-            "PropertyDefinition" => (
-                vec![
-                    "PropertyDefinition".into(),
-                    "AccessorProperty".into(),
-                    "TSAbstractPropertyDefinition".into(),
-                    "TSAbstractAccessorProperty".into(),
-                ],
-                Some(&["decorators", "key", "typeAnnotation", "value"]),
-            ),
-            "Directive" => (vec!["ExpressionStatement".into()], Some(&["expression"])),
-            "StringLiteral" | "NumericLiteral" | "BigIntLiteral" | "BooleanLiteral"
-            | "NullLiteral" | "RegExpLiteral" => (vec!["Literal".into()], Some(&[])),
-            "TemplateElement" => (vec![name.into()], Some(&[])),
-            "FormalParameterRest" | "BindingRestElement" => (
-                vec!["RestElement".into()],
-                Some(&["decorators", "argument", "typeAnnotation"]),
-            ),
-            "BindingProperty" | "ObjectProperty" => {
-                (vec!["Property".into()], Some(&["key", "value"]))
-            }
-            "ArrayPattern" => (
-                vec![name.into()],
-                Some(&["decorators", "elements", "typeAnnotation"]),
-            ),
-            "ObjectPattern" => (
-                vec![name.into()],
-                Some(&["decorators", "properties", "typeAnnotation"]),
-            ),
-            "AssignmentPattern" => (
-                vec![name.into()],
-                Some(&["decorators", "left", "typeAnnotation", "right"]),
-            ),
-            "VariableDeclarator" => (vec![name.into()], Some(&["id", "init"])),
-            "CatchClause" => (vec![name.into()], Some(&["param", "body"])),
-            "TsThisParameter" => (
-                vec!["Identifier".into()],
-                Some(&["decorators", "typeAnnotation"]),
-            ),
-            "TsGlobalDeclaration" => (vec!["TSModuleDeclaration".into()], Some(&["id", "body"])),
-            "TsFunctionType"
-            | "TsConstructorType"
-            | "TsCallSignatureDeclaration"
-            | "TsConstructSignatureDeclaration" => (
-                vec![estree_type(name)],
-                Some(&["typeParameters", "params", "returnType"]),
-            ),
-            "TsMethodSignature" => (
-                vec![estree_type(name)],
-                Some(&["key", "typeParameters", "params", "returnType"]),
-            ),
-            _ => (vec![estree_type(name)], None),
+        let Some(names) = public_types(name) else {
+            continue;
         };
+        let special = special_fields(name);
         let fields: Vec<String> = special
             .map(|fields| fields.iter().map(|s| (*s).into()).collect())
             .unwrap_or_else(|| {
@@ -176,7 +181,7 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
         "// generated by tasks/ast_tools, do not edit\nexport declare const visitorKeys: {\n",
     );
     let mut children = String::from(
-        "// generated by tasks/ast_tools, do not edit\nexport const childVisitors = {\n",
+        "// generated by tasks/ast_tools, do not edit\nimport { NodeView } from \"@swc-next/ast\";\nexport const childVisitors = {\n",
     );
     for (name, fields) in &keys {
         writeln!(js, "  {name}: Object.freeze({fields:?}),").unwrap();
@@ -186,21 +191,19 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
         } else {
             writeln!(children, "  {name}(node, walker) {{").unwrap();
             for (index, field) in fields.iter().enumerate() {
-                writeln!(children, "    const child{index} = node.{field};").unwrap();
-                let method = if lists[&(name.clone(), field.clone())] {
-                    "visitList"
-                } else {
-                    "visitScalar"
-                };
                 let dispatch = concrete_fields
                     .get(&(name.clone(), field.clone()))
                     .map_or_else(String::new, |name| format!(", dispatch{name}"));
-                let method = if dispatch.is_empty() {
-                    method
+                if lists[&(name.clone(), field.clone())] {
+                    let method = if dispatch.is_empty() {
+                        "visitList"
+                    } else {
+                        "visitListKnown"
+                    };
+                    writeln!(children, "    if (node instanceof NodeView) {{\n      if (walker.visitListField(node, {field:?}{dispatch})) {{ return true; }}\n    }} else {{\n      const child{index} = node.{field};\n      if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) {{ return true; }}\n    }}").unwrap();
                 } else {
-                    "visitListKnown"
-                };
-                writeln!(children, "    if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) return true;").unwrap();
+                    writeln!(children, "    const child{index} = node.{field};\n    if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) {{ return true; }}").unwrap();
+                }
             }
             writeln!(children, "    return false;\n  }},").unwrap();
         }
@@ -226,25 +229,24 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
         )
         .unwrap();
         for (index, field) in fields.iter().enumerate() {
-            let method = if lists[&(name.clone(), field.clone())] {
-                "visitList"
-            } else {
-                "visitScalar"
-            };
             let dispatch = concrete_fields
                 .get(&(name.clone(), field.clone()))
                 .map_or_else(String::new, |name| format!(", dispatch{name}"));
-            let method = if dispatch.is_empty() {
-                method
+            if lists[&(name.clone(), field.clone())] {
+                let method = if dispatch.is_empty() {
+                    "visitList"
+                } else {
+                    "visitListKnown"
+                };
+                writeln!(children, "  if (node instanceof NodeView) {{\n    if (walker.visitListField(node, {field:?}{dispatch})) {{ return index; }}\n  }} else {{\n    const child{index} = node.{field};\n    if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) {{ return index; }}\n  }}").unwrap();
             } else {
-                "visitListKnown"
-            };
-            writeln!(children, "  const child{index} = node.{field};\n  if (child{index} != null && walker.{method}(child{index}, node, {field:?}{dispatch})) return index;").unwrap();
+                writeln!(children, "  const child{index} = node.{field};\n  if (child{index} != null && walker.visitScalar(child{index}, node, {field:?})) {{ return index; }}").unwrap();
+            }
         }
-        writeln!(children, "  if (node.type !== {name:?}) return walker.leaveChanged(node, parent, key, list, index);\n  return index;\n}}").unwrap();
+        writeln!(children, "  if (node.type !== {name:?}) {{ return walker.leaveChanged(node, parent, key, list, index); }}\n  return index;\n}}").unwrap();
     }
     for name in dispatch_types {
-        writeln!(children, "\nconst dispatch{name} = function(node, walker, parent, key, list, index, walkers) {{\n  const type = node.type;\n  if (type !== {name:?}) {{\n    if (typeof type !== \"string\") throw new TypeError(`Unsupported AST node type: ${{type}}`);\n    const fallback = walkers[type];\n    if (fallback === undefined) throw new TypeError(`Unsupported AST node type: ${{type}}`);\n    return fallback === null ? index : fallback(node, walker, parent, key, list, index);\n  }}\n  const visit = walkers.{name};\n  return visit === null ? index : visit(node, walker, parent, key, list, index);\n}};\n").unwrap();
+        writeln!(children, "\nconst dispatch{name} = function(node, walker, parent, key, list, index, walkers) {{\n  const type = node.type;\n  if (type !== {name:?}) {{\n    if (typeof type !== \"string\") {{ throw new TypeError(`Unsupported AST node type: ${{type}}`); }}\n    const fallback = walkers[type];\n    if (fallback === undefined) {{ throw new TypeError(`Unsupported AST node type: ${{type}}`); }}\n    return fallback === null ? index : fallback(node, walker, parent, key, list, index);\n  }}\n  const visit = walkers.{name};\n  return visit === null ? index : visit(node, walker, parent, key, list, index);\n}};\n").unwrap();
     }
     // Partition large same-length groups by the most distinguishing character.
     // Full-name guards preserve rejection of unsupported names; each known type
@@ -269,6 +271,80 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
         children.push_str("      break;\n");
     }
     children.push_str("  }\n  throw new TypeError(`Unsupported AST node type: ${type}`);\n}\n");
+    // Native IDs need wrappers only for hooks and unsupported projections.
+    // Readers retain canonical ESTree field order and reuse the live list cursor.
+    let mut reader_groups = BTreeMap::<String, usize>::new();
+    let mut readers = [Vec::new(), Vec::new()];
+    for ast in schema.types.iter().filter_map(|ty| match ty {
+        AstType::Struct(ast) => Some(ast),
+        _ => None,
+    }) {
+        for (language, ts) in [false, true].into_iter().enumerate() {
+            let body = projected_types.get(&ast.name).and_then(|name| {
+                let mut body = String::from("  const version = ast._editVersion;\n");
+                for field in &keys[name] {
+                    let rule = field_rule(ast, field, ts);
+                    if matches!(rule, "Missing" | "Null" | "False" | "True") {
+                        continue;
+                    }
+                    if lists[&(name.clone(), field.clone())] {
+                        writeln!(body, "  if (walker.visitListField(id, {field:?})) {{ return true; }}").unwrap();
+                        continue;
+                    }
+                    if rule != "Native" { return None; }
+                    let (index, native) = ast.fields.iter().enumerate().find(|(_, native)| {
+                        estree_field_name(&ast.name, &native.name) == *field
+                    })?;
+                    if !is_child(native.type_id, schema) || is_list(native.type_id, schema) {
+                        return None;
+                    }
+                    let optional = matches!(schema.types[native.type_id], AstType::Option(_));
+                    body.push_str("  {\n    if (ast._editVersion !== version) {\n");
+                    writeln!(body, "      const node = ast.node(id), child = node.{field};\n      if (child != null && walker.visitScalar(child, node, {field:?})) {{ return true; }}\n    }} else {{").unwrap();
+                    body.push_str("      const row = ast.row(id), payload = ast._payloadAt(id, row);\n      let view = row === -1 ? ast._view : ast._arena.view;\n");
+                    match ast.layout.fields[index] {
+                        FieldLocation::Payload { offset, .. } => {
+                            writeln!(body, "      const offset = payload + {offset};").unwrap();
+                        }
+                        FieldLocation::Extra { index } => {
+                            writeln!(body, "      const extra = view.getUint32(payload + {}, true) + {index};", ast.layout.extra_start_offset().unwrap()).unwrap();
+                            body.push_str("      if (extra >= ast.extraDataCount) { throw new RangeError(\"AST extra-data reference out of bounds\"); }\n      const offset = extra < ast._extraCount ? ast._extra + extra * 4 : ast._arena.extraAddress(extra);\n      view = extra < ast._extraCount ? ast._view : ast._arena.view;\n");
+                        }
+                    }
+                    writeln!(body, "      const child = ast.childAt(id, offset, {optional}, view);\n      if (child !== 0xffffffff && walker.visitScalarId(child, id, {field:?})) {{ return true; }}\n    }}\n  }}").unwrap();
+                }
+                body.push_str("  return false;\n");
+                Some(body)
+            });
+            let reader = body.map(|body| {
+                if let Some(index) = reader_groups.get(&body) {
+                    return *index;
+                }
+                let index = reader_groups.len();
+                writeln!(
+                    children,
+                    "\nfunction readNativeChildren{index}(ast, id, walker) {{\n{body}}}"
+                )
+                .unwrap();
+                reader_groups.insert(body, index);
+                index
+            });
+            readers[language].push(reader);
+        }
+    }
+    children.push_str("\nexport const nativeChildVisitors = [\n");
+    for language in readers {
+        children.push_str("  [\n");
+        for reader in language {
+            let name = reader.map_or_else(
+                || "null".into(),
+                |index| format!("readNativeChildren{index}"),
+            );
+            writeln!(children, "    {name},").unwrap();
+        }
+        children.push_str("  ],\n");
+    }
+    children.push_str("];\n");
     dts.push_str("};\nexport type NodeType = keyof typeof visitorKeys;\n");
     vec![
         RawOutput {

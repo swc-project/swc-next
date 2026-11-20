@@ -540,7 +540,7 @@ pub mod bridge {
     //! and the parser bridge's packed diagnostic records.
 
     use swc_next_bridge::{BridgeDecode, BridgeDecodeOptional, bridge};
-    use swc_next_ecma_ast::ffi::ast::{diagnostics_buffer_size, serialize_diagnostics};
+    use swc_next_ecma_ast::ffi::diagnostics::{diagnostics_buffer_size, serialize_diagnostics};
 
     use super::transform_js;
     use crate::js::{

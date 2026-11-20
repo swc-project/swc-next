@@ -1,4 +1,4 @@
-import { decode } from "@swc-next/protocol/ast/decode";
+import { readAst } from "@swc-next/ast";
 import init, { run } from "../wasm/playground.browser.mjs";
 import type { CompileRequest, CompileResponse } from "./types";
 
@@ -17,16 +17,13 @@ self.onmessage = async ({ data }: MessageEvent<CompileRequest>) => {
       0,
       true,
     );
-    const { program, diagnostics } = decode(
-      buffer.subarray(4, 4 + astLength),
-      data.source,
-    );
-    // Materialize the decoder's lazy getters before crossing the Worker boundary.
+    const ast = readAst(buffer.subarray(4, 4 + astLength));
+    // Copy the tree and lazy diagnostic offsets before crossing the Worker boundary.
     response = {
       id: data.id,
       code: decoder.decode(buffer.subarray(4 + ((astLength + 3) & ~3))),
-      ast: structuredClone(program),
-      diagnostics,
+      ast: ast.materialize(ast.program),
+      diagnostics: structuredClone(ast.diagnostics),
       duration: performance.now() - start,
     };
   } catch (error) {

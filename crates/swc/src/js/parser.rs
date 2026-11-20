@@ -154,11 +154,11 @@ pub mod bridge {
     //!
     //! For internal SWC Next use only. These APIs, AST/diagnostic buffers, and
     //! packed option words do not follow semantic versioning and may change in
-    //! any release. Use matching `@swc-next/protocol/ast/decode` and native/Wasm bindings.
+    //! any release. Use matching `@swc-next/ast` and native/Wasm bindings.
 
     use swc_next_allocator::Allocator;
     use swc_next_bridge::{BridgeDecodeOptional, bridge};
-    use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
+    use swc_next_ecma_ast::ffi;
     use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
     use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
 
@@ -168,21 +168,24 @@ pub mod bridge {
     #[cfg(not(target_family = "wasm"))]
     use swc_next_bridge::{BridgeDecode, napi};
 
+    /// Parse into a self-contained AST buffer with UTF-8 byte spans.
+    ///
     /// # Safety
     ///
     /// The caller must ensure that `source` contains valid UTF-8.
-    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-    pub unsafe fn parse_to_buffer(
-        source: &[u8],
-        source_utf16_len: u32,
-        options: Option<JsParseApiOptions>,
-    ) -> Vec<u8> {
-        let Ok(buffer) = unsafe {
-            parse_with_buffer(source, source_utf16_len, options, |size| {
-                Ok::<_, std::convert::Infallible>(vec![0; size])
-            })
-        };
-        buffer
+    pub unsafe fn parse_to_buffer(source: &[u8], options: Option<JsParseApiOptions>) -> Vec<u8> {
+        // SAFETY: The caller guarantees valid UTF-8 source.
+        let source = unsafe { std::str::from_utf8_unchecked(source) };
+        let allocator = Allocator::default();
+        let options = options.unwrap_or_default();
+        let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
+        let mut diagnostics = result.diagnostics;
+        if options.semantic_errors.unwrap_or(false) {
+            diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
+        }
+        // SAFETY: Serialization only reads the parser context during this call.
+        ffi::serialize(unsafe { result.ast.ast() }, &diagnostics)
+            .expect("parser AST must fit the AST buffer format")
     }
 
     /// Parse directly into a Node-owned buffer using the packed JavaScript options.
@@ -190,12 +193,10 @@ pub mod bridge {
     /// # Safety
     ///
     /// The caller must ensure that `source` contains valid UTF-8.
-    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
     #[cfg(not(target_family = "wasm"))]
     pub unsafe fn parse_to_node_buffer(
         env: &napi::Env,
         source: &[u8],
-        source_utf16_len: u32,
         options: u32,
     ) -> napi::Result<napi::bindgen_prelude::Buffer> {
         let options = <Option<ParserConfig> as BridgeDecode>::decode(options).ok_or_else(|| {
@@ -204,42 +205,10 @@ pub mod bridge {
                 "invalid bridge value for `options`",
             )
         })?;
-        unsafe {
-            parse_with_buffer(source, source_utf16_len, options, |size| {
-                swc_next_bridge::create_buffer(env, size)
-            })
-        }
-    }
-
-    /// Parse and serialize into a buffer allocated by the caller after its exact
-    /// size is known. The returned buffer must contain at least that many bytes.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that `source` contains valid UTF-8.
-    /// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-    unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
-        source: &[u8],
-        source_utf16_len: u32,
-        options: Option<JsParseApiOptions>,
-        allocate: impl FnOnce(usize) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let source = unsafe { std::str::from_utf8_unchecked(source) };
-        let allocator = Allocator::default();
-        let options = options.unwrap_or_default();
-        let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
-
-        let mut diagnostics = result.diagnostics;
-        if options.semantic_errors.unwrap_or(false) {
-            diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
-        }
-
-        let buffer_size = buffer_size(&result.ast, &diagnostics);
-        let mut buffer = allocate(buffer_size)?;
-        let bytes = buffer.as_mut();
-        assert!(bytes.len() >= buffer_size);
-        serialize_into(&result.ast, &diagnostics, bytes, source_utf16_len as usize);
-        Ok(buffer)
+        let buffer = unsafe { parse_to_buffer(source, options) };
+        let mut output = swc_next_bridge::create_buffer(env, buffer.len())?;
+        output.as_mut().copy_from_slice(&buffer);
+        Ok(output)
     }
 
     // Internal option word paired with packages/protocol/parser.js. Update both

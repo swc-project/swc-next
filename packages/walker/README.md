@@ -1,7 +1,7 @@
 # `@swc-next/walker`
 
 Traverse and edit JavaScript / TypeScript ESTree ASTs with synchronous hooks.
-Pure JavaScript with no runtime dependencies, native bindings, or WASM initialization.
+Pure JavaScript with no native bindings or WASM initialization.
 The same ESM package works in Node.js and browsers.
 
 ```js
@@ -92,8 +92,9 @@ for (const program of programs) walker.walk(program);
 
 `createWalker(hooks)` validates and snapshots the hook functions once. Later
 changes to the hooks object do not affect it. Each `walker.walk(root, state)`
-creates a fresh context, supports nested calls, and clears traversal positions
-on return or failure. Captured callback closures remain alive with the compiled
+initializes its own traversal state, supports nested calls, and clears positions,
+node references and caller state on return or failure. Cleared contexts and range
+cursors are reused in a bounded pool. Captured callback closures remain alive with the compiled
 walker. Ordinary `walk(root, hooks, state)` continues to compile on every call;
 there is no implicit cache of mutable hook objects.
 
@@ -112,8 +113,8 @@ there is no implicit cache of mutable hook objects.
 | `skip()` | Enter only: stop remaining enter hooks and skip children, but run the current node's leave hooks. |
 | `stop()` | Finish the current callback, then end the walk, without pending leave hooks. |
 
-**One context is reused across the synchronous hooks of each walk. Do not retain
-it.** A saved reference aliases the position of later hooks, so stale-reference
+**One context is reused across synchronous hooks and may be reused by a later
+walk. Do not retain it.** A saved reference aliases the position of later hooks, so stale-reference
 use during another hook cannot be detected. Getters and edit methods throw when
 no hook is active, including after completion or an exception. A nested walk has
 its own context and does not change the outer callback's position. Node, state,
@@ -155,6 +156,32 @@ first version does not generate complete per-node field declarations. Consumers
 can supply their own discriminated union with `WalkHooks<State, Nodes>` and
 `walk<Root, State, Nodes>(root, hooks, state)` for field-level checking.
 
+## Numeric walker (`@swc-next/walker/ast`)
+
+Traverse buffer-backed `AstView` graphs by numeric node ID without creating a
+`NodeView` for every visited node. This opt-in API only accepts views returned
+by `parseSync` or `readAst`; it does not walk plain ESTree objects.
+
+```js
+import { parseSync } from "@swc-next/core";
+import { walk } from "@swc-next/walker/ast";
+
+const { program } = parseSync("debugger; run();");
+walk(program.ast, program.nodeId, {
+  DebuggerStatement(id, ctx) {
+    ctx.remove();
+  },
+});
+```
+
+Hooks receive `(nodeId, ctx)` and follow the same order and alias rules as
+`@swc-next/walker`. The context adds `nodeId`, `parentId`, `type`, `kind`,
+`ancestorIds()`, and lazily materialized `node` / `parent` views; `skip`,
+`stop`, `replace`, `remove`, `insertBefore`, and `insertAfter` behave like the
+object walker and accept `NodeView` instances. `createWalker(hooks)` compiles
+hooks once for repeated walks. Hooks must be synchronous, and numeric IDs are
+valid only for the view that produced them.
+
 ## Development
 
 ```sh
@@ -165,3 +192,11 @@ pnpm --filter @swc-next/core test:walk
 
 Tests use Rstest and live in `npm/core/test/walk`. Root `pnpm test` and
 `pnpm test:wasm` include core and walker tests. Tests are excluded from the published package.
+
+Buffer-backed `@swc-next/ast` nodes are compared by their AST and node ID when
+validating edits. Their wrappers may differ across reads; use
+`NodeView.isSame(a, b)` for logical node equality.
+
+Buffer-backed lists are traversed through internal ranges until their public
+array is accessed or a context edit needs it. This applies to every visitor
+configuration and preserves callback order and structural editing behavior.

@@ -27,7 +27,7 @@ export function readExpected(oracleFile) {
 
     while (true) {
       const markerIndex = markdown.indexOf(marker, searchFrom);
-      if (markerIndex === -1) break;
+      if (markerIndex === -1) { break; }
 
       const block = markdown
         .slice(markerIndex + marker.length)

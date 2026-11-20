@@ -171,7 +171,6 @@ impl TransformCtx<'_, '_> {
             ast.variable_declarator(
                 DUMMY_SP,
                 BindingPattern::BindingIdentifier(binding),
-                None,
                 Some(init),
                 false,
             )

@@ -30,8 +30,13 @@ export function selectCases(suite = "full", filter = "") {
 }
 
 // Reading enumerable properties evaluates lazy AST getters without JSON conversion.
+// A node view has no enumerable fields; materialize it first so both the old
+// materialized AST and the zero-copy view evaluate the same tree.
 export function touch(value) {
   if (value === null || typeof value !== "object") return 1;
+  if (typeof value.nodeId === "number" && value.ast && typeof value.ast.materialize === "function") {
+    value = value.ast.materialize(value);
+  }
   let count = 1;
   for (const key of Object.keys(value)) count += touch(value[key]);
   return count;

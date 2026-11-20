@@ -1421,7 +1421,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 self.print_binding(param);
-                if let Some(annotation) = handler.type_annotation(self.ast) {
+                if let Some(annotation) = param.type_annotation(self.ast) {
                     self.print_ts_annotation(annotation);
                 }
                 self.print(")");
@@ -1518,7 +1518,7 @@ impl<'a> Printer<'a> {
             if d.definite(self.ast) {
                 self.print("!");
             }
-            if let Some(annotation) = d.type_annotation(self.ast) {
+            if let Some(annotation) = d.id(self.ast).type_annotation(self.ast) {
                 self.print_ts_annotation(annotation);
             }
             if let Some(value) = d.init(self.ast) {
@@ -1646,7 +1646,7 @@ impl<'a> Printer<'a> {
         if parameter.optional(self.ast) {
             self.print("?");
         }
-        if let Some(annotation) = parameter.type_annotation(self.ast) {
+        if let Some(annotation) = parameter.pattern(self.ast).type_annotation(self.ast) {
             self.print_ts_annotation(annotation);
         }
         if let Some(initializer) = parameter.initializer(self.ast) {
@@ -2976,6 +2976,11 @@ impl<'a> Printer<'a> {
                     self.print_quoted(self.ast.get_wtf8(value.value(self.ast)), false);
                 }
                 ExprData::NumericLiteral(value) => self.print_number_property_key(value),
+                ExprData::UnaryExpression(_) => {
+                    self.print("[");
+                    self.print_property_key_expr(key, Precedence::Assignment);
+                    self.print("]");
+                }
                 _ => self.print_property_key_expr(key, Precedence::Assignment),
             },
         }
@@ -5366,7 +5371,7 @@ impl Printer<'_> {
         let param = item.as_formal_parameter(ast)?;
         let identifier = param.pattern(ast).as_binding_identifier(ast)?;
         if !param.decorators(ast).is_empty()
-            || param.type_annotation(ast).is_some()
+            || param.pattern(ast).type_annotation(ast).is_some()
             || param.initializer(ast).is_some()
             || param.optional(ast)
         {

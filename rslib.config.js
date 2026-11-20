@@ -40,6 +40,7 @@ const baseConfig = defineConfig({
           "./binding.js",
           "./swc-next-core.browser.mjs",
           "@swc-next/walker",
+          "@swc-next/ast",
         ],
         minify: {
           jsOptions: {

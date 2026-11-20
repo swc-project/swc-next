@@ -10,14 +10,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./ast/encode": {
-      "types": "./ast/encode.d.ts",
-      "import": "./ast/encode.js"
-    },
-    "./ast/decode": {
-      "types": "./ast/decode.d.ts",
-      "import": "./ast/decode.js"
-    },
     "./parser": {
       "types": "./parser.d.ts",
       "import": "./parser.js"
@@ -48,7 +40,6 @@
     }
   },
   "files": [
-    "ast",
     "buffer.js",
     "document.d.ts",
     "document.js",

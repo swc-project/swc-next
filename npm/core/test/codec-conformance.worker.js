@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
-import { decode } from "@swc-next/protocol/ast/decode";
+import { readAst } from "@swc-next/ast";
 import { encodeParserConfig } from "@swc-next/protocol/parser";
-import { encode } from "@swc-next/protocol/ast/encode";
+import assert from "node:assert/strict";
 import * as binding from "../dist/binding.js";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
@@ -39,53 +39,37 @@ function checkUnit(file, unit, suite, sourceType) {
   });
   let parsed;
   try {
-    parsed = decode(binding.parseSync(sourceBytes, source.length, options), source);
-    if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) return result;
+    parsed = readAst(binding.parseSync(sourceBytes, options));
+    if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) { return result; }
   } catch (error) {
     return { ...result, error: String(error) };
   }
   result.parsed = true;
   try {
-    const buffer = encodeBuffer(parsed.program);
-    const decoded = decode(buffer, source);
-    const roundtrip = encodeBuffer(decoded.program);
-    if (!buffer.equals(roundtrip)) {
-      return { ...result, error: "Codec buffer differs after decode/encode" };
-    }
+    const [buffer, extension] = parsed.encode();
+    assert.equal(extension.length, 0);
+    const decoded = readAst(buffer.slice());
+    assert.deepEqual(decoded.materialize(), parsed.materialize());
+    assert.deepEqual(decoded.comments, parsed.comments);
+    assert.equal(binding.generateSync(...decoded.encode(), 0), binding.generateSync(buffer, extension, 0));
     return { ...result, passed: true };
   } catch (error) {
     return { ...result, error: String(error) };
   }
 }
 
-function encodeBuffer(program) {
-  const [header, spans, kinds, payloads, extra, strings] = encode(program);
-  const kindPadding = Buffer.alloc((8 - (kinds.byteLength % 8)) % 8);
-  const stringPadding = Buffer.alloc((4 - (strings.byteLength % 4)) % 4);
-  // Copy reusable encoder storage before the next encode overwrites it.
-  const buffer = Buffer.concat([
-    header, spans, kinds, kindPadding, payloads, extra, strings, stringPadding,
-  ]);
-  // Decoder source-backed fields use original source spans. Keep encoded strings
-  // in the pool so their offsets are independent of the original source text.
-  buffer.writeUInt32LE(strings.byteLength, 8);
-  buffer.writeUInt32LE(0, 12);
-  buffer.writeUInt32LE(0, 36);
-  return buffer;
-}
-
 function getLang(unit, suite) {
   let lang = binding.langFromPath(unit.name);
-  if (suite === "typescript" && lang !== "dts") lang = "ts";
-  if (!unit.sourceType.jsx) return lang;
-  if (lang === "ts" || lang === "dts") return "tsx";
-  if (lang === "js") return "jsx";
+  if (suite === "typescript" && lang !== "dts") { lang = "ts"; }
+  if (!unit.sourceType.jsx) { return lang; }
+  if (lang === "ts" || lang === "dts") { return "tsx"; }
+  if (lang === "js") { return "jsx"; }
   return lang;
 }
 
 async function readSource(file) {
   const bytes = await fs.readFile(file);
-  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
-  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) { return new TextDecoder("utf-16le").decode(bytes.subarray(2)); }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) { return new TextDecoder("utf-16be").decode(bytes.subarray(2)); }
   return new TextDecoder().decode(bytes);
 }

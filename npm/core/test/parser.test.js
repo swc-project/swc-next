@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decode } from "@swc-next/protocol/ast/decode";
+import { AstView, NodeView } from "@swc-next/ast";
 import * as core from "@swc-next/core";
 import { langFromPath, parseSync, sourceTypeFromPath, transformSync } from "@swc-next/core";
 import { parseSync as parseStandalone } from "@swc-next/parser";
@@ -18,30 +18,10 @@ test("parser options use strings without enum value exports", () => {
     sourceType: "script",
     comments: "none",
   });
-  assert.equal("meta" in result, false);
+  assert.ok(result instanceof AstView);
   assert.equal(result.program.sourceType, "script");
   assert.deepEqual(result.comments, []);
-  assert.equal(result.program.body[0].declarations[0].id.typeAnnotation.type, "TSTypeAnnotation");
-});
-
-test("decoder reads little-endian words from unaligned buffers", () => {
-  const backing = new ArrayBuffer(81);
-  const buffer = new Uint8Array(backing, 1, 80);
-  const view = new DataView(backing, 1, 80);
-  view.setUint32(0, 1, true); // node count
-  view.setUint32(4, 2, true); // extra-data unit count
-  view.setUint32(64, 0xffffffff, true); // no hashbang
-
-  const result = decode(buffer, "");
-  assert.deepEqual(result.program, {
-    type: "Program",
-    start: 0,
-    end: 0,
-    sourceType: "module",
-    hashbang: null,
-    body: [],
-  });
-  assert.deepEqual(result.comments, []);
+  assert.equal(result.program.body.get(0).declarations.get(0).id.typeAnnotation.type, "TSTypeAnnotation");
 });
 
 test("decoder preserves nested types through the lazy program getter", () => {
@@ -49,59 +29,46 @@ test("decoder preserves nested types through the lazy program getter", () => {
   const source = `type Value = string${"[]".repeat(depth)};`;
   const result = parseSync(source, { lang: "ts" });
   const program = result.program;
-  let type = program.body[0].typeAnnotation;
+  let type = program.body.get(0).typeAnnotation;
   for (let index = 0; index < depth; index++) {
     assert.equal(type.type, "TSArrayType");
     type = type.elementType;
   }
   assert.equal(type.type, "TSStringKeyword");
-  assert.equal(result.program, program);
+  assert.ok(NodeView.isSame(result.program, program));
 
   const tsx = parseSync(source, { lang: "tsx" });
-  assert.deepEqual(tsx.program, program);
-});
-
-test("decoder rejects unknown diagnostic severities", () => {
-  const buffer = new Uint8Array(73);
-  const view = new DataView(buffer.buffer);
-  view.setUint32(0, 1, true); // node count
-  view.setUint32(24, 1, true); // diagnostic count
-  buffer[72] = 0xff; // diagnostic severity
-
-  const result = decode(buffer, "");
-  assert.throws(
-    () => result.diagnostics,
-    new RangeError("Unknown diagnostic severity 255"),
-  );
+  assert.deepEqual(tsx.materialize(), result.materialize());
 });
 
 test("parseSync exposes the program lazily", () => {
   const result = parseSync("const answer = 42;");
-  const descriptor = Object.getOwnPropertyDescriptor(result, "program");
+  const descriptor = Object.getOwnPropertyDescriptor(AstView.prototype, "program");
 
   assert.equal(typeof descriptor.get, "function");
   assert.equal(descriptor.set, undefined);
-  assert.equal(descriptor.enumerable, true);
+  assert.equal(descriptor.enumerable, false);
   assert.equal(descriptor.configurable, true);
 
   const program = result.program;
   assert.equal(program.type, "Program");
-  assert.equal(program.body[0].type, "VariableDeclaration");
-  assert.equal(result.program, program);
+  assert.equal(program.body.get(0).type, "VariableDeclaration");
+  assert.ok(NodeView.isSame(result.program, program));
 });
 
-test("parseSync preserves source-backed lone surrogates", () => {
+test("parseSync normalizes source-backed lone surrogates", () => {
   for (const lang of ["js", "ts"]) {
     const comments = parseSync("/* 😀 */\n// \ud800", { lang }).comments;
     assert.equal(comments[0].value, " 😀 ");
-    assert.equal(comments[1].value, " \ud800");
+    assert.equal(comments[1].value, " \ufffd");
 
-    const lone = parseSync('"\ud800";', { lang }).program.body[0];
-    assert.equal(lone.expression.value, "\ud800");
-    assert.equal(lone.directive, "\ud800");
+    const lone = parseSync('"\ud800";', { lang }).program.body.get(0);
+    assert.equal(lone.expression.value, "\ufffd");
+    assert.equal(lone.directive, "\ufffd");
 
-    const loneTemplate = parseSync("tag`\ud800`;", { lang }).program.body[0];
-    assert.deepEqual(loneTemplate.expression.quasi.quasis[0].value, { raw: "\ud800", cooked: "\ud800" });
+    const loneTemplate = parseSync("tag`\ud800`;", { lang }).program.body.get(0);
+    assert.equal(loneTemplate.expression.quasi.quasis.get(0).value.raw, "\ufffd");
+    assert.equal(loneTemplate.expression.quasi.quasis.get(0).value.cooked, "\ufffd");
   }
 });
 
@@ -114,7 +81,7 @@ test("parseSync preserves lazy source data across buffer reuse", () => {
       parse(" ".repeat(256), { lang });
       transformSync(" ".repeat(512));
 
-      const declaration = result.program.body[0].declarations[0];
+      const declaration = result.program.body.get(0).declarations.get(0);
       assert.equal(declaration.id.name, "名字");
       assert.equal(declaration.init.value, "🌍");
       assert.equal(declaration.init.raw, '"🌍"');
@@ -123,11 +90,11 @@ test("parseSync preserves lazy source data across buffer reuse", () => {
   }
 });
 
-test("decoder preserves lone surrogates in RegExp source", () => {
+test("parseSync normalizes lone surrogates in RegExp source", () => {
   for (const lang of ["js", "ts"]) {
-    const regexp = parseSync("/\ud800/gi;", { lang }).program.body[0].expression;
-    assert.equal(regexp.raw, "/\ud800/gi");
-    assert.equal(regexp.regex.pattern, "\ud800");
+    const regexp = parseSync("/\ud800/gi;", { lang }).program.body.get(0).expression;
+    assert.equal(regexp.raw, "/\ufffd/gi");
+    assert.equal(regexp.regex.pattern, "\ufffd");
     assert.equal(regexp.regex.flags, "gi");
   }
 });
@@ -136,11 +103,11 @@ test("parseSync exposes flat comments lazily", () => {
   const source =
     '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
   const result = parseSync(source, { comments: "all" });
-  const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
+  const descriptor = Object.getOwnPropertyDescriptor(AstView.prototype, "comments");
 
   assert.equal(typeof descriptor.get, "function");
   assert.equal(descriptor.set, undefined);
-  assert.equal(descriptor.enumerable, true);
+  assert.equal(descriptor.enumerable, false);
   assert.equal(descriptor.configurable, true);
 
   const lineStart = source.indexOf("// one 😀");
@@ -159,7 +126,7 @@ test("parseSync exposes flat comments lazily", () => {
       end: blockStart + "/* two */".length,
     },
   ]);
-  assert.equal(result.comments, result.comments);
+  assert.deepEqual(result.comments, result.comments);
 });
 
 test("parseSync exposes HTML comments without delimiters", () => {
@@ -179,7 +146,7 @@ test("parseSync defaults to flat comments and returns an empty array", () => {
   const result = parseSync("const answer = 42;");
 
   assert.deepEqual(result.comments, []);
-  assert.equal(result.comments, result.comments);
+  assert.deepEqual(result.comments, result.comments);
 });
 
 test("parseSync forwards shared comment policies", () => {
@@ -217,11 +184,11 @@ test("errorRecovery controls whether the first diagnostic is thrown", () => {
 
 test("parseSync exposes parser diagnostics lazily", () => {
   const result = parseSync("const = 1", { errorRecovery: true });
-  const descriptor = Object.getOwnPropertyDescriptor(result, "diagnostics");
+  const descriptor = Object.getOwnPropertyDescriptor(AstView.prototype, "diagnostics");
 
   assert.equal(typeof descriptor.get, "function");
   assert.equal(descriptor.set, undefined);
-  assert.equal(descriptor.enumerable, true);
+  assert.equal(descriptor.enumerable, false);
   assert.equal(result.diagnostics.length, 1);
   const [error] = result.diagnostics;
   assert.equal(error.severity, "error");
@@ -229,7 +196,7 @@ test("parseSync exposes parser diagnostics lazily", () => {
   assert.equal(error.start, 6);
   assert.equal(error.end, 7);
   assert.deepEqual(error.labels, []);
-  assert.equal(result.diagnostics, result.diagnostics);
+  assert.deepEqual(result.diagnostics, result.diagnostics);
   assert.equal(result.program.type, "Program");
 });
 
@@ -237,7 +204,7 @@ test("parseSync returns an empty diagnostics array for valid input", () => {
   const result = parseSync("const answer = 42;");
 
   assert.deepEqual(result.diagnostics, []);
-  assert.equal(result.diagnostics, result.diagnostics);
+  assert.deepEqual(result.diagnostics, result.diagnostics);
 
   const empty = parseSync("");
   assert.deepEqual(empty.diagnostics, []);
@@ -252,7 +219,7 @@ test("parseSync makes semantic early-error checking optional", () => {
   assert.equal(checked.diagnostics.length, 1);
   assert.equal(checked.diagnostics[0].severity, "error");
   assert.equal(checked.program.body.length, 2);
-  assert.deepEqual(checked.program, parseSync(source).program);
+  assert.deepEqual(checked.materialize(), parseSync(source).materialize());
 
   const valid = parseSync("let value; { let value; }", { semanticErrors: true, errorRecovery: true });
   assert.deepEqual(valid.diagnostics, []);
@@ -270,9 +237,9 @@ test("semantic checking supports TypeScript through both parser entry points", (
   assert.deepEqual(parseSync(source, { ...options, semanticErrors: false }).diagnostics, []);
   assert.equal(checked.diagnostics.length, 1);
   assert.equal(checked.diagnostics[0].severity, "error");
-  assert.deepEqual(checked.program, parseSync(source, { lang: "ts" }).program);
+  assert.deepEqual(checked.materialize(), parseSync(source, { lang: "ts" }).materialize());
   assert.deepEqual(parseStandalone(source, options).diagnostics, checked.diagnostics);
-  assert.deepEqual(parseStandalone(source, options).program, checked.program);
+  assert.deepEqual(parseStandalone(source, options).materialize(), checked.materialize());
   assert.deepEqual(parseStandalone(source, { ...options, semanticErrors: false }).diagnostics, []);
 
   const valid = parseSync("interface Value {} interface Value {}", options);
@@ -370,23 +337,23 @@ test("parseSync decodes diagnostic arrays and optional metadata", () => {
 
 test("parseSync preserves source encoding at the API boundary", () => {
   const empty = parseSync("");
-  assert.deepEqual(empty.program.body, []);
+  assert.equal(empty.program.body.length, 0);
   assert.equal(empty.program.end, 0);
 
   const source = 'const 값 = "한글😀";';
   const result = parseSync(source);
   const standalone = parseStandalone(source);
-  assert.equal(typeof Object.getOwnPropertyDescriptor(result, "program").get, "function");
+  assert.equal(typeof Object.getOwnPropertyDescriptor(AstView.prototype, "program").get, "function");
   assert.equal(result.program.end, source.length);
-  assert.equal(result.program.body[0].declarations[0].init.value, "한글😀");
-  assert.deepEqual(standalone.program, result.program);
+  assert.equal(result.program.body.get(0).declarations.get(0).init.value, "한글😀");
+  assert.deepEqual(standalone.materialize(), result.materialize());
 
   const high = parseSync('"\ud800";');
-  assert.equal(high.program.body[0].expression.value, "\ud800");
+  assert.equal(high.program.body.get(0).expression.value, "\ufffd");
   assert.equal(high.program.end, 4);
 
   const low = parseSync('"\udc00";');
-  assert.equal(low.program.body[0].expression.value, "\udc00");
+  assert.equal(low.program.body.get(0).expression.value, "\ufffd");
   assert.equal(low.program.end, 4);
 
   assert.throws(() => parseSync(undefined), TypeError);

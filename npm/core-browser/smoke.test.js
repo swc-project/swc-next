@@ -21,8 +21,8 @@ test("browser exposes parsing and generation", async () => {
   });
   parseSync("const other = 0;");
   const { program } = result;
-  expect(program.body[0].declarations[0].id.name).toBe("value");
-  program.body[0].declarations[0].init.value = 2;
+  expect(program.body.get(0).declarations.get(0).id.name).toBe("value");
+  program.body.get(0).declarations.get(0).init.value = 2;
 
   expect(generateSync(program).code).toBe("const value = 2;\n");
 });

@@ -48,7 +48,7 @@ impl DeclarationSurface {
     ) {
         if let FormalParameterPatternData::BindingIdentifier(binding) =
             ast.formal_parameter_pattern_data(parameter.pattern(ast))
-            && let Some(annotation) = parameter.type_annotation(ast)
+            && let Some(annotation) = parameter.pattern(ast).type_annotation(ast)
             && let Some(symbol) = semantic.symbol_of(binding.node_id())
         {
             self.annotations.insert(

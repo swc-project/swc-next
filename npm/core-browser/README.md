@@ -9,7 +9,7 @@ import init, { parseSync, generateSync } from "@swc-next/core-browser";
 await init();
 
 const { program } = parseSync("const value = 1;");
-program.body[0].declarations[0].init.value = 2;
+program.body.get(0).declarations.get(0).init.value = 2;
 console.log(generateSync(program).code);
 ```
 

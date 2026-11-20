@@ -1,9 +1,6 @@
 use serde::Deserialize;
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{
-    Lang, Severity, SourceType,
-    ffi::ast::{buffer_size, serialize_into},
-};
+use swc_next_ecma_ast::{Lang, Severity, SourceType, ffi};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
@@ -89,7 +86,7 @@ struct GeneratorConfig {
 
 /// Run the playground pipeline. The result contains a little-endian AST byte
 /// length, the original parser AST and diagnostics padded to four bytes, and
-/// UTF-8 generated code. AST spans refer to the original source in UTF-16 units.
+/// UTF-8 generated code. AST spans refer to the original source in UTF-8 bytes.
 #[cfg_attr(target_family = "wasm", swc_next_bridge::bridge)]
 pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
     let options: Options = serde_json::from_str(&options).map_err(|error| error.to_string())?;
@@ -109,16 +106,13 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
     let has_errors = diagnostics
         .iter()
         .any(|item| item.severity == Severity::Error);
-    let ast_length = buffer_size(&ast, &diagnostics);
+    let ast_buffer =
+        ffi::serialize(unsafe { ast.ast() }, &diagnostics).map_err(|error| error.to_string())?;
+    let ast_length = ast_buffer.len();
     let aligned_length = (ast_length + 3) & !3;
     let mut result = vec![0; 4 + aligned_length];
     result[..4].copy_from_slice(&(ast_length as u32).to_le_bytes());
-    serialize_into(
-        &ast,
-        &diagnostics,
-        &mut result[4..4 + ast_length],
-        source.encode_utf16().count(),
-    );
+    result[4..4 + ast_length].copy_from_slice(&ast_buffer);
 
     if has_errors {
         return Ok(result);

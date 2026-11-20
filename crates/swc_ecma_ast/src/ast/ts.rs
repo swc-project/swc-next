@@ -228,6 +228,9 @@ pub struct TsFunction {
     /// true when preceded by the `declare` modifier. Distinguishes a real
     /// ambient declaration from a plain overload signature.
     declare: bool,
+    /// Whether this signature represents the function value of a class method.
+    #[estree(skip)]
+    is_method: bool,
 }
 
 /// A body-less TypeScript method, accessor, or constructor signature in a

@@ -31,14 +31,15 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build:js": "pnpm -w exec rslib build --lib core-browser",
+    "build:js": "pnpm --filter @swc-next/ast build && pnpm -w exec rslib build --lib core-browser",
     "build:browser": "cargo run --quiet --locked --manifest-path ../../Cargo.toml -p bridge_cli -- build core --output-dir dist",
     "test:browser": "pnpm build:js && rstest run --include smoke.test.js --browser --browser.headless",
     "prepack": "pnpm build:js",
     "prepare:browser": "node ../../scripts/wasm-package/cli.mjs prepare-browser"
   },
   "dependencies": {
-    "@swc-next/types": "workspace:*"
+    "@swc-next/types": "workspace:*",
+    "@swc-next/ast": "workspace:*"
   },
   "keywords": [
     "ast",

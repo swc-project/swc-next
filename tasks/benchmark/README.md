@@ -62,6 +62,41 @@ cargo test --locked -p benchmark --bench gungraun -- --test '*::transform::*'
 
 For the JavaScript N-API boundary, use [JavaScript API Gungraun](js/README.md).
 
+## JavaScript plugins
+
+Build the native core and JavaScript packages, then run the Criterion plugin
+benchmarks with Node.js 22 or later:
+
+```sh
+pnpm --filter @swc-next/core build --release
+pnpm build:js
+cargo bench -p benchmark --bench js-plugin
+```
+
+The plugins in `files/js-plugin/` process every JavaScript, JSX, TypeScript and
+TSX fixture in `files/` in a persistent Node process. Each iteration reports
+`parse` (Rust parse, AST encode, root/comments decode), `plugin` (JS walker and
+transform, including lazy field reads) and `print` (JS encode, unchecked Rust
+decode and print). `count-functions` is a read-only walker pass with no encode or
+print, so it has only `parse` and `plugin`.
+
+The worker warms the dataset once before timing (`JS_PLUGIN_WARMUP` overrides the
+count). Module loading, plugin construction, validation, context construction,
+IPC and the first cold pass are outside the phase clocks; `total` includes
+context construction and clock reads, so it can exceed the phase sum. The cold
+pass is reported separately as `coldPluginNs`. Timing uses the internal unchecked
+`generateSyncUnchecked`; AST legality checking belongs to the Rust checked
+path. Keep Node, fixtures and plugin sources identical across revisions;
+validation normalizes only RegExp flag order. `JS_PLUGIN_NODE`,
+`JS_PLUGIN_REPORT_DIR` and `JS_PLUGIN_ROOT` select the executable, report
+directory and runner checkout.
+
+Criterion uses 20 flat samples, 10 ms warmup and 200 ms measurement targets per
+phase; each invocation still runs the whole dataset. The usual `--warm-up-time`,
+`--measurement-time` and `--sample-size` flags override them. Node lowers
+feedback/Maglev/TurboFan/OSR thresholds so both revisions optimize early; reports
+record the flags in `nodeArgs`, and unsupported flags fall back to ordinary Node.
+
 ## Pipeline simulator
 
 ```sh

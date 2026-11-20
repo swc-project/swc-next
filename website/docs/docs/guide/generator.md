@@ -13,7 +13,7 @@ Use `generateSync` to turn a program AST back into source. Import it from `@swc-
 import { parseSync, generateSync } from "@swc-next/core";
 
 const { program } = parseSync("const answer = 1;");
-program.body[0].declarations[0].init.value = 42;
+program.body.get(0).declarations.get(0).init.value = 42;
 
 console.log(generateSync(program).code); // const answer = 42;
 ```

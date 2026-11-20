@@ -39,6 +39,8 @@ console.log(diagnostics);
 console.log(generateSync(program).code);
 ```
 
+`parseSync` returns editable views over a self-contained AST buffer. See [`@swc-next/ast`](packages/ast) for usage and constraints.
+
 ## Roadmap
 
 As a ground-up rewrite, SWC Next is being developed in a separate repository and published as separate packages. We are gradually bringing its capabilities in line with SWC, with the long-term goal of becoming SWC's next major version and merging back into the SWC repository.

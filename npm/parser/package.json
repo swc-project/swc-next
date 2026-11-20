@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:js": "pnpm -w exec rslib build --lib parser",
+    "build:js": "pnpm --filter @swc-next/ast build && pnpm -w exec rslib build --lib parser",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build parser --output-dir dist",
     "prepack": "pnpm build:js"
   },
@@ -62,7 +62,8 @@
     ]
   },
   "dependencies": {
-    "@swc-next/types": "workspace:*"
+    "@swc-next/types": "workspace:*",
+    "@swc-next/ast": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-parser",

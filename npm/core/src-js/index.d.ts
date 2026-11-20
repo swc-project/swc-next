@@ -1,9 +1,11 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 export * from "@swc-next/walker";
+export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast";
+export type { AstComment, AstDiagnostic, AstNode, AstNodeInput } from "@swc-next/ast";
+import type { AstView, AstNode } from "@swc-next/ast";
 
 import type {
-  Diagnostic,
   GeneratorConfig,
   GenerateOutput,
   ParserConfig,
@@ -30,27 +32,21 @@ export interface ParseApiOptions extends ParserConfig {
   errorRecovery?: boolean;
 }
 
-export interface Comment {
-  type: "Line" | "Block";
-  value: string;
-  start: number;
-  end: number;
-}
-
-export interface ParseResult {
-  readonly program: Program;
-  readonly comments: Comment[];
-  /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
-  readonly diagnostics: Diagnostic[];
-}
+export type ParseResult = AstView;
 
 export declare function parseSync(
   source: string,
   options?: ParseApiOptions | undefined | null,
-): ParseResult;
+): AstView;
+
+/** Serialize source, native AST and diagnostics into one self-contained AST buffer. */
+export declare function parseBufferSync(
+  source: string,
+  options?: Omit<ParseApiOptions, "errorRecovery"> | undefined | null,
+): Uint8Array;
 
 export declare function generateSync(
-  program: Program,
+  program: AstNode<Program>,
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;
 
@@ -65,3 +61,10 @@ export declare function transformSync(
   source: string,
   options?: TransformApiOptions | undefined | null,
 ): JsOutput;
+
+/** Generate a validated AST base/extension pair produced by AstView.encode(). */
+export declare function generateBuffersSync(
+  buffer: Uint8Array,
+  extension?: Uint8Array | null,
+  options?: GenerateApiOptions | undefined | null,
+): GenerateOutput;

@@ -3041,6 +3041,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else {
                 None
             };
+        id.set_type_annotation(&mut self.ast, type_annotation);
         let init = if self.eat(TokenTag::Assign)? {
             let expression =
                 self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
@@ -3085,13 +3086,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
             }
         }
-        Some(self.ast.variable_declarator(
-            Span::new(start, end),
-            id,
-            type_annotation,
-            init,
-            definite,
-        ))
+        Some(
+            self.ast
+                .variable_declarator(Span::new(start, end), id, init, definite),
+        )
     }
 
     fn parse_binding_pattern(&mut self) -> Option<BindingPattern> {
@@ -3305,6 +3303,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 generator,
                 opts.is_async,
                 opts.is_declare,
+                false,
             );
             Some(ParsedFunction::TsFunction(function))
         }
@@ -4006,6 +4005,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 modifiers.is_generator,
                 modifiers.is_async,
                 false,
+                true,
             );
             let method = self.ast.ts_method_definition(
                 method_span,
@@ -4339,6 +4339,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             type_annotation,
             initializer,
         } = self.parse_parameter_suffix::<IS_TYPESCRIPT>(cover_initializer)?;
+        pattern.set_type_annotation(&mut self.ast, type_annotation);
+        pattern.set_optional(&mut self.ast, optional);
         let end = self.lexer.state.prev_token_end;
         let parameter_decorators = if modifiers.present {
             SubRange::empty()
@@ -4354,9 +4356,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Span::new(parameter_start, end),
             parameter_decorators,
             pattern,
-            type_annotation,
             initializer,
-            optional,
         );
         if modifiers.present {
             let property = self.ast.ts_parameter_property(
@@ -4861,7 +4861,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, IdentifierRole::Binding);
-        let local = self.ast.binding_identifier(local_span, name);
+        let local = self.ast.binding_identifier(local_span, name, None, false);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
             imported,
@@ -5560,7 +5560,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_export_specifier(&mut self) -> Option<ExportSpecifier> {
         let start = self.current_token.start();
         let parts = self.parse_specifier_parts()?;
-        let local = parts.property_name.unwrap_or(parts.name);
+        // Local and exported names occupy separate tree positions, even when
+        // shorthand syntax gives them the same span and string handle.
+        let local = parts
+            .property_name
+            .unwrap_or_else(|| parts.name.clone_in(&mut self.ast));
         let exported = parts.name;
         Some(self.ast.export_specifier(
             Span::new(start, exported.span(&self.ast).end),
@@ -9303,11 +9307,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Catch);
         let start = self.current_token.start();
         self.advance()?;
-        let mut type_annotation = None;
         let param = if self.eat(TokenTag::LeftParen)? {
             let param = self.parse_binding_pattern()?;
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                type_annotation = self.parse_type_annotation()?.into();
+                let annotation = self.parse_type_annotation()?;
+                param.set_type_annotation(&mut self.ast, Some(annotation));
             }
             if !self.expect(
                 TokenTag::RightParen,
@@ -9321,12 +9325,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         let body = self.parse_block_statement()?;
-        Some(self.ast.catch_clause(
-            Span::new(start, body.span(&self.ast).end),
-            param,
-            type_annotation,
-            body,
-        ))
+        Some(
+            self.ast
+                .catch_clause(Span::new(start, body.span(&self.ast).end), param, body),
+        )
     }
 
     // Expression[In, Yield, Await] :
@@ -10812,15 +10814,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             None => (None, cover_initializer, false),
         };
+        pattern.set_type_annotation(&mut self.ast, type_annotation);
+        pattern.set_optional(&mut self.ast, optional);
         Some(FormalParameterItem::FormalParameter(
-            self.ast.formal_parameter(
-                span,
-                SubRange::empty(),
-                pattern,
-                type_annotation,
-                initializer,
-                optional,
-            ),
+            self.ast
+                .formal_parameter(span, SubRange::empty(), pattern, initializer),
         ))
     }
 
@@ -10849,9 +10847,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ))
             }
             ExprData::IdentifierReference(identifier) => {
-                let binding = self
-                    .ast
-                    .binding_identifier(identifier.span(&self.ast), identifier.name(&self.ast));
+                let binding = self.ast.binding_identifier(
+                    identifier.span(&self.ast),
+                    identifier.name(&self.ast),
+                    None,
+                    false,
+                );
 
                 Some(BindingPattern::BindingIdentifier(binding))
             }
@@ -10947,9 +10948,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let left =
                     self.assignment_target_to_pattern(assignment.left(&self.ast), context)?;
                 let right = assignment.right(&self.ast);
-                let pattern = self
-                    .ast
-                    .assignment_pattern(assignment.span(&self.ast), left, right);
+                let pattern =
+                    self.ast
+                        .assignment_pattern(assignment.span(&self.ast), left, right, None);
 
                 Some(BindingPattern::AssignmentPattern(pattern))
             }
@@ -11101,9 +11102,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let rest_element = self
-                            .ast
-                            .binding_rest_element(spread.span(&self.ast), argument);
+                        let rest_element =
+                            self.ast
+                                .binding_rest_element(spread.span(&self.ast), argument, None);
 
                         if index + 1 == source_elements_len {
                             rest = Some(rest_element);
@@ -11119,7 +11120,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         (*node != none)
                             .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
                     }));
-            Some(self.ast.array_pattern(span, elements, rest))
+            Some(self.ast.array_pattern(span, elements, rest, None, false))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11257,16 +11258,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary = self
-                            .ast
-                            .binding_rest_element(spread.span(&self.ast), argument);
+                        let temporary =
+                            self.ast
+                                .binding_rest_element(spread.span(&self.ast), argument, None);
                         rest = Some(temporary);
                         break;
                     }
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            Some(self.ast.object_pattern(span, properties, rest))
+            Some(self.ast.object_pattern(span, properties, rest, None, false))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11288,6 +11289,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         let binding = self.ast.binding_identifier(
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
+                            None,
+                            false,
                         );
 
                         Some(BindingPattern::BindingIdentifier(binding))
@@ -11363,6 +11366,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         assignment.span(&self.ast),
                         left,
                         assignment.right(&self.ast),
+                        assignment.type_annotation(&self.ast),
                     ),
                 ))
             }
@@ -11370,8 +11374,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let argument =
                     self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
                 Some(BindingPattern::BindingRestElement(
-                    self.ast
-                        .binding_rest_element(rest.span(&self.ast), argument),
+                    self.ast.binding_rest_element(
+                        rest.span(&self.ast),
+                        argument,
+                        rest.type_annotation(&self.ast),
+                    ),
                 ))
             }
             BindingPatternData::ArrayPattern(array) => {
@@ -11390,10 +11397,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let rest = if let Some(rest) = array.rest(&self.ast) {
                         let argument =
                             self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                        Some(
-                            self.ast
-                                .binding_rest_element(rest.span(&self.ast), argument),
-                        )
+                        Some(self.ast.binding_rest_element(
+                            rest.span(&self.ast),
+                            argument,
+                            rest.type_annotation(&self.ast),
+                        ))
                     } else {
                         None
                     };
@@ -11410,6 +11418,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         array.span(&self.ast),
                         elements,
                         rest,
+                        array.type_annotation(&self.ast),
+                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -11435,10 +11445,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let rest = if let Some(rest) = object.rest(&self.ast) {
                         let argument =
                             self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                        Some(
-                            self.ast
-                                .binding_rest_element(rest.span(&self.ast), argument),
-                        )
+                        Some(self.ast.binding_rest_element(
+                            rest.span(&self.ast),
+                            argument,
+                            rest.type_annotation(&self.ast),
+                        ))
                     } else {
                         None
                     };
@@ -11447,6 +11458,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         object.span(&self.ast),
                         properties,
                         rest,
+                        object.type_annotation(&self.ast),
+                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -14190,7 +14203,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<BindingIdentifier> {
         let token = self.consume_identifier(role)?;
         let name = self.identifier_name(token);
-        Some(self.ast.binding_identifier(token.span(), name))
+        Some(self.ast.binding_identifier(token.span(), name, None, false))
     }
 
     fn parse_label_identifier(&mut self) -> Option<LabelIdentifier> {
@@ -15996,6 +16009,7 @@ mod tests {
                 errors,
                 text(declarator.id(ast).span(ast)),
                 declarator
+                    .id(ast)
                     .type_annotation(ast)
                     .map(|annotation| text(annotation.span(ast))),
                 declarator.init(ast).map(|init| text(init.span(ast))),
@@ -16665,7 +16679,7 @@ mod tests {
             assert!(variable.declare(&ast));
             assert_eq!(variable.declarators(&ast).len(), 1);
             let declarator = variable.declarators(&ast).get_node(&ast, 0).unwrap();
-            assert!(declarator.type_annotation(&ast).is_some());
+            assert!(declarator.id(&ast).type_annotation(&ast).is_some());
             assert!(declarator.init(&ast).is_none());
             let binding = declarator.id(&ast);
             let name = if let Some(identifier) = binding.as_binding_identifier(&ast) {
@@ -17358,10 +17372,7 @@ mod tests {
     }
 
     fn serialize_ast(ast: &AstCtx<'_>) -> Vec<u8> {
-        use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
-        let mut buffer = vec![0; buffer_size(ast, &[])];
-        serialize_into(ast, &[], &mut buffer, ast.source().encode_utf16().count());
-        buffer
+        swc_next_ecma_ast::ffi::serialize(unsafe { ast.ast() }, &[]).unwrap()
     }
 
     #[test]
@@ -20706,6 +20717,69 @@ mod tests {
 
         let has_errors = errors("type A = typeof import(\"x\").A;");
         assert!(!has_errors);
+    }
+
+    #[test]
+    fn module_specifiers() {
+        fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
+            let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            take_ast(parsed.ast)
+        }
+
+        fn export_specifier(ast: &Ast<'_>) -> ExportSpecifier {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_export_named_declaration(ast)
+                .unwrap()
+                .specifiers(ast)
+                .get_node(ast, 0)
+                .unwrap()
+        }
+
+        let javascript = Options::default();
+        let typescript = Options {
+            lang: Lang::Ts,
+            ..javascript
+        };
+        for options in [javascript, typescript] {
+            let allocator = Allocator::new();
+            let ast = parse(&allocator, "export { name } from 'mod';", options);
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast);
+            let exported = specifier.exported(&ast);
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(local.span(&ast), exported.span(&ast));
+            assert_eq!(
+                local.as_identifier_name(&ast).unwrap().name(&ast),
+                exported.as_identifier_name(&ast).unwrap().name(&ast)
+            );
+
+            let ast = parse(&allocator, "export { 'name' } from 'mod';", options);
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast);
+            let exported = specifier.exported(&ast);
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(local.span(&ast), exported.span(&ast));
+            assert_eq!(
+                local.as_string_literal(&ast).unwrap().value(&ast),
+                exported.as_string_literal(&ast).unwrap().value(&ast)
+            );
+
+            let ast = parse(
+                &allocator,
+                "export { name as renamed } from 'mod';",
+                options,
+            );
+            let specifier = export_specifier(&ast);
+            let local = specifier.local(&ast).as_identifier_name(&ast).unwrap();
+            let exported = specifier.exported(&ast).as_identifier_name(&ast).unwrap();
+            assert_ne!(local.node_id(), exported.node_id());
+            assert_eq!(ast.get_utf8(local.name(&ast)), "name");
+            assert_eq!(ast.get_utf8(exported.name(&ast)), "renamed");
+        }
     }
 
     #[test]
