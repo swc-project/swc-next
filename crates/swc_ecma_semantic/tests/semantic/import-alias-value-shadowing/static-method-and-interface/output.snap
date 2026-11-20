@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+class C {
+  static ["x"]() {
+    return "x";
+  }
+}
+
+namespace C {
+  export interface x {}
+  export interface y {}
+}
+
+function A() {
+  return 1;
+}
+
+function B() {
+  return 2;
+}
+
+namespace N {
+  import A = C.x;
+  import B = C.y;
+  console.log(A(), B());
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..254","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"C","flags":"CLASS | NAMESPACE_MODULE","declarations":[{"span":"6..7","scope":1,"flags":"CLASS"},{"span":"62..63","scope":1,"flags":"NAMESPACE_MODULE"}],"bindings":[1],"uses":[0,1],"members":{"x":{"symbol":2,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]},"y":{"symbol":3,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"x","flags":"INTERFACE | EXPORTED","declarations":[{"span":"85..86","scope":4}],"bindings":[],"uses":[]},
+    {"id":3,"name":"y","flags":"INTERFACE | EXPORTED","declarations":[{"span":"109..110","scope":4}],"bindings":[],"uses":[]},
+    {"id":4,"name":"A","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"126..127","scope":1}],"bindings":[1],"uses":[]},
+    {"id":5,"name":"B","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"156..157","scope":1}],"bindings":[1],"uses":[4]},
+    {"id":6,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"187..188","scope":1}],"bindings":[1],"uses":[],"members":{}},
+    {"id":7,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"200..201","scope":9}],"bindings":[9],"uses":[3],"import":{"target":null,"initializers":[0]}},
+    {"id":8,"name":"B","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"218..219","scope":9}],"bindings":[9],"uses":[],"import":{"target":3,"initializers":[1]}}
+  ],
+  "references": [
+    {"id":0,"name":"C","span":"204..205","scope":9,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"C","span":"222..223","scope":9,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":2,"name":"console","span":"229..236","scope":9,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":3,"name":"A","span":"241..242","scope":9,"space":"Value","access":"Read","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[{"Resolved":7}]},
+    {"id":4,"name":"B","span":"246..247","scope":9,"space":"Value","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..254","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..254","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4,5,6],"flags":["Strict"]},
+    {"id":2,"span":"0..50","kind":"Class","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"24..48","kind":"Function","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":4,"span":"64..115","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":5,"span":"75..89","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"99..113","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"117..145","kind":"Function","parent":1,"hoist_target":7,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":8,"span":"147..175","kind":"Function","parent":1,"hoist_target":8,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":9,"span":"189..253","kind":"TsModule","parent":1,"hoist_target":9,"bindings":[7,8],"flags":["Strict"],"container_owner":6}
+  ]
+}

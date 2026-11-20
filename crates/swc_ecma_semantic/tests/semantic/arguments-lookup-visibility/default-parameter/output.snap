@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+var arguments;
+function f(x = arguments) {
+  return arguments;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"4..13","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"24..25","scope":0}],"bindings":[0],"uses":[]},
+    {"id":2,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"26..27","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"30..39","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"arguments","span":"52..61","scope":2,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..65","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"15..64","kind":"Function","parent":0,"hoist_target":1,"bindings":[2],"function_body":2,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"41..64","kind":"FunctionBody","parent":1,"hoist_target":2,"bindings":[]}
+  ]
+}

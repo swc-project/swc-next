@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import A = Unknown.Member;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..27","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"7..8","scope":1}],"bindings":[1],"uses":[],"import":{"target":null,"initializers":[0]}}
+  ],
+  "references": [
+    {"id":0,"name":"Unknown","span":"11..18","scope":1,"space":"Namespace","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[],"import_equals":true}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..27","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..27","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]}
+  ]
+}

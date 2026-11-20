@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare global {
+  class X {}
+}
+export { X as Y };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..51","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"X":{"symbol":null,"value_symbols":[]},"Y":{"symbol":null,"value_symbols":[{"Resolved":2}]}},"export_aliases":true},
+    {"id":1,"name":"global","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"8..14","scope":0}],"bindings":[],"uses":[],"members":{"X":{"symbol":2,"namespace_flags":"CLASS | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"X","flags":"CLASS | AMBIENT | EXPORTED","declarations":[{"span":"25..26","scope":2}],"bindings":[0],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"41..42","scope":1,"space":"Any","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..51","kind":"Global","parent":null,"hoist_target":0,"bindings":[2]},
+    {"id":1,"span":"0..51","kind":"Module","parent":0,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"15..31","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"19..29","kind":"Class","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+declare function f(): typeof arguments;
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"14..23","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | AMBIENT","declarations":[{"span":"59..60","scope":0}],"bindings":[0],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"71..80","scope":2,"space":"Typeof","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..82","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"42..81","kind":"Function","parent":0,"hoist_target":1,"bindings":[],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"62..80","kind":"TsSignatureReturn","parent":1,"hoist_target":1,"bindings":[]}
+  ]
+}

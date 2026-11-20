@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function read() {
+  await value;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Diagnostics ----------
+{"parser":1,"semantic":1}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"read","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..13","scope":0}],"bindings":[0],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"26..31","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..35","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..34","kind":"Function","parent":0,"hoist_target":1,"bindings":[],"flags":["ArgumentsBarrier"]}
+  ]
+}

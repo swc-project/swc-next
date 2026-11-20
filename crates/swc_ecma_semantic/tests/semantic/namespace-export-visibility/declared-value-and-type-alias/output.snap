@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace N {
+  interface Local {
+    inner: true;
+  }
+  export { Local as Item };
+  export const Item: 0;
+}
+namespace N {
+  export const result = Item;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..174","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"29..30","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"},{"span":"138..139","scope":1}],"bindings":[1],"uses":[],"members":{"Item":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":3}]},"Local":{"symbol":null,"value_symbols":[]},"result":{"symbol":4,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":4}]}},"export_aliases":true},
+    {"id":2,"name":"Local","flags":"INTERFACE | AMBIENT","declarations":[{"span":"45..50","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":3,"name":"Item","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"117..121","scope":2}],"bindings":[],"uses":[1]},
+    {"id":4,"name":"result","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"157..163","scope":4}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Local","span":"85..90","scope":2,"space":"Any","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":1,"name":"Item","span":"166..170","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..174","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..174","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"31..127","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[2],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"35..73","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"140..173","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

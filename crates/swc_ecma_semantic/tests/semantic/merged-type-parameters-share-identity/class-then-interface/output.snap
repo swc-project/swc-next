@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+class Box<T> {
+  value!: T;
+}
+interface Box<T> {
+  extra: T;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..63","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Box","flags":"CLASS | INTERFACE","declarations":[{"span":"6..9","scope":1,"flags":"CLASS"},{"span":"40..43","scope":1,"flags":"INTERFACE"}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"10..11","scope":2},{"span":"44..45","scope":4}],"bindings":[2,4],"uses":[0,1]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"25..26","scope":2,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":1,"name":"T","span":"58..59","scope":4,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..63","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..63","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..29","kind":"Class","parent":1,"hoist_target":1,"bindings":[2],"flags":["Strict"]},
+    {"id":3,"span":"9..12","kind":"TsTypeParameters","parent":2,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"30..62","kind":"Block","parent":1,"hoist_target":1,"bindings":[2],"flags":["Strict"]},
+    {"id":5,"span":"43..46","kind":"TsTypeParameters","parent":4,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

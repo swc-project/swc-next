@@ -1,0 +1,55 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+class C {
+  static x = 1;
+}
+declare namespace C {
+  export namespace Y {
+    interface T {
+      t: true;
+    }
+  }
+  interface Original {
+    own: true;
+  }
+  export { Original as Y };
+  export { Y as x };
+}
+import Alias = C.x;
+const value: number = Alias;
+const typed: Alias = { own: true };
+const nested: Alias.T = { t: true };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..342","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"C","flags":"CLASS | NAMESPACE_MODULE","declarations":[{"span":"17..18","scope":1,"flags":"CLASS"},{"span":"57..58","scope":1,"flags":"NAMESPACE_MODULE | AMBIENT"}],"bindings":[1],"uses":[2],"members":{"Original":{"symbol":null,"value_symbols":[]},"Y":{"symbol":2,"namespace_flags":"NAMESPACE_MODULE | AMBIENT | EXPORTED","value_symbols":[]},"x":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":2,"name":"Y","flags":"NAMESPACE_MODULE | AMBIENT | EXPORTED","declarations":[{"span":"80..81","scope":3}],"bindings":[],"uses":[1],"members":{"T":{"symbol":3,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]}}},
+    {"id":3,"name":"T","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"98..99","scope":4}],"bindings":[],"uses":[]},
+    {"id":4,"name":"Original","flags":"INTERFACE | AMBIENT","declarations":[{"span":"139..147","scope":3}],"bindings":[3],"uses":[0]},
+    {"id":5,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"227..232","scope":1}],"bindings":[1],"uses":[3,4,5],"import":{"target":null,"initializers":[2]}},
+    {"id":6,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"246..251","scope":1}],"bindings":[1],"uses":[]},
+    {"id":7,"name":"typed","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"275..280","scope":1}],"bindings":[1],"uses":[]},
+    {"id":8,"name":"nested","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"311..317","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Original","span":"180..188","scope":3,"space":"Any","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]},
+    {"id":1,"name":"Y","span":"208..209","scope":3,"space":"Any","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":2,"name":"C","span":"235..236","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":3,"name":"Alias","span":"262..267","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]},
+    {"id":4,"name":"Alias","span":"282..287","scope":1,"space":"Type","access":"None","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]},
+    {"id":5,"name":"Alias","span":"319..324","scope":1,"space":"Namespace","access":"None","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..342","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..342","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,5,6,7,8],"flags":["Strict"]},
+    {"id":2,"span":"11..38","kind":"Class","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"59..219","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[4],"flags":["Strict"],"container_owner":1},
+    {"id":4,"span":"82..126","kind":"TsModule","parent":3,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":5,"span":"88..122","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"129..168","kind":"Block","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]}
+  ]
+}

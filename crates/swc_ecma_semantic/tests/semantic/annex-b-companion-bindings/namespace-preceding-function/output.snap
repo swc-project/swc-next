@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export function f(value) {}
+  if (condition)
+    function f() {
+      return f;
+    }
+  f;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":0}],"bindings":[0],"uses":[],"members":{"f":{"symbol":1,"namespace_flags":"FUNCTION_SCOPED_VAR | FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":1}]}}},
+    {"id":1,"name":"f","flags":"FUNCTION_SCOPED_VAR | FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION","declarations":[{"span":"32..33","scope":1,"flags":"FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION"},{"span":"74..75","scope":1,"flags":"FUNCTION_SCOPED_VAR","node_symbol":3}],"bindings":[],"uses":[2],"linked_symbols":[3]},
+    {"id":2,"name":"value","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"34..39","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"74..75","scope":4}],"bindings":[4],"uses":[1],"linked_symbols":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"50..59","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"93..94","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]},
+    {"id":2,"name":"f","span":"104..105","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..109","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"12..108","kind":"TsModule","parent":0,"hoist_target":1,"bindings":[],"container_owner":0},
+    {"id":2,"span":"23..43","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["ArgumentsBarrier"]},
+    {"id":3,"span":"33..40","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[]},
+    {"id":4,"span":"65..101","kind":"Function","parent":1,"hoist_target":4,"bindings":[3],"flags":["ArgumentsBarrier"]}
+  ]
+}

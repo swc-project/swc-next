@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type U = number;
+type R<T> = T extends [infer U, U] ? U : U;
+const ok: R<[string, number]> = "ok";
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..110","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"U","flags":"TYPE_ALIAS","declarations":[{"span":"16..17","scope":1}],"bindings":[1],"uses":[1,3]},
+    {"id":2,"name":"R","flags":"TYPE_ALIAS","declarations":[{"span":"33..34","scope":1}],"bindings":[1],"uses":[4]},
+    {"id":3,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"35..36","scope":3}],"bindings":[3],"uses":[0]},
+    {"id":4,"name":"U","flags":"TYPE_PARAMETER","declarations":[{"span":"57..58","scope":5}],"bindings":[5,7],"uses":[2]},
+    {"id":5,"name":"ok","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"78..80","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"40..41","scope":3,"space":"Type","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[]},
+    {"id":1,"name":"U","span":"60..61","scope":6,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":2,"name":"U","span":"65..66","scope":5,"space":"Type","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]},
+    {"id":3,"name":"U","span":"69..70","scope":3,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":4,"name":"R","span":"82..83","scope":1,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..110","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..110","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,5],"flags":["Strict"]},
+    {"id":2,"span":"11..27","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"28..71","kind":"Block","parent":1,"hoist_target":1,"bindings":[3],"flags":["Strict"]},
+    {"id":4,"span":"34..37","kind":"TsTypeParameters","parent":3,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"40..70","kind":"Block","parent":3,"hoist_target":1,"bindings":[4],"flags":["Strict"]},
+    {"id":6,"span":"50..62","kind":"TsConditionalExtends","parent":5,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"57..58","kind":"TsInferConstraint","parent":6,"hoist_target":1,"bindings":[4],"flags":["Strict"]}
+  ]
+}

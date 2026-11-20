@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace Root {
+  export function child() {}
+  export namespace child {
+    export interface Marker {}
+  }
+}
+Root.child.value = 1;
+import Alias = Root.child.value;
+type T = Alias;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..181","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Root","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..14","scope":1}],"bindings":[1],"uses":[0,1],"members":{"child":{"symbol":2,"namespace_flags":"FUNCTION | NAMESPACE_MODULE | EXPORTED | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"child","flags":"FUNCTION | NAMESPACE_MODULE | EXPORTED | FUNCTION_IMPLEMENTATION","declarations":[{"span":"35..40","scope":2,"flags":"FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION"},{"span":"65..70","scope":2,"flags":"NAMESPACE_MODULE | EXPORTED"}],"bindings":[],"uses":[],"members":{"Marker":{"symbol":3,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":3,"name":"Marker","flags":"INTERFACE | EXPORTED","declarations":[{"span":"94..100","scope":4}],"bindings":[],"uses":[]},
+    {"id":4,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"139..144","scope":1}],"bindings":[1],"uses":[2],"import":{"target":null,"initializers":[1]}},
+    {"id":5,"name":"T","flags":"TYPE_ALIAS","declarations":[{"span":"170..171","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Root","span":"110..114","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":1,"name":"Root","span":"147..151","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":2,"name":"Alias","span":"174..179","scope":6,"space":"Type","access":"None","resolution":{"Uncertain":{"candidate":4}},"candidates":[4],"value_symbols":[{"Uncertain":{"candidate":4}}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..181","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..181","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4,5],"flags":["Strict"]},
+    {"id":2,"span":"15..109","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"26..45","kind":"Function","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":4,"span":"71..107","kind":"TsModule","parent":2,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":5,"span":"84..103","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"165..180","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

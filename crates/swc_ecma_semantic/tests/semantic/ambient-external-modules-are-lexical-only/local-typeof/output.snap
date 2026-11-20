@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare module "foo" {
+  const x: number;
+  const y: typeof x;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..65","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"31..32","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":2,"name":"y","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"50..51","scope":2}],"bindings":[2],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"x","span":"60..61","scope":2,"space":"Typeof","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..65","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..65","kind":"Module","parent":0,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"21..64","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[1,2],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const result = <const>1;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..25","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"result","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..12","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..25","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..25","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]}
+  ]
+}

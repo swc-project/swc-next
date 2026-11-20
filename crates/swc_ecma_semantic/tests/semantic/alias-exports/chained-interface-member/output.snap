@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export interface T {}
+  export import B = N.T;
+}
+import A = N.B;
+export { A };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..95","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"A":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[0,1],"members":{"B":{"symbol":3,"namespace_flags":"IMPORT | EXPORTED | IMPORT_EQUALS","value_symbols":[]},"T":{"symbol":2,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"T","flags":"INTERFACE | EXPORTED","declarations":[{"span":"33..34","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"B","flags":"IMPORT | EXPORTED | IMPORT_EQUALS","declarations":[{"span":"54..55","scope":2}],"bindings":[],"uses":[],"import":{"target":2,"initializers":[0]}},
+    {"id":4,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"72..73","scope":1}],"bindings":[1],"uses":[2],"import":{"target":2,"initializers":[1]}}
+  ],
+  "references": [
+    {"id":0,"name":"N","span":"58..59","scope":2,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"N","span":"76..77","scope":1,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":2,"name":"A","span":"90..91","scope":1,"space":"Any","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..95","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..95","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4],"flags":["Strict"]},
+    {"id":2,"span":"12..64","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"23..37","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

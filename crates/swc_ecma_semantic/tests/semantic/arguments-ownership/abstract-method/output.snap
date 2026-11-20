@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+declare abstract class C {
+  abstract f(): typeof arguments;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"14..23","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"C","flags":"CLASS | AMBIENT","declarations":[{"span":"65..66","scope":0}],"bindings":[0],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"92..101","scope":3,"space":"Typeof","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..105","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"42..104","kind":"Class","parent":0,"hoist_target":0,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"81..102","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"83..101","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

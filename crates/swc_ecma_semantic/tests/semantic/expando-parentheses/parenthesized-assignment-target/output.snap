@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+type Alias = number;
+function Root() {}
+namespace Root {
+  export function child() {}
+  export namespace child {
+    export interface Marker {}
+  }
+}
+((Root).child.value) = 1;
+namespace Use {
+  import Alias = Root.child.value;
+  export type T = Alias;
+  export const result = Alias;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..285","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Alias","flags":"TYPE_ALIAS","declarations":[{"span":"5..10","scope":1}],"bindings":[1],"uses":[2]},
+    {"id":2,"name":"Root","flags":"FUNCTION | VALUE_MODULE | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION","declarations":[{"span":"30..34","scope":1,"flags":"FUNCTION | FUNCTION_IMPLEMENTATION"},{"span":"50..54","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE"}],"bindings":[1],"uses":[0,1],"members":{"child":{"symbol":3,"namespace_flags":"FUNCTION | NAMESPACE_MODULE | EXPORTED | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":3}]}}},
+    {"id":3,"name":"child","flags":"FUNCTION | NAMESPACE_MODULE | EXPORTED | FUNCTION_IMPLEMENTATION","declarations":[{"span":"75..80","scope":4,"flags":"FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION"},{"span":"105..110","scope":4,"flags":"NAMESPACE_MODULE | EXPORTED"}],"bindings":[],"uses":[],"members":{"Marker":{"symbol":4,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":4,"name":"Marker","flags":"INTERFACE | EXPORTED","declarations":[{"span":"134..140","scope":6}],"bindings":[],"uses":[]},
+    {"id":5,"name":"Use","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"186..189","scope":1}],"bindings":[1],"uses":[],"members":{"T":{"symbol":7,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]},"result":{"symbol":8,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":8}]}}},
+    {"id":6,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"201..206","scope":8}],"bindings":[8],"uses":[3],"import":{"target":null,"initializers":[1]}},
+    {"id":7,"name":"T","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"241..242","scope":8}],"bindings":[],"uses":[]},
+    {"id":8,"name":"result","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"267..273","scope":8}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Root","span":"152..156","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":1,"name":"Root","span":"209..213","scope":8,"space":"Namespace","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}],"import_equals":true},
+    {"id":2,"name":"Alias","span":"245..250","scope":9,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":3,"name":"Alias","span":"276..281","scope":8,"space":"Value","access":"Read","resolution":{"Resolved":6},"candidates":[6],"value_symbols":[{"Resolved":6}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..285","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..285","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,5],"flags":["Strict"]},
+    {"id":2,"span":"0..20","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"21..39","kind":"Function","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":4,"span":"55..149","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":5,"span":"66..85","kind":"Function","parent":4,"hoist_target":5,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":6,"span":"111..147","kind":"TsModule","parent":4,"hoist_target":6,"bindings":[],"flags":["Strict"],"container_owner":3},
+    {"id":7,"span":"124..143","kind":"Block","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]},
+    {"id":8,"span":"190..284","kind":"TsModule","parent":1,"hoist_target":8,"bindings":[6],"flags":["Strict"],"container_owner":5},
+    {"id":9,"span":"236..251","kind":"Block","parent":8,"hoist_target":8,"bindings":[],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+type Alias = number;
+function F() {}
+namespace F {
+  export interface Marker {}
+}
+(F.value) = 1;
+namespace Use {
+  import Alias = F.value;
+  export type T = Alias;
+  export const result = Alias;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..197","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Alias","flags":"TYPE_ALIAS","declarations":[{"span":"5..10","scope":1}],"bindings":[1],"uses":[2]},
+    {"id":2,"name":"F","flags":"FUNCTION | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION","declarations":[{"span":"30..31","scope":1,"flags":"FUNCTION | FUNCTION_IMPLEMENTATION"},{"span":"47..48","scope":1,"flags":"NAMESPACE_MODULE"}],"bindings":[1],"uses":[0,1],"members":{"Marker":{"symbol":3,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":3,"name":"Marker","flags":"INTERFACE | EXPORTED","declarations":[{"span":"70..76","scope":4}],"bindings":[],"uses":[]},
+    {"id":4,"name":"Use","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"107..110","scope":1}],"bindings":[1],"uses":[],"members":{"T":{"symbol":6,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]},"result":{"symbol":7,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":7}]}}},
+    {"id":5,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"122..127","scope":6}],"bindings":[6],"uses":[3],"import":{"target":null,"initializers":[1]}},
+    {"id":6,"name":"T","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"153..154","scope":6}],"bindings":[],"uses":[]},
+    {"id":7,"name":"result","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"179..185","scope":6}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"F","span":"83..84","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":1,"name":"F","span":"130..131","scope":6,"space":"Namespace","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}],"import_equals":true},
+    {"id":2,"name":"Alias","span":"157..162","scope":7,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":3,"name":"Alias","span":"188..193","scope":6,"space":"Value","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..197","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..197","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,4],"flags":["Strict"]},
+    {"id":2,"span":"0..20","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"21..36","kind":"Function","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":4,"span":"49..81","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":5,"span":"60..79","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"111..196","kind":"TsModule","parent":1,"hoist_target":6,"bindings":[5],"flags":["Strict"],"container_owner":4},
+    {"id":7,"span":"148..163","kind":"Block","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]}
+  ]
+}

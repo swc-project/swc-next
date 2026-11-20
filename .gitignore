@@ -3,6 +3,7 @@
 callgrind*
 input.*
 !crates/swc_ecma_minifier/tests/fixtures/**/input.js
+!/crates/swc_ecma_semantic/tests/semantic/**/input.*
 !/crates/swc_formatter/tests/**/input.*
 !/crates/swc_ecma_transformer/tests/compile/**/input.*
 profile.json

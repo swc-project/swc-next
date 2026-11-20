@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export const X = 1;
+  interface X {
+    local: true;
+  }
+  type T = X;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..89","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[],"members":{"X":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"X","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"29..30","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"X","flags":"INTERFACE","declarations":[{"span":"48..49","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":4,"name":"T","flags":"TYPE_ALIAS","declarations":[{"span":"80..81","scope":2}],"bindings":[2],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"84..85","scope":4,"space":"Type","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..89","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..89","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"12..88","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[3,4],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"38..72","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"75..86","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

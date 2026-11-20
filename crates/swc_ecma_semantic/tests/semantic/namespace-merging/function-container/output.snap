@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function F() {}
+namespace F {
+  export const x = 1;
+}
+namespace F {
+  export const y = x;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..92","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"F","flags":"FUNCTION | VALUE_MODULE | NAMESPACE_MODULE | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..10","scope":1,"flags":"FUNCTION | FUNCTION_IMPLEMENTATION"},{"span":"26..27","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE"},{"span":"64..65","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE"}],"bindings":[1],"uses":[],"members":{"x":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":2}]},"y":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":2,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"45..46","scope":3}],"bindings":[],"uses":[0]},
+    {"id":3,"name":"y","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"83..84","scope":4}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"x","span":"87..88","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..92","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..92","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..15","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"28..53","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":4,"span":"66..91","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

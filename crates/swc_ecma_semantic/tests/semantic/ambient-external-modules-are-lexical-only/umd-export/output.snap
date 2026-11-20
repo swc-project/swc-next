@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare module "foo" {
+  export as namespace Umd;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..52","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..52","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..52","kind":"Module","parent":0,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"21..51","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

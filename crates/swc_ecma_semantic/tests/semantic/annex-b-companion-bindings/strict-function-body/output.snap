@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+if (condition)
+  function f() {
+    "use strict";
+    return f;
+  }
+f;
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"26..27","scope":1}],"bindings":[1],"uses":[1],"linked_symbols":[1]},
+    {"id":1,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"26..27","scope":0,"node_symbol":0}],"bindings":[0],"uses":[2],"linked_symbols":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"4..13","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"61..62","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]},
+    {"id":2,"name":"f","span":"68..69","scope":0,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..71","kind":"Global","parent":null,"hoist_target":0,"bindings":[1]},
+    {"id":1,"span":"17..67","kind":"Function","parent":0,"hoist_target":1,"bindings":[0],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

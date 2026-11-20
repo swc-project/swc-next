@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  const x: number;
+}
+declare namespace N {
+  const y: typeof x;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..88","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"18..19","scope":1},{"span":"61..62","scope":1}],"bindings":[1],"uses":[],"members":{"x":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]},"y":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":2,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"30..31","scope":2}],"bindings":[],"uses":[0]},
+    {"id":3,"name":"y","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"73..74","scope":3}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"x","span":"83..84","scope":3,"space":"Typeof","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..88","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..88","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"20..42","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"63..87","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

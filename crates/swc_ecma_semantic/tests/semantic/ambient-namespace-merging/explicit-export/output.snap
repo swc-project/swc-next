@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  const hidden: number;
+  export const shown: number;
+}
+declare namespace N {
+  const use: typeof hidden;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..130","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"18..19","scope":1},{"span":"96..97","scope":1}],"bindings":[1],"uses":[],"members":{"hidden":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]},"shown":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":3}]},"use":{"symbol":4,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":4}]}}},
+    {"id":2,"name":"hidden","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"30..36","scope":2}],"bindings":[],"uses":[0]},
+    {"id":3,"name":"shown","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"61..66","scope":2}],"bindings":[],"uses":[]},
+    {"id":4,"name":"use","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"108..111","scope":3}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"hidden","span":"120..126","scope":3,"space":"Typeof","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..130","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..130","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"20..77","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"98..129","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

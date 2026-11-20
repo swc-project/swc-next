@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface X {}
+export const X = 1;
+export { X as Y };
+---------- Options ----------
+[{},{"preserveParens":false}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..54","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"X":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":2}]},"Y":{"symbol":null,"value_symbols":[{"Resolved":2}]}},"export_aliases":true},
+    {"id":1,"name":"X","flags":"INTERFACE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"X","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"28..29","scope":1}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"44..45","scope":1,"space":"Any","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..54","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..54","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..14","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

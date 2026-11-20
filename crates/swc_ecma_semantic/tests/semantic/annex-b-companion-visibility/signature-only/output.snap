@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+{
+  function f(): void;
+}
+f;
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION | AMBIENT","declarations":[{"span":"13..14","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"26..27","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..29","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..25","kind":"Block","parent":0,"hoist_target":0,"bindings":[0]},
+    {"id":2,"span":"4..23","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["ArgumentsBarrier"]},
+    {"id":3,"span":"16..22","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[]}
+  ]
+}

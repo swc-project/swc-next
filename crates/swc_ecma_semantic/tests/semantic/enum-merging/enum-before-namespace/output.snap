@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  A = 1,
+}
+namespace E {
+  export const B = A;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..58","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"E","flags":"REGULAR_ENUM | VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"5..6","scope":1,"flags":"REGULAR_ENUM"},{"span":"30..31","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE"}],"bindings":[1],"uses":[],"members":{"A":{"symbol":2,"enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":2}]},"B":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":2,"name":"A","flags":"ENUM_MEMBER","declarations":[{"span":"11..16","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"B","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"49..50","scope":3}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"A","span":"53..54","scope":3,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..58","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..58","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"7..19","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"32..57","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

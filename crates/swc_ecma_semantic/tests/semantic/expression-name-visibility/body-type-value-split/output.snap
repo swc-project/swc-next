@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface Type {}
+function check() {
+  var Type;
+  let value: Type;
+  return Type;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..85","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Type","flags":"INTERFACE","declarations":[{"span":"10..14","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"check","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"27..32","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"Type","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"43..47","scope":3}],"bindings":[3],"uses":[1]},
+    {"id":4,"name":"value","flags":"BLOCK_SCOPED_VAR","declarations":[{"span":"55..60","scope":3}],"bindings":[3],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Type","span":"62..66","scope":3,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":1,"name":"Type","span":"77..81","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..85","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..85","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"0..17","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"18..84","kind":"Function","parent":1,"hoist_target":3,"bindings":[3,4],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

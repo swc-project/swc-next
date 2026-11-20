@@ -19,9 +19,8 @@ cargo run -p swc_next_ecma_semantic --example semantic -- input.ts
 
 ## Testing
 
-Integration tests in `tests/semantic/` cover public semantic-model behavior and
-project-owned early-error regressions.
+Snapshots in `tests/semantic/` record all symbols, references, and scopes for each input.
 
 ```sh
-cargo test -p swc_next_ecma_semantic --test semantic --locked
+cargo test -p swc_next_ecma_semantic --locked
 ```

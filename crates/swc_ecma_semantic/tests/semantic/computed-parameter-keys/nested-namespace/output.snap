@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface key {}
+namespace N {
+  const key = "p";
+  type F = ({ [key]: v }: { p: number }) => typeof v;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..106","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"key","flags":"INTERFACE","declarations":[{"span":"10..13","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"27..28","scope":1}],"bindings":[1],"uses":[],"members":{}},
+    {"id":3,"name":"key","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"39..42","scope":3}],"bindings":[3],"uses":[0]},
+    {"id":4,"name":"F","flags":"TYPE_ALIAS","declarations":[{"span":"57..58","scope":3}],"bindings":[3],"uses":[]},
+    {"id":5,"name":"v","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"71..72","scope":5}],"bindings":[5],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"key","span":"65..68","scope":6,"space":"Typeof","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]},
+    {"id":1,"name":"v","span":"101..102","scope":7,"space":"Typeof","access":"None","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..106","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..106","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"0..16","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"29..105","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[3,4],"flags":["Strict"],"container_owner":2},
+    {"id":4,"span":"52..103","kind":"Block","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"61..102","kind":"Block","parent":4,"hoist_target":3,"bindings":[5],"flags":["Strict"]},
+    {"id":6,"span":"61..90","kind":"TsSignatureParameter","parent":5,"hoist_target":3,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"91..102","kind":"TsSignatureReturn","parent":5,"hoist_target":3,"bindings":[],"flags":["Strict"]}
+  ]
+}

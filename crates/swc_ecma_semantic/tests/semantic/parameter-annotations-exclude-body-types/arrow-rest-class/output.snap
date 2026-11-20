@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+class T {}
+const f = (...args: T[]) => {
+  class T {}
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..57","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"T","flags":"CLASS","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"f","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"17..18","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"args","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"25..29","scope":3}],"bindings":[3],"uses":[]},
+    {"id":4,"name":"T","flags":"CLASS","declarations":[{"span":"49..50","scope":3}],"bindings":[3],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"31..32","scope":4,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..57","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..57","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"0..10","kind":"Class","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"21..55","kind":"Function","parent":1,"hoist_target":3,"bindings":[3,4],"flags":["Strict"]},
+    {"id":4,"span":"21..35","kind":"TsSignatureParameter","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"43..53","kind":"Class","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]}
+  ]
+}

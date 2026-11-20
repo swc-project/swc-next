@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+declare function f(x: typeof arguments): void;
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"14..23","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | AMBIENT","declarations":[{"span":"59..60","scope":0}],"bindings":[0],"uses":[]},
+    {"id":2,"name":"x","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"61..62","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"71..80","scope":2,"space":"Typeof","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..89","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"42..88","kind":"Function","parent":0,"hoist_target":1,"bindings":[2],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"60..81","kind":"TsSignatureParameter","parent":1,"hoist_target":1,"bindings":[]},
+    {"id":3,"span":"81..87","kind":"TsSignatureReturn","parent":1,"hoist_target":1,"bindings":[]}
+  ]
+}

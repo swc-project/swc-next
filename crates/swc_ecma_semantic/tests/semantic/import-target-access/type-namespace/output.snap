@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export interface T {}
+}
+import A = N;
+export type Result = A.T;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..80","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"Result":{"symbol":4,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]}}},
+    {"id":1,"name":"N","flags":"NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[0],"members":{"T":{"symbol":2,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"T","flags":"INTERFACE | EXPORTED","declarations":[{"span":"33..34","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"47..48","scope":1}],"bindings":[1],"uses":[1],"import":{"target":1,"initializers":[0]}},
+    {"id":4,"name":"Result","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"66..72","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"N","span":"51..52","scope":1,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[],"import_equals":true},
+    {"id":1,"name":"A","span":"75..76","scope":4,"space":"Namespace","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..80","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..80","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,3,4],"flags":["Strict"]},
+    {"id":2,"span":"12..39","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"23..37","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"61..79","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

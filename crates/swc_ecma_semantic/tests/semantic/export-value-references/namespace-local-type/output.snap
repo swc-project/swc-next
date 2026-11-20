@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const X = 1;
+declare namespace N {
+  interface X {}
+  export { X };
+}
+---------- Options ----------
+[{},{"preserveParens":false}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..70","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"X","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"N","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"31..32","scope":1}],"bindings":[1],"uses":[],"members":{"X":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":3,"name":"X","flags":"INTERFACE | AMBIENT","declarations":[{"span":"47..48","scope":2}],"bindings":[2],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"63..64","scope":2,"space":"Any","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..70","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..70","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"33..69","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[3],"flags":["Strict"],"container_owner":2},
+    {"id":3,"span":"37..51","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

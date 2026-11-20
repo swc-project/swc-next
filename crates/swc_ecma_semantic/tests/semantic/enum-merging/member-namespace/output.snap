@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  A,
+}
+namespace E {
+  export namespace A {
+    export interface X {}
+  }
+}
+namespace E {
+  export type T = A.X;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..124","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"E","flags":"REGULAR_ENUM | NAMESPACE_MODULE","declarations":[{"span":"5..6","scope":1,"flags":"REGULAR_ENUM"},{"span":"26..27","scope":1,"flags":"NAMESPACE_MODULE"},{"span":"95..96","scope":1,"flags":"NAMESPACE_MODULE"}],"bindings":[1],"uses":[],"members":{"A":{"symbol":2,"namespace_flags":"NAMESPACE_MODULE | EXPORTED","enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":2}]},"T":{"symbol":4,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"A","flags":"NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER","declarations":[{"span":"11..12","scope":2,"flags":"ENUM_MEMBER"},{"span":"49..50","scope":3,"flags":"NAMESPACE_MODULE | EXPORTED"}],"bindings":[],"uses":[0],"members":{"X":{"symbol":3,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":3,"name":"X","flags":"INTERFACE | EXPORTED","declarations":[{"span":"74..75","scope":4}],"bindings":[],"uses":[]},
+    {"id":4,"name":"T","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"113..114","scope":6}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"A","span":"117..118","scope":7,"space":"Namespace","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..124","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..124","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"7..15","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"28..84","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":4,"span":"51..82","kind":"TsModule","parent":3,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":5,"span":"64..78","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"97..123","kind":"TsModule","parent":1,"hoist_target":6,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":7,"span":"108..121","kind":"Block","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]}
+  ]
+}

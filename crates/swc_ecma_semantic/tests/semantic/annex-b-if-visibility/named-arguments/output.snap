@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+if (condition)
+  function arguments() {
+    return arguments;
+  }
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"26..35","scope":1}],"bindings":[1],"uses":[],"linked_symbols":[1]},
+    {"id":1,"name":"arguments","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"26..35","scope":0,"node_symbol":0}],"bindings":[0],"uses":[],"linked_symbols":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"4..13","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"arguments","span":"51..60","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..66","kind":"Global","parent":null,"hoist_target":0,"bindings":[1]},
+    {"id":1,"span":"17..65","kind":"Function","parent":0,"hoist_target":1,"bindings":[0],"flags":["ArgumentsBarrier"]}
+  ]
+}

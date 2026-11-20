@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as N from "pkg";
+import A = N.x;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..42","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"IMPORT","declarations":[{"span":"12..13","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"33..34","scope":1}],"bindings":[1],"uses":[],"import":{"target":null,"initializers":[0]}}
+  ],
+  "references": [
+    {"id":0,"name":"N","span":"37..38","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..42","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..42","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]}
+  ]
+}

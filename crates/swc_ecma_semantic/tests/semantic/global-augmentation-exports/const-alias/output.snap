@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare global {
+  const X: number;
+}
+export { X as Y };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..57","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"X":{"symbol":null,"value_symbols":[]},"Y":{"symbol":null,"value_symbols":[{"Resolved":2}]}},"export_aliases":true},
+    {"id":1,"name":"global","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"8..14","scope":0}],"bindings":[],"uses":[],"members":{"X":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"X","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"25..26","scope":2}],"bindings":[0],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"47..48","scope":1,"space":"Any","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..57","kind":"Global","parent":null,"hoist_target":0,"bindings":[2]},
+    {"id":1,"span":"0..57","kind":"Module","parent":0,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"15..37","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

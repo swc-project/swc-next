@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import A from "dep";
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..21","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"A","flags":"IMPORT","declarations":[{"span":"7..8","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..21","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..21","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]}
+  ]
+}

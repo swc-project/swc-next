@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+function f<T extends typeof value>() {
+  function value() {}
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..74","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"20..21","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"22..23","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"value","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"61..66","scope":2}],"bindings":[2],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"39..44","scope":3,"space":"Typeof","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..74","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..74","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"11..73","kind":"Function","parent":1,"hoist_target":2,"bindings":[2,3],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"21..45","kind":"TsTypeParameters","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"52..71","kind":"Function","parent":2,"hoist_target":4,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

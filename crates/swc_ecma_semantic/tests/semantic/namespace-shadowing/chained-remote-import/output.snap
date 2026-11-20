@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as remote from "./dep.js";
+const Alias = { value: "outer" };
+namespace N {
+  import B = remote;
+  export import Alias = B;
+}
+namespace N {
+  export const selected = Alias.value;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..189","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"remote","flags":"IMPORT","declarations":[{"span":"12..18","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"Alias","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"42..47","scope":1}],"bindings":[1],"uses":[2]},
+    {"id":3,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"80..81","scope":1},{"span":"144..145","scope":1}],"bindings":[1],"uses":[],"members":{"Alias":{"symbol":5,"namespace_flags":"IMPORT | EXPORTED | IMPORT_EQUALS","value_symbols":[{"Uncertain":{"candidate":5}}]},"selected":{"symbol":6,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":6}]}}},
+    {"id":4,"name":"B","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"93..94","scope":2}],"bindings":[2],"uses":[1],"import":{"target":null,"initializers":[0]}},
+    {"id":5,"name":"Alias","flags":"IMPORT | EXPORTED | IMPORT_EQUALS","declarations":[{"span":"121..126","scope":2}],"bindings":[],"uses":[2],"import":{"target":null,"initializers":[1]}},
+    {"id":6,"name":"selected","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"163..171","scope":3}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"remote","span":"97..103","scope":2,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"B","span":"129..130","scope":2,"space":"Namespace","access":"Read","resolution":{"Uncertain":{"candidate":4}},"candidates":[4],"value_symbols":[{"Uncertain":{"candidate":4}}],"import_equals":true},
+    {"id":2,"name":"Alias","span":"174..179","scope":3,"space":"Value","access":"Read","resolution":{"Uncertain":{"candidate":5}},"candidates":[5,2],"value_symbols":[{"Uncertain":{"candidate":5}},{"Uncertain":{"candidate":2}}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..189","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..189","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,3],"flags":["Strict"]},
+    {"id":2,"span":"82..133","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[4],"flags":["Strict"],"container_owner":3},
+    {"id":3,"span":"146..188","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":3}
+  ]
+}

@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export type f = number;
+namespace f {
+  export interface Item {}
+}
+type A = string;
+const A = 1;
+namespace Test {
+  import A = f;
+  export let item: A;
+  export const scalar: typeof A = A;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..222","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"default":{"symbol":1,"namespace_flags":"FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":1}]},"f":{"symbol":2,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]}}},
+    {"id":1,"name":"f","flags":"FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION","declarations":[{"span":"24..25","scope":1}],"bindings":[],"uses":[],"roles":["DefaultExport"]},
+    {"id":2,"name":"f","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"43..44","scope":1}],"bindings":[],"uses":[]},
+    {"id":3,"name":"f","flags":"NAMESPACE_MODULE","declarations":[{"span":"65..66","scope":1}],"bindings":[1],"uses":[0],"members":{"Item":{"symbol":4,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":4,"name":"Item","flags":"INTERFACE | EXPORTED","declarations":[{"span":"88..92","scope":4}],"bindings":[],"uses":[]},
+    {"id":5,"name":"A","flags":"BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR","declarations":[{"span":"103..104","scope":1,"flags":"TYPE_ALIAS"},{"span":"121..122","scope":1,"flags":"BLOCK_SCOPED_VAR | CONST_VAR"}],"bindings":[1],"uses":[2,3]},
+    {"id":6,"name":"Test","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"138..142","scope":1}],"bindings":[1],"uses":[],"members":{"item":{"symbol":8,"namespace_flags":"BLOCK_SCOPED_VAR | EXPORTED","value_symbols":[{"Resolved":8}]},"scalar":{"symbol":9,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":9}]}}},
+    {"id":7,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"154..155","scope":7}],"bindings":[7],"uses":[1],"import":{"target":2,"initializers":[0]}},
+    {"id":8,"name":"item","flags":"BLOCK_SCOPED_VAR | EXPORTED","declarations":[{"span":"174..178","scope":7}],"bindings":[],"uses":[]},
+    {"id":9,"name":"scalar","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"198..204","scope":7}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"158..159","scope":7,"space":"Namespace","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[],"import_equals":true},
+    {"id":1,"name":"A","span":"180..181","scope":7,"space":"Type","access":"None","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[]},
+    {"id":2,"name":"A","span":"213..214","scope":7,"space":"Typeof","access":"None","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]},
+    {"id":3,"name":"A","span":"217..218","scope":7,"space":"Value","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..222","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..222","kind":"Module","parent":0,"hoist_target":1,"bindings":[3,5,6],"flags":["Strict"]},
+    {"id":2,"span":"15..30","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"38..54","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"67..97","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":3},
+    {"id":5,"span":"78..95","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"98..114","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"143..221","kind":"TsModule","parent":1,"hoist_target":7,"bindings":[7],"flags":["Strict"],"container_owner":6}
+  ]
+}

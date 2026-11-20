@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import * as External from "./dep";
+import A = External.Item;
+type Result = A;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..78","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"External","flags":"IMPORT","declarations":[{"span":"12..20","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"42..43","scope":1}],"bindings":[1],"uses":[1],"import":{"target":null,"initializers":[0]}},
+    {"id":3,"name":"Result","flags":"TYPE_ALIAS","declarations":[{"span":"66..72","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"External","span":"46..54","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"A","span":"75..76","scope":2,"space":"Type","access":"None","resolution":{"Uncertain":{"candidate":2}},"candidates":[2],"value_symbols":[{"Uncertain":{"candidate":2}}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..78","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..78","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,3],"flags":["Strict"]},
+    {"id":2,"span":"61..77","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface X {}
+export default (X);
+---------- Options ----------
+[{},{"preserveParens":false}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..35","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"X","flags":"INTERFACE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"31..32","scope":1,"space":"Any","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..35","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..35","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..14","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

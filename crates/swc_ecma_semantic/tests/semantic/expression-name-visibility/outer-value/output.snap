@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const a = 1;
+const f = function n<a>(x: a) {
+  return a;
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..60","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"a","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[1]},
+    {"id":2,"name":"f","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"19..20","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"n","flags":"FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"32..33","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"a","flags":"TYPE_PARAMETER","declarations":[{"span":"34..35","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":5,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"37..38","scope":2}],"bindings":[2],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"a","span":"40..41","scope":4,"space":"Type","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]},
+    {"id":1,"name":"a","span":"54..55","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..60","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..60","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"23..58","kind":"Function","parent":1,"hoist_target":2,"bindings":[3,4,5],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"33..36","kind":"TsTypeParameters","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"36..42","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

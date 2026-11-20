@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const x = 2;
+class C {
+  static x = 1;
+}
+namespace C {
+  export const y = x;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..90","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"17..18","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"C","flags":"CLASS | VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"30..31","scope":1,"flags":"CLASS"},{"span":"62..63","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE"}],"bindings":[1],"uses":[],"members":{"y":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":3,"name":"y","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"81..82","scope":3}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"x","span":"85..86","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..90","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..90","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"24..51","kind":"Class","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"64..89","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":2}
+  ]
+}
