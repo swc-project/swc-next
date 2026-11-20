@@ -25041,6 +25041,80 @@
         "prettierNative": "if (enabled)\n\tfirst(  1  ); /* prettier-ignore */\nelse second(2);\n"
       }
     ],
+    "js/statements/if/multiline-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */\n/* c\n d */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* c\n d */ else z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */\n/* c\n d */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* c\n d */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */\n/* c\n d */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* c\n d */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */\n/* c\n d */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* c\n d */ else z;\n"
+      }
+    ],
+    "js/statements/if/multiline-lint-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */ /* eslint-disable-line no-undef */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* eslint-disable-line no-undef */ else z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */ /* eslint-disable-line no-undef */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* eslint-disable-line no-undef */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */ /* eslint-disable-line no-undef */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* eslint-disable-line no-undef */ else\n  z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */ /* eslint-disable-line no-undef */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* eslint-disable-line no-undef */ else\n\tz;\n"
+      }
+    ],
     "js/statements/if/tail-packet.js": [
       {
         "options": {
