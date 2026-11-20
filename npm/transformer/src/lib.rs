@@ -40,9 +40,9 @@ pub unsafe fn transform_sync(
 /// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
 pub unsafe fn transform_sync(
     env: napi::Env,
-    source: napi::bindgen_prelude::Buffer,
+    source: swc_next_bridge::NativeBytes<'_>,
     source_utf16_len: u32,
-    options: napi::bindgen_prelude::Buffer,
+    options: swc_next_bridge::NativeBytes<'_>,
 ) -> napi::Result<
     napi::bindgen_prelude::Either<
         <String as swc_next_bridge::NativeAbi>::Abi,

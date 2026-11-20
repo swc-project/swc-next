@@ -53,3 +53,17 @@ test("section transfers use current buffers after growth", () => {
   const empty = parseSync("");
   assertTransfer(empty.program, undefined, "");
 });
+
+test("section transfers borrow overlapping read-only views", () => {
+  const parts = encode(parseSync("").program);
+  const spans = parts[1];
+  const payloads = parts[3];
+  assert.ok(spans.length > 0);
+  assert.deepEqual(spans, payloads.subarray(0, spans.length));
+
+  const shared = new Uint8Array(payloads);
+  const inputs = parts.map(part => new Uint8Array(part));
+  inputs[1] = shared.subarray(0, spans.length);
+  inputs[3] = shared;
+  assert.equal(binding.generateSync(...inputs, encodeGeneratorConfig()), "");
+});
