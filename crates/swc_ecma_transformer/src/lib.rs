@@ -46,7 +46,7 @@ pub struct TransformerOptions {
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
-    /// Error diagnostics prevent emitting the transformed program.
+    /// Diagnostics reported by transforms. Callers should not execute or rely on output when error diagnostics are present.
     pub diagnostics: Vec<Diagnostic>,
 }
 

@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     DUMMY_SP, Decl, ImportDeclarationSpecifierData, NodeKindData, ScopeId, Stmt,
 };
@@ -177,25 +177,42 @@ impl TransformCtx<'_, '_> {
 
 impl TransformCtx<'_, '_> {
     pub(crate) fn protect_helper_globals(&mut self) {
+        let mut rejected = FxHashSet::default();
         while !self.state.helpers.globals.is_empty() {
             let scope = self.program_scope();
             let globals = std::mem::take(&mut self.state.helpers.globals);
-            let collisions: Vec<_> = globals
-                .into_iter()
-                .filter_map(|(name, references)| {
-                    let symbol = self.semantic().binding(scope, name.as_bytes())?;
-                    self.semantic()
-                        .symbol(symbol)
-                        .flags
-                        .visible_in(ReferenceSpace::Value)
-                        .then_some((name, symbol, references))
-                })
-                .collect();
+            let mut collisions = Vec::new();
+            for (name, references) in globals {
+                let Some(symbol) = self.semantic().binding(scope, name.as_bytes()) else {
+                    continue;
+                };
+                if !self
+                    .semantic()
+                    .symbol(symbol)
+                    .flags
+                    .visible_in(ReferenceSpace::Value)
+                {
+                    continue;
+                }
+                if rejected.contains(&symbol) {
+                    for reference in references {
+                        self.state
+                            .semantic
+                            .bind_unresolved_reference(reference, symbol);
+                    }
+                    continue;
+                }
+                collisions.push((name, symbol, references));
+            }
+            if collisions.is_empty() {
+                continue;
+            }
             let renames: Vec<_> = collisions
                 .iter()
                 .map(|(name, symbol, _)| (*symbol, self.generate_name(&format!("_{name}"), 2)))
                 .collect();
-            let rejected = self.rename_bindings(renames);
+            let newly_rejected = self.rename_bindings(renames);
+            rejected.extend(newly_rejected.iter().copied());
             for (_, symbol, references) in collisions {
                 if rejected.contains(&symbol) {
                     // Keep the AST's lexical resolution consistent on error.

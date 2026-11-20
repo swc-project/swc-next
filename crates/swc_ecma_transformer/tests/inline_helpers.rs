@@ -21,6 +21,25 @@ fn transform_with_helpers(
     lang: Lang,
     helpers: HelperMode,
 ) -> (String, Vec<Diagnostic>) {
+    transform_program(source, source_type, lang, helpers, true)
+}
+
+fn transform_without_normalizer(
+    source: &str,
+    source_type: SourceType,
+    lang: Lang,
+    helpers: HelperMode,
+) -> (String, Vec<Diagnostic>) {
+    transform_program(source, source_type, lang, helpers, false)
+}
+
+fn transform_program(
+    source: &str,
+    source_type: SourceType,
+    lang: Lang,
+    helpers: HelperMode,
+    normalize: bool,
+) -> (String, Vec<Diagnostic>) {
     let allocator = Allocator::new();
     let parsed = Parser::init(
         &allocator,
@@ -35,7 +54,9 @@ fn transform_with_helpers(
     .parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
-    Normalizer::normalize(&mut ast);
+    if normalize {
+        Normalizer::normalize(&mut ast);
+    }
     let analyzed = analyze(&mut ast, AnalyzeOptions::default());
     assert!(analyzed.diagnostics.is_empty());
     let original_references: Vec<_> = analyzed
@@ -299,6 +320,33 @@ fn inline_helper_name_restoration() {
     );
     assert!(code.contains("static #_name2 = _set_class_name"));
     assert!(code.contains("static value = Outer.#_name"));
+
+    let code = inline(
+        "switch (0) { case 0: function Object() {} } const C = class { static { use(Object.name); } };",
+        SourceType::CommonJs,
+    );
+    assert!(code.contains("case _set_function_name(_Object, \"Object\"), 0:"));
+
+    let code = inline(
+        "switch (1) { case 1: use(Object.name); break; case 2: function Object() {} } const C = class { static { init(); } };",
+        SourceType::CommonJs,
+    );
+    assert!(code.contains("_set_function_name(_Object, \"Object\"), 1"));
+
+    let code = inline(
+        "switch (0) { default: function Object() {} } const C = class { static { use(Object.name); } };",
+        SourceType::CommonJs,
+    );
+    assert!(code.contains("default:\n    _set_function_name(_Object, \"Object\");"));
+
+    let (code, diagnostics) = transform_without_normalizer(
+        "const Object = (() => 1); const C = class { static { use(Object.name); } };",
+        SourceType::Module,
+        Lang::Js,
+        HelperMode::Inline,
+    );
+    assert!(diagnostics.is_empty());
+    assert!(code.contains("_set_function_name((() => 1), \"Object\")"));
 }
 
 #[test]
@@ -336,6 +384,26 @@ fn inline_helper_observable_bindings() {
     );
     assert!(code.contains("const _Object = 1;"));
     assert!(code.contains("function f(Object)"));
+
+    let (code, diagnostics) = transform_with_helpers(
+        "let Object = 1; with (other) delete Object; const C = class { static { init(); } };",
+        SourceType::CommonJs,
+        Lang::Js,
+        HelperMode::Inline,
+    );
+    assert!(diagnostics.iter().any(|d| d.severity == Severity::Error));
+    assert!(code.contains("delete Object"));
+
+    let (code, diagnostics) = transform_with_helpers(
+        "const Object = 1; class Symbol { static value = this.name; } function f(Symbol) { return eval('Object'); } const obj = { [key()]: class { static { use(Object, Symbol.value); } } };",
+        SourceType::Module,
+        Lang::Js,
+        HelperMode::Inline,
+    );
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].severity, Severity::Error);
+    assert!(code.contains("const Object = 1;"));
+    assert!(code.contains("class _Symbol"));
 }
 
 #[test]

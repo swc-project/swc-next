@@ -1,6 +1,6 @@
 //! Preserve observable function/class names when their bindings are renamed.
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     Accessibility, Argument, AssignmentExpression, AssignmentOperator, AssignmentPattern, Ast,
     AstUtf8, Class, ClassElement, DUMMY_SP, Expr, Function, FunctionType, IfStatement, NodeId,
@@ -22,6 +22,7 @@ impl TransformCtx<'_, '_> {
             ctx: self,
             names,
             hoisted: Vec::new(),
+            restored_functions: FxHashSet::default(),
         };
         program.visit_mut_with(&mut preserver);
         let hoisted = preserver.hoisted;
@@ -38,6 +39,7 @@ struct FunctionNames<'c, 's, 'a> {
     ctx: &'c mut TransformCtx<'s, 'a>,
     names: &'c FxHashMap<SymbolId, AstUtf8>,
     hoisted: Vec<(NodeId, Stmt)>,
+    restored_functions: FxHashSet<SymbolId>,
 }
 
 impl FunctionNames<'_, '_, '_> {
@@ -47,7 +49,8 @@ impl FunctionNames<'_, '_, '_> {
             self.ctx.semantic().reference(reference).symbol
         })?;
         let &name = self.names.get(&symbol)?;
-        let anonymous = match self.ctx.ast.kind_data(expression.node_id()) {
+        let target = super::unwrap_transparent_expr(expression, self.ctx.ast);
+        let anonymous = match self.ctx.ast.kind_data(target.node_id()) {
             NodeKindData::ArrowFunctionExpression(_) => true,
             NodeKindData::Function(function) => function.id(self.ctx.ast).is_none(),
             NodeKindData::Class(class) => class.id(self.ctx.ast).is_none(),
@@ -56,11 +59,11 @@ impl FunctionNames<'_, '_, '_> {
         if !anonymous {
             return None;
         }
-        if let Some(class) = expression.as_class(self.ctx.ast) {
+        if let Some(class) = target.as_class(self.ctx.ast) {
             self.set_class_name(class, name);
             return Some(expression);
         }
-        let scope = self.ctx.semantic().scope_of(expression.node_id())?;
+        let scope = self.ctx.semantic().scope_of(target.node_id())?;
         let parent = self.ctx.semantic().scope(scope).parent.unwrap();
         let name = Expr::StringLiteral(
             self.ctx
@@ -126,18 +129,27 @@ impl FunctionNames<'_, '_, '_> {
         body.set_body(self.ctx.ast, members);
     }
 
+    fn restore_function_name_expr(
+        &mut self,
+        binding: BoundIdentifier,
+        name: AstUtf8,
+        scope: ScopeId,
+    ) -> Expr {
+        let target = Expr::IdentifierReference(binding.reference_read(self.ctx, scope, DUMMY_SP));
+        let name = Expr::StringLiteral(
+            self.ctx
+                .add_node(|ast| ast.string_literal(DUMMY_SP, name.into(), ast.empty_utf8())),
+        );
+        self.ctx.call_set_function_name(target, name, scope)
+    }
+
     fn restore_function_name(
         &mut self,
         binding: BoundIdentifier,
         name: AstUtf8,
         scope: ScopeId,
     ) -> Stmt {
-        let target = Expr::IdentifierReference(binding.reference_read(self.ctx, scope, DUMMY_SP));
-        let name = Expr::StringLiteral(
-            self.ctx
-                .add_node(|ast| ast.string_literal(DUMMY_SP, name.into(), ast.empty_utf8())),
-        );
-        let value = self.ctx.call_set_function_name(target, name, scope);
+        let value = self.restore_function_name_expr(binding, name, scope);
         Stmt::ExpressionStatement(
             self.ctx
                 .add_node(|ast| ast.expression_statement(DUMMY_SP, value)),
@@ -269,15 +281,60 @@ impl<'a> VisitMut<'a> for FunctionNames<'_, '_, 'a> {
         {
             return None;
         }
+        if !self.restored_functions.insert(symbol) {
+            return None;
+        }
         let scope = self.ctx.semantic().scope_of_symbol(symbol);
         let owner = self.ctx.semantic().scope(scope).node;
-        let container = match self.ctx.ast.kind_data(owner) {
-            NodeKindData::Function(function) => function.body(self.ctx.ast).node_id(),
-            _ => owner,
-        };
-        let statement =
-            self.restore_function_name(BoundIdentifier { identifier, symbol }, name, scope);
-        self.hoisted.push((container, statement));
+        match self.ctx.ast.kind_data(owner) {
+            NodeKindData::SwitchStatement(switch) => {
+                let first_case = switch.cases(self.ctx.ast).iter().find_map(|slot| {
+                    let case = self.ctx.ast.get_node_in_sub_range(slot);
+                    case.test(self.ctx.ast).map(|test| (case, test))
+                });
+                if let Some((case, test)) = first_case {
+                    let call = self.restore_function_name_expr(
+                        BoundIdentifier { identifier, symbol },
+                        name,
+                        scope,
+                    );
+                    let expressions = self.ctx.ast.add_sub_range([call, test]);
+                    let sequence = Expr::SequenceExpression(
+                        self.ctx
+                            .add_node(|ast| ast.sequence_expression(DUMMY_SP, expressions)),
+                    );
+                    case.set_test(self.ctx.ast, Some(sequence));
+                } else {
+                    let default_case = switch
+                        .cases(self.ctx.ast)
+                        .get_node(self.ctx.ast, 0)
+                        .expect("switch function belongs to a case");
+                    let statement = self.restore_function_name(
+                        BoundIdentifier { identifier, symbol },
+                        name,
+                        scope,
+                    );
+                    self.hoisted.push((default_case.node_id(), statement));
+                }
+            }
+            NodeKindData::Function(function) => {
+                let container = function.body(self.ctx.ast).node_id();
+                let statement = self.restore_function_name(
+                    BoundIdentifier { identifier, symbol },
+                    name,
+                    scope,
+                );
+                self.hoisted.push((container, statement));
+            }
+            _ => {
+                let statement = self.restore_function_name(
+                    BoundIdentifier { identifier, symbol },
+                    name,
+                    scope,
+                );
+                self.hoisted.push((owner, statement));
+            }
+        }
         None
     }
 

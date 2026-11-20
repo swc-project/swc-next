@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, BindingProperty, CallExpression, DUMMY_SP, Diagnostic,
+    Ast, AstUtf8, BindingIdentifier, BindingProperty, CallExpression, DUMMY_SP, Diagnostic, Expr,
     ExprData, ImportOrExportKind, ModuleExportName, NodeId, NodeKindData, ObjectProperty, ScopeId,
     Stmt, SymbolId, Visit, VisitMut, VisitMutWith, VisitWith,
 };
@@ -130,7 +130,7 @@ impl TransformCtx<'_, '_> {
             let binding_scope = semantic.scope_of_symbol(symbol);
             semantic.uses(symbol).iter().any(|&id| {
                 let reference = semantic.reference(id);
-                if !reference.flags.is_read() && !reference.flags.is_write() {
+                if reference.flags.space != ReferenceSpace::Value {
                     return false;
                 }
                 ancestors(reference.scope)
@@ -323,6 +323,20 @@ impl<'a> VisitMut<'a> for ExpandedShorthands<'_, 'a> {
     }
 }
 
+pub(super) fn unwrap_transparent_expr(mut expr: Expr, ast: &Ast<'_>) -> Expr {
+    loop {
+        expr = match ast.expr_data(expr) {
+            ExprData::ParenthesizedExpression(node) => node.expression(ast),
+            ExprData::TsAsExpression(node) => node.expression(ast),
+            ExprData::TsSatisfiesExpression(node) => node.expression(ast),
+            ExprData::TsNonNullExpression(node) => node.expression(ast),
+            ExprData::TsTypeAssertion(node) => node.expression(ast),
+            ExprData::TsInstantiationExpression(node) => node.expression(ast),
+            _ => return expr,
+        };
+    }
+}
+
 struct DirectEval<'s, 'a> {
     ast: &'s Ast<'a>,
     semantic: &'s ScopeModel<'a>,
@@ -335,27 +349,14 @@ impl<'a> Visit<'a> for DirectEval<'_, 'a> {
     }
 
     fn visit_call_expression(&mut self, node: CallExpression) {
-        if !node.optional(self.ast) {
-            let mut callee = node.callee(self.ast);
-            loop {
-                callee = match self.ast.expr_data(callee) {
-                    ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
-                    ExprData::TsAsExpression(node) => node.expression(self.ast),
-                    ExprData::TsSatisfiesExpression(node) => node.expression(self.ast),
-                    ExprData::TsNonNullExpression(node) => node.expression(self.ast),
-                    ExprData::TsTypeAssertion(node) => node.expression(self.ast),
-                    ExprData::TsInstantiationExpression(node) => node.expression(self.ast),
-                    ExprData::IdentifierReference(node)
-                        if self.ast.get_utf8(node.name(self.ast)) == "eval" =>
-                    {
-                        if let Some(id) = self.semantic.reference_of(node.node_id()) {
-                            self.scopes.insert(self.semantic.reference(id).scope);
-                        }
-                        break;
-                    }
-                    _ => break,
-                };
-            }
+        if !node.optional(self.ast)
+            && let ExprData::IdentifierReference(node) = self
+                .ast
+                .expr_data(unwrap_transparent_expr(node.callee(self.ast), self.ast))
+            && self.ast.get_utf8(node.name(self.ast)) == "eval"
+            && let Some(id) = self.semantic.reference_of(node.node_id())
+        {
+            self.scopes.insert(self.semantic.reference(id).scope);
         }
         node.visit_children_with(self);
     }
