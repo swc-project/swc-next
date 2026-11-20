@@ -1009,10 +1009,6 @@ impl Compare for FormalParameter {
         let right = other.initializer(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "FormalParameter.initializer"))?;
-        let left = self.optional(asts.left);
-        let right = other.optional(asts.right);
-        left.compare(right, asts)
-            .map_err(|error| format!("{}.{error}", "FormalParameter.optional"))?;
         Ok(())
     }
 }

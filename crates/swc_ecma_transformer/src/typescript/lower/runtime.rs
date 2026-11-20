@@ -41,7 +41,6 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             SubRange::empty(),
             FormalParameterPattern::BindingIdentifier(parameter_binding),
             None,
-            false,
         );
         let parameters = self
             .ast()

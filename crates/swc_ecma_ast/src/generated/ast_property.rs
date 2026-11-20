@@ -4759,6 +4759,10 @@ impl FormalParameters {
 }
 impl FormalParameter {
     #[inline]
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
+        unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.decorators }
+    }
+    #[inline]
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterPattern {
         unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.pattern }
     }
@@ -4773,26 +4777,12 @@ impl FormalParameter {
         (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.optional }
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .formal_parameter
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         unsafe {
-            {
-                let range = (ast.read_extra_data(offset)).sub_range;
-                SubRange::new(range.start, range.end)
-            }
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .formal_parameter
+                .decorators = decorators;
         }
     }
     #[inline]
@@ -4812,36 +4802,6 @@ impl FormalParameter {
                 .data_mut_unchecked(self.0)
                 .formal_parameter
                 .initializer = field_val;
-        }
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .formal_parameter
-                .optional = optional;
-        }
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .formal_parameter
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ast.write_extra_data(
-                offset,
-                ExtraData {
-                    sub_range: SubRange::new((decorators).start, (decorators).end),
-                },
-            );
         }
     }
 }

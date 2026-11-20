@@ -1361,8 +1361,7 @@ impl<'a> CloneIn<'a> for FormalParameter {
         let decorators = self.decorators(ast).clone_in(ast);
         let pattern = self.pattern(ast).clone_in(ast);
         let initializer = self.initializer(ast).clone_in(ast);
-        let optional = self.optional(ast).clone_in(ast);
-        ast.formal_parameter(span, decorators, pattern, initializer, optional)
+        ast.formal_parameter(span, decorators, pattern, initializer)
     }
 }
 impl<'a> CloneIn<'a> for FormalParameterRest {

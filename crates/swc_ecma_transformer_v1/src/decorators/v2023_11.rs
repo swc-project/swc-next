@@ -1666,7 +1666,6 @@ impl DecoratorPass<'_, '_, '_> {
                                         SubRange::empty(),
                                         FormalParameterPattern::BindingIdentifier(binding),
                                         None,
-                                        false,
                                     ),
                                 ));
                             }

@@ -984,12 +984,9 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 59: {
-        const extraId = _i32[(payload + 12) >> 2];
-        const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
-        const f_pattern = node(_i32[(payload + 0) >> 2]);
-        const f_initializer = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_optional = _dv.getUint8(payload + 8) !== 0;
-        f_pattern.optional = f_optional;
+        const f_decorators = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_pattern = node(_i32[(payload + 8) >> 2]);
+        const f_initializer = optionalNode(_i32[(payload + 12) >> 2]);
         if (f_initializer === null) {
           f_pattern.end = end;
           f_pattern.decorators = f_decorators;

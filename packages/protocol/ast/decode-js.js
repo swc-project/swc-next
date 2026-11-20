@@ -690,8 +690,8 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
         break;
       }
       case 59: {
-        const f_pattern = node(_i32[(payload + 0) >> 2]);
-        const f_initializer = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_pattern = node(_i32[(payload + 8) >> 2]);
+        const f_initializer = optionalNode(_i32[(payload + 12) >> 2]);
         const left = f_pattern;
         if (f_initializer === null) {
           result = left;

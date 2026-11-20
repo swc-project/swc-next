@@ -13,7 +13,6 @@ pub(crate) fn function(
         SubRange::empty(),
         FormalParameterPattern::BindingIdentifier(parameter),
         None,
-        false,
     );
     let items = ast.add_sub_range([FormalParameterItem::FormalParameter(parameter)]);
     let params =
@@ -385,7 +384,6 @@ pub(crate) fn parameters(
                 SubRange::empty(),
                 FormalParameterPattern::BindingIdentifier(binding),
                 None,
-                false,
             ))
         })
         .collect();

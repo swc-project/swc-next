@@ -1132,14 +1132,10 @@ function encFormalParameter(n) {
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = encFormalParameterPattern(_pattern);
   const v_2 = _initializer == null ? NULL : encExpr(_initializer);
-  const v_3 = 0;
-  const extraId = allocExtra(2);
   const index = allocNode(59, n.start, n.end);
-  setPayloadU32(index, 12, extraId);
-  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
-  setPayloadU32(index, 0, v_1);
-  setPayloadU32(index, 4, v_2);
-  setPayloadU8(index, 8, v_3);
+  writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
+  setPayloadU32(index, 12, v_2);
   return index;
 }
 

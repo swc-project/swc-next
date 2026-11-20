@@ -578,7 +578,6 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         let pattern = parameter.pattern(self.ast);
         pattern.set_type_annotation(self.ast, None);
         pattern.set_optional(self.ast, false);
-        parameter.set_optional(self.ast, false);
         parameter.visit_mut_children_with(self)
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L110>.
