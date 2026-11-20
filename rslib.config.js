@@ -13,6 +13,9 @@ const components = [
   "formatter-prettier-plugin",
 ];
 
+const pifeHint = "@swc-next-pife-(start|end)";
+const pifeComment = new RegExp(`/\\* ${pifeHint} \\*/`, "g");
+
 const baseConfig = defineConfig({
   lib: components.map((component) => {
     const directory = path.join(root, "npm", component);
@@ -94,9 +97,6 @@ export default mergeRslibConfig(baseConfig, {
 });
 
 // =================================== AI Slop ================================================
-
-const pifeHint = "@swc-next-pife-(start|end)";
-const pifeComment = new RegExp(`/\\* ${pifeHint} \\*/`, "g");
 
 function restoreDecoderHints(_, { appendPlugins, rspack }) {
   const name = "DecoderCompilationHints";
