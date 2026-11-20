@@ -39956,6 +39956,48 @@
         "prettierNative": "function f(\n  a,\n  /* prettier-ignore */ b // @ts-ignore\n  /* d */\n) {}\n"
       }
     ],
+    "ts/terminal-list-review/trailing-diagnostic/array.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\", /* @ts-ignore */\n];\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-ignore */,\n];\n"
+      }
+    ],
+    "ts/terminal-list-review/trailing-diagnostic/call.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "consume(\n  \"first\",\n  \"second\", /* @ts-ignore */\n);\n",
+        "prettierNative": "consume(\n  \"first\",\n  \"second\" /* @ts-ignore */,\n);\n"
+      }
+    ],
+    "ts/terminal-list-review/trailing-diagnostic/external.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\", /* @ts-expect-error */];\nconst bad: number = \"bad\";\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */,\n];\nconst bad: number =\n  \"bad\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */];\nconst bad: number = \"bad\";\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */\n];\nconst bad: number =\n  \"bad\";\n"
+      }
+    ],
     "ts/terminal-type-packets/ordinary/callable-terminal.ts": [
       {
         "options": {

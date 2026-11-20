@@ -44,6 +44,11 @@ pub(super) struct TerminalCloseBoundary {
     release: bool,
 }
 
+pub(super) enum TerminalPacketClose {
+    Group,
+    Source,
+}
+
 /// One immutable physical directive and its covered source-code interval.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) struct DiagnosticCoverage {
@@ -412,6 +417,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             LineConstraint::Unconstrained
         } else {
             constraint
+        }
+    }
+
+    /// An inline terminal packet can release its closer to the group when
+    /// placing a line there cannot displace a later covered source line.
+    pub(super) fn terminal_packet_close(
+        &self,
+        boundary: TerminalCloseBoundary,
+        item_end: u32,
+        packet_end: u32,
+    ) -> Option<TerminalPacketClose> {
+        if !matches!(
+            self.ast.source().as_bytes().get(boundary.close as usize),
+            Some(b')' | b']')
+        ) {
+            return None;
+        }
+        let lines = &self.diagnostic_lines.lines;
+        let line = lines.get(lines.partition_point(|line| line.span.end < packet_end))?;
+        if line.span.start > item_end
+            || line.sensitive_start == line.span.start
+            || line.directive_end <= item_end
+            || line.directive_end > packet_end
+        {
+            return None;
+        }
+        if boundary.close <= line.span.end && !line.has_following_content {
+            Some(TerminalPacketClose::Group)
+        } else {
+            Some(TerminalPacketClose::Source)
         }
     }
 

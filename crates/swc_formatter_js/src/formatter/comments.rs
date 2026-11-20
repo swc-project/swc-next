@@ -101,7 +101,7 @@ pub(super) enum CommentRunLayout {
     Source,
     /// A leading packet began inside a preceding statement whose source ends here.
     SourceProjected(u32),
-    /// Keep a terminal packet's Blocks in place and its ordinary Line suffix inline.
+    /// Keep terminal Blocks in place and suffix an ordinary Line after a Block.
     SourceDangling,
     SourceAfter(u32),
     /// Preserve source order when a released expression tail joins a statement suffix.
@@ -2194,7 +2194,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.source_line_breaks(end, comment.span.start) == 0
                 }
                 (CommentRunLayout::SourceDangling, CommentKind::Line) => {
-                    previous.is_some()
+                    previous
+                        .as_ref()
+                        .is_some_and(|previous| previous.kind == CommentKind::Block)
                         && ordinary_prefix
                         && fact.is_some_and(PreparedLineFact::movable)
                 }

@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("first", "second", /* @ts-ignore */);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"all"}
+---------- Output ----------
+consume(
+  "first",
+  "second", /* @ts-ignore */
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+consume(
+  "first",
+  "second" /* @ts-ignore */
+);
