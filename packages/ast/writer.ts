@@ -13,7 +13,16 @@ const EMPTY = new Uint8Array();
 
 /** Write a native field using the same location descriptor as reads. */
 export function writeNativeField(ast: AstView, id: number, key: string, value: unknown): void {
-  if (!directWrite(ast, id, ast.kind(id), key, value)) { throw new TypeError("Field has no native storage"); }
+  const kind = ast.kind(id);
+  rejectSourceRawWrite(ast, id, kind, key);
+  if (!directWrite(ast, id, kind, key, value)) { throw new TypeError("Field has no native storage"); }
+}
+
+/** Parser-backed TypeScript template raw is projected from the source. */
+function rejectSourceRawWrite(ast: AstView, id: number, kind: number, key: string): void {
+  if (key === "raw" && kind === NodeKind.TemplateElement && ast._isTs && id < ast.nodeCount) {
+    throw new TypeError("Replace the template element to change raw");
+  }
 }
 
 /** Commit one public field to the binary arena before returning. */
@@ -27,6 +36,9 @@ export function writeField(ast: AstView, id: number, key: string, value: unknown
     if (ast.getField(id, "type", kind) === value) { return; }
     const target = typeof value === "string" ? typeKinds[value] : undefined;
     if (typeof target !== "number") { throw new TypeError("Unsupported AST node type; allocate its native kind with new_node"); }
+    if (target === NodeKind.TemplateElement && ast._isTs && id < ast.nodeCount) {
+      throw new TypeError("Allocate a new template element with new_node");
+    }
     writeNode(ast, id, target, ast.byteStart(id), ast.byteEnd(id));
     ast._listVersion++;
     committed(ast);
@@ -59,6 +71,7 @@ export function writeField(ast: AstView, id: number, key: string, value: unknown
       writeProjectedList(ast, id, key, value);
     } else {
       const nativeKey = rule === ReadRule.Pattern ? "pattern" : rule === ReadRule.Initializer ? "initializer" : rule === ReadRule.Directive || rule === ReadRule.Text ? "value" : key;
+      rejectSourceRawWrite(ast, id, kind, nativeKey);
       if (!directWrite(ast, id, kind, nativeKey, value)) { throw new TypeError("Field cannot be assigned directly"); }
     }
   }

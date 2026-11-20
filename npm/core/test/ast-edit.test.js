@@ -470,6 +470,22 @@ test("projected object fields and list elisions update storage immediately", () 
   expectCode(hole.code, "const value = [, 2];");
 });
 
+test("template raw reads source spelling for TypeScript and normalized text for JavaScript", () => {
+  const source = "const value = `a\rb\r\nc`;";
+  const ts = parseSync(source, typescript).program.body.at(0).declarations.at(0).init.quasis.at(0);
+  assert.equal(ts.value.raw, "a\rb\r\nc");
+
+  const js = parseSync(source).program.body.at(0).declarations.at(0).init.quasis.at(0);
+  assert.equal(js.value.raw, "a\nb\nc");
+
+  assert.throws(() => { ts.value.raw = "x\ry"; }, TypeError);
+
+  const tsAst = parseSync("`old`;", typescript);
+  const synthetic = tsAst.new_node(NodeKind.TemplateElement);
+  synthetic.value.raw = "x\ry";
+  assert.equal(synthetic.value.raw, "x\ry");
+});
+
 test("optional pattern end projection includes the marker", () => {
   const left = parseSync("function f(x? = 0) {}", typescript).program.body.at(0).params.at(0).left;
   assert.equal(left.end, 13);

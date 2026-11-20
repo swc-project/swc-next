@@ -9,8 +9,19 @@ import { NONE } from "./layout.ts";
 
 class TemplateValue {
   constructor(readonly ast: AstView, readonly id: number) {}
-  get raw(): string { return this.ast.value(this.id, "raw") as string; }
-  set raw(value: string) { this.ast.writeNativeField(this.id, "raw", value.includes("\r") ? value.replace(/\r\n?/g, "\n") : value); }
+  get raw(): string {
+    const ast = this.ast, id = this.id;
+    if (!ast._isTs || id >= ast.nodeCount) { return ast.value(id, "raw") as string; }
+    const start = ast.byteStart(id), end = ast.byteEnd(id);
+    if (start > end || end > ast._sourceLength) { throw new RangeError("Template element span is outside the source"); }
+    return ast.text(id);
+  }
+  set raw(value: string) {
+    if (this.ast._isTs && this.id < this.ast.nodeCount) {
+      throw new TypeError("Replace the template element to change raw");
+    }
+    this.ast.writeNativeField(this.id, "raw", value);
+  }
   get cooked(): string | null { return this.ast.value(this.id, "isCookedUndefined") ? null : this.ast.value(this.id, "cooked") as string; }
   set cooked(value: string | null) {
     this.ast.writeNativeField(this.id, "cooked", value ?? "");
