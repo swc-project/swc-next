@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export let await = 1,
+    x = await;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..55","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[],"members":{"await":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | EXPORTED","value_symbols":[{"Resolved":2}]},"x":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":2,"name":"await","flags":"BLOCK_SCOPED_VAR | EXPORTED","declarations":[{"span":"27..32","scope":2}],"bindings":[],"uses":[0]},
+    {"id":3,"name":"x","flags":"BLOCK_SCOPED_VAR | EXPORTED","declarations":[{"span":"42..43","scope":2}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"await","span":"46..51","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..55","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..55","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"12..54","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

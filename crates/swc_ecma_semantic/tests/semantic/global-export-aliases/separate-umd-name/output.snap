@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export as namespace Global;
+export declare const value: number;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..64","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"value":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":1,"name":"Global","flags":"UMD_EXPORT","declarations":[{"span":"20..26","scope":1}],"bindings":[],"uses":[]},
+    {"id":2,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"49..54","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..64","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..64","kind":"Module","parent":0,"hoist_target":1,"bindings":[2],"flags":["Strict"]}
+  ]
+}

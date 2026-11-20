@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+const Inner = 1;
+namespace Outer {
+  const { fn }: { fn: <U>(x: U) => U } = { fn: (x) => x };
+  interface T {}
+  export declare namespace Inner {
+    export { T };
+  }
+  export const selected = Inner;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..214","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Inner","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"17..22","scope":1}],"bindings":[1],"uses":[4]},
+    {"id":2,"name":"Outer","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"38..43","scope":1}],"bindings":[1],"uses":[],"members":{"Inner":{"symbol":8,"namespace_flags":"NAMESPACE_MODULE | AMBIENT | EXPORTED","value_symbols":[]},"selected":{"symbol":9,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":9}]}}},
+    {"id":3,"name":"fn","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"56..58","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"U","flags":"TYPE_PARAMETER","declarations":[{"span":"69..70","scope":3}],"bindings":[3],"uses":[0,1]},
+    {"id":5,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"72..73","scope":3}],"bindings":[3],"uses":[]},
+    {"id":6,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"94..95","scope":7}],"bindings":[7],"uses":[2]},
+    {"id":7,"name":"T","flags":"INTERFACE","declarations":[{"span":"117..118","scope":2}],"bindings":[2],"uses":[3]},
+    {"id":8,"name":"Inner","flags":"NAMESPACE_MODULE | AMBIENT | EXPORTED","declarations":[{"span":"149..154","scope":2}],"bindings":[],"uses":[],"members":{"T":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":9,"name":"selected","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"194..202","scope":2}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"U","span":"75..76","scope":5,"space":"Type","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]},
+    {"id":1,"name":"U","span":"81..82","scope":6,"space":"Type","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]},
+    {"id":2,"name":"x","span":"100..101","scope":7,"space":"Value","access":"Read","resolution":{"Resolved":6},"candidates":[6],"value_symbols":[{"Resolved":6}]},
+    {"id":3,"name":"T","span":"170..171","scope":10,"space":"Any","access":"None","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[]},
+    {"id":4,"name":"Inner","span":"205..210","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..214","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..214","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"44..213","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[3,7],"flags":["Strict"],"container_owner":2},
+    {"id":3,"span":"68..82","kind":"Block","parent":2,"hoist_target":2,"bindings":[4,5],"flags":["Strict"]},
+    {"id":4,"span":"68..71","kind":"TsTypeParameters","parent":3,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"71..77","kind":"TsSignatureParameter","parent":3,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"78..82","kind":"TsSignatureReturn","parent":3,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"93..101","kind":"Function","parent":2,"hoist_target":7,"bindings":[6],"flags":["Strict"]},
+    {"id":8,"span":"93..96","kind":"TsSignatureParameter","parent":7,"hoist_target":7,"bindings":[],"flags":["Strict"]},
+    {"id":9,"span":"107..121","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":10,"span":"155..178","kind":"TsModule","parent":2,"hoist_target":10,"bindings":[],"flags":["Strict"],"container_owner":8}
+  ]
+}

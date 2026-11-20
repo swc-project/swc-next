@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+let value;
+delete value;
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"value","flags":"BLOCK_SCOPED_VAR","declarations":[{"span":"4..9","scope":0}],"bindings":[0],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"18..23","scope":0,"space":"Value","access":"None","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..25","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]}
+  ]
+}

@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const C = class Inner {
+  self = Inner;
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"C","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[]},
+    {"id":1,"name":"Inner","flags":"CLASS | CLASS_EXPRESSION","declarations":[{"span":"16..21","scope":2}],"bindings":[2],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"Inner","span":"33..38","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..43","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..43","kind":"Module","parent":0,"hoist_target":1,"bindings":[0],"flags":["Strict"]},
+    {"id":2,"span":"10..41","kind":"Class","parent":1,"hoist_target":1,"bindings":[1],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,3 @@
+function read() {
+  await value;
+}

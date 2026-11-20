@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const value = function f() {
+  if (condition)
+    function f() {
+      return f;
+    }
+  return f;
+};
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..11","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"23..24","scope":1}],"bindings":[],"uses":[]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"59..60","scope":2}],"bindings":[2],"uses":[1],"linked_symbols":[3]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"59..60","scope":1,"node_symbol":2}],"bindings":[1],"uses":[2],"linked_symbols":[2]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"35..44","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"78..79","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":2,"name":"f","span":"96..97","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..102","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"14..100","kind":"Function","parent":0,"hoist_target":1,"bindings":[3],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"50..86","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace Outer {
+  export function F() {}
+  namespace F {
+    export interface I {}
+  }
+  type A = string;
+  const A = 1;
+  namespace Test {
+    import A = F;
+    export const value: typeof A = A;
+    export let text: A;
+  }
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..228","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Outer","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..15","scope":1}],"bindings":[1],"uses":[],"members":{"F":{"symbol":2,"namespace_flags":"FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"F","flags":"FUNCTION | EXPORTED | FUNCTION_IMPLEMENTATION","declarations":[{"span":"36..37","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"F","flags":"NAMESPACE_MODULE","declarations":[{"span":"55..56","scope":2}],"bindings":[2],"uses":[0],"members":{"I":{"symbol":4,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":4,"name":"I","flags":"INTERFACE | EXPORTED","declarations":[{"span":"80..81","scope":4}],"bindings":[],"uses":[]},
+    {"id":5,"name":"A","flags":"BLOCK_SCOPED_VAR | TYPE_ALIAS | CONST_VAR","declarations":[{"span":"96..97","scope":2,"flags":"TYPE_ALIAS"},{"span":"116..117","scope":2,"flags":"BLOCK_SCOPED_VAR | CONST_VAR"}],"bindings":[2],"uses":[3]},
+    {"id":6,"name":"Test","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"135..139","scope":2}],"bindings":[2],"uses":[],"members":{"text":{"symbol":9,"namespace_flags":"BLOCK_SCOPED_VAR | EXPORTED","value_symbols":[{"Resolved":9}]},"value":{"symbol":8,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":8}]}}},
+    {"id":7,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"153..154","scope":7}],"bindings":[7],"uses":[1,2],"import":{"target":2,"initializers":[0]}},
+    {"id":8,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"177..182","scope":7}],"bindings":[],"uses":[]},
+    {"id":9,"name":"text","flags":"BLOCK_SCOPED_VAR | EXPORTED","declarations":[{"span":"213..217","scope":7}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"F","span":"157..158","scope":7,"space":"Namespace","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":2}],"import_equals":true},
+    {"id":1,"name":"A","span":"191..192","scope":7,"space":"Typeof","access":"None","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[{"Resolved":7}]},
+    {"id":2,"name":"A","span":"195..196","scope":7,"space":"Value","access":"Read","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[{"Resolved":7}]},
+    {"id":3,"name":"A","span":"219..220","scope":7,"space":"Type","access":"None","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..228","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..228","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"16..227","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[3,5,6],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"27..42","kind":"Function","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":4,"span":"57..88","kind":"TsModule","parent":2,"hoist_target":4,"bindings":[],"flags":["Strict"],"container_owner":3},
+    {"id":5,"span":"70..84","kind":"Block","parent":4,"hoist_target":4,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"91..107","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"140..225","kind":"TsModule","parent":2,"hoist_target":7,"bindings":[7],"flags":["Strict"],"container_owner":6}
+  ]
+}

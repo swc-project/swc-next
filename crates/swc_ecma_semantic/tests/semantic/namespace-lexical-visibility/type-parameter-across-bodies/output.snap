@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  interface Box<T> {}
+}
+declare namespace N {
+  type Invalid = T;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..90","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"N","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"18..19","scope":1},{"span":"64..65","scope":1}],"bindings":[1],"uses":[],"members":{"Box":{"symbol":2,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]},"Invalid":{"symbol":4,"namespace_flags":"TYPE_ALIAS | AMBIENT | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"Box","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"34..37","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"38..39","scope":3}],"bindings":[3],"uses":[]},
+    {"id":4,"name":"Invalid","flags":"TYPE_ALIAS | AMBIENT | EXPORTED","declarations":[{"span":"75..82","scope":5}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"85..86","scope":6,"space":"Type","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..90","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..90","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"20..45","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"24..43","kind":"Block","parent":2,"hoist_target":2,"bindings":[3],"flags":["Strict"]},
+    {"id":4,"span":"37..40","kind":"TsTypeParameters","parent":3,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"66..89","kind":"TsModule","parent":1,"hoist_target":5,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":6,"span":"70..87","kind":"Block","parent":5,"hoist_target":5,"bindings":[],"flags":["Strict"]}
+  ]
+}

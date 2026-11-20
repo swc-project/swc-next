@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function outer(value = () => f) {
+  if (condition)
+    function f() {
+      return f;
+    }
+  return f;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..14","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"value","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"15..20","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"64..65","scope":4}],"bindings":[4],"uses":[2],"linked_symbols":[3]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"64..65","scope":3,"node_symbol":2}],"bindings":[3],"uses":[3],"linked_symbols":[2]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"29..30","scope":2,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"condition","span":"40..49","scope":3,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":2,"name":"f","span":"83..84","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":3,"name":"f","span":"101..102","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..106","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..105","kind":"Function","parent":0,"hoist_target":1,"bindings":[1],"function_body":3,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"23..30","kind":"Function","parent":1,"hoist_target":2,"bindings":[]},
+    {"id":3,"span":"32..105","kind":"FunctionBody","parent":1,"hoist_target":3,"bindings":[3]},
+    {"id":4,"span":"55..91","kind":"Function","parent":3,"hoist_target":4,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}
+---------- Options ----------
+[{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..14","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"value","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"15..20","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"64..65","scope":5}],"bindings":[5],"uses":[2],"linked_symbols":[3]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"64..65","scope":4,"node_symbol":2}],"bindings":[4],"uses":[3],"linked_symbols":[2]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"29..30","scope":3,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"condition","span":"40..49","scope":4,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":2,"name":"f","span":"83..84","scope":5,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":3,"name":"f","span":"101..102","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..106","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..105","kind":"Function","parent":0,"hoist_target":1,"bindings":[1],"function_body":4,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"14..31","kind":"TsSignatureParameter","parent":1,"hoist_target":1,"bindings":[]},
+    {"id":3,"span":"23..30","kind":"Function","parent":2,"hoist_target":3,"bindings":[]},
+    {"id":4,"span":"32..105","kind":"FunctionBody","parent":1,"hoist_target":4,"bindings":[3]},
+    {"id":5,"span":"55..91","kind":"Function","parent":4,"hoist_target":5,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

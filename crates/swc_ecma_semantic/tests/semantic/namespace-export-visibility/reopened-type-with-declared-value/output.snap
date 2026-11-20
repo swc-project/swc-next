@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+type Item = { outer: true };
+declare namespace N {
+  interface Local {
+    inner: true;
+  }
+  export { Local as Item };
+  export const Item: 0;
+}
+namespace N {
+  export let value: Item;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..199","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Item","flags":"TYPE_ALIAS","declarations":[{"span":"16..20","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"58..59","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"},{"span":"167..168","scope":1}],"bindings":[1],"uses":[],"members":{"Item":{"symbol":4,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":4}]},"Local":{"symbol":null,"value_symbols":[]},"value":{"symbol":5,"namespace_flags":"BLOCK_SCOPED_VAR | EXPORTED","value_symbols":[{"Resolved":5}]}},"export_aliases":true},
+    {"id":3,"name":"Local","flags":"INTERFACE | AMBIENT","declarations":[{"span":"74..79","scope":3}],"bindings":[3],"uses":[0,1]},
+    {"id":4,"name":"Item","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"146..150","scope":3}],"bindings":[],"uses":[]},
+    {"id":5,"name":"value","flags":"BLOCK_SCOPED_VAR | EXPORTED","declarations":[{"span":"184..189","scope":5}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Local","span":"114..119","scope":3,"space":"Any","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[]},
+    {"id":1,"name":"Item","span":"191..195","scope":5,"space":"Type","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":4}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..199","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..199","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"11..39","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"60..156","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[3],"flags":["Strict"],"container_owner":2},
+    {"id":4,"span":"64..102","kind":"Block","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"169..198","kind":"TsModule","parent":1,"hoist_target":5,"bindings":[],"flags":["Strict"],"container_owner":2}
+  ]
+}

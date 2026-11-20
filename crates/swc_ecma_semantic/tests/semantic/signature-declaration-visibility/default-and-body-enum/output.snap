@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const value = "outer";
+function f(x = 0): typeof value {
+  enum value {
+    A,
+  }
+  return "outer";
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..103","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..11","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"32..33","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"34..35","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"value","flags":"REGULAR_ENUM","declarations":[{"span":"64..69","scope":5}],"bindings":[5],"uses":[],"members":{"A":{"symbol":5,"enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":5}]}}},
+    {"id":5,"name":"A","flags":"ENUM_MEMBER","declarations":[{"span":"76..77","scope":6}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"49..54","scope":4,"space":"Typeof","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..103","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..103","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"23..102","kind":"Function","parent":1,"hoist_target":2,"bindings":[3],"function_body":5,"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"33..40","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"40..54","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"55..102","kind":"FunctionBody","parent":2,"hoist_target":5,"bindings":[4],"flags":["Strict"]},
+    {"id":6,"span":"70..82","kind":"Block","parent":5,"hoist_target":5,"bindings":[],"flags":["Strict"],"container_owner":4}
+  ]
+}

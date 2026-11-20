@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  ["value"] = 1,
+  Other = value,
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..45","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"E","flags":"REGULAR_ENUM","declarations":[{"span":"5..6","scope":1}],"bindings":[1],"uses":[],"members":{"Other":{"symbol":3,"enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":3}]},"value":{"symbol":2,"enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"value","flags":"ENUM_MEMBER","declarations":[{"span":"12..24","scope":2}],"bindings":[],"uses":[0]},
+    {"id":3,"name":"Other","flags":"ENUM_MEMBER","declarations":[{"span":"28..41","scope":2}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"36..41","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..45","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..45","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"7..44","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

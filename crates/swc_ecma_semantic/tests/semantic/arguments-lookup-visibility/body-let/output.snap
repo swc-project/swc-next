@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+var arguments;
+function f() {
+  let arguments;
+  return arguments;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"4..13","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"24..25","scope":0}],"bindings":[0],"uses":[]},
+    {"id":2,"name":"arguments","flags":"BLOCK_SCOPED_VAR","declarations":[{"span":"36..45","scope":1}],"bindings":[1],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"56..65","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..69","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"15..68","kind":"Function","parent":0,"hoist_target":1,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

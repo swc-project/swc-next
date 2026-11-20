@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function f(
+  arg = () => {
+    const value = 1;
+    return undefined as unknown as typeof value;
+  },
+) {
+  function value() {}
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..131","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..10","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"arg","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"14..17","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"38..43","scope":4}],"bindings":[4],"uses":[1]},
+    {"id":4,"name":"value","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"118..123","scope":5}],"bindings":[5],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"undefined","span":"60..69","scope":4,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"value","span":"91..96","scope":4,"space":"Typeof","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..131","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..131","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..130","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"function_body":5,"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"10..104","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"20..101","kind":"Function","parent":3,"hoist_target":4,"bindings":[3],"flags":["Strict"]},
+    {"id":5,"span":"105..130","kind":"FunctionBody","parent":2,"hoist_target":5,"bindings":[4],"flags":["Strict"]},
+    {"id":6,"span":"109..128","kind":"Function","parent":5,"hoist_target":6,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

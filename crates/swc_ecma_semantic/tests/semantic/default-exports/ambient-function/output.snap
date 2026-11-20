@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f(value: string): string;
+type F = typeof f;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..69","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"F":{"symbol":3,"namespace_flags":"TYPE_ALIAS | AMBIENT | EXPORTED","value_symbols":[]},"default":{"symbol":1,"namespace_flags":"FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT","value_symbols":[{"Resolved":1}]}}},
+    {"id":1,"name":"f","flags":"FUNCTION | AMBIENT | EXPORTED | IS_DEFAULT","declarations":[{"span":"24..25","scope":1}],"bindings":[],"uses":[0],"roles":["DefaultExport"]},
+    {"id":2,"name":"value","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"26..31","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"F","flags":"TYPE_ALIAS | AMBIENT | EXPORTED","declarations":[{"span":"55..56","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"66..67","scope":5,"space":"Typeof","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..69","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..69","kind":"Module","parent":0,"hoist_target":1,"bindings":[3],"flags":["Strict"]},
+    {"id":2,"span":"15..49","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"25..40","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"40..48","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"50..68","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

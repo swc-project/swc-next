@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const C = class Inner<T extends Inner> {
+  self!: Inner;
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..60","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"C","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"Inner","flags":"CLASS | CLASS_EXPRESSION","declarations":[{"span":"16..21","scope":2}],"bindings":[2],"uses":[0,1]},
+    {"id":3,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"22..23","scope":2}],"bindings":[2],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Inner","span":"32..37","scope":3,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":1,"name":"Inner","span":"50..55","scope":2,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..60","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..60","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"10..58","kind":"Class","parent":1,"hoist_target":1,"bindings":[2,3],"flags":["Strict"]},
+    {"id":3,"span":"21..38","kind":"TsTypeParameters","parent":2,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

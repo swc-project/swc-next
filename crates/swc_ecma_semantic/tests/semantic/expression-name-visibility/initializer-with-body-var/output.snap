@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n(a = n) {
+  var n;
+  return n;
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[]},
+    {"id":1,"name":"n","flags":"FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"19..20","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":2,"name":"a","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"21..22","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"n","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"36..37","scope":3}],"bindings":[3],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"n","span":"25..26","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":1,"name":"n","span":"48..49","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..54","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..54","kind":"Module","parent":0,"hoist_target":1,"bindings":[0],"flags":["Strict"]},
+    {"id":2,"span":"10..52","kind":"Function","parent":1,"hoist_target":2,"bindings":[1,2],"function_body":3,"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"28..52","kind":"FunctionBody","parent":2,"hoist_target":3,"bindings":[3],"flags":["Strict"]}
+  ]
+}

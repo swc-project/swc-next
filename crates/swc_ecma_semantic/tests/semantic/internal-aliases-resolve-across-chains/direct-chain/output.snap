@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import A0 = A1;
+namespace A1 { export interface T {} }
+type Result = A0.T;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..75","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"A0","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"7..9","scope":1}],"bindings":[1],"uses":[1],"import":{"target":2,"initializers":[0]}},
+    {"id":2,"name":"A1","flags":"NAMESPACE_MODULE","declarations":[{"span":"26..28","scope":1}],"bindings":[1],"uses":[0],"members":{"T":{"symbol":3,"namespace_flags":"INTERFACE | EXPORTED","value_symbols":[]}}},
+    {"id":3,"name":"T","flags":"INTERFACE | EXPORTED","declarations":[{"span":"48..49","scope":2}],"bindings":[],"uses":[]},
+    {"id":4,"name":"Result","flags":"TYPE_ALIAS","declarations":[{"span":"60..66","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"A1","span":"12..14","scope":1,"space":"Namespace","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[],"import_equals":true},
+    {"id":1,"name":"A0","span":"69..71","scope":4,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..75","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..75","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2,4],"flags":["Strict"]},
+    {"id":2,"span":"29..54","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":3,"span":"38..52","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"55..74","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

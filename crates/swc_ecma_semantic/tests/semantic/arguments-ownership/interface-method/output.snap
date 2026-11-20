@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare const arguments: { outer: true };
+interface I {
+  f(): typeof arguments;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"arguments","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"14..23","scope":0}],"bindings":[0],"uses":[0]},
+    {"id":1,"name":"I","flags":"INTERFACE","declarations":[{"span":"52..53","scope":0}],"bindings":[0],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"70..79","scope":3,"space":"Typeof","access":"None","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..83","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"42..82","kind":"Block","parent":0,"hoist_target":0,"bindings":[]},
+    {"id":2,"span":"58..80","kind":"Block","parent":1,"hoist_target":0,"bindings":[]},
+    {"id":3,"span":"61..79","kind":"TsSignatureReturn","parent":2,"hoist_target":0,"bindings":[]}
+  ]
+}

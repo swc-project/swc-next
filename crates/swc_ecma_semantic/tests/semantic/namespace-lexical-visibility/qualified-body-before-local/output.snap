@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace A {
+  export const x = 2;
+}
+namespace A.B {}
+namespace A {
+  const x = 1;
+  namespace B {
+    export const y = x;
+  }
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..130","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"A","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1},{"span":"48..49","scope":1,"flags":"NAMESPACE_MODULE"},{"span":"65..66","scope":1}],"bindings":[1],"uses":[],"members":{"B":{"symbol":3,"namespace_flags":"NAMESPACE_MODULE | EXPORTED","value_symbols":[]},"x":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"29..30","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"B","flags":"NAMESPACE_MODULE | EXPORTED","declarations":[{"span":"50..51","scope":1}],"bindings":[],"uses":[],"members":{}},
+    {"id":4,"name":"x","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"77..78","scope":4}],"bindings":[4],"uses":[0]},
+    {"id":5,"name":"B","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"96..97","scope":4}],"bindings":[4],"uses":[],"members":{"y":{"symbol":6,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":6}]}}},
+    {"id":6,"name":"y","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"117..118","scope":5}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"x","span":"121..122","scope":5,"space":"Value","access":"Read","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[{"Resolved":4}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..130","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..130","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"12..37","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"52..54","kind":"TsModule","parent":1,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":3},
+    {"id":4,"span":"67..129","kind":"TsModule","parent":1,"hoist_target":4,"bindings":[4,5],"flags":["Strict"],"container_owner":1},
+    {"id":5,"span":"98..127","kind":"TsModule","parent":4,"hoist_target":5,"bindings":[],"flags":["Strict"],"container_owner":5}
+  ]
+}

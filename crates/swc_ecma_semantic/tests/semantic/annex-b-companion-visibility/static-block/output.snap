@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+class C {
+  static {
+    {
+      function f() {
+        return f;
+      }
+    }
+    f;
+  }
+}
+f;
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"C","flags":"CLASS","declarations":[{"span":"6..7","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"42..43","scope":3}],"bindings":[3],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"63..64","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":1,"name":"f","span":"84..85","scope":2,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":2,"name":"f","span":"93..94","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..96","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..92","kind":"Class","parent":0,"hoist_target":0,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"12..90","kind":"StaticBlock","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"25..79","kind":"Block","parent":2,"hoist_target":2,"bindings":[1],"flags":["Strict"]},
+    {"id":4,"span":"33..73","kind":"Function","parent":3,"hoist_target":4,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

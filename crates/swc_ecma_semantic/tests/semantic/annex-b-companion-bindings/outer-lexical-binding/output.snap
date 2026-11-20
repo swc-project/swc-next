@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+let f;
+function outer() {
+  if (condition)
+    function f() {
+      return f;
+    }
+  return f;
+}
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"BLOCK_SCOPED_VAR","declarations":[{"span":"4..5","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"16..21","scope":0}],"bindings":[0],"uses":[]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"56..57","scope":2}],"bindings":[2],"uses":[1],"linked_symbols":[3]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"56..57","scope":1,"node_symbol":2}],"bindings":[1],"uses":[2],"linked_symbols":[2]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"32..41","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"75..76","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":2,"name":"f","span":"93..94","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..98","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"7..97","kind":"Function","parent":0,"hoist_target":1,"bindings":[3],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"47..83","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

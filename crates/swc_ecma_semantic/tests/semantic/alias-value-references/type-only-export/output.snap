@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace N {
+  export class C {}
+}
+import Alias = N.C;
+export type { Alias };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..79","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"Alias":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1}],"bindings":[1],"uses":[0],"members":{"C":{"symbol":2,"namespace_flags":"CLASS | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"C","flags":"CLASS | EXPORTED","declarations":[{"span":"29..30","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"43..48","scope":1}],"bindings":[1],"uses":[1],"import":{"target":2,"initializers":[0]}}
+  ],
+  "references": [
+    {"id":0,"name":"N","span":"51..52","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"Alias","span":"70..75","scope":1,"space":"Any","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..79","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..79","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,3],"flags":["Strict"]},
+    {"id":2,"span":"12..35","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"23..33","kind":"Class","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const value = 1;
+function f(x = 0): typeof value {
+  function value() {}
+  return value;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..91","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..11","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"26..27","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"x","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"28..29","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"value","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"62..67","scope":5}],"bindings":[5],"uses":[0,1]}
+  ],
+  "references": [
+    {"id":0,"name":"value","span":"43..48","scope":4,"space":"Typeof","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[{"Resolved":4}]},
+    {"id":1,"name":"value","span":"82..87","scope":5,"space":"Value","access":"Read","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[{"Resolved":4}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..91","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..91","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"17..90","kind":"Function","parent":1,"hoist_target":2,"bindings":[3],"function_body":5,"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"27..34","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"34..48","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"49..90","kind":"FunctionBody","parent":2,"hoist_target":5,"bindings":[4],"flags":["Strict"]},
+    {"id":6,"span":"53..72","kind":"Function","parent":5,"hoist_target":6,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

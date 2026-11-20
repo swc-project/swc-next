@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import A = B;
+import B = A;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..28","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"A","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"7..8","scope":1}],"bindings":[1],"uses":[],"import":{"target":null,"initializers":[0]}},
+    {"id":2,"name":"B","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"21..22","scope":1}],"bindings":[1],"uses":[],"import":{"target":null,"initializers":[1]}}
+  ],
+  "references": [
+    {"id":0,"name":"B","span":"11..12","scope":1,"space":"Namespace","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[],"import_equals":true},
+    {"id":1,"name":"A","span":"25..26","scope":1,"space":"Namespace","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[],"import_equals":true}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..28","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..28","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]}
+  ]
+}

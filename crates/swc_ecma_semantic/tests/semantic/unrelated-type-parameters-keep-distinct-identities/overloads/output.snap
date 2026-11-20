@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function f<T>(value: T): void;
+declare function f<T>(value: T, extra: number): void;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..93","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"f","flags":"FUNCTION | AMBIENT","declarations":[{"span":"17..18","scope":1},{"span":"56..57","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"19..20","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":3,"name":"value","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"22..27","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"58..59","scope":6}],"bindings":[6],"uses":[1]},
+    {"id":5,"name":"value","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"61..66","scope":6}],"bindings":[6],"uses":[]},
+    {"id":6,"name":"extra","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"71..76","scope":6}],"bindings":[6],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"29..30","scope":4,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":1,"name":"T","span":"68..69","scope":8,"space":"Type","access":"None","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..93","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..93","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..38","kind":"Function","parent":1,"hoist_target":2,"bindings":[2,3],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"18..21","kind":"TsTypeParameters","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"21..31","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"31..37","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"39..92","kind":"Function","parent":1,"hoist_target":6,"bindings":[4,5,6],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":7,"span":"57..60","kind":"TsTypeParameters","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]},
+    {"id":8,"span":"60..85","kind":"TsSignatureParameter","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]},
+    {"id":9,"span":"85..91","kind":"TsSignatureReturn","parent":6,"hoist_target":6,"bindings":[],"flags":["Strict"]}
+  ]
+}

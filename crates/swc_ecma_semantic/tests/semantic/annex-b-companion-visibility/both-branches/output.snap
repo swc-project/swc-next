@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+if (condition)
+  function f() {
+    return f;
+  }
+else
+  function f(value) {
+    return f;
+  }
+f;
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"26..27","scope":1}],"bindings":[1],"uses":[1],"linked_symbols":[1,3]},
+    {"id":1,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"66..67","scope":2}],"bindings":[2],"uses":[2],"linked_symbols":[0,3]},
+    {"id":2,"name":"value","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"68..73","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"26..27","scope":0,"node_symbol":0},{"span":"66..67","scope":0,"node_symbol":1}],"bindings":[0],"uses":[3],"linked_symbols":[0,1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"4..13","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"43..44","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]},
+    {"id":2,"name":"f","span":"88..89","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":3,"name":"f","span":"95..96","scope":0,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..98","kind":"Global","parent":null,"hoist_target":0,"bindings":[3]},
+    {"id":1,"span":"17..49","kind":"Function","parent":0,"hoist_target":1,"bindings":[0],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"57..94","kind":"Function","parent":0,"hoist_target":2,"bindings":[1,2],"flags":["ArgumentsBarrier"]}
+  ]
+}
+---------- Options ----------
+[{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"26..27","scope":1}],"bindings":[1],"uses":[1],"linked_symbols":[1,3]},
+    {"id":1,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"66..67","scope":2}],"bindings":[2],"uses":[2],"linked_symbols":[0,3]},
+    {"id":2,"name":"value","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"68..73","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"f","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"26..27","scope":0,"node_symbol":0},{"span":"66..67","scope":0,"node_symbol":1}],"bindings":[0],"uses":[3],"linked_symbols":[0,1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"4..13","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"43..44","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]},
+    {"id":2,"name":"f","span":"88..89","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":3,"name":"f","span":"95..96","scope":0,"space":"Value","access":"Read","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..98","kind":"Global","parent":null,"hoist_target":0,"bindings":[3]},
+    {"id":1,"span":"17..49","kind":"Function","parent":0,"hoist_target":1,"bindings":[0],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"57..94","kind":"Function","parent":0,"hoist_target":2,"bindings":[1,2],"flags":["ArgumentsBarrier"]},
+    {"id":3,"span":"67..74","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[]}
+  ]
+}

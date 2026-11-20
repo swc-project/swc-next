@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default interface A<T> {
+  value: T;
+}
+export default interface B<T> {
+  extra: T;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..92","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"default":{"symbol":1,"namespace_flags":"INTERFACE | EXPORTED | IS_DEFAULT","value_symbols":[]}}},
+    {"id":1,"name":"A","flags":"INTERFACE | EXPORTED | IS_DEFAULT","declarations":[{"span":"25..26","scope":1},{"span":"71..72","scope":1}],"bindings":[],"uses":[],"roles":["DefaultExport"]},
+    {"id":2,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"27..28","scope":2},{"span":"73..74","scope":4}],"bindings":[2,4],"uses":[0,1]}
+  ],
+  "references": [
+    {"id":0,"name":"T","span":"41..42","scope":2,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":1,"name":"T","span":"87..88","scope":4,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..92","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..92","kind":"Module","parent":0,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":2,"span":"15..45","kind":"Block","parent":1,"hoist_target":1,"bindings":[2],"flags":["Strict"]},
+    {"id":3,"span":"26..29","kind":"TsTypeParameters","parent":2,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"61..91","kind":"Block","parent":1,"hoist_target":1,"bindings":[2],"flags":["Strict"]},
+    {"id":5,"span":"72..75","kind":"TsTypeParameters","parent":4,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

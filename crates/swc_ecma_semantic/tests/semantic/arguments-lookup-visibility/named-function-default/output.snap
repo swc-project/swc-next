@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function arguments(a = arguments) {
+  return arguments;
+};
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"arguments","flags":"FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"19..28","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"a","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"29..30","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"arguments","span":"33..42","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"arguments","span":"55..64","scope":2,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..69","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"10..67","kind":"Function","parent":0,"hoist_target":1,"bindings":[1,2],"function_body":2,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"44..67","kind":"FunctionBody","parent":1,"hoist_target":2,"bindings":[]}
+  ]
+}

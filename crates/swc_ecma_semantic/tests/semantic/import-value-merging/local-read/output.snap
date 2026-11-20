@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+import type { T as X } from "./dep.js";
+const X = 1;
+export const result = X;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..78","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"result":{"symbol":2,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":1,"name":"X","flags":"BLOCK_SCOPED_VAR | TYPE_IMPORT | CONST_VAR","declarations":[{"span":"19..20","scope":1,"flags":"TYPE_IMPORT"},{"span":"46..47","scope":1,"flags":"BLOCK_SCOPED_VAR | CONST_VAR"}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"result","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"66..72","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"75..76","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..78","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..78","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]}
+  ]
+}

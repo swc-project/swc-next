@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface A {}
+interface B {}
+interface A {}
+interface A {}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"A","flags":"INTERFACE","declarations":[{"span":"10..11","scope":0},{"span":"40..41","scope":0},{"span":"55..56","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"B","flags":"INTERFACE","declarations":[{"span":"25..26","scope":0}],"bindings":[0],"uses":[]}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..60","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"0..14","kind":"Block","parent":0,"hoist_target":0,"bindings":[]},
+    {"id":2,"span":"15..29","kind":"Block","parent":0,"hoist_target":0,"bindings":[]},
+    {"id":3,"span":"30..44","kind":"Block","parent":0,"hoist_target":0,"bindings":[]},
+    {"id":4,"span":"45..59","kind":"Block","parent":0,"hoist_target":0,"bindings":[]}
+  ]
+}

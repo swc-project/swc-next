@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+interface X {}
+declare namespace N {
+  export { X };
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Diagnostics ----------
+{"parser":0,"semantic":1}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"X","flags":"INTERFACE","declarations":[{"span":"10..11","scope":0}],"bindings":[0],"uses":[0]},
+    {"id":1,"name":"N","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"33..34","scope":0}],"bindings":[0],"uses":[],"members":{"X":{"symbol":null,"value_symbols":[]}},"export_aliases":true}
+  ],
+  "references": [
+    {"id":0,"name":"X","span":"48..49","scope":2,"space":"Any","access":"None","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..55","kind":"Global","parent":null,"hoist_target":0,"bindings":[0,1]},
+    {"id":1,"span":"0..14","kind":"Block","parent":0,"hoist_target":0,"bindings":[]},
+    {"id":2,"span":"35..54","kind":"TsModule","parent":0,"hoist_target":2,"bindings":[],"container_owner":1}
+  ]
+}

@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function outer() {
+  var arguments;
+  if (condition) function arguments() {}
+  arguments;
+}
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..14","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"arguments","flags":"FUNCTION_SCOPED_VAR","declarations":[{"span":"25..34","scope":1},{"span":"62..71","scope":1,"node_symbol":2}],"bindings":[1],"uses":[1],"linked_symbols":[2]},
+    {"id":2,"name":"arguments","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"62..71","scope":2}],"bindings":[2],"uses":[],"linked_symbols":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"42..51","scope":1,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"arguments","span":"79..88","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..92","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..91","kind":"Function","parent":0,"hoist_target":1,"bindings":[1],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"53..76","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

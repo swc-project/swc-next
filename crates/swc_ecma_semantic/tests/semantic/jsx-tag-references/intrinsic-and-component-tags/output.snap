@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace JSX {
+  interface Element {}
+  interface IntrinsicElements {
+    div: {};
+    "A-B": {};
+  }
+}
+declare const _Button: () => JSX.Element;
+declare const $Button: () => JSX.Element;
+declare const Élement: () => JSX.Element;
+const views = [<_Button />, <$Button />, <Élement />, <div />, <A-B />];
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..314","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"JSX","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"18..21","scope":1}],"bindings":[1],"uses":[0,1,2],"members":{"Element":{"symbol":2,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]},"IntrinsicElements":{"symbol":3,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"Element","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"36..43","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"IntrinsicElements","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"59..76","scope":2}],"bindings":[],"uses":[]},
+    {"id":4,"name":"_Button","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"127..134","scope":1}],"bindings":[1],"uses":[3]},
+    {"id":5,"name":"$Button","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"169..176","scope":1}],"bindings":[1],"uses":[4]},
+    {"id":6,"name":"Élement","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"211..219","scope":1}],"bindings":[1],"uses":[5]},
+    {"id":7,"name":"views","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"246..251","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"JSX","span":"142..145","scope":6,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":1,"name":"JSX","span":"184..187","scope":8,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":2,"name":"JSX","span":"227..230","scope":10,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":3,"name":"_Button","span":"256..263","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[{"Resolved":4}]},
+    {"id":4,"name":"$Button","span":"269..276","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}]},
+    {"id":5,"name":"Élement","span":"282..290","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":6},"candidates":[6],"value_symbols":[{"Resolved":6}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..314","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..314","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4,5,6,7],"flags":["Strict"]},
+    {"id":2,"span":"22..112","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"26..46","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"49..110","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"136..153","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"139..153","kind":"TsSignatureReturn","parent":5,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"178..195","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":8,"span":"181..195","kind":"TsSignatureReturn","parent":7,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":9,"span":"221..238","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":10,"span":"224..238","kind":"TsSignatureReturn","parent":9,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

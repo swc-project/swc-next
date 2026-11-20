@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+enum E {
+  A = 42,
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..21","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"E","flags":"REGULAR_ENUM","declarations":[{"span":"5..6","scope":1}],"bindings":[1],"uses":[],"members":{"A":{"symbol":2,"enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"A","flags":"ENUM_MEMBER","declarations":[{"span":"11..17","scope":2}],"bindings":[],"uses":[]}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..21","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..21","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"7..20","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

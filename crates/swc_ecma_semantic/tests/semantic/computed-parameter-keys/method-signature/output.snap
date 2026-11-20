@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const key = "p";
+interface I {
+  method({ [key]: v }: { p: number }): typeof v;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..82","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"key","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..9","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"I","flags":"INTERFACE","declarations":[{"span":"27..28","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"v","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"49..50","scope":3}],"bindings":[3],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"key","span":"43..46","scope":4,"space":"Typeof","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":1,"name":"v","span":"77..78","scope":5,"space":"Typeof","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..82","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..82","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,2],"flags":["Strict"]},
+    {"id":2,"span":"17..81","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":3,"span":"33..79","kind":"Block","parent":2,"hoist_target":1,"bindings":[3],"flags":["Strict"]},
+    {"id":4,"span":"39..68","kind":"TsSignatureParameter","parent":3,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"68..78","kind":"TsSignatureReturn","parent":3,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

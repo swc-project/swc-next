@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+const f = function n(n) {
+  return n;
+};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"6..7","scope":1}],"bindings":[1],"uses":[]},
+    {"id":1,"name":"n","flags":"FUNCTION | FUNCTION_EXPRESSION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"19..20","scope":2}],"bindings":[],"uses":[]},
+    {"id":2,"name":"n","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"21..22","scope":2}],"bindings":[2],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"n","span":"35..36","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..41","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..41","kind":"Module","parent":0,"hoist_target":1,"bindings":[0],"flags":["Strict"]},
+    {"id":2,"span":"10..39","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

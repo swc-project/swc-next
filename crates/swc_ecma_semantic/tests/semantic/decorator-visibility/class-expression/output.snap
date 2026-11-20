@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare function dec<U>(value?: unknown): any;
+type T = string;
+const C =
+  @dec<T>()
+  class Inner<T> {};
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..107","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"dec","flags":"FUNCTION | AMBIENT","declarations":[{"span":"17..20","scope":1}],"bindings":[1],"uses":[0]},
+    {"id":2,"name":"U","flags":"TYPE_PARAMETER","declarations":[{"span":"21..22","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"value","flags":"FUNCTION_SCOPED_VAR | AMBIENT | PARAMETER","declarations":[{"span":"24..29","scope":2}],"bindings":[2],"uses":[]},
+    {"id":4,"name":"T","flags":"TYPE_ALIAS","declarations":[{"span":"52..53","scope":1}],"bindings":[1],"uses":[]},
+    {"id":5,"name":"C","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"70..71","scope":1}],"bindings":[1],"uses":[]},
+    {"id":6,"name":"Inner","flags":"CLASS | CLASS_EXPRESSION","declarations":[{"span":"94..99","scope":7}],"bindings":[7],"uses":[]},
+    {"id":7,"name":"T","flags":"TYPE_PARAMETER","declarations":[{"span":"100..101","scope":7}],"bindings":[7],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"dec","span":"77..80","scope":8,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":1,"name":"T","span":"81..82","scope":8,"space":"Type","access":"None","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..107","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..107","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4,5],"flags":["Strict"]},
+    {"id":2,"span":"0..46","kind":"Function","parent":1,"hoist_target":2,"bindings":[2,3],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"20..23","kind":"TsTypeParameters","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"23..40","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"40..45","kind":"TsSignatureReturn","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"47..63","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"76..105","kind":"Class","parent":1,"hoist_target":1,"bindings":[6,7],"flags":["Strict"]},
+    {"id":8,"span":"76..85","kind":"ClassDecorator","parent":7,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":9,"span":"99..102","kind":"TsTypeParameters","parent":7,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

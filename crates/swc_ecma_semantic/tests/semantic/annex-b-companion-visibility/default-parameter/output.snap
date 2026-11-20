@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function outer(f = 1) {
+  if (condition)
+    function f() {
+      return f;
+    }
+  return f;
+}
+---------- Options ----------
+[{"sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..14","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"15..16","scope":1}],"bindings":[1],"uses":[2]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"54..55","scope":3}],"bindings":[3],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"30..39","scope":2,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"73..74","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":2,"name":"f","span":"91..92","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..96","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..95","kind":"Function","parent":0,"hoist_target":1,"bindings":[1],"function_body":2,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"22..95","kind":"FunctionBody","parent":1,"hoist_target":2,"bindings":[]},
+    {"id":3,"span":"45..81","kind":"Function","parent":2,"hoist_target":3,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}
+---------- Options ----------
+[{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"outer","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..14","scope":0}],"bindings":[0],"uses":[]},
+    {"id":1,"name":"f","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"15..16","scope":1}],"bindings":[1],"uses":[2]},
+    {"id":2,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"54..55","scope":4}],"bindings":[4],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"30..39","scope":3,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"73..74","scope":4,"space":"Value","access":"Read","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[{"Resolved":2}]},
+    {"id":2,"name":"f","span":"91..92","scope":3,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..96","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..95","kind":"Function","parent":0,"hoist_target":1,"bindings":[1],"function_body":3,"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"14..21","kind":"TsSignatureParameter","parent":1,"hoist_target":1,"bindings":[]},
+    {"id":3,"span":"22..95","kind":"FunctionBody","parent":1,"hoist_target":3,"bindings":[]},
+    {"id":4,"span":"45..81","kind":"Function","parent":3,"hoist_target":4,"bindings":[2],"flags":["ArgumentsBarrier"]}
+  ]
+}

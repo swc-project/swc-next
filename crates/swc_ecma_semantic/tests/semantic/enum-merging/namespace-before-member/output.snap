@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace E {
+  export namespace A {}
+}
+enum E {
+  A,
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..56","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"E","flags":"REGULAR_ENUM | NAMESPACE_MODULE","declarations":[{"span":"10..11","scope":1,"flags":"NAMESPACE_MODULE"},{"span":"45..46","scope":1,"flags":"REGULAR_ENUM"}],"bindings":[1],"uses":[],"members":{"A":{"symbol":2,"namespace_flags":"NAMESPACE_MODULE | EXPORTED","enum_flags":"ENUM_MEMBER","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"A","flags":"NAMESPACE_MODULE | EXPORTED | ENUM_MEMBER","declarations":[{"span":"33..34","scope":2,"flags":"NAMESPACE_MODULE | EXPORTED"},{"span":"51..52","scope":4,"flags":"ENUM_MEMBER"}],"bindings":[],"uses":[],"members":{}}
+  ],
+  "references": [],
+  "scopes": [
+    {"id":0,"span":"0..56","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..56","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"12..39","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"35..37","kind":"TsModule","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":4,"span":"47..55","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"],"container_owner":1}
+  ]
+}

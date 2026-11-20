@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+namespace AliasSpace {
+  interface OnlyType {}
+  export type Public = OnlyType;
+}
+namespace AliasSpace {
+  export type Good = Public;
+  export const bad = Public;
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..165","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"AliasSpace","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"10..20","scope":1,"flags":"NAMESPACE_MODULE"},{"span":"92..102","scope":1}],"bindings":[1],"uses":[],"members":{"Good":{"symbol":4,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]},"Public":{"symbol":3,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]},"bad":{"symbol":5,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","value_symbols":[{"Resolved":5}]}}},
+    {"id":2,"name":"OnlyType","flags":"INTERFACE","declarations":[{"span":"35..43","scope":2}],"bindings":[2],"uses":[0]},
+    {"id":3,"name":"Public","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"61..67","scope":2}],"bindings":[],"uses":[1]},
+    {"id":4,"name":"Good","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"119..123","scope":5}],"bindings":[],"uses":[]},
+    {"id":5,"name":"bad","flags":"BLOCK_SCOPED_VAR | CONST_VAR | EXPORTED","declarations":[{"span":"149..152","scope":5}],"bindings":[],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"OnlyType","span":"70..78","scope":4,"space":"Type","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[]},
+    {"id":1,"name":"Public","span":"126..132","scope":6,"space":"Type","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[]},
+    {"id":2,"name":"Public","span":"155..161","scope":5,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..165","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..165","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"21..81","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[2],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"25..46","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"56..79","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"103..164","kind":"TsModule","parent":1,"hoist_target":5,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":6,"span":"114..133","kind":"Block","parent":5,"hoist_target":5,"bindings":[],"flags":["Strict"]}
+  ]
+}

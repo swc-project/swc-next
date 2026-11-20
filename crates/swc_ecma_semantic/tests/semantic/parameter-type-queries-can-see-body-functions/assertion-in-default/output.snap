@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function f(arg = undefined as unknown as typeof value) {
+  function value() {}
+}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..81","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..10","scope":1}],"bindings":[1],"uses":[]},
+    {"id":2,"name":"arg","flags":"FUNCTION_SCOPED_VAR | PARAMETER","declarations":[{"span":"11..14","scope":2}],"bindings":[2],"uses":[]},
+    {"id":3,"name":"value","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"68..73","scope":4}],"bindings":[4],"uses":[1]}
+  ],
+  "references": [
+    {"id":0,"name":"undefined","span":"17..26","scope":3,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"value","span":"48..53","scope":3,"space":"Typeof","access":"None","resolution":{"Resolved":3},"candidates":[3],"value_symbols":[{"Resolved":3}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..81","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..81","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"0..80","kind":"Function","parent":1,"hoist_target":2,"bindings":[2],"function_body":4,"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"10..54","kind":"TsSignatureParameter","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"55..80","kind":"FunctionBody","parent":2,"hoist_target":4,"bindings":[3],"flags":["Strict"]},
+    {"id":5,"span":"59..78","kind":"Function","parent":4,"hoist_target":5,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

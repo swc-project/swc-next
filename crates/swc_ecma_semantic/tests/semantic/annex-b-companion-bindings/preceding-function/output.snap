@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+function f() {}
+if (condition)
+  function f() {
+    return f;
+  }
+f;
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION_SCOPED_VAR | FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"9..10","scope":0,"flags":"FUNCTION | FUNCTION_IMPLEMENTATION"},{"span":"42..43","scope":0,"flags":"FUNCTION_SCOPED_VAR","node_symbol":1}],"bindings":[0],"uses":[2],"linked_symbols":[1]},
+    {"id":1,"name":"f","flags":"FUNCTION | ANNEX_B_IF_FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"42..43","scope":2}],"bindings":[2],"uses":[1],"linked_symbols":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"condition","span":"20..29","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]},
+    {"id":1,"name":"f","span":"59..60","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]},
+    {"id":2,"name":"f","span":"66..67","scope":0,"space":"Value","access":"Read","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..69","kind":"Global","parent":null,"hoist_target":0,"bindings":[0]},
+    {"id":1,"span":"0..15","kind":"Function","parent":0,"hoist_target":1,"bindings":[],"flags":["ArgumentsBarrier"]},
+    {"id":2,"span":"33..65","kind":"Function","parent":0,"hoist_target":2,"bindings":[1],"flags":["ArgumentsBarrier"]}
+  ]
+}

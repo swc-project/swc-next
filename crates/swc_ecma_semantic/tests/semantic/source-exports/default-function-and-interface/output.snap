@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export default function f() {}
+export default interface I {
+  value: string;
+}
+export type f = number;
+let item: f;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..116","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"default":{"symbol":1,"namespace_flags":"FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION","value_symbols":[{"Resolved":1}]},"f":{"symbol":2,"namespace_flags":"TYPE_ALIAS | EXPORTED","value_symbols":[]}}},
+    {"id":1,"name":"f","flags":"FUNCTION | INTERFACE | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION","declarations":[{"span":"24..25","scope":1,"flags":"FUNCTION | EXPORTED | IS_DEFAULT | FUNCTION_IMPLEMENTATION"},{"span":"56..57","scope":1,"flags":"INTERFACE | EXPORTED | IS_DEFAULT"}],"bindings":[],"uses":[0],"roles":["DefaultExport"]},
+    {"id":2,"name":"f","flags":"TYPE_ALIAS | EXPORTED","declarations":[{"span":"91..92","scope":1}],"bindings":[1],"uses":[]},
+    {"id":3,"name":"item","flags":"BLOCK_SCOPED_VAR","declarations":[{"span":"107..111","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"113..114","scope":1,"space":"Type","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..116","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..116","kind":"Module","parent":0,"hoist_target":1,"bindings":[2,3],"flags":["Strict"]},
+    {"id":2,"span":"15..30","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]},
+    {"id":3,"span":"46..78","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"86..102","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

@@ -1,0 +1,67 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace Values {
+  namespace Original {
+    const v: 1;
+    interface T {
+      ok: true;
+    }
+  }
+}
+declare namespace N {
+  export interface X {
+    right: true;
+  }
+  import original = Values.Original;
+  export { original as X };
+}
+namespace N {
+  export declare namespace Inner {
+    export { X as Y };
+  }
+}
+import Alias = N.Inner.Y;
+const value: 1 = Alias.v;
+const typed: Alias = { right: true };
+const nested: Alias.T = { ok: true };
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..462","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"Values","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"29..35","scope":1}],"bindings":[1],"uses":[0],"members":{"Original":{"symbol":2,"namespace_flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","value_symbols":[{"Resolved":2}]}}},
+    {"id":2,"name":"Original","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","declarations":[{"span":"50..58","scope":2}],"bindings":[],"uses":[],"members":{"T":{"symbol":4,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]},"v":{"symbol":3,"namespace_flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","value_symbols":[{"Resolved":3}]}}},
+    {"id":3,"name":"v","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT | EXPORTED","declarations":[{"span":"71..72","scope":3}],"bindings":[],"uses":[]},
+    {"id":4,"name":"T","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"91..92","scope":3}],"bindings":[],"uses":[]},
+    {"id":5,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"141..142","scope":1,"flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT"},{"span":"266..267","scope":1}],"bindings":[1],"uses":[3],"members":{"Inner":{"symbol":8,"namespace_flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","value_symbols":[{"Resolved":8}]},"X":{"symbol":6,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[{"Resolved":7}]},"original":{"symbol":null,"value_symbols":[]}},"export_aliases":true},
+    {"id":6,"name":"X","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"164..165","scope":5}],"bindings":[],"uses":[2]},
+    {"id":7,"name":"original","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"198..206","scope":5}],"bindings":[5],"uses":[1],"import":{"target":2,"initializers":[0]}},
+    {"id":8,"name":"Inner","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","declarations":[{"span":"297..302","scope":7}],"bindings":[],"uses":[],"members":{"X":{"symbol":null,"value_symbols":[]},"Y":{"symbol":null,"value_symbols":[{"Resolved":7}]}},"export_aliases":true},
+    {"id":9,"name":"Alias","flags":"IMPORT | IMPORT_EQUALS","declarations":[{"span":"341..346","scope":1}],"bindings":[1],"uses":[4,5,6],"import":{"target":null,"initializers":[3]}},
+    {"id":10,"name":"value","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"366..371","scope":1}],"bindings":[1],"uses":[]},
+    {"id":11,"name":"typed","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"392..397","scope":1}],"bindings":[1],"uses":[]},
+    {"id":12,"name":"nested","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"430..436","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"Values","span":"209..215","scope":5,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[{"Resolved":1}],"import_equals":true},
+    {"id":1,"name":"original","span":"237..245","scope":5,"space":"Any","access":"None","resolution":{"Resolved":7},"candidates":[7],"value_symbols":[{"Resolved":7}]},
+    {"id":2,"name":"X","span":"318..319","scope":8,"space":"Any","access":"None","resolution":{"Resolved":6},"candidates":[6],"value_symbols":[{"Resolved":7}]},
+    {"id":3,"name":"N","span":"349..350","scope":1,"space":"Namespace","access":"Read","resolution":{"Resolved":5},"candidates":[5],"value_symbols":[{"Resolved":5}],"import_equals":true},
+    {"id":4,"name":"Alias","span":"377..382","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":9},"candidates":[9],"value_symbols":[{"Resolved":9}]},
+    {"id":5,"name":"Alias","span":"399..404","scope":1,"space":"Type","access":"None","resolution":{"Resolved":9},"candidates":[9],"value_symbols":[{"Resolved":9}]},
+    {"id":6,"name":"Alias","span":"438..443","scope":1,"space":"Namespace","access":"None","resolution":{"Resolved":9},"candidates":[9],"value_symbols":[{"Resolved":9}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..462","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..462","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,5,9,10,11,12],"flags":["Strict"]},
+    {"id":2,"span":"36..122","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"59..120","kind":"TsModule","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":2},
+    {"id":4,"span":"81..116","kind":"Block","parent":3,"hoist_target":3,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"143..255","kind":"TsModule","parent":1,"hoist_target":5,"bindings":[7],"flags":["Strict"],"container_owner":5},
+    {"id":6,"span":"154..188","kind":"Block","parent":5,"hoist_target":5,"bindings":[],"flags":["Strict"]},
+    {"id":7,"span":"268..333","kind":"TsModule","parent":1,"hoist_target":7,"bindings":[],"flags":["Strict"],"container_owner":5},
+    {"id":8,"span":"303..331","kind":"TsModule","parent":7,"hoist_target":8,"bindings":[],"flags":["Strict"],"container_owner":8}
+  ]
+}

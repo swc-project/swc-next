@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+"use strict";
+{
+  function f() {
+    return f;
+  }
+}
+f;
+---------- Options ----------
+[{"sourceType":"script"},{"lang":"ts","sourceType":"script"}]
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"f","flags":"FUNCTION | FUNCTION_IMPLEMENTATION","declarations":[{"span":"27..28","scope":1}],"bindings":[1],"uses":[0]}
+  ],
+  "references": [
+    {"id":0,"name":"f","span":"44..45","scope":2,"space":"Value","access":"Read","resolution":{"Resolved":0},"candidates":[0],"value_symbols":[{"Resolved":0}]},
+    {"id":1,"name":"f","span":"53..54","scope":0,"space":"Value","access":"Read","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..56","kind":"Global","parent":null,"hoist_target":0,"bindings":[],"flags":["Strict"]},
+    {"id":1,"span":"14..52","kind":"Block","parent":0,"hoist_target":0,"bindings":[0],"flags":["Strict"]},
+    {"id":2,"span":"18..50","kind":"Function","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict","ArgumentsBarrier"]}
+  ]
+}

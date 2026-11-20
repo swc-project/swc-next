@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+export {};
+declare namespace JSX {
+  interface Element {}
+  interface IntrinsicElements {
+    div: {};
+    "A-B": {};
+  }
+}
+declare const ui: { Button: () => JSX.Element };
+const view = <ui.Button />;
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..201","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{}},
+    {"id":1,"name":"JSX","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"29..32","scope":1}],"bindings":[1],"uses":[0],"members":{"Element":{"symbol":2,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]},"IntrinsicElements":{"symbol":3,"namespace_flags":"INTERFACE | AMBIENT | EXPORTED","value_symbols":[]}}},
+    {"id":2,"name":"Element","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"47..54","scope":2}],"bindings":[],"uses":[]},
+    {"id":3,"name":"IntrinsicElements","flags":"INTERFACE | AMBIENT | EXPORTED","declarations":[{"span":"70..87","scope":2}],"bindings":[],"uses":[]},
+    {"id":4,"name":"ui","flags":"BLOCK_SCOPED_VAR | CONST_VAR | AMBIENT","declarations":[{"span":"138..140","scope":1}],"bindings":[1],"uses":[1]},
+    {"id":5,"name":"view","flags":"BLOCK_SCOPED_VAR | CONST_VAR","declarations":[{"span":"179..183","scope":1}],"bindings":[1],"uses":[]}
+  ],
+  "references": [
+    {"id":0,"name":"JSX","span":"158..161","scope":6,"space":"Namespace","access":"None","resolution":{"Resolved":1},"candidates":[1],"value_symbols":[]},
+    {"id":1,"name":"ui","span":"187..189","scope":1,"space":"Value","access":"Read","resolution":{"Resolved":4},"candidates":[4],"value_symbols":[{"Resolved":4}]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..201","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..201","kind":"Module","parent":0,"hoist_target":1,"bindings":[1,4,5],"flags":["Strict"]},
+    {"id":2,"span":"33..123","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"37..57","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":4,"span":"60..121","kind":"Block","parent":2,"hoist_target":2,"bindings":[],"flags":["Strict"]},
+    {"id":5,"span":"152..169","kind":"Block","parent":1,"hoist_target":1,"bindings":[],"flags":["Strict"]},
+    {"id":6,"span":"155..169","kind":"TsSignatureReturn","parent":5,"hoist_target":1,"bindings":[],"flags":["Strict"]}
+  ]
+}

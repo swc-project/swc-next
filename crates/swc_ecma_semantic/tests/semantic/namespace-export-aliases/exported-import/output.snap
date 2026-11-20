@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_semantic/tests/support/fixtures.rs
+---
+---------- Input ----------
+declare namespace N {
+  namespace A {}
+  export import X = A;
+  export { X };
+}
+---------- Diagnostics ----------
+{"parser":0,"semantic":1}
+---------- Output ----------
+{
+  "symbols": [
+    {"id":0,"name":"","flags":"VALUE_MODULE | NAMESPACE_MODULE","declarations":[{"span":"0..80","scope":0,"node_symbol":null}],"bindings":[],"uses":[],"roles":["SourceModule"],"members":{"N":{"symbol":1,"namespace_flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","value_symbols":[{"Resolved":1}]}}},
+    {"id":1,"name":"N","flags":"VALUE_MODULE | NAMESPACE_MODULE | AMBIENT | EXPORTED","declarations":[{"span":"18..19","scope":1}],"bindings":[1],"uses":[],"members":{"X":{"symbol":3,"namespace_flags":"IMPORT | EXPORTED | IMPORT_EQUALS","value_symbols":[]}},"export_aliases":true},
+    {"id":2,"name":"A","flags":"NAMESPACE_MODULE | AMBIENT","declarations":[{"span":"34..35","scope":2}],"bindings":[2],"uses":[0],"members":{}},
+    {"id":3,"name":"X","flags":"IMPORT | EXPORTED | IMPORT_EQUALS","declarations":[{"span":"55..56","scope":2}],"bindings":[],"uses":[],"import":{"target":2,"initializers":[0]}}
+  ],
+  "references": [
+    {"id":0,"name":"A","span":"59..60","scope":2,"space":"Namespace","access":"None","resolution":{"Resolved":2},"candidates":[2],"value_symbols":[],"import_equals":true},
+    {"id":1,"name":"X","span":"73..74","scope":2,"space":"Any","access":"None","resolution":"Unresolved","candidates":[],"value_symbols":[]}
+  ],
+  "scopes": [
+    {"id":0,"span":"0..80","kind":"Global","parent":null,"hoist_target":0,"bindings":[]},
+    {"id":1,"span":"0..80","kind":"Module","parent":0,"hoist_target":1,"bindings":[1],"flags":["Strict"]},
+    {"id":2,"span":"20..79","kind":"TsModule","parent":1,"hoist_target":2,"bindings":[2],"flags":["Strict"],"container_owner":1},
+    {"id":3,"span":"36..38","kind":"TsModule","parent":2,"hoist_target":3,"bindings":[],"flags":["Strict"],"container_owner":2}
+  ]
+}
