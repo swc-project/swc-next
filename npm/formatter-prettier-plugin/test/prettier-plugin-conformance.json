@@ -7458,6 +7458,25 @@
         "prettierNative": "const longVariableName =\r\n  !(\r\n    /* prettier-ignore */ object . firstLongProperty . secondLongProperty\r\n  );\r\n"
       }
     ],
+    "js/expressions/assignment/operator-head/diagnostic-binary-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nconst x = // c\n  a * /* c2 */ b;\n",
+        "prettierNative": "// @ts-ignore\nconst x = a * /* c2 */ b; // c\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// @ts-ignore\nconst x = // c\n  a * /* c2 */ b\n",
+        "prettierNative": "// @ts-ignore\nconst x = a * /* c2 */ b // c\n"
+      }
+    ],
     "js/expressions/assignment/operator-line.js": [
       {
         "options": {

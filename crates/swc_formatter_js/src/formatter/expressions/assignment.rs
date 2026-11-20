@@ -1834,12 +1834,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading
             };
             boundary.leading = leading;
+            let rhs_opening = source_opening.or_else(|| {
+                content
+                    .parentheses
+                    .map(|removed| removed.source.outer.start)
+            });
             if exposed.is_none()
-                && let Some(opening) = source_opening.or_else(|| {
-                    content
-                        .parentheses
-                        .map(|removed| removed.source.outer.start)
-                })
+                && let Some(opening) = rhs_opening
                 && leading
                     .last()
                     .is_none_or(|comment| comment.span.end <= opening)
@@ -1952,9 +1953,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             if sensitive {
                 let previous = before.last().map_or(left_end, |last| last.span.end);
-                let next = after.first().map_or(right_start, |first| first.span.start);
                 boundary.before_operator = self.line_constraint(previous, operator_start);
-                boundary.after_operator = self.line_constraint(boundary.operator_span.end, next);
+                // The separator follows the emitted operator suffix. The RHS
+                // owns gaps inside an opener that still follows the suffix.
+                let suffix = boundary.operator_line;
+                let next = after
+                    .get(suffix.len())
+                    .map_or(right_start, |first| first.span.start);
+                let next = if let (Some(last), Some(opening)) = (suffix.last(), rhs_opening)
+                    && last.span.end <= opening
+                {
+                    next.min(opening)
+                } else {
+                    next
+                };
+                boundary.after_operator =
+                    self.line_constraint_after_comments(suffix, boundary.operator_span.end, next);
             }
             if let (Some(last), Some(first)) =
                 (boundary.operator_line.last(), boundary.leading.first())
