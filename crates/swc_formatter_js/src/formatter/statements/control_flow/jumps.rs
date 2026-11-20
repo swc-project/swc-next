@@ -259,7 +259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 colon + 1,
                 ControlledBodyEnd::Enclosing(node.span(ast).end),
                 ControlledBodyRole::Label,
-                body_mode,
+                body_mode.into(),
             )
             .with_enclosing_boundary(punctuation, source_candidate);
         let split = comments.partition_point(|comment| comment.span.end <= colon);

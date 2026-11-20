@@ -3,7 +3,7 @@
 mod exceptions;
 mod switch;
 
-use super::{ControlledBodyEnd, ControlledBodyRole};
+use super::{ControlledBodyContent, ControlledBodyEnd, ControlledBodyRole};
 use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::statements::{
@@ -80,7 +80,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 condition.closing + 1,
                 ControlledBodyEnd::Enclosing(span.end),
                 ControlledBodyRole::Body,
-                ContentMode::Formatted,
+                ControlledBodyContent::Formatted,
             )
             .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| {

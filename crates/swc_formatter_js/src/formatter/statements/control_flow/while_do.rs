@@ -1,13 +1,14 @@
 //! Loop conditions and body boundaries use their real adjacent syntax owners.
 
-use swc_next_ecma_ast::{DoWhileStatement, GetSpan, Span, WhileStatement};
+use swc_next_ecma_ast::{Comment, DoWhileStatement, GetSpan, Span, Stmt, StmtData, WhileStatement};
 
 use super::super::{
-    EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementPunctuation,
+    EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementItem,
+    StatementPunctuation, StatementTailRelation,
 };
 use super::{
-    Condition, ConditionHeader, ConditionLineSuffix, ConditionPrefix, ControlledBodyEnd,
-    ControlledBodyRole, ControlledBodyShape,
+    Condition, ConditionHeader, ConditionLineSuffix, ConditionPrefix, ControlledBodyContent,
+    ControlledBodyEnd, ControlledBodyRole, ControlledBodyShape,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -15,10 +16,10 @@ use crate::{FormatError, Semicolons, document::Writer};
 
 /// The physical gap is retained only for an active ignore. Its two modes refer
 /// to actual AST owners, independently of the keywords and parentheses in it.
-pub(super) struct LoopBoundary {
-    pub(super) preceding: ContentMode,
-    pub(super) following: ContentMode,
-    pub(super) source: Option<Span>,
+struct LoopBoundary {
+    preceding: ControlledBodyContent,
+    following: ContentMode,
+    source: Option<Span>,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -42,7 +43,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 condition.closing + 1,
                 ControlledBodyEnd::Enclosing(span.end),
                 ControlledBodyRole::Body,
-                ContentMode::Formatted,
+                ControlledBodyContent::Formatted,
             )
             .with_empty_block(EmptyBlock::Compact)
             .with_enclosing_boundary(punctuation, source_candidate);
@@ -70,7 +71,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .find_token(head, comments, "while")
             .ok_or_else(|| self.unsupported("do-while keyword boundary", node))?;
         let keyword = Span::new(keyword_start, keyword_start + "while".len() as u32);
-        let boundary = self.prepare_loop_boundary(head, keyword);
+        let boundary = self.prepare_loop_boundary(statement, head, keyword, comments);
         let prefix = boundary
             .source
             .map_or(ConditionPrefix::Canonical, |source| {
@@ -209,35 +210,61 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(suffix)
     }
 
-    pub(super) fn prepare_loop_boundary(&self, gap: Span, separator: Span) -> LoopBoundary {
+    fn prepare_loop_boundary(
+        &self,
+        statement: Stmt,
+        gap: Span,
+        keyword: Span,
+        comments: &[Comment],
+    ) -> LoopBoundary {
         let mut boundary = LoopBoundary {
-            preceding: ContentMode::Formatted,
+            preceding: ControlledBodyContent::Formatted,
             following: ContentMode::Formatted,
             source: None,
         };
         if !self.has_suppression {
             return boundary;
         }
-        let comments = self.comments.in_range(gap);
-        if self.content_mode(comments) != ContentMode::Verbatim {
-            return boundary;
+        if let Some(tail) = self.prepare_statement_suppression_tail(
+            StatementItem::Statement(statement),
+            keyword.start,
+            StatementTailRelation::Keyword,
+        ) {
+            if tail.modes.current == ContentMode::Verbatim {
+                boundary.preceding = match self.ast.stmt_data(statement) {
+                    StmtData::BlockStatement(_) => ControlledBodyContent::Verbatim,
+                    _ => ControlledBodyContent::SourceNode,
+                };
+            }
+            boundary.following = tail.modes.enclosing;
         }
-        boundary.source = Some(gap);
-        for (run, position) in self.suppressed_comment_runs(comments, gap.end) {
-            let preceding = match position {
-                SuppressionPosition::OwnLine => false,
-                SuppressionPosition::EndOfLine => true,
-                SuppressionPosition::Inline => {
-                    let Some(last) = run.last() else {
-                        continue;
-                    };
-                    last.span.end <= separator.start
+        let split = comments.partition_point(|comment| comment.span.end <= keyword.start);
+        let (before, after) = comments.split_at(split);
+        for position in self.suppression_positions(after, gap.end) {
+            boundary.source = Some(gap);
+            match position {
+                SuppressionPosition::EndOfLine => {
+                    if boundary.preceding == ControlledBodyContent::Formatted {
+                        boundary.preceding = ControlledBodyContent::Verbatim;
+                    }
                 }
-            };
-            if preceding {
-                boundary.preceding = ContentMode::Verbatim;
-            } else {
-                boundary.following = ContentMode::Verbatim;
+                _ => boundary.following = ContentMode::Verbatim,
+            }
+        }
+        if self.content_mode(before) == ContentMode::Verbatim {
+            let before_keyword = Span::new(gap.start, keyword.start);
+            let body = statement.span(self.ast);
+            // The body keeps its raw syntax, while an unbound keyword join can
+            // use the same layout as an ordinary controlled-body tail.
+            if boundary.preceding != ControlledBodyContent::SourceNode
+                || boundary.following == ContentMode::Verbatim
+                || self.has_line_directive_in(before_keyword)
+                || self.lint_line_intersects(Span::new(gap.start, keyword.end))
+                || !self
+                    .comment_binding(before, before_keyword, Some(body))
+                    .allows_relocation(Some(body))
+            {
+                boundary.source = Some(gap);
             }
         }
         boundary

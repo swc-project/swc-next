@@ -7,8 +7,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::{
-    ControlledBodyEnd, ControlledBodyRole, EmptyBlock, Formatter, PrintedStatement,
-    StatementPunctuation,
+    ControlledBodyContent, ControlledBodyEnd, ControlledBodyRole, EmptyBlock, Formatter,
+    PrintedStatement, StatementPunctuation,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentCursor, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -907,7 +907,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 header.body_head_end,
                 ControlledBodyEnd::Enclosing(end),
                 ControlledBodyRole::Body,
-                header.body_mode,
+                header.body_mode.into(),
             )
             .with_empty_block(if header.classic {
                 EmptyBlock::Compact
@@ -944,7 +944,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ..
                 }
             )
-            || body.mode != ContentMode::Formatted
+            || body.mode != ControlledBodyContent::Formatted
             || matches!(body.shape, super::ControlledBodyShape::Empty)
             || header.trailing.source
             || header
