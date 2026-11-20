@@ -13,7 +13,7 @@ use crate::Semicolons;
 use crate::formatter::bindings::InitializerLayout;
 use crate::formatter::comments::{CommentCursor, CommentRunLayout, NodeHead};
 use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{
     ArgumentLayout, DelimitedClose, FollowingItem, Separator,
 };
@@ -123,9 +123,16 @@ struct ModuleList<'ast> {
     comments: &'ast [Comment],
     breakable: bool,
     expand: bool,
-    named: bool,
+    kind: ModuleListKind,
     terminal: Option<ModuleSourceBoundary<'ast>>,
     relocated_tail: &'ast [Comment],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ModuleListKind {
+    SourceSpecifiers,
+    LocalSpecifiers,
+    Attributes,
 }
 
 enum ModuleSourcePrefix<'a, 'ast> {
@@ -375,7 +382,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     specifiers
                         .last()
                         .map(|id| ast.get_node_in_sub_range(id).span(ast)),
-                    true,
+                    ModuleListKind::SourceSpecifiers,
                     standalone.is_some(),
                 )?,
             )
@@ -383,7 +390,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let header = Span::new(keyword_end, source_start);
             let comments = self.comments.in_range(header);
             self.find_token(header, comments, "{")
-                .map(|_| self.module_list(keyword_end, source_start, None, None, true, false))
+                .map(|_| {
+                    self.module_list(
+                        keyword_end,
+                        source_start,
+                        None,
+                        None,
+                        ModuleListKind::SourceSpecifiers,
+                        false,
+                    )
+                })
                 .transpose()?
         } else {
             None
@@ -558,17 +574,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
         let last = specifiers.last().map(|id| ast.get_node_in_sub_range(id));
+        let literal = node.source(ast);
+        let kind = if literal.is_some() {
+            ModuleListKind::SourceSpecifiers
+        } else {
+            ModuleListKind::LocalSpecifiers
+        };
         let mut list = self.module_list(
             keyword_end,
-            node.source(ast)
-                .map_or(span.end, |node| node.span(ast).start),
+            literal.map_or(span.end, |node| node.span(ast).start),
             first.map(|node| node.span(ast)),
             last.map(|node| node.span(ast)),
-            true,
+            kind,
             false,
         )?;
-        let source = node
-            .source(ast)
+        let source = literal
             .map(|literal| {
                 self.prepare_module_source(
                     literal,
@@ -920,7 +940,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         end: u32,
         first: Option<Span>,
         last: Option<Span>,
-        named: bool,
+        kind: ModuleListKind,
         standalone: bool,
     ) -> Result<ModuleList<'ast>, FormatError> {
         let opening =
@@ -932,6 +952,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = Span::new(opening.start, closing.end);
         let comments = self.comments.in_range(span);
         let singleton = first == last;
+        let named = kind != ModuleListKind::Attributes;
         Ok(ModuleList {
             key_quoting: PropertyKeyQuoting::Preserve,
             span,
@@ -940,7 +961,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expand: !named
                 && self.line_breaks(opening.end, first.map_or(closing.start, |span| span.start))
                     != 0,
-            named,
+            kind,
             terminal: None,
             relocated_tail: &[],
         })
@@ -1158,7 +1179,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     end,
                     first.map(|node| node.span(ast)),
                     last.map(|node| node.span(ast)),
-                    false,
+                    ModuleListKind::Attributes,
                     false,
                 )
             })
@@ -1507,6 +1528,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         list.breakable |= list.comments.len() > source_head_len
             || !list.relocated_tail.is_empty()
             || leading.is_some_and(|comments| !comments.is_empty());
+        let named = list.kind != ModuleListKind::Attributes;
+        let trailing_comma = list.breakable && self.options.trailing_commas != TrailingCommas::None;
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let (end, terminal_close) = writer.indent(|writer| {
@@ -1544,7 +1567,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let next = items.next();
                     let span = item.span(self);
                     let following = match next {
-                        Some(next) if list.named => FollowingItem::ModuleSpecifier(next.span(self)),
+                        Some(next) if named => FollowingItem::ModuleSpecifier(next.span(self)),
                         Some(next) => FollowingItem::Node(next.span(self)),
                         None => list.terminal.map_or(FollowingItem::End, |boundary| {
                             FollowingItem::ResolvedTerminal(boundary.suppression)
@@ -1554,7 +1577,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         span,
                         following,
                         content,
-                        list.breakable && self.options.trailing_commas != TrailingCommas::None,
+                        trailing_comma,
                         transition,
                         writer,
                     )?;
@@ -1564,6 +1587,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if incoming == ContentMode::Verbatim {
                         prepared.set_leading_mode(incoming);
                     }
+                    let prepared_close = if next.is_none() && prepared.mode == ContentMode::Verbatim
+                    {
+                        self.module_terminal_close(&list, span.end, trailing_comma)
+                    } else {
+                        None
+                    };
                     self.format_module_item(span, prepared_content, prepared.mode, writer)?;
                     if next.is_none() && !list.relocated_tail.is_empty() {
                         self.comments.claim(list.relocated_tail)?;
@@ -1576,7 +1605,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .relocated_tail
                             .split_at(list.relocated_tail.len() - line_count);
                         self.format_inline_trailing_comments(blocks, writer)?;
-                        if list.breakable && self.options.trailing_commas != TrailingCommas::None {
+                        if trailing_comma {
                             writer.if_break(",");
                         }
                         self.format_inline_trailing_comments(line, writer)?;
@@ -1589,28 +1618,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         end = self.format_module_source_specifier_tail(
                             Span::new(span.end, content.end),
                             terminal,
-                            list.breakable && self.options.trailing_commas != TrailingCommas::None,
+                            trailing_comma,
                             writer,
                         )?;
                         break;
                     }
-                    let closing = if next.is_none() {
-                        DelimitedClose::Terminal(
-                            self.terminal_close_boundary(content, || Some((span, end))),
-                        )
-                    } else {
-                        DelimitedClose::Source
-                    };
-                    let boundary = if next.is_none() && prepared.mode == ContentMode::Verbatim && {
+                    let closing = if next.is_some() {
+                        Some(DelimitedClose::Source)
+                    } else if let Some(close) = prepared_close {
+                        Some(DelimitedClose::Fixed(close))
+                    } else if prepared.mode == ContentMode::Verbatim && {
                         let gap = Span::new(span.end, content.end);
                         self.find_comma(gap, self.comments.in_range(gap)).is_none()
                     } {
-                        self.finish_delimited_item(prepared, None, writer)?
+                        None
                     } else {
+                        Some(DelimitedClose::Terminal(
+                            self.terminal_close_boundary(content, || Some((span, end))),
+                        ))
+                    };
+                    let boundary = if let Some(closing) = closing {
                         self.finish_delimited_item_with_closing(prepared, None, closing, writer)?
+                    } else {
+                        self.finish_delimited_item(prepared, None, writer)?
                     };
                     end = boundary.end;
-                    terminal_close = boundary.terminal_close;
+                    terminal_close = prepared_close.or(boundary.terminal_close);
                     transition = boundary.transition;
                     let next = next
                         .map(|item| {
@@ -1637,7 +1670,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 ..
                             }
                         );
-                        let separator = if list.named
+                        let separator = if named
                             && promoted
                             && boundary.following_mode == ContentMode::Formatted
                             && matches!(boundary.separator, Separator::EmptyLine)
@@ -1687,6 +1720,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write(writer)
         }
+    }
+
+    fn module_terminal_close(
+        &self,
+        list: &ModuleList<'ast>,
+        item_end: u32,
+        trailing_comma: bool,
+    ) -> Option<LineConstraint> {
+        // A following source clause owns a separate join after this brace.
+        if list.kind == ModuleListKind::SourceSpecifiers {
+            return None;
+        }
+        let line = self.diagnostic_terminal_suffix_line(item_end)?;
+        let close = list.span.end - 1;
+        if let Some(closing) = self.lint_closing_constraint(item_end, close) {
+            return Some(closing);
+        }
+        if !trailing_comma
+            || list
+                .comments
+                .last()
+                .is_some_and(|comment| comment.span.end > item_end)
+        {
+            return None;
+        }
+        // An inline directive can still cover a later line. Printing the brace
+        // on a new line there would put punctuation between the two.
+        if line.has_directive && close <= line.span.end {
+            return (!line.has_following_content
+                && !self.has_line_directive_in(Span::new(line.span.start, item_end)))
+            .then_some(LineConstraint::Unconstrained);
+        }
+        if !line.is_covered() {
+            return None;
+        }
+        // A comment on the covered line can target the raw item or the following line.
+        let comments = self.ast.comments();
+        let first = comments.partition_point(|comment| comment.span.end <= line.span.start);
+        comments
+            .get(first)
+            .is_none_or(|comment| comment.span.start >= line.span.end)
+            .then_some(LineConstraint::Unconstrained)
     }
 
     fn prepare_module_item(

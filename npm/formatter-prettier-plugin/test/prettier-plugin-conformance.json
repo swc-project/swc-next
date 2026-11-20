@@ -21596,6 +21596,35 @@
         "prettierNative": "import {\n  a,\n  /* first */ // c\n} from /* prettier-ignore */ 'm';\n"
       }
     ],
+    "js/modules/specifier-terminal-lint.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value };\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value };\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "quoteStyle": "single",
+          "bracketSpacing": false
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value}\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n}\n"
+      }
+    ],
     "js/objects/computed-directive-packets/key.js": [
       {
         "options": {
@@ -36860,6 +36889,64 @@
         },
         "swcPlugin": "declare /* prettier-ignore */ namespace n\\u0073.A /* body */ {\n  /* note */ const value = 1\n}\n",
         "prettierNative": "declare namespace /* prettier-ignore */ n\\u0073.A /* body */ {\n  /* note */ const value = 1\n}\n"
+      }
+    ],
+    "ts/module-declarations/specifier-terminal-following-directive.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "const value = 1;\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value, };\nconst incompatible: number = \"text\";\n",
+        "prettierNative": "const value = 1;\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value,\n};\nconst incompatible: number =\n  \"text\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = 1\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value, }\nconst incompatible: number = \"text\"\n",
+        "prettierNative": "const value = 1\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value,\n}\nconst incompatible: number =\n  \"text\"\n"
+      }
+    ],
+    "ts/module-declarations/specifier-terminal-shared-line.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\";\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n};\nconst incompatible: number =\n  \"value\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\";\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n};\nconst incompatible: number = \"value\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\"\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n}\nconst incompatible: number =\n  \"value\"\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\"\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n}\nconst incompatible: number = \"value\"\n"
       }
     ],
     "ts/module-head-comments/coverage/input.ts": [
