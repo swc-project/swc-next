@@ -9,6 +9,11 @@ use super::estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra
 
 const OUTPUT_DIR: &str = "packages/protocol/ast";
 
+// The bundle build restores these parentheses after minification so V8 compiles
+// the decoders and their dispatchers when the module loads.
+const PIFE_START: &str = "/* @swc-next-pife-start */";
+const PIFE_END: &str = "/* @swc-next-pife-end */";
+
 // TypeScript keeps common small node bodies in a hot dispatcher. TSX and empty
 // programs use the complete dispatcher to avoid unnecessary calls or closures.
 // Both dispatchers recurse through the grammar-selected node function.
@@ -75,19 +80,18 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         output.push_str("const DEEP_AST = {};\n");
     }
     output.push_str(DECODE_HELPERS);
-    writeln!(output, "export function {name}(buffer, source) {{").unwrap();
+    writeln!(
+        output,
+        "export const {name} = ({PIFE_START} function {name}(buffer, source) {{"
+    )
+    .unwrap();
     output.push_str(DECODE_PREAMBLE);
-    if is_ts {
-        output.push_str(
-            "  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;\n  let coldDepth = 0;\n",
-        );
-        output.push_str(&NODE_PREAMBLE.replace(
-            "function node(index)",
-            "function nodeHot(index, typeOverride)",
-        ));
+    let dispatch = if is_ts {
+        format!("const nodeHot = ({PIFE_START} function nodeHot(index, typeOverride)")
     } else {
-        output.push_str(NODE_PREAMBLE);
-    }
+        format!("const node = ({PIFE_START} function node(index)")
+    };
+    output.push_str(&NODE_PREAMBLE.replace("function node(index)", &dispatch));
 
     let mut all_cases = String::new();
     for (kind, ty) in schema
@@ -114,20 +118,27 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
 
     if is_ts {
         output.push_str(HOT_POSTAMBLE);
+        writeln!(output, "  }} {PIFE_END});").unwrap();
         output.push_str(&NODE_PREAMBLE.replace(
             "function node(index)",
-            "function nodeAll(index, typeOverride)",
+            &format!("const nodeAll = ({PIFE_START} function nodeAll(index, typeOverride)"),
         ));
         output.push_str(&all_cases);
     }
+    output.push_str(NODE_POSTAMBLE);
+    writeln!(output, "  }} {PIFE_END});").unwrap();
     if is_ts {
-        output.push_str(&POSTAMBLE.replace(
+        output.push_str(
+            "\n  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;\n  let coldDepth = 0;\n",
+        );
+        output.push_str(&RESULT_GETTERS.replace(
             "      return _program !== undefined\n        ? _program\n        : (_program = node(programIndex));",
             TS_PROGRAM_GETTER,
         ));
     } else {
-        output.push_str(POSTAMBLE);
+        output.push_str(RESULT_GETTERS);
     }
+    writeln!(output, "}} {PIFE_END});").unwrap();
     // Assign indices from the same filtered table used to emit the enum arrays.
     for (index, (name, _)) in decoder_enums.iter().enumerate() {
         for helper in ["enumValue", "optionalEnum"] {
@@ -1081,8 +1092,6 @@ const HOT_POSTAMBLE: &str = r#"      default:
         }
     }
     return result;
-  }
-
 "#;
 
 const TS_PROGRAM_GETTER: &str = r#"      if (_program !== undefined) return _program;
@@ -1094,12 +1103,13 @@ const TS_PROGRAM_GETTER: &str = r#"      if (_program !== undefined) return _pro
         return (_program = nodeAll(programIndex));
       }"#;
 
-const POSTAMBLE: &str = r#"      default:
+const NODE_POSTAMBLE: &str = r#"      default:
         throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);
     }
     return result;
-  }
+"#;
 
+const RESULT_GETTERS: &str = r#"
   let _program, _comments, _diagnostics;
   return {
     get program() {
@@ -1118,5 +1128,4 @@ const POSTAMBLE: &str = r#"      default:
         : (_diagnostics = _decodeDiagnostics());
     },
   };
-}
 "#;

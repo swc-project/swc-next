@@ -101,7 +101,7 @@ function copyLittleEndianI32(view) {
   }
   return i32;
 }
-export function decodeTs(buffer, source) {
+export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, source) {
 
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
@@ -227,9 +227,7 @@ export function decodeTs(buffer, source) {
 
   // Each reference is decoded into a fresh value, so parents can finish their
   // owned children in place before exposing the result.
-  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;
-  let coldDepth = 0;
-  function nodeHot(index, typeOverride) {
+  const nodeHot = (/* @swc-next-pife-start */ function nodeHot(index, typeOverride) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
     const end = _i32[(span >> 2) + 1];
@@ -445,9 +443,8 @@ export function decodeTs(buffer, source) {
         }
     }
     return result;
-  }
-
-  function nodeAll(index, typeOverride) {
+  } /* @swc-next-pife-end */);
+  const nodeAll = (/* @swc-next-pife-start */ function nodeAll(index, typeOverride) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
     const end = _i32[(span >> 2) + 1];
@@ -1935,7 +1932,10 @@ export function decodeTs(buffer, source) {
         throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);
     }
     return result;
-  }
+  } /* @swc-next-pife-end */);
+
+  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;
+  let coldDepth = 0;
 
   let _program, _comments, _diagnostics;
   return {
@@ -1960,4 +1960,4 @@ export function decodeTs(buffer, source) {
         : (_diagnostics = _decodeDiagnostics());
     },
   };
-}
+} /* @swc-next-pife-end */);
