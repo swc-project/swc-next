@@ -144,6 +144,7 @@ pub(in crate::formatter) struct PreparedItem {
     omit_source_terminal_comma: bool,
     suppression: Option<DelimitedSuppression>,
     separator_spacing: SeparatorSpacing,
+    layout: ArgumentLayout,
     /// The following node's gap retains its source punctuation and spacing.
     source_following: bool,
 }
@@ -320,6 +321,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.protect_runtime_item(&mut item);
         }
         item.set_trailing_comma(trailing_comma);
+        item.layout = layout;
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
                 argument,
@@ -471,6 +473,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             suppression,
             separator_spacing: SeparatorSpacing::SourcePacket,
+            layout: ArgumentLayout::Lines,
             source_following: false,
         };
         if !has_leading_comments {
@@ -633,6 +636,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             suppression,
             separator_spacing,
             source_following,
+            layout,
             ..
         } = item;
         let following_span = following.node();
@@ -1107,10 +1111,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
         }
-        // Fill must retain the leading packet's own-line attachment for blocks too.
-        let mut separator = if comments[boundary_count..].iter().any(|comment| {
+        // The leading side of a real comma can occupy a separate line even
+        // when the comma precedes its first Block on that line. Carry that
+        // ownership into fill so its separator cannot flatten the packet.
+        let leading = &comments[boundary_count..];
+        let own_line = leading.iter().any(|comment| {
             comment.kind == CommentKind::Line || self.layout_line_starts_line(comment.span.start)
-        }) {
+        });
+        let detached_fill_block = !own_line
+            && matches!(layout, ArgumentLayout::Fill)
+            && ordinary_attachment
+            && physical_break
+            && boundary_count >= before_separator
+            && following_start
+                .zip(leading.last())
+                .is_some_and(|(next, last)| self.line_breaks(last.span.end, next) != 0);
+        let mut separator = if own_line || detached_fill_block {
             Separator::OwnLineComment
         } else {
             Separator::Line

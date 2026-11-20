@@ -5954,6 +5954,25 @@
         "prettierNative": "[\n  first,\n  // @ts-ignore\n  // prettier-ignore\n  second  + third,\n];\n"
       }
     ],
+    "js/expressions/array/fill-detached-leading-block/input.js": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80
+        },
+        "swcPlugin": "const items = [\n  1,\n  /* note */\n  2,\n];\n",
+        "prettierNative": "const items = [1 /* note */, 2];\n"
+      },
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80,
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const items = [\n  1,\n  /* note */\n  2\n];\n",
+        "prettierNative": "const items = [1 /* note */, 2];\n"
+      }
+    ],
     "js/expressions/array/fill-own-line-block-after-comma.js": [
       {
         "options": {
