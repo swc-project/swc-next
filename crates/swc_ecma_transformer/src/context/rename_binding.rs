@@ -2,13 +2,11 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, BindingProperty, CallExpression, DUMMY_SP, Diagnostic, Expr,
-    ExprData, ImportOrExportKind, ModuleExportName, NodeId, NodeKindData, ObjectProperty, ScopeId,
-    Stmt, SymbolId, Visit, VisitMut, VisitMutWith, VisitWith,
+    Ast, AstUtf8, BindingIdentifier, BindingPattern, BindingPatternData, CallExpression, DUMMY_SP,
+    Decl, DeclData, Diagnostic, Expr, ExprData, ImportOrExportKind, ModuleExportName, NodeKindData,
+    ScopeId, Stmt, SymbolId, TsModuleNameData, TsQualifiedNameLeftData, Visit, VisitWith,
 };
-use swc_next_ecma_semantic::{
-    DeclarationId, ReferenceSpace, ScopeModel, SymbolFlags, scope::ScopeKind,
-};
+use swc_next_ecma_semantic::{ReferenceSpace, ScopeModel, SymbolFlags, scope::ScopeKind};
 
 mod names;
 
@@ -17,34 +15,16 @@ use super::TransformCtx;
 impl TransformCtx<'_, '_> {
     /// Rename bindings while preserving their semantic identities and observable names.
     ///
-    /// Callers must provide fresh, collision-free names, including across this batch.
+    /// Callers must provide distinct symbols with fresh, collision-free names.
     /// Unsafe bindings remain unchanged and produce diagnostics. Returns their symbols.
-    pub fn rename_bindings(
-        &mut self,
-        bindings: impl IntoIterator<Item = (SymbolId, AstUtf8)>,
-    ) -> Vec<SymbolId> {
-        let bindings: Vec<_> = bindings
-            .into_iter()
-            .filter(|&(symbol, name)| {
-                self.ast
-                    .get_wtf8(self.semantic().symbol(symbol).name)
-                    .as_bytes()
-                    != self.ast.get_utf8(name).as_bytes()
-            })
-            .collect();
+    pub(crate) fn rename_bindings(&mut self, bindings: Vec<(SymbolId, AstUtf8)>) -> Vec<SymbolId> {
         if bindings.is_empty() {
             return Vec::new();
         }
         let program = self.ast.root_program();
         // Include expressions queued by earlier transforms in safety checks and rewrites.
         self.inject_statements_to(program.node_id());
-        let mut eval = DirectEval {
-            ast: self.ast,
-            semantic: self.semantic(),
-            scopes: FxHashSet::default(),
-        };
-        program.visit_with(&mut eval);
-        let eval_scopes = eval.scopes;
+        let mut eval_scopes = None;
         let mut rejected = Vec::new();
         let mut renamed = FxHashMap::default();
         let mut updates = Vec::new();
@@ -55,31 +35,52 @@ impl TransformCtx<'_, '_> {
             }
             let linked: Vec<_> = self.semantic().linked_symbols(symbol).collect();
             seen.extend(linked.iter().copied());
-            let original = self.semantic().symbol(symbol).name;
-            let original = self
+            let original_text = self
                 .ast
-                .add_utf8(self.ast.get_wtf8(original).as_str().expect("binding name"));
-            if let Some(reason) =
-                self.observable_binding(self.ast.get_utf8(original), &linked, &eval_scopes)
-            {
-                let declaration = self
-                    .semantic()
-                    .declaration(self.semantic().symbol(symbol).declaration);
+                .get_wtf8(self.semantic().symbol(symbol).name)
+                .as_str()
+                .expect("binding name");
+            let reason = if self.is_global_binding(&linked) {
+                Some("lookup from another script or indirect eval")
+            } else {
+                let eval_scopes = eval_scopes.get_or_insert_with(|| {
+                    if self
+                        .state
+                        .used_names
+                        .as_ref()
+                        .is_some_and(|names| !names.contains(b"eval"))
+                    {
+                        return FxHashSet::default();
+                    }
+                    let mut eval = DirectEval {
+                        ast: self.ast,
+                        semantic: self.semantic(),
+                        scopes: FxHashSet::default(),
+                    };
+                    program.visit_with(&mut eval);
+                    eval.scopes
+                });
+                self.observable_local_binding(original_text, &linked, eval_scopes)
+            };
+            let declaration = self
+                .semantic()
+                .declaration(self.semantic().symbol(symbol).declaration);
+            if let Some(reason) = reason {
                 let mut diagnostic = Diagnostic::error(
                     "Cannot safely rename binding",
                     self.ast.span(declaration.node),
                 );
-                diagnostic.help = Some(
-                    format!(
-                        "Renaming `{}` could change {reason}",
-                        self.ast.get_utf8(original)
-                    )
-                    .into(),
-                );
+                diagnostic.help =
+                    Some(format!("Renaming `{original_text}` could change {reason}").into());
                 self.state.diagnostics.push(diagnostic);
                 rejected.extend(linked);
                 continue;
             }
+            let NodeKindData::BindingIdentifier(identifier) = self.ast.kind_data(declaration.node)
+            else {
+                panic!("renaming requires a binding identifier");
+            };
+            let original = identifier.name(self.ast);
             for symbol in linked {
                 renamed.insert(symbol, original);
                 updates.push((symbol, name));
@@ -90,28 +91,29 @@ impl TransformCtx<'_, '_> {
                 self.rename_symbol(symbol, name);
             }
             self.preserve_binding_exports(&renamed);
-            program.visit_mut_with(&mut ExpandedShorthands { ast: self.ast });
-            self.preserve_renamed_function_names(&renamed);
+            self.preserve_renamed_syntax(&renamed);
         }
         rejected
     }
 
-    fn observable_binding(
+    fn is_global_binding(&self, linked: &[SymbolId]) -> bool {
+        let semantic = self.semantic();
+        linked.iter().any(|&symbol| {
+            semantic.scope(semantic.scope_of_symbol(symbol)).kind == ScopeKind::Global
+                && semantic
+                    .symbol(symbol)
+                    .flags
+                    .visible_in(ReferenceSpace::Value)
+        })
+    }
+
+    fn observable_local_binding(
         &self,
         name: &str,
         linked: &[SymbolId],
         eval_scopes: &FxHashSet<ScopeId>,
     ) -> Option<&'static str> {
         let semantic = self.semantic();
-        if linked.iter().any(|&symbol| {
-            semantic.scope(semantic.scope_of_symbol(symbol)).kind == ScopeKind::Global
-                && semantic
-                    .symbol(symbol)
-                    .flags
-                    .visible_in(ReferenceSpace::Value)
-        }) {
-            return Some("lookup from another script or indirect eval");
-        }
         let ancestors = |scope| std::iter::successors(Some(scope), |&id| semantic.scope(id).parent);
         if eval_scopes.iter().any(|&scope| {
             ancestors(scope)
@@ -144,6 +146,10 @@ impl TransformCtx<'_, '_> {
     }
 
     fn rename_symbol(&mut self, symbol: SymbolId, name: AstUtf8) {
+        let old_text = self
+            .ast
+            .get_wtf8(self.semantic().symbol(symbol).name)
+            .as_bytes();
         for declaration in self.semantic().declarations(symbol).collect::<Vec<_>>() {
             match self.ast.kind_data(declaration.node) {
                 NodeKindData::BindingIdentifier(identifier) => identifier.set_name(self.ast, name),
@@ -165,161 +171,188 @@ impl TransformCtx<'_, '_> {
         }
         self.state
             .semantic
-            .rename_symbol(symbol, name, self.ast.get_utf8(name));
+            .rename_symbol(symbol, old_text, name, self.ast.get_utf8(name));
     }
 
     fn preserve_binding_exports(&mut self, renamed: &FxHashMap<SymbolId, AstUtf8>) {
         if !self.ast.is_module() {
             return;
         }
+        let needs_update = renamed.keys().any(|&symbol| {
+            self.semantic()
+                .symbol(symbol)
+                .flags
+                .contains(SymbolFlags::EXPORTED)
+                || self.semantic().uses(symbol).iter().any(|&id| {
+                    matches!(
+                        self.ast.kind_data(self.semantic().reference(id).node),
+                        NodeKindData::IdentifierName(_)
+                    )
+                })
+        });
+        if !needs_update {
+            return;
+        }
         let program = self.ast.root_program();
         let scope = self.program_scope();
-        let declarations: FxHashMap<_, _> = self
-            .semantic()
-            .iter_declarations()
-            .filter(|entry| {
-                entry.declaration.scope == scope
-                    && entry.declaration.flags.contains(SymbolFlags::EXPORTED)
-            })
-            .map(|entry| (entry.declaration.node, (entry.id, entry.declaration.symbol)))
-            .collect();
         let mut statements = Vec::new();
+        let mut split = false;
+        let mut seen = FxHashSet::default();
+        let mut bindings = Vec::new();
         for slot in program.body(self.ast).iter() {
             let statement = self.ast.get_node_in_sub_range(slot);
             if let Some(export) = statement.as_export_named_declaration(self.ast) {
-                for slot in export.specifiers(self.ast).iter() {
-                    let specifier = self.ast.get_node_in_sub_range(slot);
-                    let local = specifier.local(self.ast).node_id();
-                    // Parser shorthand exports can share the local/exported node.
-                    if local == specifier.exported(self.ast).node_id()
-                        && let Some(reference) = self.semantic().reference_of(local)
-                        && let Some(symbol) = self.semantic().reference(reference).symbol
-                        && let Some(&name) = renamed.get(&symbol)
+                if let Some(declaration) = export.declaration(self.ast) {
+                    bindings.clear();
+                    collect_decl_bindings(self.ast, declaration, &mut bindings);
+                    let exported_bindings: Vec<_> = bindings
+                        .iter()
+                        .filter_map(|&identifier| {
+                            let symbol = self.semantic().symbol_of(identifier.node_id())?;
+                            let id = self.semantic().declaration_ids(symbol).find(|&id| {
+                                self.semantic().declaration(id).node == identifier.node_id()
+                            })?;
+                            let decl = self.semantic().declaration(id);
+                            (decl.scope == scope && decl.flags.contains(SymbolFlags::EXPORTED))
+                                .then_some((id, symbol, identifier))
+                        })
+                        .collect();
+                    if exported_bindings
+                        .iter()
+                        .any(|&(_, symbol, _)| renamed.contains_key(&symbol))
                     {
-                        let exported = ModuleExportName::IdentifierName(
-                            self.add_node(|ast| ast.identifier_name(DUMMY_SP, name)),
-                        );
-                        specifier.set_exported(self.ast, exported);
-                    }
-                }
-            }
-            if let Some(export) = statement.as_export_named_declaration(self.ast)
-                && let Some(declaration) = export.declaration(self.ast)
-            {
-                let mut bindings = ExportBindings {
-                    ast: self.ast,
-                    declarations: &declarations,
-                    bindings: Vec::new(),
-                };
-                declaration.visit_with(&mut bindings);
-                let bindings = bindings.bindings;
-                if bindings
-                    .iter()
-                    .any(|&(_, symbol, _)| renamed.contains_key(&symbol))
-                {
-                    let mut specifiers = Vec::new();
-                    let mut seen = FxHashSet::default();
-                    for (id, symbol, identifier) in bindings {
-                        self.state.semantic.clear_direct_export(id);
-                        if !seen.insert(symbol) {
-                            continue;
+                        split = true;
+                        let mut specifiers = Vec::new();
+                        for (id, symbol, identifier) in exported_bindings {
+                            self.state.semantic.clear_direct_export(id);
+                            if !seen.insert(symbol) {
+                                continue;
+                            }
+                            let name = renamed
+                                .get(&symbol)
+                                .copied()
+                                .unwrap_or(identifier.name(self.ast));
+                            let exported = ModuleExportName::IdentifierName(
+                                self.add_node(|ast| ast.identifier_name(DUMMY_SP, name)),
+                            );
+                            let local_name = identifier.name(self.ast);
+                            let local =
+                                self.add_node(|ast| ast.identifier_name(DUMMY_SP, local_name));
+                            self.register_export_reference(scope, local, symbol);
+                            let local = ModuleExportName::IdentifierName(local);
+                            specifiers.push(self.add_node(|ast| {
+                                ast.export_specifier(
+                                    DUMMY_SP,
+                                    local,
+                                    exported,
+                                    ImportOrExportKind::Value,
+                                )
+                            }));
                         }
-                        let name = renamed
-                            .get(&symbol)
-                            .copied()
-                            .unwrap_or(identifier.name(self.ast));
-                        let exported = ModuleExportName::IdentifierName(
-                            self.add_node(|ast| ast.identifier_name(DUMMY_SP, name)),
-                        );
-                        let local_name = identifier.name(self.ast);
-                        let local = self.add_node(|ast| ast.identifier_name(DUMMY_SP, local_name));
-                        self.register_export_reference(scope, local, symbol);
-                        let local = ModuleExportName::IdentifierName(local);
-                        specifiers.push(self.add_node(|ast| {
-                            ast.export_specifier(
-                                DUMMY_SP,
-                                local,
-                                exported,
-                                ImportOrExportKind::Value,
-                            )
-                        }));
+                        statements.push(Stmt::Declaration(declaration));
+                        if !specifiers.is_empty() {
+                            export.set_declaration(self.ast, None);
+                            let specifiers = self.ast.add_sub_range(specifiers);
+                            export.set_specifiers(self.ast, specifiers);
+                            statements.push(statement);
+                        }
+                        continue;
                     }
-                    export.set_declaration(self.ast, None);
-                    let specifiers = self.ast.add_sub_range(specifiers);
-                    export.set_specifiers(self.ast, specifiers);
-                    statements.push(Stmt::Declaration(declaration));
+                } else {
+                    for slot in export.specifiers(self.ast).iter() {
+                        let specifier = self.ast.get_node_in_sub_range(slot);
+                        let local = specifier.local(self.ast).node_id();
+                        // Parser shorthand exports can share the local/exported node.
+                        if local == specifier.exported(self.ast).node_id()
+                            && let Some(reference) = self.semantic().reference_of(local)
+                            && let Some(symbol) = self.semantic().reference(reference).symbol
+                            && let Some(&name) = renamed.get(&symbol)
+                        {
+                            let exported = ModuleExportName::IdentifierName(
+                                self.add_node(|ast| ast.identifier_name(DUMMY_SP, name)),
+                            );
+                            specifier.set_exported(self.ast, exported);
+                        }
+                    }
                 }
             }
             statements.push(statement);
         }
-        let body = self.ast.add_sub_range(statements);
-        program.set_body(self.ast, body);
-    }
-}
-
-struct ExportBindings<'s, 'a> {
-    ast: &'s Ast<'a>,
-    declarations: &'s FxHashMap<NodeId, (DeclarationId, SymbolId)>,
-    bindings: Vec<(DeclarationId, SymbolId, BindingIdentifier)>,
-}
-
-impl<'a> Visit<'a> for ExportBindings<'_, 'a> {
-    fn ast(&self) -> &Ast<'a> {
-        self.ast
-    }
-    fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        if let Some(&(id, symbol)) = self.declarations.get(&node.node_id()) {
-            self.bindings.push((id, symbol, node));
+        if split {
+            let body = self.ast.add_sub_range(statements);
+            program.set_body(self.ast, body);
         }
     }
 }
 
-struct ExpandedShorthands<'s, 'a> {
-    ast: &'s mut Ast<'a>,
+fn collect_decl_bindings(ast: &Ast<'_>, decl: Decl, out: &mut Vec<BindingIdentifier>) {
+    match ast.decl_data(decl) {
+        DeclData::VariableDeclaration(node) => {
+            for slot in node.declarators(ast).iter() {
+                let declarator = ast.get_node_in_sub_range(slot);
+                collect_pattern_bindings(ast, declarator.id(ast), out);
+            }
+        }
+        DeclData::Function(node) => out.extend(node.id(ast)),
+        DeclData::Class(node) => out.extend(node.id(ast)),
+        DeclData::TsEnumDeclaration(node) => out.push(node.id(ast)),
+        DeclData::TsModuleDeclaration(node) => match ast.ts_module_name_data(node.id(ast)) {
+            TsModuleNameData::BindingIdentifier(identifier) => out.push(identifier),
+            TsModuleNameData::TsQualifiedName(mut qualified) => loop {
+                match ast.ts_qualified_name_left_data(qualified.left(ast)) {
+                    TsQualifiedNameLeftData::BindingIdentifier(identifier) => {
+                        out.push(identifier);
+                        break;
+                    }
+                    TsQualifiedNameLeftData::TsQualifiedName(left) => qualified = left,
+                    TsQualifiedNameLeftData::IdentifierReference(_)
+                    | TsQualifiedNameLeftData::IdentifierName(_)
+                    | TsQualifiedNameLeftData::ThisExpression(_) => break,
+                }
+            },
+            TsModuleNameData::StringLiteral(_) => {}
+        },
+        DeclData::TsImportEqualsDeclaration(node) => out.push(node.id(ast)),
+        DeclData::TsFunction(_)
+        | DeclData::TsTypeAliasDeclaration(_)
+        | DeclData::TsInterfaceDeclaration(_)
+        | DeclData::TsGlobalDeclaration(_) => {}
+    }
 }
 
-impl<'a> VisitMut<'a> for ExpandedShorthands<'_, 'a> {
-    fn ast(&mut self) -> &mut Ast<'a> {
-        self.ast
-    }
-
-    fn visit_mut_object_property(&mut self, node: ObjectProperty) -> Option<ObjectProperty> {
-        node.visit_mut_children_with(self);
-        if node.shorthand(self.ast)
-            && let Some(key) = node.key(self.ast).as_identifier_name(self.ast)
-            && let Some(value) = node.value(self.ast).as_identifier_reference(self.ast)
-            && self.ast.get_utf8(key.name(self.ast)) != self.ast.get_utf8(value.name(self.ast))
-        {
-            node.set_shorthand(self.ast, false);
+fn collect_pattern_bindings(
+    ast: &Ast<'_>,
+    pattern: BindingPattern,
+    out: &mut Vec<BindingIdentifier>,
+) {
+    match ast.binding_pattern_data(pattern) {
+        BindingPatternData::BindingIdentifier(node) => out.push(node),
+        BindingPatternData::AssignmentPattern(node) => {
+            collect_pattern_bindings(ast, node.left(ast), out);
         }
-        None
-    }
-
-    fn visit_mut_binding_property(&mut self, node: BindingProperty) -> Option<BindingProperty> {
-        node.visit_mut_children_with(self);
-        if !node.shorthand(self.ast) {
-            return None;
+        BindingPatternData::BindingRestElement(node) => {
+            collect_pattern_bindings(ast, node.argument(ast), out);
         }
-        let value = node.value(self.ast);
-        let target = value
-            .as_assignment_pattern(self.ast)
-            .map_or(value, |pattern| pattern.left(self.ast));
-        let name = target
-            .as_binding_identifier(self.ast)
-            .map(|identifier| identifier.name(self.ast))
-            .or_else(|| {
-                target
-                    .as_simple_assignment_target(self.ast)?
-                    .as_identifier_reference(self.ast)
-                    .map(|identifier| identifier.name(self.ast))
-            });
-        if let Some(key) = node.key(self.ast).as_identifier_name(self.ast)
-            && let Some(name) = name
-            && self.ast.get_utf8(key.name(self.ast)) != self.ast.get_utf8(name)
-        {
-            node.set_shorthand(self.ast, false);
+        BindingPatternData::ArrayPattern(node) => {
+            for slot in node.elements(ast).iter() {
+                if let Some(element) = ast.get_node_in_sub_range(slot) {
+                    collect_pattern_bindings(ast, element, out);
+                }
+            }
+            if let Some(rest) = node.rest(ast) {
+                collect_pattern_bindings(ast, rest.argument(ast), out);
+            }
         }
-        None
+        BindingPatternData::ObjectPattern(node) => {
+            for slot in node.properties(ast).iter() {
+                let property = ast.get_node_in_sub_range(slot);
+                collect_pattern_bindings(ast, property.value(ast), out);
+            }
+            if let Some(rest) = node.rest(ast) {
+                collect_pattern_bindings(ast, rest.argument(ast), out);
+            }
+        }
+        BindingPatternData::SimpleAssignmentTarget(_) => {}
     }
 }
 

@@ -27,7 +27,7 @@ pub(crate) struct TransformerState<'a> {
     pub(crate) path: Vec<NodeId>,
     pub(crate) scope_stack: Vec<ScopeId>,
     pub(crate) semantic: ScopeModel<'a>,
-    pub(crate) helpers: Helpers,
+    pub(crate) helpers: Helpers<'a>,
     pub(crate) statement_injector: StatementInjector,
     pub(crate) container: Container,
     pub(crate) comments: CommentState,

@@ -148,6 +148,46 @@ impl<'a> StringPool<'a> {
         AstWtf8 { start, end }
     }
 
+    /// Returns a slice of a source string registered at `base`.
+    #[inline]
+    pub fn source_slice_at(&self, base: u32, start: u32, end: u32) -> AstUtf8 {
+        let start = base + start;
+        let end = base + end;
+        debug_assert!(end >= start);
+        debug_assert!({
+            let source_len = self.source.len() as u32;
+            if start == end {
+                true
+            } else if start < source_len {
+                self.source.get(start as usize..end as usize).is_some()
+            } else {
+                let start = (start - source_len) as usize;
+                let end = (end - source_len) as usize;
+                self.extra
+                    .get(start..end)
+                    .is_some_and(|bytes| std::str::from_utf8(bytes).is_ok())
+            }
+        });
+        AstUtf8 { start, end }
+    }
+
+    pub fn append_source(&mut self, source: &str) -> u32 {
+        if source.is_empty() {
+            return 0;
+        }
+        let start = self
+            .source
+            .len()
+            .checked_add(self.extra.len())
+            .expect("string pool offset overflow");
+        let end = start
+            .checked_add(source.len())
+            .expect("string pool offset overflow");
+        assert!(end <= u32::MAX as usize, "string pool exceeds u32 range");
+        self.extra.extend_from_slice(source.as_bytes());
+        start as u32
+    }
+
     #[inline]
     pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
         let (start, end) = self.add_bytes(text.as_bytes());

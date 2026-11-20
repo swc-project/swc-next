@@ -1,11 +1,11 @@
-//! Preserve observable function/class names when their bindings are renamed.
+//! Preserve shorthand property syntax and observable function/class names after renaming bindings.
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     Accessibility, Argument, AssignmentExpression, AssignmentOperator, AssignmentPattern, Ast,
-    AstUtf8, Class, ClassElement, DUMMY_SP, Expr, Function, FunctionType, IfStatement, NodeId,
-    NodeKindData, PrivateIdentifier, PropertyKey, ScopeId, Stmt, SubRange, SymbolId,
-    VariableDeclarator, Visit, VisitMut, VisitMutWith, VisitWith,
+    AstUtf8, BindingProperty, Class, ClassElement, DUMMY_SP, Expr, Function, FunctionType,
+    IfStatement, NodeId, NodeKindData, ObjectProperty, PrivateIdentifier, PropertyKey, ScopeId,
+    Stmt, SubRange, SymbolId, VariableDeclarator, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_semantic::{
     SymbolFlags,
@@ -16,9 +16,9 @@ use crate::context::{BoundIdentifier, TransformCtx, statement_injector::Anchor};
 use crate::{helpers::HelperKind, uid::UidGenerator};
 
 impl TransformCtx<'_, '_> {
-    pub(super) fn preserve_renamed_function_names(&mut self, names: &FxHashMap<SymbolId, AstUtf8>) {
+    pub(super) fn preserve_renamed_syntax(&mut self, names: &FxHashMap<SymbolId, AstUtf8>) {
         let program = self.ast.root_program();
-        let mut preserver = FunctionNames {
+        let mut preserver = RenamedSyntax {
             ctx: self,
             names,
             hoisted: Vec::new(),
@@ -28,21 +28,19 @@ impl TransformCtx<'_, '_> {
         let hoisted = preserver.hoisted;
         for (container, statement) in hoisted {
             self.inject_statement(container, statement, Anchor::First);
-            if container != program.node_id() {
-                self.inject_statements_to(container);
-            }
+            self.inject_statements_to(container);
         }
     }
 }
 
-struct FunctionNames<'c, 's, 'a> {
+struct RenamedSyntax<'c, 's, 'a> {
     ctx: &'c mut TransformCtx<'s, 'a>,
     names: &'c FxHashMap<SymbolId, AstUtf8>,
     hoisted: Vec<(NodeId, Stmt)>,
     restored_functions: FxHashSet<SymbolId>,
 }
 
-impl FunctionNames<'_, '_, '_> {
+impl RenamedSyntax<'_, '_, '_> {
     fn inferred_name(&mut self, binding: NodeId, expression: Expr) -> Option<Expr> {
         let symbol = self.ctx.semantic().symbol_of(binding).or_else(|| {
             let reference = self.ctx.semantic().reference_of(binding)?;
@@ -214,9 +212,51 @@ impl<'a> Visit<'a> for PrivateNames<'_, 'a> {
     }
 }
 
-impl<'a> VisitMut<'a> for FunctionNames<'_, '_, 'a> {
+impl<'a> VisitMut<'a> for RenamedSyntax<'_, '_, 'a> {
     fn ast(&mut self) -> &mut Ast<'a> {
         self.ctx.ast
+    }
+
+    fn visit_mut_object_property(&mut self, node: ObjectProperty) -> Option<ObjectProperty> {
+        node.visit_mut_children_with(self);
+        if node.shorthand(self.ctx.ast)
+            && let Some(key) = node.key(self.ctx.ast).as_identifier_name(self.ctx.ast)
+            && let Some(value) = node
+                .value(self.ctx.ast)
+                .as_identifier_reference(self.ctx.ast)
+            && self.ctx.ast.get_utf8(key.name(self.ctx.ast))
+                != self.ctx.ast.get_utf8(value.name(self.ctx.ast))
+        {
+            node.set_shorthand(self.ctx.ast, false);
+        }
+        None
+    }
+
+    fn visit_mut_binding_property(&mut self, node: BindingProperty) -> Option<BindingProperty> {
+        node.visit_mut_children_with(self);
+        if !node.shorthand(self.ctx.ast) {
+            return None;
+        }
+        let value = node.value(self.ctx.ast);
+        let target = value
+            .as_assignment_pattern(self.ctx.ast)
+            .map_or(value, |pattern| pattern.left(self.ctx.ast));
+        let name = target
+            .as_binding_identifier(self.ctx.ast)
+            .map(|identifier| identifier.name(self.ctx.ast))
+            .or_else(|| {
+                target
+                    .as_simple_assignment_target(self.ctx.ast)?
+                    .as_identifier_reference(self.ctx.ast)
+                    .map(|identifier| identifier.name(self.ctx.ast))
+            });
+        if let Some(key) = node.key(self.ctx.ast).as_identifier_name(self.ctx.ast)
+            && let Some(name) = name
+            && self.ctx.ast.get_utf8(key.name(self.ctx.ast)) != self.ctx.ast.get_utf8(name)
+        {
+            node.set_shorthand(self.ctx.ast, false);
+        }
+        None
     }
 
     fn visit_mut_variable_declarator(

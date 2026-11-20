@@ -12,7 +12,7 @@ pub(crate) use swc_next_helpers::Helper as HelperKind;
 /// script's global environment, including lexical bindings.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HelperMode {
-    /// Import helpers from `@swc-next/helpers` in modules and inline them in scripts.
+    /// Import helpers from `@swc-next/helpers` in modules and inline them in scripts and CommonJS.
     #[default]
     External,
     /// Parse the packaged helper sources and inject their declarations and dependencies.
@@ -20,12 +20,12 @@ pub enum HelperMode {
 }
 
 /// Prepared helper declarations, allocated on first use and attached once.
-pub(crate) struct Helpers {
+pub(crate) struct Helpers<'a> {
     pub(crate) mode: HelperMode,
     namespace: Option<PreparedHelper>,
     entries: [Option<PreparedHelper>; HelperKind::ALL.len()],
     pub(crate) preparing: [bool; HelperKind::ALL.len()],
-    pub(crate) globals: BTreeMap<String, Vec<ReferenceId>>,
+    pub(crate) globals: BTreeMap<&'a str, Vec<ReferenceId>>,
 }
 
 pub(crate) struct PreparedHelper {
@@ -33,7 +33,7 @@ pub(crate) struct PreparedHelper {
     pub(crate) statement: Stmt,
 }
 
-impl Helpers {
+impl Helpers<'_> {
     pub(crate) fn new(mode: HelperMode) -> Self {
         Self {
             mode,
@@ -76,6 +76,8 @@ impl Helpers {
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        self.namespace.is_none() && self.entries.iter().all(Option::is_none)
+        self.namespace.is_none()
+            && self.entries.iter().all(Option::is_none)
+            && self.globals.is_empty()
     }
 }

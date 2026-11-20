@@ -146,7 +146,7 @@ impl TransformCtx<'_, '_> {
                 self.state
                     .helpers
                     .globals
-                    .entry(self.ast.get_utf8(reference.name).to_owned())
+                    .entry(self.ast.get_utf8(reference.name))
                     .or_default()
                     .push(id);
             }

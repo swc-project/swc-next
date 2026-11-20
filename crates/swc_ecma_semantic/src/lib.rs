@@ -128,13 +128,13 @@ enum NodeSemanticId {
 #[derive(Debug)]
 struct NodeSemanticIndex<'a> {
     start: usize,
-    entries: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    entries: ArenaVec<'a, NodeSemanticId>,
 }
 
 impl<'a> NodeSemanticIndex<'a> {
     fn new(start: usize, node_count: usize, allocator: &'a Allocator) -> Self {
         let count = node_count - start;
-        let mut entries = ArenaIndexVec::with_capacity_in(count, allocator);
+        let mut entries = ArenaVec::with_capacity_in(count, allocator);
         entries.resize(count, NodeSemanticId::None);
         Self { start, entries }
     }
@@ -152,14 +152,14 @@ impl Index<NodeId> for NodeSemanticIndex<'_> {
 
     #[inline]
     fn index(&self, node: NodeId) -> &Self::Output {
-        &self.entries.raw[node.index() - self.start]
+        &self.entries[node.index() - self.start]
     }
 }
 
 impl IndexMut<NodeId> for NodeSemanticIndex<'_> {
     #[inline]
     fn index_mut(&mut self, node: NodeId) -> &mut Self::Output {
-        &mut self.entries.raw[node.index() - self.start]
+        &mut self.entries[node.index() - self.start]
     }
 }
 

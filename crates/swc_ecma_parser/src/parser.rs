@@ -1170,9 +1170,10 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 }
 
 /// Parser state and typed AST writer.
-pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig, const SYNTHETIC: bool = false> {
+pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     ast: Ast<'a>,
     source: &'a str,
+    source_base: u32,
     source_type: SourceType,
     lang: Lang,
     preserve_parens: bool,
@@ -1213,8 +1214,10 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig, const SYNTHETIC: bo
 // The parser owns the target AST while it appends nodes. Return it to the
 // caller even if parsing unwinds, so its existing handles remain valid.
 struct AppendingParser<'target, 'a> {
-    parser: Parser<'a, NoTokenParserConfig, true>,
+    parser: Parser<'a, NoTokenParserConfig>,
     target: &'target mut Ast<'a>,
+    source_type: SourceType,
+    lang: Lang,
     nodes: usize,
     extra_data: usize,
     committed: bool,
@@ -1227,6 +1230,9 @@ impl Drop for AppendingParser<'_, '_> {
             // handle to the appended storage escapes an unsuccessful parse.
             unsafe { self.parser.ast.truncate(self.nodes, self.extra_data) };
         }
+        self.parser
+            .ast
+            .set_source_metadata(self.source_type, self.lang);
         mem::swap(&mut self.parser.ast, self.target);
     }
 }
@@ -1506,12 +1512,6 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     (estimated_nodes, estimated_extra)
 }
 
-impl<'a, C: ParserConfig> Parser<'a, C> {
-    pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
-        Self::new(allocator, source, options, config)
-    }
-}
-
 impl<'a> Parser<'a> {
     /// Parse JavaScript module source into an existing AST and return a detached
     /// program and its newly allocated node range. The original root, source
@@ -1524,15 +1524,21 @@ impl<'a> Parser<'a> {
     ) -> Result<SyntheticModule, Vec<Diagnostic>> {
         let start = ast.node_count();
         let extra_data = ast.extra_data_count();
+        let source_type = ast.source_type();
+        let lang = ast.lang();
+        let source_base = ast.append_source(source);
         let options = Options {
             comments: CommentMode::None,
             ..Options::default()
         };
-        let mut parser = Parser::new(ast.allocator(), source, options, NoTokenParserConfig);
+        let mut parser = Parser::init(ast.allocator(), source, options, NoTokenParserConfig);
+        parser.source_base = source_base;
         mem::swap(&mut parser.ast, ast);
         let mut append = AppendingParser {
             parser,
             target: ast,
+            source_type,
+            lang,
             nodes: start,
             extra_data,
             committed: false,
@@ -1555,8 +1561,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
-    fn new(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
+impl<'a, C: ParserConfig> Parser<'a, C> {
+    pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
         // SAFETY: The parser only uses handles from this AST and wraps it before returning.
         let mut ast = unsafe { Ast::new(source, allocator) };
@@ -1574,6 +1580,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
             lexer,
             ast,
             source,
+            source_base: 0,
             source_type: options.source_type,
             lang: options.lang,
             preserve_parens: options.preserve_parens,
@@ -1667,7 +1674,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
             preserve_parens: self.preserve_parens,
             comments: self.comment_mode,
         };
-        let mut parser = Self::new(
+        let mut parser = Self::init(
             self.ast.allocator(),
             self.source,
             options,
@@ -1885,9 +1892,7 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
 
     fn set_source_type(&mut self, source_type: SourceType) {
         self.source_type = source_type;
-        if !SYNTHETIC {
-            self.ast.set_source_metadata(source_type, self.lang);
-        }
+        self.ast.set_source_metadata(source_type, self.lang);
     }
 
     fn record_module_syntax(&mut self) {
@@ -1940,13 +1945,8 @@ impl<'a, C: ParserConfig, const SYNTHETIC: bool> Parser<'a, C, SYNTHETIC> {
     }
 
     #[inline]
-    fn source_slice(&mut self, start: u32, end: u32) -> AstUtf8 {
-        if SYNTHETIC {
-            self.ast
-                .add_utf8(&self.source[start as usize..end as usize])
-        } else {
-            self.ast.source_slice(start, end)
-        }
+    fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
+        self.ast.source_slice_at(self.source_base, start, end)
     }
 
     /// Returns the resolved name for an identifier-like token.
@@ -15114,6 +15114,41 @@ mod tests {
         assert_eq!(ast.node_count(), node_count);
         assert_eq!(ast.extra_data_count(), extra_count);
         assert_eq!(ast.root_program(), root);
+
+        let empty = Parser::init(&allocator, "", options, NoTokenParserConfig).parse();
+        assert!(empty.diagnostics.is_empty());
+        let mut empty_ast = take_ast(empty.ast);
+        let empty_module = Parser::parse_synthetic_module(
+            &mut empty_ast,
+            "function helper() { return 'text'; } export { helper };",
+        )
+        .unwrap();
+        let empty_fn = empty_module
+            .program
+            .body(&empty_ast)
+            .get_node(&empty_ast, 0)
+            .unwrap()
+            .as_declaration(&empty_ast)
+            .unwrap()
+            .as_function(&empty_ast)
+            .unwrap();
+        assert_eq!(
+            empty_ast.get_utf8(empty_fn.id(&empty_ast).unwrap().name(&empty_ast)),
+            "helper"
+        );
+        let ret = empty_fn
+            .body(&empty_ast)
+            .body(&empty_ast)
+            .get_node(&empty_ast, 0)
+            .unwrap()
+            .as_return_statement(&empty_ast)
+            .unwrap();
+        let value = ret
+            .argument(&empty_ast)
+            .unwrap()
+            .as_string_literal(&empty_ast)
+            .unwrap();
+        assert_eq!(empty_ast.get_wtf8(value.value(&empty_ast)), "text");
     }
 
     fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {

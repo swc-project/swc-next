@@ -314,6 +314,12 @@ impl<'a> Ast<'a> {
         self.strings.source_slice(start, end)
     }
 
+    /// Returns a slice of a source string registered at `base`.
+    #[inline]
+    pub fn source_slice_at(&self, base: u32, start: u32, end: u32) -> AstUtf8 {
+        self.strings.source_slice_at(base, start, end)
+    }
+
     /// Returns a slice of the source string corresponding to the given start and end offsets.
     /// Actually this function should be unsafe because it does not check if the offsets are valid.
     /// So external crates should be better not use this function directly.
@@ -441,6 +447,12 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn set_root_statement(&mut self, root: Stmt) {
         self.root = Some(root.node_id());
+    }
+
+    /// Appends an auxiliary UTF-8 source buffer to the string pool and returns its base offset.
+    #[inline]
+    pub fn append_source(&mut self, source: &str) -> u32 {
+        self.strings.append_source(source)
     }
 
     /// Reserves storage for parser output without changing logical lengths.

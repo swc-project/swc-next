@@ -39,17 +39,31 @@ impl<'a> ScopeModel<'a> {
     /// Rename a symbol in binding maps and reference records, preserving its
     /// identities, flags, declarations and uses. The caller updates AST names
     /// and any linked symbols, and must choose a name that cannot be captured.
-    pub fn rename_symbol(&mut self, symbol: SymbolId, name: AstUtf8, text: &'a str) {
-        for map in self.scope_maps.iter_mut() {
-            let key = map
-                .iter()
-                .find_map(|(key, &value)| (value == symbol).then_some(*key));
-            if let Some(key) = key {
+    pub fn rename_symbol(
+        &mut self,
+        symbol: SymbolId,
+        old_text: &[u8],
+        name: AstUtf8,
+        text: &'a str,
+    ) {
+        if old_text == text.as_bytes() {
+            return;
+        }
+        let first = self.declarations[self.symbols[symbol].declaration].scope;
+        let additional = self
+            .redeclarations
+            .get(&symbol)
+            .map_or(&[][..], |ids| ids.as_slice());
+        for scope in std::iter::once(first)
+            .chain(additional.iter().map(|&id| self.declarations[id].scope))
+        {
+            let map = &mut self.scope_maps[scope];
+            if map.get(old_text) == Some(&symbol) {
                 debug_assert!(
                     map.get(text.as_bytes())
                         .is_none_or(|&existing| existing == symbol)
                 );
-                map.remove(key);
+                map.remove(old_text);
                 map.insert(text.as_bytes(), symbol);
             }
         }
