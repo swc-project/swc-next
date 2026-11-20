@@ -106,17 +106,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary.preceding,
             )
             .with_empty_block(EmptyBlock::Compact);
-        if boundary.source.is_some()
-            && self.source_line_constraint(body_span.end, keyword.start) == LineConstraint::SameLine
-        {
-            // The retained gap cannot add an ASI newline before its `while`.
-            body = body.with_enclosing_boundary(
-                StatementPunctuation::Canonical(Semicolons::Always),
-                super::super::ContinuationBoundary::End,
-            );
+        if boundary.source.is_some() {
+            if self.source_line_constraint(body_span.end, keyword.start) == LineConstraint::SameLine
+            {
+                // The retained gap cannot add an ASI newline before its `while`.
+                body = body.with_enclosing_boundary(
+                    StatementPunctuation::Canonical(Semicolons::Always),
+                    super::super::ContinuationBoundary::End,
+                );
+            }
+            body = self.with_controlled_body_keyword_fence(body, keyword);
         }
-        body = self.with_controlled_body_keyword_fence(body, keyword);
-        let keyword_boundary = self.prepare_body_keyword(&body, keyword);
+        let keyword_boundary = body.keyword;
         let body_suffix = body.condition_suffix();
         let condition_suffix = self.prepare_do_condition_suffix(&mut condition);
         let statement_suffix = boundary.source.is_none()
@@ -132,7 +133,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     tail.binding.allows_relocation(None)
                         && ConditionLineSuffix::new(tail.tail.comments).is_some()
                 });
-        if body_suffix.is_some() || condition_suffix.is_some() || statement_suffix {
+        if let Some(keyword_boundary) = keyword_boundary
+            && (body_suffix.is_some() || condition_suffix.is_some() || statement_suffix)
+        {
             condition.inline = false;
             writer.group(false, |writer| {
                 writer.text("do");
@@ -156,7 +159,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map(PrintedStatement::from)
         })?;
         writer.group(false, |writer| {
-            if boundary.source.is_none() {
+            if let Some(keyword_boundary) = keyword_boundary {
                 self.format_body_keyword(keyword_boundary, "while", printed, writer)?;
             }
             self.format_condition(condition, writer)

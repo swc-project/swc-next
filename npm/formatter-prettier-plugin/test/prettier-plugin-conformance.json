@@ -33393,6 +33393,17 @@
         "prettierNative": "const value = 1 /* prettier-ignore */ as const\n"
       }
     ],
+    "ts/control-flow/diagnostic-keyword-gap/input.ts": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80,
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (true) String(0); /* @ts-ignore */ else String(1)\nconst count: number = \"zero\"\n\ndo String(0); /* @ts-expect-error */ while (false)\nconst flag: boolean = \"true\"\n\nif (true) String(0) /* @ts-ignore */\nelse missing()\n",
+        "prettierNative": "if (true) String(0) /* @ts-ignore */\nelse String(1)\nconst count: number = \"zero\"\n\ndo String(0) /* @ts-expect-error */\nwhile (false)\nconst flag: boolean = \"true\"\n\nif (true) String(0) /* @ts-ignore */\nelse missing()\n"
+      }
+    ],
     "ts/control-flow/for-header-layout/as-initializer-head.ts": [
       {
         "options": {
