@@ -540,9 +540,11 @@ function encPrivateIdentifier(n) {
 function encBindingIdentifier(n) {
   const v_0 = n.name;
   const v_1 = NULL;
+  const v_2 = 0;
   const index = allocNode(13, n.start, n.end);
   encStr(v_0, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
+  setPayloadU8(index, 12, v_2);
   return index;
 }
 
@@ -595,10 +597,14 @@ function encArrayPattern(n) {
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
   const v_2 = NULL;
+  const v_3 = 0;
+  const extraId = allocExtra(2);
   const index = allocNode(18, n.start, n.end);
-  writeRange(v_0, _itemCount, payload, index * 16 + 0);
-  setPayloadU32(index, 8, v_1);
-  setPayloadU32(index, 12, v_2);
+  setPayloadU32(index, 12, extraId);
+  writeRange(v_0, _itemCount, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  setPayloadU32(index, 4, v_2);
+  setPayloadU8(index, 8, v_3);
   return index;
 }
 
@@ -626,10 +632,14 @@ function encObjectPattern(n) {
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
   const v_2 = NULL;
+  const v_3 = 0;
+  const extraId = allocExtra(2);
   const index = allocNode(19, n.start, n.end);
-  writeRange(v_0, _itemCount, payload, index * 16 + 0);
-  setPayloadU32(index, 8, v_1);
-  setPayloadU32(index, 12, v_2);
+  setPayloadU32(index, 12, extraId);
+  writeRange(v_0, _itemCount, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  setPayloadU32(index, 4, v_2);
+  setPayloadU8(index, 8, v_3);
   return index;
 }
 

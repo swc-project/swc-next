@@ -370,7 +370,7 @@ pub(crate) fn array_pattern(
         elements.pop();
     }
     let elements = ast.add_sub_range(elements);
-    BindingPattern::ArrayPattern(ast.array_pattern(DUMMY_SP, elements, rest, None))
+    BindingPattern::ArrayPattern(ast.array_pattern(DUMMY_SP, elements, rest, None, false))
 }
 
 pub(crate) fn parameters(

@@ -319,7 +319,7 @@ impl<'visit, 'ast> SignatureTransformer<'visit, 'ast> {
             for (binding, init) in declarations {
                 let id = self
                     .ast
-                    .binding_pattern_binding_identifier(DUMMY_SP, binding, None);
+                    .binding_pattern_binding_identifier(DUMMY_SP, binding, None, false);
                 declarators.push(
                     self.ast
                         .variable_declarator(DUMMY_SP, id, Some(init), false),

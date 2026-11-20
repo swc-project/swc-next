@@ -637,6 +637,23 @@ impl FormalParameterPattern {
             _ => {}
         }
     }
+
+    /// Sets the optional marker on this parameter pattern.
+    #[inline]
+    pub fn set_optional(self, ast: &mut crate::Ast<'_>, optional: bool) {
+        match ast.node_kind(self.node_id()) {
+            crate::NodeKind::BindingIdentifier => {
+                BindingIdentifier(self.node_id()).set_optional(ast, optional)
+            }
+            crate::NodeKind::ArrayPattern => {
+                ArrayPattern(self.node_id()).set_optional(ast, optional)
+            }
+            crate::NodeKind::ObjectPattern => {
+                ObjectPattern(self.node_id()).set_optional(ast, optional)
+            }
+            _ => {}
+        }
+    }
 }
 
 #[ast(repr)]
@@ -920,6 +937,9 @@ pub struct BindingIdentifier {
     /// TypeScript annotation on this binding. `None` when absent.
     #[estree(optional)]
     type_annotation: Option<TsTypeAnnotation>,
+    /// Whether this binding is marked optional in a parameter list.
+    #[estree(optional)]
+    optional: bool,
 }
 
 /// An identifier used as a property key or meta property name.
@@ -1017,10 +1037,7 @@ pub struct BindingRestElement {
 ///
 /// `elements[1]` is `None` (the hole between the two commas).
 #[ast]
-#[estree(fields(
-    decorators(ts_type = "Array<Decorator>", optional),
-    optional(ts_type = "boolean", optional)
-))]
+#[estree(fields(decorators(ts_type = "Array<Decorator>", optional)))]
 pub struct ArrayPattern {
     /// any binding pattern. Entries are `None` for holes. Recovery preserves
     /// nonterminal rest elements here in source order.
@@ -1031,6 +1048,9 @@ pub struct ArrayPattern {
     /// TypeScript annotation on this binding. `None` when absent.
     #[estree(optional)]
     type_annotation: Option<TsTypeAnnotation>,
+    /// Whether this binding is marked optional in a parameter list.
+    #[estree(optional)]
+    optional: bool,
 }
 
 /// An object destructuring pattern.
@@ -1043,10 +1063,7 @@ pub struct ArrayPattern {
 /// //               ^^^^^^^ rest
 /// ```
 #[ast]
-#[estree(fields(
-    decorators(ts_type = "Array<Decorator>", optional),
-    optional(ts_type = "boolean", optional)
-))]
+#[estree(fields(decorators(ts_type = "Array<Decorator>", optional)))]
 pub struct ObjectPattern {
     /// `binding_property[]`
     #[estree(ts_type = "Array<BindingProperty | BindingRestElement>")]
@@ -1057,6 +1074,9 @@ pub struct ObjectPattern {
     /// TypeScript annotation on this binding. `None` when absent.
     #[estree(optional)]
     type_annotation: Option<TsTypeAnnotation>,
+    /// Whether this binding is marked optional in a parameter list.
+    #[estree(optional)]
+    optional: bool,
 }
 
 /// A single property inside an `object_pattern`.

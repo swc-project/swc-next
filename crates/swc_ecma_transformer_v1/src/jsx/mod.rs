@@ -1173,7 +1173,8 @@ impl Jsx<'_, '_> {
                 })
                 .collect::<Vec<_>>();
             let properties = ast.add_sub_range(properties);
-            let pattern = ast.binding_pattern_object_pattern(DUMMY_SP, properties, None, None);
+            let pattern =
+                ast.binding_pattern_object_pattern(DUMMY_SP, properties, None, None, false);
             let callee = self.resolver.marked_reference(ast, "require", true);
             let source = string(ast, DUMMY_SP, source);
             let arguments = ast.add_sub_range([Argument::Expr(source)]);

@@ -267,7 +267,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         result = { type: "Identifier", start, end,
           name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
-          optional: false,
+          optional: _dv.getUint8(payload + 12) !== 0,
           typeAnnotation: optionalNode(_i32[(payload + 8) >> 2]),
         };
         break;
@@ -552,7 +552,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         result = { type: "Identifier", start, end,
           name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
-          optional: false,
+          optional: _dv.getUint8(payload + 12) !== 0,
           typeAnnotation: optionalNode(_i32[(payload + 8) >> 2]),
         };
         break;
@@ -596,19 +596,23 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 18: {
-        const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
-        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 12) >> 2]);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_elements = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], true);
+        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
         if (f_rest !== null) f_elements.push(f_rest);
-        result = { type: "ArrayPattern", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: f_typeAnnotation };
+        result = { type: "ArrayPattern", start, end, elements: f_elements, decorators: [], optional: f_optional, typeAnnotation: f_typeAnnotation };
         break;
       }
       case 19: {
-        const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
-        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 12) >> 2]);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_properties = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
         if (f_rest !== null) f_properties.push(f_rest);
-        result = { type: "ObjectPattern", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: f_typeAnnotation };
+        result = { type: "ObjectPattern", start, end, properties: f_properties, decorators: [], optional: f_optional, typeAnnotation: f_typeAnnotation };
         break;
       }
       case 20: {

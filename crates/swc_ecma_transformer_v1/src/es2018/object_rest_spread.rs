@@ -567,9 +567,13 @@ impl RestLowerer<'_, '_, '_> {
                 self.visit(nested, reference);
                 if let Some(after) = after {
                     let remaining = self.ast.add_sub_range(remaining);
-                    let object =
-                        self.ast
-                            .object_pattern(object.span(self.ast), remaining, rest, None);
+                    let object = self.ast.object_pattern(
+                        object.span(self.ast),
+                        remaining,
+                        rest,
+                        None,
+                        false,
+                    );
                     self.visit_object(object, after, captured);
                 }
                 return;

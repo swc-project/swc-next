@@ -351,15 +351,17 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
         break;
       }
       case 18: {
-        const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
-        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_elements = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], true);
+        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
         if (f_rest !== null) f_elements.push(f_rest);
         result = { type: "ArrayPattern", start, end, elements: f_elements };
         break;
       }
       case 19: {
-        const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
-        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_properties = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
         if (f_rest !== null) f_properties.push(f_rest);
         result = { type: "ObjectPattern", start, end, properties: f_properties };
         break;

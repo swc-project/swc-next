@@ -577,6 +577,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
     ) -> Option<FormalParameter> {
         let pattern = parameter.pattern(self.ast);
         pattern.set_type_annotation(self.ast, None);
+        pattern.set_optional(self.ast, false);
         parameter.set_optional(self.ast, false);
         parameter.visit_mut_children_with(self)
     }

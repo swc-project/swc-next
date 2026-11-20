@@ -326,7 +326,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let expression = unparenthesized(expression, ast);
         let span = expression.span(ast);
         let name = self.fresh_default_name(ast);
-        let binding = ast.binding_identifier(span, name, None);
+        let binding = ast.binding_identifier(span, name, None, false);
 
         // Only references retained by dependency analysis can escape the class's
         // original name scope. References in erased method bodies do not matter.

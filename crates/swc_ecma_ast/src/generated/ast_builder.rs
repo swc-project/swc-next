@@ -1000,9 +1000,11 @@ impl<'a> Ast<'a> {
         span: Span,
         name: AstUtf8,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> BindingPattern {
         BindingPattern::BindingIdentifier(
-            self.binding_identifier(span, name, type_annotation).into(),
+            self.binding_identifier(span, name, type_annotation, optional)
+                .into(),
         )
     }
     #[inline]
@@ -1107,9 +1109,10 @@ impl<'a> Ast<'a> {
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> BindingPattern {
         BindingPattern::ArrayPattern(
-            self.array_pattern(span, elements, rest, type_annotation)
+            self.array_pattern(span, elements, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -1120,9 +1123,10 @@ impl<'a> Ast<'a> {
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> BindingPattern {
         BindingPattern::ObjectPattern(
-            self.object_pattern(span, properties, rest, type_annotation)
+            self.object_pattern(span, properties, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -1203,9 +1207,10 @@ impl<'a> Ast<'a> {
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> AssignmentTarget {
         AssignmentTarget::ArrayAssignmentTarget(
-            self.array_pattern(span, elements, rest, type_annotation)
+            self.array_pattern(span, elements, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -1216,9 +1221,10 @@ impl<'a> Ast<'a> {
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> AssignmentTarget {
         AssignmentTarget::ObjectAssignmentTarget(
-            self.object_pattern(span, properties, rest, type_annotation)
+            self.object_pattern(span, properties, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -2889,9 +2895,10 @@ impl<'a> Ast<'a> {
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ArrayAssignmentTarget(
-            self.array_pattern(span, elements, rest, type_annotation)
+            self.array_pattern(span, elements, rest, type_annotation, optional)
                 .into(),
         ))
     }
@@ -2902,9 +2909,10 @@ impl<'a> Ast<'a> {
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ObjectAssignmentTarget(
-            self.object_pattern(span, properties, rest, type_annotation)
+            self.object_pattern(span, properties, rest, type_annotation, optional)
                 .into(),
         ))
     }
@@ -3448,9 +3456,11 @@ impl<'a> Ast<'a> {
         span: Span,
         name: AstUtf8,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingIdentifier(
-            self.binding_identifier(span, name, type_annotation).into(),
+            self.binding_identifier(span, name, type_annotation, optional)
+                .into(),
         )
     }
     #[inline]
@@ -3460,9 +3470,10 @@ impl<'a> Ast<'a> {
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::ArrayPattern(
-            self.array_pattern(span, elements, rest, type_annotation)
+            self.array_pattern(span, elements, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -3473,9 +3484,10 @@ impl<'a> Ast<'a> {
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::ObjectPattern(
-            self.object_pattern(span, properties, rest, type_annotation)
+            self.object_pattern(span, properties, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -4398,6 +4410,7 @@ impl<'a> Ast<'a> {
         span: Span,
         name: AstUtf8,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> BindingIdentifier {
         BindingIdentifier(self.add_node(
             span,
@@ -4407,7 +4420,8 @@ impl<'a> Ast<'a> {
                     name,
                     type_annotation:
                         type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    _pad0: [0; 4usize],
+                    optional,
+                    _pad0: [0; 3usize],
                 },
             },
         ))
@@ -4487,16 +4501,27 @@ impl<'a> Ast<'a> {
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> ArrayPattern {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((elements).start, (elements).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ArrayPattern(self.add_node(
             span,
             NodeKind::ArrayPattern,
             NodePayload {
                 array_pattern: ArrayPatternPayload {
-                    elements,
                     rest: rest.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     type_annotation:
                         type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    optional,
+                    _pad0: [0; 3usize],
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -4508,16 +4533,27 @@ impl<'a> Ast<'a> {
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> ObjectPattern {
+        let _extra_field0 = unsafe {
+            (ExtraData {
+                sub_range: SubRange::new((properties).start, (properties).end),
+            })
+            .units
+        };
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
+        let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ObjectPattern(self.add_node(
             span,
             NodeKind::ObjectPattern,
             NodePayload {
                 object_pattern: ObjectPatternPayload {
-                    properties,
                     rest: rest.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     type_annotation:
                         type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    optional,
+                    _pad0: [0; 3usize],
+                    extra_data_start: _extra_data_start,
                 },
             },
         ))
@@ -6289,9 +6325,11 @@ impl<'a> Ast<'a> {
         span: Span,
         name: AstUtf8,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> TsQualifiedNameLeft {
         TsQualifiedNameLeft::BindingIdentifier(
-            self.binding_identifier(span, name, type_annotation).into(),
+            self.binding_identifier(span, name, type_annotation, optional)
+                .into(),
         )
     }
     #[inline]
@@ -6902,8 +6940,12 @@ impl<'a> Ast<'a> {
         span: Span,
         name: AstUtf8,
         type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
     ) -> TsModuleName {
-        TsModuleName::BindingIdentifier(self.binding_identifier(span, name, type_annotation).into())
+        TsModuleName::BindingIdentifier(
+            self.binding_identifier(span, name, type_annotation, optional)
+                .into(),
+        )
     }
     #[inline]
     pub fn ts_module_name_string_literal(
