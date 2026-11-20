@@ -235,6 +235,10 @@ impl Compare for BindingIdentifier {
         let right = other.type_annotation(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "BindingIdentifier.type_annotation"))?;
+        let left = self.optional(asts.left);
+        let right = other.optional(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "BindingIdentifier.optional"))?;
         Ok(())
     }
 }
@@ -300,6 +304,10 @@ impl Compare for ArrayPattern {
         let right = other.type_annotation(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "ArrayPattern.type_annotation"))?;
+        let left = self.optional(asts.left);
+        let right = other.optional(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "ArrayPattern.optional"))?;
         Ok(())
     }
 }
@@ -317,6 +325,10 @@ impl Compare for ObjectPattern {
         let right = other.type_annotation(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "ObjectPattern.type_annotation"))?;
+        let left = self.optional(asts.left);
+        let right = other.optional(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "ObjectPattern.optional"))?;
         Ok(())
     }
 }

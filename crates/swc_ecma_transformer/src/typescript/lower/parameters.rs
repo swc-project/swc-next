@@ -273,7 +273,7 @@ impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
             None,
             ArrowFunctionBody::Expr(initializer_body),
         );
-        let binding = self.ast().binding_identifier(DUMMY_SP, name, None);
+        let binding = self.ast().binding_identifier(DUMMY_SP, name, None, false);
         let declarator = self.ast().variable_declarator(
             DUMMY_SP,
             BindingPattern::BindingIdentifier(binding),

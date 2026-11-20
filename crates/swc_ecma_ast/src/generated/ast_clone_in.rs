@@ -806,7 +806,8 @@ impl<'a> CloneIn<'a> for BindingIdentifier {
         let span = self.span(ast).clone_in(ast);
         let name = self.name(ast).clone_in(ast);
         let type_annotation = self.type_annotation(ast).clone_in(ast);
-        ast.binding_identifier(span, name, type_annotation)
+        let optional = self.optional(ast).clone_in(ast);
+        ast.binding_identifier(span, name, type_annotation, optional)
     }
 }
 impl<'a> CloneIn<'a> for IdentifierName {
@@ -856,7 +857,8 @@ impl<'a> CloneIn<'a> for ArrayPattern {
         let elements = self.elements(ast).clone_in(ast);
         let rest = self.rest(ast).clone_in(ast);
         let type_annotation = self.type_annotation(ast).clone_in(ast);
-        ast.array_pattern(span, elements, rest, type_annotation)
+        let optional = self.optional(ast).clone_in(ast);
+        ast.array_pattern(span, elements, rest, type_annotation, optional)
     }
 }
 impl<'a> CloneIn<'a> for ObjectPattern {
@@ -867,7 +869,8 @@ impl<'a> CloneIn<'a> for ObjectPattern {
         let properties = self.properties(ast).clone_in(ast);
         let rest = self.rest(ast).clone_in(ast);
         let type_annotation = self.type_annotation(ast).clone_in(ast);
-        ast.object_pattern(span, properties, rest, type_annotation)
+        let optional = self.optional(ast).clone_in(ast);
+        ast.object_pattern(span, properties, rest, type_annotation, optional)
     }
 }
 impl<'a> CloneIn<'a> for BindingProperty {

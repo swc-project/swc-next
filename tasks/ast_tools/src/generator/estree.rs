@@ -57,6 +57,8 @@ const IDENTIFIER_TS_EXTRAS: &[(&str, &str)] = &[
     ("optional", "false"),
     ("typeAnnotation", "null"),
 ];
+const BINDING_IDENTIFIER_TS_EXTRAS: &[(&str, &str)] = &[("decorators", "[]")];
+const ARRAY_OBJECT_TS_EXTRAS: &[(&str, &str)] = &[("decorators", "[]")];
 const PATTERN_TS_EXTRAS: &[(&str, &str)] = &[("decorators", "[]"), ("optional", "false")];
 const OBJECT_PROPERTY_TS_EXTRAS: &[(&str, &str)] = &[("optional", "false")];
 const EXPRESSION_STATEMENT_TS_EXTRAS: &[(&str, &str)] = &[("directive", "null")];
@@ -74,9 +76,9 @@ const TS_PARAMETER_PROPERTY_EXTRAS: &[(&str, &str)] = &[("static", "false")];
 pub(super) fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static str)] {
     match name {
         "IdentifierReference" | "IdentifierName" | "LabelIdentifier" => IDENTIFIER_TS_EXTRAS,
-        "BindingIdentifier" | "AssignmentPattern" | "ArrayPattern" | "ObjectPattern" => {
-            PATTERN_TS_EXTRAS
-        }
+        "BindingIdentifier" => BINDING_IDENTIFIER_TS_EXTRAS,
+        "ArrayPattern" | "ObjectPattern" => ARRAY_OBJECT_TS_EXTRAS,
+        "AssignmentPattern" => PATTERN_TS_EXTRAS,
         "ObjectProperty" => OBJECT_PROPERTY_TS_EXTRAS,
         "ExpressionStatement" => EXPRESSION_STATEMENT_TS_EXTRAS,
         "BindingRestElement" => BINDING_REST_TS_EXTRAS,

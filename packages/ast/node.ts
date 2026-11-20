@@ -1258,8 +1258,12 @@ export class NodeView {
     const offset = ast._payloadAt(this.#id, row);
     const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
+      case 13:
+        return (ast._isTs ? (view.getUint8(offset + 12) !== 0) : (ast.getField(this.#id, "optional", kind))) as NodeField<"optional">;
       case 50:
         return (ast._isTs ? (view.getUint8(offset + 5) !== 0) : (ast.getField(this.#id, "optional", kind))) as NodeField<"optional">;
+      case 18:
+      case 19:
       case 49:
       case 88:
         return (ast._isTs ? (view.getUint8(offset + 8) !== 0) : (ast.getField(this.#id, "optional", kind))) as NodeField<"optional">;
@@ -1818,13 +1822,13 @@ export class NodeView {
     const offset = ast._payloadAt(this.#id, row);
     const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
-      case 18:
-      case 19:
       case 60:
         return (ast._isTs ? (ast._nodeAt(ast.childAt(this.#id, offset + 12, true, view))) : (ast.getField(this.#id, "typeAnnotation", kind))) as NodeField<"typeAnnotation">;
       case 160:
         return (ast._isTs ? (ast._nodeAt(ast.childAt(this.#id, offset + 4, false, view))) : (ast.getField(this.#id, "typeAnnotation", kind))) as NodeField<"typeAnnotation">;
       case 17:
+      case 18:
+      case 19:
         return (ast._isTs ? (ast._nodeAt(ast.childAt(this.#id, offset + 4, true, view))) : (ast.getField(this.#id, "typeAnnotation", kind))) as NodeField<"typeAnnotation">;
       case 13:
       case 16:

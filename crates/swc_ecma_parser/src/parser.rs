@@ -4340,6 +4340,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             initializer,
         } = self.parse_parameter_suffix::<IS_TYPESCRIPT>(cover_initializer)?;
         pattern.set_type_annotation(&mut self.ast, type_annotation);
+        pattern.set_optional(&mut self.ast, optional);
         let end = self.lexer.state.prev_token_end;
         let parameter_decorators = if modifiers.present {
             SubRange::empty()
@@ -4861,7 +4862,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, IdentifierRole::Binding);
-        let local = self.ast.binding_identifier(local_span, name, None);
+        let local = self.ast.binding_identifier(local_span, name, None, false);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
             imported,
@@ -10815,6 +10816,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None => (None, cover_initializer, false),
         };
         pattern.set_type_annotation(&mut self.ast, type_annotation);
+        pattern.set_optional(&mut self.ast, optional);
         Some(FormalParameterItem::FormalParameter(
             self.ast
                 .formal_parameter(span, SubRange::empty(), pattern, initializer, optional),
@@ -10850,6 +10852,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     identifier.span(&self.ast),
                     identifier.name(&self.ast),
                     None,
+                    false,
                 );
 
                 Some(BindingPattern::BindingIdentifier(binding))
@@ -11118,7 +11121,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         (*node != none)
                             .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
                     }));
-            Some(self.ast.array_pattern(span, elements, rest, None))
+            Some(self.ast.array_pattern(span, elements, rest, None, false))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11265,7 +11268,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            Some(self.ast.object_pattern(span, properties, rest, None))
+            Some(self.ast.object_pattern(span, properties, rest, None, false))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11288,6 +11291,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
                             None,
+                            false,
                         );
 
                         Some(BindingPattern::BindingIdentifier(binding))
@@ -11416,6 +11420,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         elements,
                         rest,
                         array.type_annotation(&self.ast),
+                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -11455,6 +11460,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         properties,
                         rest,
                         object.type_annotation(&self.ast),
+                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -14198,7 +14204,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<BindingIdentifier> {
         let token = self.consume_identifier(role)?;
         let name = self.identifier_name(token);
-        Some(self.ast.binding_identifier(token.span(), name, None))
+        Some(self.ast.binding_identifier(token.span(), name, None, false))
     }
 
     fn parse_label_identifier(&mut self) -> Option<LabelIdentifier> {

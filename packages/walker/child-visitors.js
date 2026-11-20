@@ -4112,7 +4112,7 @@ function readNativeChildren10(ast, id, walker) {
     } else {
       const row = ast.row(id), payload = ast._payloadAt(id, row);
       let view = row === -1 ? ast._view : ast._arena.view;
-      const offset = payload + 12;
+      const offset = payload + 4;
       const child = ast.childAt(id, offset, true, view);
       if (child !== 0xffffffff && walker.visitScalarId(child, id, "typeAnnotation")) { return true; }
     }
@@ -4137,7 +4137,7 @@ function readNativeChildren12(ast, id, walker) {
     } else {
       const row = ast.row(id), payload = ast._payloadAt(id, row);
       let view = row === -1 ? ast._view : ast._arena.view;
-      const offset = payload + 12;
+      const offset = payload + 4;
       const child = ast.childAt(id, offset, true, view);
       if (child !== 0xffffffff && walker.visitScalarId(child, id, "typeAnnotation")) { return true; }
     }

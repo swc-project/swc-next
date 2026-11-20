@@ -262,7 +262,9 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
 
         self.enter_binding_scope();
         let (directives, statements) = if let Some((&next, remaining)) = properties.split_first() {
-            let binding = self.ast().binding_identifier(next.span, next.name, None);
+            let binding = self
+                .ast()
+                .binding_identifier(next.span, next.name, None, false);
             let prefix = self.register_namespace_binding(binding, next, false);
             let target = RuntimeTarget::IdentifierAndProperty {
                 identifier: next.name,

@@ -50,6 +50,7 @@ export const layouts: readonly NodeLayout[] = Object.freeze<NodeLayout[]>([
   { name: "BindingIdentifier", type: "Identifier", extra: null, fields: {
     name: [false, 0, "string", false],
     typeAnnotation: [false, 8, "node", true],
+    optional: [false, 12, "bool", false],
   } },
   { name: "IdentifierName", type: "Identifier", extra: null, fields: {
     name: [false, 0, "string", false],
@@ -66,15 +67,17 @@ export const layouts: readonly NodeLayout[] = Object.freeze<NodeLayout[]>([
     argument: [false, 0, "node", false],
     typeAnnotation: [false, 4, "node", true],
   } },
-  { name: "ArrayPattern", type: "ArrayPattern", extra: null, fields: {
-    elements: [false, 0, "list", true],
-    rest: [false, 8, "node", true],
-    typeAnnotation: [false, 12, "node", true],
+  { name: "ArrayPattern", type: "ArrayPattern", extra: 12, fields: {
+    elements: [true, 0, "list", true],
+    rest: [false, 0, "node", true],
+    typeAnnotation: [false, 4, "node", true],
+    optional: [false, 8, "bool", false],
   } },
-  { name: "ObjectPattern", type: "ObjectPattern", extra: null, fields: {
-    properties: [false, 0, "list", false],
-    rest: [false, 8, "node", true],
-    typeAnnotation: [false, 12, "node", true],
+  { name: "ObjectPattern", type: "ObjectPattern", extra: 12, fields: {
+    properties: [true, 0, "list", false],
+    rest: [false, 0, "node", true],
+    typeAnnotation: [false, 4, "node", true],
+    optional: [false, 8, "bool", false],
   } },
   { name: "BindingProperty", type: "BindingProperty", extra: null, fields: {
     key: [false, 0, "node", false],
@@ -940,7 +943,7 @@ export const NodeKind = Object.freeze({
   JsxText: 174,
   JsxSpreadChild: 175,
 } as const);
-export const nativeExtraCounts: readonly number[] = Object.freeze([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 3, 5, 0, 4, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 4, 0, 2, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+export const nativeExtraCounts: readonly number[] = Object.freeze([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 3, 5, 0, 4, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 4, 0, 2, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 export const enums: Readonly<Record<string, readonly EnumValue[]>> & { readonly Lang: readonly Lang[]; readonly SourceType: readonly SourceType[] } = Object.freeze({
   Lang: Object.freeze(["js", "ts", "jsx", "tsx", "dts"] as const),
   SourceType: Object.freeze(["module", "script", "commonjs", "unambiguous"] as const),

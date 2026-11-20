@@ -165,6 +165,7 @@ pub(super) fn validate_fields(
         NodeKind::BindingIdentifier => {
             input.string(Field::Payload(0usize), false, false)?;
             input.node(Field::Payload(8usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.boolean(Field::Payload(12usize))?;
         }
         NodeKind::IdentifierName => {
             input.string(Field::Payload(0usize), false, false)?;
@@ -259,8 +260,9 @@ pub(super) fn validate_fields(
             input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
         }
         NodeKind::ArrayPattern => {
+            input.extra(12usize, 2usize)?;
             input.list(
-                Field::Payload(0usize),
+                Field::Extra(0usize),
                 &[
                     NodeKind::BindingIdentifier,
                     NodeKind::IdentifierReference,
@@ -277,20 +279,23 @@ pub(super) fn validate_fields(
                 true,
             )?;
             input.node(
-                Field::Payload(8usize),
+                Field::Payload(0usize),
                 &[NodeKind::BindingRestElement],
                 true,
             )?;
-            input.node(Field::Payload(12usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::ObjectPattern => {
-            input.list(Field::Payload(0usize), &[NodeKind::BindingProperty], false)?;
+            input.extra(12usize, 2usize)?;
+            input.list(Field::Extra(0usize), &[NodeKind::BindingProperty], false)?;
             input.node(
-                Field::Payload(8usize),
+                Field::Payload(0usize),
                 &[NodeKind::BindingRestElement],
                 true,
             )?;
-            input.node(Field::Payload(12usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::BindingProperty => {
             input.node(

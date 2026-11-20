@@ -2479,6 +2479,10 @@ impl BindingIdentifier {
         (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
+    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        unsafe { ast.nodes.data_unchecked(self.0).binding_identifier.optional }
+    }
+    #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).binding_identifier.name = name;
@@ -2496,6 +2500,15 @@ impl BindingIdentifier {
                 .data_mut_unchecked(self.0)
                 .binding_identifier
                 .type_annotation = field_val;
+        }
+    }
+    #[inline]
+    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
+        unsafe {
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .binding_identifier
+                .optional = optional;
         }
     }
 }
@@ -2618,10 +2631,6 @@ impl BindingRestElement {
 }
 impl ArrayPattern {
     #[inline]
-    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
-        unsafe { ast.nodes.data_unchecked(self.0).array_pattern.elements }
-    }
-    #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).array_pattern.rest };
         (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
@@ -2637,13 +2646,26 @@ impl ArrayPattern {
         (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn set_elements<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        elements: SubRange<Option<BindingPattern>>,
-    ) {
+    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        unsafe { ast.nodes.data_unchecked(self.0).array_pattern.optional }
+    }
+    #[inline]
+    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .array_pattern
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            ast.nodes.data_mut_unchecked(self.0).array_pattern.elements = elements;
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
         }
     }
     #[inline]
@@ -2667,12 +2689,39 @@ impl ArrayPattern {
                 .type_annotation = field_val;
         }
     }
+    #[inline]
+    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
+        unsafe {
+            ast.nodes.data_mut_unchecked(self.0).array_pattern.optional = optional;
+        }
+    }
+    #[inline]
+    pub fn set_elements<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        elements: SubRange<Option<BindingPattern>>,
+    ) {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .array_pattern
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((elements).start, (elements).end),
+                },
+            );
+        }
+    }
 }
 impl ObjectPattern {
-    #[inline]
-    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
-        unsafe { ast.nodes.data_unchecked(self.0).object_pattern.properties }
-    }
     #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).object_pattern.rest };
@@ -2689,16 +2738,26 @@ impl ObjectPattern {
         (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn set_properties<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        properties: SubRange<BindingProperty>,
-    ) {
-        unsafe {
+    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        unsafe { ast.nodes.data_unchecked(self.0).object_pattern.optional }
+    }
+    #[inline]
+    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
+        let start = unsafe {
             ast.nodes
-                .data_mut_unchecked(self.0)
+                .data_unchecked(self.0)
                 .object_pattern
-                .properties = properties;
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
         }
     }
     #[inline]
@@ -2720,6 +2779,37 @@ impl ObjectPattern {
                 .data_mut_unchecked(self.0)
                 .object_pattern
                 .type_annotation = field_val;
+        }
+    }
+    #[inline]
+    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
+        unsafe {
+            ast.nodes.data_mut_unchecked(self.0).object_pattern.optional = optional;
+        }
+    }
+    #[inline]
+    pub fn set_properties<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        properties: SubRange<BindingProperty>,
+    ) {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .object_pattern
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((properties).start, (properties).end),
+                },
+            );
         }
     }
 }

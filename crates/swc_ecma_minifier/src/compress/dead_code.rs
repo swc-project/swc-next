@@ -123,7 +123,7 @@ pub(super) fn declarators(
         .map(|binding| {
             let span = binding.span(ast);
             let name = binding.name(ast);
-            let id = ast.binding_pattern_binding_identifier(span, name, None);
+            let id = ast.binding_pattern_binding_identifier(span, name, None, false);
             ast.variable_declarator(span, id, None, false)
         })
         .collect()

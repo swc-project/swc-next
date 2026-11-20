@@ -111,6 +111,11 @@ export function spanLocation(ast: AstView, id: number, field: "start" | "end", k
     const annotation = ast.ref(id, "typeAnnotation");
     if (annotation !== NONE) { return { id: annotation, field, adjustment: 0 }; }
   }
+  if (field === "end" && ts &&
+      (name === "BindingIdentifier" || name === "ArrayPattern" || name === "ObjectPattern") &&
+      ast.value(id, "optional")) {
+    return { id, field, adjustment: 1 };
+  }
   return { id, field, adjustment: 0 };
 }
 /** Native storage is the default; generated maps contain projection exceptions. */

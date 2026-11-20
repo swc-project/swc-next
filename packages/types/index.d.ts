@@ -329,16 +329,16 @@ export interface ArrayPattern extends BaseNode {
   type: "ArrayPattern";
   elements: Array<Pattern | null>;
   typeAnnotation?: TSTypeAnnotation | null;
-  decorators?: Array<Decorator>;
   optional?: boolean;
+  decorators?: Array<Decorator>;
 }
 
 export interface ObjectPattern extends BaseNode {
   type: "ObjectPattern";
   properties: Array<BindingProperty | BindingRestElement>;
   typeAnnotation?: TSTypeAnnotation | null;
-  decorators?: Array<Decorator>;
   optional?: boolean;
+  decorators?: Array<Decorator>;
 }
 
 export interface BindingProperty extends BaseNode {
