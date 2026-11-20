@@ -33413,6 +33413,114 @@
         "prettierNative": "const value = 1 as const /*\n @__PURE__\n*/\ncall()\n"
       }
     ],
+    "ts/const-marker-comments/continuing-as.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z;\n",
+        "prettierNative": "const a = x as const as Z; // a\n// b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z;\n",
+        "prettierNative": "const a =\n  x as const as Z; // a\n  // b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z\n",
+        "prettierNative": "const a = x as const as Z // a\n// b\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-comment-order.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y;\n",
+        "prettierNative": "const a = x as const /* b */ satisfies Y; // a\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const /* b */ satisfies Y; // a\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y\n",
+        "prettierNative": "const a = x as const /* b */ satisfies Y // a\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-multiline-block.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y;\n",
+        "prettierNative": "const a = x as const /* a\nb */ satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const /* a\nb */ satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y\n",
+        "prettierNative": "const a = x as const /* a\nb */ satisfies Y\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-satisfies.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y;\n",
+        "prettierNative": "const a = x as const satisfies Y; // a\n/* b */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const satisfies Y; // a\n  /* b */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y\n",
+        "prettierNative": "const a = x as const satisfies Y // a\n/* b */\n"
+      }
+    ],
     "ts/const-marker-comments/diagnostic.ts": [
       {
         "options": {

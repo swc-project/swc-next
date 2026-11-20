@@ -551,12 +551,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let source = self.prepare_binary_type_expression(
-            expression,
-            annotation,
-            operator,
-            context.tail_owner,
-        )?;
+        let source =
+            self.prepare_binary_type_expression(expression, annotation, operator, &context)?;
         writer.group(false, |writer| {
             let write = |writer: &mut Writer<'ast>| {
                 let tail = self.format_expression(
@@ -592,11 +588,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         annotation: TsType,
         operator: TypeBinaryOperator,
-        tail_owner: TailOwner,
+        context: &ExpressionContext<'ast>,
     ) -> Result<PreparedBinaryTypeExpression<'ast>, FormatError> {
         let mut annotation = self.prepare_type(annotation, ContentMode::Formatted);
-        let boundary =
-            self.prepare_binary_type_boundary(expression, &mut annotation, operator, tail_owner)?;
+        let tail_owner = context.tail_owner;
+        let type_operator_follows =
+            matches!(context.position, ExpressionPosition::TypeBinaryOperand);
+        let boundary = self.prepare_binary_type_boundary(
+            expression,
+            &mut annotation,
+            operator,
+            tail_owner,
+            type_operator_follows,
+        )?;
         Ok(PreparedBinaryTypeExpression {
             boundary,
             annotation,
@@ -625,6 +629,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         right: &mut PreparedType,
         operator: TypeBinaryOperator,
         tail_owner: TailOwner,
+        type_operator_follows: bool,
     ) -> Result<BinaryTypeBoundary<'ast>, FormatError> {
         let gap = Span::new(
             expression.span(self.ast).end,
@@ -795,13 +800,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 BinaryTypeLayout::Source(source)
             }
-        } else if let Some((prefix, tail)) = self.prepare_const_marker_comments(
-            *right,
-            operator,
-            after,
-            gap,
-            start + token.len() as u32,
-        ) {
+        } else if let Some((prefix, tail)) = self
+            .prepare_const_marker_comments(*right, operator, after, gap, operator_span.end)
+            .filter(|(_, tail)| {
+                // The next `as` or `satisfies` must stay on the same line.
+                // A pending suffix can break that boundary or overtake its comments.
+                tail.is_none() || !type_operator_follows
+            })
+        {
             BinaryTypeLayout::ConstMarker {
                 before: self.prepare_comment_boundary(before, gap.start, start),
                 prefix,
@@ -849,6 +855,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut right,
                 TypeBinaryOperator::As,
                 TailOwner::Expression,
+                false,
             )
             .ok()?;
         let BinaryTypeLayout::ConstMarker { tail, .. } = boundary.layout else {
