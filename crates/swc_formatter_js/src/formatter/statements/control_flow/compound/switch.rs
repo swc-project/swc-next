@@ -5,7 +5,9 @@ use crate::formatter::comments::{
     CommentCursor, CommentRunLayout, NodeHead, PreparedCommentAdjacency,
 };
 use crate::formatter::diagnostics::FlatSeparator;
-use crate::formatter::expressions::{ExpressionContext, ExpressionPosition, TailOwner};
+use crate::formatter::expressions::{
+    ExpressionContext, ExpressionPosition, StringStatement, TailOwner,
+};
 use crate::formatter::statements::{
     CaseIncoming, EmptyBlock, IncomingStatement, StatementBodyLeading, StatementBoundary,
     StatementItem, StatementSequenceKind,
@@ -781,7 +783,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             self.expression_needs_asi_guard(
                 statement.expression(ast),
-                ExpressionContext::at(ExpressionPosition::Statement)
+                ExpressionContext::at(ExpressionPosition::Statement(StringStatement::Bare))
                     .with_content_mode(incoming.mode),
             )?
         } else {

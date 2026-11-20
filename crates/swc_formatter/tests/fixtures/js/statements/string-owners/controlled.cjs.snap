@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (flag) ("left"); else "right";
+while (flag) "while";
+for (;;) "for";
+for (const key in values) "for-in";
+for (const item of values) ("for-of");
+do "do"; while (flag);
+label: nested: ("label");
+with (scope) "with";
+if (flag) { "block"; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+if (flag) "left";
+else "right";
+while (flag) "while";
+for (;;) "for";
+for (const key in values) "for-in";
+for (const item of values) "for-of";
+do "do";
+while (flag);
+label: nested: "label";
+with (scope) "with";
+if (flag) {
+  ("block");
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+if (flag) 'left'
+else 'right'
+while (flag) 'while'
+for (;;) 'for'
+for (const key in values)
+	'for-in'
+for (const item of values)
+	'for-of'
+do 'do'
+while (flag)
+label: nested: 'label'
+with (scope) 'with'
+if (flag) {
+	;('block')
+}

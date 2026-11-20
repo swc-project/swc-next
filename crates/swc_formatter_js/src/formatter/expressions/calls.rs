@@ -481,7 +481,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let module = self.module_callee(list.callee)?;
         if matches!(module, ModuleCallee::ImportMeta)
             || matches!(module, ModuleCallee::Define)
-                && !matches!(context.position, ExpressionPosition::Statement)
+                && !matches!(context.position, ExpressionPosition::Statement(_))
         {
             return None;
         }

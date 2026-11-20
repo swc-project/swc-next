@@ -61,7 +61,7 @@ pub(super) enum AccessKind {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ExpressionPosition {
-    Statement,
+    Statement(StringStatement),
     ExportDefault,
     Nested,
     Decorator,
@@ -114,6 +114,12 @@ pub(super) enum ExpressionPosition {
         operator: BinaryOperatorKind,
         side: OperandSide,
     },
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum StringStatement {
+    Parenthesized,
+    Bare,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -347,7 +353,7 @@ impl<'ast> ExpressionContext<'ast> {
         self.content_mode == ContentMode::Verbatim
             && matches!(
                 (self.position, data),
-                (ExpressionPosition::Statement, ExprData::StringLiteral(_))
+                (ExpressionPosition::Statement(_), ExprData::StringLiteral(_))
             )
     }
 
@@ -435,7 +441,7 @@ impl<'ast> ExpressionContext<'ast> {
                 _ => arrows::ArrowLayout::Ordinary,
             },
             expression_start: match position {
-                ExpressionPosition::Statement => ExpressionStart::StatementPending,
+                ExpressionPosition::Statement(_) => ExpressionStart::StatementPending,
                 ExpressionPosition::ArrowBody => ExpressionStart::ArrowBody,
                 ExpressionPosition::ForInitializer { .. }
                 | ExpressionPosition::ForInInitializer => ExpressionStart::ForInitializer,
@@ -453,7 +459,7 @@ impl<'ast> ExpressionContext<'ast> {
             ignored_parentheses_closing: None,
             emitted_head_binding: EmittedHeadBinding::Pending,
             expression_head: match position {
-                ExpressionPosition::Statement => ExpressionHead::Statement,
+                ExpressionPosition::Statement(_) => ExpressionHead::Statement,
                 ExpressionPosition::ForInitializer {
                     grammar: ForInitializerGrammar::Expression,
                     ..
@@ -1102,7 +1108,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
     ) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
-            && !context.is_verbatim_statement_string(data)
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
                 || matches!(context.position, ExpressionPosition::TypeBinaryOperand)
@@ -1599,13 +1604,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::LogicalExpression(_)
                 | ExprData::ConditionalExpression(_),
             ) => true,
-            (ExpressionPosition::Statement, ExprData::AssignmentExpression(node)) => matches!(
+            (ExpressionPosition::Statement(_), ExprData::AssignmentExpression(node)) => matches!(
                 self.ast.assignment_target_data(node.left(self.ast)),
                 swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
             ),
             (position, ExprData::AssignmentExpression(_)) => !matches!(
                 position,
-                ExpressionPosition::Statement
+                ExpressionPosition::Statement(_)
                     | ExpressionPosition::AssignmentRight(_)
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
@@ -1683,11 +1688,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && self.instantiation_tail_needs_parentheses(data, operator, mode)
             }
             (
-                ExpressionPosition::Statement,
-                ExprData::StringLiteral(_)
-                | ExprData::ObjectExpression(_)
-                | ExprData::Function(_)
-                | ExprData::Class(_),
+                ExpressionPosition::Statement(StringStatement::Parenthesized),
+                ExprData::StringLiteral(_),
+            ) => mode == ContentMode::Formatted,
+            (
+                ExpressionPosition::Statement(_),
+                ExprData::ObjectExpression(_) | ExprData::Function(_) | ExprData::Class(_),
             ) => true,
             _ => false,
         })

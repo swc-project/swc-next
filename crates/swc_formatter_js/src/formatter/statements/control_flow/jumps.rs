@@ -11,7 +11,7 @@ use super::super::{
 use super::{ControlledBodyEnd, ControlledBodyRole};
 use crate::formatter::comments::{CommentBinding, CommentCursor, CommentRunLayout};
 use crate::formatter::diagnostics::FlatSeparator;
-use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
+use crate::formatter::expressions::{ExpressionContext, ExpressionPosition, StringStatement};
 use crate::formatter::suppression::{
     CommentDirective, ContentMode, LintLineDirective, SuppressionPosition,
 };
@@ -370,7 +370,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.has_target_annotations
             && let Some(mut expression) = expression
         {
-            let mut context = ExpressionContext::at(ExpressionPosition::Statement);
+            let mut context =
+                ExpressionContext::at(ExpressionPosition::Statement(StringStatement::Bare));
             loop {
                 if context.is_verbatim() {
                     return Ok(self.comment_binding(comments, span, None));

@@ -22,7 +22,7 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::{
-    ExpressionContext, ExpressionPosition, ExpressionStart, TailOwner,
+    ExpressionContext, ExpressionPosition, ExpressionStart, StringStatement, TailOwner,
 };
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
@@ -896,6 +896,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let layout = StatementLayout {
                 operator_tail_destination: super::OperatorTailDestination::Local,
                 start: ExpressionStart::StatementBody,
+                string_statement: StringStatement::Bare,
                 empty_block,
                 source_candidate: if matches!(
                     punctuation,
