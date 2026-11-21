@@ -5175,6 +5175,9 @@ impl<'a> Printer<'a> {
             self.print_space();
             match data {
                 JsxAttributeItemData::JsxAttribute(a) => {
+                    if self.options.minify && self.js.last() == Some(&b'-') {
+                        self.print(" ");
+                    }
                     self.print_space_before_identifier();
                     self.print_jsx_attr_name(a.name(self.ast));
                     if let Some(v) = a.value(self.ast) {

@@ -1592,3 +1592,15 @@ fn test_output_assertion_diagnostics() {
     let result = std::panic::catch_unwind(|| expect_generated("let x = ;", ""));
     assert!(result.is_err());
 }
+
+#[test]
+fn test_jsx_name_boundaries() {
+    let options = ParseOptions {
+        lang: swc_next_ecma_ast::Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::expect_generated_pair("<a b- c />;", options, "<a b- c />;\n", "<a b- c/>;");
+
+    crate::expect_generated_pair("<a- b />;", options, "<a- b />;\n", "<a- b/>;");
+}
