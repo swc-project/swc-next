@@ -28,10 +28,11 @@ pub enum NumberFormat {
 #[derive(Clone)]
 pub struct Options {
     pub ascii_only: bool,
-    /// Escape closing script tags in strings, untagged templates, and comments,
-    /// and prevent them from forming across token boundaries. Defaults to false.
-    /// Tagged template raw text is preserved; this is not a guarantee that arbitrary
-    /// output can be embedded in HTML without further processing.
+    /// Escape closing script tags in strings, JSX text, untagged templates,
+    /// template literal types, comments, and hashbangs. Also prevent them from
+    /// forming across token boundaries. Defaults to false.
+    /// Tagged template raw text and regular expression bodies are preserved.
+    /// Arbitrary output may still need processing before being embedded in HTML.
     pub inline_script: bool,
     pub minify: bool,
     pub number_format: NumberFormat,
@@ -426,7 +427,7 @@ impl<'a> Printer<'a> {
     fn print_program(&mut self, program: Program) {
         if let Some(hashbang) = program.hashbang(self.ast) {
             self.print("#!");
-            self.print_bytes(self.ast.get_utf8(hashbang.value(self.ast)));
+            self.print_script_text(self.ast.get_utf8(hashbang.value(self.ast)).as_bytes());
             self.print("\n");
         }
         for id in program.directives(self.ast).iter() {
@@ -624,6 +625,22 @@ impl<'a> Printer<'a> {
             {
                 self.print_bytes(&text[start..index + 1]);
                 self.print("\\");
+                start = index + 1;
+            }
+        }
+        self.print_bytes(&text[start..]);
+    }
+
+    fn print_jsx_script_text(&mut self, text: &[u8]) {
+        if !self.options.inline_script {
+            self.print_bytes(text);
+            return;
+        }
+        let mut start = 0;
+        for index in 0..text.len().saturating_sub(7) {
+            if text[index..index + 8].eq_ignore_ascii_case(b"</script") {
+                self.print_bytes(&text[start..index]);
+                self.print("&lt;");
                 start = index + 1;
             }
         }
@@ -4370,9 +4387,10 @@ impl<'a> Printer<'a> {
                 let qs = t.quasis(self.ast);
                 let types = t.types(self.ast);
                 for (i, id) in qs.iter().enumerate() {
-                    self.print_bytes(
+                    self.print_script_text(
                         self.ast
-                            .get_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast)),
+                            .get_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast))
+                            .as_bytes(),
                     );
                     if i < types.len() {
                         self.print("${");
@@ -5259,6 +5277,19 @@ impl<'a> Printer<'a> {
         if let Some(c) = e.closing_element(self.ast) {
             self.add_source_mapping(c.span(self.ast).start);
             self.print("</");
+            if self.options.inline_script
+                && c.name(self.ast)
+                    .as_jsx_identifier(self.ast)
+                    .is_some_and(|name| {
+                        self.ast
+                            .get_utf8(name.name(self.ast))
+                            .as_bytes()
+                            .get(..6)
+                            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"script"))
+                    })
+            {
+                self.print(" ");
+            }
             self.print_jsx_name(c.name(self.ast));
             self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
@@ -5336,7 +5367,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(literal.span(self.ast).start);
         let raw = self.ast.get_utf8(literal.raw(self.ast));
         if !raw.is_empty() {
-            self.print_bytes(raw);
+            self.print_jsx_script_text(raw.as_bytes());
             return;
         }
 
@@ -5360,7 +5391,7 @@ impl<'a> Printer<'a> {
         } else {
             let quote = if has_double_quote { "'" } else { "\"" };
             self.print(quote);
-            self.print_bytes(bytes);
+            self.print_jsx_script_text(bytes);
             self.print(quote);
         }
     }
@@ -5391,7 +5422,7 @@ impl<'a> Printer<'a> {
     fn print_jsx_child(&mut self, c: JsxChild) {
         match self.ast.jsx_child_data(c) {
             JsxChildData::JsxText(t) => {
-                self.print_bytes(self.ast.get_utf8(t.value(self.ast)));
+                self.print_jsx_script_text(self.ast.get_utf8(t.value(self.ast)).as_bytes());
             }
             JsxChildData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxChildData::JsxSpreadChild(s) => {

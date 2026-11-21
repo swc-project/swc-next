@@ -60,7 +60,7 @@ Type: `boolean`
 
 Default: `false`
 
-Escape case-insensitive `</script` sequences in strings and untagged templates, and insert separators when neighboring tokens would form such a sequence. This helps prevent generated JavaScript text from closing an HTML `<script>` element early.
+Escape case-insensitive `</script` sequences in strings, untagged templates, template literal types, JSX attribute strings and text, comments, and hashbangs. Insert separators in JSX closing tags and when neighboring tokens would form such a sequence. This helps prevent generated JavaScript text from closing an HTML `<script>` element early.
 
 ```js
 import { parseSync, generateSync } from "@swc-next/core";
@@ -73,7 +73,7 @@ generateSync(program, { inlineScript: true }).code;
 // 'const text = "<\\/script>";\n'
 ```
 
-The escape preserves the string's runtime value. Tagged template raw text is preserved because changing it would be observable by the tag function. This option therefore does not guarantee that arbitrary generated output can be embedded directly in HTML.
+The escape preserves the string's runtime value. Tagged template raw text and regular expression bodies are preserved because rewriting their contents can change behavior. This option therefore does not guarantee that arbitrary generated output can be embedded directly in HTML.
 
 ### minify
 

@@ -1878,3 +1878,67 @@ fn first_expression(ast: &Ast<'_>) -> swc_next_ecma_ast::Expr {
         .unwrap()
         .expression(ast)
 }
+
+#[test]
+fn test_inline_script_syntax() {
+    for minify in [false, true] {
+        let options = GeneratorOptions {
+            minify,
+            inline_script: true,
+            ..GeneratorOptions::default()
+        };
+        let jsx = ParseOptions {
+            lang: swc_next_ecma_ast::Lang::Jsx,
+            preserve_parens: false,
+            ..ParseOptions::default()
+        };
+        let typescript = ParseOptions {
+            lang: swc_next_ecma_ast::Lang::Ts,
+            ..jsx
+        };
+        let javascript = ParseOptions {
+            lang: swc_next_ecma_ast::Lang::Js,
+            ..jsx
+        };
+        let output = inline_script_jsx_text(options.clone());
+        assert!(!output.to_ascii_lowercase().contains("</script"));
+
+        let output =
+            crate::generate_edited("a = <a b=\"</script>\" />;", jsx, options.clone(), |_| {});
+        assert!(!output.to_ascii_lowercase().contains("</script"));
+
+        let output =
+            crate::generate_edited("a = <script>{x}</script>;", jsx, options.clone(), |_| {});
+        assert!(!output.to_ascii_lowercase().contains("</script"));
+
+        let output = crate::generate_edited(
+            "type A = `</script>${string}`;",
+            typescript,
+            options.clone(),
+            |_| {},
+        );
+        assert!(!output.to_ascii_lowercase().contains("</script"));
+
+        let output = crate::generate_edited("#!/bin/node </script>\n", javascript, options, |_| {});
+        assert!(!output.to_ascii_lowercase().contains("</script"));
+    }
+}
+
+fn inline_script_jsx_text(options: GeneratorOptions) -> String {
+    let parse_options = ParseOptions {
+        lang: swc_next_ecma_ast::Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited("<>old</>;", parse_options, options, |ast| {
+        let fragment = first_expression(ast).as_jsx_fragment(ast).unwrap();
+        let text = fragment
+            .children(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_jsx_text(ast)
+            .unwrap();
+        let value = ast.add_utf8("</script");
+        text.set_value(ast, value);
+    })
+}
