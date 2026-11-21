@@ -33752,6 +33752,27 @@
         "prettierNative": "// @ts-expect-error\nclass C extends (\n  @missingDecorator\n  class {}\n) {}\noutsideMissing;\n"
       }
     ],
+    "ts/decorators/ignored-empty-parameters.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "class C {\n  @d /* head */\n  m(/* prettier-ignore */) {return  1}\n}\n",
+        "prettierNative": "class C {\n  @d\n  /* head */ m(/* prettier-ignore */) {return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "class C {\r\n  @d /* head */\r\n  m(/* prettier-ignore */) {return  1}\r\n}\r\n",
+        "prettierNative": "class C {\r\n  @d\r\n  /* head */ m(/* prettier-ignore */) {return  1}\r\n}\r\n"
+      }
+    ],
     "ts/decorators/ignored-rhs/field.ts": [
       {
         "options": {
