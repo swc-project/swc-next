@@ -1722,3 +1722,44 @@ fn test_synthetic_value_comments() {
         assert!(output.contains("yield (") || output.contains("yield("));
     }
 }
+
+#[track_caller]
+fn generate_unwrapped_blocks(source: &str, options: GeneratorOptions) -> String {
+    struct UnwrapBlocks<'visit, 'ast>(&'visit mut Ast<'ast>);
+    impl<'ast> VisitMut<'ast> for UnwrapBlocks<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+        fn visit_mut_stmt(&mut self, node: Stmt) -> Option<Stmt> {
+            node.visit_mut_children_with(self);
+            if let Some(block) = node.as_block_statement(self.0) {
+                let body = block.body(self.0);
+                assert_eq!(body.len(), 1);
+                return body.get_node(self.0, 0);
+            }
+            Some(node)
+        }
+    }
+    let parse_options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        ast.root_program().visit_mut_with(&mut UnwrapBlocks(ast));
+    })
+}
+
+#[test]
+fn test_dangling_else_after_edits() {
+    let pretty = GeneratorOptions::default();
+    let compact = GeneratorOptions {
+        minify: true,
+        ..pretty.clone()
+    };
+    let output = generate_unwrapped_blocks("if (a) { if (b) x(); } else y();", pretty);
+    assert_eq!(output, "if (a) {\n  if (b) x();\n} else y();\n");
+
+    let output =
+        generate_unwrapped_blocks("if (a) { while (b) { if (c) x(); } } else y();", compact);
+    assert_eq!(output, "if(a){while(b)if(c)x()}else y();");
+}

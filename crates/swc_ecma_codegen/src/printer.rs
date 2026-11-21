@@ -1301,6 +1301,24 @@ impl<'a> Printer<'a> {
         self.print("}");
     }
 
+    fn ends_in_open_if(&self, mut statement: Stmt) -> bool {
+        loop {
+            statement = match self.ast.stmt_data(statement) {
+                StmtData::IfStatement(s) => match s.alternate(self.ast) {
+                    Some(alternate) => alternate,
+                    None => return true,
+                },
+                StmtData::LabeledStatement(s) => s.body(self.ast),
+                StmtData::WhileStatement(s) => s.body(self.ast),
+                StmtData::ForStatement(s) => s.body(self.ast),
+                StmtData::ForInStatement(s) => s.body(self.ast),
+                StmtData::ForOfStatement(s) => s.body(self.ast),
+                StmtData::WithStatement(s) => s.body(self.ast),
+                _ => return false,
+            };
+        }
+    }
+
     fn print_if(&mut self, s: IfStatement) {
         self.print_indent();
         self.add_source_mapping(s.span(self.ast).start);
@@ -1310,15 +1328,26 @@ impl<'a> Printer<'a> {
         self.print_expr(s.test(self.ast), Precedence::Lowest);
         self.print(")");
         let consequent = s.consequent(self.ast);
+        let wrap = s.alternate(self.ast).is_some() && self.ends_in_open_if(consequent);
         if let Some(block) = consequent.as_block_statement(self.ast) {
             self.print_space();
             self.print_block(block);
+        } else if wrap {
+            self.print_space();
+            self.print("{");
+            self.print_newline();
+            self.indent += 1;
+            self.print_stmt(consequent);
+            self.needs_semicolon = false;
+            self.indent -= 1;
+            self.print_indent();
+            self.print("}");
         } else {
             self.print_body(consequent);
         }
         if let Some(alternate) = s.alternate(self.ast) {
             self.print_semicolon_if_needed();
-            if consequent.is_block_statement(self.ast) {
+            if consequent.is_block_statement(self.ast) || wrap {
                 self.print_space();
             } else {
                 self.print_indent();
