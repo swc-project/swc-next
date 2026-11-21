@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try { a(); } // one
+catch // two
+{ b(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try {
+  a();
+} catch {
+  // one
+  // two
+  b();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+  a()
+} catch {
+  // one
+  // two
+  b()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+try {
+	a();
+} catch {
+	// one
+	// two
+	b();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+  a()
+} catch {
+  // one
+  // two
+  b()
+}

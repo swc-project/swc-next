@@ -397,7 +397,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 if matches!(
                     context.position,
-                    ExpressionPosition::Statement
+                    ExpressionPosition::Statement(_)
                         | ExpressionPosition::ForHead
                         | ExpressionPosition::ForTest
                         | ExpressionPosition::ForUpdate

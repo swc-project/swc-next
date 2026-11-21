@@ -101,7 +101,7 @@ pub(super) enum CommentRunLayout {
     Source,
     /// A leading packet began inside a preceding statement whose source ends here.
     SourceProjected(u32),
-    /// Keep a terminal packet's Blocks in place and its ordinary Line suffix inline.
+    /// Keep terminal Blocks in place and suffix an ordinary Line after a Block.
     SourceDangling,
     SourceAfter(u32),
     /// Preserve source order when a released expression tail joins a statement suffix.
@@ -2009,8 +2009,51 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         next_start: u32,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let mut previous: Option<PreparedComment<'ast>> = None;
         let mut inline = false;
+        self.format_leading_comments_with_gaps(
+            comments,
+            next_start,
+            |comment, next, _, writer| {
+                self.relocated_type_head_gap(comment, next, &mut inline, writer);
+            },
+            writer,
+        )
+    }
+
+    pub(super) fn format_inline_head_with_gaps(
+        &self,
+        comments: &[Comment],
+        next_start: u32,
+        mut gaps: impl Iterator<Item = (u32, CommentGap)>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let mut projected = gaps.next();
+        self.format_leading_comments_with_gaps(
+            comments,
+            next_start,
+            |comment, next, first, writer| {
+                if let Some((end, gap)) = projected
+                    && end == comment.span.end
+                {
+                    gap.write(writer, FlatSeparator::Space, Writer::line);
+                    projected = gaps.next();
+                } else {
+                    self.leading_comment_gap(comment, next, true, first, writer);
+                }
+            },
+            writer,
+        )
+    }
+
+    fn format_leading_comments_with_gaps(
+        &self,
+        comments: &[Comment],
+        next_start: u32,
+        mut write_gap: impl FnMut(&PreparedComment<'ast>, u32, bool, &mut Writer<'ast>),
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let mut previous: Option<PreparedComment<'ast>> = None;
+        let mut first = true;
         for &comment in comments {
             let prepared = self.prepare_comment(comment)?;
             if let Some(previous) = previous.as_ref() {
@@ -2018,13 +2061,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && previous.is_alignable()
                     && prepared.is_alignable();
                 if !nestled {
-                    self.relocated_type_head_gap(
-                        previous,
-                        prepared.span.start,
-                        &mut inline,
-                        writer,
-                    );
+                    write_gap(previous, prepared.span.start, first, writer);
                 }
+                first = false;
             }
             if comment.kind == CommentKind::Line {
                 writer.line_suffix_boundary();
@@ -2033,7 +2072,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous = Some(prepared);
         }
         if let Some(previous) = previous {
-            self.relocated_type_head_gap(&previous, next_start, &mut inline, writer);
+            write_gap(&previous, next_start, first, writer);
         }
         Ok(())
     }
@@ -2155,7 +2194,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.source_line_breaks(end, comment.span.start) == 0
                 }
                 (CommentRunLayout::SourceDangling, CommentKind::Line) => {
-                    previous.is_some()
+                    previous
+                        .as_ref()
+                        .is_some_and(|previous| previous.kind == CommentKind::Block)
                         && ordinary_prefix
                         && fact.is_some_and(PreparedLineFact::movable)
                 }

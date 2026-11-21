@@ -12,12 +12,21 @@ pub(super) struct DiagnosticLines {
     document_closing: Option<u32>,
 }
 
-struct DiagnosticLine {
-    span: Span,
+pub(super) struct DiagnosticLine {
+    pub(super) span: Span,
     sensitive_start: u32,
     directive_end: u32,
     terminal_suffix_start: u32,
     opening_tokens: Option<Span>,
+    pub(super) has_directive: bool,
+    /// Coverage reaches a later nonblank source line beyond line comments.
+    pub(super) has_following_content: bool,
+}
+
+impl DiagnosticLine {
+    pub(super) fn is_covered(&self) -> bool {
+        self.sensitive_start == self.span.start
+    }
 }
 
 /// Final source punctuation either stays put or moves with its prepared statement envelope.
@@ -33,6 +42,11 @@ pub(super) struct TerminalCloseBoundary {
     close: u32,
     last_end: Option<u32>,
     release: bool,
+}
+
+pub(super) enum TerminalPacketClose {
+    Group,
+    Source,
 }
 
 /// One immutable physical directive and its covered source-code interval.
@@ -113,7 +127,7 @@ impl DiagnosticLines {
             .match_indices(['\n', '\r', '\u{2028}', '\u{2029}'])
             .peekable();
         let mut start = 0;
-        let mut covered = None;
+        let mut covered: Option<(u32, usize)> = None;
         let mut comment_index = 0;
         loop {
             let (end, next_start) = match boundaries.next() {
@@ -134,11 +148,11 @@ impl DiagnosticLines {
                 directive_end.get_or_insert(comment_end);
             }
             let sensitive = match (covered, directive_end) {
-                (Some(owner), _) => Some((start as u32, owner)),
+                (Some((owner, _)), _) => Some((start as u32, owner)),
                 (None, Some(owner)) => Some((owner, owner)),
                 (None, None) => None,
             };
-            if let Some((sensitive_start, directive_end)) = sensitive {
+            if let Some((sensitive_start, owner)) = sensitive {
                 let (terminal_suffix_start, opening_tokens) = covered_line_tokens(
                     source,
                     comments,
@@ -150,14 +164,23 @@ impl DiagnosticLines {
                 lines.push(DiagnosticLine {
                     span: Span::new(start as u32, end as u32),
                     sensitive_start,
-                    directive_end,
+                    directive_end: owner,
                     terminal_suffix_start,
                     opening_tokens,
+                    has_directive: directive_end.is_some(),
+                    has_following_content: false,
                 });
             }
             let text = source[start..end].trim_matches(is_directive_whitespace);
+            let skips_line = text.is_empty() || text.starts_with("//");
+            if let Some((_, owner_line)) = covered
+                && !skips_line
+            {
+                lines[owner_line].has_following_content = true;
+            }
             covered = directive_end
-                .or_else(|| covered.filter(|_| text.is_empty() || text.starts_with("//")));
+                .map(|owner| (owner, lines.len() - 1))
+                .or_else(|| covered.filter(|_| skips_line));
             if end == source.len() || covered.is_none() && directives.peek().is_none() {
                 break;
             }
@@ -185,12 +208,12 @@ impl DiagnosticLines {
         self.lines.is_empty()
     }
 
-    fn covered_terminal_suffix_contains(&self, close: u32) -> bool {
-        let index = self.lines.partition_point(|line| line.span.end < close);
-        self.lines.get(index).is_some_and(|line| {
-            line.span.start <= close
-                && line.sensitive_start <= close
-                && line.terminal_suffix_start <= close
+    fn terminal_suffix_at(&self, position: u32) -> Option<&DiagnosticLine> {
+        let index = self.lines.partition_point(|line| line.span.end < position);
+        self.lines.get(index).filter(|line| {
+            line.span.start <= position
+                && line.sensitive_start <= position
+                && line.terminal_suffix_start <= position
         })
     }
 
@@ -205,9 +228,9 @@ impl DiagnosticLines {
     /// sensitive to layout but is not itself a covered line.
     fn covered_at(&self, position: u32) -> bool {
         let index = self.lines.partition_point(|line| line.span.end < position);
-        self.lines.get(index).is_some_and(|line| {
-            line.span.start <= position && line.sensitive_start == line.span.start
-        })
+        self.lines
+            .get(index)
+            .is_some_and(|line| line.span.start <= position && line.is_covered())
     }
 }
 
@@ -347,7 +370,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // ordinary lists out of the item and comment ownership preparation.
         let last = self
             .diagnostic_lines
-            .covered_terminal_suffix_contains(content.end)
+            .terminal_suffix_at(content.end)
+            .is_some()
             .then(prepare_last)
             .flatten();
         let release = last.is_some_and(|(last, head_start)| {
@@ -396,6 +420,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// An inline terminal packet can release its closer to the group when
+    /// placing a line there cannot displace a later covered source line.
+    pub(super) fn terminal_packet_close(
+        &self,
+        boundary: TerminalCloseBoundary,
+        item_end: u32,
+        packet_end: u32,
+    ) -> Option<TerminalPacketClose> {
+        if !matches!(
+            self.ast.source().as_bytes().get(boundary.close as usize),
+            Some(b')' | b']')
+        ) {
+            return None;
+        }
+        let lines = &self.diagnostic_lines.lines;
+        let line = lines.get(lines.partition_point(|line| line.span.end < packet_end))?;
+        if line.span.start > item_end
+            || line.sensitive_start == line.span.start
+            || line.directive_end <= item_end
+            || line.directive_end > packet_end
+        {
+            return None;
+        }
+        if boundary.close <= line.span.end && !line.has_following_content {
+            Some(TerminalPacketClose::Group)
+        } else {
+            Some(TerminalPacketClose::Source)
+        }
+    }
+
     /// Removing an optional real comma does not turn its two gaps into a blank.
     /// The original closing owner still decides whether that gap is constrained.
     pub(super) fn terminal_comma_close_constraint(
@@ -421,6 +475,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn diagnostic_line_is_covered(&self, position: u32) -> bool {
         self.diagnostic_lines.covered_at(position)
+    }
+
+    /// The sensitive physical line whose remaining source tokens are terminal punctuation.
+    pub(super) fn diagnostic_terminal_suffix_line(&self, end: u32) -> Option<&DiagnosticLine> {
+        self.diagnostic_lines.terminal_suffix_at(end)
     }
 
     pub(super) fn line_constraint(&self, start: u32, end: u32) -> LineConstraint {

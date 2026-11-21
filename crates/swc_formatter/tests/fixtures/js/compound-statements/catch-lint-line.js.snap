@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try { missing(); } // eslint-disable-line no-undef
+catch { present(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try { missing(); } // eslint-disable-line no-undef
+catch {
+  present();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+try { missing() } // eslint-disable-line no-undef
+catch {
+  present()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+try { missing(); } // eslint-disable-line no-undef
+catch {
+	present();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try { missing() } // eslint-disable-line no-undef
+catch {
+  present()
+}

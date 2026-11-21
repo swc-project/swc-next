@@ -709,7 +709,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 parentheses: None,
             };
         }
-        let statement = if matches!(position, ExpressionPosition::Statement)
+        let statement = if matches!(position, ExpressionPosition::Statement(_))
             && !self.diagnostic_lines.is_empty()
         {
             // Inspect the transparent source chain once. Every wrapper below still
@@ -1106,7 +1106,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parenthesized: ParenthesizedExpression,
         position: ExpressionPosition,
     ) -> bool {
-        if matches!(position, ExpressionPosition::Statement) {
+        if matches!(position, ExpressionPosition::Statement(_)) {
             return false;
         }
         let child = parenthesized.expression(self.ast);
@@ -2607,7 +2607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || self.ignored_operand_owns_operation_head(ignored, context.position)
                 || matches!(
                     context.position,
-                    ExpressionPosition::Statement
+                    ExpressionPosition::Statement(_)
                         | ExpressionPosition::UnaryArgument(_)
                         | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
@@ -2759,7 +2759,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if prepared.is_none()
-            && matches!(context.position, ExpressionPosition::Statement)
+            && matches!(context.position, ExpressionPosition::Statement(_))
             && context.content_mode == ContentMode::Formatted
             && expression.is_parenthesized_expression(self.ast)
         {
@@ -3307,7 +3307,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             false
         };
         let parenthesize_head = !head.comments.is_empty()
-            && !context.is_verbatim_statement_string(self.ast.expr_data(expression))
             && (matches!(enclosure_binding, CommentBinding::BoundTo(_))
                 || inner_cast.is_some()
                 || source_sequence_frame
@@ -4154,7 +4153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &[]
         };
         self.comments.claim(leading)?;
-        let layout = if matches!(context.position, ExpressionPosition::Statement) {
+        let layout = if matches!(context.position, ExpressionPosition::Statement(_)) {
             CommentRunLayout::Source
         } else if matches!(content.data, ExprData::SequenceExpression(_))
             && context.content_mode == ContentMode::Formatted
@@ -4172,7 +4171,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let terminal_owner = if mode == ContentMode::Formatted
             && ignored_child.is_none()
-            && matches!(context.position, ExpressionPosition::Statement)
+            && matches!(context.position, ExpressionPosition::Statement(_))
             && context.parentheses_owner == ParenthesesOwner::Expression
             && !self.expression_has_generated_head_frame(&content, context)
         {
@@ -4205,7 +4204,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         comments: leading,
                         content_start: inner_span.start,
                         layout,
-                        gap_end: matches!(context.position, ExpressionPosition::Statement)
+                        gap_end: matches!(context.position, ExpressionPosition::Statement(_))
                             .then_some(inner_span.start),
                     },
                     binding,

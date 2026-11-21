@@ -14,6 +14,7 @@ use swc_next_ecma_ast::{
 use super::{
     ContinuationBoundary, EmptyBlock, FollowingSyntax, Formatter, PrintedStatement,
     StatementBoundary, StatementItem, StatementLayout, StatementPunctuation, StatementTailRelation,
+    VerbatimContent,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -21,7 +22,7 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::{
-    ExpressionContext, ExpressionPosition, ExpressionStart, TailOwner,
+    ExpressionContext, ExpressionPosition, ExpressionStart, StringStatement, TailOwner,
 };
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
@@ -46,6 +47,22 @@ enum ControlledBodyShape {
     Single,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ControlledBodyContent {
+    Formatted,
+    Verbatim,
+    SourceNode,
+}
+
+impl From<ContentMode> for ControlledBodyContent {
+    fn from(mode: ContentMode) -> Self {
+        match mode {
+            ContentMode::Formatted => Self::Formatted,
+            ContentMode::Verbatim => Self::Verbatim,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ControlledBodyEnd {
     Alternate(Span),
@@ -54,6 +71,13 @@ enum ControlledBodyEnd {
 }
 
 impl ControlledBodyEnd {
+    fn keyword(self) -> Option<Span> {
+        match self {
+            Self::Alternate(keyword) | Self::LoopCondition(keyword) => Some(keyword),
+            Self::Enclosing(_) => None,
+        }
+    }
+
     fn limit(self) -> u32 {
         match self {
             Self::Alternate(keyword) | Self::LoopCondition(keyword) => keyword.start,
@@ -74,10 +98,11 @@ struct ControlledBody<'ast> {
     shape: ControlledBodyShape,
     role: ControlledBodyRole,
     empty_block: EmptyBlock,
-    mode: ContentMode,
+    mode: ControlledBodyContent,
     punctuation: StatementPunctuation,
     source_candidate: ContinuationBoundary,
     end: ControlledBodyEnd,
+    keyword: Option<BodyKeyword>,
     annotation_tail: Option<ControlledBodyTail<'ast>>,
     operator_tail: Option<&'ast super::DeferredOperatorTail<'ast>>,
 }
@@ -174,16 +199,19 @@ struct Condition<'ast> {
 }
 
 /// The keyword retains its source separator after its body has consumed a tail prefix.
+#[derive(Clone, Copy)]
 struct BodyKeyword {
     span: Span,
     following: CommentGap,
     adjacent: bool,
     line: bool,
+    detached: Option<u32>,
+    layout: CommentRunLayout,
 }
 
 struct ElseBoundary {
     keyword: Span,
-    preceding_mode: ContentMode,
+    preceding_mode: ControlledBodyContent,
     enclosing_mode: ContentMode,
 }
 
@@ -229,33 +257,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ControlledBodyRole::Body,
             boundary
                 .as_ref()
-                .map_or(ContentMode::Formatted, |boundary| boundary.preceding_mode),
+                .map_or(ControlledBodyContent::Formatted, |boundary| {
+                    boundary.preceding_mode
+                }),
         );
-        let body = if let Some(boundary) = &boundary {
-            self.with_controlled_body_keyword_fence(body, boundary.keyword)
-        } else {
+        let body = if boundary.is_none() {
             body.with_enclosing_boundary(punctuation, source_candidate)
+        } else {
+            body
         };
-        let keyword = boundary
-            .as_ref()
-            .map(|boundary| self.prepare_body_keyword(&body, boundary.keyword));
+        let keyword = body.keyword;
         let printed = writer.group(false, |writer| {
             writer.text("if");
             self.format_condition(condition, writer)?;
             self.format_controlled_body(body, writer)
         })?;
-        let (Some(alternate), Some(boundary), Some(keyword)) = (alternate, boundary, keyword)
-        else {
+        let (Some(alternate), Some(keyword)) = (alternate, keyword) else {
             return Ok(printed);
         };
         self.format_body_keyword(keyword, "else", printed, writer)?;
         let body = self
             .prepare_controlled_body(
                 alternate,
-                boundary.keyword.end,
+                keyword.span.end,
                 ControlledBodyEnd::Enclosing(span.end),
                 ControlledBodyRole::Alternate,
-                ContentMode::Formatted,
+                ControlledBodyContent::Formatted,
             )
             .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| self.format_controlled_body(body, writer))
@@ -537,7 +564,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head_end: u32,
         end: ControlledBodyEnd,
         role: ControlledBodyRole,
-        trailing_mode: ContentMode,
+        trailing_mode: ControlledBodyContent,
     ) -> ControlledBody<'ast> {
         let span = statement.span(self.ast);
         let leading = self.comments.in_range(Span::new(head_end, span.start));
@@ -562,29 +589,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             span.end
         };
-        let trailing_limit = end.limit();
         let leading_mode = self.content_mode(leading);
-        let mode = if leading_mode == ContentMode::Verbatim {
-            leading_mode
-        } else {
-            trailing_mode
+        let mode = match (trailing_mode, leading_mode) {
+            (ControlledBodyContent::SourceNode, _) => ControlledBodyContent::SourceNode,
+            (_, ContentMode::Verbatim) => ControlledBodyContent::Verbatim,
+            _ => trailing_mode,
         };
-        let semicolons = if end.has_following()
-            && self.options.semicolons == Semicolons::AsNeeded
-            && self.line_constraint(content_end, trailing_limit) == LineConstraint::SameLine
-        {
-            // An expression body before `else` still needs a terminator on a covered source line.
-            Semicolons::Always
-        } else {
-            self.options.semicolons
-        };
-        let punctuation = StatementPunctuation::Canonical(semicolons);
         let annotation_tail = if needs_comment_tail || self.has_suppression {
             self.prepare_controlled_body_tail(span, content_end, end, shape)
         } else {
             None
         };
-        ControlledBody {
+        let mut body = ControlledBody {
             statement,
             span,
             head_end,
@@ -593,12 +609,58 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             role,
             empty_block: EmptyBlock::Expanded,
             mode,
-            punctuation,
+            punctuation: StatementPunctuation::Canonical(self.options.semicolons),
             source_candidate: ContinuationBoundary::End,
             end,
+            keyword: None,
             annotation_tail,
             operator_tail: None,
+        };
+        if let Some(span) = end.keyword() {
+            let detached = self.detach_alternate_comment_run(&mut body);
+            let keyword = self.prepare_body_keyword(&body, span, detached);
+            if self.options.semicolons == Semicolons::AsNeeded
+                && keyword.detached.is_none()
+                && matches!(
+                    keyword.following,
+                    CommentGap::Source(LineConstraint::SameLine)
+                )
+                && self.line_breaks(content_end, span.start) == 0
+            {
+                // The constrained keyword gap cannot supply a line break for ASI.
+                body.punctuation = StatementPunctuation::Canonical(Semicolons::Always);
+            }
+            body.keyword = Some(keyword);
+            body = self.with_controlled_body_keyword_fence(body, span);
         }
+        body
+    }
+
+    fn detach_alternate_comment_run(&self, body: &mut ControlledBody<'ast>) -> Option<u32> {
+        if !matches!(body.end, ControlledBodyEnd::Alternate(_))
+            || !matches!(body.shape, ControlledBodyShape::Single)
+            || body.mode != ControlledBodyContent::Formatted
+        {
+            return None;
+        }
+        let tail = body.annotation_tail.as_mut()?;
+        if !tail.binding.allows_relocation(None) {
+            return None;
+        }
+        let index = tail.tail.comments.iter().position(|comment| {
+            comment.kind == CommentKind::Block
+                && self.line_breaks(comment.span.start, comment.span.end) != 0
+        })?;
+        let start = tail.tail.comments[index].span.start;
+        if self.lint_line_at(start).is_some() {
+            return None;
+        }
+        // The multiline suffix belongs to the keyword join outside the body group.
+        tail.tail.comments = &tail.tail.comments[..index];
+        if index == 0 {
+            body.annotation_tail = None;
+        }
+        Some(start)
     }
 
     fn with_controlled_body_keyword_fence(
@@ -733,12 +795,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end,
             ref annotation_tail,
             operator_tail,
+            ..
         } = body;
-        let trailing_limit = end.limit();
+        let trailing_limit = body
+            .keyword
+            .and_then(|keyword| keyword.detached)
+            .unwrap_or(end.limit());
         let first = leading
             .first()
             .map_or(span.start, |comment| comment.span.start);
         let constraint = self.line_constraint(head_end, first);
+        let constraint = if constraint == LineConstraint::Unconstrained
+            && matches!(role, ControlledBodyRole::Alternate)
+            && self.has_lint_line_directives()
+        {
+            self.lint_opening_constraint(head_end, first)
+                .unwrap_or(constraint)
+        } else {
+            constraint
+        };
         let leading_line = leading.first().is_some_and(|comment| {
             self.line_breaks(head_end, comment.span.start) != 0
                 || !matches!(role, ControlledBodyRole::Label)
@@ -749,12 +824,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ControlledBodyShape::Block | ControlledBodyShape::ElseIf | ControlledBodyShape::Label
         );
         let empty = matches!(shape, ControlledBodyShape::Empty);
+        let formatted = mode == ControlledBodyContent::Formatted;
         let compact_head = operator_tail.is_none()
             && matches!(
                 (shape, empty_block),
                 (ControlledBodyShape::Block, EmptyBlock::Compact)
             )
-            && mode == ContentMode::Formatted
+            && formatted
             && leading.first().is_some_and(|comment| {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(head_end, comment.span.start) == 0
@@ -771,9 +847,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .allows_relocation(None)
             && matches!(self.ast.stmt_data(statement), StmtData::BlockStatement(block)
                 if !super::statement_body_has_items(self.ast, None, block.body(self.ast)));
-        let inline_head = empty
-            && mode == ContentMode::Formatted
-            && !matches!(constraint, LineConstraint::NewLine(_));
+        let inline_head = empty && formatted && !matches!(constraint, LineConstraint::NewLine(_));
         let write_gap = |constraint: LineConstraint,
                          leading_line: bool,
                          has_operator_head: bool,
@@ -784,7 +858,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 FlatSeparator::Space
             };
             constraint.write(writer, flat, |writer| {
-                if empty && mode == ContentMode::Formatted {
+                if empty && formatted {
                     if !leading.is_empty() || has_operator_head {
                         writer.space();
                     }
@@ -819,43 +893,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 write_gap(constraint, leading_line, false, writer);
             }
             self.comments.claim(leading)?;
-            let mut printed = self.format_statement(
-                statement,
-                StatementLayout {
-                    operator_tail_destination: super::OperatorTailDestination::Local,
-                    start: ExpressionStart::StatementBody,
-                    empty_block,
-                    source_candidate: if matches!(
-                        punctuation,
-                        StatementPunctuation::Canonical(Semicolons::AsNeeded)
-                    ) {
-                        source_candidate
-                    } else {
-                        ContinuationBoundary::End
-                    },
+            let layout = StatementLayout {
+                operator_tail_destination: super::OperatorTailDestination::Local,
+                start: ExpressionStart::StatementBody,
+                string_statement: StringStatement::Bare,
+                empty_block,
+                source_candidate: if matches!(
+                    punctuation,
+                    StatementPunctuation::Canonical(Semicolons::AsNeeded)
+                ) {
+                    source_candidate
+                } else {
+                    ContinuationBoundary::End
                 },
-                mode,
-                NodeHead {
-                    comments: leading,
-                    content_start: span.start,
-                    layout: if compact_head {
-                        CommentRunLayout::InlineLeading(span.start)
-                    } else if matches!(shape, ControlledBodyShape::Block) {
-                        CommentRunLayout::Source
-                    } else if inline_head {
-                        CommentRunLayout::InlineLeading(span.start)
-                    } else {
-                        CommentRunLayout::GroupedLeading(span.start)
-                    },
-                    gap_end: if matches!(shape, ControlledBodyShape::Block) && !compact_head {
-                        leading.last().map(|_| span.start)
-                    } else {
-                        None
-                    },
+            };
+            let head = NodeHead {
+                comments: leading,
+                content_start: span.start,
+                layout: if compact_head {
+                    CommentRunLayout::InlineLeading(span.start)
+                } else if matches!(shape, ControlledBodyShape::Block) {
+                    CommentRunLayout::Source
+                } else if inline_head {
+                    CommentRunLayout::InlineLeading(span.start)
+                } else {
+                    CommentRunLayout::GroupedLeading(span.start)
                 },
-                punctuation,
-                writer,
-            )?;
+                gap_end: if matches!(shape, ControlledBodyShape::Block) && !compact_head {
+                    leading.last().map(|_| span.start)
+                } else {
+                    None
+                },
+            };
+            let mut printed = if mode == ControlledBodyContent::SourceNode {
+                self.format_node_head(head, layout.start, None, writer)?;
+                self.format_verbatim_statement(
+                    span,
+                    VerbatimContent::SourceNode,
+                    punctuation,
+                    writer,
+                )?
+            } else {
+                let mode = if formatted {
+                    ContentMode::Formatted
+                } else {
+                    ContentMode::Verbatim
+                };
+                self.format_statement(statement, layout, mode, head, punctuation, writer)?
+            };
             if let Some(tail) = annotation_tail
                 && let Some(last) = tail.tail.comments.last()
                 && last.span.end > printed.boundary.end()
@@ -889,7 +974,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(printed);
             }
             let (end, _) = self.format_trailing_comments(
-                Span::new(printed.boundary.end(), trailing_limit),
+                Span::new(
+                    printed.boundary.end(),
+                    trailing_limit.max(printed.boundary.end()),
+                ),
                 StatementCommentBoundary {
                     source_end: span.end,
                     terminator: printed.boundary.comment_terminator_placement(),
@@ -921,26 +1009,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(start) = self.find_token(gap, comments, "else") else {
             return Err(FormatError::unsupported("else boundary", None, gap));
         };
-        let (preceding_mode, enclosing_mode) = match self.prepare_statement_suppression_tail(
+        let mut boundary = ElseBoundary {
+            keyword: Span::new(start, start + "else".len() as u32),
+            preceding_mode: ControlledBodyContent::Formatted,
+            enclosing_mode: ContentMode::Formatted,
+        };
+        let Some(tail) = self.prepare_statement_suppression_tail(
             StatementItem::Statement(consequent),
             start,
             StatementTailRelation::Keyword,
-        ) {
-            Some(tail) => (tail.modes.current, tail.modes.enclosing),
-            None => (ContentMode::Formatted, ContentMode::Formatted),
+        ) else {
+            return Ok(boundary);
         };
-        Ok(ElseBoundary {
-            keyword: Span::new(start, start + "else".len() as u32),
-            preceding_mode,
-            enclosing_mode,
-        })
+        boundary.enclosing_mode = tail.modes.enclosing;
+        if tail.modes.current == ContentMode::Verbatim {
+            boundary.preceding_mode = ControlledBodyContent::SourceNode;
+            let comments = self.comments.in_range(Span::new(gap.start, start));
+            let block = matches!(self.ast.stmt_data(consequent), StmtData::BlockStatement(_));
+            if self
+                .suppressed_comment_runs(comments, start)
+                .any(|(run, _)| {
+                    block
+                        || run.last().is_some_and(|last| {
+                            self.source_line_breaks(run[0].span.start, last.span.end) != 0
+                        })
+                })
+            {
+                boundary.enclosing_mode = ContentMode::Verbatim;
+            }
+        }
+        Ok(boundary)
     }
 
-    fn prepare_body_keyword(&self, body: &ControlledBody<'ast>, span: Span) -> BodyKeyword {
+    fn prepare_body_keyword(
+        &self,
+        body: &ControlledBody<'ast>,
+        span: Span,
+        detached: Option<u32>,
+    ) -> BodyKeyword {
         let tail = body.annotation_tail.as_ref();
         let last = tail.and_then(|tail| tail.tail.comments.last());
-        let source_end = last.map_or(body.span.end, |comment| body.span.end.max(comment.span.end));
-        let comments = self.comments.in_range(Span::new(source_end, span.start));
+        let source_end = last.map_or(body.span.end, |comment| comment.span.end);
+        let gap = Span::new(
+            detached.unwrap_or(body.span.end.max(source_end)),
+            span.start,
+        );
+        let comments = self.comments.in_range(gap);
+        let lint_lines = self.has_lint_line_directives()
+            && (self.has_line_directive_in(gap)
+                || self.lint_line_intersects(Span::new(source_end, span.end)));
         let tail_line = match (tail, last) {
             (Some(tail), Some(comment)) => {
                 comment.kind == CommentKind::Line
@@ -950,15 +1067,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let condition_tail = matches!(body.end, ControlledBodyEnd::LoopCondition(_))
             && tail.is_some_and(|tail| tail.binding.allows_relocation(None));
-        let following = if comments.is_empty() && tail_line && !condition_tail {
+        let following = if lint_lines {
+            let end = comments
+                .last()
+                .map_or(source_end, |comment| comment.span.end);
+            CommentGap::Source(self.source_line_constraint(end, span.start))
+        } else if comments.is_empty() && tail_line && !condition_tail {
             CommentGap::LineComment
         } else {
+            // Canonical punctuation is emitted before this tail, so the last
+            // comment supplies the keyword's line constraint.
             self.prepare_comment_boundary(comments, source_end, span.start)
                 .gap()
         };
         let adjacent = matches!(body.shape, ControlledBodyShape::Block);
         let line = if let Some(last) = comments.last() {
             self.line_breaks(last.span.end, span.start) != 0
+                || detached.is_some() && last.span.end < body.span.end
         } else {
             !adjacent
                 || !condition_tail
@@ -969,6 +1094,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             following,
             adjacent,
             line,
+            detached,
+            layout: if detached.is_some()
+                && !lint_lines
+                && self
+                    .comment_binding(comments, gap, None)
+                    .allows_relocation(None)
+            {
+                CommentRunLayout::Lines
+            } else {
+                CommentRunLayout::Source
+            },
         }
     }
 
@@ -980,30 +1116,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let printed = self.flush_statement_tail(printed, writer)?;
-        let span = Span::new(printed.end(), keyword.span.start);
+        let start = keyword
+            .detached
+            .map_or(printed.end(), |start| printed.end().min(start));
+        let span = Span::new(start, keyword.span.start);
         let comments = self.comments.between(span)?;
         if let Some(first) = comments.first() {
             let first = first.span.start;
             let source_end = span.start;
             let binding = self.comment_binding(comments, span, None);
-            self.line_constraint(source_end, first)
-                .write(writer, FlatSeparator::Space, |writer| {
-                    if !binding.allows_relocation(None) {
-                        self.comment_gap(source_end, first, writer);
-                    } else {
-                        let breaks = self.line_breaks(source_end, first);
-                        if keyword.adjacent && breaks == 0 {
-                            writer.space();
+            if keyword.detached.is_some() {
+                writer.hard_line();
+            } else {
+                self.line_constraint(source_end, first).write(
+                    writer,
+                    FlatSeparator::Space,
+                    |writer| {
+                        if !binding.allows_relocation(None) {
+                            self.comment_gap(source_end, first, writer);
                         } else {
-                            writer.hard_line();
-                            if breaks == 2 {
+                            let breaks = self.line_breaks(source_end, first);
+                            if keyword.adjacent && breaks == 0 {
+                                writer.space();
+                            } else {
                                 writer.hard_line();
+                                if breaks == 2 {
+                                    writer.hard_line();
+                                }
                             }
                         }
-                    }
-                });
+                    },
+                );
+            }
             self.comments.claim(comments)?;
-            self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+            self.format_comment_run(comments, keyword.layout, writer)?;
         }
         let following = if !keyword.following.requires_line()
             && comments

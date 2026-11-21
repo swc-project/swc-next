@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {
+  static {
+    ("use strict");
+    visit();
+    "later";
+    { "nested"; }
+  }
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C {
+  static {
+    "use strict";
+    visit();
+    "later";
+    {
+      ("nested");
+    }
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+class C {
+	static {
+		'use strict'
+		visit()
+		'later'
+		{
+			;('nested')
+		}
+	}
+}

@@ -2544,6 +2544,82 @@
         "prettierNative": "try {\r\n} catch (e /* prettier-ignore */) {\r\n  g(\r\n    2,\r\n  )\r\n}\r\n"
       }
     ],
+    "js/compound-statements/catch-lint-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try { missing(); } // eslint-disable-line no-undef\ncatch {\n  present();\n}\n",
+        "prettierNative": "try {\n  missing();\n} catch {\n  // eslint-disable-line no-undef\n  present();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try { missing() } // eslint-disable-line no-undef\ncatch {\n  present()\n}\n",
+        "prettierNative": "try {\n  missing()\n} catch {\n  // eslint-disable-line no-undef\n  present()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try { missing(); } // eslint-disable-line no-undef\ncatch {\n\tpresent();\n}\n",
+        "prettierNative": "try {\n\tmissing();\n} catch {\n\t// eslint-disable-line no-undef\n\tpresent();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try { missing() } // eslint-disable-line no-undef\r\ncatch {\r\n  present()\r\n}\r\n",
+        "prettierNative": "try {\r\n  missing()\r\n} catch {\r\n  // eslint-disable-line no-undef\r\n  present()\r\n}\r\n"
+      }
+    ],
+    "js/compound-statements/catch-lint-next-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  present();\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present(); }\n",
+        "prettierNative": "try {\n  present();\n} catch ({ unused = fallback() }) {\n  // eslint-disable-next-line no-unused-vars\n  present();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  present()\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present() }\n",
+        "prettierNative": "try {\n  present()\n} catch ({\n  unused = fallback(),\n}) {\n  // eslint-disable-next-line no-unused-vars\n  present()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\tpresent();\n} // eslint-disable-next-line no-unused-vars\ncatch ({ unused = fallback() }) { present(); }\n",
+        "prettierNative": "try {\n\tpresent();\n} catch ({ unused = fallback() }) {\n\t// eslint-disable-next-line no-unused-vars\n\tpresent();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  present()\r\n} // eslint-disable-next-line no-unused-vars\r\ncatch ({ unused = fallback() }) { present() }\r\n",
+        "prettierNative": "try {\r\n  present()\r\n} catch ({\r\n  unused = fallback(),\r\n}) {\r\n  // eslint-disable-next-line no-unused-vars\r\n  present()\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/default-empty-prefix-ignore.js": [
       {
         "options": {
@@ -2683,6 +2759,44 @@
         },
         "swcPlugin": "switch (\r\n  0\r\n) { /* @ts-expect-error */ /* packet */\r\n}; insideMissing\r\noutsideMissing\r\n",
         "prettierNative": "switch (\r\n  0\r\n) {\r\n  /* @ts-expect-error */\r\n  /* packet */\r\n}\r\ninsideMissing\r\noutsideMissing\r\n"
+      }
+    ],
+    "js/compound-statements/finally-lint-next-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  present();\n} /* eslint-disable-next-line no-undef */\nfinally { missing(); }\n",
+        "prettierNative": "try {\n  present();\n} finally {\n  /* eslint-disable-next-line no-undef */\n  missing();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  present()\n} /* eslint-disable-next-line no-undef */\nfinally { missing() }\n",
+        "prettierNative": "try {\n  present()\n} finally {\n  /* eslint-disable-next-line no-undef */\n  missing()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\tpresent();\n} /* eslint-disable-next-line no-undef */\nfinally { missing(); }\n",
+        "prettierNative": "try {\n\tpresent();\n} finally {\n\t/* eslint-disable-next-line no-undef */\n\tmissing();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  present()\r\n} /* eslint-disable-next-line no-undef */\r\nfinally { missing() }\r\n",
+        "prettierNative": "try {\r\n  present()\r\n} finally {\r\n  /* eslint-disable-next-line no-undef */\r\n  missing()\r\n}\r\n"
       }
     ],
     "js/compound-statements/switch-body-tail-ignore.js": [
@@ -3107,7 +3221,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "for (\n  ;\n  ;\n  a = 1, b = 2 // operator\n// value\n) {}\n",
+        "swcPlugin": "for (\n  ;\n  ;\n  a = 1, b = 2 // operator\n  // value\n) {}\n",
         "prettierNative": "for (\n  ;\n  ;\n  a = 1,\n    b = 2 // operator // value\n) {}\n"
       },
       {
@@ -3115,7 +3229,7 @@
           "lineWidth": 80,
           "indentStyle": "tab"
         },
-        "swcPlugin": "for (\n\t;\n\t;\n\ta = 1, b = 2 // operator\n// value\n) {}\n",
+        "swcPlugin": "for (\n\t;\n\t;\n\ta = 1, b = 2 // operator\n\t// value\n) {}\n",
         "prettierNative": "for (\n\t;\n\t;\n\ta = 1,\n\t\tb = 2 // operator // value\n) {}\n"
       }
     ],
@@ -3403,6 +3517,26 @@
         },
         "swcPlugin": "for ((/* prettier-ignore */ name  in object); false;);\n",
         "prettierNative": "for (/* prettier-ignore */ (name  in object); false;);\n"
+      }
+    ],
+    "js/control-flow/for-series/iteration-head/inside-opening.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (/*a*/ x in y);\n",
+        "prettierNative": "for (/*a*/\nx in y);\n"
+      }
+    ],
+    "js/control-flow/for-series/iteration-head/relocated.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (/*a*/ x of y) x();\n",
+        "prettierNative": "for (/*a*/\nx of y)\n  x();\n"
       }
     ],
     "js/control-flow/for-series/iteration-source-tail.js": [
@@ -3829,6 +3963,99 @@
         },
         "swcPlugin": "do /* first */ {} while (ready); // tail\n",
         "prettierNative": "do /* first */\n{} while (ready); // tail\n"
+      }
+    ],
+    "js/control-flow/while-do-jumps/do-body-ignore-after-terminator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  run( 1,2 ); // prettier-ignore\nwhile (ready)\n",
+        "prettierNative": "do\n  run( 1,2 ) // prettier-ignore\nwhile (ready)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  run( 1,2 ); // prettier-ignore\nwhile (ready)\n",
+        "prettierNative": "do\n  run( 1,2 ) // prettier-ignore\nwhile (ready)\n"
+      }
+    ],
+    "js/control-flow/while-do-jumps/do-body-ignore-before-terminator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  run( 1,2 )// prettier-ignore\n;\nwhile (ready);\n",
+        "prettierNative": "do\n  run( 1,2 ); // prettier-ignore\nwhile (ready);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  run( 1,2 )// prettier-ignore\n;\nwhile (ready);\n",
+        "prettierNative": "do\n  run( 1,2 ); // prettier-ignore\nwhile (ready);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  run( 1,2 )// prettier-ignore\n;\nwhile (ready)\n",
+        "prettierNative": "do\n  run( 1,2 ) // prettier-ignore\nwhile (ready)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  run( 1,2 )// prettier-ignore\n;\nwhile (ready)\n",
+        "prettierNative": "do\n  run( 1,2 ) // prettier-ignore\nwhile (ready)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "do\n\trun( 1,2 )// prettier-ignore\n;\nwhile (ready);\n",
+        "prettierNative": "do\n\trun( 1,2 ); // prettier-ignore\nwhile (ready);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "do\r\n  run( 1,2 )// prettier-ignore\r\n;\r\nwhile (ready);\r\n",
+        "prettierNative": "do\r\n  run( 1,2 ); // prettier-ignore\r\nwhile (ready);\r\n"
+      }
+    ],
+    "js/control-flow/while-do-jumps/do-body-ignore-inline.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do run( 1,2 ); /* prettier-ignore */\nwhile (ready)\n",
+        "prettierNative": "do run( 1,2 ) /* prettier-ignore */\nwhile (ready)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  run( 1,2 ); /* prettier-ignore */\nwhile (ready)\n",
+        "prettierNative": "do\n  run( 1,2 ) /* prettier-ignore */\nwhile (ready)\n"
       }
     ],
     "js/control-flow/while-do-jumps/do-source-line-gap.js": [
@@ -21369,6 +21596,35 @@
         "prettierNative": "import {\n  a,\n  /* first */ // c\n} from /* prettier-ignore */ 'm';\n"
       }
     ],
+    "js/modules/specifier-terminal-lint.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value };\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value };\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "quoteStyle": "single",
+          "bracketSpacing": false
+        },
+        "swcPlugin": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value}\n",
+        "prettierNative": "function value() {}\nexport {\n  /* @ts-ignore */ /* eslint-disable-next-line semi */ // prettier-ignore\n  value,\n}\n"
+      }
+    ],
     "js/objects/computed-directive-packets/key.js": [
       {
         "options": {
@@ -24680,6 +24936,26 @@
         "prettierNative": "if (enabled) /* body */\n;\n"
       }
     ],
+    "js/statements/if/ignore-block-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if(a&&b) { x( 1 ); } // prettier-ignore\nelse  c( 1,2 );\n",
+        "prettierNative": "if(a&&b) { x( 1 ); } // prettier-ignore\nelse  c( 1,2 )\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if(a&&b) { x( 1 ); } // prettier-ignore\nelse  c( 1,2 );\n",
+        "prettierNative": "if(a&&b) { x( 1 ); } // prettier-ignore\nelse  c( 1,2 )\n"
+      }
+    ],
     "js/statements/if/ignore-keyword-owner.js": [
       {
         "options": {
@@ -24698,6 +24974,26 @@
         },
         "swcPlugin": "if( enabled ) first( 1 ) /* prettier-ignore */;\n/* prettier-ignore */\nelse second( 2 );\n",
         "prettierNative": "if( enabled ) first( 1 ) /* prettier-ignore */;\n/* prettier-ignore */\nelse second( 2 )\n"
+      }
+    ],
+    "js/statements/if/ignore-multiline-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if(a&&b) x( 1 ); /* note\n */ /* prettier-ignore */ else  c( 1,2 );\n",
+        "prettierNative": "if(a&&b) x( 1 ); /* note\n */ /* prettier-ignore */ else  c( 1,2 )\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if(a&&b) x( 1 ); /* note\n */ /* prettier-ignore */ else  c( 1,2 );\n",
+        "prettierNative": "if(a&&b) x( 1 ); /* note\n */ /* prettier-ignore */ else  c( 1,2 )\n"
       }
     ],
     "js/statements/if/ignore-scope.js": [
@@ -24735,6 +25031,117 @@
         },
         "swcPlugin": "if (enabled)\n\tif( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */;\nelse third();\n",
         "prettierNative": "if (enabled)\n\tif( nested ) first(  1  ); else second(  2  ); /* prettier-ignore */\nelse third();\n"
+      }
+    ],
+    "js/statements/if/ignore-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (enabled) first(  1  ) /* prettier-ignore */ ;\nelse second(2);\n",
+        "prettierNative": "if (enabled) first(  1  ); /* prettier-ignore */\nelse second(2);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (enabled) first(  1  ) /* prettier-ignore */ ;\nelse second(2)\n",
+        "prettierNative": "if (enabled) first(  1  ) /* prettier-ignore */\nelse second(2)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (enabled)\n  first(  1  ) /* prettier-ignore */ ;\nelse second(2)\n",
+        "prettierNative": "if (enabled)\n  first(  1  ) /* prettier-ignore */\nelse second(2)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (enabled)\n\tfirst(  1  ) /* prettier-ignore */ ;\nelse second(2);\n",
+        "prettierNative": "if (enabled)\n\tfirst(  1  ); /* prettier-ignore */\nelse second(2);\n"
+      }
+    ],
+    "js/statements/if/multiline-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */\n/* c\n d */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* c\n d */ else z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */\n/* c\n d */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* c\n d */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */\n/* c\n d */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* c\n d */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */\n/* c\n d */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* c\n d */ else z;\n"
+      }
+    ],
+    "js/statements/if/multiline-lint-before-else.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */ /* eslint-disable-line no-undef */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* eslint-disable-line no-undef */ else z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */ /* eslint-disable-line no-undef */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* eslint-disable-line no-undef */ else z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) y\n/* a\n b */ /* eslint-disable-line no-undef */ else z\n",
+        "prettierNative": "if (x) y\n /* a\n b */\n/* eslint-disable-line no-undef */ else\n  z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (x) y;\n/* a\n b */ /* eslint-disable-line no-undef */ else z;\n",
+        "prettierNative": "if (x) y;\n /* a\n b */\n/* eslint-disable-line no-undef */ else\n\tz;\n"
       }
     ],
     "js/statements/if/tail-packet.js": [
@@ -33373,6 +33780,44 @@
         "prettierNative": "const value = 1 /* prettier-ignore */ as const\n"
       }
     ],
+    "ts/control-flow/diagnostic-keyword-gap/input.ts": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80,
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (true) String(0); /* @ts-ignore */ else String(1)\nconst count: number = \"zero\"\n\ndo String(0); /* @ts-expect-error */ while (false)\nconst flag: boolean = \"true\"\n\nif (true) String(0) /* @ts-ignore */\nelse missing()\n",
+        "prettierNative": "if (true) String(0) /* @ts-ignore */\nelse String(1)\nconst count: number = \"zero\"\n\ndo String(0) /* @ts-expect-error */\nwhile (false)\nconst flag: boolean = \"true\"\n\nif (true) String(0) /* @ts-ignore */\nelse missing()\n"
+      }
+    ],
+    "ts/control-flow/for-header-layout/as-initializer-head.ts": [
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for ((let) as T; ;) {}\n",
+        "prettierNative": "for (let as T; ;) {}\n"
+      }
+    ],
     "ts/control-flow/for-header-layout/ignored-no-in-assertions.ts": [
       {
         "options": {
@@ -33398,6 +33843,33 @@
         },
         "swcPlugin": "for (\n  (/* prettier-ignore */ name  in object as boolean);\n  false;\n);\nfor (\n  (/* prettier-ignore */ name  in object satisfies boolean);\n  false;\n);\nfor (\n  (/* prettier-ignore */ value = left in right as boolean);\n  false;\n) {}\nfor (\n  (/* prettier-ignore */ value = left in right satisfies boolean);\n  false;\n) {}\nfor (\n  (/* prettier-ignore */ value = left in right as boolean\n  ),\n    second = true;\n  false;\n) {}\nfor (\n  value = false,\n    (/* prettier-ignore */ second = left in right satisfies boolean\n    );\n  false;\n) {}\nfor (\n  let picked =\n    (/* prettier-ignore */ value = left in right as boolean\n    );\n  false;\n) {}\n",
         "prettierNative": "for (\n  /* prettier-ignore */ name  in object as boolean;\n  false;\n);\nfor (\n  /* prettier-ignore */ name  in object satisfies boolean;\n  false;\n);\nfor (\n  /* prettier-ignore */ value = left in right as boolean;\n  false;\n) {}\nfor (\n  /* prettier-ignore */ value = left in right satisfies boolean;\n  false;\n) {}\nfor (\n  /* prettier-ignore */ value = left in right as boolean,\n    second = true;\n  false;\n) {}\nfor (\n  value = false,\n    /* prettier-ignore */ second = left in right satisfies boolean;\n  false;\n) {}\nfor (\n  let picked =\n    /* prettier-ignore */ (value = left in right as boolean);\n  false;\n) {}\n"
+      }
+    ],
+    "ts/control-flow/for-header-layout/satisfies-initializer-head.ts": [
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  (using) satisfies T;\n  ;\n) {}\n",
+        "prettierNative": "for (\n  using satisfies T;\n  ;\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for ((using) satisfies T; ;) {}\n",
+        "prettierNative": "for (using satisfies T; ;) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 25,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (\n  (using) satisfies T;\n  ;\n) {}\n",
+        "prettierNative": "for (\n  using satisfies T;\n  ;\n) {}\n"
       }
     ],
     "ts/declarations/binding-groups/diagnostic.ts": [
@@ -34540,6 +35012,16 @@
         },
         "swcPlugin": "foo<A  |  B> /* prettier-ignore */\n(x + 1);\n",
         "prettierNative": "foo<A  |  B> /* prettier-ignore */(x + 1);\n"
+      }
+    ],
+    "ts/expressions/statement-head-modifier.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(static) as T;\n(readonly) satisfies T;\n(accessor) as const;\n(public) as T as U;\n(private) as T;\nif (ok) {\n  (protected) satisfies T;\n}\nif (ok) static as T;\nfor (static as T; ok; step()) {}\n",
+        "prettierNative": "static as T;\nreadonly satisfies T;\naccessor as const;\npublic as T as U;\nprivate as T;\nif (ok) {\n  protected satisfies T;\n}\nif (ok) static as T;\nfor (static as T; ok; step()) {}\n"
       }
     ],
     "ts/expressions/unary-retained-diagnostic/covered-tail.ts": [
@@ -36409,6 +36891,64 @@
         "prettierNative": "declare namespace /* prettier-ignore */ n\\u0073.A /* body */ {\n  /* note */ const value = 1\n}\n"
       }
     ],
+    "ts/module-declarations/specifier-terminal-following-directive.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "const value = 1;\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value, };\nconst incompatible: number = \"text\";\n",
+        "prettierNative": "const value = 1;\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value,\n};\nconst incompatible: number =\n  \"text\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = 1\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value, }\nconst incompatible: number = \"text\"\n",
+        "prettierNative": "const value = 1\nexport {\n  /* @ts-expect-error */ /* prettier-ignore */ value,\n}\nconst incompatible: number =\n  \"text\"\n"
+      }
+    ],
+    "ts/module-declarations/specifier-terminal-shared-line.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\";\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n};\nconst incompatible: number =\n  \"value\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\";\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n};\nconst incompatible: number = \"value\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\"\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n}\nconst incompatible: number =\n  \"value\"\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing, }; const incompatible: number = \"value\"\n",
+        "prettierNative": "export {\n  /* @ts-ignore */ // prettier-ignore\n  missing,\n}\nconst incompatible: number = \"value\"\n"
+      }
+    ],
     "ts/module-head-comments/coverage/input.ts": [
       {
         "options": {
@@ -36512,6 +37052,16 @@
         },
         "swcPlugin": "export /* note */ as\n/* prettier-ignore */\nnamespace n\\u0061me\n",
         "prettierNative": "export as namespace /* note */ /* prettier-ignore */\nn\\u0061me\n"
+      }
+    ],
+    "ts/modules/import-phase-directive/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "import\n// @ts-expect-error\ndefer * as ns from \"m\";\n",
+        "prettierNative": "import defer // @ts-expect-error\n* as ns from \"m\";\n"
       }
     ],
     "ts/objects/computed-key/diagnostic.ts": [
@@ -37128,6 +37678,17 @@
         },
         "swcPlugin": "if (c) if (d) x = /* prettier-ignore */ y as ?;\nb\n",
         "prettierNativeError": "Type expected. (1:45)"
+      }
+    ],
+    "ts/raw-controlled-body/whole-closed.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (c) while(d) x = /* prettier-ignore */ (y as ?); /* prettier-ignore */\nelse z()\nb\n",
+        "prettierNative": "if (c) while(d) x = /* prettier-ignore */ (y as ?) /* prettier-ignore */\nelse z()\nb\n"
       }
     ],
     "ts/raw-controlled-body/whole-nested.ts": [
@@ -39393,6 +39954,48 @@
         },
         "swcPlugin": "function f(\n  a,\n  /* prettier-ignore */ b // @ts-ignore\n  , /* d */) {}\n",
         "prettierNative": "function f(\n  a,\n  /* prettier-ignore */ b // @ts-ignore\n  /* d */\n) {}\n"
+      }
+    ],
+    "ts/terminal-list-review/trailing-diagnostic/array.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\", /* @ts-ignore */\n];\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-ignore */,\n];\n"
+      }
+    ],
+    "ts/terminal-list-review/trailing-diagnostic/call.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "consume(\n  \"first\",\n  \"second\", /* @ts-ignore */\n);\n",
+        "prettierNative": "consume(\n  \"first\",\n  \"second\" /* @ts-ignore */,\n);\n"
+      }
+    ],
+    "ts/terminal-list-review/trailing-diagnostic/external.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "all"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\", /* @ts-expect-error */];\nconst bad: number = \"bad\";\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */,\n];\nconst bad: number =\n  \"bad\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */];\nconst bad: number = \"bad\";\n",
+        "prettierNative": "const items = [\n  \"first\",\n  \"second\" /* @ts-expect-error */\n];\nconst bad: number =\n  \"bad\";\n"
       }
     ],
     "ts/terminal-type-packets/ordinary/callable-terminal.ts": [
@@ -42058,6 +42661,60 @@
         },
         "swcPlugin": "// @ts-expect-error\nimport type { Model as // comment\n  Record,\n} from \"m\";\n",
         "prettierNative": "// @ts-expect-error\nimport type {\n  // comment\n  Model as Record,\n} from \"m\";\n"
+      }
+    ],
+    "ts/type-only-modules/diagnostic-export-header-ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\";\n",
+        "prettierNative": "// @ts-ignore\nexport type { /* prettier-ignore */ a   as Name } from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\";\n",
+        "prettierNative": "// @ts-ignore\nexport type {\n  /* prettier-ignore */ a   as Name,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// @ts-ignore\nexport /* prettier-ignore */ type { a   as Name } from \"m\"\n",
+        "prettierNative": "// @ts-ignore\nexport type {\n  /* prettier-ignore */ a   as Name,\n} from \"m\"\n"
+      }
+    ],
+    "ts/type-only-modules/diagnostic-export-header.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\";\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\";\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\";\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "export /* @ts-ignore */\n/* note */\ntype { a } from \"m\"\n",
+        "prettierNative": "export type {\n  /* @ts-ignore */\n  /* note */\n  a,\n} from \"m\"\n"
       }
     ],
     "ts/type-only-modules/diagnostic-header.ts": [
