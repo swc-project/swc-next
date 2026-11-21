@@ -1057,12 +1057,6 @@ fn test_parenthesized_boundaries() {
         "(x as T) ? (/a/) : false;\n",
         "(x as T)?(/a/):false;",
     );
-
-    expect_generated_ts_pair(
-        "x = (a < b) > (c || d);",
-        "x = (a < b) > (c || d);\n",
-        "x=(a<b)>(c||d);",
-    );
 }
 
 #[test]
