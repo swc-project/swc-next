@@ -466,9 +466,15 @@ impl<'a> Printer<'a> {
                     .as_bytes()
                     .windows(8)
                     .any(|text| text.eq_ignore_ascii_case(b"</script")));
-        let keep_raw = !self.options.minify || raw.as_bytes().contains(&b'\\');
+        let has_escape = raw.as_bytes().contains(&b'\\');
+        let keep_raw = !self.options.minify || has_escape;
         if keep_raw && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
             self.print_bytes(raw);
+            return;
+        }
+        if value == "use strict" && has_escape {
+            // Re-encoding an escaped directive must not enable strict mode.
+            self.print("\"use\\x20strict\"");
             return;
         }
         self.print_quoted(value, false);

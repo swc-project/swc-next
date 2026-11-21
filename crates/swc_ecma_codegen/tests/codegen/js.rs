@@ -886,6 +886,20 @@ fn identifier_names() {
 
 #[test]
 fn test_directive_string_value() {
+    let script = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let ascii = GeneratorOptions {
+        ascii_only: true,
+        ..GeneratorOptions::default()
+    };
+    let minified = GeneratorOptions {
+        minify: true,
+        ..ascii.clone()
+    };
+
     expect_generated_script(r#""\u0061""#, "\"\\u0061\";\n");
 
     // The following statement verifies that the escaped directive stays non-strict.
@@ -920,6 +934,21 @@ fn test_directive_string_value() {
         "function f() { 'use\\x20asm'; }",
         "function f(){'use\\x20asm'}",
     );
+
+    let source = "\"use\\\u{2028} strict\";";
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";", script, &minified);
+
+    let source = "\"use\\\u{2029} strict\";";
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";", script, &minified);
+
+    let source = "\"use strict\";";
+    expect_generated_with_parse_options(source, "\"use strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use strict\";", script, &minified);
 }
 
 #[test]
