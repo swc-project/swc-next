@@ -1683,6 +1683,7 @@ fn generate_with_synthetic_callee(source: &str, options: GeneratorOptions) -> St
         fn ast(&mut self) -> &mut Ast<'ast> {
             self.0
         }
+
         fn visit_mut_identifier_reference(
             &mut self,
             node: IdentifierReference,
@@ -1734,6 +1735,7 @@ fn generate_unwrapped_blocks(source: &str, options: GeneratorOptions) -> String 
         fn ast(&mut self) -> &mut Ast<'ast> {
             self.0
         }
+
         fn visit_mut_stmt(&mut self, node: Stmt) -> Option<Stmt> {
             node.visit_mut_children_with(self);
             if let Some(block) = node.as_block_statement(self.0) {

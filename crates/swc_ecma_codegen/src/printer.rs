@@ -4674,6 +4674,7 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
     }
+
     fn print_ts_type_name(&mut self, n: TsTypeName) {
         match self.ast.ts_type_name_data(n) {
             TsTypeNameData::IdentifierReference(i) => {
@@ -4684,6 +4685,7 @@ impl<'a> Printer<'a> {
             TsTypeNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_qualified(&mut self, q: TsQualifiedName) {
         match self.ast.ts_qualified_name_left_data(q.left(self.ast)) {
             TsQualifiedNameLeftData::IdentifierReference(i) => {
@@ -4710,6 +4712,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping_for_name(right.span(self.ast).start, name);
         self.print_identifier(name);
     }
+
     fn print_ts_import_type(&mut self, t: TsImportType) {
         self.print("import(");
         let source = t.source(self.ast);
@@ -4740,6 +4743,7 @@ impl<'a> Printer<'a> {
             TsImportTypeQualifierData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_query_name(&mut self, n: TsTypeQueryExprName) {
         match self.ast.ts_type_query_expr_name_data(n) {
             TsTypeQueryExprNameData::TsTypeName(n) => self.print_ts_type_name(n),
@@ -4747,6 +4751,7 @@ impl<'a> Printer<'a> {
             TsTypeQueryExprNameData::TsImportType(t) => self.print_ts_import_type(t),
         }
     }
+
     fn print_ts_literal(&mut self, l: TsLiteral) {
         match self.ast.ts_literal_data(l) {
             TsLiteralData::StringLiteral(s) => {
@@ -4787,6 +4792,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(argument.span(self.ast).start);
         self.print_number_literal(number, Precedence::Prefix);
     }
+
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {
             TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
@@ -4804,6 +4810,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     fn print_ts_type_members(&mut self, m: SubRange<TsTypeElement>) {
         self.print("{");
         if !m.is_empty() {
@@ -4823,6 +4830,7 @@ impl<'a> Printer<'a> {
         self.print_indent();
         self.print("}");
     }
+
     fn print_ts_type_element(&mut self, e: TsTypeElement) {
         match self.ast.ts_type_element_data(e) {
             TsTypeElementData::TsPropertySignature(s) => {
@@ -4877,6 +4885,7 @@ impl<'a> Printer<'a> {
             TsTypeElementData::TsIndexSignature(s) => self.print_ts_index_signature(s),
         }
     }
+
     fn print_ts_index_signature(&mut self, s: TsIndexSignature) {
         if s.r#static(self.ast) {
             self.print("static ");
@@ -4897,6 +4906,7 @@ impl<'a> Printer<'a> {
         self.print("]");
         self.print_ts_annotation(s.type_annotation(self.ast));
     }
+
     fn print_ts_mapped(&mut self, t: TsMappedType) {
         self.print("{");
         self.print_newline();
@@ -4996,6 +5006,7 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
     }
+
     fn print_ts_interface(&mut self, d: TsInterfaceDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5024,6 +5035,7 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print_ts_type_members(d.body(self.ast).body(self.ast));
     }
+
     fn print_ts_enum(&mut self, d: TsEnumDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5063,6 +5075,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(d.body(self.ast).span(self.ast).end.saturating_sub(1));
         self.print("}");
     }
+
     fn print_ts_enum_name(&mut self, n: TsEnumMemberName, computed: bool) {
         if computed {
             self.print("[");
@@ -5084,6 +5097,7 @@ impl<'a> Printer<'a> {
             self.print("]");
         }
     }
+
     fn print_ts_module(&mut self, d: TsModuleDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5105,6 +5119,7 @@ impl<'a> Printer<'a> {
             self.print_ts_module_body(b);
         }
     }
+
     fn print_ts_module_name(&mut self, n: TsModuleName) {
         match self.ast.ts_module_name_data(n) {
             TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i),
@@ -5115,6 +5130,7 @@ impl<'a> Printer<'a> {
             TsModuleNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_module_body(&mut self, b: TsModuleBody) {
         match self.ast.ts_module_body_data(b) {
             TsModuleBodyData::TsModuleBlock(b) => {
@@ -5156,6 +5172,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     fn print_ts_global(&mut self, d: TsGlobalDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5191,6 +5208,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
         self.print("}");
     }
+
     fn print_ts_parameter_property(&mut self, p: TsParameterProperty) {
         self.print_decorators(p.decorators(self.ast));
         self.print_accessibility(p.accessibility(self.ast));
@@ -5202,6 +5220,7 @@ impl<'a> Printer<'a> {
         }
         self.print_formal_parameter(p.parameter(self.ast));
     }
+
     fn print_ts_import_equals(&mut self, d: TsImportEqualsDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         self.print("import ");
@@ -5295,6 +5314,7 @@ impl<'a> Printer<'a> {
             self.print(">");
         }
     }
+
     fn print_jsx_fragment(&mut self, e: JsxFragment) {
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<>");
@@ -5304,6 +5324,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
         self.print("</>");
     }
+
     fn print_jsx_name(&mut self, n: JsxElementName) {
         self.print_comments_before(n.span(self.ast).start, false, false);
         match self.ast.jsx_element_name_data(n) {
@@ -5321,6 +5342,7 @@ impl<'a> Printer<'a> {
             JsxElementNameData::JsxMemberExpression(m) => self.print_jsx_member(m),
         }
     }
+
     fn print_jsx_member(&mut self, m: JsxMemberExpression) {
         match self
             .ast
@@ -5339,6 +5361,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping_for_name(property.span(self.ast).start, name);
         self.print_bytes(name);
     }
+
     fn print_jsx_attr_name(&mut self, n: JsxAttributeName) {
         match self.ast.jsx_attribute_name_data(n) {
             JsxAttributeNameData::JsxIdentifier(i) => {
@@ -5354,6 +5377,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
         self.print_comments_before(v.span(self.ast).start, false, false);
         match self.ast.jsx_attribute_value_data(v) {
@@ -5363,6 +5387,7 @@ impl<'a> Printer<'a> {
             JsxAttributeValueData::JsxFragment(e) => self.print_jsx_fragment(e),
         }
     }
+
     fn print_jsx_attr_string(&mut self, literal: StringLiteral) {
         self.add_source_mapping(literal.span(self.ast).start);
         let raw = self.ast.get_utf8(literal.raw(self.ast));
@@ -5395,6 +5420,7 @@ impl<'a> Printer<'a> {
             self.print(quote);
         }
     }
+
     fn print_jsx_container(&mut self, c: JsxExpressionContainer) {
         self.print("{");
         match self.ast.jsx_expression_data(c.expression(self.ast)) {
@@ -5419,6 +5445,7 @@ impl<'a> Printer<'a> {
         self.print_comments_before(c.span(self.ast).end.saturating_sub(1), false, true);
         self.print("}");
     }
+
     fn print_jsx_child(&mut self, c: JsxChild) {
         match self.ast.jsx_child_data(c) {
             JsxChildData::JsxText(t) => {
