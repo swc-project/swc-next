@@ -3913,6 +3913,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_ecma_transformer_legacy"
+version = "0.7.0"
+
+[[package]]
 name = "swc_next_formatter"
 version = "0.8.1"
 dependencies = [

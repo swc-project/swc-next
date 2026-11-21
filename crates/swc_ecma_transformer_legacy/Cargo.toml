@@ -1,0 +1,10 @@
+[package]
+description           = "Legacy SWC JavaScript transforms for the SWC Next AST"
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_ecma_transformer_legacy"
+publish               = false
+repository.workspace  = true
+version               = "0.7.0"
