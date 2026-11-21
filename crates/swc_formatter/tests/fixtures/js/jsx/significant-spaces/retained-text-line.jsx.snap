@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = <div>alpha  beta 
+  gamma fourth words</div>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const x = (
+  <div>
+    alpha  beta 
+    gamma fourth words
+  </div>
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const x = (
+  <div>
+    alpha  beta 
+    gamma fourth
+    words
+  </div>
+);

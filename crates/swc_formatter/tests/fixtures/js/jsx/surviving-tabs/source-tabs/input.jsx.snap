@@ -8,13 +8,10 @@ const x = <Box>	alpha		 betagamma	</Box>;
 ---------- Output ----------
 const x = (
   <Box>	alpha		 beta
-gamma	</Box>
+    gamma	</Box>
 );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const x = (
-  <Box>	alpha		 beta
-gamma	</Box>
-);
+const x = <Box>	alpha		 beta gamma	</Box>;
