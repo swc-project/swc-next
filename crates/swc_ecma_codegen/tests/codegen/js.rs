@@ -1586,3 +1586,9 @@ fn test_comment_line_terminators() {
         &pretty,
     );
 }
+
+#[test]
+fn test_output_assertion_diagnostics() {
+    let result = std::panic::catch_unwind(|| expect_generated("let x = ;", ""));
+    assert!(result.is_err());
+}

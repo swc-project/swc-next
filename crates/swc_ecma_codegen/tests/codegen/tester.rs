@@ -142,13 +142,11 @@ fn expect_generated_common_with_options(
         comments: CommentMode::Flat,
     };
     let result = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
-    let has_errors = result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == swc_next_ecma_ast::Severity::Error);
-    if has_errors {
-        return;
-    }
+    assert!(
+        result.diagnostics.is_empty(),
+        "{source}: {:?}",
+        result.diagnostics
+    );
     let result = generate(&result.ast, generator_options);
 
     assert_eq!(
