@@ -9347,26 +9347,45 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         minimum: Precedence,
         allow_type_binding_identifiers: bool,
     ) -> Option<Expr> {
-        let left = self.parse_expression_head(minimum, allow_type_binding_identifiers)?;
-        self.parse_expr_from_left(left, minimum)
+        let (left, precedence) =
+            self.parse_expression_head(minimum, allow_type_binding_identifiers)?;
+        self.parse_expr_from_known_left(left, precedence, minimum)
     }
 
+    /// Parses the first operand of an expression. The second value is the
+    /// result of `max_left_precedence` where this function knows it.
     #[inline(always)]
     fn parse_expression_head(
         &mut self,
         minimum: Precedence,
         allow_type_binding_identifiers: bool,
-    ) -> Option<Expr> {
+    ) -> Option<(Expr, Option<Precedence>)> {
         // These primary expressions need no prefix-operator or contextual-keyword checks.
-        Some(match self.current_token.tag() {
+        let left = match self.current_token.tag() {
             TokenTag::Identifier => self.parse_plain_identifier()?,
             tag if tag.is_numeric_literal() => self.parse_numeric_literal()?,
             TokenTag::StringLiteral => Expr::StringLiteral(self.parse_string_literal()?),
             TokenTag::True | TokenTag::False => self.parse_boolean_literal()?,
             TokenTag::NullLiteral => self.parse_null_literal()?,
             TokenTag::This => self.parse_this_expression()?,
-            _ => self.parse_prefix(allow_type_binding_identifiers, minimum)?,
-        })
+            _ => {
+                let left = self.parse_prefix(allow_type_binding_identifiers, minimum)?;
+                return Some((left, None));
+            }
+        };
+        Some((left, Some(Precedence::Primary)))
+    }
+
+    /// Returns `max_left_precedence(left)`, reading the AST only when the
+    /// parser does not already hold the value.
+    #[inline(always)]
+    fn left_precedence(&self, left: Expr, known: Option<Precedence>) -> Precedence {
+        let precedence = match known {
+            Some(precedence) => precedence,
+            None => max_left_precedence(left, &self.ast),
+        };
+        debug_assert_eq!(precedence, max_left_precedence(left, &self.ast));
+        precedence
     }
 
     /// Pair candidate lifetime with role resolution, including failed recovery.
@@ -9397,14 +9416,31 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //
     // TODO: this bloats binary size a lot
     #[inline(always)]
-    fn parse_expr_from_left(&mut self, mut left: Expr, minimum: Precedence) -> Option<Expr> {
+    fn parse_expr_from_left(&mut self, left: Expr, minimum: Precedence) -> Option<Expr> {
+        self.parse_expr_from_known_left(left, None, minimum)
+    }
+
+    // `known` is the precedence class of `left` where the parser holds it. Each
+    // arm knows what it built, so the loop does not read the class back from the
+    // AST. Every value is a constant set after the last call, so none stays live
+    // across a call.
+    #[inline(always)]
+    fn parse_expr_from_known_left(
+        &mut self,
+        mut left: Expr,
+        mut known: Option<Precedence>,
+        minimum: Precedence,
+    ) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
         let tag = self.current_token.tag();
         if (tag.precedence() >= Precedence::Call
             || is_ts && (is_angle_open(tag) || tag == TokenTag::LogicalNot))
-            && max_left_precedence(left, &self.ast) >= Precedence::Call
+            && self.left_precedence(left, known) >= Precedence::Call
         {
+            // Every postfix node is primary, and an operand that reaches here
+            // without a suffix already is.
             left = self.parse_postfix_expression::<false>(left)?;
+            known = Some(Precedence::Primary);
         }
 
         loop {
@@ -9418,20 +9454,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if precedence == Precedence::Lowest {
                 break;
             }
-            if precedence > max_left_precedence(left, &self.ast) {
+            if precedence > self.left_precedence(left, known) {
                 break;
             }
-            left = if token.tag().is_binary_operator() {
+            (left, known) = if token.tag().is_binary_operator() {
                 if token.tag() == TokenTag::In && !self.context.contains(Context::IN) {
                     break;
                 }
-                self.parse_binary_expression(left, token.tag())?
+                let left = self.parse_binary_expression(left, token.tag())?;
+                (left, Some(Precedence::Prefix))
             } else if token.tag().is_logical_operator() {
-                self.parse_logical_expression(left, token.tag())?
+                let left = self.parse_logical_expression(left, token.tag())?;
+                (left, Some(Precedence::Prefix))
             } else if token.tag().is_assignment_operator() {
-                self.parse_assignment_expression(left, token.tag())?
+                let left = self.parse_assignment_expression(left, token.tag())?;
+                (left, Some(Precedence::Comma))
             } else {
-                self.parse_infix(precedence, left)?
+                (self.parse_infix(precedence, left)?, None)
             };
         }
         Some(left)
@@ -10131,7 +10170,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .eat(TokenTag::Spread)?
                     .then(|| self.lexer.state.prev_token_end - 3);
                 let (expression, suffix_end) = if ARROW_COVER {
-                    let left = self.parse_expression_head(Precedence::Assignment, true)?;
+                    let (left, known) = self.parse_expression_head(Precedence::Assignment, true)?;
                     let tag = self.current_token.tag();
                     if tag == TokenTag::Colon
                         || tag == TokenTag::Question
@@ -10153,7 +10192,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         (left, Some(end))
                     } else {
                         (
-                            self.parse_expr_from_left(left, Precedence::Assignment)?,
+                            self.parse_expr_from_known_left(left, known, Precedence::Assignment)?,
                             None,
                         )
                     }
