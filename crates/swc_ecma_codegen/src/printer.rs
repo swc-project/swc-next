@@ -5038,7 +5038,9 @@ impl<'a> Printer<'a> {
             self.print_ts_type_members(attributes.members(self.ast));
         }
         if let Some(b) = d.body(self.ast) {
-            self.print_space();
+            if b.as_ts_module_block(self.ast).is_some() {
+                self.print_space();
+            }
             self.print_ts_module_body(b);
         }
     }
@@ -5081,7 +5083,16 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
                 self.print("}");
             }
-            TsModuleBodyData::TsModuleDeclaration(d) => self.print_ts_module(d),
+            TsModuleBodyData::TsModuleDeclaration(d) => {
+                self.print(".");
+                self.print_ts_module_name(d.id(self.ast));
+                if let Some(body) = d.body(self.ast) {
+                    if body.as_ts_module_block(self.ast).is_some() {
+                        self.print_space();
+                    }
+                    self.print_ts_module_body(body);
+                }
+            }
         }
     }
     fn print_ts_global(&mut self, d: TsGlobalDeclaration) {

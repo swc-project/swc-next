@@ -1504,3 +1504,64 @@ fn test_type_query_boundaries() {
 fn test_export_assignment_grouping() {
     expect_generated_ts_pair("export = (1, 2);", "export = (1, 2);\n", "export = (1,2);");
 }
+
+fn nested_module(source: &str, options: GeneratorOptions) -> String {
+    use swc_next_ecma_ast::TsModuleBody;
+    let parse_options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        let outer = ast
+            .root_program()
+            .body(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_declaration(ast)
+            .unwrap()
+            .as_ts_module_declaration(ast)
+            .unwrap();
+        let block = outer.body(ast).unwrap().as_ts_module_block(ast).unwrap();
+        let inner = block
+            .body(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_declaration(ast)
+            .unwrap()
+            .as_ts_module_declaration(ast)
+            .unwrap();
+        outer.set_body(ast, Some(TsModuleBody::TsModuleDeclaration(inner)));
+    })
+}
+
+#[test]
+fn test_nested_module_bodies() {
+    for minify in [false, true] {
+        let options = GeneratorOptions {
+            minify,
+            ..GeneratorOptions::default()
+        };
+        let source = "namespace A { namespace B { export const x = 1; } }";
+        let output = nested_module(source, options.clone());
+        assert_eq!(
+            output,
+            if minify {
+                "namespace A.B{export const x=1}"
+            } else {
+                "namespace A.B {\n  export const x = 1;\n}\n"
+            }
+        );
+
+        let source = "declare namespace A { namespace B {} }";
+        let output = nested_module(source, options);
+        assert_eq!(
+            output,
+            if minify {
+                "declare namespace A.B{}"
+            } else {
+                "declare namespace A.B {}\n"
+            }
+        );
+    }
+}

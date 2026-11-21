@@ -1,5 +1,5 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_ast::{Ast, Lang, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
@@ -154,4 +154,24 @@ fn expect_generated_common_with_options(
         "failed for {}\nactual:\n{}\nexpected:\n{}",
         source, result.code, expected,
     );
+}
+
+#[track_caller]
+pub fn generate_edited(
+    source: &str,
+    parse_options: ParseOptions,
+    generator_options: GeneratorOptions,
+    edit: impl FnOnce(&mut Ast<'_>),
+) -> String {
+    let allocator = Allocator::new();
+    let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "{source}: {:?}",
+        parsed.diagnostics
+    );
+    // SAFETY: The parsed AST and all handles used by the edit belong to this allocator.
+    let mut ast = unsafe { parsed.ast.into_ast() };
+    edit(&mut ast);
+    generate(&ast.into(), generator_options).code
 }
