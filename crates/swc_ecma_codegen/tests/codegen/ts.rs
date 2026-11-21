@@ -1565,3 +1565,12 @@ fn test_nested_module_bodies() {
         );
     }
 }
+
+#[test]
+fn test_comparison_grouping() {
+    expect_generated_ts_pair(
+        "x = (a < b) > (c || d);",
+        "x = (a < b) > (c || d);\n",
+        "x=(a<b)>(c||d);",
+    );
+}

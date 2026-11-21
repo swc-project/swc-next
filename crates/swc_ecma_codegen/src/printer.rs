@@ -224,6 +224,12 @@ impl BinaryExprVisitor {
             & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION);
 
         match operator {
+            BinaryishOperator::Binary(BinaryOperator::GreaterThan) if p.ast.is_ts() => {
+                if matches!(p.ast.expr_data(e.left(p.ast)), ExprData::BinaryExpression(left) if left.operator(p.ast) == BinaryOperator::LessThan)
+                {
+                    self.left_level = Precedence::Compare.next();
+                }
+            }
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
                 // "??" cannot directly contain "||" or "&&" without
                 // parentheses.
