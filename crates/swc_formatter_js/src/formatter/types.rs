@@ -3843,7 +3843,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TsTypeData::TsMappedType(node) => {
                 let _scope = self.recursion_scope(node)?;
-                self.format_mapped_type_body(node, opening, writer)
+                self.format_observed_return_body(
+                    node.span(self.ast),
+                    writer,
+                    |formatter, writer| formatter.format_mapped_type_body(node, opening, writer),
+                )
             }
             TsTypeData::TsInferType(node) => {
                 let _scope = self.recursion_scope(node)?;
@@ -3855,7 +3859,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TsTypeData::TsTypeLiteral(node) => {
                 let _scope = self.recursion_scope(node)?;
-                self.format_type_literal_body(node, layout, opening, writer)
+                if layout == TypeLayout::SignatureParameter || node.members(self.ast).is_empty() {
+                    self.format_type_literal_body(node, layout, opening, writer)
+                } else {
+                    self.format_observed_return_body(
+                        node.span(self.ast),
+                        writer,
+                        |formatter, writer| {
+                            formatter.format_type_literal_body(node, layout, opening, writer)
+                        },
+                    )
+                }
             }
             TsTypeData::TsFunctionType(node) => {
                 let _scope = self.recursion_scope(node)?;

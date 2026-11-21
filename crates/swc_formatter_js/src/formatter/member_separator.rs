@@ -64,6 +64,14 @@ impl MemberSeparator {
         if required { Self::Semicolon } else { self }
     }
 
+    pub(super) fn minimum_width(self, body_always_breaks: bool) -> usize {
+        match self {
+            Self::Semicolon => ";".len(),
+            Self::IfBreak if body_always_breaks => ";".len(),
+            _ => 0,
+        }
+    }
+
     pub(super) fn write(self, writer: &mut Writer<'_>) {
         match self {
             Self::Omit => {}

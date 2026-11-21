@@ -1373,7 +1373,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     self.format_comment_run(leading, leading_layout, writer)?;
                 }
-                self.format_function_body(body, mode, first_statement, body_leading, writer)?;
+                self.format_function_body(body, mode, first_statement, body_leading, None, writer)?;
                 Ok(ExpressionOutput::closed(None))
             }
         };

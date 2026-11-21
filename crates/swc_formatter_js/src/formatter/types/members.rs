@@ -4,13 +4,13 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, FormalParameters, GetSpan, PropertyKey, Span, SubRange,
     TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsIndexSignature,
     TsIndexSignatureParameter, TsMethodSignature, TsMethodSignatureKind, TsPropertySignature,
-    TsThisParameter, TsType, TsTypeAnnotation, TsTypeElement, TsTypeElementData, TsTypeLiteral,
-    TsTypeParameterDeclaration,
+    TsThisParameter, TsType, TsTypeAnnotation, TsTypeData, TsTypeElement, TsTypeElementData,
+    TsTypeLiteral, TsTypeParameterDeclaration,
 };
 
 use super::callable::{
-    AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
-    SignatureReturnDelimiter, SignatureReturnEolTarget,
+    AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming,
+    SignatureResultLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
 use super::{Formatter, PreparedType, TypeContext, TypeGap, TypeLayout, TypeOutput};
 use crate::formatter::comments::{
@@ -426,8 +426,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .filter(|member| member.node == first.node)
             .map_or_else(|| self.content_mode(leading_comments), |member| member.mode);
         let opening_start = head_comments.map_or(content.start, |comments| comments[0].span.start);
-        let expanded = matches!(kind, TypeMemberBodyKind::Interface)
-            || self.type_body_expands(content.start, first_start);
+        let body_always_breaks = matches!(kind, TypeMemberBodyKind::Interface);
+        let expanded = body_always_breaks || self.type_body_expands(content.start, first_start);
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let closing = writer.indent(|writer| {
@@ -509,6 +509,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             required_separator,
                         )
                     };
+                    let continuation_width = if prepared.before_separator.is_none()
+                        && matches!(&gap, MemberGap::Formatted { trailing, .. } if trailing.is_empty())
+                    {
+                        separator.minimum_width(body_always_breaks)
+                    } else {
+                        0
+                    };
                     let after_separator = match &prepared.content {
                         MemberContent::Property(property) => property
                             .riding
@@ -516,7 +523,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map(|packet| (packet.comments, packet.source_end)),
                         _ => None,
                     };
-                    let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let mut tail = self.format_type_member(prepared, quoting, continuation_width, writer)?;
                     let adjacency = after_separator.map_or_else(
                         || PreparedCommentAdjacency::after_tail(tail.as_ref()),
                         |(comments, _)| PreparedCommentAdjacency::after_comments(comments),
@@ -1637,10 +1644,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut member: PreparedMember<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let before_separator = member.before_separator.take();
-        let tail = self.format_type_member_content(member.content, quoting, writer)?;
+        let tail =
+            self.format_type_member_content(member.content, quoting, continuation_width, writer)?;
         if let Some(before) = before_separator {
             match (tail, before) {
                 (Some(tail), TypeGap::Formatted(boundary)) => {
@@ -1669,6 +1678,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         content: MemberContent<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match content {
@@ -1677,7 +1687,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(None)
             }
             MemberContent::Property(property) => {
-                self.format_property_member(property, quoting, writer)
+                self.format_property_member(property, quoting, continuation_width, writer)
             }
             MemberContent::Signature(mut signature) => {
                 let generics = signature.generics.as_ref().map(|(node, _, _)| *node);
@@ -1727,7 +1737,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 following,
                             }),
                         can_group_parameters,
-                        group_return,
+                        SignatureResultLayout {
+                            grouped: group_return,
+                            continuation_width,
+                        },
                         writer,
                     )
                 })
@@ -1740,6 +1753,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut property: PropertyMember<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_type_member_leading(property.key.leading.take(), writer)?;
@@ -1805,13 +1819,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let Some(packet) = property.riding {
                         self.comments.claim(packet.comments)?;
                     }
-                    self.format_prepared_type_after_comments(
+                    let previous = self.callable_type_continuation;
+                    if continuation_width != 0
+                        && matches!(
+                            node.data,
+                            TsTypeData::TsFunctionType(_) | TsTypeData::TsConstructorType(_)
+                        )
+                    {
+                        self.callable_type_continuation =
+                            Some((node.node.span(self.ast), continuation_width));
+                    }
+                    let output = self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
                         &after,
                         TypeLayout::Root,
                         writer,
-                    )
+                    );
+                    self.callable_type_continuation = previous;
+                    output
                 }
             }
         } else {

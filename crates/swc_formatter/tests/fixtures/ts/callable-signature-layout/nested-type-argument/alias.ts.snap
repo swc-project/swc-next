@@ -1,0 +1,38 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (o: OwnerState) => B<
+  LongTypeArgumentOne,
+  { component?: LongTypeArgumentTwo | undefined } & Overrides
+>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+type T = (o: OwnerState) => B<
+  LongTypeArgumentOne,
+  {
+    component?:
+      LongTypeArgumentTwo | undefined;
+  } & Overrides
+>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":60}
+---------- Output ----------
+type T = (o: OwnerState) => B<
+  LongTypeArgumentOne,
+  {
+    component?: LongTypeArgumentTwo | undefined;
+  } & Overrides
+>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":61}
+---------- Output ----------
+type T = (
+  o: OwnerState,
+) => B<
+  LongTypeArgumentOne,
+  { component?: LongTypeArgumentTwo | undefined } & Overrides
+>;

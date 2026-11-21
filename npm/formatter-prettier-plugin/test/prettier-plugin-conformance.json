@@ -29390,6 +29390,64 @@
         "prettierNative": "result = fn(\r\n\t1,\r\n)?.// prettier-ignore\r\n<number>(2);\r\n"
       }
     ],
+    "ts/callable-signature-layout/indexed-return/interface.ts": [
+      {
+        "options": {
+          "lineWidth": 30,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface I {\n  p: <T>(a: T) => {\n    b?: string;\n  }[keyof A];\n}\n",
+        "prettierNative": "interface I {\n  p: <T>(\n    a: T,\n  ) => {\n    b?: string;\n  }[keyof A];\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "interface I {\n  p: <T>(a: T) => {\n    b?: string\n  }[keyof A]\n}\n",
+        "prettierNative": "interface I {\n  p: <T>(\n    a: T\n  ) => {\n    b?: string\n  }[keyof A]\n}\n"
+      }
+    ],
+    "ts/callable-signature-layout/intersection-return/function.ts": [
+      {
+        "options": {
+          "lineWidth": 26,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function withoutObservableAccess<\n  T,\n>(value: T): T & {\n  observable: X;\n} {}\n",
+        "prettierNative": "function withoutObservableAccess<\n  T,\n>(\n  value: T,\n): T & {\n  observable: X;\n} {}\n"
+      }
+    ],
+    "ts/callable-signature-layout/intersection-return/method.ts": [
+      {
+        "options": {
+          "lineWidth": 26,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  withoutObservableAccess<\n    T,\n  >(value: T): T & {\n    observable: X;\n  } {}\n}\n",
+        "prettierNative": "class C {\n  withoutObservableAccess<\n    T,\n  >(\n    value: T,\n  ): T & {\n    observable: X;\n  } {}\n}\n"
+      }
+    ],
+    "ts/callable-signature-layout/nested-type-argument/alias.ts": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type T = (o: OwnerState) => B<\n  LongTypeArgumentOne,\n  {\n    component?:\n      LongTypeArgumentTwo | undefined;\n  } & Overrides\n>;\n",
+        "prettierNative": "type T = (\n  o: OwnerState,\n) => B<\n  LongTypeArgumentOne,\n  {\n    component?:\n      LongTypeArgumentTwo | undefined;\n  } & Overrides\n>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 60,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type T = (o: OwnerState) => B<\n  LongTypeArgumentOne,\n  {\n    component?: LongTypeArgumentTwo | undefined;\n  } & Overrides\n>;\n",
+        "prettierNative": "type T = (\n  o: OwnerState,\n) => B<\n  LongTypeArgumentOne,\n  {\n    component?: LongTypeArgumentTwo | undefined;\n  } & Overrides\n>;\n"
+      }
+    ],
     "ts/callback-role/input.ts": [
       {
         "options": {
