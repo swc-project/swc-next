@@ -1837,8 +1837,6 @@ fn write_group_boundary<'ast>(group: &ChainGroup<'ast>, expanded: bool, writer: 
 }
 
 fn write_group_contents<'ast>(group: &ChainGroup<'ast>, writer: &mut Writer<'ast>) {
-    // Inherited receiver frames observe the complete chain's mode. A terminal
-    // source-preserved call retains its own argument layouts within that frame.
     writer.write_fragment(group.doc);
 }
 

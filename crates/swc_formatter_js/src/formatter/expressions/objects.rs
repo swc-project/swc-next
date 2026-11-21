@@ -1059,8 +1059,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &source_comments[first..],
             )? && head.source == release_source
             {
-                // Reuse the ordinary colon packet split with the removed
-                // opener's head included. The source key still claims first.
                 boundary.comments =
                     &source_comments[first - comments.len()..first + head.comments.len()];
                 boundary.value_start = head.content_start;

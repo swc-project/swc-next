@@ -626,8 +626,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }))
     }
 
-    /// An assertion is the argument's layout owner. Inspect its operand for
-    /// eligibility, then record the assertion through its normal expression path.
+    /// Eligibility follows the operand; layout and comments belong to the assertion.
     fn select_type_wrapped_argument(
         &self,
         argument: Argument,
