@@ -51,6 +51,13 @@ use swc_next_ecma_ast::{
     TsTypeData, TsTypeName, TsTypeNameData, TsTypeOperator, UnaryOperator, VariableDeclarator,
 };
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TypeContinuation {
+    Syntax,
+    Arrow,
+    Body,
+}
+
 #[derive(Clone, Copy)]
 enum TypeBoundaryRole {
     Alias,
@@ -3688,19 +3695,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_type_at_continuation(span, false, writer, print)
-    }
-
-    fn format_type_at_continuation(
-        &mut self,
-        span: Span,
-        body_follows: bool,
-        writer: &mut Writer<'ast>,
-        print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_type_body_at_continuation(span, body_follows, writer, |formatter, writer| {
-            print(formatter, writer).map(TypeOutput::from_expression)
-        })
+        self.format_type_body_at_continuation(
+            span,
+            TypeContinuation::Syntax,
+            writer,
+            |formatter, writer| print(formatter, writer).map(TypeOutput::from_expression),
+        )
         .map(TypeOutput::into_expression)
     }
 
@@ -3710,13 +3710,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<TypeOutput<'ast>, FormatError>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
-        self.format_type_body_at_continuation(span, false, writer, print)
+        self.format_type_body_at_continuation(span, TypeContinuation::Syntax, writer, print)
     }
 
     fn format_type_body_at_continuation(
         &mut self,
         span: Span,
-        body_follows: bool,
+        continuation: TypeContinuation,
         writer: &mut Writer<'ast>,
         print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<TypeOutput<'ast>, FormatError>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
@@ -3724,11 +3724,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return print(self, writer);
         }
         let (content, output) = writer.record_with_value(|writer| print(self, writer))?;
-        let Some(gap) = self.type_tail_continuation_gap(output.pending.as_ref(), body_follows)
-        else {
+        let tail = output.pending.as_ref();
+        let gap = self.type_tail_continuation_gap(tail, continuation == TypeContinuation::Body);
+        // Raw line terminators in block comment text also need a syntax fence
+        // before `=>`, even when the comment run stays visually inline.
+        if gap.is_none()
+            && !(continuation == TypeContinuation::Arrow
+                && tail.is_some_and(|tail| {
+                    tail.comments.iter().any(|comment| {
+                        self.type_comment_breaks_continuation(comment.span, continuation)
+                    })
+                }))
+        {
             writer.write_fragment(content);
             return Ok(output);
-        };
+        }
+        let closing_gap = gap.or_else(|| {
+            tail?
+                .comments
+                .last()
+                .filter(|comment| comment.kind == CommentKind::Line)
+                .map(|_| CommentGap::LineComment)
+        });
         writer.group(false, |writer| {
             writer.text("(");
             writer.indent(|writer| {
@@ -3736,7 +3753,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.write_fragment(content);
                 self.format_expression_tail(output.pending, writer)
             })?;
-            gap.write(writer, FlatSeparator::Empty, |_| {});
+            if let Some(gap) = closing_gap {
+                gap.write(writer, FlatSeparator::Empty, |_| {});
+            } else {
+                writer.soft_line();
+            }
             writer.text(")");
             Ok(TypeOutput::closed())
         })
@@ -3748,33 +3769,87 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         keep_inline_line: bool,
     ) -> Option<CommentGap> {
         let tail = tail?;
-        let last = tail.comments.last()?;
+        let (last, preceding) = tail.comments.split_last()?;
+        // SourceAfter prints a directly placed line comment immediately and
+        // ends any earlier line comment before writing the next comment.
         (keep_inline_line && last.kind == CommentKind::Line
-            || self.line_breaks(tail.source_end, last.span.end) != 0)
-            .then_some(CommentGap::Source(LineConstraint::NewLine(1)))
+            || self.line_breaks(tail.source_end, last.span.end) != 0
+            || self.comment_run_has_own_line_tail(tail.comments, tail.source_end)
+            || preceding
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line))
+        .then_some(CommentGap::Source(LineConstraint::NewLine(1)))
     }
 
     fn continuation_type_layout(&self, span: Span, layout: TypeLayout) -> TypeLayout {
-        self.type_layout_at_continuation(span, layout, false)
+        self.type_layout_at_continuation(span, layout, TypeContinuation::Syntax)
+    }
+
+    fn type_comment_breaks_continuation(&self, span: Span, continuation: TypeContinuation) -> bool {
+        if continuation == TypeContinuation::Arrow {
+            self.source_line_breaks(span.start, span.end) != 0
+        } else {
+            self.line_breaks(span.start, span.end) != 0
+        }
     }
 
     fn type_layout_at_continuation(
         &self,
         span: Span,
         layout: TypeLayout,
-        body_follows: bool,
+        continuation: TypeContinuation,
     ) -> TypeLayout {
-        if matches!(layout, TypeLayout::Root | TypeLayout::SignatureParameter)
-            && self.comments.in_range(span).last().is_some_and(|comment| {
-                (body_follows && comment.kind == CommentKind::Line
-                    || self.layout_line_starts_line(comment.span.start)
-                    || self.line_breaks(comment.span.start, comment.span.end) != 0)
-                    && self
-                        .source(Span::new(comment.span.end, span.end))
-                        .chars()
-                        .all(|character| character == ')' || is_source_whitespace(character))
-            })
+        if !matches!(layout, TypeLayout::Root | TypeLayout::SignatureParameter) {
+            return layout;
+        }
+        let Some((last, preceding)) = self.comments.in_range(span).split_last() else {
+            return layout;
+        };
+        let tail_trivia = |character| character == ')' || is_source_whitespace(character);
+        if !self
+            .source(Span::new(last.span.end, span.end))
+            .chars()
+            .all(tail_trivia)
         {
+            return layout;
+        }
+        if continuation == TypeContinuation::Body && last.kind == CommentKind::Line
+            || self.type_comment_breaks_continuation(last.span, continuation)
+        {
+            return TypeLayout::ContinuationRoot;
+        }
+
+        // A final inline comment can continue a packet that starts on another
+        // line. Only trivia and closing parentheses can join that packet.
+        let mut following = *last;
+        for &comment in preceding.iter().rev() {
+            let mut gap_has_line = false;
+            let following_is_line = following.kind == CommentKind::Line;
+            if !self
+                .source(Span::new(comment.span.end, following.span.start))
+                .chars()
+                .all(|character| {
+                    gap_has_line |= matches!(character, '\n' | '\r')
+                        || following_is_line && matches!(character, '\u{2028}' | '\u{2029}');
+                    tail_trivia(character)
+                })
+            {
+                break;
+            }
+            if gap_has_line
+                || comment.kind == CommentKind::Line
+                || self.type_comment_breaks_continuation(comment.span, continuation)
+            {
+                return TypeLayout::ContinuationRoot;
+            }
+            following = comment;
+        }
+        let starts_line = if following.kind == CommentKind::Line {
+            self.source_position_starts_line(following.span.start)
+        } else {
+            self.layout_line_starts_line(following.span.start)
+        };
+        if starts_line {
             TypeLayout::ContinuationRoot
         } else {
             layout
@@ -4136,9 +4211,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => false,
         });
-        let raw_frame = matches!(context, TypeContext::TypeExpressionRhs)
-            && source_owner == Some(child)
-            && raw_type_has_open_end(child, ast);
+        // Raw children keep their own parentheses. Before `=>`, removing the
+        // outer pair can turn the last child into a function type's parameters.
+        let raw_frame = source_owner == Some(child)
+            && match context {
+                TypeContext::ArrowReturn => true,
+                TypeContext::TypeExpressionRhs => raw_type_has_open_end(child, ast),
+                _ => false,
+            };
         let retained =
             source_frame || raw_frame || !before.is_empty() || !after.is_empty() || sensitive;
         let mut selected_attachment = None;

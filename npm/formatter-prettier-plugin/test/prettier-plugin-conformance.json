@@ -27008,6 +27008,72 @@
         "prettierNative": "// @ts-expect-error\nconst fn = (foo: boolean) =>\n\tfoo ? missingA : missingB;\nconst outsideSentinel: number = \"x\";\n"
       }
     ],
+    "ts/arrow-ignored-return/comment-tail.ts": [
+      {
+        "swcPlugin": "const f = (): /* prettier-ignore */ ( A  &  (B\n/* c */ /* d */)) => ({});\n",
+        "prettierNative": "const f = (): /* prettier-ignore */ A  &  (B\n/* c */ /* d */) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  &  (B\n/* c */ /* d */)) => ({});\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  &  (B\n/* c */ /* d */) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30,
+          "indentStyle": "tab",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  &  (B\n/* c */ /* d */)) => ({})\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  &  (B\n/* c */ /* d */) => ({})\n"
+      }
+    ],
+    "ts/arrow-ignored-return/intersection.ts": [
+      {
+        "swcPlugin": "const f = (): /* prettier-ignore */ ( A  &  (B)) => ({});\n",
+        "prettierNative": "const f = (): /* prettier-ignore */ A  &  (B) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  &  (B)) => ({});\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  &  (B) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30,
+          "indentStyle": "tab",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  &  (B)) => ({})\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  &  (B) => ({})\n"
+      }
+    ],
+    "ts/arrow-ignored-return/union.ts": [
+      {
+        "swcPlugin": "const f = (): /* prettier-ignore */ ( A  |  (B)) => ({});\n",
+        "prettierNative": "const f = (): /* prettier-ignore */ A  |  (B) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  |  (B)) => ({});\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  |  (B) => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 30,
+          "indentStyle": "tab",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f =\n\t(): /* prettier-ignore */ ( A  |  (B)) => ({})\n",
+        "prettierNative": "const f =\n\t(): /* prettier-ignore */ A  |  (B) => ({})\n"
+      }
+    ],
     "ts/arrow-signature-layout/source-return-gap.ts": [
       {
         "options": {
@@ -31813,6 +31879,33 @@
         "prettierNative": "type T = F<\n  | A\n  | B,\n  // c\n  C\n>\n"
       }
     ],
+    "ts/compound-type-continuation/arrow-block-tail-packet.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null\n  /* c */ /* d */\n) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({});\n  /* c */ /* d */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): /* head */ (\n    | A\n    | null\n    /* c */ /* d */\n  ) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({});\n  /* c */ /* d */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null\n  /* c */ /* d */\n) => ({})\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({})\n  /* c */ /* d */\n"
+      }
+    ],
     "ts/compound-type-continuation/arrow-boundary-comment.ts": [
       {
         "options": {
@@ -31975,6 +32068,33 @@
         "prettierNativeError": "Function type notation must be parenthesized when used in an intersection type. (1:18)"
       }
     ],
+    "ts/compound-type-continuation/arrow-mixed-tail-packet.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  A & B\n  /* c */ // d\n) => ({});\n",
+        "prettierNative": "const f = (): /* head */ A &\n  B => ({});\n  /* c */ // d\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): /* head */ (\n    A & B\n    /* c */ // d\n  ) => ({});\n",
+        "prettierNative": "const f =\n  (): /* head */ A &\n    B => ({});\n    /* c */ // d\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  A & B\n  /* c */ // d\n) => ({})\n",
+        "prettierNative": "const f = (): /* head */ A &\n  B => ({})\n  /* c */ // d\n"
+      }
+    ],
     "ts/compound-type-continuation/arrow-newline.ts": [
       {
         "options": {
@@ -32000,6 +32120,87 @@
         },
         "swcPlugin": "const f = (): (\n  A & B\n  // c\n) => ({})\n",
         "prettierNativeError": "Function type notation must be parenthesized when used in an intersection type. (1:18)"
+      }
+    ],
+    "ts/compound-type-continuation/arrow-unicode-direct-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null // c\n) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({});\n  // c\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): /* head */ (\n    | A\n    | null // c\n  ) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({});\n  // c\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null // c\n) => ({})\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({})\n  // c\n"
+      }
+    ],
+    "ts/compound-type-continuation/arrow-unicode-mixed-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null // c\n  /* d */\n) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({}); // c\n  /* d */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): /* head */ (\n    | A\n    | null // c\n    /* d */\n  ) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({}); // c\n  /* d */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = (): /* head */ (\n  | A\n  | null // c\n  /* d */\n) => ({})\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null => ({}) // c\n  /* d */\n"
+      }
+    ],
+    "ts/compound-type-continuation/arrow-unicode-tail-packet.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): /* head */ (A | null /* c c */ /* d */) => ({});\n",
+        "prettierNative": "const f = (): /* head */ A | null /* c c */ /* d */ => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): /* head */ (\n    | A\n    | null /* c c */ /* d */\n  ) => ({});\n",
+        "prettierNative": "const f = ():\n  | /* head */ A\n  | null /* c c */ /* d */ => ({});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = (): /* head */ (A | null /* c c */ /* d */) => ({})\n",
+        "prettierNative": "const f = (): /* head */ A | null /* c c */ /* d */ => ({})\n"
       }
     ],
     "ts/compound-type-continuation/arrow-union-head.ts": [

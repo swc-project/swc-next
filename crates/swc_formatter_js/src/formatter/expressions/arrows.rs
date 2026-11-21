@@ -20,11 +20,11 @@ use crate::formatter::functions::{FunctionBodyAttachment, SignatureBoundaryRole}
 use crate::formatter::parameters::{ArrowParameterParentheses, ParameterFrame, SourceParameters};
 use crate::formatter::statements::{IncomingStatement, StatementBodyLeading};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::types::TypeGap;
 use crate::formatter::types::callable::{
     SignatureParameterLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
 use crate::formatter::types::generics::TypeParameterContext;
-use crate::formatter::types::{TypeContext, TypeGap};
 use crate::{
     ArrowParentheses, FormatError, Semicolons, TrailingCommas,
     document::{ConditionTarget, Fragment, RecordedGroup, Writer},
@@ -1158,12 +1158,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_source_parameters_with_layout(parameters, None, parameter_layout, writer)?;
             if let Some(result) = result {
-                let tail = self.format_signature_return_with_context(
-                    result,
-                    TypeContext::ArrowReturn,
-                    true,
-                    writer,
-                )?;
+                let tail = self.format_arrow_return(result, writer)?;
                 self.format_expression_tail(tail, writer)?;
             }
             Ok::<_, FormatError>(())
