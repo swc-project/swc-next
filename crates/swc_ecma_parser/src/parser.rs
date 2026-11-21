@@ -12603,12 +12603,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::New);
         let meta_token = self.current_token;
         let start = meta_token.start();
-        self.report_if_escaped_keyword(meta_token);
-        let meta_name = self.identifier_name(meta_token);
-        self.advance_without_escape_check()?;
-        let meta = self.ast.identifier_name(meta_token.span(), meta_name);
+        self.advance()?;
         if self.current_token.tag() == TokenTag::Dot {
-            return self.parse_new_target(meta);
+            return self.parse_new_target(meta_token);
         }
         let callee_starts_with_import = self.current_token.tag() == TokenTag::Import;
         let callee = match self.current_token.tag() {
@@ -12680,12 +12677,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_import_expression(&mut self) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Import);
-        self.report_if_escaped_keyword(self.current_token);
-        let import_name = self.parse_identifier_name()?;
-        let start = import_name.span(&self.ast).start;
+        let import = self.current_token;
+        self.advance()?;
         match self.current_token.tag() {
-            TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name),
-            TokenTag::LeftParen => self.parse_dynamic_import(start, None, false),
+            TokenTag::Dot => self.parse_import_meta_or_phase_import(import),
+            TokenTag::LeftParen => self.parse_dynamic_import(import.start(), None, false),
             _ => {
                 self.report(
                     self.current_token.span(),
@@ -12697,7 +12693,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_import_meta_or_phase_import(&mut self, import_name: IdentifierName) -> Option<Expr> {
+    fn parse_import_meta_or_phase_import(&mut self, import: Token) -> Option<Expr> {
         self.advance()?;
         let property = self.current_token;
         let (phase, sync) = match property.tag() {
@@ -12709,10 +12705,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if self.source_type != SourceType::Module {
                     self.diagnostics.defer(Diagnostic::error(
                         "'import.meta' is only valid in module code",
-                        Span::new(import_name.span(&self.ast).start, property.end()),
+                        Span::new(import.start(), property.end()),
                     ));
                 }
-                return self.parse_meta_property(import_name);
+                return self.parse_meta_property(import);
             }
             _ => {
                 self.report(
@@ -12720,7 +12716,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "Expected 'import.meta', 'import.source()', 'import.defer()', or 'import.sync()'",
                     ReportOptions::default(),
                 );
-                return self.parse_meta_property(import_name);
+                return self.parse_meta_property(import);
             }
         };
         self.advance()?;
@@ -12730,18 +12726,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "Expected '(' after import",
                 ReportOptions::default(),
             );
-            let name = self.identifier_name(property);
-            let property = self.ast.identifier_name(property.span(), name);
-            return Some(self.ast.expr_meta_property(
-                Span::new(
-                    import_name.span(&self.ast).start,
-                    property.span(&self.ast).end,
-                ),
-                import_name,
-                property,
-            ));
+            return Some(self.build_meta_property(import, property));
         }
-        self.parse_dynamic_import(import_name.span(&self.ast).start, phase, sync)
+        self.parse_dynamic_import(import.start(), phase, sync)
     }
 
     // ImportCall[Yield, Await] :
@@ -12793,7 +12780,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    fn parse_new_target(&mut self, meta: IdentifierName) -> Option<Expr> {
+    fn parse_new_target(&mut self, meta: Token) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Dot);
         self.advance()?;
         let property_token = self.current_token;
@@ -12807,14 +12794,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .boundary_context
             .contains(BoundaryContext::ALLOW_NEW_TARGET)
         {
-            let syntax =
-                CommonJsUse::NewTarget(Span::new(meta.span(&self.ast).start, property_token.end()));
+            let syntax = CommonJsUse::NewTarget(Span::new(meta.start(), property_token.end()));
             self.check_commonjs_syntax(syntax);
         }
         self.parse_meta_property(meta)
     }
 
-    fn parse_meta_property(&mut self, meta: IdentifierName) -> Option<Expr> {
+    fn parse_meta_property(&mut self, meta: Token) -> Option<Expr> {
         if !self.current_token.tag().is_identifier_like() {
             self.report_expected(
                 self.current_token.span(),
@@ -12823,12 +12809,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             return None;
         }
-        let property = self.parse_identifier_name()?;
-        Some(self.ast.expr_meta_property(
-            Span::new(meta.span(&self.ast).start, property.span(&self.ast).end),
-            meta,
-            property,
-        ))
+        let property = self.current_token;
+        self.advance_without_escape_check()?;
+        Some(self.build_meta_property(meta, property))
+    }
+
+    fn build_meta_property(&mut self, meta: Token, property: Token) -> Expr {
+        let span = Span::new(meta.start(), property.end());
+        let name = self.identifier_name(meta);
+        let meta = self.ast.identifier_name(meta.span(), name);
+        let name = self.identifier_name(property);
+        let property = self.ast.identifier_name(property.span(), name);
+        self.ast.expr_meta_property(span, meta, property)
     }
 
     fn parse_jsx_expression(&mut self) -> Option<Expr> {
