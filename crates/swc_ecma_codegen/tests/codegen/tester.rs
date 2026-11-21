@@ -134,44 +134,47 @@ fn expect_generated_common_with_options(
     source_type: SourceType,
     generator_options: GeneratorOptions,
 ) {
-    let allocator = Allocator::new();
     let parse_options = ParseOptions {
         source_type,
         lang,
         preserve_parens: false,
         comments: CommentMode::Flat,
     };
-    let result = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
-    assert!(
-        result.diagnostics.is_empty(),
-        "{source}: {:?}",
-        result.diagnostics
-    );
-    let result = generate(&result.ast, generator_options);
+    expect_generated_with_parse_options(source, expected, parse_options, &generator_options);
+}
 
-    assert_eq!(
-        result.code, expected,
-        "failed for {}\nactual:\n{}\nexpected:\n{}",
-        source, result.code, expected,
-    );
+#[track_caller]
+pub fn expect_generated_with_parse_options(
+    source: &str,
+    expected: &str,
+    parse_options: ParseOptions,
+    generator_options: &GeneratorOptions,
+) {
+    let allocator = Allocator::new();
+    let result = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(result.diagnostics.is_empty());
+    let result = generate(&result.ast, generator_options.clone());
+    assert_eq!(result.code, expected);
 }
 
 #[track_caller]
 pub fn generate_edited(
     source: &str,
     parse_options: ParseOptions,
-    generator_options: GeneratorOptions,
+    generator_options: &GeneratorOptions,
     edit: impl FnOnce(&mut Ast<'_>),
 ) -> String {
     let allocator = Allocator::new();
     let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
-    assert!(
-        parsed.diagnostics.is_empty(),
-        "{source}: {:?}",
-        parsed.diagnostics
-    );
+    assert!(parsed.diagnostics.is_empty());
     // SAFETY: The parsed AST and all handles used by the edit belong to this allocator.
     let mut ast = unsafe { parsed.ast.into_ast() };
     edit(&mut ast);
-    generate(&ast.into(), generator_options).code
+    generate(&ast.into(), generator_options.clone()).code
+}
+
+#[test]
+fn test_output_assertions() {
+    let result = std::panic::catch_unwind(|| expect_generated("let x = ;", ""));
+    assert!(result.is_err());
 }

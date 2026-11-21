@@ -3,7 +3,7 @@ use crate::{
     expect_generated_ts_pair,
 };
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::Lang;
+use swc_next_ecma_ast::{Lang, TsModuleBody};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
@@ -626,6 +626,8 @@ fn test_export_declarations() {
         "export { type T } from 'module';",
         "export { type T } from \"module\";\n",
     );
+
+    expect_generated_ts_pair("export = (1, 2);", "export = (1, 2);\n", "export = (1,2);");
 }
 
 #[test]
@@ -640,8 +642,43 @@ fn test_optional_and_rest_tuple_elements() {
     );
 }
 
+fn nested_module(source: &str, options: &GeneratorOptions) -> String {
+    let parse_options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        let outer = ast
+            .root_program()
+            .body(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_declaration(ast)
+            .unwrap()
+            .as_ts_module_declaration(ast)
+            .unwrap();
+        let block = outer.body(ast).unwrap().as_ts_module_block(ast).unwrap();
+        let inner = block
+            .body(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_declaration(ast)
+            .unwrap()
+            .as_ts_module_declaration(ast)
+            .unwrap();
+        outer.set_body(ast, Some(TsModuleBody::TsModuleDeclaration(inner)));
+    })
+}
+
 #[test]
-fn test_ambient_module_declarations() {
+fn test_module_declarations() {
+    let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
+        minify: true,
+        ..pretty.clone()
+    };
+
     expect_generated_ts_pair(
         "declare module '*.txt' with { type: 'text' } { const content: string; export default content; }",
         "declare module \"*.txt\" with {\n  type: \"text\";\n} {\n  const content: string;\n  export default content;\n}\n",
@@ -686,6 +723,20 @@ fn test_ambient_module_declarations() {
         "namespace N { module \"a\"; module \"b\"; }",
         "namespace N{module \"a\";module \"b\"}",
     );
+
+    let source = "namespace A { namespace B { export const x = 1; } }";
+    let output = nested_module(source, &pretty);
+    assert_eq!(output, "namespace A.B {\n  export const x = 1;\n}\n");
+
+    let output = nested_module(source, &minified);
+    assert_eq!(output, "namespace A.B{export const x=1}");
+
+    let source = "declare namespace A { namespace B {} }";
+    let output = nested_module(source, &pretty);
+    assert_eq!(output, "declare namespace A.B {}\n");
+
+    let output = nested_module(source, &minified);
+    assert_eq!(output, "declare namespace A.B{}");
 }
 
 #[test]
@@ -1005,6 +1056,12 @@ fn test_parenthesized_boundaries() {
         "(x as T) ? (/a/) : false;",
         "(x as T) ? (/a/) : false;\n",
         "(x as T)?(/a/):false;",
+    );
+
+    expect_generated_ts_pair(
+        "x = (a < b) > (c || d);",
+        "x = (a < b) > (c || d);\n",
+        "x=(a<b)>(c||d);",
     );
 }
 
@@ -1497,80 +1554,5 @@ fn test_type_query_boundaries() {
         "value as A | typeof f << other;",
         "value as A | typeof f << other;\n",
         "value as A | typeof f<<other;",
-    );
-}
-
-#[test]
-fn test_export_assignment_grouping() {
-    expect_generated_ts_pair("export = (1, 2);", "export = (1, 2);\n", "export = (1,2);");
-}
-
-fn nested_module(source: &str, options: GeneratorOptions) -> String {
-    use swc_next_ecma_ast::TsModuleBody;
-    let parse_options = ParseOptions {
-        lang: Lang::Ts,
-        preserve_parens: false,
-        ..ParseOptions::default()
-    };
-    crate::generate_edited(source, parse_options, options, |ast| {
-        let outer = ast
-            .root_program()
-            .body(ast)
-            .get_node(ast, 0)
-            .unwrap()
-            .as_declaration(ast)
-            .unwrap()
-            .as_ts_module_declaration(ast)
-            .unwrap();
-        let block = outer.body(ast).unwrap().as_ts_module_block(ast).unwrap();
-        let inner = block
-            .body(ast)
-            .get_node(ast, 0)
-            .unwrap()
-            .as_declaration(ast)
-            .unwrap()
-            .as_ts_module_declaration(ast)
-            .unwrap();
-        outer.set_body(ast, Some(TsModuleBody::TsModuleDeclaration(inner)));
-    })
-}
-
-#[test]
-fn test_nested_module_bodies() {
-    for minify in [false, true] {
-        let options = GeneratorOptions {
-            minify,
-            ..GeneratorOptions::default()
-        };
-        let source = "namespace A { namespace B { export const x = 1; } }";
-        let output = nested_module(source, options.clone());
-        assert_eq!(
-            output,
-            if minify {
-                "namespace A.B{export const x=1}"
-            } else {
-                "namespace A.B {\n  export const x = 1;\n}\n"
-            }
-        );
-
-        let source = "declare namespace A { namespace B {} }";
-        let output = nested_module(source, options);
-        assert_eq!(
-            output,
-            if minify {
-                "declare namespace A.B{}"
-            } else {
-                "declare namespace A.B {}\n"
-            }
-        );
-    }
-}
-
-#[test]
-fn test_comparison_grouping() {
-    expect_generated_ts_pair(
-        "x = (a < b) > (c || d);",
-        "x = (a < b) > (c || d);\n",
-        "x=(a<b)>(c||d);",
     );
 }

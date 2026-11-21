@@ -226,7 +226,8 @@ impl BinaryExprVisitor {
 
         match operator {
             BinaryishOperator::Binary(BinaryOperator::GreaterThan) if p.ast.is_ts() => {
-                if matches!(p.ast.expr_data(e.left(p.ast)), ExprData::BinaryExpression(left) if left.operator(p.ast) == BinaryOperator::LessThan)
+                if let ExprData::BinaryExpression(left) = p.ast.expr_data(e.left(p.ast))
+                    && left.operator(p.ast) == BinaryOperator::LessThan
                 {
                     self.left_level = Precedence::Compare.next();
                 }
@@ -617,6 +618,7 @@ impl<'a> Printer<'a> {
             self.print_bytes(text);
             return;
         }
+
         let mut start = 0;
         for index in 0..text.len().saturating_sub(7) {
             if text[index] == b'<'
@@ -636,6 +638,7 @@ impl<'a> Printer<'a> {
             self.print_bytes(text);
             return;
         }
+
         let mut start = 0;
         for index in 0..text.len().saturating_sub(7) {
             if text[index..index + 8].eq_ignore_ascii_case(b"</script") {
@@ -5297,15 +5300,9 @@ impl<'a> Printer<'a> {
             self.add_source_mapping(c.span(self.ast).start);
             self.print("</");
             if self.options.inline_script
-                && c.name(self.ast)
-                    .as_jsx_identifier(self.ast)
-                    .is_some_and(|name| {
-                        self.ast
-                            .get_utf8(name.name(self.ast))
-                            .as_bytes()
-                            .get(..6)
-                            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"script"))
-                    })
+                && let Some(name) = c.name(self.ast).as_jsx_identifier(self.ast)
+                && let Some(prefix) = self.ast.get_utf8(name.name(self.ast)).as_bytes().get(..6)
+                && prefix.eq_ignore_ascii_case(b"script")
             {
                 self.print(" ");
             }
