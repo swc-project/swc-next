@@ -69,5 +69,9 @@
     "@napi-rs/cli": "catalog:",
     "@swc-next/protocol": "workspace:*",
     "@types/node": "catalog:"
+  },
+  "dependencies": {
+    "@swc-next/walker": "workspace:*",
+    "@swc-next/types": "workspace:*"
   }
 }

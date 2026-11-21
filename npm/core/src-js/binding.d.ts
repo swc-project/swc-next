@@ -123,6 +123,12 @@ export interface TransformApiOptions {
   generator?: GeneratorConfig
 }
 /**
+ * # Safety
+ * Sections must come from the matching AST encoder and remain immutable.
+ */
+export declare function checkPluginAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, config: Uint8Array): Uint8Array
+
+/**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
  *
  * # Safety
@@ -136,6 +142,12 @@ export declare function generateSync(header: Uint8Array, spans: Uint8Array, kind
 export declare function langFromPath(path: string): Lang
 
 /**
+ * # Safety
+ * Source must be valid UTF-8 and have the specified UTF-16 length.
+ */
+export declare function parseForPluginsSync(source: Uint8Array, sourceUtf16Len: number, config: Uint8Array): Uint8Array
+
+/**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
  *
  * # Safety
@@ -144,6 +156,12 @@ export declare function langFromPath(path: string): Lang
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
 export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options: number): Uint8Array
+
+/**
+ * # Safety
+ * Sections must come from the matching AST encoder and remain immutable.
+ */
+export declare function printPluginAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, config: Uint8Array): string
 
 export declare function sourceTypeFromPath(path: string): SourceType
 

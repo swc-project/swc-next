@@ -576,3 +576,5 @@ if (!nativeBinding) {
 
 const { transformSync } = nativeBinding
 export { transformSync }
+
+export const { parseForPluginsSync, checkPluginAstSync, printPluginAstSync } = nativeBinding

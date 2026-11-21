@@ -90,6 +90,24 @@ const walker = createWalker({
 for (const program of programs) walker.walk(program);
 ```
 
+Use `merge` to combine visitors before traversing:
+
+```js
+import { merge, createWalker } from "@swc-next/walker";
+
+const visitor = merge([renameIdentifiers, collectIdentifiers]);
+const walker = createWalker(visitor);
+walker.walk(program);
+```
+
+`merge` returns a frozen snapshot that also works with `walk(program, visitor)`.
+At each node, enter and leave callbacks run in visitor array order. Each visitor
+keeps its global, alias, and concrete hook order. Later visitors see earlier
+edits to the current node; they do not wait for earlier visitors to finish the
+whole tree. `skip`, `remove`, `replace`, and `stop` share traversal controls and
+suppress remaining callbacks according to the rules below. Replacement nodes
+are not re-entered; their children and leave hooks run as in a single visitor.
+
 `createWalker(hooks)` validates and snapshots the hook functions once. Later
 changes to the hooks object do not affect it. Each `walker.walk(root, state)`
 creates a fresh context, supports nested calls, and clears traversal positions

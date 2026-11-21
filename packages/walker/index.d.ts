@@ -55,10 +55,14 @@ export type WalkHandler<Node extends AstNode = AstNode, State = unknown> = (
   node: Node,
   context: WalkContext<State>,
 ) => void;
+/** Ordered callbacks for one phase, sharing the same traversal context. */
+export type WalkHandlers<Node extends AstNode = AstNode, State = unknown> =
+  | WalkHandler<Node, State>
+  | readonly WalkHandler<Node, State>[];
 /** A function runs on enter; an object can register enter and/or leave callbacks. */
 export type WalkHook<Node extends AstNode = AstNode, State = unknown> =
   | WalkHandler<Node, State>
-  | { enter?: WalkHandler<Node, State>; leave?: WalkHandler<Node, State> };
+  | { enter?: WalkHandlers<Node, State>; leave?: WalkHandlers<Node, State> };
 type NodeOfType<
   Node extends AstNode,
   Type extends NodeType,
@@ -74,8 +78,8 @@ type NodeOfType<
 export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
   [Type in Node["type"]]?: WalkHook<NodeOfType<Node, Type>, State>;
 } & {
-  enter?: WalkHandler<Node, State>;
-  leave?: WalkHandler<Node, State>;
+  enter?: WalkHandlers<Node, State>;
+  leave?: WalkHandlers<Node, State>;
   Function?: WalkHook<
     NodeOfType<
       Node,
@@ -137,6 +141,7 @@ export interface CompiledWalker<State = unknown> {
 /**
  * Validate and snapshot hooks once for repeated synchronous tree traversal.
  * Later hook changes do not affect the snapshot; callback closures remain shared.
+ * Use {@link merge} to combine multiple visitors before creating a walker.
  *
  * @param hooks - Callbacks with the same rules as {@link walk}.
  * @returns A frozen walker with a `walk(root, state?)` method.
@@ -160,3 +165,15 @@ export declare function createWalker<
   State = unknown,
   Node extends AstNode = AstNode,
 >(hooks: WalkHooks<State, Node>): CompiledWalker<State>;
+
+/**
+ * Merge visitors into a frozen snapshot of concrete enter/leave callback lists.
+ * Pass the result to {@link walk} or {@link createWalker} for one traversal.
+ * At each node, callbacks run in visitor array order, preserving each visitor's
+ * global/alias/concrete hook order. Traversal controls are shared as documented
+ * on WalkContext. Later changes to the input visitors do not affect the result.
+ */
+export declare function merge<
+  State = unknown,
+  Node extends AstNode = AstNode,
+>(visitors: readonly WalkHooks<State, Node>[]): WalkHooks<State, Node>;
