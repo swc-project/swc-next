@@ -470,6 +470,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok((envelope, whole))
     }
 
+    pub(in crate::formatter) fn prepare_delimited_pattern_target(
+        &self,
+        target: SimpleTarget,
+        prefix: Span,
+        suffix: Span,
+        owner: Span,
+    ) -> Result<PreparedTarget, FormatError> {
+        let mut trailing = self.target_gap(suffix);
+        let envelope = self.prepare_target_envelope(
+            TargetNode::Simple(target),
+            TargetUse::PatternElement,
+            prefix,
+            &mut trailing,
+            None,
+            Some(owner),
+        )?;
+        if !trailing.finished() {
+            return Err(self.unsupported_target_boundary(Span::new(prefix.start, suffix.end)));
+        }
+        Ok(envelope)
+    }
+
     fn target_gap(&self, span: Span) -> TargetGap<'_> {
         TargetGap {
             source: self.ast.source(),

@@ -185,6 +185,20 @@ impl ObjectBindingShape {
     }
 }
 
+enum PreparedBindingValue {
+    Pattern { node: BindingPattern, start: u32 },
+    Target(PreparedTarget),
+}
+
+impl PreparedBindingValue {
+    fn start(&self) -> u32 {
+        match self {
+            Self::Pattern { start, .. } => *start,
+            Self::Target(target) => target.span.start,
+        }
+    }
+}
+
 struct BindingSlot {
     holes: usize,
     binding: Option<BindingPattern>,
@@ -560,18 +574,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let _scope = self.recursion_scope(rest)?;
                 writer.text("...");
                 let argument = rest.argument(self.ast);
-                let leading = self.comments.between(Span::new(
-                    rest.span(self.ast).start + 3,
-                    argument.span(self.ast).start,
-                ))?;
+                let owner = rest.span(self.ast);
+                let start = owner.start + 3;
+                let value =
+                    self.prepare_binding_value(argument, argument.span(self.ast), start, owner)?;
+                let end = value.start();
+                let leading = self.comments.between(Span::new(start, end))?;
                 let mode = self.content_mode(leading);
                 self.comments.claim(leading)?;
-                self.format_comment_run(
-                    leading,
-                    CommentRunLayout::FlatLeading(argument.span(self.ast).start),
-                    writer,
-                )?;
-                self.format_declaration_binding(argument, mode, writer)
+                self.format_comment_run(leading, CommentRunLayout::FlatLeading(end), writer)?;
+                self.format_binding_value(value, mode, writer)
             }
             BindingPatternData::SimpleAssignmentTarget(target) => self
                 .format_simple_assignment_target(
@@ -579,6 +591,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionContext::at(ExpressionPosition::Nested),
                     writer,
                 ),
+        }
+    }
+
+    fn prepare_binding_value(
+        &self,
+        node: BindingPattern,
+        span: Span,
+        start: u32,
+        owner: Span,
+    ) -> Result<PreparedBindingValue, FormatError> {
+        // The property or rest span still covers pairs stripped by cover
+        // grammar conversion. The simple target span only covers the child.
+        if span.end < owner.end
+            && let BindingPatternData::SimpleAssignmentTarget(target) =
+                self.ast.binding_pattern_data(node)
+        {
+            return self
+                .prepare_delimited_pattern_target(
+                    SimpleTarget::new(self.ast, target),
+                    Span::new(start, span.start),
+                    Span::new(span.end, owner.end),
+                    owner,
+                )
+                .map(PreparedBindingValue::Target);
+        }
+        Ok(PreparedBindingValue::Pattern {
+            node,
+            start: span.start,
+        })
+    }
+
+    fn format_binding_value(
+        &mut self,
+        value: PreparedBindingValue,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        match value {
+            PreparedBindingValue::Pattern { node, .. } => {
+                self.format_declaration_binding(node, mode, writer)
+            }
+            PreparedBindingValue::Target(target) => self.format_prepared_target(
+                &target,
+                ExpressionContext::at(ExpressionPosition::Nested).with_content_mode(mode),
+                writer,
+            ),
         }
     }
 
@@ -1409,6 +1467,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_declaration_binding(value, ContentMode::Formatted, writer);
         }
         let key = property.key(ast);
+        let property_span = property.span(ast);
         let value_span = value.span(ast);
         let key_end = if property.computed(ast) {
             let gap = Span::new(key.span(ast).end, value_span.start);
@@ -1425,28 +1484,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let (before, after) =
             comments.split_at(comments.partition_point(|comment| comment.span.end <= colon));
+        let value = self.prepare_binding_value(value, value_span, colon + 1, property_span)?;
+        let value_start = value.start();
+        let after = if value_start < value_span.start {
+            &after[..after.partition_point(|comment| comment.span.end <= value_start)]
+        } else {
+            after
+        };
         let key_trailing = if self.has_suppression && property.computed(ast) {
             self.comments.in_range(Span::new(key.span(ast).end, colon))
         } else {
             before
         };
         let key_leading = (self.has_suppression && property.computed(ast))
-            .then(|| Span::new(property.span(ast).start + 1, key.span(ast).start));
+            .then(|| Span::new(property_span.start + 1, key.span(ast).start));
         let suppression = self.property_suppression(
             key_leading,
             key_trailing,
             after,
             Span::new(colon, colon + 1),
-            value_span.start,
+            value_start,
         );
         if suppression.enclosing == ContentMode::Verbatim {
-            self.format_verbatim(property.span(ast), writer)?;
+            self.format_verbatim(property_span, writer)?;
             return Ok(None);
         }
         let mode = suppression.value;
         let next = after
             .first()
-            .map_or(value_span.start, |comment| comment.span.start);
+            .map_or(value_start, |comment| comment.span.start);
         let value_prefix = if mode == ContentMode::Verbatim {
             self.source_line_constraint(colon + 1, next)
         } else {
@@ -1454,7 +1520,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let computed = property
             .computed(ast)
-            .then_some(Span::new(property.span(ast).start, key_end));
+            .then_some(Span::new(property_span.start, key_end));
         writer.group(false, |writer| {
             let clean_width = writer.write_with_clean_text_width(|writer| {
                 self.format_property_key(key, computed, suppression.key, quoting, writer)?;
@@ -1498,10 +1564,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comments.claim(after)?;
                     self.format_comment_run(
                         after,
-                        CommentRunLayout::FlatLeading(value_span.start),
+                        CommentRunLayout::FlatLeading(value_start),
                         writer,
                     )?;
-                    self.format_declaration_binding(value, mode, writer)
+                    self.format_binding_value(value, mode, writer)
                 },
             )
         })

@@ -1022,6 +1022,16 @@
         "prettierNative": "function f({\n  c = 1 /* d */, // c\n}) {}\n"
       }
     ],
+    "js/bindings/parenthesized-targets/property-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "({\n  k: a, // tail\n} = b);\n",
+        "prettierNative": "({\n  // tail\n  k: a,\n} = b);\n"
+      }
+    ],
     "js/call-arguments/terminal-block-diagnostic-blank.js": [
       {
         "options": {
