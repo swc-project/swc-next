@@ -1157,23 +1157,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 let type_node = self.normalize_type_head(type_node)?;
-                let relocate = key.mode == ContentMode::Formatted
+                let can_relocate = key.mode == ContentMode::Formatted
                     && type_node.source_owner.is_none()
                     && after.last().is_some_and(|comment| {
                         comment.kind == CommentKind::Line
                             && self.line_breaks(colon + 1, comment.span.start) == 0
                     })
                     && self.comments.in_range(type_node.node.span(ast)).is_empty()
-                    && !matches!(
-                        type_node.data,
-                        swc_next_ecma_ast::TsTypeData::TsUnionType(_)
-                            | swc_next_ecma_ast::TsTypeData::TsIntersectionType(_)
-                            | swc_next_ecma_ast::TsTypeData::TsParenthesizedType(_)
-                    )
                     && self
                         .comment_binding(after, Span::new(colon + 1, gap.end), None)
                         .allows_relocation(None);
-                let after = if relocate {
+                let type_node = if can_relocate {
+                    self.normalize_property_type_head(type_node)?
+                } else {
+                    type_node
+                };
+                let after = if can_relocate
+                    && !matches!(
+                        type_node.data,
+                        TsTypeData::TsUnionType(_)
+                            | TsTypeData::TsIntersectionType(_)
+                            | TsTypeData::TsParenthesizedType(_)
+                    ) {
                     riding = Some(ExpressionTail {
                         source_end: colon + 1,
                         comments: after,
@@ -1239,6 +1244,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ending,
             riding,
         })
+    }
+
+    fn normalize_property_type_head(
+        &self,
+        mut node: PreparedType,
+    ) -> Result<PreparedType, FormatError> {
+        while let TsTypeData::TsParenthesizedType(parentheses) = node.data {
+            let pair = self.prepare_type_parentheses(
+                parentheses,
+                node.source_owner,
+                node.source_head,
+                TypeContext::Root,
+            );
+            if pair.retained {
+                break;
+            }
+            node = self.normalize_type_head(pair.child)?;
+        }
+        Ok(node)
     }
 
     fn prepare_signature_member(
