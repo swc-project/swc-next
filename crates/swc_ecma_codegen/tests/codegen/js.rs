@@ -1604,3 +1604,32 @@ fn test_jsx_name_boundaries() {
 
     crate::expect_generated_pair("<a- b />;", options, "<a- b />;\n", "<a- b/>;");
 }
+
+#[track_caller]
+fn expect_jsx_source_map(source: &str, minify: bool) {
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        lang: swc_next_ecma_ast::Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let options = GeneratorOptions {
+        minify,
+        source_map_path: Some("input.jsx".into()),
+        ..GeneratorOptions::default()
+    };
+    let output = generate(&parsed.ast, options);
+    let map = output.map.unwrap();
+    assert!(!map.mappings().is_empty());
+}
+
+#[test]
+fn test_jsx_unicode_source_maps() {
+    expect_jsx_source_map("<C /\u{2028}>;", false);
+
+    expect_jsx_source_map("<></\u{2029}>;", false);
+
+    expect_jsx_source_map("<C\u{2028}></C>;", true);
+}
