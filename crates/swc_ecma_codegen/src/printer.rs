@@ -1191,7 +1191,7 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export = ");
-                self.print_expr(s.expression(self.ast), Precedence::Lowest);
+                self.print_expr(s.expression(self.ast), Precedence::Assignment);
                 self.print_semicolon_after_statement();
             }
             StmtData::TsNamespaceExportDeclaration(s) => {

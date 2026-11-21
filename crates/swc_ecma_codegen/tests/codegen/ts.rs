@@ -1499,3 +1499,8 @@ fn test_type_query_boundaries() {
         "value as A | typeof f<<other;",
     );
 }
+
+#[test]
+fn test_export_assignment_grouping() {
+    expect_generated_ts_pair("export = (1, 2);", "export = (1, 2);\n", "export = (1,2);");
+}
