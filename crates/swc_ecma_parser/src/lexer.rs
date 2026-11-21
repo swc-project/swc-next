@@ -264,7 +264,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads a fast-path token at `start`. `LINE_BREAK` is a constant so each
     /// copy builds its token flags without keeping them in a register.
-    #[inline(always)]
+    #[inline]
     fn try_next_token_at<const LINE_BREAK: bool>(
         &mut self,
         target: &mut Token,
@@ -457,7 +457,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Records the comments from `pos`, where a comment starts, and skips them with the spaces,
     /// tabs, and line feeds between them. Returns the position and value of the next byte and
     /// whether a line break precedes it, or `None` when the trivia scanner must read the rest.
-    #[inline(always)]
+    #[inline]
     fn skip_comments(
         &mut self,
         mut pos: usize,
@@ -579,7 +579,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// in the first batch costs one load and one branch, whatever its width. A loop that
     /// advances by less than a batch leaves on an iteration that depends on the indentation
     /// width, which changes from line to line.
-    #[inline(always)]
+    #[inline]
     fn skip_line_feed_indentation(&self, line_feed: u32) -> Option<(u32, u8)> {
         /// Bytes one [`u8x16`] batch covers.
         const BATCH_SIZE: usize = 16;
@@ -618,7 +618,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scans a decimal integer without a fraction, exponent, separator,
     /// suffix, or legacy octal digits. Other numbers use [`Self::scan_number`].
     /// `byte` is the digit at `start`.
-    #[inline(always)]
+    #[inline]
     fn scan_decimal_integer(
         &mut self,
         start: u32,
@@ -721,8 +721,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
-    // Make sure `mode` is always inlined to eliminate the branch.
-    #[inline(always)]
+    // Expose constant `mode` values so token collection can specialize the update.
+    #[inline]
     pub(crate) fn handle_token(&mut self, token: Token, mode: HandleTokenMode) {
         if self.config.tokens() {
             match mode {
@@ -743,7 +743,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Records a token read by a fast path. Fast paths never skip comments,
     /// and the scanner that does attaches its comments to the token it reads.
-    #[inline(always)]
+    #[inline]
     fn handle_fast_token(&mut self, token: Token) {
         debug_assert_eq!(self.processed_comments, self.comments.len());
         if self.config.tokens() {
@@ -1988,7 +1988,7 @@ const FAST_CLASS: [FastClass; 256] = {
 
 /// Returns the position of the line terminator that ends a line comment whose body starts at
 /// `pos`, or the source length.
-#[inline(always)]
+#[inline]
 fn line_comment_end(src: &[u8], mut pos: usize) -> usize {
     while pos < src.len() {
         let rest = &src[pos..];
@@ -2007,7 +2007,7 @@ fn line_comment_end(src: &[u8], mut pos: usize) -> usize {
 /// Returns the position after the `*/` that ends a block comment whose body starts at `pos`, or
 /// `None` when the comment is unterminated. Sets `line_break` when the comment contains a line
 /// terminator.
-#[inline(always)]
+#[inline]
 fn block_comment_end(src: &[u8], mut pos: usize, line_break: &mut bool) -> Option<usize> {
     while pos < src.len() {
         // Preserve line-terminator bookkeeping while searching for */.
@@ -2054,7 +2054,7 @@ fn block_comment_end(src: &[u8], mut pos: usize, line_break: &mut bool) -> Optio
 }
 
 /// Returns the token flags of a fast-path token, which may only follow a line break.
-#[inline(always)]
+#[inline]
 fn fast_token_flags(line_break: bool) -> u8 {
     if line_break {
         flag_mask(TokenFlag::LineTerminatorBefore)
@@ -2327,7 +2327,7 @@ struct KeywordSlot {
 
 static KEYWORD_TABLE: [KeywordSlot; 256] = build_keyword_table();
 
-#[inline(always)]
+#[inline]
 const fn keyword_hash(lo: u64, hi: u32) -> usize {
     (lo.wrapping_add(hi as u64)
         .wrapping_mul(KEYWORD_HASH_MULTIPLIER)
@@ -2365,7 +2365,7 @@ const fn build_keyword_table() -> [KeywordSlot; 256] {
 // INLINE: This is a very hot path. Reuse identifier bytes
 // already loaded by the caller and avoid preserving
 // token state across a separate keyword-lookup call.
-#[inline(always)]
+#[inline]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
     let len = lexeme.len();
     // Pack the lexeme into zero-padded little-endian words. Two overlapping
@@ -2395,7 +2395,7 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
 
 /// Looks up a lexeme packed as in [`KeywordSlot`]: `lo` holds bytes 0..8 and `hi` holds bytes
 /// 8..12, both zero-padded.
-#[inline(always)]
+#[inline]
 fn keyword_type_of_words(lo: u64, hi: u32) -> TokenTag {
     let slot = &KEYWORD_TABLE[keyword_hash(lo, hi)];
     if slot.lo == lo && slot.hi == hi {

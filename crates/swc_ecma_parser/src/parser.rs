@@ -496,6 +496,8 @@ impl ScratchBuffer {
         self.items.len()
     }
 
+    // Keep the scratch-buffer capacity check with the surrounding list loop.
+    #[inline(always)]
     fn append(&mut self, index: impl AstNode) {
         if self.items.len() == self.items.capacity() {
             self.items.reserve(16);
@@ -1865,7 +1867,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// Returns the resolved name for an identifier-like token.
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
-    #[inline]
+    #[inline(always)]
     fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag() != TokenTag::PrivateIdentifier && !token.is_escaped() {
             // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
@@ -3094,6 +3096,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // Keep identifier validation and binding construction in the caller.
+    #[inline(always)]
     fn parse_binding_pattern(&mut self) -> Option<BindingPattern> {
         self.parse_formal_parameter_pattern().map(Into::into)
     }
@@ -5752,6 +5756,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// or advances past `const` and returns `Some(None)` for a variable declaration.
     ///
     /// The token after `const` is lexed once instead of peeked and lexed again.
+    // Keep token advancement with the surrounding declaration dispatch.
+    #[inline(always)]
     fn parse_const_enum_or_advance(&mut self, start: u32) -> Option<Option<Stmt>> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Const);
         if self.try_advance_fast() {
@@ -8694,6 +8700,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // Expose the token dispatch to callers that already checked for an opening angle.
+    #[inline(always)]
     fn consume_angle_open(&mut self) -> Option<u32> {
         let start = self.current_token.start();
         match self.current_token.tag() {
@@ -11477,12 +11485,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_array_expression(&mut self) -> Option<Expr> {
         let cover = self.parse_array_cover()?;
-        self.array_cover_to_expression(cover)
+        Some(
+            self.ast
+                .expr_array_expression(Span::new(cover.start, cover.end), cover.elements),
+        )
     }
 
     fn parse_object_expression(&mut self) -> Option<Expr> {
         let cover = self.parse_object_cover()?;
-        self.object_cover_to_expression(cover)
+        Some(
+            self.ast
+                .expr_object_expression(Span::new(cover.start, cover.end), cover.properties),
+        )
     }
 
     // ArrayLiteral[Yield, Await] :
@@ -11685,20 +11699,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = grammar_context;
         self.cover.scratch.reset(checkpoint);
         result
-    }
-
-    fn array_cover_to_expression(&mut self, cover: ArrayCover) -> Option<Expr> {
-        Some(
-            self.ast
-                .expr_array_expression(Span::new(cover.start, cover.end), cover.elements),
-        )
-    }
-
-    fn object_cover_to_expression(&mut self, cover: ObjectCover) -> Option<Expr> {
-        Some(
-            self.ast
-                .expr_object_expression(Span::new(cover.start, cover.end), cover.properties),
-        )
     }
 
     // PropertyDefinition[Yield, Await] :
@@ -13264,6 +13264,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.current_token.end())
     }
 
+    // Keep name scanning with opening and closing element construction.
+    #[inline(always)]
     fn parse_jsx_element_name(&mut self) -> Option<JsxElementName> {
         let token = self.current_token;
         if token.tag() != TokenTag::JsxIdentifier {
@@ -14563,7 +14565,8 @@ fn is_import_expression_or_member_access_on_import_expression(
     }
 }
 
-#[inline]
+// Keep this small match with its callers to avoid an out-of-line precedence query.
+#[inline(always)]
 fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
     match ast.node_kind(expression.node_id()) {
         // Their right-hand sides already consumed every tighter continuation.
@@ -14621,7 +14624,7 @@ fn is_angle_open(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LessThan | TokenTag::LeftShift)
 }
 
-#[inline]
+#[inline(always)]
 fn is_angle_close(tag: TokenTag) -> bool {
     matches!(
         tag,

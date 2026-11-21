@@ -5,7 +5,7 @@
 use super::{TokenTag, get_keyword_type};
 
 /// Whether `byte` continues a non-JSX ASCII identifier.
-#[inline(always)]
+#[inline]
 const fn is_ascii_identifier_continue(byte: u8) -> bool {
     matches!(byte, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' | b'_' | b'$')
 }
@@ -13,14 +13,14 @@ const fn is_ascii_identifier_continue(byte: u8) -> bool {
 /// Bytes that go to the full scanner instead of ending the identifier: `\\` starts an escape
 /// and non-ASCII bytes need the identifier tables. `byte ^ b'\\'` covers both in one signed
 /// comparison.
-#[inline(always)]
+#[inline]
 fn needs_full_identifier_scan(byte: u8) -> bool {
     (byte ^ b'\\') as i8 <= 0
 }
 
 /// Whether `byte` can still belong to an identifier, as an ASCII identifier part or through
 /// the full identifier scanner.
-#[inline(always)]
+#[inline]
 pub(super) fn is_identifier_byte(byte: u8) -> bool {
     is_ascii_identifier_continue(byte) || needs_full_identifier_scan(byte)
 }
@@ -28,7 +28,7 @@ pub(super) fn is_identifier_byte(byte: u8) -> bool {
 /// Ends an ASCII identifier part at `position`, where `byte` is not an identifier part. Returns
 /// `None` for `\\` and non-ASCII bytes, which need the full scanner. Testing the byte instead of
 /// the class keeps the scan loop from holding the class of each byte.
-#[inline(always)]
+#[inline]
 fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
     (!needs_full_identifier_scan(byte)).then_some(position as u32)
 }
@@ -46,7 +46,7 @@ mod imp {
 
     /// Whether `byte` continues an identifier, the complement of the set that
     /// [`identifier_stop_bits`] computes a batch at a time.
-    #[inline(always)]
+    #[inline]
     fn continues<const JSX: bool>(byte: u8) -> bool {
         is_ascii_identifier_continue(byte) || (JSX && byte == b'-')
     }
@@ -63,9 +63,9 @@ mod imp {
     /// Where the next token starts follows the lane that stops this identifier, so what a scan costs
     /// is this chain's depth rather than its instruction count: the tests are independent, so they
     /// are joined by depth, the letters test last because it is the deepest.
-    #[inline(always)]
+    #[inline]
     fn identifier_stop_bits<const JSX: bool>(bytes: u8x16) -> u16 {
-        #[inline(always)]
+        #[inline]
         fn lanes_outside(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
             (bytes - u8x16::splat(lo)).simd_gt(u8x16::splat(hi - lo))
         }
