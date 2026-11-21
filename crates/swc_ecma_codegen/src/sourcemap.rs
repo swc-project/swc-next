@@ -164,6 +164,9 @@ pub(crate) fn generate_line_offset_tables(contents: &[u8]) -> Vec<LineOffsetTabl
                     continue;
                 }
 
+                if let Some(columns) = &mut columns_for_non_ascii {
+                    columns.extend(std::iter::repeat_n(column, width - 1));
+                }
                 line_offset_tables.push(LineOffsetTable {
                     byte_offset_to_start_of_line: line_byte_offset as i32,
                     byte_offset_to_first_non_ascii,

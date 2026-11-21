@@ -1,14 +1,19 @@
-use swc_next_allocator::Allocator;
+use swc_next_allocator::{
+    Allocator,
+    wtf8::{Wtf8, Wtf8Buf},
+};
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
-    PropertyKind, SourceType, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
+    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, IdentifierReference, Lang,
+    ObjectPropertyKind, PropertyKey, PropertyKind, SetSpan, SourceType, Stmt, StmtData,
+    StringLiteral, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
 use crate::{
     expect_generated, expect_generated_jsx, expect_generated_jsx_minify, expect_generated_minify,
-    expect_generated_script, expect_generated_with_options, expect_stable,
+    expect_generated_script, expect_generated_with_options, expect_generated_with_parse_options,
+    expect_stable,
 };
 
 fn pure_calls(source: &str, options: &GeneratorOptions) -> String {
@@ -259,6 +264,12 @@ fn test_minify_numeric_member() {
 
 #[test]
 fn test_expression_token_boundaries() {
+    let ascii = GeneratorOptions {
+        minify: true,
+        ascii_only: true,
+        ..GeneratorOptions::default()
+    };
+
     expect_token_boundary("await true", "await true;");
 
     expect_token_boundary("await false", "await false;");
@@ -307,6 +318,14 @@ fn test_expression_token_boundaries() {
     expect_token_boundary(
         "class C extends B { async f() { await super.x; } }",
         "class C extends B{async f(){await super.x}}",
+    );
+
+    expect_generated_with_options("x = 𠮷 in y;", "x=\\u{20BB7} in y;", ascii.clone());
+
+    expect_generated_with_options(
+        "import * as 𠮷 from 'a';",
+        "import*as \\u{20BB7} from\"a\";",
+        ascii,
     );
 }
 
@@ -867,20 +886,69 @@ fn identifier_names() {
 
 #[test]
 fn test_directive_string_value() {
+    let script = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let ascii = GeneratorOptions {
+        ascii_only: true,
+        ..GeneratorOptions::default()
+    };
+    let minified = GeneratorOptions {
+        minify: true,
+        ..ascii.clone()
+    };
+
     expect_generated_script(r#""\u0061""#, "\"\\u0061\";\n");
+
     // The following statement verifies that the escaped directive stays non-strict.
     expect_generated_script(
         r#"'use\x20strict'; with (x) foo = bar;"#,
         "'use\\x20strict';\nwith (x) foo = bar;\n",
     );
+
     expect_generated_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
-    expect_generated_minify(r#"'use\x20asm';"#, "\"use asm\";");
+
+    expect_generated_minify(r#"'use\x20asm';"#, "'use\\x20asm';");
+
     expect_generated_script(r#""</script";"#, "\"</script\";\n");
+
     expect_generated(
         r#"function f() { "\0" }"#,
         "function f() {\n  \"\\0\";\n}\n",
     );
+
     expect_generated_minify(r#"'use\x20strict';"#, "'use\\x20strict';");
+
+    expect_generated_script("'use\\x20client';", "'use\\x20client';\n");
+
+    expect_generated_minify("'use\\x20client';", "'use\\x20client';");
+
+    expect_generated(
+        "function f() { 'use\\x20asm'; }",
+        "function f() {\n  'use\\x20asm';\n}\n",
+    );
+
+    expect_generated_minify(
+        "function f() { 'use\\x20asm'; }",
+        "function f(){'use\\x20asm'}",
+    );
+
+    let source = "\"use\\\u{2028} strict\";";
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";", script, &minified);
+
+    let source = "\"use\\\u{2029} strict\";";
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use\\x20strict\";", script, &minified);
+
+    let source = "\"use strict\";";
+    expect_generated_with_parse_options(source, "\"use strict\";\n", script, &ascii);
+
+    expect_generated_with_parse_options(source, "\"use strict\";", script, &minified);
 }
 
 #[test]
@@ -906,8 +974,63 @@ fn test_computed_key_comments() {
     );
 }
 
+fn first_expression(ast: &Ast<'_>) -> swc_next_ecma_ast::Expr {
+    let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+    statement
+        .as_expression_statement(ast)
+        .unwrap()
+        .expression(ast)
+}
+
+fn jsx_attribute_literal(ast: &Ast<'_>) -> StringLiteral {
+    assert_eq!(ast.root_program().body(ast).len(), 1);
+    let element = first_expression(ast).as_jsx_element(ast).unwrap();
+    let attributes = element.opening_element(ast).attributes(ast);
+    assert_eq!(attributes.len(), 1);
+    let attribute = attributes
+        .get_node(ast, 0)
+        .unwrap()
+        .as_jsx_attribute(ast)
+        .unwrap();
+    let value = attribute.value(ast).unwrap();
+    if let Some(literal) = value.as_string_literal(ast) {
+        literal
+    } else {
+        value
+            .as_jsx_expression_container(ast)
+            .unwrap()
+            .expression(ast)
+            .as_expr(ast)
+            .unwrap()
+            .as_string_literal(ast)
+            .unwrap()
+    }
+}
+
+fn roundtrip_jsx_attribute(value: &Wtf8, options: &GeneratorOptions) -> Wtf8Buf {
+    let parse_options = ParseOptions {
+        lang: Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let output = crate::generate_edited("<C title=\"old\" />;", parse_options, options, |ast| {
+        let literal = jsx_attribute_literal(ast);
+        let replacement = ast.add_wtf8(value);
+        literal.set_value(ast, replacement);
+        literal.set_raw(ast, swc_next_ecma_ast::AstUtf8::EMPTY);
+    });
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(&allocator, &output, parse_options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    // SAFETY: All inspected handles belong to this parsed AST.
+    let ast = unsafe { parsed.ast.ast() };
+    let literal = jsx_attribute_literal(ast);
+    ast.get_wtf8(literal.value(ast)).to_owned()
+}
+
 #[test]
-fn test_jsx_spread_attributes() {
+fn test_jsx_attributes() {
     expect_generated_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
 
     expect_generated_jsx_minify("<C {...(a, b)} />;", "<C{...(a,b)}/>;");
@@ -915,6 +1038,47 @@ fn test_jsx_spread_attributes() {
     expect_generated_jsx("<C {...(a = b)} />;", "<C {...a = b} />;\n");
 
     expect_generated_jsx_minify("<C {...a} />;", "<C{...a}/>;");
+
+    expect_generated_jsx("<a b- c />;", "<a b- c />;\n");
+
+    expect_generated_jsx_minify("<a b- c />;", "<a b- c/>;");
+
+    expect_generated_jsx("<a- b />;", "<a- b />;\n");
+
+    expect_generated_jsx_minify("<a- b />;", "<a- b/>;");
+
+    for minify in [false, true] {
+        for ascii_only in [false, true] {
+            let options = GeneratorOptions {
+                minify,
+                ascii_only,
+                ..GeneratorOptions::default()
+            };
+            let input = Wtf8::from_str("\"'");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("\" ' onClick={pwn()} x='");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("&quot;");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("a\nb\tc\rd");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8Buf::from_ill_formed_utf16(&[0xD800]);
+            let output = roundtrip_jsx_attribute(&input, &options);
+            assert_eq!(output, input);
+
+            let input = Wtf8::from_str("new");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+        }
+    }
 }
 
 #[test]
@@ -1302,8 +1466,43 @@ fn test_do_while_statement_bodies() {
     expect_statement_body("do continue; while(false);", "do continue;while(false)");
 }
 
+#[track_caller]
+fn unwrapped_blocks(source: &str, options: &GeneratorOptions) -> String {
+    struct UnwrapBlocks<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl<'ast> VisitMut<'ast> for UnwrapBlocks<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_stmt(&mut self, node: Stmt) -> Option<Stmt> {
+            node.visit_mut_children_with(self);
+            if let Some(block) = node.as_block_statement(self.0) {
+                let body = block.body(self.0);
+                assert_eq!(body.len(), 1);
+                return body.get_node(self.0, 0);
+            }
+            Some(node)
+        }
+    }
+
+    let parse_options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        ast.root_program().visit_mut_with(&mut UnwrapBlocks(ast));
+    })
+}
+
 #[test]
 fn test_else_statement_bodies() {
+    let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
+        minify: true,
+        ..pretty.clone()
+    };
+
     expect_statement_body("if(a) x(); else debugger;", "if(a)x();else debugger;");
 
     expect_statement_body(
@@ -1337,6 +1536,14 @@ fn test_else_statement_bodies() {
         "if(a) x(); else try{} finally{}",
         "if(a)x();else try{}finally{}",
     );
+
+    let source = "if (a) { if (b) x(); } else y();";
+    let output = unwrapped_blocks(source, &pretty);
+    assert_eq!(output, "if (a) {\n  if (b) x();\n} else y();\n");
+
+    let source = "if (a) { while (b) { if (c) x(); } } else y();";
+    let output = unwrapped_blocks(source, &minified);
+    assert_eq!(output, "if(a){while(b)if(c)x()}else y();");
 }
 
 #[test]
@@ -1438,7 +1645,7 @@ fn test_for_initializer_comments() {
 }
 
 #[test]
-fn test_for_initializer_nested_in_context() {
+fn test_for_initializers() {
     expect_stable(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
         "for (obj = { get [\"x\" in empty]() {\n}, value: \"x\" in empty }; ; ) ;\n",
@@ -1462,6 +1669,18 @@ fn test_for_initializer_nested_in_context() {
     expect_generated_minify(
         "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
         "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
+    );
+
+    let script = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::expect_generated_pair(
+        "for (var i = (a in b) in c);",
+        script,
+        "for (var i = (a in b) in c) ;\n",
+        "for(var i=(a in b)in c);",
     );
 }
 
@@ -1517,6 +1736,25 @@ fn test_function_source_comments_are_stable() {
     );
 }
 
+fn inline_script_jsx_text(options: &GeneratorOptions) -> String {
+    let parse_options = ParseOptions {
+        lang: Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited("<>old</>;", parse_options, options, |ast| {
+        let fragment = first_expression(ast).as_jsx_fragment(ast).unwrap();
+        let text = fragment
+            .children(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_jsx_text(ast)
+            .unwrap();
+        let value = ast.add_utf8("</script");
+        text.set_value(ast, value);
+    })
+}
+
 #[test]
 fn test_inline_script() {
     let inline = GeneratorOptions {
@@ -1531,42 +1769,138 @@ fn test_inline_script() {
         minify: true,
         ..GeneratorOptions::default()
     };
+    let inline_minified = GeneratorOptions {
+        minify: true,
+        ..inline.clone()
+    };
+    let inline_ascii = GeneratorOptions {
+        inline_script: true,
+        ..ascii.clone()
+    };
+    let jsx = ParseOptions {
+        lang: Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let typescript = ParseOptions {
+        lang: Lang::Ts,
+        ..jsx
+    };
 
     expect_generated("x = `</script>`", "x = `</script>`;\n");
-    expect_generated_with_options("x = `</script>`", "x = `</script>`;\n", ascii.clone());
-    expect_generated_with_options("x = `</script>`", "x=`</script>`;", minified.clone());
+
+    expect_generated_with_options("x = `</script>`", "x = `</script>`;\n", ascii);
+
+    expect_generated_with_options("x = `</script>`", "x=`</script>`;", minified);
+
     expect_generated_with_options("x = `</script>`", "x = `<\\/script>`;\n", inline.clone());
-    expect_generated_with_options(
-        "x = `</script>`",
-        "x = `<\\/script>`;\n",
-        GeneratorOptions {
-            inline_script: true,
-            ..ascii
-        },
-    );
+
+    expect_generated_with_options("x = `</script>`", "x = `<\\/script>`;\n", inline_ascii);
+
     expect_generated_with_options(
         "x = `</script>`",
         "x=`<\\/script>`;",
-        GeneratorOptions {
-            inline_script: true,
-            ..minified
-        },
+        inline_minified.clone(),
     );
+
     expect_generated_with_options(
         "String.raw`</script>`",
         "String.raw`</script>`;\n",
         inline.clone(),
     );
+
     expect_generated_with_options(r#""</SCRIPT>";"#, "\"<\\/SCRIPT>\";\n", inline.clone());
-    expect_generated_with_options(r#""use\x20script";"#, "\"use\\x20script\";\n", inline);
+
+    expect_generated_with_options(
+        r#""use\x20script";"#,
+        "\"use\\x20script\";\n",
+        inline.clone(),
+    );
+
     expect_generated("//! </script>", "//! </script>\n");
+
     expect_generated_minify("x < /script/.test(y)", "x</script/.test(y);");
+
     expect_generated_minify("x / /script/.test(y)", "x/ /script/.test(y);");
+
+    let source = "a = <a b=\"</script>\" />;";
+    expect_generated_with_parse_options(source, "a = <a b=\"&lt;/script>\" />;\n", jsx, &inline);
+
+    expect_generated_with_parse_options(
+        source,
+        "a=<a b=\"&lt;/script>\"/>;",
+        jsx,
+        &inline_minified,
+    );
+
+    let source = "a = <script>{x}</script>;";
+    expect_generated_with_parse_options(source, "a = <script>{x}</ script>;\n", jsx, &inline);
+
+    expect_generated_with_parse_options(source, "a=<script>{x}</ script>;", jsx, &inline_minified);
+
+    let source = "type A = `</script>${string}`;";
+    expect_generated_with_parse_options(
+        source,
+        "type A = `<\\/script>${string}`;\n",
+        typescript,
+        &inline,
+    );
+
+    expect_generated_with_parse_options(
+        source,
+        "type A=`<\\/script>${string}`;",
+        typescript,
+        &inline_minified,
+    );
+
+    let source = "#!/bin/node </script>\n";
+    expect_generated_with_options(source, "#!/bin/node <\\/script>\n", inline.clone());
+
+    expect_generated_with_options(source, "#!/bin/node <\\/script>\n", inline_minified.clone());
+
+    let output = inline_script_jsx_text(&inline);
+    assert_eq!(output, "<>&lt;/script</>;\n");
+
+    let output = inline_script_jsx_text(&inline_minified);
+    assert_eq!(output, "<>&lt;/script</>;");
+}
+
+#[track_caller]
+fn synthetic_callee(source: &str, options: &GeneratorOptions) -> String {
+    struct SyntheticCallee<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl<'ast> VisitMut<'ast> for SyntheticCallee<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_identifier_reference(
+            &mut self,
+            node: IdentifierReference,
+        ) -> Option<IdentifierReference> {
+            if self.0.get_utf8(node.name(self.0)) == "value" {
+                node.set_span(self.0, DUMMY_SP);
+            }
+            Some(node)
+        }
+    }
+
+    let parse_options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        ast.root_program().visit_mut_with(&mut SyntheticCallee(ast));
+    })
 }
 
 #[test]
 fn test_comment_line_terminators() {
     let pretty = GeneratorOptions::default();
+    let minified = GeneratorOptions {
+        minify: true,
+        ..pretty.clone()
+    };
 
     expect_stable_with_parens(
         "function f() { return (/* lead\rtrail */ value); }",
@@ -1585,4 +1919,64 @@ fn test_comment_line_terminators() {
         "function* f() {\n  yield ( /* lead\n   trail */\nvalue);\n}\n",
         &pretty,
     );
+
+    let source = "function f() { return (\n// line\nvalue.has(name)); }";
+    let output = synthetic_callee(source, &pretty);
+    assert_eq!(
+        output,
+        "function f() {\n  return ( // line\n  value.has(name));\n}\n"
+    );
+
+    let output = synthetic_callee(source, &minified);
+    assert_eq!(output, "function f(){return(// line\nvalue.has(name))}");
+
+    let source = "throw (\n// line\nvalue.has(name));";
+    let output = synthetic_callee(source, &pretty);
+    assert_eq!(output, "throw ( // line\nvalue.has(name));\n");
+
+    let output = synthetic_callee(source, &minified);
+    assert_eq!(output, "throw(// line\nvalue.has(name));");
+
+    let source = "function* f() { yield (\n// line\nvalue.has(name)); }";
+    let output = synthetic_callee(source, &pretty);
+    assert_eq!(
+        output,
+        "function* f() {\n  yield ( // line\n  value.has(name));\n}\n"
+    );
+
+    let output = synthetic_callee(source, &minified);
+    assert_eq!(output, "function*f(){yield(// line\nvalue.has(name))}");
+}
+
+fn jsx_source_map(source: &str, options: &GeneratorOptions) -> Vec<u8> {
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        lang: Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let output = generate(&parsed.ast, options.clone());
+    output.map.unwrap().mappings().to_vec()
+}
+
+#[test]
+fn test_jsx_source_maps() {
+    let pretty = GeneratorOptions {
+        source_map_path: Some("input.jsx".into()),
+        ..GeneratorOptions::default()
+    };
+    let minified = GeneratorOptions {
+        minify: true,
+        ..pretty.clone()
+    };
+    let mappings = jsx_source_map("<C /\u{2028}>;", &pretty);
+    assert!(!mappings.is_empty());
+
+    let mappings = jsx_source_map("<></\u{2029}>;", &pretty);
+    assert!(!mappings.is_empty());
+
+    let mappings = jsx_source_map("<C\u{2028}></C>;", &minified);
+    assert!(!mappings.is_empty());
 }

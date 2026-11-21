@@ -28,10 +28,11 @@ pub enum NumberFormat {
 #[derive(Clone)]
 pub struct Options {
     pub ascii_only: bool,
-    /// Escape closing script tags in strings, untagged templates, and comments,
-    /// and prevent them from forming across token boundaries. Defaults to false.
-    /// Tagged template raw text is preserved; this is not a guarantee that arbitrary
-    /// output can be embedded in HTML without further processing.
+    /// Escape closing script tags in strings, JSX text, untagged templates,
+    /// template literal types, comments, and hashbangs. Also prevent them from
+    /// forming across token boundaries. Defaults to false.
+    /// Tagged template raw text and regular expression bodies are preserved.
+    /// Arbitrary output may still need processing before being embedded in HTML.
     pub inline_script: bool,
     pub minify: bool,
     pub number_format: NumberFormat,
@@ -137,7 +138,7 @@ struct Printer<'a> {
     prev_op_end: usize,
     prev_op: Option<OperatorCode>,
     need_space_before_dot: usize,
-    prev_reg_exp_end: usize,
+    prev_token_end_requiring_space: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
 }
@@ -350,7 +351,7 @@ impl<'a> Printer<'a> {
             prev_op_end: usize::MAX,
             prev_op: None,
             need_space_before_dot: usize::MAX,
-            prev_reg_exp_end: usize::MAX,
+            prev_token_end_requiring_space: usize::MAX,
             forbid_in: false,
             int_to_bytes_buffer: [0; 64],
         }
@@ -420,7 +421,7 @@ impl<'a> Printer<'a> {
     fn print_program(&mut self, program: Program) {
         if let Some(hashbang) = program.hashbang(self.ast) {
             self.print("#!");
-            self.print_bytes(self.ast.get_utf8(hashbang.value(self.ast)));
+            self.print_script_text(self.ast.get_utf8(hashbang.value(self.ast)).as_bytes());
             self.print("\n");
         }
         for id in program.directives(self.ast).iter() {
@@ -465,12 +466,15 @@ impl<'a> Printer<'a> {
                     .as_bytes()
                     .windows(8)
                     .any(|text| text.eq_ignore_ascii_case(b"</script")));
-        if value == "use strict" && raw.as_bytes().contains(&b'\\') && raw_is_safe {
+        let has_escape = raw.as_bytes().contains(&b'\\');
+        let keep_raw = !self.options.minify || has_escape;
+        if keep_raw && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
             self.print_bytes(raw);
             return;
         }
-        if !self.options.minify && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
-            self.print_bytes(raw);
+        if value == "use strict" && has_escape {
+            // Re-encoding an escaped directive must not enable strict mode.
+            self.print("\"use\\x20strict\"");
             return;
         }
         self.print_quoted(value, false);
@@ -613,6 +617,7 @@ impl<'a> Printer<'a> {
             self.print_bytes(text);
             return;
         }
+
         let mut start = 0;
         for index in 0..text.len().saturating_sub(7) {
             if text[index] == b'<'
@@ -621,6 +626,23 @@ impl<'a> Printer<'a> {
             {
                 self.print_bytes(&text[start..index + 1]);
                 self.print("\\");
+                start = index + 1;
+            }
+        }
+        self.print_bytes(&text[start..]);
+    }
+
+    fn print_jsx_script_text(&mut self, text: &[u8]) {
+        if !self.options.inline_script {
+            self.print_bytes(text);
+            return;
+        }
+
+        let mut start = 0;
+        for index in 0..text.len().saturating_sub(7) {
+            if text[index..index + 8].eq_ignore_ascii_case(b"</script") {
+                self.print_bytes(&text[start..index]);
+                self.print("&lt;");
                 start = index + 1;
             }
         }
@@ -794,7 +816,7 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_space_before_identifier(&mut self) {
-        if self.prev_reg_exp_end == self.js.len()
+        if self.prev_token_end_requiring_space == self.js.len()
             || self
                 .js
                 .last()
@@ -827,6 +849,7 @@ impl<'a> Printer<'a> {
                 push_u16_escape(&mut self.js, cp as u16);
             } else {
                 push_code_point_escape(&mut self.js, cp);
+                self.prev_token_end_requiring_space = self.js.len();
             }
         }
     }
@@ -1191,7 +1214,7 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export = ");
-                self.print_expr(s.expression(self.ast), Precedence::Lowest);
+                self.print_expr(s.expression(self.ast), Precedence::Assignment);
                 self.print_semicolon_after_statement();
             }
             StmtData::TsNamespaceExportDeclaration(s) => {
@@ -1303,6 +1326,24 @@ impl<'a> Printer<'a> {
         self.print("}");
     }
 
+    fn ends_in_open_if(&self, mut statement: Stmt) -> bool {
+        loop {
+            statement = match self.ast.stmt_data(statement) {
+                StmtData::IfStatement(s) => match s.alternate(self.ast) {
+                    Some(alternate) => alternate,
+                    None => return true,
+                },
+                StmtData::LabeledStatement(s) => s.body(self.ast),
+                StmtData::WhileStatement(s) => s.body(self.ast),
+                StmtData::ForStatement(s) => s.body(self.ast),
+                StmtData::ForInStatement(s) => s.body(self.ast),
+                StmtData::ForOfStatement(s) => s.body(self.ast),
+                StmtData::WithStatement(s) => s.body(self.ast),
+                _ => return false,
+            };
+        }
+    }
+
     fn print_if(&mut self, s: IfStatement) {
         self.print_indent();
         self.add_source_mapping(s.span(self.ast).start);
@@ -1312,15 +1353,26 @@ impl<'a> Printer<'a> {
         self.print_expr(s.test(self.ast), Precedence::Lowest);
         self.print(")");
         let consequent = s.consequent(self.ast);
+        let wrap = s.alternate(self.ast).is_some() && self.ends_in_open_if(consequent);
         if let Some(block) = consequent.as_block_statement(self.ast) {
             self.print_space();
             self.print_block(block);
+        } else if wrap {
+            self.print_space();
+            self.print("{");
+            self.print_newline();
+            self.indent += 1;
+            self.print_stmt(consequent);
+            self.needs_semicolon = false;
+            self.indent -= 1;
+            self.print_indent();
+            self.print("}");
         } else {
             self.print_body(consequent);
         }
         if let Some(alternate) = s.alternate(self.ast) {
             self.print_semicolon_if_needed();
-            if consequent.is_block_statement(self.ast) {
+            if consequent.is_block_statement(self.ast) || wrap {
                 self.print_space();
             } else {
                 self.print_indent();
@@ -1440,7 +1492,12 @@ impl<'a> Printer<'a> {
 
     fn print_for_left(&mut self, left: ForStatementLeft) {
         match self.ast.for_statement_left_data(left) {
-            ForStatementLeftData::VariableDeclaration(v) => self.print_variable_decl(v, false),
+            ForStatementLeftData::VariableDeclaration(v) => {
+                let saved = self.forbid_in;
+                self.forbid_in = true;
+                self.print_variable_decl(v, false);
+                self.forbid_in = saved;
+            }
             ForStatementLeftData::AssignmentTarget(t) => self.print_assignment_target(t),
         }
     }
@@ -1850,7 +1907,9 @@ impl<'a> Printer<'a> {
     }
 
     fn expr_first_token_offset(&self, mut expr: Expr) -> u32 {
+        let mut offset = 0;
         loop {
+            offset = offset.max(expr.span(self.ast).start);
             expr = match self.ast.expr_data(expr) {
                 ExprData::MemberExpression(expression) => expression.object(self.ast),
                 ExprData::CallExpression(expression) => expression.callee(self.ast),
@@ -1861,7 +1920,7 @@ impl<'a> Printer<'a> {
                 ExprData::ConditionalExpression(expression) => expression.test(self.ast),
                 ExprData::SequenceExpression(expression) => {
                     let Some(first) = expression.expressions(self.ast).get_node(self.ast, 0) else {
-                        break expr.span(self.ast).start;
+                        break offset;
                     };
                     first
                 }
@@ -1871,10 +1930,10 @@ impl<'a> Printer<'a> {
                             self.simple_assignment_target_expression(target)
                         }
                         AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
-                            break pattern.span(self.ast).start;
+                            break offset.max(pattern.span(self.ast).start);
                         }
                         AssignmentTargetData::ObjectAssignmentTarget(pattern) => {
-                            break pattern.span(self.ast).start;
+                            break offset.max(pattern.span(self.ast).start);
                         }
                     }
                 }
@@ -1885,7 +1944,7 @@ impl<'a> Printer<'a> {
                 ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
                 ExprData::TsNonNullExpression(expression) => expression.expression(self.ast),
                 ExprData::TsInstantiationExpression(expression) => expression.expression(self.ast),
-                _ => break expr.span(self.ast).start,
+                _ => break offset,
             };
         }
     }
@@ -2093,7 +2152,7 @@ impl<'a> Printer<'a> {
 
                 // The next identifier needs a separator or it would become
                 // part of the regular expression flags.
-                self.prev_reg_exp_end = self.js.len();
+                self.prev_token_end_requiring_space = self.js.len();
             }
             ExprData::TemplateLiteral(e) => self.print_template(e, false),
             ExprData::BinaryExpression(e) => {
@@ -4330,9 +4389,10 @@ impl<'a> Printer<'a> {
                 let qs = t.quasis(self.ast);
                 let types = t.types(self.ast);
                 for (i, id) in qs.iter().enumerate() {
-                    self.print_bytes(
+                    self.print_script_text(
                         self.ast
-                            .get_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast)),
+                            .get_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast))
+                            .as_bytes(),
                     );
                     if i < types.len() {
                         self.print("${");
@@ -4616,6 +4676,7 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
     }
+
     fn print_ts_type_name(&mut self, n: TsTypeName) {
         match self.ast.ts_type_name_data(n) {
             TsTypeNameData::IdentifierReference(i) => {
@@ -4626,6 +4687,7 @@ impl<'a> Printer<'a> {
             TsTypeNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_qualified(&mut self, q: TsQualifiedName) {
         match self.ast.ts_qualified_name_left_data(q.left(self.ast)) {
             TsQualifiedNameLeftData::IdentifierReference(i) => {
@@ -4652,6 +4714,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping_for_name(right.span(self.ast).start, name);
         self.print_identifier(name);
     }
+
     fn print_ts_import_type(&mut self, t: TsImportType) {
         self.print("import(");
         let source = t.source(self.ast);
@@ -4682,6 +4745,7 @@ impl<'a> Printer<'a> {
             TsImportTypeQualifierData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_query_name(&mut self, n: TsTypeQueryExprName) {
         match self.ast.ts_type_query_expr_name_data(n) {
             TsTypeQueryExprNameData::TsTypeName(n) => self.print_ts_type_name(n),
@@ -4689,6 +4753,7 @@ impl<'a> Printer<'a> {
             TsTypeQueryExprNameData::TsImportType(t) => self.print_ts_import_type(t),
         }
     }
+
     fn print_ts_literal(&mut self, l: TsLiteral) {
         match self.ast.ts_literal_data(l) {
             TsLiteralData::StringLiteral(s) => {
@@ -4729,6 +4794,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(argument.span(self.ast).start);
         self.print_number_literal(number, Precedence::Prefix);
     }
+
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {
             TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
@@ -4746,6 +4812,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     fn print_ts_type_members(&mut self, m: SubRange<TsTypeElement>) {
         self.print("{");
         if !m.is_empty() {
@@ -4765,6 +4832,7 @@ impl<'a> Printer<'a> {
         self.print_indent();
         self.print("}");
     }
+
     fn print_ts_type_element(&mut self, e: TsTypeElement) {
         match self.ast.ts_type_element_data(e) {
             TsTypeElementData::TsPropertySignature(s) => {
@@ -4819,6 +4887,7 @@ impl<'a> Printer<'a> {
             TsTypeElementData::TsIndexSignature(s) => self.print_ts_index_signature(s),
         }
     }
+
     fn print_ts_index_signature(&mut self, s: TsIndexSignature) {
         if s.r#static(self.ast) {
             self.print("static ");
@@ -4839,6 +4908,7 @@ impl<'a> Printer<'a> {
         self.print("]");
         self.print_ts_annotation(s.type_annotation(self.ast));
     }
+
     fn print_ts_mapped(&mut self, t: TsMappedType) {
         self.print("{");
         self.print_newline();
@@ -4938,6 +5008,7 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
     }
+
     fn print_ts_interface(&mut self, d: TsInterfaceDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -4966,6 +5037,7 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print_ts_type_members(d.body(self.ast).body(self.ast));
     }
+
     fn print_ts_enum(&mut self, d: TsEnumDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5005,6 +5077,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(d.body(self.ast).span(self.ast).end.saturating_sub(1));
         self.print("}");
     }
+
     fn print_ts_enum_name(&mut self, n: TsEnumMemberName, computed: bool) {
         if computed {
             self.print("[");
@@ -5026,6 +5099,7 @@ impl<'a> Printer<'a> {
             self.print("]");
         }
     }
+
     fn print_ts_module(&mut self, d: TsModuleDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5041,10 +5115,13 @@ impl<'a> Printer<'a> {
             self.print_ts_type_members(attributes.members(self.ast));
         }
         if let Some(b) = d.body(self.ast) {
-            self.print_space();
+            if b.as_ts_module_block(self.ast).is_some() {
+                self.print_space();
+            }
             self.print_ts_module_body(b);
         }
     }
+
     fn print_ts_module_name(&mut self, n: TsModuleName) {
         match self.ast.ts_module_name_data(n) {
             TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i),
@@ -5055,6 +5132,7 @@ impl<'a> Printer<'a> {
             TsModuleNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
     }
+
     fn print_ts_module_body(&mut self, b: TsModuleBody) {
         match self.ast.ts_module_body_data(b) {
             TsModuleBodyData::TsModuleBlock(b) => {
@@ -5084,9 +5162,19 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
                 self.print("}");
             }
-            TsModuleBodyData::TsModuleDeclaration(d) => self.print_ts_module(d),
+            TsModuleBodyData::TsModuleDeclaration(d) => {
+                self.print(".");
+                self.print_ts_module_name(d.id(self.ast));
+                if let Some(body) = d.body(self.ast) {
+                    if body.as_ts_module_block(self.ast).is_some() {
+                        self.print_space();
+                    }
+                    self.print_ts_module_body(body);
+                }
+            }
         }
     }
+
     fn print_ts_global(&mut self, d: TsGlobalDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -5122,6 +5210,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
         self.print("}");
     }
+
     fn print_ts_parameter_property(&mut self, p: TsParameterProperty) {
         self.print_decorators(p.decorators(self.ast));
         self.print_accessibility(p.accessibility(self.ast));
@@ -5133,6 +5222,7 @@ impl<'a> Printer<'a> {
         }
         self.print_formal_parameter(p.parameter(self.ast));
     }
+
     fn print_ts_import_equals(&mut self, d: TsImportEqualsDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         self.print("import ");
@@ -5175,6 +5265,9 @@ impl<'a> Printer<'a> {
             self.print_space();
             match data {
                 JsxAttributeItemData::JsxAttribute(a) => {
+                    if self.options.minify && self.js.last() == Some(&b'-') {
+                        self.print(" ");
+                    }
                     self.print_space_before_identifier();
                     self.print_jsx_attr_name(a.name(self.ast));
                     if let Some(v) = a.value(self.ast) {
@@ -5205,11 +5298,19 @@ impl<'a> Printer<'a> {
         if let Some(c) = e.closing_element(self.ast) {
             self.add_source_mapping(c.span(self.ast).start);
             self.print("</");
+            if self.options.inline_script
+                && let Some(name) = c.name(self.ast).as_jsx_identifier(self.ast)
+                && let Some(prefix) = self.ast.get_utf8(name.name(self.ast)).as_bytes().get(..6)
+                && prefix.eq_ignore_ascii_case(b"script")
+            {
+                self.print(" ");
+            }
             self.print_jsx_name(c.name(self.ast));
             self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
         }
     }
+
     fn print_jsx_fragment(&mut self, e: JsxFragment) {
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<>");
@@ -5219,6 +5320,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
         self.print("</>");
     }
+
     fn print_jsx_name(&mut self, n: JsxElementName) {
         self.print_comments_before(n.span(self.ast).start, false, false);
         match self.ast.jsx_element_name_data(n) {
@@ -5236,6 +5338,7 @@ impl<'a> Printer<'a> {
             JsxElementNameData::JsxMemberExpression(m) => self.print_jsx_member(m),
         }
     }
+
     fn print_jsx_member(&mut self, m: JsxMemberExpression) {
         match self
             .ast
@@ -5254,6 +5357,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping_for_name(property.span(self.ast).start, name);
         self.print_bytes(name);
     }
+
     fn print_jsx_attr_name(&mut self, n: JsxAttributeName) {
         match self.ast.jsx_attribute_name_data(n) {
             JsxAttributeNameData::JsxIdentifier(i) => {
@@ -5269,33 +5373,50 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
         self.print_comments_before(v.span(self.ast).start, false, false);
         match self.ast.jsx_attribute_value_data(v) {
-            JsxAttributeValueData::StringLiteral(s) => {
-                self.add_source_mapping(s.span(self.ast).start);
-                let raw = self.ast.get_utf8(s.raw(self.ast));
-                if raw.is_empty() {
-                    let value = self.ast.get_wtf8(s.value(self.ast));
-                    // JSX attribute strings do not interpret JavaScript escape sequences, so
-                    // print the value bytes directly instead of using `print_quoted`.
-                    let quote = if value.as_bytes().contains(&b'"') {
-                        "'"
-                    } else {
-                        "\""
-                    };
-                    self.print(quote);
-                    self.print_bytes(value.as_bytes());
-                    self.print(quote);
-                } else {
-                    self.print_bytes(raw);
-                }
-            }
+            JsxAttributeValueData::StringLiteral(s) => self.print_jsx_attr_string(s),
             JsxAttributeValueData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxAttributeValueData::JsxElement(e) => self.print_jsx_element(e),
             JsxAttributeValueData::JsxFragment(e) => self.print_jsx_fragment(e),
         }
     }
+
+    fn print_jsx_attr_string(&mut self, literal: StringLiteral) {
+        self.add_source_mapping(literal.span(self.ast).start);
+        let raw = self.ast.get_utf8(literal.raw(self.ast));
+        if !raw.is_empty() {
+            self.print_jsx_script_text(raw.as_bytes());
+            return;
+        }
+
+        let value = self.ast.get_wtf8(literal.value(self.ast));
+        let bytes = value.as_bytes();
+        let has_double_quote = bytes.contains(&b'"');
+        let has_both_quotes = has_double_quote && bytes.contains(&b'\'');
+        let needs_escape = bytes
+            .iter()
+            .any(|&byte| matches!(byte, b'&' | b'\r' | b'\n' | b'\t'));
+        let needs_expression = value.as_str().is_none()
+            || has_both_quotes
+            || needs_escape
+            || (self.options.ascii_only && !value.is_ascii());
+
+        if needs_expression {
+            // JSX attribute strings do not interpret JavaScript escape sequences.
+            self.print("{");
+            self.print_quoted(value, false);
+            self.print("}");
+        } else {
+            let quote = if has_double_quote { "'" } else { "\"" };
+            self.print(quote);
+            self.print_jsx_script_text(bytes);
+            self.print(quote);
+        }
+    }
+
     fn print_jsx_container(&mut self, c: JsxExpressionContainer) {
         self.print("{");
         match self.ast.jsx_expression_data(c.expression(self.ast)) {
@@ -5320,10 +5441,11 @@ impl<'a> Printer<'a> {
         self.print_comments_before(c.span(self.ast).end.saturating_sub(1), false, true);
         self.print("}");
     }
+
     fn print_jsx_child(&mut self, c: JsxChild) {
         match self.ast.jsx_child_data(c) {
             JsxChildData::JsxText(t) => {
-                self.print_bytes(self.ast.get_utf8(t.value(self.ast)));
+                self.print_jsx_script_text(self.ast.get_utf8(t.value(self.ast)).as_bytes());
             }
             JsxChildData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxChildData::JsxSpreadChild(s) => {

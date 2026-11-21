@@ -128,6 +128,7 @@ fn next_wtf8_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     }
     next_code_point(bytes, i)
 }
+
 pub(crate) fn push_u16_escape(out: &mut Vec<u8>, c: u16) {
     out.extend_from_slice(&[
         b'\\',
@@ -138,6 +139,7 @@ pub(crate) fn push_u16_escape(out: &mut Vec<u8>, c: u16) {
         HEX[(c & 15) as usize],
     ]);
 }
+
 pub(crate) fn next_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     let b = bytes[i];
     if b < 0x80 {
