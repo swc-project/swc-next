@@ -8,5 +8,5 @@ next</div>;
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 <div>
-  <b>a</b> bbb	ccc
-next</div>;
+  <b>a</b> bbb	ccc next
+</div>;

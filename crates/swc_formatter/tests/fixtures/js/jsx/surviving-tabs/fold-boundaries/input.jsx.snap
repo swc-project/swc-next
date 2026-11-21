@@ -9,16 +9,12 @@ const x = <Box>	first
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const x = (
-  <Box>	first	
-	 middle	value	
-	last	</Box>
+  <Box>	first
+    middle	value
+    last	</Box>
 );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const x = (
-  <Box>	first	
-	 middle	value	
-	last	</Box>
-);
+const x = <Box>	first middle	value last	</Box>;

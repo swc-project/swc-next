@@ -82,13 +82,13 @@ const a2 = (
 );
 const a3 = (
   <div>	alpha	 beta 
- gamma​ 	
- delta	 </div>
+     gamma​
+     delta	 </div>
 );
 const a4 = (
   <div>
- alpha
-</div>
+     alpha
+  </div>
 );
 const a5 = <div> alpha beta </div>;
 const a6 = (
@@ -133,9 +133,8 @@ const a15 = (
 const a16 = (
   <Box>
     <A />
-
-  
- <B />
+     
+    <B />
   </Box>
 );
 const a17 = (
@@ -155,10 +154,7 @@ const a18 = (
   </Box>
 );
 
-const ascii_spacing = (
-  <Box>	alpha		 beta
-gamma	</Box>
-);
+const ascii_spacing = <Box>	alpha		 beta gamma	</Box>;
 const punctuation = (
   <Box>
     <i>first</i>-<i>second</i>
@@ -197,18 +193,19 @@ const a2 = (
 );
 const a3 = (
   <div>	alpha	 beta 
- gamma​ 	
- delta	 </div>
+     gamma​
+     delta	 </div>
 );
 const a4 = (
   <div>
- alpha
-</div>
+     alpha
+  </div>
 );
 const a5 = (
   <div>
     {" "}
-    alpha beta </div>
+    alpha beta{" "}
+  </div>
 );
 const a6 = (
   <div
@@ -269,9 +266,8 @@ const a15 = (
 const a16 = (
   <Box>
     <A />
-
-  
- <B />
+     
+    <B />
   </Box>
 );
 const a17 = (
@@ -294,7 +290,7 @@ const a18 = (
 const ascii_spacing =
   (
     <Box>	alpha		 beta
-gamma	</Box>
+      gamma	</Box>
   );
 const punctuation =
   (

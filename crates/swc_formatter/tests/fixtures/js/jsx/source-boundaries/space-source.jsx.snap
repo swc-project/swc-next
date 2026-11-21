@@ -26,7 +26,8 @@ const value4=<MissingPanel>{(
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 // @ts-ignore
-const value0 = (<MissingPanel>{"  "}
+const value0 = (<MissingPanel>{" "}
+    {" "}
     {
       uncoveredAfterSpace
     }
@@ -34,7 +35,8 @@ const value0 = (<MissingPanel>{"  "}
 );
 
 // @ts-ignore
-const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
     {
       uncoveredAfterSpace
     }
@@ -42,12 +44,14 @@ const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
 );
 
 // @ts-ignore
-const value2 = (<MissingPanel>{"  "}
+const value2 = (<MissingPanel>{" "}
+    {" "}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value3 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
   </MissingPanel>
 );
 
@@ -66,24 +70,27 @@ const value4 = (<MissingPanel>{(
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 // @ts-ignore
-const value0 = (<MissingPanel>{"  "}
+const value0 = (<MissingPanel>{" "}
+    {" "}{uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
     {uncoveredAfterSpace}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
-    {uncoveredAfterSpace}
+const value2 = (<MissingPanel>{" "}
+    {" "}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value2 = (<MissingPanel>{"  "}
-  </MissingPanel>
-);
-
-// @ts-ignore
-const value3 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
   </MissingPanel>
 );
 
@@ -100,24 +107,26 @@ const value4 = (<MissingPanel>{(
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
-const value0 = (<MissingPanel>{"  "}
-    {uncoveredAfterSpace}
+const value0 = (<MissingPanel>{" "}
+    {" "}{uncoveredAfterSpace}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
-    {uncoveredAfterSpace}
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}{uncoveredAfterSpace}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value2 = (<MissingPanel>{"  "}
+const value2 = (<MissingPanel>{" "}
+    {" "}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value3 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
   </MissingPanel>
 );
 
@@ -134,7 +143,8 @@ const value4 = (<MissingPanel>{(
 {"indentStyle":"tab","indentWidth":3,"lineWidth":12,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
-const value0 = (<MissingPanel>{"  "}
+const value0 = (<MissingPanel>{" "}
+		{" "}
 		{
 			uncoveredAfterSpace
 		}
@@ -142,7 +152,8 @@ const value0 = (<MissingPanel>{"  "}
 )
 
 // @ts-ignore
-const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+		{" "}
 		{
 			uncoveredAfterSpace
 		}
@@ -150,12 +161,14 @@ const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
 )
 
 // @ts-ignore
-const value2 = (<MissingPanel>{"  "}
+const value2 = (<MissingPanel>{" "}
+		{" "}
 	</MissingPanel>
 )
 
 // @ts-ignore
-const value3 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+		{" "}
 	</MissingPanel>
 )
 
@@ -174,24 +187,26 @@ const value4 = (<MissingPanel>{(
 {"indentStyle":"space","lineWidth":100,"trailingCommas":"none"}
 ---------- Output ----------
 // @ts-ignore
-const value0 = (<MissingPanel>{"  "}
-    {uncoveredAfterSpace}
+const value0 = (<MissingPanel>{" "}
+    {" "}{uncoveredAfterSpace}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value1 = (<MissingPanel>{coveredBeforeSpace}{"  "}
-    {uncoveredAfterSpace}
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}{uncoveredAfterSpace}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value2 = (<MissingPanel>{"  "}
+const value2 = (<MissingPanel>{" "}
+    {" "}
   </MissingPanel>
 );
 
 // @ts-ignore
-const value3 = (<MissingPanel>{coveredBeforeSpace}{"  "}
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {" "}
   </MissingPanel>
 );
 

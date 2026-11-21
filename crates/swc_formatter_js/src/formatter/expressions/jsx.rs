@@ -192,9 +192,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if children_layout.has_content {
                 writer.indent(|writer| {
                     opening_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                        if !children_layout.leading_inline {
-                            writer.soft_line();
-                        }
+                        children_layout.leading_line.write(writer);
                     });
                     children_layout.write(children_doc, writer);
                 });
@@ -203,8 +201,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 children_layout.write(children_doc, writer);
             }
             closing_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                if children_layout.has_content && !children_layout.trailing_inline {
-                    writer.soft_line();
+                if children_layout.has_content {
+                    children_layout.trailing_line.write(writer);
                 }
             });
             self.format_jsx_closing(closing, tail_owner, writer)
@@ -301,9 +299,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if layout.has_content {
                 writer.indent(|writer| {
                     opening_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                        if !layout.leading_inline {
-                            writer.soft_line();
-                        }
+                        layout.leading_line.write(writer);
                     });
                     layout.write(children_doc, writer);
                 });
@@ -312,8 +308,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout.write(children_doc, writer);
             }
             closing_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                if layout.has_content && !layout.trailing_inline {
-                    writer.soft_line();
+                if layout.has_content {
+                    layout.trailing_line.write(writer);
                 }
             });
             self.format_jsx_fragment_closing(closing, writer)?;

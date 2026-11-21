@@ -46,8 +46,8 @@ const a3 = (
 const a4 = (
   <div>
     {/* prettier-ignore */}
- 
-<X odd={left + right} />
+     
+    <X odd={left + right} />
   </div>
 );
 const a5 = (
@@ -107,8 +107,8 @@ const a3 = (
 const a4 = (
   <div>
     {/* prettier-ignore */}
- 
-<X
+     
+    <X
       odd={
         left + right
       }
