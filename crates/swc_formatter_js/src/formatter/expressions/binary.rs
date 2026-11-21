@@ -409,7 +409,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let Some((left, left_parentheses)) = self.binary_content(first.binary.left) else {
                 break;
             };
-            if !first.binary.operator.flattens(left.operator) {
+            if !first.binary.operator.flattens(left.operator)
+                || self.ts_relational_left_needs_parentheses(first.binary.operator, left.operator)
+                || self.for_initializer_in_needs_parentheses(left.operator, first.binary.left)
+            {
                 break;
             }
             first.left_content_end = left_parentheses.map_or_else(

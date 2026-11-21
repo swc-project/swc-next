@@ -1252,12 +1252,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(true);
             }
             if let ExprData::BinaryExpression(node) = data
-                && node.operator(self.ast) == swc_next_ecma_ast::BinaryOperator::In
+                && self.for_initializer_in_needs_parentheses(
+                    BinaryOperatorKind::Binary(node.operator(self.ast)),
+                    Expr::BinaryExpression(node),
+                )
             {
-                let span = node.span(self.ast);
-                if scope.start <= span.start && span.end <= scope.end {
-                    return Some(true);
-                }
+                return Some(true);
             }
         }
         if mode == ContentMode::Formatted
@@ -1387,12 +1387,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             return Some(needed || exposed_tail);
         }
-        if matches!(position, ExpressionPosition::NonNullOperand)
-            && matches!(
-                data,
-                ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
-            )
-        {
+        // Both TypeScript suffixes attach to left-hand-side expressions.
+        if matches!(
+            position,
+            ExpressionPosition::NonNullOperand | ExpressionPosition::InstantiationOperand
+        ) && matches!(
+            data,
+            ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+        ) {
             return Some(true);
         }
         if matches!(
@@ -1634,7 +1636,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (position, _) if self.is_nullish_conditional_operand(data, position) => true,
             (ExpressionPosition::BinaryOperand { operator, side }, _) => {
                 let required = match BinaryOperatorKind::from_data(data, self.ast) {
-                    Some(child) => operator.needs_parentheses(child, side),
+                    Some(child) => {
+                        operator.needs_parentheses(child, side)
+                            || matches!(side, OperandSide::Left)
+                                && self.ts_relational_left_needs_parentheses(operator, child)
+                    }
                     None => matches!(
                         (side, operator, data),
                         (

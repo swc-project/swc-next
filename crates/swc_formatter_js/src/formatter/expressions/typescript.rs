@@ -483,6 +483,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(None)
     }
 
+    /// A line break after `>` can make TypeScript read `a < b >` as `a<b>`.
+    pub(super) fn ts_relational_left_needs_parentheses(
+        &self,
+        operator: BinaryOperatorKind,
+        left: BinaryOperatorKind,
+    ) -> bool {
+        operator == BinaryOperatorKind::Binary(BinaryOperator::GreaterThan)
+            && left == BinaryOperatorKind::Binary(BinaryOperator::LessThan)
+            && self.ast.is_ts()
+    }
+
     pub(super) fn instantiation_tail_needs_parentheses(
         &self,
         mut data: ExprData,
@@ -1856,6 +1867,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::NewCallee
                 | ExpressionPosition::Superclass
                 | ExpressionPosition::ConditionalTest
+                | ExpressionPosition::ConditionalConsequent
+                | ExpressionPosition::ConditionalAlternate
                 | ExpressionPosition::TypeAssertionOperand
                 | ExpressionPosition::NonNullOperand
                 | ExpressionPosition::InstantiationOperand
