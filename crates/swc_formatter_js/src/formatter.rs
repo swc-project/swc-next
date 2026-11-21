@@ -10,6 +10,7 @@ mod functions;
 mod heritage;
 mod lint_lines;
 mod literals;
+mod member_separator;
 mod parameters;
 mod restricted;
 mod source;

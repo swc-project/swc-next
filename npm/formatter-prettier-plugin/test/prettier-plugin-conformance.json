@@ -30476,6 +30476,26 @@
         "prettierNative": "class A {\n  static readonly // c\n  x: number\n}\n"
       }
     ],
+    "ts/class-member-modifiers/semi-false/export-field.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Field {\n  export;\n  y = 2\n}\n\nclass Method {\n  export;\n  m() {}\n}\n\nclass Last {\n  export\n}\n",
+        "prettierNative": "class Field {\n  export\n  y = 2\n}\n\nclass Method {\n  export\n  m() {}\n}\n\nclass Last {\n  export\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Field {\n  export;\n  y = 2\n}\n\nclass Method {\n  export;\n  m() {}\n}\n\nclass Last {\n  export\n}\n",
+        "prettierNative": "class Field {\n  export\n  y = 2\n}\n\nclass Method {\n  export\n  m() {}\n}\n\nclass Last {\n  export\n}\n"
+      }
+    ],
     "ts/class-prefixes/declare-eol-prefix-ignore.ts": [
       {
         "options": {
@@ -41848,6 +41868,28 @@
         },
         "swcPlugin": "interface T /* prettier-ignore */\r\n {\r\n\ta:12.00\r\n}\r\n",
         "prettierNative": "interface T {\r\n\t/* prettier-ignore */\r\n\ta:12.00\r\n}\r\n"
+      }
+    ],
+    "ts/type-member-boundaries/default-before-accessor.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I {\n  default;\n  get x(): number\n}\n\ntype T = {\n  default;\n  set x(v: number)\n}\n\ninterface Method {\n  default\n  get(): number\n}\n\ninterface Comment {\n  default\n  get // key\n  x(): number\n}\n",
+        "prettierNative": "interface I {\n  default\n  get x(): number\n}\n\ntype T = {\n  default\n  set x(v: number)\n}\n\ninterface Method {\n  default\n  get(): number\n}\n\ninterface Comment {\n  default\n  get // key\n  x(): number\n}\n"
+      }
+    ],
+    "ts/type-member-boundaries/export-property.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I {\n  export;\n  y: number\n}\n\ntype T = {\n  export;\n  y: number\n}\n\ninterface Optional {\n  export?\n  y: number\n}\n\ninterface Last {\n  export\n}\n",
+        "prettierNative": "interface I {\n  export\n  y: number\n}\n\ntype T = {\n  export\n  y: number\n}\n\ninterface Optional {\n  export?\n  y: number\n}\n\ninterface Last {\n  export\n}\n"
       }
     ],
     "ts/type-member-boundaries/optional-marker.ts": [
