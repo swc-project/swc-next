@@ -137,7 +137,7 @@ struct Printer<'a> {
     prev_op_end: usize,
     prev_op: Option<OperatorCode>,
     need_space_before_dot: usize,
-    prev_reg_exp_end: usize,
+    prev_token_end_requiring_space: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
 }
@@ -350,7 +350,7 @@ impl<'a> Printer<'a> {
             prev_op_end: usize::MAX,
             prev_op: None,
             need_space_before_dot: usize::MAX,
-            prev_reg_exp_end: usize::MAX,
+            prev_token_end_requiring_space: usize::MAX,
             forbid_in: false,
             int_to_bytes_buffer: [0; 64],
         }
@@ -791,7 +791,7 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_space_before_identifier(&mut self) {
-        if self.prev_reg_exp_end == self.js.len()
+        if self.prev_token_end_requiring_space == self.js.len()
             || self
                 .js
                 .last()
@@ -824,6 +824,7 @@ impl<'a> Printer<'a> {
                 push_u16_escape(&mut self.js, cp as u16);
             } else {
                 push_code_point_escape(&mut self.js, cp);
+                self.prev_token_end_requiring_space = self.js.len();
             }
         }
     }
@@ -2090,7 +2091,7 @@ impl<'a> Printer<'a> {
 
                 // The next identifier needs a separator or it would become
                 // part of the regular expression flags.
-                self.prev_reg_exp_end = self.js.len();
+                self.prev_token_end_requiring_space = self.js.len();
             }
             ExprData::TemplateLiteral(e) => self.print_template(e, false),
             ExprData::BinaryExpression(e) => {

@@ -1654,3 +1654,19 @@ fn test_escaped_directives() {
         "function f(){'use\\x20asm';return 1}",
     );
 }
+
+#[test]
+fn test_ascii_identifier_boundaries() {
+    let options = GeneratorOptions {
+        minify: true,
+        ascii_only: true,
+        ..GeneratorOptions::default()
+    };
+    expect_generated_with_options("x = 𠮷 in y;", "x=\\u{20BB7} in y;", options.clone());
+
+    expect_generated_with_options(
+        "import * as 𠮷 from \"a\";",
+        "import*as \\u{20BB7} from\"a\";",
+        options,
+    );
+}
