@@ -137,6 +137,7 @@ bitflags::bitflags! {
         const WRAP_TS_CAST = 1 << 1;
         const NO_INSTANTIATION = 1 << 2;
         const OMIT_NESTED_NEW_ARGS = 1 << 3;
+        const EXPLICIT_GROUP = 1 << 4;
     }
 }
 
