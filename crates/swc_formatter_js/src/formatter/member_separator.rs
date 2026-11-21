@@ -1,5 +1,3 @@
-//! Member boundaries share a separator plan after their syntax has been prepared.
-
 use crate::{Semicolons, document::Writer};
 
 #[derive(Clone, Copy)]

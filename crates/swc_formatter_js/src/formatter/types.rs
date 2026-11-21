@@ -3770,8 +3770,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<CommentGap> {
         let tail = tail?;
         let (last, preceding) = tail.comments.split_last()?;
-        // SourceAfter prints a directly placed line comment immediately and
-        // ends any earlier line comment before writing the next comment.
+        // A line comment can force the continuation onto its own physical line.
         (keep_inline_line && last.kind == CommentKind::Line
             || self.line_breaks(tail.source_end, last.span.end) != 0
             || self.comment_run_has_own_line_tail(tail.comments, tail.source_end)
