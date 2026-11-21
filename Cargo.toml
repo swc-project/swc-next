@@ -23,6 +23,7 @@ repository  = "https://github.com/swc-project/swc-next"
 allocator-api2   = "=0.2.21"
 arrayvec         = "0.7.8"
 bitflags         = "2.13.2"
+browserslist      = { package = "browserslist-rs", version = "0.22.0", default-features = false, features = ["deflate"] }
 bumpalo          = "3.20.4"
 chumsky          = { version = "0.14.2", default-features = false }
 cow-utils        = "0.1.3"
@@ -99,6 +100,7 @@ insta         = "1.49.0"
 jwalk         = "0.9.0"
 jsonc-parser  = { version = "0.34.0", features = ["serde"] }
 libtest-mimic = "0.8.2"
+preset_env_base = "11.0.0"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.160.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.160.0"

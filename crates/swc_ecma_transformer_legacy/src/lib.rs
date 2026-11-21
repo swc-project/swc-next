@@ -1,8 +1,10 @@
 //! Legacy SWC JavaScript transforms for the SWC Next AST.
 //!
 //! Options follow SWC Next's per-edition and language grouping, with the fields
-//! and defaults of legacy SWC's transform configurations. Transform execution is
-//! not implemented yet. The source inventory is in `docs/transform-inventory.md`.
+//! and defaults of legacy SWC's transform configurations. [`Transformer::transform`]
+//! accepts a mutable AST without a semantic model. Selected transforms currently
+//! report errors until they are ported. The source inventory is in
+//! `docs/transform-inventory.md`.
 //!
 //! Configuring one edition does not enable another edition or RegExp lowering.
 //! Switches default to `false`; optional transforms default to `None` (disabled).
@@ -12,6 +14,7 @@
 //! ```
 //! use swc_next_ecma_transformer_legacy::{
 //!     TransformerOptions,
+//!     env::EnvOptions,
 //!     es2016::ES2016Options,
 //!     es2017::{AsyncToGeneratorOptions, ES2017Options},
 //!     es2018::{ES2018Options, ObjectRestSpreadOptions},
@@ -26,26 +29,28 @@
 //!
 //! let options = TransformerOptions {
 //!     filename: Some("input.tsx".into()),
-//!     es2016: ES2016Options { exponentiation: true },
-//!     es2017: ES2017Options {
-//!         async_to_generator: Some(AsyncToGeneratorOptions::default()),
+//!     env: EnvOptions {
+//!         es2016: ES2016Options { exponentiation: true },
+//!         es2017: ES2017Options {
+//!             async_to_generator: Some(AsyncToGeneratorOptions::default()),
+//!         },
+//!         es2018: ES2018Options {
+//!             object_rest_spread: Some(ObjectRestSpreadOptions::default()),
+//!         },
+//!         es2019: ES2019Options { optional_catch_binding: true },
+//!         es2020: ES2020Options {
+//!             export_namespace_from: true,
+//!             nullish_coalescing: Some(NullishCoalescingOptions::default()),
+//!             optional_chaining: Some(OptionalChainingOptions::default()),
+//!         },
+//!         es2021: ES2021Options { logical_assignments: true },
+//!         es2022: ES2022Options {
+//!             static_blocks: true,
+//!             class_properties: Some(ClassPropertiesOptions::default()),
+//!             private_in_object: true,
+//!         },
+//!         regexp: RegExpOptions { dot_all_regex: true, ..Default::default() },
 //!     },
-//!     es2018: ES2018Options {
-//!         object_rest_spread: Some(ObjectRestSpreadOptions::default()),
-//!     },
-//!     es2019: ES2019Options { optional_catch_binding: true },
-//!     es2020: ES2020Options {
-//!         export_namespace_from: true,
-//!         nullish_coalescing: Some(NullishCoalescingOptions::default()),
-//!         optional_chaining: Some(OptionalChainingOptions::default()),
-//!     },
-//!     es2021: ES2021Options { logical_assignments: true },
-//!     es2022: ES2022Options {
-//!         static_blocks: true,
-//!         class_properties: Some(ClassPropertiesOptions::default()),
-//!         private_in_object: true,
-//!     },
-//!     regexp: RegExpOptions { dot_all_regex: true, ..Default::default() },
 //!     jsx: Some(JsxOptions {
 //!         runtime: Some(JsxRuntime::Automatic),
 //!         development: Some(true),
@@ -59,6 +64,7 @@
 //! };
 //! ```
 
+pub mod env;
 pub mod es2016;
 pub mod es2017;
 pub mod es2018;
@@ -70,6 +76,16 @@ pub mod jsx;
 pub mod regexp;
 pub mod typescript;
 
+mod transformer;
+pub use transformer::{Transformer, TransformerReturn};
+
+/// A boolean shorthand or explicit configuration, as in SWC Next's public API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoolOr<T> {
+    Bool(bool),
+    Options(T),
+}
+
 /// Selects legacy SWC transforms using SWC Next's option grouping.
 ///
 /// All transforms are disabled by default. Edition groups select individual
@@ -79,15 +95,8 @@ pub mod typescript;
 pub struct TransformerOptions {
     /// Source filename for transforms such as JSX development metadata.
     pub filename: Option<String>,
-    pub es2016: es2016::ES2016Options,
-    pub es2017: es2017::ES2017Options,
-    pub es2018: es2018::ES2018Options,
-    pub es2019: es2019::ES2019Options,
-    pub es2020: es2020::ES2020Options,
-    pub es2021: es2021::ES2021Options,
-    pub es2022: es2022::ES2022Options,
-    /// RegExp feature switches, independent of the edition groups.
-    pub regexp: regexp::RegExpOptions,
+    /// Resolved ECMAScript and RegExp transform selections.
+    pub env: env::EnvOptions,
     /// SWC's React preset options, including JSX and React Refresh.
     pub jsx: Option<jsx::JsxOptions>,
     /// TypeScript stripping/lowering and JSX import-retention options.

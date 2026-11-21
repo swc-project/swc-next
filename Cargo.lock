@@ -3915,6 +3915,19 @@ dependencies = [
 [[package]]
 name = "swc_next_ecma_transformer_legacy"
 version = "0.7.0"
+dependencies = [
+ "browserslist-rs",
+ "insta",
+ "jsonc-parser 0.34.0",
+ "jwalk",
+ "preset_env_base",
+ "serde_json",
+ "swc_core",
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
+]
 
 [[package]]
 name = "swc_next_formatter"
