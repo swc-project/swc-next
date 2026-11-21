@@ -1467,7 +1467,12 @@ impl<'a> Printer<'a> {
 
     fn print_for_left(&mut self, left: ForStatementLeft) {
         match self.ast.for_statement_left_data(left) {
-            ForStatementLeftData::VariableDeclaration(v) => self.print_variable_decl(v, false),
+            ForStatementLeftData::VariableDeclaration(v) => {
+                let saved = self.forbid_in;
+                self.forbid_in = true;
+                self.print_variable_decl(v, false);
+                self.forbid_in = saved;
+            }
             ForStatementLeftData::AssignmentTarget(t) => self.print_assignment_target(t),
         }
     }

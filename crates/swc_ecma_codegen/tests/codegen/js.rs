@@ -1763,3 +1763,18 @@ fn test_dangling_else_after_edits() {
         generate_unwrapped_blocks("if (a) { while (b) { if (c) x(); } } else y();", compact);
     assert_eq!(output, "if(a){while(b)if(c)x()}else y();");
 }
+
+#[test]
+fn test_for_in_initializers() {
+    let options = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::expect_generated_pair(
+        "for (var i = (a in b) in c);",
+        options,
+        "for (var i = (a in b) in c) ;\n",
+        "for(var i=(a in b)in c);",
+    );
+}
