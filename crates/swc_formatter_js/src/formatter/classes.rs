@@ -28,6 +28,7 @@ use super::expressions::{
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
+use super::member_separator::{MemberBody, MemberSeparator};
 use super::source::is_source_whitespace;
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{
@@ -37,7 +38,7 @@ use super::suppression::{
 use super::types::generics::{TypeListKind, TypeListPrefix};
 use super::types::members::PreparedIndexSignature;
 use super::types::{PreparedAnnotation, TypeGap, type_requires_terminator};
-use crate::{FormatError, QuoteProperties, Semicolons, document::Writer};
+use crate::{FormatError, QuoteProperties, document::Writer};
 use member_prefix::{ClassMemberPrefix, ClassMemberPrefixOwner};
 
 #[expect(
@@ -203,7 +204,10 @@ struct FieldSuffix<'ast> {
 }
 
 enum ClassMemberTerminal {
-    Canonical { span: Span, semicolon: bool },
+    Canonical {
+        span: Span,
+        separator: MemberSeparator,
+    },
     Source(Span),
 }
 
@@ -1508,7 +1512,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.source_bodyless_class_method(method, sibling, core_start, quoting)?
             }
             ClassElementData::PropertyDefinition(field) => {
-                match self.source_class_field(field, sibling, core_start, quoting)? {
+                match self.source_class_field(
+                    field,
+                    sibling,
+                    core_start,
+                    quoting,
+                    following.is_some(),
+                )? {
                     Some(field) => ClassMemberContent::Field(field),
                     None => ClassMemberContent::Verbatim,
                 }
@@ -1567,7 +1577,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     index.terminal,
                     tail,
                     None,
-                    false,
+                    None,
                     boundary,
                     writer,
                 );
@@ -1645,7 +1655,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_method_key_prefix(method.prefix, writer)?;
             self.format_bodyless_signature_suffix(method.signature, writer)
         })?;
-        self.format_class_member_terminal(method.terminal, tail, None, false, boundary, writer)
+        self.format_class_member_terminal(method.terminal, tail, None, None, boundary, writer)
     }
 
     fn source_class_index_signature(
@@ -1686,8 +1696,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ClassMemberTerminal::Canonical {
                 span: internal,
-                semicolon: self.options.semicolons == Semicolons::Always
-                    || result.is_some_and(|node| type_requires_terminator(node, self.ast)),
+                separator: MemberSeparator::select(
+                    MemberBody::Class,
+                    self.options.semicolons,
+                    false,
+                    MemberSeparator::needs_requirement(self.options.semicolons)
+                        && result.is_some_and(|node| type_requires_terminator(node, self.ast)),
+                ),
             }
         };
         (terminal, mode)
@@ -1698,20 +1713,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         terminal: ClassMemberTerminal,
         tail: Option<ExpressionTail<'ast>>,
         operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
-        following_requires_separator: bool,
+        following: Option<&PreparedClassMember<'ast>>,
         boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
     ) -> Result<ClassMemberOutput<'ast>, FormatError> {
         match terminal {
-            ClassMemberTerminal::Canonical { span, semicolon } => {
+            ClassMemberTerminal::Canonical { span, separator } => {
+                let (tail, end) = if operator_tail.is_some() {
+                    (tail, ClassMemberEnd::LineComment)
+                } else {
+                    let tail = self.capture_expression_tail(span, tail)?;
+                    let end = if tail.as_ref().is_some_and(|tail| {
+                        tail.comments
+                            .last()
+                            .is_some_and(|comment| comment.kind == CommentKind::Line)
+                    }) {
+                        ClassMemberEnd::LineComment
+                    } else {
+                        ClassMemberEnd::Token
+                    };
+                    (tail, end)
+                };
+                let separator = if matches!(separator, MemberSeparator::Semicolon) {
+                    separator
+                } else {
+                    separator.require_if(
+                        following
+                            .is_some_and(|member| self.class_member_needs_field_separator(member))
+                            || boundary.requires_terminator(end),
+                    )
+                };
+                separator.write(writer);
                 if let Some(operator) = operator_tail {
-                    let end = ClassMemberEnd::LineComment;
-                    if semicolon
-                        || following_requires_separator
-                        || boundary.requires_terminator(end)
-                    {
-                        writer.text(";");
-                    }
                     return Ok(ClassMemberOutput {
                         end,
                         pending: tail,
@@ -1720,19 +1753,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             packet: operator,
                         }),
                     });
-                }
-                let tail = self.capture_expression_tail(span, tail)?;
-                let end = if tail.as_ref().is_some_and(|tail| {
-                    tail.comments
-                        .last()
-                        .is_some_and(|comment| comment.kind == CommentKind::Line)
-                }) {
-                    ClassMemberEnd::LineComment
-                } else {
-                    ClassMemberEnd::Token
-                };
-                if semicolon || following_requires_separator || boundary.requires_terminator(end) {
-                    writer.text(";");
                 }
                 self.format_expression_tail(tail, writer)?;
                 Ok(end.into())
@@ -1805,6 +1825,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_sibling: Option<DelimitedSuppression>,
         core_start: u32,
         quoting: PropertyKeyQuoting,
+        followed_by_member: bool,
     ) -> Result<Option<SourceClassField<'ast>>, FormatError> {
         let ast = self.ast;
         // TypeScript checks initialization of identifier fields and accessors, but
@@ -2066,16 +2087,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ClassMemberTerminal::Canonical {
                 span: Span::new(end, tail_end),
-                semicolon: self.options.semicolons == Semicolons::Always
-                    || initializer.is_none()
+                separator: MemberSeparator::select(
+                    MemberBody::Class,
+                    self.options.semicolons,
+                    followed_by_member,
+                    MemberSeparator::needs_requirement(self.options.semicolons)
+                        && initializer.is_none()
                         && (annotation.is_some_and(|annotation| {
                             type_requires_terminator(annotation.type_annotation(ast), ast)
                         }) || !has_suffix
                             && computed.is_none()
-                            && matches!(
+                            && MemberBody::Class.bare_name_requires_separator(
                                 self.property_key_identifier(key, key_context, key_mode, quoting),
-                                Some("static" | "get" | "set")
+                                followed_by_member,
+                                ast.lang().is_typescript(),
                             )),
+                ),
             }
         };
         Ok(Some(SourceClassField {
@@ -2301,7 +2328,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && let (
                     ClassMemberTerminal::Canonical {
                         span,
-                        semicolon: false,
+                        separator: MemberSeparator::Omit,
                     },
                     ExpressionRightEdge::SourceFenceCandidate(raw),
                 ) = (&terminal, output.right_edge)
@@ -2316,7 +2343,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     ClassMemberTerminal::Canonical {
                         span: *span,
-                        semicolon: true,
+                        separator: MemberSeparator::Semicolon,
                     }
                 };
             }
@@ -2324,13 +2351,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             tail
         };
-        let following_requires_separator =
-            following.is_some_and(|member| self.class_member_needs_field_separator(member));
         self.format_class_member_terminal(
             terminal,
             tail,
             operator_tail,
-            following_requires_separator,
+            following,
             boundary,
             writer,
         )

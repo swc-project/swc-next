@@ -1,0 +1,95 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I {
+  default;
+  get x(): number;
+}
+
+type T = {
+  default;
+  set x(v: number);
+};
+
+interface Method {
+  default;
+  get(): number;
+}
+
+interface Comment {
+  default;
+  get // key
+  x(): number;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface I {
+  default;
+  get x(): number;
+}
+
+type T = {
+  default;
+  set x(v: number);
+};
+
+interface Method {
+  default;
+  get(): number;
+}
+
+interface Comment {
+  default;
+  get // key
+  x(): number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface I {
+  default;
+  get x(): number;
+}
+
+type T = {
+  default;
+  set x(v: number);
+};
+
+interface Method {
+  default;
+  get(): number;
+}
+
+interface Comment {
+  default;
+  get // key
+  x(): number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+interface I {
+  default;
+  get x(): number
+}
+
+type T = {
+  default;
+  set x(v: number)
+}
+
+interface Method {
+  default
+  get(): number
+}
+
+interface Comment {
+  default
+  get // key
+  x(): number
+}

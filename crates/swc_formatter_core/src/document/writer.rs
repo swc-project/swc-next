@@ -5,10 +5,12 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    AlignText, BreakEffect, ConditionTarget, Doc, FlatFragment, Fragment, FragmentCapabilities,
-    Group, GroupId, GroupRequest, IfBreak, IndentIfBreakOptions, Instruction, LabelId, LineOptions,
-    NeutralFragment, RecordedGroup, RichIndentKind, facts::Facts, text::Text, transform,
+    AlignText, BreakEffect, ConditionTarget, Doc, FlatFragment, FlatLineBounds, Fragment,
+    FragmentCapabilities, Group, GroupId, GroupRequest, IfBreak, IndentIfBreakOptions, Instruction,
+    LabelId, LineOptions, NeutralFragment, RecordedGroup, RichIndentKind, facts::Facts, query,
+    text::Text, transform,
 };
+use crate::PrintOptions;
 
 pub struct Writer<'a> {
     allocator: &'a Allocator,
@@ -16,6 +18,7 @@ pub struct Writer<'a> {
     facts: Facts,
     flattening: bool,
     group_count: u32,
+    indent_levels: u32,
     last_unmeasured_group_end: usize,
 }
 
@@ -64,6 +67,7 @@ impl<'a> Writer<'a> {
             facts: Facts::default(),
             flattening: false,
             group_count: 0,
+            indent_levels: 0,
             last_unmeasured_group_end: 0,
         }
     }
@@ -427,6 +431,7 @@ impl<'a> Writer<'a> {
     /// scopes before passing its handle to this writer's [`Self::end_indent`].
     #[inline]
     pub fn begin_indent(&mut self) -> IndentScope {
+        self.indent_levels += 1;
         self.elements.push(Instruction::StartIndent);
         IndentScope(())
     }
@@ -434,6 +439,7 @@ impl<'a> Writer<'a> {
     /// Closes the innermost open indentation scope.
     #[inline]
     pub fn end_indent(&mut self, _scope: IndentScope) {
+        self.indent_levels -= 1;
         self.elements.push(Instruction::EndIndent);
     }
 
@@ -442,7 +448,9 @@ impl<'a> Writer<'a> {
         let width = indentation_width(width);
         self.elements
             .push(Instruction::StartAbsoluteIndent { width });
+        let previous = std::mem::take(&mut self.indent_levels);
         let result = write(self);
+        self.indent_levels = previous;
         self.elements.push(Instruction::EndIndent);
         result
     }
@@ -511,7 +519,10 @@ impl<'a> Writer<'a> {
     pub fn dedent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.facts.require_rich_indent();
         self.elements.push(Instruction::StartDedent);
+        let previous = self.indent_levels;
+        self.indent_levels = previous.saturating_sub(1);
         let result = write(self);
+        self.indent_levels = previous;
         self.elements
             .push(Instruction::EndRichIndent(RichIndentKind::Dedent));
         result
@@ -529,7 +540,9 @@ impl<'a> Writer<'a> {
     pub fn dedent_to_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.facts.require_rich_indent();
         self.elements.push(Instruction::StartDedentToRoot);
+        let previous = std::mem::take(&mut self.indent_levels);
         let result = write(self);
+        self.indent_levels = previous;
         self.elements
             .push(Instruction::EndRichIndent(RichIndentKind::DedentToRoot));
         result
@@ -668,6 +681,46 @@ impl<'a> Writer<'a> {
             unreachable!("recorded group retains its complete anonymous outer scope");
         };
         Ok((RecordedGroup { grouped }, value))
+    }
+
+    /// Whether the line containing `child` must exceed the width after `preceding`.
+    ///
+    /// `following` immediately follows `preceding` in the current writer scope,
+    /// and must directly contain the recorded `child`. `prefix_width` is a known
+    /// ASCII width lower bound for the preceding final line, excluding indentation.
+    /// `suffix_width` counts known ASCII text after `following` if the measured line
+    /// reaches its end.
+    ///
+    /// This uses a conservative lower bound, not the final printed position.
+    /// `false` also covers unknown widths; it does not prove that the line fits.
+    #[doc(hidden)]
+    pub fn flat_child_line_exceeds_width(
+        &self,
+        preceding: RecordedGroup<'_>,
+        following: Fragment<'_>,
+        child: FlatFragment<'_>,
+        prefix_width: usize,
+        suffix_width: usize,
+        options: PrintOptions,
+    ) -> bool {
+        let indent_width = usize::from(options.indent_width.value());
+        let indent = self.indent_levels as usize * indent_width;
+        let preceding_indent = if preceding.breaks_before_final_text() {
+            indent
+        } else {
+            0
+        };
+        query::minimum_flat_line_width(
+            following,
+            child.0,
+            FlatLineBounds {
+                prefix: preceding_indent.saturating_add(prefix_width),
+                suffix: suffix_width,
+                indent,
+                indent_width,
+            },
+        )
+        .is_some_and(|width| width > usize::from(options.line_width))
     }
 
     /// Wraps a completed scope without recording its syntax or allocating a named group.

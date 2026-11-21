@@ -313,7 +313,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.format_comment_boundary(&before, writer)?;
         if matches!(leading, HeritageLeading::Preceding) {
-            self.format_comment_boundary(&after, writer)?;
+            if matches!(before.gap(), CommentGap::LineComment) {
+                // The relocated packet starts its own line once the previous
+                // comment ends. Its original keyword no longer opens a suffix.
+                writer.hard_line();
+                self.format_comment_boundary_with_layout(&after, CommentRunLayout::Source, writer)?;
+            } else {
+                self.format_comment_boundary(&after, writer)?;
+            }
             after
                 .gap()
                 .write(writer, FlatSeparator::Space, Writer::hard_line);

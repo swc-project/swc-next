@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A// c
+// c2
+implements// d
+B{}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class A // c
+  // c2
+  // d
+  implements B {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class A // c
+  // c2
+  // d
+  implements B {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+class A // c
+	// c2
+	// d
+	implements B {}

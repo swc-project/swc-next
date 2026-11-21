@@ -288,7 +288,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 signature.result,
                 None,
                 can_group_parameters,
-                false,
+                Default::default(),
                 writer,
             )
         })

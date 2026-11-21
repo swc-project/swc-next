@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = (): /* prettier-ignore */ ( A  &  (B)) => ({});
+---------- Options ----------
+{}
+---------- Output ----------
+const f = (): /* prettier-ignore */ ( A  &  (B)) => ({});
+
+---------- Options ----------
+{"lineWidth":30}
+---------- Output ----------
+const f =
+	(): /* prettier-ignore */ ( A  &  (B)) => ({});
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":30,"semicolons":"as-needed"}
+---------- Output ----------
+const f =
+	(): /* prettier-ignore */ ( A  &  (B)) => ({})

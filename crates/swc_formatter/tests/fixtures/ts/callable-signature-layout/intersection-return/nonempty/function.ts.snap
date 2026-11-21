@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function withoutObservableAccess<T>(value: T): T & { observable: X } { go() }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":26}
+---------- Output ----------
+function withoutObservableAccess<
+  T,
+>(
+  value: T,
+): T & { observable: X } {
+  go();
+}

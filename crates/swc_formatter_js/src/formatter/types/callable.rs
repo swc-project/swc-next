@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
 use super::generics::TypeParameterContext;
 use super::{
     Formatter, PreparedAnnotation, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout,
-    TypeContext, TypeGap, TypeLayout, TypeOutput,
+    TypeContext, TypeContinuation, TypeGap, TypeLayout, TypeOutput,
 };
 use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
@@ -30,13 +30,6 @@ use crate::{
 pub(super) enum CallableType {
     Function(TsFunctionType),
     Constructor(TsConstructorType),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ReturnContinuation {
-    None,
-    Syntax,
-    Body,
 }
 
 struct CallableParts {
@@ -125,7 +118,7 @@ pub(in crate::formatter) struct FunctionReturn<'ast> {
 }
 
 impl FunctionReturn<'_> {
-    pub(in crate::formatter) fn has_object_type(&self) -> bool {
+    fn has_object_type(&self) -> bool {
         matches!(
             &self.content,
             FunctionReturnContent::Annotation(AnnotationContent::Type(node))
@@ -134,18 +127,33 @@ impl FunctionReturn<'_> {
     }
 }
 
-pub(in crate::formatter) fn write_signature_fragments<'ast>(
+pub(in crate::formatter) enum SignatureReturnBody<'ast> {
+    Off,
+    Observe,
+    Recorded(Fragment<'ast>),
+}
+
+#[derive(Default)]
+pub(in crate::formatter) struct SignatureResultLayout {
+    pub(super) grouped: bool,
+    pub(super) continuation_width: usize,
+}
+
+pub(in crate::formatter) struct RecordedSignature<'ast> {
     parameters: RecordedGroup<'ast>,
     result: Fragment<'ast>,
-    object_return: bool,
-    writer: &mut Writer<'ast>,
-) {
-    writer.write_fragment(if object_return || result.preferred_breaks() {
-        parameters.grouped()
-    } else {
-        parameters.contents()
-    });
-    writer.write_fragment(result);
+    independent_parameters: bool,
+}
+
+impl<'ast> RecordedSignature<'ast> {
+    pub(in crate::formatter) fn write(self, writer: &mut Writer<'ast>) {
+        writer.write_fragment(if self.independent_parameters {
+            self.parameters.grouped()
+        } else {
+            self.parameters.contents()
+        });
+        writer.write_fragment(self.result);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -382,6 +390,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
+        let span = node.span(ast);
         let parts = node.parts(ast);
         let parameters_span = parts.parameters.span(ast);
         let mut parameters = self.callable_parameters(parts.parameters, parts.this_parameter);
@@ -389,7 +398,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !parameters.has_parameters()
             && self.content_mode(self.comments.in_range(parameters_span)) == ContentMode::Verbatim
         {
-            self.format_verbatim(node.span(ast), writer)?;
+            self.format_verbatim(span, writer)?;
             return Ok(None);
         }
         let head_end = parts
@@ -398,9 +407,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut generic_mode = ContentMode::Formatted;
         let mut incoming = None;
         let (head, prefix_end) = match node {
-            CallableType::Function(_) => (CallableHead::Function, node.span(ast).start),
+            CallableType::Function(_) => (CallableHead::Function, span.start),
             CallableType::Constructor(constructor) => {
-                let start = constructor.span(ast).start;
+                let start = span.start;
                 let gap = Span::new(start, head_end);
                 let comments = self.comments.in_range(gap);
                 let Some(keyword) = self.find_token(gap, comments, "new") else {
@@ -509,6 +518,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode: generic_mode,
             following,
         });
+        let continuation_width = self
+            .callable_type_continuation
+            .filter(|&(owner, _)| owner == span)
+            .map_or(0, |(_, width)| width);
         writer.group(false, |writer| {
             if let CallableHead::Constructor { abstract_gap } = head {
                 if let Some(gap) = abstract_gap {
@@ -525,7 +538,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(return_type),
                 generics,
                 can_group_parameters,
-                false,
+                SignatureResultLayout {
+                    grouped: false,
+                    continuation_width,
+                },
                 writer,
             )
         })
@@ -918,12 +934,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: FunctionReturn<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
-        self.format_function_return_with_context(
-            result,
-            TypeContext::Root,
-            ReturnContinuation::None,
-            writer,
-        )
+        self.format_function_return_with_context(result, TypeContext::Root, None, writer)
     }
 
     pub(in crate::formatter) fn format_function_return_before_body_output(
@@ -934,7 +945,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_function_return_with_context(
             result,
             TypeContext::Root,
-            ReturnContinuation::Body,
+            Some(TypeContinuation::Body),
             writer,
         )
     }
@@ -944,14 +955,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: SignatureReturn<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_signature_return_with_context(result, TypeContext::Root, false, writer)
+        self.format_signature_return_at_continuation(result, TypeContext::Root, None, writer)
     }
 
-    pub(in crate::formatter) fn format_signature_return_with_context(
+    pub(in crate::formatter) fn format_arrow_return(
+        &mut self,
+        result: SignatureReturn<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_signature_return_at_continuation(
+            result,
+            TypeContext::ArrowReturn,
+            Some(TypeContinuation::Arrow),
+            writer,
+        )
+    }
+
+    fn format_signature_return_at_continuation(
         &mut self,
         result: SignatureReturn<'ast>,
         context: TypeContext,
-        continuation: bool,
+        continuation: Option<TypeContinuation>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_function_return_with_context(
@@ -961,11 +985,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 delimiter: result.delimiter,
             },
             context,
-            if continuation {
-                ReturnContinuation::Syntax
-            } else {
-                ReturnContinuation::None
-            },
+            continuation,
             writer,
         )
         .map(|output| output.pending)
@@ -976,17 +996,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: SignatureReturn<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_function_return_with_context(
-            FunctionReturn {
-                content: FunctionReturnContent::Annotation(result.content),
-                prefix: result.prefix,
-                delimiter: result.delimiter,
-            },
+        self.format_signature_return_at_continuation(
+            result,
             TypeContext::Root,
-            ReturnContinuation::Body,
+            Some(TypeContinuation::Body),
             writer,
         )
-        .map(|output| output.pending)
     }
 
     pub(in crate::formatter) fn signature_parameters_can_group(
@@ -1053,7 +1068,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: Option<SignatureReturn<'ast>>,
         generics: Option<SignatureGenerics<'ast>>,
         can_group_parameters: bool,
-        group_return: bool,
+        result_layout: SignatureResultLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if can_group_parameters && let Some(result) = result {
@@ -1061,17 +1076,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_callable_signature_parameters(parameters, generics, writer)
             })?;
             let result = self.prepare_function_return(result);
-            let object_return = result.has_object_type();
-            let (result, output) = writer.record_with_value(|writer| {
-                if group_return {
-                    writer.group(false, |writer| {
-                        self.format_function_return_output(result, writer)
-                    })
-                } else {
-                    self.format_function_return_output(result, writer)
-                }
-            })?;
-            write_signature_fragments(parameters, result, object_return, writer);
+            let (signature, output) = self.record_signature(
+                parameters,
+                result,
+                result_layout.continuation_width,
+                writer,
+                |formatter, result, writer| {
+                    if result_layout.grouped {
+                        writer.group(false, |writer| {
+                            formatter.format_function_return_output(result, writer)
+                        })
+                    } else {
+                        formatter.format_function_return_output(result, writer)
+                    }
+                },
+            )?;
+            signature.write(writer);
             return Ok(output.pending);
         }
         if result
@@ -1085,12 +1105,76 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_callable_signature_parameters(parameters, generics, writer)?;
         }
         match result {
-            Some(result) if group_return => {
+            Some(result) if result_layout.grouped => {
                 writer.group(false, |writer| self.format_signature_return(result, writer))
             }
             Some(result) => self.format_signature_return(result, writer),
             None => Ok(None),
         }
+    }
+
+    pub(in crate::formatter) fn record_signature<T>(
+        &mut self,
+        parameters: RecordedGroup<'ast>,
+        result: FunctionReturn<'ast>,
+        continuation_width: usize,
+        writer: &mut Writer<'ast>,
+        write: impl FnOnce(&mut Self, FunctionReturn<'ast>, &mut Writer<'ast>) -> Result<T, FormatError>,
+    ) -> Result<(RecordedSignature<'ast>, T), FormatError> {
+        let object_return = result.has_object_type();
+        let observation = if object_return {
+            SignatureReturnBody::Off
+        } else {
+            SignatureReturnBody::Observe
+        };
+        let outer = std::mem::replace(&mut self.signature_return_body, observation);
+        let recorded = writer.record_with_value(|writer| write(self, result, writer));
+        let observed = std::mem::replace(&mut self.signature_return_body, outer);
+        let (doc, output) = recorded?;
+        // A type body preserves a printed break after its opening brace on
+        // the next pass. Give the parameters their own group whenever the
+        // body already expands or could not stay flat even after a broken `)`.
+        let independent_parameters = object_return
+            || doc.preferred_breaks()
+            || match observed {
+                SignatureReturnBody::Recorded(body) => body.try_flat().is_some_and(|flat| {
+                    writer.flat_child_line_exceeds_width(
+                        parameters,
+                        doc,
+                        flat,
+                        ")".len(),
+                        continuation_width,
+                        self.options.into(),
+                    )
+                }),
+                _ => false,
+            };
+        Ok((
+            RecordedSignature {
+                parameters,
+                result: doc,
+                independent_parameters,
+            },
+            output,
+        ))
+    }
+
+    pub(super) fn format_observed_return_body(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+        write: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<TypeOutput<'ast>, FormatError>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
+        if !matches!(self.signature_return_body, SignatureReturnBody::Observe)
+            || self.diagnostic_range_is_sensitive(span)
+        {
+            return write(self, writer);
+        }
+        self.signature_return_body = SignatureReturnBody::Off;
+        let (body, output) = writer.record_with_value(|writer| write(self, writer))?;
+        self.signature_return_body = SignatureReturnBody::Recorded(body);
+        writer.write_fragment(body);
+        Ok(output)
     }
 
     fn format_callable_signature_parameters(
@@ -1115,7 +1199,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         result: FunctionReturn<'ast>,
         context: TypeContext,
-        continuation: ReturnContinuation,
+        continuation: Option<TypeContinuation>,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         let layout = match result.prefix {
@@ -1186,10 +1270,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer.write_fragment(content);
                         return Ok(output);
                     }
-                    if continuation != ReturnContinuation::None {
-                        let body_follows = continuation == ReturnContinuation::Body;
+                    if let Some(continuation) = continuation {
                         let layout =
-                            self.type_layout_at_continuation(span, TypeLayout::Root, body_follows);
+                            self.type_layout_at_continuation(span, TypeLayout::Root, continuation);
                         if after.is_empty()
                             || layout == TypeLayout::ContinuationRoot
                                 && matches!(
@@ -1200,7 +1283,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
                             return self.format_type_body_at_continuation(
                                 span,
-                                body_follows,
+                                continuation,
                                 writer,
                                 |formatter, writer| {
                                     formatter

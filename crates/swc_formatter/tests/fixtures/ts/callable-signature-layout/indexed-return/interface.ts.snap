@@ -1,0 +1,40 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { p: <T>(a: T) => { b?: string }[keyof A] }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30}
+---------- Output ----------
+interface I {
+  p: <T>(a: T) => {
+    b?: string;
+  }[keyof A];
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+interface I {
+  p: <T>(a: T) => {
+    b?: string
+  }[keyof A]
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"semicolons":"as-needed"}
+---------- Output ----------
+interface I {
+  p: <T>(
+    a: T,
+  ) => { b?: string }[keyof A]
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":31}
+---------- Output ----------
+interface I {
+  p: <T>(
+    a: T,
+  ) => { b?: string }[keyof A];
+}

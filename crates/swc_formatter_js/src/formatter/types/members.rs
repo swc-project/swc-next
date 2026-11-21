@@ -4,13 +4,13 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, FormalParameters, GetSpan, PropertyKey, Span, SubRange,
     TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsIndexSignature,
     TsIndexSignatureParameter, TsMethodSignature, TsMethodSignatureKind, TsPropertySignature,
-    TsThisParameter, TsType, TsTypeAnnotation, TsTypeElement, TsTypeElementData, TsTypeLiteral,
-    TsTypeParameterDeclaration,
+    TsThisParameter, TsType, TsTypeAnnotation, TsTypeData, TsTypeElement, TsTypeElementData,
+    TsTypeLiteral, TsTypeParameterDeclaration,
 };
 
 use super::callable::{
-    AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
-    SignatureReturnDelimiter, SignatureReturnEolTarget,
+    AnnotationContent, CallableParameters, SignatureGenerics, SignatureIncoming,
+    SignatureResultLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
 use super::{Formatter, PreparedType, TypeContext, TypeGap, TypeLayout, TypeOutput};
 use crate::formatter::comments::{
@@ -20,11 +20,12 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
+use crate::formatter::member_separator::{MemberBody, MemberSeparator};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
 use crate::{
-    FormatError, Semicolons,
+    FormatError,
     document::{BodyOpening, GroupRequest, Writer},
 };
 
@@ -202,6 +203,15 @@ pub(super) enum TypeMemberBodyKind {
     Interface,
 }
 
+impl TypeMemberBodyKind {
+    fn separator_body(self) -> MemberBody {
+        match self {
+            Self::Literal => MemberBody::TypeLiteral,
+            Self::Interface => MemberBody::Interface,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct IncomingTypeMember {
     pub(super) node: TsTypeElement,
@@ -231,9 +241,17 @@ impl MemberGapRole {
 
 struct PreparedMember<'ast> {
     content_end: u32,
+    next_start: u32,
+    following_mode: ContentMode,
     separator: Option<Span>,
     content: MemberContent<'ast>,
     before_separator: Option<TypeGap<'ast>>,
+}
+
+enum SeparatorRequirement {
+    Optional,
+    Required,
+    BeforeAccessor(TsMethodSignature),
 }
 
 struct SourceMemberGap<'ast> {
@@ -344,7 +362,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             })
             .peekable();
-        let Some(first) = members.peek().copied() else {
+        let Some(first) = members.next() else {
             let comments = head_comments.unwrap_or_else(|| self.comments.in_range(content));
             if self.content_mode(comments) == ContentMode::Verbatim {
                 self.format_verbatim(span, writer)?;
@@ -408,8 +426,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .filter(|member| member.node == first.node)
             .map_or_else(|| self.content_mode(leading_comments), |member| member.mode);
         let opening_start = head_comments.map_or(content.start, |comments| comments[0].span.start);
-        let expanded = matches!(kind, TypeMemberBodyKind::Interface)
-            || self.type_body_expands(content.start, first_start);
+        let body_always_breaks = matches!(kind, TypeMemberBodyKind::Interface);
+        let expanded = body_always_breaks || self.type_body_expands(content.start, first_start);
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let closing = writer.indent(|writer| {
@@ -420,28 +438,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     kind,
                     writer,
                 )?;
-                while let Some(node) = members.next() {
-                    let span = node.span(ast);
-                    let next = members.peek().copied();
-                    let next_start = next.map_or(content.end, |node| node.span(ast).start);
-                    let suppression = self.delimited_suppression(
-                        span,
-                        next_start,
-                        if next.is_some() {
-                            DelimitedFollowing::Node
-                        } else {
-                            DelimitedFollowing::End
-                        },
-                    );
-                    if suppression
-                        .as_ref()
-                        .is_some_and(|source| source.preceding.is_some())
-                    {
-                        mode = ContentMode::Verbatim;
-                    }
-                    let prepared = self.prepare_type_member(node, mode)?;
+                let mut node = first;
+                let mut next = members.next();
+                let mut prepared_next = None;
+                loop {
+                    let prepared = match prepared_next.take() {
+                        Some(prepared) => prepared,
+                        None => self.prepare_type_member(node, next, content.end, mode)?,
+                    };
+                    mode = prepared.following_mode;
                     let source = matches!(prepared.content, MemberContent::Source(_));
-                    let gap_span = Span::new(prepared.content_end, next_start);
+                    let gap_span = Span::new(prepared.content_end, prepared.next_start);
                     let role = if next.is_some() {
                         MemberGapRole::Between(prepared.separator)
                     } else {
@@ -460,15 +467,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     // The prepared key can remain verbatim even when its member is
                     // formatted. Its actual printed kind determines contextual tokens;
                     // diagnostic-covered members can also require a same-line separator.
-                    let required_separator = self.options.semicolons == Semicolons::AsNeeded
-                        && (self.type_member_requires_separator(
+                    let required_separator = if !source
+                        && MemberSeparator::needs_requirement(self.options.semicolons)
+                    {
+                        let required = match self.type_member_separator_requirement(
                             node,
                             &prepared.content,
                             next,
+                            kind,
                             quoting,
-                        ) || next.is_some()
-                            && self.line_constraint(gap_span.start, gap_span.end)
-                                == LineConstraint::SameLine);
+                        ) {
+                            SeparatorRequirement::Optional => false,
+                            SeparatorRequirement::Required => true,
+                            SeparatorRequirement::BeforeAccessor(accessor) => {
+                                let following = self.prepare_type_member(
+                                    next.expect("accessor follows a property"),
+                                    members.peek().copied(),
+                                    content.end,
+                                    mode,
+                                )?;
+                                let required = !self
+                                    .type_accessor_head_breaks_line(accessor, &following.content);
+                                prepared_next = Some(following);
+                                required
+                            }
+                        };
+                        required
+                            || next.is_some()
+                                && self.line_constraint(gap_span.start, gap_span.end)
+                                    == LineConstraint::SameLine
+                    } else {
+                        false
+                    };
+                    let separator = if source {
+                        MemberSeparator::Omit
+                    } else {
+                        MemberSeparator::select(
+                            kind.separator_body(),
+                            self.options.semicolons,
+                            next.is_some(),
+                            required_separator,
+                        )
+                    };
+                    let continuation_width = if prepared.before_separator.is_none()
+                        && matches!(&gap, MemberGap::Formatted { trailing, .. } if trailing.is_empty())
+                    {
+                        separator.minimum_width(body_always_breaks)
+                    } else {
+                        0
+                    };
                     let after_separator = match &prepared.content {
                         MemberContent::Property(property) => property
                             .riding
@@ -476,7 +523,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map(|packet| (packet.comments, packet.source_end)),
                         _ => None,
                     };
-                    let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let mut tail = self.format_type_member(prepared, quoting, continuation_width, writer)?;
                     let adjacency = after_separator.map_or_else(
                         || PreparedCommentAdjacency::after_tail(tail.as_ref()),
                         |(comments, _)| PreparedCommentAdjacency::after_comments(comments),
@@ -501,17 +548,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if !emit_tail_after_separator {
                         self.format_expression_tail(tail.take(), writer)?;
                     }
-                    if !source {
-                        if required_separator
-                            || next.is_some() && self.options.semicolons == Semicolons::Always
-                        {
-                            writer.text(";");
-                        } else if self.options.semicolons == Semicolons::Always {
-                            writer.if_break(";");
-                        } else if next.is_some() {
-                            writer.if_flat(";");
-                        }
-                    }
+                    separator.write(writer);
                     self.format_expression_tail(tail, writer)?;
                     if let Some((comments, end)) = after_separator {
                         self.format_comment_run(
@@ -520,7 +557,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer,
                         )?;
                     }
-                    if next.is_none() {
+                    let Some(following) = next else {
                         return match gap {
                             MemberGap::Source(source) => {
                                 Ok(MemberClosing::Source(source.following))
@@ -530,11 +567,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 Ok(MemberClosing::Formatted(trailing.gap()))
                             }
                         };
-                    }
+                    };
                     self.format_member_gap(gap, role, kind, adjacency, writer)?;
-                    mode = suppression.map_or(ContentMode::Formatted, |source| source.following);
+                    node = following;
+                    next = members.next();
                 }
-                unreachable!("a nonempty type body retains its final member")
             })?;
             match closing {
                 MemberClosing::Source(span) => self.format_verbatim(span, writer)?,
@@ -730,57 +767,161 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn type_member_requires_separator(
+    fn type_member_separator_requirement(
         &self,
         member: MemberHandle,
         content: &MemberContent<'ast>,
         next: Option<MemberHandle>,
+        kind: TypeMemberBodyKind,
         quoting: PropertyKeyQuoting,
-    ) -> bool {
+    ) -> SeparatorRequirement {
         if next.is_some()
             && member
                 .result_type(self.ast)
                 .is_some_and(|node| super::type_requires_terminator(node, self.ast))
         {
-            return true;
+            return SeparatorRequirement::Required;
         }
         let MemberContent::Property(property) = content else {
-            return false;
+            return SeparatorRequirement::Optional;
         };
-        if property.annotation.is_some() || property.key.computed.is_some() {
-            return false;
+        if property.annotation.is_some() {
+            return SeparatorRequirement::Optional;
         }
+        // A call signature can extend an unannotated property into a method signature.
         if next.is_some_and(|next| {
             matches!(next.data, TsTypeElementData::TsCallSignatureDeclaration(_))
         }) {
-            return true;
+            return SeparatorRequirement::Required;
         }
-        self.property_key_identifier(
+        if property.key.computed.is_some() {
+            return SeparatorRequirement::Optional;
+        }
+        let name = self.property_key_identifier(
             property.key.node,
             PropertyKeyContext::TypeProperty,
             property.key.mode,
             quoting,
-        )
-        .is_some_and(|name| matches!(name, "get" | "set" | "static"))
+        );
+        if kind.separator_body().bare_name_requires_separator(
+            name,
+            next.is_some(),
+            !property.optional,
+        ) {
+            return SeparatorRequirement::Required;
+        }
+        match name {
+            // TypeScript's member lookahead skips `default` before reading the accessor head.
+            Some("default") if !property.optional => match next.map(|next| next.data) {
+                Some(TsTypeElementData::TsMethodSignature(method))
+                    if matches!(
+                        method.kind(self.ast),
+                        TsMethodSignatureKind::Get | TsMethodSignatureKind::Set
+                    ) =>
+                {
+                    SeparatorRequirement::BeforeAccessor(method)
+                }
+                _ => SeparatorRequirement::Optional,
+            },
+            _ => SeparatorRequirement::Optional,
+        }
+    }
+
+    fn type_accessor_head_breaks_line(
+        &self,
+        accessor: TsMethodSignature,
+        content: &MemberContent<'ast>,
+    ) -> bool {
+        match content {
+            MemberContent::Source(span) => {
+                let head = Span::new(span.start, accessor.key(self.ast).span(self.ast).start);
+                let key_start = if accessor.computed(self.ast) {
+                    let Some(opening) = self.find_token(head, self.comments.in_range(head), "[")
+                    else {
+                        return false;
+                    };
+                    opening
+                } else {
+                    head.end
+                };
+                self.source_line_breaks(head.start, key_start) != 0
+            }
+            MemberContent::Signature(signature) => {
+                let (_, gap) = signature
+                    .key
+                    .as_ref()
+                    .and_then(|key| key.prefix.as_ref())
+                    .expect("prepared accessor retains its prefix");
+                match gap {
+                    TypeGap::Source(span) => self.source_line_breaks(span.start, span.end) != 0,
+                    TypeGap::Formatted(boundary) => {
+                        if boundary.gap().requires_line() {
+                            return true;
+                        }
+                        let mut previous = None;
+                        for &comment in boundary.comments() {
+                            let before = previous.map_or_else(
+                                || {
+                                    self.comment_gap_constraint(
+                                        boundary.source_end(),
+                                        comment.span.start,
+                                    )
+                                },
+                                |previous| {
+                                    self.comment_gap_after_constraint(previous, comment.span.start)
+                                },
+                            );
+                            if matches!(before, LineConstraint::NewLine(_))
+                                || comment.kind == CommentKind::Line
+                                || self.source_line_breaks(comment.span.start, comment.span.end)
+                                    != 0
+                            {
+                                return true;
+                            }
+                            previous = Some(comment);
+                        }
+                        false
+                    }
+                }
+            }
+            _ => unreachable!("an accessor is a signature or verbatim member"),
+        }
     }
 
     fn prepare_type_member(
         &self,
         handle: MemberHandle,
+        next: Option<MemberHandle>,
+        body_end: u32,
         mode: ContentMode,
     ) -> Result<PreparedMember<'ast>, FormatError> {
         let ast = self.ast;
         let node = handle.node;
         let span = node.span(ast);
+        let next_start = next.map_or(body_end, |node| node.span(ast).start);
+        let suppression = self.delimited_suppression(
+            span,
+            next_start,
+            if next.is_some() {
+                DelimitedFollowing::Node
+            } else {
+                DelimitedFollowing::End
+            },
+        );
+        let following_mode = suppression.map_or(ContentMode::Formatted, |source| source.following);
         let separator = self
             .source(span)
             .as_bytes()
             .last()
             .filter(|&&byte| matches!(byte, b';' | b','))
             .map(|_| Span::new(span.end - 1, span.end));
-        if mode == ContentMode::Verbatim {
+        if mode == ContentMode::Verbatim
+            || suppression.is_some_and(|source| source.preceding.is_some())
+        {
             return Ok(PreparedMember {
                 content_end: span.end,
+                next_start,
+                following_mode,
                 separator,
                 content: MemberContent::Source(span),
                 before_separator: None,
@@ -866,6 +1007,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 content_end
             },
+            next_start,
+            following_mode,
             separator,
             content,
             before_separator,
@@ -1014,23 +1157,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 let type_node = self.normalize_type_head(type_node)?;
-                let relocate = key.mode == ContentMode::Formatted
+                let can_relocate = key.mode == ContentMode::Formatted
                     && type_node.source_owner.is_none()
                     && after.last().is_some_and(|comment| {
                         comment.kind == CommentKind::Line
                             && self.line_breaks(colon + 1, comment.span.start) == 0
                     })
                     && self.comments.in_range(type_node.node.span(ast)).is_empty()
-                    && !matches!(
-                        type_node.data,
-                        swc_next_ecma_ast::TsTypeData::TsUnionType(_)
-                            | swc_next_ecma_ast::TsTypeData::TsIntersectionType(_)
-                            | swc_next_ecma_ast::TsTypeData::TsParenthesizedType(_)
-                    )
                     && self
                         .comment_binding(after, Span::new(colon + 1, gap.end), None)
                         .allows_relocation(None);
-                let after = if relocate {
+                let type_node = if can_relocate {
+                    self.normalize_property_type_head(type_node)?
+                } else {
+                    type_node
+                };
+                let after = if can_relocate
+                    && !matches!(
+                        type_node.data,
+                        TsTypeData::TsUnionType(_)
+                            | TsTypeData::TsIntersectionType(_)
+                            | TsTypeData::TsParenthesizedType(_)
+                    ) {
                     riding = Some(ExpressionTail {
                         source_end: colon + 1,
                         comments: after,
@@ -1096,6 +1244,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ending,
             riding,
         })
+    }
+
+    fn normalize_property_type_head(
+        &self,
+        mut node: PreparedType,
+    ) -> Result<PreparedType, FormatError> {
+        while let TsTypeData::TsParenthesizedType(parentheses) = node.data {
+            let pair = self.prepare_type_parentheses(
+                parentheses,
+                node.source_owner,
+                node.source_head,
+                TypeContext::Root,
+            );
+            if pair.retained {
+                break;
+            }
+            node = self.normalize_type_head(pair.child)?;
+        }
+        Ok(node)
     }
 
     fn prepare_signature_member(
@@ -1501,10 +1668,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut member: PreparedMember<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let before_separator = member.before_separator.take();
-        let tail = self.format_type_member_content(member.content, quoting, writer)?;
+        let tail =
+            self.format_type_member_content(member.content, quoting, continuation_width, writer)?;
         if let Some(before) = before_separator {
             match (tail, before) {
                 (Some(tail), TypeGap::Formatted(boundary)) => {
@@ -1533,6 +1702,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         content: MemberContent<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match content {
@@ -1541,7 +1711,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(None)
             }
             MemberContent::Property(property) => {
-                self.format_property_member(property, quoting, writer)
+                self.format_property_member(property, quoting, continuation_width, writer)
             }
             MemberContent::Signature(mut signature) => {
                 let generics = signature.generics.as_ref().map(|(node, _, _)| *node);
@@ -1591,7 +1761,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 following,
                             }),
                         can_group_parameters,
-                        group_return,
+                        SignatureResultLayout {
+                            grouped: group_return,
+                            continuation_width,
+                        },
                         writer,
                     )
                 })
@@ -1604,6 +1777,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut property: PropertyMember<'ast>,
         quoting: PropertyKeyQuoting,
+        continuation_width: usize,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_type_member_leading(property.key.leading.take(), writer)?;
@@ -1669,13 +1843,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let Some(packet) = property.riding {
                         self.comments.claim(packet.comments)?;
                     }
-                    self.format_prepared_type_after_comments(
+                    let previous = self.callable_type_continuation;
+                    if continuation_width != 0
+                        && matches!(
+                            node.data,
+                            TsTypeData::TsFunctionType(_) | TsTypeData::TsConstructorType(_)
+                        )
+                    {
+                        self.callable_type_continuation =
+                            Some((node.node.span(self.ast), continuation_width));
+                    }
+                    let output = self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
                         &after,
                         TypeLayout::Root,
                         writer,
-                    )
+                    );
+                    self.callable_type_continuation = previous;
+                    output
                 }
             }
         } else {

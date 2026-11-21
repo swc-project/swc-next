@@ -10,6 +10,7 @@ mod functions;
 mod heritage;
 mod lint_lines;
 mod literals;
+mod member_separator;
 mod parameters;
 mod restricted;
 mod source;
@@ -47,6 +48,8 @@ pub(crate) struct Formatter<'ast, 'source> {
     label_chain_head: Option<Span>,
     terminal_close_owner: diagnostics::TerminalCloseOwner,
     source_object_layout: SourceObjectLayout,
+    signature_return_body: types::callable::SignatureReturnBody<'ast>,
+    callable_type_continuation: Option<(Span, usize)>,
     recursion: &'ast RecursionState,
 }
 
@@ -150,6 +153,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             label_chain_head: None,
             terminal_close_owner: diagnostics::TerminalCloseOwner::Source,
             source_object_layout: SourceObjectLayout::default(),
+            signature_return_body: types::callable::SignatureReturnBody::Off,
+            callable_type_continuation: None,
             recursion: allocator.alloc(RecursionState {
                 current: Cell::new(RecursionFrame {
                     depth: 0,
