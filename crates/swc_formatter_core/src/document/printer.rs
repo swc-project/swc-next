@@ -40,6 +40,16 @@ enum FitState {
     Remeasure,
 }
 
+impl FitState {
+    fn invalidate_line(&mut self, mode: Mode) {
+        if mode == Mode::Flat {
+            *self = Self::Remeasure;
+        } else if *self == Self::Measured {
+            *self = Self::Unmeasured;
+        }
+    }
+}
+
 /// Selects the probe boundary and initial scope together, with static dispatch.
 trait ProbeKind {
     const BOUNDED: bool;
@@ -56,7 +66,14 @@ trait ProbeKind {
         None
     }
 
-    fn start_entry(&mut self, _column: usize, _pending_line: bool) {}
+    fn start_entry(
+        &mut self,
+        _column: usize,
+        _pending_line: bool,
+        _ends_fill: impl FnOnce() -> bool,
+    ) -> bool {
+        false
+    }
 
     fn end_entry(&mut self) -> bool {
         false
@@ -118,12 +135,23 @@ impl ProbeKind for FillProbe<'_> {
         None
     }
 
-    fn start_entry(&mut self, column: usize, pending_line: bool) {
-        self.entry_depth += 1;
-        if self.entry_depth == 1 && self.completed_entries.is_multiple_of(2) {
-            self.next_item_in_bounds =
-                column.saturating_add(usize::from(pending_line)) <= self.line_width;
+    fn start_entry(
+        &mut self,
+        column: usize,
+        pending_line: bool,
+        ends_fill: impl FnOnce() -> bool,
+    ) -> bool {
+        if self.entry_depth == 0 {
+            if self.completed_entries.is_multiple_of(2) {
+                self.next_item_in_bounds =
+                    column.saturating_add(usize::from(pending_line)) <= self.line_width;
+            } else if ends_fill() {
+                // The trailing separator shares the preceding content's mode.
+                return self.end_fill();
+            }
         }
+        self.entry_depth += 1;
+        false
     }
 
     fn end_entry(&mut self) -> bool {
@@ -400,6 +428,18 @@ impl<'a> ProbeCursor<'a, '_> {
                 self.current = self.parents[index];
             }
         }
+    }
+
+    fn ends_fill_after_part(&self, end_offset: u32) -> bool {
+        let next = self.current.remaining.get(end_offset as usize).or_else(|| {
+            // A shared entry can end its frame before the Fill closes.
+            self.frames
+                .iter()
+                .rev()
+                .chain(self.parents[..self.parent_len].iter().rev())
+                .find_map(|frame| frame.remaining.first())
+        });
+        matches!(next, Some(Instruction::EndFill))
     }
 }
 
@@ -718,7 +758,14 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
     loop {
         let Some((source_element, flat)) = cursor.next(&mut mode, &mut indent) else {
             if !suffixes.is_empty() {
-                flush_suffixes(&mut suffixes, &mut cursor, None, &mut mode, &mut indent);
+                flush_suffixes(
+                    &mut suffixes,
+                    &mut cursor,
+                    None,
+                    &mut mode,
+                    &mut indent,
+                    &mut output.view.fit_state,
+                );
                 continue;
             }
             break;
@@ -807,6 +854,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                             Some(source_element),
                             &mut mode,
                             &mut indent,
+                            &mut output.view.fit_state,
                         );
                         continue;
                     }
@@ -859,6 +907,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                         Some(source_element),
                         &mut mode,
                         &mut indent,
+                        &mut output.view.fit_state,
                     );
                     continue;
                 }
@@ -876,6 +925,7 @@ fn print_impl<'a, const SOURCE: bool, const EXTENDED: bool, M: IndentModel<'a>>(
                         Some(source_element),
                         &mut mode,
                         &mut indent,
+                        &mut output.view.fit_state,
                     );
                     continue;
                 }
@@ -1142,14 +1192,6 @@ impl<'a, M: IndentModel<'a>, const EXTENDED: bool> Output<'a, M, EXTENDED> {
         }
     }
 
-    fn invalidate_line(&mut self, mode: Mode) {
-        if mode == Mode::Flat {
-            self.view.fit_state = FitState::Remeasure;
-        } else if self.view.fit_state == FitState::Measured {
-            self.view.fit_state = FitState::Unmeasured;
-        }
-    }
-
     #[inline]
     fn write_indent(&mut self, options: PrintOptions) {
         if !self.model.is_empty(self.pending_indent) {
@@ -1218,7 +1260,7 @@ impl<'a, M: IndentModel<'a>, const EXTENDED: bool> Output<'a, M, EXTENDED> {
 
     fn literal_line(&mut self, indent: M::State, options: PrintOptions, mode: Mode) {
         self.write_indent(options);
-        self.invalidate_line(mode);
+        self.view.fit_state.invalidate_line(mode);
         self.text.push_str(options.line_ending.as_str());
         self.view.column = self.model.width(indent, options);
         self.pending_indent = indent;
@@ -1251,9 +1293,12 @@ fn flush_suffixes<'a, S: Copy>(
     line: Option<&'a Instruction<'a>>,
     mode: &mut Mode,
     indent: &mut S,
+    fit_state: &mut FitState,
 ) {
     debug_assert!(!suffixes.is_empty(), "flush requires pending suffixes");
     if let Some(line) = line {
+        // The line invalidates the fit before the suffixes it flushes run.
+        fit_state.invalidate_line(*mode);
         cursor.enter(std::slice::from_ref(line), false, None);
     }
     for suffix in suffixes.drain(..).rev() {
@@ -1627,7 +1672,13 @@ impl<'a, const SOURCE: bool, const EXTENDED: bool> Probe<'a, SOURCE, EXTENDED> {
                         return true;
                     }
                 }
-                Instruction::StartFillPart { .. } => kind.start_entry(column, pending_line_space),
+                Instruction::StartFillPart { end_offset } => {
+                    if kind.start_entry(column, pending_line_space, || {
+                        cursor.ends_fill_after_part(end_offset)
+                    }) {
+                        return true;
+                    }
+                }
                 Instruction::EndFillPart => {
                     if kind.end_entry() {
                         return true;
