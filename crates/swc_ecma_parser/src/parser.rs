@@ -825,7 +825,9 @@ struct ObjectCover {
 
 #[derive(Clone, Copy, Debug)]
 struct ParenthesizedCover {
-    elements: SubRange<Argument>,
+    /// Arguments occupy the tail of the current parenthesized cover's scratch scope.
+    elements_start: usize,
+    first_spread: Option<SpreadElement>,
     start: u32,
     end: u32,
     has_trailing_comma: bool,
@@ -10083,12 +10085,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    fn with_parenthesized_cover(
+        &mut self,
+        parse: impl FnOnce(&mut Self) -> Option<Expr>,
+    ) -> Option<Expr> {
+        let start = self.cover.scratch.begin();
+        let result = self.with_resolved_cover(parse);
+        self.cover.scratch.reset(start);
+        result
+    }
+
     fn parse_parenthesized_or_arrow_function<const CAN_BE_ARROW: bool>(&mut self) -> Option<Expr> {
         let start = self.current_token.start();
         if CAN_BE_ARROW && self.lang.is_typescript() {
             return self.parse_parenthesized_head(start, true, None);
         }
-        self.with_resolved_cover(|parser| {
+        self.with_parenthesized_cover(|parser| {
             let cover = parser.parse_parenthesized_cover()?;
             if CAN_BE_ARROW && parser.current_token.tag() == TokenTag::Arrow {
                 let params = parser.convert_to_formal_parameters(cover, &[])?;
@@ -10124,6 +10136,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
+            let mut first_spread = None;
             while self.current_token.tag() != TokenTag::RightParen
                 && self.current_token.tag() != TokenTag::Eof
             {
@@ -10165,9 +10178,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 };
                 end = suffix_end.unwrap_or_else(|| expression.span(&self.ast).end);
                 let element = match spread_start {
-                    Some(start) => Argument::SpreadElement(
-                        self.ast.spread_element(Span::new(start, end), expression),
-                    ),
+                    Some(start) => {
+                        let spread = self.ast.spread_element(Span::new(start, end), expression);
+                        first_spread.get_or_insert(spread);
+                        Argument::SpreadElement(spread)
+                    }
                     None => Argument::Expr(expression),
                 };
                 self.cover.scratch.append(element);
@@ -10203,9 +10218,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             end = self.current_token.end();
             self.advance()?;
-            let elements = self.add_extra_from_scratch_cover(checkpoint);
             Some(ParenthesizedCover {
-                elements,
+                elements_start: checkpoint,
+                first_spread,
                 start,
                 end,
                 has_trailing_comma,
@@ -10213,19 +10228,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.ts_context = ts_context;
         self.context = grammar_context;
-        self.cover.scratch.reset(checkpoint);
         result
     }
 
     fn cover_to_parenthesized_expression(&mut self, cover: ParenthesizedCover) -> Option<Expr> {
-        if cover.elements.is_empty() {
-            self.report(
-                Span::new(cover.start, cover.end),
-                "Empty parentheses are only valid as arrow function parameters",
-                ReportOptions::default(),
-            );
-            return None;
-        }
         if cover.has_trailing_comma {
             self.report(
                 Span::new(cover.start, cover.end),
@@ -10233,48 +10239,32 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let checkpoint = self.cover.scratch.begin();
-        let expression_result = (|| {
-            for id in cover.elements.iter() {
-                let argument = self.ast.get_node_in_sub_range(id);
-                match self.ast.argument_data(argument) {
-                    ArgumentData::Expr(expression) => {
-                        self.cover.scratch.append(expression);
-                    }
-                    ArgumentData::SpreadElement(spread) => {
-                        self.report(
-                            spread.span(&self.ast),
-                            "Rest element is not allowed in parenthesized expression",
-                            ReportOptions::default(),
-                        );
-                        return None;
-                    }
-                }
+        if let Some(spread) = cover.first_spread {
+            self.report(
+                spread.span(&self.ast),
+                "Rest element is not allowed in parenthesized expression",
+                ReportOptions::default(),
+            );
+            return None;
+        }
+        // Without a spread, every argument in this scratch range is an expression.
+        let elements = &self.cover.scratch.items[cover.elements_start..];
+        let expression = match *elements {
+            [only] => unsafe { Expr::from_node_id_unchecked(only) },
+            [first, .., last] => {
+                let span = Span::new(self.ast.span(first).start, self.ast.span(last).end);
+                let expressions = self.add_extra_from_scratch_cover(cover.elements_start);
+                self.ast.expr_sequence_expression(span, expressions)
             }
-            Some(if self.cover.scratch.items.len() - checkpoint == 1 {
-                unsafe { Expr::from_node_id_unchecked(self.cover.scratch.items[checkpoint]) }
-            } else {
-                let first =
-                    unsafe { Expr::from_node_id_unchecked(self.cover.scratch.items[checkpoint]) };
-                let last = unsafe {
-                    Expr::from_node_id_unchecked(
-                        *self
-                            .cover
-                            .scratch
-                            .items
-                            .last()
-                            .expect("a sequence expression contains its last expression"),
-                    )
-                };
-                let expressions = self.add_extra_from_scratch_cover(checkpoint);
-                self.ast.expr_sequence_expression(
-                    Span::new(first.span(&self.ast).start, last.span(&self.ast).end),
-                    expressions,
-                )
-            })
-        })();
-        self.cover.scratch.reset(checkpoint);
-        let expression = expression_result?;
+            [] => {
+                self.report(
+                    Span::new(cover.start, cover.end),
+                    "Empty parentheses are only valid as arrow function parameters",
+                    ReportOptions::default(),
+                );
+                return None;
+            }
+        };
         Some(
             self.ast
                 .expr_parenthesized_expression(Span::new(cover.start, cover.end), expression),
@@ -10282,7 +10272,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_parenthesized_expression(&mut self) -> Option<Expr> {
-        self.with_resolved_cover(|parser| {
+        self.with_parenthesized_cover(|parser| {
             let cover = parser.parse_parenthesized_cover()?;
             parser.cover_to_parenthesized_expression(cover)
         })
@@ -10296,7 +10286,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.cover.scratch.begin();
         let result = (|| {
             let mut rest = None;
-            for (index, id) in cover.elements.iter().enumerate() {
+            for (index, position) in (cover.elements_start..checkpoint).enumerate() {
                 let suffix = match suffixes.split_first() {
                     Some((first, rest)) if first.index == index => {
                         suffixes = rest;
@@ -10304,7 +10294,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     }
                     _ => None,
                 };
-                let argument = self.ast.get_node_in_sub_range(id);
+                // The cover parser appended an Argument at each position in this range.
+                let argument =
+                    unsafe { Argument::from_node_id_unchecked(self.cover.scratch.items[position]) };
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
                         if rest.is_some() {
@@ -10324,7 +10316,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.cover.scratch.append(parameter);
                     }
                     ArgumentData::SpreadElement(spread) => {
-                        if index + 1 != cover.elements.len() {
+                        if position + 1 != checkpoint {
                             self.report(
                                 spread.span(&self.ast),
                                 "Rest parameter must be last formal parameter",
@@ -10461,7 +10453,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         can_be_arrow: bool,
         async_cover: Option<AsyncCover>,
     ) -> Option<Expr> {
-        self.with_resolved_cover(|parser| {
+        self.with_parenthesized_cover(|parser| {
             let typed = can_be_arrow && parser.lang.is_typescript();
             let diagnostics_len = parser.diagnostics.len();
             let mut suffixes = Vec::new();
@@ -12293,11 +12285,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         cover: ParenthesizedCover,
         callee: Expr,
     ) -> Option<Expr> {
+        let arguments = self.add_extra_from_scratch_cover(cover.elements_start);
         Some(self.ast.expr_call_expression(
             Span::new(callee.span(&self.ast).start, cover.end),
             callee,
             None,
-            cover.elements,
+            arguments,
             false,
             false,
         ))
