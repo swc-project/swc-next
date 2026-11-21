@@ -257,7 +257,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
                 )
                 && matches!(&member, PreparedMember::Formatted(member)
-                    if self.member_callee_has_conditional_receiver(member))
+                    if self.member_callee_has_own_layout(member))
                 && self.call_span_is_source_clear(call.span(self.ast))
             {
                 // The complete call owns this terminal continuation. Its
@@ -292,15 +292,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    /// Inspect only receiver syntax after the existing compact path failed.
-    /// The conditional's grammar frame stays with its original expression owner.
-    fn member_callee_has_conditional_receiver(&self, member: &SourceMember) -> bool {
+    /// Structured receivers keep their internal breaks and grammar frames.
+    /// The complete call owns the following lookup and argument layout.
+    fn member_callee_has_own_layout(&self, member: &SourceMember) -> bool {
         let mut receiver = member.object;
         loop {
             receiver = match self.ast.expr_data(receiver) {
                 ExprData::MemberExpression(member) => member.object(self.ast),
                 ExprData::ParenthesizedExpression(pair) => pair.expression(self.ast),
-                ExprData::ConditionalExpression(_) => return true,
+                ExprData::ConditionalExpression(_)
+                | ExprData::ArrayExpression(_)
+                | ExprData::TemplateLiteral(_)
+                | ExprData::TaggedTemplateExpression(_) => return true,
                 _ => return false,
             };
         }

@@ -6,13 +6,11 @@ expect(pet).to.have.property("address").that.deep.equals({ street: "Alexanderstr
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-expect(pet)
-  .to.have.property("address")
-  .that.deep.equals({
-    street: "Alexanderstrasse",
-    city: "Berlin",
-    country: "Germany",
-  });
+expect(pet).to.have.property("address").that.deep.equals({
+  street: "Alexanderstrasse",
+  city: "Berlin",
+  country: "Germany",
+});
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}

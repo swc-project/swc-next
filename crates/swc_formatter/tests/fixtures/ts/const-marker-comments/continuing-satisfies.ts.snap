@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = x as // a
+/* b */const satisfies Y;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const a = x as // a
+  /* b */ const satisfies Y;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+const a = x as // a
+  /* b */ const satisfies Y;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const a = x as // a
+  /* b */ const satisfies Y

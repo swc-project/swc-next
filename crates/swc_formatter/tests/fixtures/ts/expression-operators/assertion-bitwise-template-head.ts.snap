@@ -12,8 +12,9 @@ left << ((<T>`text${part}`.trim()));
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 left <<
-  ((<T>`text${part}`
-    .trim()));
+  ((<
+    T
+  >`text${part}`.trim()));
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
@@ -21,12 +22,12 @@ left <<
 left <<
   ((<
     T
-  >`text${part}`
-    .trim()))
+  >`text${part}`.trim()))
 
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 left <<
-	((<T>`text${part}`
-		.trim()));
+	((<
+		T
+	>`text${part}`.trim()));

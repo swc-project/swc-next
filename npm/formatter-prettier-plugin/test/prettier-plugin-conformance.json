@@ -1069,17 +1069,6 @@
         "prettierNative": "it(\"test\", function (done, result) { // note\n  return done(\n    result,\n  )\n})\n"
       }
     ],
-    "js/calls/member-continuation/array.js": [
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "space",
-          "semicolons": "as-needed"
-        },
-        "swcPlugin": "f(() => {\n  f(() => {\n    // c\n    ;[\"class\", \"data\", \".mode-%s\", \"[data-mode-%s]\", \"[data-mode='%s']\"]\n      .forEach((a) => {\n        const x = 1\n      })\n  })\n})\n",
-        "prettierNative": "f(() => {\n  f(() => {\n    // c\n    ;[\n      \"class\",\n      \"data\",\n      \".mode-%s\",\n      \"[data-mode-%s]\",\n      \"[data-mode='%s']\",\n    ].forEach((a) => {\n      const x = 1\n    })\n  })\n})\n"
-      }
-    ],
     "js/calls/structural-frames/templates.js": [
       {
         "options": {
@@ -1997,6 +1986,66 @@
         "prettierNative": "[\n  effect() /* ordinary */ /* @__PURE__ */, // line\n  factory()\n];\n"
       }
     ],
+    "js/comments/conditional-released-test-head/alternate.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a\n  ? b\n  : // test\n    c\n    ? d\n    : e;\n",
+        "prettierNative": "a\n  ? b\n  : // test\n      c\n    ? d\n    : e;\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/argument.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f(\n  // test\n  a ? b : c,\n);\n",
+        "prettierNative": "f(\n  // test\n  a\n    ? b\n    : c,\n);\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/array-hole.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  ,\n  // test\n  a ? b : c,\n];\n",
+        "prettierNative": "[\n  ,\n  // test\n  a\n    ? b\n    : c,\n];\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/control.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (\n  // test\n  a ? b : c\n)\n  d();\n",
+        "prettierNative": "if (\n  // test\n  a\n    ? b\n    : c\n)\n  d();\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/restricted.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // test\n    a ? b : c\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    // test\n    a\n      ? b\n      : c\n  );\n}\n"
+      }
+    ],
+    "js/comments/conditional-released-test-head/statement.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// test\na ? b : c;\n",
+        "prettierNative": "// test\na\n  ? b\n  : c;\n"
+      }
+    ],
     "js/comments/diagnostic-head-frontier/covered-prefix/input.js": [
       {
         "options": {
@@ -2247,6 +2296,46 @@
         },
         "swcPlugin": "for (;;) continue\n// tail\n\nnext()\n",
         "prettierNative": "for (;;) continue\n\n// tail\nnext()\n"
+      }
+    ],
+    "js/comments/released-expression-head/assignment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  // value\n  a + b + c;\n",
+        "prettierNative": "x =\n  // value\n  a +\n  b +\n  c;\n"
+      }
+    ],
+    "js/comments/released-expression-head/conditional-property.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "({\n  // test\n  k: a ? b : c,\n});\n",
+        "prettierNative": "({\n  k: // test\n  a\n    ? b\n    : c,\n});\n"
+      }
+    ],
+    "js/comments/released-expression-head/conditional-rhs.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = // test\n  a ? b : c;\n",
+        "prettierNative": "x = // test\na\n  ? b\n  : c;\n"
+      }
+    ],
+    "js/comments/released-expression-head/initializer.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  // value\n  (a + b) * c;\n",
+        "prettierNative": "const x =\n  // value\n  (a + b) *\n  c;\n"
       }
     ],
     "js/comments/terminal-comment-runs/diagnostic-source-control/input.js": [
@@ -5865,6 +5954,25 @@
         "prettierNative": "[\n  first,\n  // @ts-ignore\n  // prettier-ignore\n  second  + third,\n];\n"
       }
     ],
+    "js/expressions/array/fill-detached-leading-block/input.js": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80
+        },
+        "swcPlugin": "const items = [\n  1,\n  /* note */\n  2,\n];\n",
+        "prettierNative": "const items = [1 /* note */, 2];\n"
+      },
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80,
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const items = [\n  1,\n  /* note */\n  2\n];\n",
+        "prettierNative": "const items = [1 /* note */, 2];\n"
+      }
+    ],
     "js/expressions/array/fill-own-line-block-after-comma.js": [
       {
         "options": {
@@ -7350,6 +7458,25 @@
         "prettierNative": "const longVariableName =\r\n  !(\r\n    /* prettier-ignore */ object . firstLongProperty . secondLongProperty\r\n  );\r\n"
       }
     ],
+    "js/expressions/assignment/operator-head/diagnostic-binary-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "// @ts-ignore\nconst x = // c\n  a * /* c2 */ b;\n",
+        "prettierNative": "// @ts-ignore\nconst x = a * /* c2 */ b; // c\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// @ts-ignore\nconst x = // c\n  a * /* c2 */ b\n",
+        "prettierNative": "// @ts-ignore\nconst x = a * /* c2 */ b // c\n"
+      }
+    ],
     "js/expressions/assignment/operator-line.js": [
       {
         "options": {
@@ -8385,6 +8512,26 @@
         "prettierNative": "(a+b) /* prettier-ignore */(\n  /* leading */ a,\n);\n"
       }
     ],
+    "js/expressions/call-prefix-ownership/callee-tail-tagged-template.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const x = a.b(\n  // c\n  tag`a\\n${y}\n  b`,\n)\n",
+        "prettierNative": "const x = a.b(// c\ntag`a\\n${y}\n  b`)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "const x = a.b(\n  // c\n  tag`a\\n${y}\n  b`,\n);\n",
+        "prettierNative": "const x = a.b(// c\ntag`a\\n${y}\n  b`);\n"
+      }
+    ],
     "js/expressions/call-prefix-ownership/prefix-blank-line.js": [
       {
         "options": {
@@ -8875,16 +9022,6 @@
         },
         "swcPlugin": "abc\n  .b()\n  .c({ veryLongPropertyName: someVeryLongValue })(x);\n",
         "prettierNative": "abc.b().c({ veryLongPropertyName: someVeryLongValue })(\n  x,\n);\n"
-      }
-    ],
-    "js/expressions/call/source-expanded-chain/source-object/input.js": [
-      {
-        "options": {
-          "lineWidth": 58,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n",
-        "prettierNative": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n"
       }
     ],
     "js/expressions/call/terminal-close/ignored-last/input.js": [
@@ -11060,14 +11197,14 @@
         "prettierNative": "result =\r\n\tFactory.first(\r\n\t\t// prettier-ignore\r\n\t\t{ one :1, two:2 },\r\n\t\t(arg) => {\r\n\t\t\ttrace.push(\r\n\t\t\t\targ,\r\n\t\t\t);\r\n\t\t\treturn arg;\r\n\t\t},\r\n\t).second(other);\r\n"
       }
     ],
-    "js/expressions/fluent-chain/canonical-collection/multiline.js": [
+    "js/expressions/fluent-chain/canonical-collection/collapsed.js": [
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n",
-        "prettierNative": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n"
+        "swcPlugin": "expect(pet).to.have.property(\"address\").that.deep.equals({\n  street: \"Alexanderstrasse\",\n  city: \"Berlin\",\n  country: \"Germany\",\n});\n",
+        "prettierNative": "expect(pet)\n  .to.have.property(\"address\")\n  .that.deep.equals({\n    street: \"Alexanderstrasse\",\n    city: \"Berlin\",\n    country: \"Germany\",\n  });\n"
       }
     ],
     "js/expressions/fluent-chain/cast-head/input.mjs": [
@@ -11078,6 +11215,27 @@
         },
         "swcPlugin": "/** @type {any} */ (\n  aFunction.b\n).c().c.d();\n",
         "prettierNative": "(aFunction.b)\n  .c/** @type {any} */ ()\n  .c.d();\n"
+      }
+    ],
+    "js/expressions/fluent-chain/last-collection/array-flat.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "chain.plugin('extra-define').use(rspack.DefinePlugin, [\n  { ENABLE_TEST: JSON.stringify(true) },\n]);\n",
+        "prettierNative": "chain\n  .plugin('extra-define')\n  .use(rspack.DefinePlugin, [{ ENABLE_TEST: JSON.stringify(true) }]);\n"
+      }
+    ],
+    "js/expressions/fluent-chain/last-collection/nested-array/input.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "abc\n  .b()\n  .c(\n    foo.bar().baz([\n      { enabled: JSON.stringify(true) },\n    ]),\n  );\n",
+        "prettierNative": "abc\n  .b()\n  .c(\n    foo\n      .bar()\n      .baz([\n        {\n          enabled: JSON.stringify(true),\n        },\n      ]),\n  );\n"
       }
     ],
     "js/expressions/fluent-chain/source-head/function-annotation.js": [
@@ -33274,6 +33432,114 @@
         "prettierNative": "const value = 1 as const /*\n @__PURE__\n*/\ncall()\n"
       }
     ],
+    "ts/const-marker-comments/continuing-as.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z;\n",
+        "prettierNative": "const a = x as const as Z; // a\n// b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z;\n",
+        "prettierNative": "const a =\n  x as const as Z; // a\n  // b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  // b\n  const as Z\n",
+        "prettierNative": "const a = x as const as Z // a\n// b\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-comment-order.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y;\n",
+        "prettierNative": "const a = x as const /* b */ satisfies Y; // a\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const /* b */ satisfies Y; // a\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  const /* b */ satisfies Y\n",
+        "prettierNative": "const a = x as const /* b */ satisfies Y // a\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-multiline-block.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y;\n",
+        "prettierNative": "const a = x as const /* a\nb */ satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const /* a\nb */ satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as /* a\nb */ const satisfies Y\n",
+        "prettierNative": "const a = x as const /* a\nb */ satisfies Y\n"
+      }
+    ],
+    "ts/const-marker-comments/continuing-satisfies.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y;\n",
+        "prettierNative": "const a = x as const satisfies Y; // a\n/* b */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y;\n",
+        "prettierNative": "const a =\n  x as const satisfies Y; // a\n  /* b */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const a = x as // a\n  /* b */ const satisfies Y\n",
+        "prettierNative": "const a = x as const satisfies Y // a\n/* b */\n"
+      }
+    ],
     "ts/const-marker-comments/diagnostic.ts": [
       {
         "options": {
@@ -34168,7 +34434,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "left <<\n  ((<T>`text${part}`\n    .trim()));\n",
+        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`.trim()));\n",
         "prettierNative": "left <<\n  (<T>(\n    `text${part}`.trim()\n  ));\n"
       },
       {
@@ -34177,7 +34443,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`\n    .trim()))\n",
+        "swcPlugin": "left <<\n  ((<\n    T\n  >`text${part}`.trim()))\n",
         "prettierNative": "left <<\n  (<\n    T\n  >`text${part}`.trim())\n"
       },
       {
@@ -34186,7 +34452,7 @@
           "indentStyle": "tab",
           "lineEnding": "crlf"
         },
-        "swcPlugin": "left <<\r\n\t((<T>`text${part}`\r\n\t\t.trim()));\r\n",
+        "swcPlugin": "left <<\r\n\t((<\r\n\t\tT\r\n\t>`text${part}`.trim()));\r\n",
         "prettierNative": "left <<\r\n\t(<T>(\r\n\t\t`text${part}`.trim()\r\n\t));\r\n"
       }
     ],

@@ -17,7 +17,7 @@ use crate::formatter::suppression::{
 };
 use crate::{
     FormatError, TrailingCommas,
-    document::{ConditionTarget, Writer},
+    document::{ConditionTarget, FlatFragment, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
@@ -144,6 +144,7 @@ pub(in crate::formatter) struct PreparedItem {
     omit_source_terminal_comma: bool,
     suppression: Option<DelimitedSuppression>,
     separator_spacing: SeparatorSpacing,
+    layout: ArgumentLayout,
     /// The following node's gap retains its source punctuation and spacing.
     source_following: bool,
 }
@@ -320,6 +321,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.protect_runtime_item(&mut item);
         }
         item.set_trailing_comma(trailing_comma);
+        item.layout = layout;
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
                 argument,
@@ -471,6 +473,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             suppression,
             separator_spacing: SeparatorSpacing::SourcePacket,
+            layout: ArgumentLayout::Lines,
             source_following: false,
         };
         if !has_leading_comments {
@@ -633,6 +636,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             suppression,
             separator_spacing,
             source_following,
+            layout,
             ..
         } = item;
         let following_span = following.node();
@@ -1107,10 +1111,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
         }
-        // Fill must retain the leading packet's own-line attachment for blocks too.
-        let mut separator = if comments[boundary_count..].iter().any(|comment| {
+        // The leading side of a real comma can occupy a separate line even
+        // when the comma precedes its first Block on that line. Carry that
+        // ownership into fill so its separator cannot flatten the packet.
+        let leading = &comments[boundary_count..];
+        let own_line = leading.iter().any(|comment| {
             comment.kind == CommentKind::Line || self.layout_line_starts_line(comment.span.start)
-        }) {
+        });
+        let detached_fill_block = !own_line
+            && matches!(layout, ArgumentLayout::Fill)
+            && ordinary_attachment
+            && physical_break
+            && boundary_count >= before_separator
+            && following_start
+                .zip(leading.last())
+                .is_some_and(|(next, last)| self.line_breaks(last.span.end, next) != 0);
+        let mut separator = if own_line || detached_fill_block {
             Separator::OwnLineComment
         } else {
             Separator::Line
@@ -1468,7 +1484,9 @@ pub(super) enum CallArgumentFrame {
 
 #[derive(Clone, Copy)]
 pub(super) enum CallFrameRole {
-    Module,
+    Module {
+        commented_first: bool,
+    },
     TestCallback(TestCallback),
     TestWrapper {
         expression: Expr,
@@ -1489,6 +1507,20 @@ impl CallArgumentFrame {
 
     fn is_fixed(self) -> bool {
         matches!(self, Self::Fixed { .. })
+    }
+
+    fn with_borrowed_argument_prefix(self) -> Self {
+        match self {
+            Self::Fixed {
+                role:
+                    CallFrameRole::Module {
+                        commented_first: true,
+                    },
+                ..
+            } => self,
+            Self::Fixed { .. } => Self::Ordinary,
+            _ => self,
+        }
     }
 
     fn independent_callback(self) -> Option<ArrowFunctionExpression> {
@@ -1685,10 +1717,19 @@ impl<'ast> SourceArguments<'ast> {
 /// Facts needed only while recording fluent-chain arguments. Source-dependent
 /// collection policy stays in the language builder, outside document fitting.
 #[derive(Default)]
-pub(super) struct ChainArgumentFacts {
+pub(super) struct ChainArgumentFacts<'ast> {
     pub(super) has_function: bool,
+    pub(super) expansion: Option<ChainArgumentExpansion<'ast>>,
     /// An argument contains source-expanded objects without intrinsic newlines.
     pub(super) source_expanded_object: bool,
+}
+
+pub(super) enum ChainArgumentExpansion<'ast> {
+    Array(Fragment<'ast>),
+    Object {
+        flat: FlatFragment<'ast>,
+        expanded: Fragment<'ast>,
+    },
 }
 
 /// The actual prefix owner reports its emitted boundary after receiving a tail.
@@ -1712,6 +1753,19 @@ impl<'ast> ArgumentPrefix<'ast> {
 
     fn belongs_to_arguments(&self) -> bool {
         matches!(self, Self::Arguments(_))
+    }
+
+    fn can_relocate(
+        comments: &[Comment],
+        binding: CommentBinding,
+        target: Option<Span>,
+        starts_line: impl Fn(u32) -> bool,
+    ) -> bool {
+        binding.allows_relocation(target)
+            && comments.iter().all(|comment| {
+                comment.kind != CommentKind::Line
+                    || matches!(binding, CommentBinding::Unbound) && starts_line(comment.span.start)
+            })
     }
 }
 
@@ -1976,7 +2030,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         binary_indent: OperandIndent,
         jsx_call: Option<CallExpression>,
-        chain_facts: &mut Option<&mut ChainArgumentFacts>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if binary_indent == OperandIndent::Expression
@@ -2099,19 +2153,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.comment_binding(comments, boundary, target)
         };
-        let outside_line = comments.iter().any(|comment| {
-            comment.kind == CommentKind::Line
-                && (!self.layout_line_starts_line(comment.span.start)
-                    || !matches!(binding, CommentBinding::Unbound))
-        });
-        let prefix = if comments.is_empty()
-            || callee_mode == ContentMode::Verbatim
-            || outside_line
-            || !binding.allows_relocation(target)
-        {
-            ArgumentPrefix::Outside(comments)
-        } else {
+        let prefix = if !comments.is_empty()
+            && callee_mode == ContentMode::Formatted
+            && ArgumentPrefix::can_relocate(comments, binding, target, |start| {
+                self.layout_line_starts_line(start)
+            }) {
             ArgumentPrefix::Arguments(comments)
+        } else {
+            ArgumentPrefix::Outside(comments)
         };
         (prefix, callee_mode)
     }
@@ -2158,7 +2207,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     previous_end <= operator.start && operator.end <= comment.span.start
                 })
                 .map_or(previous_end, |operator| operator.end);
-            if pending_line || own_line {
+            let starts_line = pending_line || own_line;
+            if starts_line {
                 writer.hard_line();
                 if self.next_line_is_empty(gap_start, comment.span.start) {
                     writer.hard_line();
@@ -2171,7 +2221,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentRunLayout::Source,
                 writer,
             )?;
-            pending_line = own_line || comment.kind == CommentKind::Line;
+            pending_line = starts_line || comment.kind == CommentKind::Line;
             previous_end = comment.span.end;
         }
         if pending_line {
@@ -2336,7 +2386,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         CallArgumentFrame::Fixed {
-            role: CallFrameRole::Module,
+            role: CallFrameRole::Module { commented_first },
             closing,
         }
     }
@@ -2355,7 +2405,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        chain_facts: Option<&mut ChainArgumentFacts>,
+        chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         let observing = self.source_object_layout.observing;
@@ -2371,7 +2421,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        mut chain_facts: Option<&mut ChainArgumentFacts>,
+        mut chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         if let Some(facts) = chain_facts.as_deref_mut() {
@@ -2390,7 +2440,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_opening,
             prefix,
             group,
-            frame,
+            mut frame,
             jsx_call,
             binary_indent,
             constructor,
@@ -2432,18 +2482,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let move_tail = first.is_some()
                     && (prefix.comments().is_empty() || prefix_belongs_to_arguments)
                     && tail.as_ref().is_some_and(|tail| {
-                        tail.comments
-                            .iter()
-                            .all(|comment| comment.kind == CommentKind::Block)
-                            && self
-                                .comment_binding(
-                                    tail.comments,
-                                    Span::new(source_end, opening + 1),
-                                    None,
-                                )
-                                .allows_relocation(None)
+                        let binding = self.comment_binding(
+                            tail.comments,
+                            Span::new(source_end, opening + 1),
+                            None,
+                        );
+                        // The formatter's visual line placement ignores
+                        // indentation that will disappear with the source pair.
+                        ArgumentPrefix::can_relocate(tail.comments, binding, None, |start| {
+                            self.layout_position_starts_line(start)
+                        })
                     });
                 let outside_count = if move_tail {
+                    // A borrowed callee tail becomes part of the first argument
+                    // boundary, including for frames that require it to be clear.
+                    frame = frame.with_borrowed_argument_prefix();
                     0
                 } else if prefix_belongs_to_arguments {
                     tail.as_ref().map_or(0, |tail| tail.comments.len())
@@ -2552,8 +2605,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DelimitedClose::Terminal(closing)
             };
         let format_selected = |formatter: &mut Self,
-                               selected: SelectedArgument<'ast>,
-                               chain_facts: Option<&mut ChainArgumentFacts>,
+                               selected: SelectedArgument,
+                               chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
                                writer: &mut Writer<'ast>| {
             let tail = formatter.format_selected_arguments(
                 SelectedArgumentSequence { arguments, content },

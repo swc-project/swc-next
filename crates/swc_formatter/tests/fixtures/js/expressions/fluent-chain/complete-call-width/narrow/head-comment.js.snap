@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = /* head */ app.use(value).listen({port:3000})
+---------- Options ----------
+{"indentStyle":"space","lineWidth":58}
+---------- Output ----------
+const result = /* head */ app
+  .use(value)
+  .listen({ port: 3000 });

@@ -3,7 +3,8 @@
 use std::{fmt, ops::Range};
 
 use super::{
-    AlignText, ConditionTarget, Doc, FlatSummary, Group, GroupRequest, Instruction, indent,
+    AlignText, ConditionTarget, Doc, FlatSummary, Fragment, Group, GroupRequest, Instruction,
+    indent,
     layout::Mode,
     text::{Text, Width},
 };
@@ -87,6 +88,48 @@ impl ProbeKind for ContinuationProbe {
     fn continuation(&self) -> Option<ContinuationProbe> {
         Some(*self)
     }
+}
+
+struct StandaloneFlatProbe;
+
+impl ProbeKind for StandaloneFlatProbe {
+    const BOUNDED: bool = false;
+
+    fn continuation(&self) -> Option<ContinuationProbe> {
+        None
+    }
+
+    fn layout_dependency(&mut self) -> bool {
+        true
+    }
+}
+
+pub(super) fn standalone_flat_fits(fragment: Fragment<'_>, line_width: u16) -> bool {
+    Probe::<false, true>::default().fits(
+        ProbeRequest {
+            current: Frame {
+                flat: true,
+                ..Frame::new(fragment.elements())
+            },
+            pending: &[],
+            continuation: None,
+            kind: StandaloneFlatProbe,
+            has_line_suffix: false,
+            fills: &[],
+            entries: &[],
+        },
+        &[],
+        &OutputView {
+            column: 0,
+            fit_state: FitState::Unmeasured,
+        },
+        PrintOptions {
+            line_width,
+            ..PrintOptions::default()
+        },
+        Mode::Flat,
+        &[],
+    )
 }
 
 #[derive(Default)]
@@ -1300,6 +1343,7 @@ impl ProbeKind for PreparedGroup {
     }
 }
 
+#[derive(Default)]
 struct Probe<'a, const SOURCE: bool, const EXTENDED: bool> {
     modes: Vec<GroupState>,
     frames: Vec<Frame<'a>>,

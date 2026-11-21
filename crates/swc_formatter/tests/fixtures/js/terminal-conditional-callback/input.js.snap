@@ -1,0 +1,35 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a,b,()=>c?d:e);
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":13}
+---------- Output ----------
+f(
+  a,
+  b,
+  () =>
+    c
+      ? d
+      : e,
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":26}
+---------- Output ----------
+f(a, b, () =>
+  c ? d : e,
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":26,"trailingCommas":"none"}
+---------- Output ----------
+f(a, b, () =>
+  c ? d : e
+);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":27}
+---------- Output ----------
+f(a, b, () => (c ? d : e));

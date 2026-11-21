@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+chain.plugin('extra-define').use(rspack.DefinePlugin, [
+  {
+    ENABLE_TEST: JSON.stringify(true),
+  },
+]);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+chain.plugin('extra-define').use(rspack.DefinePlugin, [
+  {
+    ENABLE_TEST: JSON.stringify(true),
+  },
+]);
