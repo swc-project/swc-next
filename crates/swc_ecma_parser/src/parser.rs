@@ -6643,7 +6643,69 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    /// A plain identifier is the most common type start. It never starts a
+    /// function, constructor, keyword, or operator type, so parse the reference
+    /// before entering the general dispatch.
+    #[inline]
     fn parse_type_inner(&mut self) -> Option<TsType> {
+        let token = self.current_token;
+        if token.tag() == TokenTag::Identifier {
+            return self.parse_identifier_type(token);
+        }
+        self.parse_non_identifier_type()
+    }
+
+    /// Parse a type that starts with the plain identifier `token`. A reference
+    /// that is not qualified, has no type arguments, and has no continuation is
+    /// built here; every other form uses the shared reference parser.
+    fn parse_identifier_type(&mut self, token: Token) -> Option<TsType> {
+        debug_assert_eq!(token.tag(), TokenTag::Identifier);
+        let advanced = self.advance_without_escape_check().is_some();
+        if advanced
+            && !matches!(
+                self.current_token.tag(),
+                TokenTag::Dot
+                    | TokenTag::LessThan
+                    | TokenTag::LeftShift
+                    | TokenTag::LeftBracket
+                    | TokenTag::Question
+                    | TokenTag::LogicalNot
+                    | TokenTag::BitwiseAnd
+                    | TokenTag::BitwiseOr
+                    | TokenTag::Extends
+            )
+        {
+            let name = self.identifier_name(token);
+            let name = self
+                .ast
+                .ts_type_name_identifier_reference(token.span(), name);
+            return Some(self.ast.ts_type_ts_type_reference(token.span(), name, None));
+        }
+        self.parse_identifier_type_slow(token, advanced)
+    }
+
+    /// Continue an identifier type that needs the general reference parser, or
+    /// report the type that a lexical error left unfinished.
+    #[inline(never)]
+    fn parse_identifier_type_slow(&mut self, token: Token, advanced: bool) -> Option<TsType> {
+        let result = if advanced {
+            self.parse_entity_name_from_token(token)
+                .and_then(|name| self.parse_type_reference(token.start(), name))
+                .and_then(|primary| self.parse_type_from_primary(primary))
+        } else {
+            None
+        };
+        result.or_else(|| {
+            self.report_expected(
+                self.current_token.span(),
+                "Expected a type",
+                ReportOptions::default(),
+            );
+            None
+        })
+    }
+
+    fn parse_non_identifier_type(&mut self) -> Option<TsType> {
         let tag = self.current_token.tag();
         let may_start_function_or_constructor_type = matches!(
             tag,
