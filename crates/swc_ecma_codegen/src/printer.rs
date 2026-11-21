@@ -5326,28 +5326,42 @@ impl<'a> Printer<'a> {
     fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
         self.print_comments_before(v.span(self.ast).start, false, false);
         match self.ast.jsx_attribute_value_data(v) {
-            JsxAttributeValueData::StringLiteral(s) => {
-                self.add_source_mapping(s.span(self.ast).start);
-                let raw = self.ast.get_utf8(s.raw(self.ast));
-                if raw.is_empty() {
-                    let value = self.ast.get_wtf8(s.value(self.ast));
-                    // JSX attribute strings do not interpret JavaScript escape sequences, so
-                    // print the value bytes directly instead of using `print_quoted`.
-                    let quote = if value.as_bytes().contains(&b'"') {
-                        "'"
-                    } else {
-                        "\""
-                    };
-                    self.print(quote);
-                    self.print_bytes(value.as_bytes());
-                    self.print(quote);
-                } else {
-                    self.print_bytes(raw);
-                }
-            }
+            JsxAttributeValueData::StringLiteral(s) => self.print_jsx_attr_string(s),
             JsxAttributeValueData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxAttributeValueData::JsxElement(e) => self.print_jsx_element(e),
             JsxAttributeValueData::JsxFragment(e) => self.print_jsx_fragment(e),
+        }
+    }
+    fn print_jsx_attr_string(&mut self, literal: StringLiteral) {
+        self.add_source_mapping(literal.span(self.ast).start);
+        let raw = self.ast.get_utf8(literal.raw(self.ast));
+        if !raw.is_empty() {
+            self.print_bytes(raw);
+            return;
+        }
+
+        let value = self.ast.get_wtf8(literal.value(self.ast));
+        let bytes = value.as_bytes();
+        let has_double_quote = bytes.contains(&b'"');
+        let has_both_quotes = has_double_quote && bytes.contains(&b'\'');
+        let needs_escape = bytes
+            .iter()
+            .any(|&byte| matches!(byte, b'&' | b'\r' | b'\n' | b'\t'));
+        let needs_expression = value.as_str().is_none()
+            || has_both_quotes
+            || needs_escape
+            || (self.options.ascii_only && !value.is_ascii());
+
+        if needs_expression {
+            // JSX attribute strings do not interpret JavaScript escape sequences.
+            self.print("{");
+            self.print_quoted(value, false);
+            self.print("}");
+        } else {
+            let quote = if has_double_quote { "'" } else { "\"" };
+            self.print(quote);
+            self.print_bytes(bytes);
+            self.print(quote);
         }
     }
     fn print_jsx_container(&mut self, c: JsxExpressionContainer) {

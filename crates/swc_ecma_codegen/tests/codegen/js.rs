@@ -1,7 +1,11 @@
-use swc_next_allocator::Allocator;
+use swc_next_allocator::{
+    Allocator,
+    wtf8::{Wtf8, Wtf8Buf},
+};
 use swc_next_ecma_ast::{
     Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
-    PropertyKind, SourceType, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
+    PropertyKind, SourceType, Stmt, StmtData, StringLiteral, SubRange, UnaryOperator, VisitMut,
+    VisitMutWith,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -1777,4 +1781,100 @@ fn test_for_in_initializers() {
         "for (var i = (a in b) in c) ;\n",
         "for(var i=(a in b)in c);",
     );
+}
+
+fn jsx_attribute_literal(ast: &Ast<'_>) -> StringLiteral {
+    assert_eq!(ast.root_program().body(ast).len(), 1);
+    let element = first_expression(ast).as_jsx_element(ast).unwrap();
+    let attributes = element.opening_element(ast).attributes(ast);
+    assert_eq!(attributes.len(), 1);
+    let attribute = attributes
+        .get_node(ast, 0)
+        .unwrap()
+        .as_jsx_attribute(ast)
+        .unwrap();
+    let value = attribute.value(ast).unwrap();
+    if let Some(literal) = value.as_string_literal(ast) {
+        literal
+    } else {
+        value
+            .as_jsx_expression_container(ast)
+            .unwrap()
+            .expression(ast)
+            .as_expr(ast)
+            .unwrap()
+            .as_string_literal(ast)
+            .unwrap()
+    }
+}
+
+fn roundtrip_jsx_attribute(value: &Wtf8, options: &GeneratorOptions) -> Wtf8Buf {
+    let parse_options = ParseOptions {
+        lang: swc_next_ecma_ast::Lang::Jsx,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let output = crate::generate_edited(
+        "<C title=\"old\" />;",
+        parse_options,
+        options.clone(),
+        |ast| {
+            let literal = jsx_attribute_literal(ast);
+            let replacement = ast.add_wtf8(value);
+            literal.set_value(ast, replacement);
+            literal.set_raw(ast, swc_next_ecma_ast::AstUtf8::EMPTY);
+        },
+    );
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(&allocator, &output, parse_options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    // SAFETY: All inspected handles belong to this parsed AST.
+    let ast = unsafe { parsed.ast.ast() };
+    let literal = jsx_attribute_literal(ast);
+    ast.get_wtf8(literal.value(ast)).to_owned()
+}
+
+#[test]
+fn test_edited_jsx_attributes() {
+    for minify in [false, true] {
+        for ascii_only in [false, true] {
+            let options = GeneratorOptions {
+                minify,
+                ascii_only,
+                ..GeneratorOptions::default()
+            };
+            let input = Wtf8::from_str("\"'");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("\" ' onClick={pwn()} x='");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("&quot;");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8::from_str("a\nb\tc\rd");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+
+            let input = Wtf8Buf::from_ill_formed_utf16(&[0xD800]);
+            let output = roundtrip_jsx_attribute(&input, &options);
+            assert_eq!(output, input);
+
+            let input = Wtf8::from_str("new");
+            let output = roundtrip_jsx_attribute(input, &options);
+            assert_eq!(&*output, input);
+        }
+    }
+}
+
+fn first_expression(ast: &Ast<'_>) -> swc_next_ecma_ast::Expr {
+    let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+    statement
+        .as_expression_statement(ast)
+        .unwrap()
+        .expression(ast)
 }
