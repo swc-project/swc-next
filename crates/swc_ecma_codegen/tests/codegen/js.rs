@@ -874,7 +874,7 @@ fn test_directive_string_value() {
         "'use\\x20strict';\nwith (x) foo = bar;\n",
     );
     expect_generated_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
-    expect_generated_minify(r#"'use\x20asm';"#, "\"use asm\";");
+    expect_generated_minify(r#"'use\x20asm';"#, "'use\\x20asm';");
     expect_generated_script(r#""</script";"#, "\"</script\";\n");
     expect_generated(
         r#"function f() { "\0" }"#,
@@ -1632,4 +1632,25 @@ fn test_jsx_unicode_source_maps() {
     expect_jsx_source_map("<></\u{2029}>;", false);
 
     expect_jsx_source_map("<C\u{2028}></C>;", true);
+}
+
+#[test]
+fn test_escaped_directives() {
+    let options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::expect_generated_pair(
+        "'use\\x20client';",
+        options,
+        "'use\\x20client';\n",
+        "'use\\x20client';",
+    );
+
+    crate::expect_generated_pair(
+        "function f() { 'use\\x20asm'; return 1; }",
+        options,
+        "function f() {\n  'use\\x20asm';\n  return 1;\n}\n",
+        "function f(){'use\\x20asm';return 1}",
+    );
 }

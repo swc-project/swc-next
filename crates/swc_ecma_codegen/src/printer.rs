@@ -465,11 +465,8 @@ impl<'a> Printer<'a> {
                     .as_bytes()
                     .windows(8)
                     .any(|text| text.eq_ignore_ascii_case(b"</script")));
-        if value == "use strict" && raw.as_bytes().contains(&b'\\') && raw_is_safe {
-            self.print_bytes(raw);
-            return;
-        }
-        if !self.options.minify && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
+        let keep_raw = !self.options.minify || raw.as_bytes().contains(&b'\\');
+        if keep_raw && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
             self.print_bytes(raw);
             return;
         }
