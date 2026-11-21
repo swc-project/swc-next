@@ -1848,7 +1848,9 @@ impl<'a> Printer<'a> {
     }
 
     fn expr_first_token_offset(&self, mut expr: Expr) -> u32 {
+        let mut offset = 0;
         loop {
+            offset = offset.max(expr.span(self.ast).start);
             expr = match self.ast.expr_data(expr) {
                 ExprData::MemberExpression(expression) => expression.object(self.ast),
                 ExprData::CallExpression(expression) => expression.callee(self.ast),
@@ -1859,7 +1861,7 @@ impl<'a> Printer<'a> {
                 ExprData::ConditionalExpression(expression) => expression.test(self.ast),
                 ExprData::SequenceExpression(expression) => {
                     let Some(first) = expression.expressions(self.ast).get_node(self.ast, 0) else {
-                        break expr.span(self.ast).start;
+                        break offset;
                     };
                     first
                 }
@@ -1869,10 +1871,10 @@ impl<'a> Printer<'a> {
                             self.simple_assignment_target_expression(target)
                         }
                         AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
-                            break pattern.span(self.ast).start;
+                            break offset.max(pattern.span(self.ast).start);
                         }
                         AssignmentTargetData::ObjectAssignmentTarget(pattern) => {
-                            break pattern.span(self.ast).start;
+                            break offset.max(pattern.span(self.ast).start);
                         }
                     }
                 }
@@ -1883,7 +1885,7 @@ impl<'a> Printer<'a> {
                 ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
                 ExprData::TsNonNullExpression(expression) => expression.expression(self.ast),
                 ExprData::TsInstantiationExpression(expression) => expression.expression(self.ast),
-                _ => break expr.span(self.ast).start,
+                _ => break offset,
             };
         }
     }

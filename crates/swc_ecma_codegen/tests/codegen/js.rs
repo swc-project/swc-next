@@ -1670,3 +1670,55 @@ fn test_ascii_identifier_boundaries() {
         options,
     );
 }
+
+#[track_caller]
+fn generate_with_synthetic_callee(source: &str, options: GeneratorOptions) -> String {
+    use swc_next_ecma_ast::{IdentifierReference, SetSpan};
+    struct SyntheticCallee<'visit, 'ast>(&'visit mut Ast<'ast>);
+    impl<'ast> VisitMut<'ast> for SyntheticCallee<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+        fn visit_mut_identifier_reference(
+            &mut self,
+            node: IdentifierReference,
+        ) -> Option<IdentifierReference> {
+            if self.0.get_utf8(node.name(self.0)) == "value" {
+                node.set_span(self.0, DUMMY_SP);
+            }
+            Some(node)
+        }
+    }
+    let parse_options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    crate::generate_edited(source, parse_options, options, |ast| {
+        ast.root_program().visit_mut_with(&mut SyntheticCallee(ast));
+    })
+}
+
+#[test]
+fn test_synthetic_value_comments() {
+    for minify in [false, true] {
+        let options = GeneratorOptions {
+            minify,
+            ..GeneratorOptions::default()
+        };
+        let output = generate_with_synthetic_callee(
+            "function f() { return (\n// line\nvalue.has(name)); }",
+            options.clone(),
+        );
+        assert!(output.contains("return (") || output.contains("return("));
+
+        let output =
+            generate_with_synthetic_callee("throw (\n// line\nvalue.has(name));", options.clone());
+        assert!(output.contains("throw (") || output.contains("throw("));
+
+        let output = generate_with_synthetic_callee(
+            "function* f() { yield (\n// line\nvalue.has(name)); }",
+            options,
+        );
+        assert!(output.contains("yield (") || output.contains("yield("));
+    }
+}
