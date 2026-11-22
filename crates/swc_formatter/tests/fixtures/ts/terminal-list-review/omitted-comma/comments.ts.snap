@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+accept(0,
+// @ts-ignore
+"bad" // before
+// first
+, // second
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"trailingCommas":"es5"}
+---------- Output ----------
+accept(
+  0,
+  // @ts-ignore
+  "bad" // before
+  // first
+  // second
+);

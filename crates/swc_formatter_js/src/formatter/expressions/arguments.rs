@@ -10,7 +10,9 @@ use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
     PreparedSeparatorGap, PreparedTrailingRun, SourceSeparatorTransition,
 };
-use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
+use crate::formatter::diagnostics::{
+    FlatSeparator, LineConstraint, TerminalCloseBoundary, TerminalPacketClose,
+};
 use crate::formatter::suppression::{
     CommentDirective, ContentMode, DelimitedFollowing, DelimitedSuppression, LintLineDirective,
     SuppressionPosition,
@@ -202,6 +204,12 @@ pub(in crate::formatter) enum ElisionLayout {
         separator: u32,
     },
     Source(usize),
+}
+
+struct TerminalPacket {
+    closing: LineConstraint,
+    /// The real comma, when the output policy owns it at this position.
+    comma: Option<u32>,
 }
 
 struct PreparedElision {
@@ -617,6 +625,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         separator
     }
 
+    fn prepare_terminal_packet(
+        &self,
+        boundary: TerminalCloseBoundary,
+        item_end: u32,
+        packet_end: u32,
+        comma: Option<u32>,
+        trailing_comma: TrailingCommaPolicy,
+        close: u32,
+    ) -> Option<TerminalPacket> {
+        let placement = self.terminal_packet_close(boundary, item_end, packet_end)?;
+        let written_comma =
+            comma.filter(|_| !matches!(trailing_comma, TrailingCommaPolicy::Forbidden));
+        let closing = match placement {
+            TerminalPacketClose::Group => LineConstraint::Unconstrained,
+            TerminalPacketClose::Source => {
+                let after_packet = comma.filter(|&comma| packet_end <= comma);
+                match (after_packet, written_comma) {
+                    (Some(comma), Some(_)) => self.source_line_constraint(comma + 1, close),
+                    (Some(comma), None) => {
+                        self.terminal_comma_close_constraint(boundary, packet_end, comma)
+                    }
+                    (None, _) => match self.source_line_constraint(packet_end, close) {
+                        LineConstraint::NewLine(_)
+                            if comma.is_none()
+                                && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_)) =>
+                        {
+                            LineConstraint::NewLine(1)
+                        }
+                        constraint => constraint,
+                    },
+                }
+            }
+        };
+        Some(TerminalPacket {
+            closing,
+            comma: written_comma,
+        })
+    }
+
     fn finish_delimited_item_with_boundary(
         &mut self,
         item: PreparedItem,
@@ -774,30 +821,56 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.find_comma(gap, comments)
         };
-        let terminal_close = terminal_closing.and_then(|closing| {
-            let end = comments
-                .last()
-                .map_or(content_end, |comment| comment.span.end);
-            match comma {
-                Some(comma) if self.diagnostic_line_is_sensitive(comma) => {
-                    Some(self.terminal_comma_close_constraint(closing, end, comma))
-                }
-                None => {
-                    let constraint = self.terminal_close_constraint(closing, end);
-                    // A generated optional comma owns the same terminal exterior
-                    // as a real comma on the next pass, even for a covered item.
-                    if matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
-                        && matches!(constraint, LineConstraint::NewLine(_))
-                    {
-                        Some(LineConstraint::NewLine(1))
-                    } else {
-                        Some(constraint)
+        // A terminal Line already owns its physical newline. An inline Block
+        // can share the closer's line, so resolve its punctuation and close as
+        // one boundary even if the optional comma is currently on its far side.
+        let terminal_packet = if let (true, Some(boundary), Some(last)) =
+            (release_terminal, terminal_closing, comments.last())
+            && last.kind == CommentKind::Block
+            && !matches!(closing, Some(DelimitedClose::SourceComma(_)))
+        {
+            self.prepare_terminal_packet(
+                boundary,
+                item_span.end,
+                last.span.end,
+                comma,
+                trailing_comma,
+                gap.end,
+            )
+        } else {
+            None
+        };
+        let terminal_packet_comma = terminal_packet.as_ref().and_then(|packet| packet.comma);
+        let terminal_close = terminal_packet
+            .as_ref()
+            .map(|packet| packet.closing)
+            .or_else(|| {
+                terminal_closing.and_then(|closing| {
+                    let end = comments
+                        .last()
+                        .map_or(content_end, |comment| comment.span.end);
+                    match comma {
+                        Some(comma) if self.diagnostic_line_is_sensitive(comma) => {
+                            Some(self.terminal_comma_close_constraint(closing, end, comma))
+                        }
+                        None => {
+                            let constraint = self.terminal_close_constraint(closing, end);
+                            // A generated optional comma owns the same terminal exterior
+                            // as a real comma on the next pass, even for a covered item.
+                            if matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+                                && matches!(constraint, LineConstraint::NewLine(_))
+                            {
+                                Some(LineConstraint::NewLine(1))
+                            } else {
+                                Some(constraint)
+                            }
+                        }
+                        Some(_) => None,
                     }
-                }
-                Some(_) => None,
-            }
-        });
-        let trailing_comma = if (release_terminal || closing.is_some())
+                })
+            });
+        let trailing_comma = if terminal_packet.is_none()
+            && (release_terminal || closing.is_some())
             && !has_more
             && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
             && terminal_close
@@ -861,7 +934,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .is_some_and(|transition| self.diagnostic_line_is_sensitive(transition.comma));
         let constrained = source_constrained
             && !separator_coverage_released
-            && (!release_terminal || terminal_close.is_none());
+            && (terminal_packet.is_some() || !release_terminal || terminal_close.is_none());
         let elision = if matches!(following, FollowingItem::Elision { .. })
             && suppression.is_none()
             && !constrained
@@ -870,19 +943,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        let preserve_comma =
-            constrained || matches!(following, FollowingItem::Elision { .. }) && elision.is_none();
+        let preserve_comma = if let Some(packet) = &terminal_packet {
+            packet.comma.is_some()
+        } else {
+            constrained || matches!(following, FollowingItem::Elision { .. }) && elision.is_none()
+        };
         // An option that forbids call or parameter commas also owns a covered
         // terminal comma; other diagnostic boundaries retain their source token.
         let protected_comma = comma.filter(|&position| {
-            constrained
+            terminal_packet.is_none()
+                && constrained
                 && self.diagnostic_line_is_sensitive(position)
                 && (has_more
                     || !omit_source_terminal_comma
                     || mode != ContentMode::Formatted
                     || suppression.is_some())
         });
-        let trailing_limit = if let Some(elision) = &elision {
+        let trailing_limit = if let Some(comma) = terminal_packet_comma {
+            comma
+        } else if let Some(elision) = &elision {
             elision.comma
         } else if matches!(following, FollowingItem::Elision { .. }) {
             comma.unwrap_or(gap.end)
@@ -1038,7 +1117,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || protected_comma.is_some()
             || matches!(trailing_comma, TrailingCommaPolicy::Required);
         let mut end = boundary_end;
-        if required_comma
+        if (required_comma || terminal_packet_comma.is_some())
             && let Some(comma) = comma
             && (preserve_comma || separator_coverage_released || elision.is_some())
             && comments
@@ -1133,8 +1212,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let suffix_precedes_comma =
             comma.is_none_or(|comma| boundary.last().is_some_and(|last| last.span.end <= comma));
-        if required_comma {
-            if let Some(comma) = protected_comma
+        if required_comma || terminal_packet_comma.is_some() {
+            // Source gaps that need a physical line force the group to emit
+            // its conditional comma. Flat gaps need no visible punctuation.
+            let source_comma = protected_comma.or(terminal_packet_comma);
+            if let Some(comma) = source_comma
                 && boundary.is_empty()
             {
                 self.source_line_constraint(content_end, comma).write(
@@ -1148,7 +1230,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && let Some(last) = boundary.last()
                 && last.span.end <= comma
             {
-                let comma_gap = self.line_constraint(last.span.end, comma);
+                let comma_gap = if terminal_packet_comma.is_some() {
+                    self.source_line_constraint(last.span.end, comma)
+                } else {
+                    self.line_constraint(last.span.end, comma)
+                };
                 // A constrained source break flushes the suffix before the comma.
                 if matches!(comma_gap, LineConstraint::NewLine(_)) {
                     trailing_suffix_pending = false;
@@ -1169,9 +1255,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.hard_line();
                 trailing_suffix_pending = false;
             }
-            writer.text(",");
-            if pre_packet_empty {
-                separator = Separator::EmptyLine;
+            if required_comma {
+                writer.text(",");
+                if pre_packet_empty {
+                    separator = Separator::EmptyLine;
+                }
+            } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
+                writer.if_break_for(target, ",");
             }
         } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
             if before_comma
@@ -1199,13 +1289,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let own_line = self.comments.between(Span::new(end, span.end))?;
             let own_line = self.comments.take(own_line.len());
             if let Some(first) = own_line.first() {
-                // The real comma separates this packet from the item's source
-                // gap, even when its optional output is owned by the call group.
+                let has_separator = !constrained
+                    || required_comma
+                    || matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_));
                 let gap_start = comma
-                    .filter(|&comma| comma < first.span.start)
+                    .filter(|&comma| has_separator && comma < first.span.start)
                     .map_or(end, |comma| end.max(comma + 1));
                 if constrained {
-                    self.comment_gap(gap_start, first.span.start, writer);
+                    // An omitted comma leaves the preceding emitted comment as
+                    // the packet's frontier, including its line termination.
+                    if let Some(&previous) =
+                        boundary.last().filter(|last| last.span.end == gap_start)
+                    {
+                        self.comment_gap_after(previous, first.span.start, writer);
+                    } else {
+                        self.comment_gap(gap_start, first.span.start, writer);
+                    }
                 } else {
                     writer.hard_line();
                     if self.previous_line_is_empty(gap_start, first.span.start) {
@@ -1222,7 +1321,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         CommentRunLayout::SourceDangling
                     } else {
-                        CommentRunLayout::Lines
+                        CommentRunLayout::OwnLineTrailing
                     },
                     array_comments,
                     writer,

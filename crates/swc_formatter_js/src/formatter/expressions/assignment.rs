@@ -409,7 +409,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap.following
                     .write(writer, FlatSeparator::Space, Writer::space);
                 let parent = match context.position {
-                    ExpressionPosition::Statement => AssignmentParent::Statement,
+                    ExpressionPosition::Statement(_) => AssignmentParent::Statement,
                     _ => AssignmentParent::Nested,
                 };
                 let right_context =
@@ -442,7 +442,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let data = content.data;
         let operator = target.operator();
         let parent = match context.position {
-            ExpressionPosition::Statement => AssignmentParent::Statement,
+            ExpressionPosition::Statement(_) => AssignmentParent::Statement,
             _ => AssignmentParent::Nested,
         };
         let right_context = ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))

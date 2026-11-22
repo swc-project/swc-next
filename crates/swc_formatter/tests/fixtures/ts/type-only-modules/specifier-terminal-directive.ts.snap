@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export type { /* @ts-ignore */ // prettier-ignore
+ a };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export type {
+  /* @ts-ignore */ // prettier-ignore
+  a,
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export type {
+  /* @ts-ignore */ // prettier-ignore
+  a,
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+export type {
+  /* @ts-ignore */ // prettier-ignore
+  a,
+}

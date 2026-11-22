@@ -61,7 +61,7 @@ pub(super) enum AccessKind {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ExpressionPosition {
-    Statement,
+    Statement(StringStatement),
     ExportDefault,
     Nested,
     Decorator,
@@ -114,6 +114,12 @@ pub(super) enum ExpressionPosition {
         operator: BinaryOperatorKind,
         side: OperandSide,
     },
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum StringStatement {
+    Parenthesized,
+    Bare,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -349,7 +355,7 @@ impl<'ast> ExpressionContext<'ast> {
         self.content_mode == ContentMode::Verbatim
             && matches!(
                 (self.position, data),
-                (ExpressionPosition::Statement, ExprData::StringLiteral(_))
+                (ExpressionPosition::Statement(_), ExprData::StringLiteral(_))
             )
     }
 
@@ -439,7 +445,7 @@ impl<'ast> ExpressionContext<'ast> {
                 _ => arrows::ArrowLayout::Ordinary,
             },
             expression_start: match position {
-                ExpressionPosition::Statement => ExpressionStart::StatementPending,
+                ExpressionPosition::Statement(_) => ExpressionStart::StatementPending,
                 ExpressionPosition::ArrowBody => ExpressionStart::ArrowBody,
                 ExpressionPosition::ForInitializer { .. }
                 | ExpressionPosition::ForInInitializer => ExpressionStart::ForInitializer,
@@ -458,7 +464,7 @@ impl<'ast> ExpressionContext<'ast> {
             ignored_parentheses_closing: None,
             emitted_head_binding: EmittedHeadBinding::Pending,
             expression_head: match position {
-                ExpressionPosition::Statement => ExpressionHead::Statement,
+                ExpressionPosition::Statement(_) => ExpressionHead::Statement,
                 ExpressionPosition::ForInitializer {
                     grammar: ForInitializerGrammar::Expression,
                     ..
@@ -1108,12 +1114,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
     ) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
-            && !context.is_verbatim_statement_string(data)
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
                 || matches!(context.position, ExpressionPosition::TypeBinaryOperand)
-                    && context.expression_start.is_statement()
-                    && self.type_binary_head_needs_parentheses(data)
+                    && self.type_binary_head_needs_parentheses(data, context.expression_start)
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
@@ -1122,6 +1126,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(data, ExprData::Function(_) | ExprData::Class(_))
                     && context.expression_start.is_statement()
                 || matches!((data, context.expression_head), (ExprData::IdentifierReference(node), ExpressionHead::Iteration(head)) if node == head))
+    }
+
+    /// Keep identifier heads that could start a declaration or a keyword expression.
+    fn type_binary_head_needs_parentheses(&self, data: ExprData, start: ExpressionStart) -> bool {
+        let statement = start.is_statement();
+        if !statement && start != ExpressionStart::ForInitializer {
+            return false;
+        }
+        let ExprData::IdentifierReference(identifier) = data else {
+            return false;
+        };
+        let name = self.ast.get_utf8(identifier.name(self.ast));
+        match name {
+            "await" | "using" | "yield" | "let" => true,
+            "interface" | "module" | "namespace" | "type" => statement,
+            // TypeScript's statement-list lookahead rejects these modifiers
+            // before another keyword on the same line.
+            "accessor" | "private" | "protected" | "public" | "readonly" | "static" => {
+                statement && start != ExpressionStart::StatementBody
+            }
+            _ => false,
+        }
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.
@@ -1586,13 +1612,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::LogicalExpression(_)
                 | ExprData::ConditionalExpression(_),
             ) => true,
-            (ExpressionPosition::Statement, ExprData::AssignmentExpression(node)) => matches!(
+            (ExpressionPosition::Statement(_), ExprData::AssignmentExpression(node)) => matches!(
                 self.ast.assignment_target_data(node.left(self.ast)),
                 swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
             ),
             (position, ExprData::AssignmentExpression(_)) => !matches!(
                 position,
-                ExpressionPosition::Statement
+                ExpressionPosition::Statement(_)
                     | ExpressionPosition::AssignmentRight(_)
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
@@ -1674,11 +1700,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && self.instantiation_tail_needs_parentheses(data, operator, mode)
             }
             (
-                ExpressionPosition::Statement,
-                ExprData::StringLiteral(_)
-                | ExprData::ObjectExpression(_)
-                | ExprData::Function(_)
-                | ExprData::Class(_),
+                ExpressionPosition::Statement(StringStatement::Parenthesized),
+                ExprData::StringLiteral(_),
+            ) => mode == ContentMode::Formatted,
+            (
+                ExpressionPosition::Statement(_),
+                ExprData::ObjectExpression(_) | ExprData::Function(_) | ExprData::Class(_),
             ) => true,
             _ => false,
         })

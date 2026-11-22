@@ -11,7 +11,7 @@ use super::parentheses::{
 };
 use super::{
     ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, MemberChainLayout,
-    MemberLayout, TailOwner,
+    MemberLayout, StringStatement, TailOwner,
 };
 use crate::formatter::bindings::BindingGroup;
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
@@ -808,10 +808,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.expression_needs_asi_guard(
             node.expression,
-            target
-                .envelope
-                .use_context
-                .context(ExpressionContext::at(ExpressionPosition::Statement)),
+            target.envelope.use_context.context(ExpressionContext::at(
+                ExpressionPosition::Statement(StringStatement::Parenthesized),
+            )),
         )
     }
 

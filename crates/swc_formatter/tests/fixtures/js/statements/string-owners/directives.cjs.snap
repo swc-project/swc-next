@@ -1,0 +1,70 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+("barrier");
+"use strict";
+
+function strict() {
+  'custom';
+  'use strict';
+  return this;
+}
+
+function blocked(value = 0) {
+  "custom";
+  ("use strict");
+  return this;
+}
+
+function escaped() {
+  "\x75se strict";
+  return this;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+("barrier");
+("use strict");
+
+function strict() {
+  "custom";
+  "use strict";
+  return this;
+}
+
+function blocked(value = 0) {
+  "custom";
+  ("use strict");
+  return this;
+}
+
+function escaped() {
+  "\x75se strict";
+  return this;
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+;('barrier')
+;('use strict')
+
+function strict() {
+	'custom'
+	'use strict'
+	return this
+}
+
+function blocked(
+	value = 0,
+) {
+	'custom'
+	;('use strict')
+	return this
+}
+
+function escaped() {
+	'\x75se strict'
+	return this
+}

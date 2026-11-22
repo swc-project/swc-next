@@ -31,7 +31,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
 use super::expressions::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
-    TailBoundary,
+    StringStatement, TailBoundary,
 };
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
@@ -193,6 +193,7 @@ impl ContinuationBoundary {
 #[derive(Clone, Copy)]
 struct StatementLayout {
     start: ExpressionStart,
+    string_statement: StringStatement,
     empty_block: EmptyBlock,
     source_candidate: ContinuationBoundary,
     operator_tail_destination: OperatorTailDestination,
@@ -683,6 +684,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StatementSequenceKind::Program { header_barrier, .. } => header_barrier,
             _ => None,
         };
+        // Ordinary blocks keep the same style as directive-capable bodies.
+        let string_statement = match kind {
+            StatementSequenceKind::Case { .. } | StatementSequenceKind::Static { .. } => {
+                StringStatement::Bare
+            }
+            _ => StringStatement::Parenthesized,
+        };
         let mut directive_prologue = match kind {
             StatementSequenceKind::Program { .. }
             | StatementSequenceKind::Function { .. }
@@ -824,7 +832,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Some(StatementItem::Statement(next)) => match ast.stmt_data(next) {
                         StmtData::ExpressionStatement(next) => self.expression_needs_asi_guard(
                             next.expression(ast),
-                            ExpressionContext::at(ExpressionPosition::Statement),
+                            ExpressionContext::at(ExpressionPosition::Statement(string_statement)),
                         )?,
                         _ => false,
                     },
@@ -968,7 +976,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             StmtData::ExpressionStatement(node) => self
                                 .expression_has_jsdoc_enclosure_head(
                                     node.expression(ast),
-                                    ExpressionContext::at(ExpressionPosition::Statement),
+                                    ExpressionContext::at(ExpressionPosition::Statement(
+                                        string_statement,
+                                    )),
                                 )?,
                             _ => false,
                         },
@@ -1175,6 +1185,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         };
                         let layout = StatementLayout {
                             start: expression_start,
+                            string_statement,
                             empty_block: EmptyBlock::Expanded,
                             source_candidate,
                             operator_tail_destination: if source_packet.is_none()
@@ -1823,7 +1834,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let output = self.format_expression_with_leading_comments_and_raw_end(
                 expression,
                 head,
-                ExpressionContext::at(ExpressionPosition::Statement)
+                ExpressionContext::at(ExpressionPosition::Statement(layout.string_statement))
                     .with_expression_start(layout.start)
                     .with_tail_boundary(punctuation.tail_boundary())
                     .with_operator_tail_destination(layout.operator_tail_destination)

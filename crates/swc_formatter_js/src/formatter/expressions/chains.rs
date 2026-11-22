@@ -764,7 +764,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::IdentifierReference(identifier) => {
                 let name = self.ast.get_utf8(identifier.name(self.ast));
                 factory_name(name)
-                    || matches!(position, ExpressionPosition::Statement)
+                    || matches!(position, ExpressionPosition::Statement(_))
                         && name.encode_utf16().count()
                             <= usize::from(self.options.indent_width.value())
             }

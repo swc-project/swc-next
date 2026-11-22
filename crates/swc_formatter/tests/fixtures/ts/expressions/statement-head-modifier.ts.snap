@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(static) as T;
+(readonly) satisfies T;
+(accessor) as const;
+((public) as T) as U;
+(private) as T;
+if (ok) {
+  (protected) satisfies T;
+}
+if (ok) (static) as T;
+for ((static) as T; ok; step()) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(static) as T;
+(readonly) satisfies T;
+(accessor) as const;
+(public) as T as U;
+(private) as T;
+if (ok) {
+  (protected) satisfies T;
+}
+if (ok) static as T;
+for (static as T; ok; step()) {}

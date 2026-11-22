@@ -1,0 +1,33 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (x) y; /* a
+ b */ /* eslint-disable-line no-undef */ else z;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+if (x) y;
+/* a
+ b */ /* eslint-disable-line no-undef */ else z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if (x) y
+/* a
+ b */ /* eslint-disable-line no-undef */ else z
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+if (x) y
+/* a
+ b */ /* eslint-disable-line no-undef */ else z
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+if (x) y;
+/* a
+ b */ /* eslint-disable-line no-undef */ else z;
