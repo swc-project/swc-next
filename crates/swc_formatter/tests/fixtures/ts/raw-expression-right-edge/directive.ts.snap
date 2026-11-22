@@ -9,5 +9,5 @@ b;
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 // @ts-ignore
-const x = flag ? a : /* prettier-ignore */ y as ?;
+const x = flag ? a : /* prettier-ignore */ (y as ?)
 b

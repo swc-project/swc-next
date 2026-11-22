@@ -3146,6 +3146,32 @@
         "prettierNative": "for (\n  initialize();\n  ;\n)\n  /* own line */\n  consume()\n"
       }
     ],
+    "js/control-flow/for-header-layout/binary/no-in.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "for (a = (b in c) < d; ;);\n",
+        "prettierNative": "for (a = b in c < d; ;);\n"
+      }
+    ],
     "js/control-flow/for-header-layout/operator-suffixes/declaration.js": [
       {
         "options": {
@@ -35660,6 +35686,16 @@
         "prettierNative": "result =\r\n\tfn<number> +\r\n\tother;\r\n"
       }
     ],
+    "ts/instantiation-expression/canonical/operator-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const postfix = (a++)<T>;\ncall((a--)<T, U>);\nconst prefix = (++a)<T>;\nconst unary = (!a)<T>;\n",
+        "prettierNative": "const postfix = a++<T>;\ncall(a--<T, U>);\nconst prefix = ++a<T>;\nconst unary = !a<T>;\n"
+      }
+    ],
     "ts/instantiation-expression/nested-instantiation.ts": [
       {
         "options": {
@@ -37867,7 +37903,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "class C {\n  x = condition ? a : /* prettier-ignore */ y as ?;\n  b() {}\n}\n",
+        "swcPlugin": "class C {\n  x = condition ? a : /* prettier-ignore */ (y as ?)\n  b() {}\n}\n",
         "prettierNativeError": "Type expected. (1:59)"
       }
     ],
@@ -37911,7 +37947,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "// @ts-ignore\nconst x = flag ? a : /* prettier-ignore */ y as ?;\nb\n",
+        "swcPlugin": "// @ts-ignore\nconst x = flag ? a : /* prettier-ignore */ (y as ?)\nb\n",
         "prettierNativeError": "Type expected. (2:50)"
       }
     ],
@@ -37933,7 +37969,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = condition ? a : /* prettier-ignore */ y as ?;\nb\n",
+        "swcPlugin": "const x = condition ? a : /* prettier-ignore */ (y as ?)\nb\n",
         "prettierNativeError": "Type expected. (1:55)"
       }
     ],
@@ -37944,7 +37980,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "function f() {\n  return condition ? a : /* prettier-ignore */ y as ?;\n  b\n}\n",
+        "swcPlugin": "function f() {\n  return condition ? a : /* prettier-ignore */ (y as ?)\n  b\n}\n",
         "prettierNativeError": "Type expected. (1:67)"
       }
     ],
@@ -37966,7 +38002,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = (v) =>\n  v\n    ? z\n    : /* prettier-ignore */ c as ?;\nd\n",
+        "swcPlugin": "const x = (v) =>\n  v\n    ? z\n    : /* prettier-ignore */ (c as ?)\nd\n",
         "prettierNativeError": "Type expected. (1:52)"
       },
       {
@@ -37975,7 +38011,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const x = (v) => (v ? z : /* prettier-ignore */ c as ?);\nd\n",
+        "swcPlugin": "const x = (v) => (v ? z : /* prettier-ignore */ (c as ?))\nd\n",
         "prettierNativeError": "Type expected. (1:52)"
       }
     ],
@@ -40295,6 +40331,42 @@
         },
         "swcPlugin": "const result = (!callee<Type>) + suffix;\n",
         "prettierNative": "const result = !callee<Type> + suffix;\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/relational/comparison.ts": [
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (a <\n    b) >\n  c;\n",
+        "prettierNative": "x =\n  a <\n  b >\n  c;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = (a < b) > c;\n",
+        "prettierNative": "x = a < b > c;\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/relational/ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  (a\n    // prettier-ignore\n    < T) >\n  b;\n",
+        "prettierNative": "const x =\n  a <\n  // prettier-ignore\n  T >\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  (a\n    // prettier-ignore\n    < T) >\n  b;\n",
+        "prettierNative": "const x =\n  a <\n  // prettier-ignore\n  T >\n  b;\n"
       }
     ],
     "ts/type-argument-tail-packets/instantiation.ts": [

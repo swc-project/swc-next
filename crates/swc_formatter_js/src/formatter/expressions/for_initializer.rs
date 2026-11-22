@@ -2,6 +2,7 @@
 
 use swc_next_ecma_ast::{ArrowFunctionBodyData, BinaryOperator, Expr, ExprData, GetSpan, Span};
 
+use super::binary::BinaryOperatorKind;
 use super::parentheses::IgnoredSourceParentheses;
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner, TailOwner};
 use crate::FormatError;
@@ -81,6 +82,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let result = format(self);
         self.for_initializer_span = previous;
         result
+    }
+
+    pub(super) fn for_initializer_in_needs_parentheses(
+        &self,
+        operator: BinaryOperatorKind,
+        expression: Expr,
+    ) -> bool {
+        operator == BinaryOperatorKind::Binary(BinaryOperator::In)
+            && self.for_initializer_span.is_some_and(|scope| {
+                let span = expression.span(self.ast);
+                scope.start <= span.start && span.end <= scope.end
+            })
     }
 
     /// Only an actual ignored opaque child needs a complete NoIn source enclosure.

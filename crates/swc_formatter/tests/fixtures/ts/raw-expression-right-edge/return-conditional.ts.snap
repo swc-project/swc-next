@@ -8,6 +8,6 @@ b; }
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function f() {
-  return condition ? a : /* prettier-ignore */ y as ?;
+  return condition ? a : /* prettier-ignore */ (y as ?)
   b
 }

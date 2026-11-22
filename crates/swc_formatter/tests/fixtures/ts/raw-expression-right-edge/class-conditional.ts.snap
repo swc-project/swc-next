@@ -7,6 +7,6 @@ class C { x = condition ? a : /* prettier-ignore */ y as ?; b() {} }
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
-  x = condition ? a : /* prettier-ignore */ y as ?;
+  x = condition ? a : /* prettier-ignore */ (y as ?)
   b() {}
 }

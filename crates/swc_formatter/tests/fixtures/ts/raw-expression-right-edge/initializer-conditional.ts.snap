@@ -7,5 +7,5 @@ b;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const x = condition ? a : /* prettier-ignore */ y as ?;
+const x = condition ? a : /* prettier-ignore */ (y as ?)
 b
