@@ -1,7 +1,10 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::SourceType;
+use swc_next_ecma_ast::{Lang, SourceType};
 
-use crate::{NoTokenParserConfig, Token, TokenTag, lexer::Lexer};
+use crate::{
+    NoTokenParserConfig, Token, TokenTag,
+    lexer::{Lexer, allow_html_like_comments},
+};
 
 /// Reads single tokens on demand without parsing or collecting a token stream.
 ///
@@ -15,12 +18,17 @@ pub struct TokenReader<'a> {
 }
 
 impl<'a> TokenReader<'a> {
-    pub fn new(allocator: &'a Allocator, source: &'a str, source_type: SourceType) -> Self {
+    pub fn new(
+        allocator: &'a Allocator,
+        source: &'a str,
+        source_type: SourceType,
+        lang: Lang,
+    ) -> Self {
         assert!(source.len() <= u32::MAX as usize);
         let lexer = Lexer::init(
             allocator,
             source,
-            source_type != SourceType::Module,
+            allow_html_like_comments(source_type, lang),
             false,
             NoTokenParserConfig,
         );
@@ -50,8 +58,12 @@ mod tests {
     use super::*;
 
     fn read(source: &str, position: u32) -> Option<Span> {
+        read_as(source, position, SourceType::Module, Lang::Js)
+    }
+
+    fn read_as(source: &str, position: u32, source_type: SourceType, lang: Lang) -> Option<Span> {
         let allocator = Allocator::default();
-        let mut reader = TokenReader::new(&allocator, source, SourceType::Module);
+        let mut reader = TokenReader::new(&allocator, source, source_type, lang);
         reader.read(position).map(|token| token.span())
     }
 
@@ -60,5 +72,20 @@ mod tests {
         assert_eq!(read("#!node\nlet x;", 0), Some(Span::new(7, 10)));
 
         assert_eq!(read("let x;", 0), Some(Span::new(0, 3)));
+    }
+
+    #[test]
+    fn html_like_comments() {
+        assert_eq!(read_as("x<!--x;", 1, SourceType::CommonJs, Lang::Js), None);
+
+        assert_eq!(
+            read_as("x<!--x;", 1, SourceType::CommonJs, Lang::Ts),
+            Some(Span::new(1, 2))
+        );
+
+        assert_eq!(
+            read_as("x<!--x;", 1, SourceType::Unambiguous, Lang::Tsx),
+            Some(Span::new(1, 2))
+        );
     }
 }

@@ -4,7 +4,8 @@ use memchr::{memchr, memchr2, memchr3};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::ArenaVec;
 use swc_next_ecma_ast::{
-    Comment, CommentKind, CommentPosition, Span, is_ident_continue_ascii, is_ident_start_ascii,
+    Comment, CommentKind, CommentPosition, Lang, SourceType, Span, is_ident_continue_ascii,
+    is_ident_start_ascii,
 };
 
 use swc_next_simd::memchr::memchr4;
@@ -1997,6 +1998,12 @@ const FAST_CLASS: [FastClass; 256] = {
     }
     table
 };
+
+/// Returns whether Annex B HTML-like comments are recognized. They are JavaScript-only and
+/// are not allowed in modules; TypeScript lexes `<!--` and `-->` as operators.
+pub(crate) fn allow_html_like_comments(source_type: SourceType, lang: Lang) -> bool {
+    source_type != SourceType::Module && !lang.is_typescript()
+}
 
 /// Returns the position of the line terminator that ends a line comment whose body starts at
 /// `pos`, or the source length.

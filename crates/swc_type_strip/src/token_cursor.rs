@@ -27,7 +27,7 @@ impl<'a> TokenCursor<'a> {
     pub(crate) fn new(allocator: &'a Allocator, source: &'a str, options: ParserOptions) -> Self {
         Self {
             source,
-            reader: TokenReader::new(allocator, source, options.source_type),
+            reader: TokenReader::new(allocator, source, options.source_type, options.lang),
             #[cfg(debug_assertions)]
             parser_tokens: {
                 let parse = Parser::init(allocator, source, options, TokenParserConfig).parse();

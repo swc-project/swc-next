@@ -19,7 +19,8 @@ use crate::{
     TokenFlag,
     config::{NoTokenParserConfig, ParserConfig},
     lexer::{
-        HandleTokenMode, Lexer, LexerState, LexicalError, lexical_error_help, lexical_error_message,
+        HandleTokenMode, Lexer, LexerState, LexicalError, allow_html_like_comments,
+        lexical_error_help, lexical_error_message,
     },
     number::{parse_binary_literal, parse_decimal_literal, parse_hex_literal, parse_octal_literal},
     token::{Token, TokenTag, flag_mask},
@@ -1496,13 +1497,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // SAFETY: The parser only uses handles from this AST and wraps it before returning.
         let mut ast = unsafe { Ast::new(source, allocator) };
         ast.set_source_metadata(options.source_type, options.lang);
-        // Annex B HTML-like comments are JavaScript-only; TypeScript lexes `<!--` as operators.
-        let allow_html_like_comments =
-            options.source_type != SourceType::Module && !options.lang.is_typescript();
         let lexer = Lexer::init(
             ast.allocator(),
             source,
-            allow_html_like_comments,
+            allow_html_like_comments(options.source_type, options.lang),
             options.comments == CommentMode::Flat,
             config,
         );
