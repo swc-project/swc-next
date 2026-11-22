@@ -100,7 +100,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(content) => self.template_expression_slot_layout(content.data),
             None => TemplateSlotLayout::Boundaries(mode),
         };
-        let head_layout = self.template_slot_head_layout(leading, span.start);
+        let context = ExpressionContext::at(ExpressionPosition::TemplateInterpolation)
+            .with_content_mode(mode)
+            .with_tail_owner(TailOwner::ParentOperation);
+        let released = if matches!(layout, TemplateSlotLayout::Child)
+            && let Some(content) = &content
+            && content
+                .parentheses
+                .is_some_and(|removed| removed.head.has_comments)
+        {
+            let comments = self.ast.comments();
+            let first = comments.partition_point(|comment| comment.span.start < span.start);
+            self.ordinary_released_expression_head(
+                expression,
+                content,
+                context,
+                &comments[first..],
+            )?
+        } else {
+            None
+        };
+        // The removed opener exposes a slot prefix. Its required line belongs
+        // to the interpolation's indentation and closing delimiter.
+        let (leading, head_start, layout) = if let Some(head) = released {
+            (
+                head.comments,
+                head.content_start,
+                TemplateSlotLayout::Boundaries(mode),
+            )
+        } else {
+            (leading, span.start, layout)
+        };
+        let head_layout = self.template_slot_head_layout(leading, head_start);
         self.format_template_slot(
             slot,
             opening,
@@ -111,7 +142,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 formatter.comments.claim(leading)?;
                 let head = NodeHead {
                     comments: leading,
-                    content_start: span.start,
+                    content_start: head_start,
                     layout: head_layout,
                     gap_end: None,
                 };
@@ -124,11 +155,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     ArrayLayout::InlineTemplateSlot
                 };
-                let context = ExpressionContext::at(ExpressionPosition::TemplateInterpolation)
+                let context = context
                     .with_array_layout(array_layout)
-                    .with_operand_indent(operand_indent)
-                    .with_content_mode(mode)
-                    .with_tail_owner(TailOwner::ParentOperation);
+                    .with_operand_indent(operand_indent);
                 let tail = match content {
                     Some(content) => formatter.format_prepared_expression_with_leading_comments(
                         expression, content, head, context, writer,

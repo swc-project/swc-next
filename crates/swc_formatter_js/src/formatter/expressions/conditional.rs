@@ -7,7 +7,7 @@ use super::parentheses::{
 };
 use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionStart, Formatter,
-    OperandIndent, TailOwner,
+    OperandIndent, ParenthesesOwner, TailOwner,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -78,6 +78,7 @@ struct ConditionalOperand {
 }
 
 struct PreparedConditional<'ast> {
+    node: ConditionalExpression,
     test: ConditionalOperand,
     consequent: ConditionalOperand,
     alternate: ConditionalOperand,
@@ -271,6 +272,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .with_tail_owner(TailOwner::ParentOperation),
         };
         test.context = self.with_head_scope(test.context, &test.content);
+        // The complete conditional owns this exposed prefix. Emitting it inside
+        // the test would make the prefix's required line break the branches.
+        // A grammar frame or JSX container still owns its own opening.
+        if test
+            .content
+            .parentheses
+            .is_some_and(|removed| removed.head.has_comments)
+            && prepared.test.source_start >= context.claimed_head_end
+            && context.parentheses_owner == ParenthesesOwner::Expression
+            && !matches!(context.position, ExpressionPosition::JsxExpression)
+            && !self.expression_is_parenthesized(
+                ExprData::ConditionalExpression(prepared.node),
+                context,
+            )
+        {
+            let comments = self.ast.comments();
+            let first =
+                comments.partition_point(|comment| comment.span.start < prepared.test.source_start);
+            if let Some(head) = self.ordinary_released_expression_head(
+                prepared.test.original,
+                &test.content,
+                test.context,
+                &comments[first..],
+            )? {
+                self.comments.claim(head.comments)?;
+                test.context.claimed_head_end = head.content_start;
+                test.context.expression_start = self.format_expression_head(
+                    prepared.test.original,
+                    NodeHead {
+                        comments: head.comments,
+                        content_start: head.content_start,
+                        layout: CommentRunLayout::Source,
+                        gap_end: Some(head.content_start),
+                    },
+                    CommentBinding::Unbound,
+                    test.context,
+                    None,
+                    writer,
+                )?;
+            }
+        }
         if let Some(released) = self.prepare_released_source_cast_head(
             prepared.test.original,
             &test.content,
@@ -366,6 +408,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let question = self.conditional_boundary(&test, &consequent, "?")?;
         let colon = self.conditional_boundary(&consequent, &alternate, ":")?;
         Ok(PreparedConditional {
+            node: conditional,
             test,
             consequent,
             alternate,
@@ -406,6 +449,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             alternate,
             question,
             colon,
+            ..
         } = prepared;
         let operand_indent = match context.position {
             ExpressionPosition::Nested

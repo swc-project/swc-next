@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = (a.b
+// c
+)(y);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const x = a.b(
+  // c
+  y,
+)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+const x = a.b(
+  // c
+  y,
+);

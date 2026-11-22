@@ -10,8 +10,8 @@ use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{
-    AccessKind, ExpressionContext, ExpressionLayout, ExpressionOutput, ExpressionPosition,
-    ParenthesesOwner, TailOwner,
+    AccessKind, ExpressionContext, ExpressionOutput, ExpressionPosition, ParenthesesOwner,
+    TailOwner,
 };
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
@@ -28,7 +28,7 @@ use crate::formatter::types::{
 };
 use crate::{
     FormatError,
-    document::{Fragment, GroupRequest, Writer, WriterExt},
+    document::{GroupRequest, Writer, WriterExt},
 };
 
 #[derive(Clone, Copy)]
@@ -205,22 +205,16 @@ struct BinaryTypeBoundary<'ast> {
     layout: BinaryTypeLayout<'ast>,
 }
 
-pub(super) struct PreparedBinaryTypeExpression<'ast> {
+struct PreparedBinaryTypeExpression<'ast> {
     boundary: BinaryTypeBoundary<'ast>,
     annotation: PreparedType,
     tail_owner: TailOwner,
 }
 
 impl PreparedBinaryTypeExpression<'_> {
-    pub(super) fn operand_mode(&self) -> ContentMode {
+    fn operand_mode(&self) -> ContentMode {
         self.boundary.left_mode
     }
-}
-
-pub(super) struct RecordedTypeWrappedArgument<'ast> {
-    pub(super) normal: Fragment<'ast>,
-    pub(super) forced: Option<Fragment<'ast>>,
-    pub(super) tail: Option<ExpressionTail<'ast>>,
 }
 
 enum BinaryTypeLayout<'ast> {
@@ -557,12 +551,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        let source = self.prepare_binary_type_expression(
-            expression,
-            annotation,
-            operator,
-            context.tail_owner,
-        )?;
+        let source =
+            self.prepare_binary_type_expression(expression, annotation, operator, &context)?;
         writer.group(false, |writer| {
             let write = |writer: &mut Writer<'ast>| {
                 let tail = self.format_expression(
@@ -593,16 +583,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn prepare_binary_type_expression(
+    fn prepare_binary_type_expression(
         &self,
         expression: Expr,
         annotation: TsType,
         operator: TypeBinaryOperator,
-        tail_owner: TailOwner,
+        context: &ExpressionContext<'ast>,
     ) -> Result<PreparedBinaryTypeExpression<'ast>, FormatError> {
         let mut annotation = self.prepare_type(annotation, ContentMode::Formatted);
-        let boundary =
-            self.prepare_binary_type_boundary(expression, &mut annotation, operator, tail_owner)?;
+        let tail_owner = context.tail_owner;
+        let type_operator_follows =
+            matches!(context.position, ExpressionPosition::TypeBinaryOperand);
+        let boundary = self.prepare_binary_type_boundary(
+            expression,
+            &mut annotation,
+            operator,
+            tail_owner,
+            type_operator_follows,
+        )?;
         Ok(PreparedBinaryTypeExpression {
             boundary,
             annotation,
@@ -625,50 +623,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn record_type_wrapped_argument(
-        &mut self,
-        mut normal: Fragment<'ast>,
-        mut forced: Option<Fragment<'ast>>,
-        wrappers: Vec<PreparedBinaryTypeExpression<'ast>>,
-        layout: ExpressionLayout,
-        writer: &mut Writer<'ast>,
-    ) -> Result<RecordedTypeWrappedArgument<'ast>, FormatError> {
-        let mut tail = None;
-        if !wrappers.is_empty() {
-            for source in wrappers.into_iter().rev() {
-                let (suffix, output) = writer.record_with_value(|writer| {
-                    self.format_binary_type_expression_suffix(source, tail.take(), writer)
-                })?;
-                tail = output.pending;
-                normal = writer.join_fragments(normal, false, suffix);
-                normal = writer.group_fragment(false, normal);
-                forced = forced.map(|value| {
-                    let value = writer.join_fragments(value, false, suffix);
-                    writer.group_fragment(false, value)
-                });
-            }
-            if layout == ExpressionLayout::Flat {
-                let (value, ()) = writer.record_with_value(|writer| {
-                    layout.write(writer, |writer| writer.write_fragment(normal));
-                    Ok::<_, FormatError>(())
-                })?;
-                normal = value;
-                forced = None;
-            }
-        }
-        Ok(RecordedTypeWrappedArgument {
-            normal,
-            forced,
-            tail,
-        })
-    }
-
     fn prepare_binary_type_boundary(
         &self,
         expression: Expr,
         right: &mut PreparedType,
         operator: TypeBinaryOperator,
         tail_owner: TailOwner,
+        type_operator_follows: bool,
     ) -> Result<BinaryTypeBoundary<'ast>, FormatError> {
         let gap = Span::new(
             expression.span(self.ast).end,
@@ -839,13 +800,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 BinaryTypeLayout::Source(source)
             }
-        } else if let Some((prefix, tail)) = self.prepare_const_marker_comments(
-            *right,
-            operator,
-            after,
-            gap,
-            start + token.len() as u32,
-        ) {
+        } else if let Some((prefix, tail)) = self
+            .prepare_const_marker_comments(*right, operator, after, gap, operator_span.end)
+            .filter(|(_, tail)| {
+                // The next `as` or `satisfies` must stay on the same line.
+                // A pending suffix can break that boundary or overtake its comments.
+                tail.is_none() || !type_operator_follows
+            })
+        {
             BinaryTypeLayout::ConstMarker {
                 before: self.prepare_comment_boundary(before, gap.start, start),
                 prefix,
@@ -893,6 +855,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &mut right,
                 TypeBinaryOperator::As,
                 TailOwner::Expression,
+                false,
             )
             .ok()?;
         let BinaryTypeLayout::ConstMarker { tail, .. } = boundary.layout else {

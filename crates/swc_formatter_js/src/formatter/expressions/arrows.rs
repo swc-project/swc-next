@@ -78,6 +78,12 @@ pub(super) enum ArrowBodyLayout {
     Expression,
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum ArrowBodyGroup {
+    Independent,
+    TerminalArgument,
+}
+
 struct ArrowLink<'a> {
     signature: Fragment<'a>,
     following: Option<Fragment<'a>>,
@@ -830,6 +836,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: SourceArrow<'ast>,
         prepared_body: Option<PreparedArrowBody>,
+        body_group: ArrowBodyGroup,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedArrow<'ast>, FormatError> {
@@ -850,7 +857,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .record_with_value(|writer| self.format_arrow_head(source, context, writer))?;
             let body_layout = source_body.layout();
             let (body, tail) = writer.record_group_with_value(|writer| {
-                self.format_arrow_body_content(source_body, writer)
+                self.format_arrow_body_content(source_body, body_group, writer)
             })?;
             let (normal, ()) = writer.record_with_value(|writer| {
                 writer.group(false, |writer| {
@@ -981,7 +988,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .is_none_or(|tail| tail.owner == ArrowLinkTailOwner::Body)
                     });
                 let (body, tail) = writer.record_group_with_value(|writer| {
-                    let mut output = self.format_arrow_body_content(source_body, writer)?;
+                    let mut output = self.format_arrow_body_content(
+                        source_body,
+                        ArrowBodyGroup::Independent,
+                        writer,
+                    )?;
                     for link in links.iter().rev().chain(std::iter::once(&first)) {
                         if let Some(trailing) = &link.trailing {
                             if inline_tails {
@@ -1226,10 +1237,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if source.hug_body {
-            self.format_arrow_body_content(source, writer)
+            self.format_arrow_body_content(source, ArrowBodyGroup::Independent, writer)
         } else {
             writer.group(false, |writer| {
-                self.format_arrow_body_content(source, writer)
+                self.format_arrow_body_content(source, ArrowBodyGroup::Independent, writer)
             })
         }
     }
@@ -1302,6 +1313,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_arrow_body_content(
         &mut self,
         source: SourceArrowBody<'ast>,
+        body_group: ArrowBodyGroup,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let SourceArrowBody {
@@ -1374,9 +1386,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let tail = if flat_conditional_pair {
             writer.space();
-            // This pair follows the complete body's fit, independently of the
-            // signature group and the conditional's own branch group.
-            writer.group(false, |writer| {
+            let write_pair = |writer: &mut Writer<'ast>| {
                 writer.if_flat("(");
                 let tail = writer.indent(|writer| {
                     if let Some(constraint) = leading_constraint {
@@ -1386,7 +1396,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })?;
                 writer.if_flat(")");
                 Ok::<_, FormatError>(tail)
-            })
+            };
+            if matches!(body_group, ArrowBodyGroup::TerminalArgument)
+                && leading_constraint == Some(LineConstraint::Unconstrained)
+            {
+                // The selected callback's body and the call's closing lines
+                // use the same group. The conditional still owns its branches.
+                write_pair(writer)
+            } else {
+                writer.group(false, write_pair)
+            }
         } else {
             let write = |writer: &mut Writer<'ast>| {
                 if let Some(constraint) = leading_constraint {

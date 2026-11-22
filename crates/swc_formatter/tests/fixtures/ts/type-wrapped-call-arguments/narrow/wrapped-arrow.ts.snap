@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f((() => a.b(c)) as T);
+---------- Options ----------
+{"indentStyle":"space","indentWidth":2,"lineWidth":20,"quoteStyle":"single"}
+---------- Output ----------
+f((() =>
+  a.b(c)) as T);
