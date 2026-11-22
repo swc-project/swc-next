@@ -1496,7 +1496,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // SAFETY: The parser only uses handles from this AST and wraps it before returning.
         let mut ast = unsafe { Ast::new(source, allocator) };
         ast.set_source_metadata(options.source_type, options.lang);
-        let allow_html_like_comments = options.source_type != SourceType::Module;
+        // Annex B HTML-like comments are JavaScript-only; TypeScript lexes `<!--` as operators.
+        let allow_html_like_comments =
+            options.source_type != SourceType::Module && !options.lang.is_typescript();
         let lexer = Lexer::init(
             ast.allocator(),
             source,
@@ -20664,6 +20666,41 @@ mod tests {
 
         let module_errors = has_errors("<!-- --> \"\nlet x = 1;", Options::default());
         assert!(module_errors);
+
+        fn is_comparison(source: &str, options: Options) -> bool {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let ast = take_ast(parsed.ast);
+            let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
+            let statement = statement.as_expression_statement(&ast).unwrap();
+            statement
+                .expression(&ast)
+                .as_binary_expression(&ast)
+                .is_some()
+        }
+
+        for source_type in [SourceType::Unambiguous, SourceType::CommonJs] {
+            let js = Options {
+                source_type,
+                ..Options::default()
+            };
+            let ts = Options {
+                lang: Lang::Ts,
+                source_type,
+                ..Options::default()
+            };
+            let tsx = Options {
+                lang: Lang::Tsx,
+                source_type,
+                ..Options::default()
+            };
+
+            assert!(!is_comparison("x<!--x;", js));
+
+            assert!(is_comparison("x<!--x;", ts));
+
+            assert!(is_comparison("x<!--x;", tsx));
+        }
     }
 
     #[test]
