@@ -3920,7 +3920,6 @@ dependencies = [
  "insta",
  "jsonc-parser 0.34.0",
  "jwalk",
- "preset_env_base",
  "serde_json",
  "swc_core",
  "swc_next_allocator",

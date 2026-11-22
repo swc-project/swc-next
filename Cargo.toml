@@ -100,7 +100,6 @@ insta         = "1.49.0"
 jwalk         = "0.9.0"
 jsonc-parser  = { version = "0.34.0", features = ["serde"] }
 libtest-mimic = "0.8.2"
-preset_env_base = "11.0.0"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.160.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.160.0"
