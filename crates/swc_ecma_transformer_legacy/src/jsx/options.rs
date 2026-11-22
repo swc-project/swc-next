@@ -26,9 +26,9 @@ pub struct JsxOptions {
     pub runtime: Option<JsxRuntime>,
     /// Module supplying the automatic JSX runtime.
     pub import_source: Option<String>,
-    /// JSX factory expression for the classic runtime.
+    /// Dotted JSX factory path for the classic runtime.
     pub pragma: Option<String>,
-    /// Fragment factory expression for the classic runtime.
+    /// Dotted fragment factory path for the classic runtime.
     pub pragma_frag: Option<String>,
     /// Report XML namespace syntax in JSX. Defaults to `true` when unset.
     pub throw_if_namespace: Option<bool>,
@@ -55,6 +55,7 @@ pub struct ReactRefreshOptions {
 }
 
 impl Default for ReactRefreshOptions {
+    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/refresh/options.rs#L29>.
     fn default() -> Self {
         Self {
             refresh_reg: "$RefreshReg$".to_owned(),

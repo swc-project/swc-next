@@ -88,7 +88,14 @@ fn run(input: &Path, output: &Path, root: &Path) -> Result<bool, String> {
     let expected_allocator = Allocator::new();
     let expected = parse(&expected_allocator, &expected, options.parser)
         .map_err(|error| format!("snapshot {error}"))?;
-    if generate(&ast, options.generator.clone()).code != generate(&expected, options.generator).code
+    // Generated purity flags and source annotations must pass through the same
+    // parser/printer path before comparing their formatting.
+    let actual = generate(&ast, options.generator.clone()).code;
+    let actual_allocator = Allocator::new();
+    let actual = parse(&actual_allocator, &actual, options.parser)
+        .map_err(|error| format!("output {error}"))?;
+    if generate(&actual, options.generator.clone()).code
+        != generate(&expected, options.generator).code
     {
         return Err("transformed output differs from SWC snapshot".into());
     }

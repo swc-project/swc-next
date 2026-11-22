@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Span};
 
-use crate::{TransformerOptions, jsx::JsxRuntime};
+use crate::{TransformerOptions, jsx, resolver::Resolver};
 
 /// Diagnostics produced while transforming an AST in place.
 #[derive(Debug, Default)]
@@ -17,6 +17,8 @@ impl Transformer {
     /// Call after parsing. The caller does not need to normalize or analyze the
     /// AST. Any analysis needed by future ports belongs inside this pipeline.
     /// Previously computed semantic indexes must be recomputed after mutation.
+    /// Name resolution runs before the selected passes; hygiene runs once after
+    /// all passes have finished.
     ///
     /// ```
     /// use swc_next_allocator::Allocator;
@@ -33,24 +35,38 @@ impl Transformer {
     /// assert!(result.diagnostics.is_empty());
     /// ```
     ///
-    /// No transforms have been ported yet: each selected transform produces an
-    /// error diagnostic, and the AST is left unchanged. Default options succeed
-    /// without changing the AST. This keeps missing ports visible in conformance
-    /// results rather than silently treating enabled transforms as successful.
+    /// JSX lowering is available. Other selected transforms produce an error
+    /// diagnostic until their legacy implementation has been ported.
     ///
     /// # Panics
     ///
     /// Panics if the AST root is not a program.
+    ///
+    /// SWC pipeline ordering: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc/src/config/mod.rs#L805>.
     pub fn transform(ast: &mut AstCtx<'_>, options: TransformerOptions) -> TransformerReturn {
-        let _program = ast.root_program();
+        // SAFETY: The program and all handles used by these passes belong to
+        // this context. Passes only construct well-typed nodes in the same AST.
+        let ast = unsafe { ast.ast_mut() };
+        let mut diagnostics = Vec::new();
+        let mut resolver = Resolver::new(ast);
+        if let Some(jsx) = &options.jsx {
+            diagnostics.extend(jsx::transform(
+                ast,
+                jsx,
+                options.filename.as_deref(),
+                &mut resolver,
+            ));
+            if jsx.runtime != Some(jsx::JsxRuntime::Preserve)
+                && jsx.development == Some(true)
+                && jsx.refresh.is_some()
+            {
+                let mut diagnostic =
+                    Diagnostic::error("Legacy transform has not been ported yet", Span::new(0, 0));
+                diagnostic.help = Some("react_refresh".into());
+                diagnostics.push(diagnostic);
+            }
+        }
         let selected = [
-            (
-                options
-                    .jsx
-                    .as_ref()
-                    .is_some_and(|jsx| jsx.runtime != Some(JsxRuntime::Preserve)),
-                "jsx",
-            ),
             (options.typescript.is_some(), "typescript"),
             (options.env.es2022.static_blocks, "static_blocks"),
             (
@@ -109,16 +125,16 @@ impl Transformer {
             (options.env.regexp.unicode_regex, "unicode_regex"),
             (options.env.regexp.unicode_sets_regex, "unicode_sets_regex"),
         ];
-        let diagnostics = selected
-            .into_iter()
-            .filter(|(enabled, _)| *enabled)
-            .map(|(_, name)| {
+        diagnostics.extend(selected.into_iter().filter(|(enabled, _)| *enabled).map(
+            |(_, name)| {
                 let mut diagnostic =
                     Diagnostic::error("Legacy transform has not been ported yet", Span::new(0, 0));
                 diagnostic.help = Some(name.into());
                 diagnostic
-            })
-            .collect();
+            },
+        ));
+        // SWC runs hygiene once, after all transform passes, before its fixer.
+        resolver.hygiene(ast);
         TransformerReturn { diagnostics }
     }
 }
