@@ -43,7 +43,7 @@ unicode-width    = { version = "0.2.3", default-features = false }
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "=84.1.2", features = [
+swc_core = { version = "=85.0.0", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
