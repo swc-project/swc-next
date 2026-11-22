@@ -575,28 +575,40 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Skips a line feed, blank lines, and space or tab indentation. Returns the
     /// position and value of the next byte, or `None` at the end of the source.
     ///
-    /// Each batch is classified at once, so any mix of spaces, tabs, and line feeds that ends
-    /// in the first batch costs one load and one branch, whatever its width. A loop that
-    /// advances by less than a batch leaves on an iteration that depends on the indentation
-    /// width, which changes from line to line.
+    /// AArch64 scans space runs eight bytes at a time. Other targets classify spaces, tabs,
+    /// and line feeds together in 16-byte SIMD batches.
     #[inline]
     fn skip_line_feed_indentation(&self, line_feed: u32) -> Option<(u32, u8)> {
-        /// Bytes one [`u8x16`] batch covers.
-        const BATCH_SIZE: usize = 16;
-
         let mut start = line_feed as usize + 1;
-        while let Some(chunk) = self.source.get(start..start + BATCH_SIZE) {
-            let chunk: &[u8; BATCH_SIZE] = chunk.try_into().unwrap();
-            let bytes = u8x16::from_array(*chunk);
-            let skipped = bytes.simd_eq(u8x16::splat(b' '))
-                | (bytes.simd_eq(u8x16::splat(b'\t')) | bytes.simd_eq(u8x16::splat(b'\n')));
-            let lane = (!skipped.to_bitmask()).trailing_zeros() as usize;
-            if lane < BATCH_SIZE {
-                return Some(((start + lane) as u32, chunk[lane]));
+        #[cfg(target_arch = "aarch64")]
+        if self.source.get(start) == Some(&b' ') {
+            // Skip a run of spaces eight bytes at a time. The first byte that differs from a
+            // space ends the run, wherever it falls in the word.
+            while let Some(word) = self.source.get(start..start + 8) {
+                let differing =
+                    u64::from_le_bytes(word.try_into().unwrap()) ^ 0x2020_2020_2020_2020;
+                start += (differing.trailing_zeros() / 8) as usize;
+                if differing != 0 {
+                    break;
+                }
             }
-            start += BATCH_SIZE;
         }
-        // Fewer than a batch of bytes remain, so scan them one at a time.
+        #[cfg(not(target_arch = "aarch64"))]
+        {
+            /// Bytes one [`u8x16`] batch covers.
+            const BATCH_SIZE: usize = 16;
+
+            while let Some(chunk) = self.source.get(start..start + BATCH_SIZE) {
+                let chunk: &[u8; BATCH_SIZE] = chunk.try_into().unwrap();
+                let bytes = u8x16::from_array(*chunk);
+                let skipped = bytes.simd_eq(u8x16::splat(b' '))
+                    | (bytes.simd_eq(u8x16::splat(b'\t')) | bytes.simd_eq(u8x16::splat(b'\n')));
+                if let Some(lane) = (!skipped).first_set() {
+                    return Some(((start + lane) as u32, chunk[lane]));
+                }
+                start += BATCH_SIZE;
+            }
+        }
         while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
             start += 1;
         }
