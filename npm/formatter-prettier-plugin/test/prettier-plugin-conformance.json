@@ -47,6 +47,16 @@
         "swcFormatter": "call(\n\t`a\tb`,\n\tfoo,\n\tbar,\n);\n",
         "prettierFormatter": "call(`a\tb`, foo, bar);\n"
       }
+    ],
+    "js/jsx/surviving-tabs/fold-boundaries/input.jsx": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcFormatter": "const x = (\n  <Box>\tfirst\n    middle\tvalue\n    last\t</Box>\n);\n",
+        "prettierFormatter": "const x = (\n  <Box>\tfirst\n    middle\tvalue last\t</Box>\n);\n"
+      }
     ]
   },
   "SWC plugin + Prettier formatter vs native Prettier + Prettier formatter": {
@@ -20588,7 +20598,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y ok={next + last} />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */} <X odd={left + right} />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}bar\n    <X odd={left + right} />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n \n<X odd={left + right} />\n  </div>\n);\nconst a5 = (\n  <div>\n    {/* prettier-ignore */ left    + right}\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */}\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n",
+        "swcPlugin": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y ok={next + last} />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */} <X odd={left + right} />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}bar\n    <X odd={left + right} />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n     \n    <X odd={left + right} />\n  </div>\n);\nconst a5 = (\n  <div>\n    {/* prettier-ignore */ left    + right}\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */}\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n",
         "prettierNative": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y ok={next + last} />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */} <X odd={left + right} />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}bar\n    <X odd={left + right} />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n     \n    <X odd={left + right} />\n  </div>\n);\nconst a5 = (\n  <div>\n    {/* prettier-ignore */ left    + right}\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */\n      }\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n"
       },
       {
@@ -20596,7 +20606,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y\n      ok={\n        next + last\n      }\n    />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */}{\" \"}\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}\n    bar\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n \n<X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a5 = (\n  <div>\n    {\n      /* prettier-ignore */ left    + right\n    }\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */}\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n",
+        "swcPlugin": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y\n      ok={\n        next + last\n      }\n    />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */}{\" \"}\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}\n    bar\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n     \n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a5 = (\n  <div>\n    {\n      /* prettier-ignore */ left    + right\n    }\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */}\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n",
         "prettierNative": "const a1 = (\n  <div>\n    {/* prettier-ignore */}\n    <X  odd = { left+ right }/>\n    <Y\n      ok={\n        next + last\n      }\n    />\n  </div>\n);\nconst a2 = (\n  <div>\n    {/* prettier-ignore */}{\" \"}\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a3 = (\n  <div>\n    {/* prettier-ignore */}\n    bar\n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a4 = (\n  <div>\n    {/* prettier-ignore */}\n     \n    <X\n      odd={\n        left + right\n      }\n    />\n  </div>\n);\nconst a5 = (\n  <div>\n    {\n      /* prettier-ignore */ left    + right\n    }\n    {left + right}\n  </div>\n);\nfunction HelloWorld() {\n  return (\n    <div\n      {\n        ...{} /*\n      // @ts-ignore */ /* prettier-ignore */\n      }\n      invalidProp=\"HelloWorld\"\n    >\n      test\n    </div>\n  );\n}\n"
       }
     ],
@@ -20678,7 +20688,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  <b>a</b>{\" \"}\n  bbb\tccc\n</div>;\n",
+        "swcPlugin": "<div>\n  <b>a</b> bbb\tccc\n</div>;\n",
         "prettierNative": "<div>\n  <b>a</b> bbb ccc\n</div>;\n"
       }
     ],
@@ -20688,7 +20698,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div> \ttext\n</div>;\n",
+        "swcPlugin": "<div> \ttext</div>;\n",
         "prettierNative": "<div> text</div>;\n"
       }
     ],
@@ -20698,7 +20708,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  {\" \"}\n  bbb\tccc\n</div>;\n",
+        "swcPlugin": "<div> bbb\tccc</div>;\n",
         "prettierNative": "<div> bbb ccc</div>;\n"
       }
     ],
@@ -20708,7 +20718,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  <b>a</b> bbb\tccc\nnext</div>;\n",
+        "swcPlugin": "<div>\n  <b>a</b> bbb\tccc next\n</div>;\n",
         "prettierNative": "<div>\n  <b>a</b> bbb ccc next\n</div>;\n"
       }
     ],
@@ -20718,7 +20728,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>bbb\tccc <b>a</b>\n</div>;\n",
+        "swcPlugin": "<div>\n  bbb\tccc <b>a</b>\n</div>;\n",
         "prettierNative": "<div>\n  bbb ccc <b>a</b>\n</div>;\n"
       }
     ],
@@ -20728,8 +20738,18 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  <b>a</b>{\" \"}\n  bbb\tccc\n</div>;\n",
+        "swcPlugin": "<div>\n  <b>a</b> bbb\tccc\n</div>;\n",
         "prettierNative": "<div>\n  <b>a</b> bbb ccc\n</div>;\n"
+      }
+    ],
+    "js/jsx/opaque-edges/space-literal-before-space-tab.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<div>\n  {\" \"} \t<b />\n</div>;\n",
+        "prettierNative": "<div>\n  {\" \"}\n  <b />\n</div>;\n"
       }
     ],
     "js/jsx/opaque-edges/space-literal-before-tab.jsx": [
@@ -20849,7 +20869,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value = <MissingPanel> {uncoveredAfterSpace}</MissingPanel>;\n"
       },
       {
@@ -20857,7 +20877,7 @@
           "lineWidth": 12,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{\"  \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{\" \"}\n    {\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value =\n  (\n    <MissingPanel>\n      {\" \"}\n      {\n        uncoveredAfterSpace\n      }\n    </MissingPanel>\n  );\n"
       },
       {
@@ -20866,8 +20886,100 @@
           "indentStyle": "space",
           "quoteStyle": "single"
         },
-        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{'  '}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value = (<MissingPanel>{' '}\n    {' '}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value =\n  (\n    <MissingPanel>\n      {' '}\n      {\n        uncoveredAfterSpace\n      }\n    </MissingPanel>\n  );\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/line-separator-text.jsx": [
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha   </A>\n);\n",
+        "prettierNative": "const x = (\n  <A>\n    alpha {\" \"}\n  </A>\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = <A>alpha   </A>;\n",
+        "prettierNative": "const x = <A>alpha  </A>;\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/line-separator.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = <A>alpha {\" \"}</A>;\n",
+        "prettierNative": "const x = <A>alpha  </A>;\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/nonbreaking-space.jsx": [
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    left\n    {false} right\n    long\n  </A>\n);\n",
+        "prettierNative": "const x = (\n  <A>\n    left\n    {false}\n     right\n    long\n  </A>\n);\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/space-after-text-line.jsx": [
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha \n    {\" \"}\n    beta\n  </A>\n);\n",
+        "prettierNative": "const x = (\n  <A>\n    alpha {\" \"}\n    beta\n  </A>\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha \n    {\" \"}beta\n  </A>\n);\n",
+        "prettierNative": "const x = <A>alpha  beta</A>;\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/space-before-text-inline.jsx": [
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha{\" \"}\n    {\" \"} beta\n  </A>\n);\n",
+        "prettierNative": "const x = (\n  <A>\n    alpha{\" \"}\n     beta\n  </A>\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = <A>alpha {\" \"} beta</A>;\n",
+        "prettierNative": "const x = <A>alpha  beta</A>;\n"
+      }
+    ],
+    "js/jsx/significant-spaces/expression-reflow/space-before-text-line.jsx": [
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha{\"  \"}\n     beta\n  </A>\n);\n",
+        "prettierNative": "const x = (\n  <A>\n    alpha{\" \"}\n     beta\n  </A>\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <A>\n    alpha{\"  \"}\n     beta\n  </A>\n);\n",
+        "prettierNative": "const x = <A>alpha  beta</A>;\n"
       }
     ],
     "js/jsx/significant-spaces/internal-text/input.jsx": [
@@ -20913,6 +21025,16 @@
         },
         "swcPlugin": "const x = (\n  <div>\n    {'   '}\n  </div>\n);\n",
         "prettierNative": "const x = (\n  <div>\n    {' '}\n  </div>\n);\n"
+      }
+    ],
+    "js/jsx/significant-spaces/retained-text-line.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = (\n  <div>\n    alpha  beta \n    gamma fourth words\n  </div>\n);\n",
+        "prettierNative": "const x = <div>alpha  beta  gamma fourth words</div>;\n"
       }
     ],
     "js/jsx/significant-spaces/text-expression/input.jsx": [
@@ -21321,7 +21443,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\"  \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\" \"}\n    {\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = (\n  <MissingPanel>\n    {\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n    {\n      coveredBeforeSpace\n    }{\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (\n  <MissingPanel>\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (\n  <MissingPanel>\n    {\n      coveredBeforeSpace\n    }{\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (\n  <MissingPanel>\n    {\" \"}\n    {\n      uncoveredAfterSpace\n    }\n  </MissingPanel>\n);\n"
       },
       {
@@ -21329,7 +21451,7 @@
           "lineWidth": 40,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = (\n  <MissingPanel>\n    {\" \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n    {coveredBeforeSpace}{\" \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (\n  <MissingPanel> </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (\n  <MissingPanel>\n    {coveredBeforeSpace}{\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (\n  <MissingPanel>\n    {\" \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n"
       },
       {
@@ -21337,7 +21459,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = <MissingPanel> {uncoveredAfterSpace}</MissingPanel>;\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n    {coveredBeforeSpace} {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = <MissingPanel> </MissingPanel>;\n\n// @ts-ignore\nconst value3 = <MissingPanel>{coveredBeforeSpace} </MissingPanel>;\n\n// @ts-ignore\nconst value4 = <MissingPanel> {uncoveredAfterSpace}</MissingPanel>;\n"
       },
       {
@@ -21347,7 +21469,7 @@
           "indentWidth": 3,
           "semicolons": "as-needed"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\"  \"}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\"  \"}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n\t\t\t\t\" \"\n\t\t\t)\n\t\t}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\" \"}\n\t\t{\" \"}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n\t\t{\" \"}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\" \"}\n\t\t{\" \"}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n\t\t{\" \"}\n\t</MissingPanel>\n)\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n\t\t\t\t\" \"\n\t\t\t)\n\t\t}\n\t\t{\n\t\t\tuncoveredAfterSpace\n\t\t}\n\t</MissingPanel>\n)\n",
         "prettierNative": "// @ts-ignore\nconst value0 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\" \"}\n\t\t\t{\n\t\t\t\tuncoveredAfterSpace\n\t\t\t}\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value1 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\n\t\t\t\tcoveredBeforeSpace\n\t\t\t}{\" \"}\n\t\t\t{\n\t\t\t\tuncoveredAfterSpace\n\t\t\t}\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value2 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\" \"}\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value3 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\n\t\t\t\tcoveredBeforeSpace\n\t\t\t}{\" \"}\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value4 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\" \"}\n\t\t\t{\n\t\t\t\tuncoveredAfterSpace\n\t\t\t}\n\t\t</MissingPanel>\n\t)\n"
       },
       {
@@ -21356,7 +21478,7 @@
           "indentStyle": "space",
           "trailingCommas": "none"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\"  \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = (<MissingPanel>{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}{uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (<MissingPanel>{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value3 = (<MissingPanel>{coveredBeforeSpace}{\" \"}\n    {\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value4 = (<MissingPanel>{(\n        \" \"\n      )\n    }\n    {uncoveredAfterSpace}\n  </MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = <MissingPanel> {uncoveredAfterSpace}</MissingPanel>;\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n    {coveredBeforeSpace} {uncoveredAfterSpace}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = <MissingPanel> </MissingPanel>;\n\n// @ts-ignore\nconst value3 = <MissingPanel>{coveredBeforeSpace} </MissingPanel>;\n\n// @ts-ignore\nconst value4 = <MissingPanel> {uncoveredAfterSpace}</MissingPanel>;\n"
       }
     ],
@@ -21411,7 +21533,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n café &amp; {\n      uncoveredLiteral\n    }​</MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n    café &amp;{\" \"}\n    {\n      uncoveredLiteral\n    }​</MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = (\n  <MissingPanel>\n    {\" \"}\n    hello world café\n    &amp;{\" \"}\n    {\n      coveredText\n    }{\" \"}\n    tail words{\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n      café &amp;{\" \"}\n    {coveredLiteral}\n    ​\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (\n  <MissingPanel>\n      café &amp;{\" \"}\n    {\n      uncoveredLiteral\n    }\n    ​\n  </MissingPanel>\n);\n"
       },
       {
@@ -21419,7 +21541,7 @@
           "lineWidth": 40,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n café &amp; {\n      uncoveredLiteral\n    }​</MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n    café &amp; {\n      uncoveredLiteral\n    }​</MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = (\n  <MissingPanel>\n    {\" \"}\n    hello world café &amp; {\n      coveredText\n    }{\" \"}\n    tail words{\" \"}\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = (\n  <MissingPanel>\n      café &amp; {coveredLiteral}​\n  </MissingPanel>\n);\n\n// @ts-ignore\nconst value2 = (\n  <MissingPanel>\n      café &amp; {uncoveredLiteral}​\n  </MissingPanel>\n);\n"
       },
       {
@@ -21427,7 +21549,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n café &amp; {uncoveredLiteral}​</MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n    café &amp; {uncoveredLiteral}​</MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = (\n  <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>\n);\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = <MissingPanel>  café &amp; {uncoveredLiteral}​</MissingPanel>;\n"
       },
       {
@@ -21437,7 +21559,7 @@
           "indentWidth": 3,
           "semicolons": "as-needed"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n café &amp; {\n\t\t\tuncoveredLiteral\n\t\t}​</MissingPanel>\n)\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n\t\tcafé\n\t\t&amp;{\" \"}\n\t\t{\n\t\t\tuncoveredLiteral\n\t\t}​</MissingPanel>\n)\n",
         "prettierNative": "// @ts-ignore\nconst value0 =\n\t(\n\t\t<MissingPanel>\n\t\t\t{\" \"}\n\t\t\thello\n\t\t\tworld\n\t\t\tcafé\n\t\t\t&amp;{\" \"}\n\t\t\t{\n\t\t\t\tcoveredText\n\t\t\t}{\" \"}\n\t\t\ttail\n\t\t\twords{\" \"}\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value1 =\n\t(\n\t\t<MissingPanel>\n\t\t\t \n\t\t\tcafé\n\t\t\t&amp;{\" \"}\n\t\t\t{\n\t\t\t\tcoveredLiteral\n\t\t\t}\n\t\t\t​\n\t\t</MissingPanel>\n\t)\n\n// @ts-ignore\nconst value2 =\n\t(\n\t\t<MissingPanel>\n\t\t\t \n\t\t\tcafé\n\t\t\t&amp;{\" \"}\n\t\t\t{\n\t\t\t\tuncoveredLiteral\n\t\t\t}\n\t\t\t​\n\t\t</MissingPanel>\n\t)\n"
       },
       {
@@ -21446,7 +21568,7 @@
           "indentStyle": "space",
           "trailingCommas": "none"
         },
-        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n café &amp; {uncoveredLiteral}​</MissingPanel>\n);\n",
+        "swcPlugin": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = (<MissingPanel> \n    café &amp; {uncoveredLiteral}​</MissingPanel>\n);\n",
         "prettierNative": "// @ts-ignore\nconst value0 = <MissingPanel> hello world café &amp; {coveredText} tail words </MissingPanel>;\n\n// @ts-ignore\nconst value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;\n\n// @ts-ignore\nconst value2 = <MissingPanel>  café &amp; {uncoveredLiteral}​</MissingPanel>;\n"
       }
     ],
@@ -21456,7 +21578,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "const x = (\n  <Box>\tfirst\t\n\t middle\tvalue\t\n\tlast\t</Box>\n);\n",
+        "swcPlugin": "const x = (\n  <Box>\tfirst\n    middle\tvalue last\t</Box>\n);\n",
         "prettierNative": "const x = (\n  <Box>\n    {\" \"}\n    first middle\n    value last{\" \"}\n  </Box>\n);\n"
       },
       {
@@ -21464,7 +21586,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const x = (\n  <Box>\tfirst\t\n\t middle\tvalue\t\n\tlast\t</Box>\n);\n",
+        "swcPlugin": "const x = <Box>\tfirst middle\tvalue last\t</Box>;\n",
         "prettierNative": "const x = <Box> first middle value last </Box>;\n"
       }
     ],
@@ -21474,7 +21596,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "const x = (\n  <Box>\talpha\t\t beta\ngamma\t</Box>\n);\n",
+        "swcPlugin": "const x = (\n  <Box>\talpha\t\t beta\n    gamma\t</Box>\n);\n",
         "prettierNative": "const x = (\n  <Box>\n    {\" \"}\n    alpha beta\n    gamma{\" \"}\n  </Box>\n);\n"
       },
       {
@@ -21482,7 +21604,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const x = (\n  <Box>\talpha\t\t beta\ngamma\t</Box>\n);\n",
+        "swcPlugin": "const x = <Box>\talpha\t\t beta gamma\t</Box>;\n",
         "prettierNative": "const x = <Box> alpha beta gamma </Box>;\n"
       }
     ],
@@ -21502,7 +21624,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const a1 = (\n  <div>\n    alpha <b>beta</b> gamma{\"  \"}<i>delta</i> &amp; &nbsp; &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second third <b> nested </b> last line{\" \"}\n  </div>\n);\nconst a3 = (\n  <div>\talpha\t beta \n gamma​ \t\n delta\t </div>\n);\nconst a4 = (\n  <div>\n alpha\n</div>\n);\nconst a5 = <div> alpha beta </div>;\nconst a6 = (\n  <div first=\"one\" second=\"two\">\n    {\"   \"}\n    <b />{\"   \"}tail{\"   \"}\n  </div>\n);\nconst a7 = <Box>{\"  \"}</Box>;\nconst a8 = <Box>foo bar</Box>;\nconst a9 = (\n  <Box>\n    {\"\"}{\"   \"}\n    <b />{\"   \"}\n  </Box>\n);\nconst a10 = <Box> </Box>;\nconst a11 = <Box> </Box>;\nconst a12 = <Box>{/* value */ \" \"}</Box>;\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n\n  \n <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing = (\n  <Box>\talpha\t\t beta\ngamma\t</Box>\n);\nconst punctuation = (\n  <Box>\n    <i>first</i>-<i>second</i>\n    {hour}:{minute}\n  </Box>\n);\nconst guarded_text = (\n  <Box>\n    {/* prettier-ignore */}\n    <Line value={value+  other}> before\t\t after </Line>\n    {/* text */ \" \"}\n  </Box>\n);\n",
+        "swcPlugin": "const a1 = (\n  <div>\n    alpha <b>beta</b> gamma{\"  \"}<i>delta</i> &amp; &nbsp; &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second third <b> nested </b> last line{\" \"}\n  </div>\n);\nconst a3 = (\n  <div>\talpha\t beta \n     gamma​\n     delta\t </div>\n);\nconst a4 = (\n  <div>\n     alpha\n  </div>\n);\nconst a5 = <div> alpha beta </div>;\nconst a6 = (\n  <div first=\"one\" second=\"two\">\n    {\"   \"}\n    <b />{\"   \"}tail{\"   \"}\n  </div>\n);\nconst a7 = <Box>{\"  \"}</Box>;\nconst a8 = <Box>foo bar</Box>;\nconst a9 = (\n  <Box>\n    {\"\"}{\"   \"}\n    <b />{\"   \"}\n  </Box>\n);\nconst a10 = <Box> </Box>;\nconst a11 = <Box> </Box>;\nconst a12 = <Box>{/* value */ \" \"}</Box>;\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n     \n    <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing = <Box>\talpha\t\t beta gamma\t</Box>;\nconst punctuation = (\n  <Box>\n    <i>first</i>-<i>second</i>\n    {hour}:{minute}\n  </Box>\n);\nconst guarded_text = (\n  <Box>\n    {/* prettier-ignore */}\n    <Line value={value+  other}> before\t\t after </Line>\n    {/* text */ \" \"}\n  </Box>\n);\n",
         "prettierNative": "const a1 = (\n  <div>\n    alpha <b>beta</b> gamma <i>delta</i> &amp; &nbsp; &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second third <b> nested </b> last line{\" \"}\n  </div>\n);\nconst a3 = <div> alpha beta   gamma​  delta </div>;\nconst a4 = <div> alpha</div>;\nconst a5 = <div> alpha beta </div>;\nconst a6 = (\n  <div first=\"one\" second=\"two\">\n    {\" \"}\n    <b /> tail{\" \"}\n  </div>\n);\nconst a7 = <Box> </Box>;\nconst a8 = <Box>foo bar</Box>;\nconst a9 = (\n  <Box>\n    {\"\"} <b />{\" \"}\n  </Box>\n);\nconst a10 = <Box> </Box>;\nconst a11 = <Box> </Box>;\nconst a12 = <Box>{/* value */ \" \"}</Box>;\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n     \n    <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing = <Box> alpha beta gamma </Box>;\nconst punctuation = (\n  <Box>\n    <i>first</i>-<i>second</i>\n    {hour}:{minute}\n  </Box>\n);\nconst guarded_text = (\n  <Box>\n    {/* prettier-ignore */}\n    <Line value={value+  other}> before\t\t after </Line>\n    {/* text */ \" \"}\n  </Box>\n);\n"
       },
       {
@@ -21510,7 +21632,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "const a1 = (\n  <div>\n    alpha{\" \"}\n    <b>beta</b>{\" \"}\n    gamma{\"  \"}\n    <i>delta</i>{\" \"}\n    &amp; &nbsp;\n    &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second\n    third{\" \"}\n    <b> nested </b>{\" \"}\n    last line{\" \"}\n  </div>\n);\nconst a3 = (\n  <div>\talpha\t beta \n gamma​ \t\n delta\t </div>\n);\nconst a4 = (\n  <div>\n alpha\n</div>\n);\nconst a5 = (\n  <div>\n    {\" \"}\n    alpha beta </div>\n);\nconst a6 = (\n  <div\n    first=\"one\"\n    second=\"two\"\n  >\n    {\"   \"}\n    <b />{\"   \"}tail{\"   \"}\n  </div>\n);\nconst a7 = (\n  <Box>{\"  \"}</Box>\n);\nconst a8 = (\n  <Box>foo bar</Box>\n);\nconst a9 = (\n  <Box>\n    {\"\"}{\"   \"}\n    <b />{\"   \"}\n  </Box>\n);\nconst a10 = (\n  <Box> </Box>\n);\nconst a11 = (\n  <Box> </Box>\n);\nconst a12 = (\n  <Box>\n    {\n      /* value */ \" \"\n    }\n  </Box>\n);\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n\n  \n <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing =\n  (\n    <Box>\talpha\t\t beta\ngamma\t</Box>\n  );\nconst punctuation =\n  (\n    <Box>\n      <i>first</i>-\n      <i>second</i>\n      {hour}:\n      {minute}\n    </Box>\n  );\nconst guarded_text =\n  (\n    <Box>\n      {/* prettier-ignore */}\n      <Line value={value+  other}> before\t\t after </Line>\n      {\n        /* text */ \" \"\n      }\n    </Box>\n  );\n",
+        "swcPlugin": "const a1 = (\n  <div>\n    alpha{\" \"}\n    <b>beta</b>{\" \"}\n    gamma{\"  \"}\n    <i>delta</i>{\" \"}\n    &amp; &nbsp;\n    &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second\n    third{\" \"}\n    <b> nested </b>{\" \"}\n    last line{\" \"}\n  </div>\n);\nconst a3 = (\n  <div>\talpha\t beta \n     gamma​\n     delta\t </div>\n);\nconst a4 = (\n  <div>\n     alpha\n  </div>\n);\nconst a5 = (\n  <div>\n    {\" \"}\n    alpha beta{\" \"}\n  </div>\n);\nconst a6 = (\n  <div\n    first=\"one\"\n    second=\"two\"\n  >\n    {\"   \"}\n    <b />{\"   \"}tail{\"   \"}\n  </div>\n);\nconst a7 = (\n  <Box>{\"  \"}</Box>\n);\nconst a8 = (\n  <Box>foo bar</Box>\n);\nconst a9 = (\n  <Box>\n    {\"\"}{\"   \"}\n    <b />{\"   \"}\n  </Box>\n);\nconst a10 = (\n  <Box> </Box>\n);\nconst a11 = (\n  <Box> </Box>\n);\nconst a12 = (\n  <Box>\n    {\n      /* value */ \" \"\n    }\n  </Box>\n);\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n     \n    <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing =\n  (\n    <Box>\talpha\t\t beta\n      gamma\t</Box>\n  );\nconst punctuation =\n  (\n    <Box>\n      <i>first</i>-\n      <i>second</i>\n      {hour}:\n      {minute}\n    </Box>\n  );\nconst guarded_text =\n  (\n    <Box>\n      {/* prettier-ignore */}\n      <Line value={value+  other}> before\t\t after </Line>\n      {\n        /* text */ \" \"\n      }\n    </Box>\n  );\n",
         "prettierNative": "const a1 = (\n  <div>\n    alpha{\" \"}\n    <b>beta</b>{\" \"}\n    gamma{\" \"}\n    <i>delta</i>{\" \"}\n    &amp; &nbsp;\n    &lt; a\\b\n  </div>\n);\nconst a2 = (\n  <div>\n    {\" \"}\n    first second\n    third{\" \"}\n    <b>\n      {\" \"}\n      nested{\" \"}\n    </b>{\" \"}\n    last line{\" \"}\n  </div>\n);\nconst a3 = (\n  <div>\n    {\" \"}\n    alpha beta \n     gamma​\n     delta{\" \"}\n  </div>\n);\nconst a4 = (\n  <div> alpha</div>\n);\nconst a5 = (\n  <div>\n    {\" \"}\n    alpha beta{\" \"}\n  </div>\n);\nconst a6 = (\n  <div\n    first=\"one\"\n    second=\"two\"\n  >\n    {\" \"}\n    <b /> tail{\" \"}\n  </div>\n);\nconst a7 = (\n  <Box> </Box>\n);\nconst a8 = (\n  <Box>foo bar</Box>\n);\nconst a9 = (\n  <Box>\n    {\"\"} <b />{\" \"}\n  </Box>\n);\nconst a10 = (\n  <Box> </Box>\n);\nconst a11 = (\n  <Box> </Box>\n);\nconst a12 = (\n  <Box>\n    {\n      /* value */ \" \"\n    }\n  </Box>\n);\nconst a13 = (\n  <Box>\n    {\"  \"}\n    {\"\"}\n    {\"x\"}\n  </Box>\n);\n\nconst a14 = (\n  <Box>\n    <A />\n\n    <B />\n  </Box>\n);\nconst a15 = (\n  <Box>\n    <A />\n    <B />\n    tail\n  </Box>\n);\nconst a16 = (\n  <Box>\n    <A />\n     \n    <B />\n  </Box>\n);\nconst a17 = (\n  <Box>\n    {/* prettier-ignore */}\n    <A   odd = {value+  other}/>\n\n    <B />\n  </Box>\n);\nconst a18 = (\n  <Box>\n    <A />\n    <B />\n\n    <C />\n  </Box>\n);\n\nconst ascii_spacing =\n  (\n    <Box>\n      {\" \"}\n      alpha beta\n      gamma{\" \"}\n    </Box>\n  );\nconst punctuation =\n  (\n    <Box>\n      <i>first</i>-\n      <i>second</i>\n      {hour}:\n      {minute}\n    </Box>\n  );\nconst guarded_text =\n  (\n    <Box>\n      {/* prettier-ignore */}\n      <Line value={value+  other}> before\t\t after </Line>\n      {\n        /* text */ \" \"\n      }\n    </Box>\n  );\n"
       }
     ],
@@ -27252,7 +27374,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  bbb\tccc\n  {\" \"}{x}\n</div>;\n",
+        "swcPlugin": "<div>\n  bbb\tccc {x}\n</div>;\n",
         "prettierNative": "<div>\n  bbb ccc {x}\n</div>;\n"
       },
       {
@@ -27260,7 +27382,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  bbb\tccc\n  {\" \"}{x}\n</div>;\n",
+        "swcPlugin": "<div>bbb\tccc {x}</div>;\n",
         "prettierNative": "<div>bbb ccc {x}</div>;\n"
       }
     ],
@@ -27270,7 +27392,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  bbb\tccc\n  {\" \"}<b>a</b>\n</div>;\n",
+        "swcPlugin": "<div>\n  bbb\tccc <b>a</b>\n</div>;\n",
         "prettierNative": "<div>\n  bbb ccc <b>a</b>\n</div>;\n"
       },
       {
@@ -27278,7 +27400,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  bbb\tccc\n  {\" \"}<b>a</b>\n</div>;\n",
+        "swcPlugin": "<div>\n  bbb\tccc <b>a</b>\n</div>;\n",
         "prettierNative": "<div>\n  bbb ccc <b>a</b>\n</div>;\n"
       }
     ],
@@ -27288,7 +27410,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div> \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div>text\tb</div>;\n",
         "prettierNative": "<div>text b</div>;\n"
       },
       {
@@ -27296,7 +27418,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div> \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div>text\tb</div>;\n",
         "prettierNative": "<div>text b</div>;\n"
       }
     ],
@@ -27306,7 +27428,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  {\" \"} \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div> text\tb</div>;\n",
         "prettierNative": "<div> text b</div>;\n"
       },
       {
@@ -27314,7 +27436,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div>\n  {\" \"} \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div> text\tb</div>;\n",
         "prettierNative": "<div> text b</div>;\n"
       }
     ],
@@ -27324,7 +27446,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div> \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div>text\tb</div>;\n",
         "prettierNative": "<div>text b</div>;\n"
       },
       {
@@ -27332,7 +27454,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "<div> \t\n  text\tb</div>;\n",
+        "swcPlugin": "<div>text\tb</div>;\n",
         "prettierNative": "<div>text b</div>;\n"
       }
     ],

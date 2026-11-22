@@ -6,5 +6,6 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-<div>bbb	ccc <b>a</b>
+<div>
+  bbb	ccc <b>a</b>
 </div>;

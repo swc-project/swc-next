@@ -9,8 +9,8 @@ const value=<MissingPanel>{" "}
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 // @ts-ignore
-const value = (<MissingPanel>{"  "}
-    {uncoveredAfterSpace}
+const value = (<MissingPanel>{" "}
+    {" "}{uncoveredAfterSpace}
   </MissingPanel>
 );
 
@@ -18,7 +18,8 @@ const value = (<MissingPanel>{"  "}
 {"indentStyle":"space","lineWidth":12}
 ---------- Output ----------
 // @ts-ignore
-const value = (<MissingPanel>{"  "}
+const value = (<MissingPanel>{" "}
+    {" "}
     {
       uncoveredAfterSpace
     }
@@ -29,7 +30,8 @@ const value = (<MissingPanel>{"  "}
 {"indentStyle":"space","lineWidth":12,"quoteStyle":"single"}
 ---------- Output ----------
 // @ts-ignore
-const value = (<MissingPanel>{'  '}
+const value = (<MissingPanel>{' '}
+    {' '}
     {
       uncoveredAfterSpace
     }

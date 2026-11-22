@@ -22,7 +22,8 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;
 
 // @ts-ignore
 const value2 = (<MissingPanel> 
- café &amp; {
+    café &amp;{" "}
+    {
       uncoveredLiteral
     }​</MissingPanel>
 );
@@ -38,7 +39,7 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;
 
 // @ts-ignore
 const value2 = (<MissingPanel> 
- café &amp; {
+    café &amp; {
       uncoveredLiteral
     }​</MissingPanel>
 );
@@ -54,7 +55,7 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;
 
 // @ts-ignore
 const value2 = (<MissingPanel> 
- café &amp; {uncoveredLiteral}​</MissingPanel>
+    café &amp; {uncoveredLiteral}​</MissingPanel>
 );
 
 ---------- Options ----------
@@ -68,7 +69,9 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>
 
 // @ts-ignore
 const value2 = (<MissingPanel> 
- café &amp; {
+		café
+		&amp;{" "}
+		{
 			uncoveredLiteral
 		}​</MissingPanel>
 )
@@ -84,5 +87,5 @@ const value1 = <MissingPanel>  café &amp; {coveredLiteral}​</MissingPanel>;
 
 // @ts-ignore
 const value2 = (<MissingPanel> 
- café &amp; {uncoveredLiteral}​</MissingPanel>
+    café &amp; {uncoveredLiteral}​</MissingPanel>
 );
