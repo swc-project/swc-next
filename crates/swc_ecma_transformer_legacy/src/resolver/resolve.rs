@@ -87,6 +87,8 @@ struct Scope<'ast> {
     parent: Option<ScopeId>,
     kind: ScopeKind,
     declared_symbols: HashMap<&'ast [u8], DeclKind>,
+    context: Option<ScopeId>,
+    declared_types: HashSet<&'ast [u8]>,
 }
 
 impl<'ast> Scope<'ast> {
@@ -96,6 +98,8 @@ impl<'ast> Scope<'ast> {
             parent,
             kind,
             declared_symbols: HashMap::new(),
+            context: None,
+            declared_types: HashSet::new(),
         }
     }
 }
@@ -140,6 +144,8 @@ enum ScopeOwner {
     ForInStatement(ForInStatement),
     ForOfStatement(ForOfStatement),
     SwitchStatement(SwitchStatement),
+    TsModuleDeclaration(TsModuleDeclaration),
+    TsEnumDeclaration(TsEnumDeclaration),
 }
 
 impl ScopeOwner {
@@ -161,6 +167,8 @@ impl ScopeOwner {
             Self::ForInStatement(node) => node.node_id(),
             Self::ForOfStatement(node) => node.node_id(),
             Self::SwitchStatement(node) => node.node_id(),
+            Self::TsModuleDeclaration(node) => node.node_id(),
+            Self::TsEnumDeclaration(node) => node.node_id(),
         }
     }
 
@@ -181,7 +189,9 @@ impl ScopeOwner {
             | Self::ForStatement(_)
             | Self::ForInStatement(_)
             | Self::ForOfStatement(_)
-            | Self::SwitchStatement(_) => ScopeKind::Block,
+            | Self::SwitchStatement(_)
+            | Self::TsModuleDeclaration(_)
+            | Self::TsEnumDeclaration(_) => ScopeKind::Block,
         }
     }
 }
@@ -203,6 +213,57 @@ struct Resolver<'ast> {
 }
 
 impl<'ast> Resolver<'ast> {
+    /// Next AST adapter for SWC's nested `TsNamespaceDecl` representation.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1420>.
+    fn visit_namespace_root(&mut self, name: TsQualifiedName) {
+        match self.ast.ts_qualified_name_left_data(name.left(self.ast)) {
+            TsQualifiedNameLeftData::BindingIdentifier(id) => self.declare(id, DeclKind::Lexical),
+            TsQualifiedNameLeftData::TsQualifiedName(name) => self.visit_namespace_root(name),
+            _ => {}
+        }
+    }
+
+    /// SWC type declarations are separate from runtime declarations. Only
+    /// import/export classification needs their contexts after erasure.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L334>.
+    fn declare_type(&mut self, identifier: BindingIdentifier) {
+        let name = self.name(identifier.name(self.ast));
+        self.scopes[self.current].declared_types.insert(name);
+        self.set_scope_once(identifier.node_id(), self.current);
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L373>.
+    fn scope_of_export(&self, name: &[u8]) -> ScopeId {
+        if let Some(scope) = self.scope_of_name(name, false)
+            && scope != self.unresolved_scope_id
+        {
+            return scope;
+        }
+        let mut scope = Some(self.current);
+        while let Some(id) = scope {
+            if self.scopes[id].declared_types.contains(name) {
+                return id;
+            }
+            scope = self.scopes[id].parent;
+        }
+        self.scope_of_name(name, false)
+            .unwrap_or(self.unresolved_scope_id)
+    }
+
+    /// Next AST adapter for SWC's nested namespace declarations.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1420>.
+    fn declare_namespace_segments(&mut self, name: TsQualifiedName) {
+        if let Some(left) = name.left(self.ast).as_ts_qualified_name(self.ast) {
+            self.declare_namespace_segments(left);
+        }
+        let right = name.right(self.ast);
+        let name = self.name(right.name(self.ast));
+        self.scopes[self.current]
+            .declared_symbols
+            .insert(name, DeclKind::Lexical);
+        self.set_scope_once(right.node_id(), self.current);
+    }
+
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
     fn name(&self, name: AstUtf8) -> &'ast [u8] {
         self.ast.get_utf8(name).as_bytes()
@@ -271,7 +332,7 @@ impl<'ast> Resolver<'ast> {
                 {
                     Some(self.unresolved_scope_id)
                 } else {
-                    Some(scope_id)
+                    Some(current.context.unwrap_or(scope_id))
                 };
             }
             if current.kind == ScopeKind::Fn && stop_at_fn_scope {
@@ -726,7 +787,13 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             .ast
             .export_default_declaration_kind_data(declaration.declaration(self.ast))
         {
-            ExportDefaultDeclarationKindData::Expr(expression) => expression.visit_with(self),
+            ExportDefaultDeclarationKindData::Expr(expression) => {
+                expression.visit_with(self);
+                if let Some(id) = expression.as_identifier_reference(self.ast) {
+                    let name = self.name(id.name(self.ast));
+                    self.node_scopes[id.node_id()] = Some(self.scope_of_export(name));
+                }
+            }
             ExportDefaultDeclarationKindData::Function(function) => {
                 if function.id(self.ast).is_some() {
                     let body = function.body(self.ast);
@@ -756,9 +823,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             self.ast.module_export_name_data(local)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self
-                .scope_of_name(name, false)
-                .unwrap_or(self.unresolved_scope_id);
+            let scope = self.scope_of_export(name);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
         let exported = specifier.exported(self.ast);
@@ -767,9 +832,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 self.ast.module_export_name_data(exported)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self
-                .scope_of_name(name, false)
-                .unwrap_or(self.unresolved_scope_id);
+            let scope = self.scope_of_export(name);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
     }
@@ -788,6 +851,82 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_labeled_statement(&mut self, statement: LabeledStatement) {
         statement.label(self.ast).visit_with(self);
         statement.body(self.ast).visit_with(self);
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1244>.
+    fn visit_ts_enum_declaration(&mut self, declaration: TsEnumDeclaration) {
+        self.declare(declaration.id(self.ast), DeclKind::Lexical);
+        self.with_child(ScopeOwner::TsEnumDeclaration(declaration), |child| {
+            child.scopes[child.current].context = Some(child.unresolved_scope_id);
+            for slot in declaration.body(child.ast).members(child.ast).iter() {
+                let member = child.ast.get_node_in_sub_range(slot);
+                let name = match child.ast.ts_enum_member_name_data(member.id(child.ast)) {
+                    TsEnumMemberNameData::IdentifierName(id) => child.name(id.name(child.ast)),
+                    TsEnumMemberNameData::StringLiteral(string) => {
+                        let Some(name) = child.ast.get_wtf8(string.value(child.ast)).as_str()
+                        else {
+                            continue;
+                        };
+                        name.as_bytes()
+                    }
+                    TsEnumMemberNameData::TemplateLiteral(template) => {
+                        let quasi = child.ast.get_node_in_sub_range(
+                            template.quasis(child.ast).iter().next().unwrap(),
+                        );
+                        let Some(name) = child.ast.get_wtf8(quasi.cooked(child.ast)).as_str()
+                        else {
+                            continue;
+                        };
+                        name.as_bytes()
+                    }
+                };
+                child.scopes[child.current]
+                    .declared_symbols
+                    .insert(name, DeclKind::Lexical);
+            }
+            declaration.body(child.ast).visit_with(child);
+        });
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1399>.
+    fn visit_ts_module_declaration(&mut self, declaration: TsModuleDeclaration) {
+        match self.ast.ts_module_name_data(declaration.id(self.ast)) {
+            TsModuleNameData::BindingIdentifier(id) => self.declare(id, DeclKind::Lexical),
+            TsModuleNameData::TsQualifiedName(name) => self.visit_namespace_root(name),
+            TsModuleNameData::StringLiteral(_) => {}
+        }
+        self.with_child(ScopeOwner::TsModuleDeclaration(declaration), |child| {
+            if let Some(name) = declaration.id(child.ast).as_ts_qualified_name(child.ast) {
+                child.declare_namespace_segments(name);
+            }
+            declaration.body(child.ast).visit_with(child);
+        });
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1326>.
+    fn visit_ts_import_equals_declaration(&mut self, declaration: TsImportEqualsDeclaration) {
+        self.declare(declaration.id(self.ast), DeclKind::Lexical);
+        declaration.module_reference(self.ast).visit_with(self);
+    }
+
+    /// Type-only declarations participate in import/export classification but
+    /// their annotations do not introduce runtime references.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1481>.
+    fn visit_ts_type_alias_declaration(&mut self, declaration: TsTypeAliasDeclaration) {
+        self.declare_type(declaration.id(self.ast));
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1340>.
+    fn visit_ts_interface_declaration(&mut self, declaration: TsInterfaceDeclaration) {
+        self.declare_type(declaration.id(self.ast));
+    }
+
+    /// Body-less functions do not leak their erased parameter bindings.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L840>.
+    fn visit_ts_function(&mut self, function: TsFunction) {
+        if let Some(id) = function.id(self.ast) {
+            self.declare(id, DeclKind::Function);
+        }
     }
 
     // Type annotations were deliberately disabled in the legacy resolver.
@@ -866,6 +1005,60 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
             }
         }
     }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1891>.
+    fn visit_ts_module_declaration(&mut self, declaration: TsModuleDeclaration) {
+        if !self.in_block {
+            match self
+                .resolver
+                .ast
+                .ts_module_name_data(declaration.id(self.resolver.ast))
+            {
+                TsModuleNameData::BindingIdentifier(id) => {
+                    self.resolver.declare(id, DeclKind::Lexical)
+                }
+                TsModuleNameData::TsQualifiedName(name) => self.resolver.visit_namespace_root(name),
+                TsModuleNameData::StringLiteral(_) => {}
+            }
+        }
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1891>.
+    fn visit_ts_enum_declaration(&mut self, declaration: TsEnumDeclaration) {
+        if !self.in_block {
+            self.resolver
+                .declare(declaration.id(self.resolver.ast), DeclKind::Lexical);
+        }
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1891>.
+    fn visit_ts_import_equals_declaration(&mut self, declaration: TsImportEqualsDeclaration) {
+        if !self.in_block {
+            self.resolver
+                .declare(declaration.id(self.resolver.ast), DeclKind::Lexical);
+        }
+    }
+
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1713>.
+    fn visit_ts_type_alias_declaration(&mut self, declaration: TsTypeAliasDeclaration) {
+        self.resolver
+            .declare_type(declaration.id(self.resolver.ast));
+    }
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1713>.
+    fn visit_ts_interface_declaration(&mut self, declaration: TsInterfaceDeclaration) {
+        if !self.in_block {
+            self.resolver
+                .declare_type(declaration.id(self.resolver.ast));
+        }
+    }
+    fn visit_ts_function(&mut self, function: TsFunction) {
+        if !self.in_block
+            && let Some(id) = function.id(self.resolver.ast)
+        {
+            self.resolver.declare(id, DeclKind::Function);
+        }
+    }
+    fn visit_ts_global_declaration(&mut self, _: TsGlobalDeclaration) {}
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1985>.
     fn visit_expr(&mut self, _: Expr) {}

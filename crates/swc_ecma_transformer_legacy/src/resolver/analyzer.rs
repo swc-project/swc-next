@@ -6,14 +6,14 @@ use swc_next_ecma_ast::*;
 use super::{Resolver, ScopeId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Id {
-    pub(super) name: String,
-    pub(super) scope: ScopeId,
+pub(crate) struct Id {
+    pub(crate) name: String,
+    pub(crate) scope: ScopeId,
 }
 
 impl Resolver {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_ast/src/ident.rs#L85>.
-    pub(super) fn id(&self, node: NodeId, name: AstUtf8, ast: &Ast<'_>) -> Id {
+    pub(crate) fn id(&self, node: NodeId, name: AstUtf8, ast: &Ast<'_>) -> Id {
         Id {
             name: ast.get_utf8(name).into(),
             scope: self.node_scopes[node],

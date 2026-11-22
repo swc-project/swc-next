@@ -2,7 +2,7 @@
 //!
 //! Options follow SWC Next's per-edition and language grouping, with the fields
 //! and defaults of legacy SWC's transform configurations. [`Transformer::transform`]
-//! accepts a mutable AST without a semantic model. JSX lowering is implemented;
+//! accepts a mutable AST without a semantic model. JSX and TypeScript lowering are implemented;
 //! other selected transforms report errors until they are ported. The source inventory is in
 //! `docs/transform-inventory.md`.
 //!
@@ -90,7 +90,7 @@ pub enum BoolOr<T> {
 /// Selects legacy SWC transforms using SWC Next's option grouping.
 ///
 /// All transforms are disabled by default. Edition groups select individual
-/// passes rather than target presets. JSX is implemented; other transforms
+/// passes rather than target presets. JSX and TypeScript are implemented; other transforms
 /// produce diagnostics until their legacy implementation has been ported.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TransformerOptions {

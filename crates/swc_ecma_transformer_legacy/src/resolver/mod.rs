@@ -9,6 +9,7 @@ mod resolve;
 mod scope;
 mod utils;
 
+pub(crate) use analyzer::Id;
 use resolve::resolver;
 
 /// Transformation-side context registration. Resolution itself stays in the
@@ -35,6 +36,33 @@ impl Resolver {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
     pub(crate) fn register(&mut self, ast: &Ast<'_>) {
         self.node_scopes.resize(ast.node_count(), self.unresolved);
+    }
+
+    /// Next AST adapter for SWC's `Ident::from(Id)` and `Ident::to_id`.
+    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_ast/src/ident.rs#L85>.
+    pub(crate) fn binding(&mut self, ast: &mut Ast<'_>, id: &Id) -> BindingIdentifier {
+        let name = ast.add_utf8(&id.name);
+        let binding = ast.binding_identifier(DUMMY_SP, name);
+        self.register(ast);
+        self.node_scopes[binding.node_id()] = id.scope;
+        binding
+    }
+
+    pub(crate) fn top_level(&self) -> ScopeId {
+        self.top_level
+    }
+    pub(crate) fn unresolved(&self) -> ScopeId {
+        self.unresolved
+    }
+
+    /// SWC explicit binding renames preserve import/export and shorthand names.
+    /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/rename/mod.rs#L1>.
+    pub(crate) fn rename(
+        &mut self,
+        ast: &mut Ast<'_>,
+        renames: std::collections::HashMap<Id, AstUtf8>,
+    ) {
+        hygiene::rename(ast, self, renames);
     }
 
     /// SWC `private_ident!`: each generated binding receives a fresh context.

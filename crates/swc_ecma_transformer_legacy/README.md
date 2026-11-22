@@ -6,8 +6,12 @@ options grouped like [`swc_ecma_transformer`](../swc_ecma_transformer).
 
 Supports classic and automatic JSX runtimes, development source/self metadata,
 pragma comments, entity decoding, and JSX purity annotations. Pragmas accept dotted
-paths. React Refresh, display names, purity annotations for existing React calls,
-TypeScript, and edition transforms are not supported yet.
+paths. TypeScript supports type erasure, enums, namespaces, parameter properties,
+import/export assignments, and TSX factory import retention. TypeScript runs before
+JSX; hygiene runs once after all selected transforms.
+
+Cross-body namespace binding resolution, React Refresh, display names, purity
+annotations for existing React calls, and edition transforms are not supported.
 
 ## Testing
 

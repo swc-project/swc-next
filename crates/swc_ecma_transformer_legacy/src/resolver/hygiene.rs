@@ -13,6 +13,12 @@ pub(super) fn apply(ast: &mut Ast<'_>, resolver: &mut Resolver) {
         .into_iter()
         .map(|(id, name)| (id, ast.add_utf8(&name)))
         .collect();
+    rename(ast, resolver, renames);
+}
+
+/// SWC's explicit rename pass, also used by Flow's `await` normalization.
+/// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/rename/mod.rs#L1>.
+pub(super) fn rename(ast: &mut Ast<'_>, resolver: &mut Resolver, renames: HashMap<Id, AstUtf8>) {
     let program = ast.root_program();
     let mut hygiene = Hygiene {
         ast,

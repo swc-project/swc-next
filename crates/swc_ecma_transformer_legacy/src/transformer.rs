@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Span};
 
-use crate::{TransformerOptions, jsx, resolver::Resolver};
+use crate::{TransformerOptions, jsx, resolver::Resolver, typescript};
 
 /// Diagnostics produced while transforming an AST in place.
 #[derive(Debug, Default)]
@@ -35,7 +35,7 @@ impl Transformer {
     /// assert!(result.diagnostics.is_empty());
     /// ```
     ///
-    /// JSX lowering is available. Other selected transforms produce an error
+    /// JSX and TypeScript lowering are available. Other selected transforms produce an error
     /// diagnostic until their legacy implementation has been ported.
     ///
     /// # Panics
@@ -49,6 +49,14 @@ impl Transformer {
         let ast = unsafe { ast.ast_mut() };
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
+        if let Some(typescript) = &options.typescript {
+            diagnostics.extend(typescript::transform(
+                ast,
+                typescript,
+                options.jsx.is_some(),
+                &mut resolver,
+            ));
+        }
         if let Some(jsx) = &options.jsx {
             diagnostics.extend(jsx::transform(
                 ast,
@@ -67,7 +75,6 @@ impl Transformer {
             }
         }
         let selected = [
-            (options.typescript.is_some(), "typescript"),
             (options.env.es2022.static_blocks, "static_blocks"),
             (
                 options.env.es2022.class_properties.is_some(),
