@@ -1,0 +1,81 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I {
+  export;
+  y: number;
+}
+
+type T = { export; y: number };
+
+interface Optional {
+  export?;
+  y: number;
+}
+
+interface Last {
+  export;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface I {
+  export;
+  y: number;
+}
+
+type T = { export; y: number };
+
+interface Optional {
+  export?;
+  y: number;
+}
+
+interface Last {
+  export;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface I {
+  export;
+  y: number;
+}
+
+type T = {
+  export;
+  y: number;
+};
+
+interface Optional {
+  export?;
+  y: number;
+}
+
+interface Last {
+  export;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+interface I {
+  export;
+  y: number
+}
+
+type T = {
+  export;
+  y: number
+}
+
+interface Optional {
+  export?
+  y: number
+}
+
+interface Last {
+  export
+}

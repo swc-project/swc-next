@@ -1,0 +1,82 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Flat = { get };
+type Pair = { get; set };
+type Mixed = { a: string; static };
+type Broken = { aaaaaaaaaaaa: string; get };
+type Lead = { set; a: string };
+interface I { get }
+interface J { a: string; set }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Flat = { get };
+type Pair = { get; set };
+type Mixed = { a: string; static };
+type Broken = { aaaaaaaaaaaa: string; get };
+type Lead = { set; a: string };
+interface I {
+  get;
+}
+interface J {
+  a: string;
+  set;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Flat = { get };
+type Pair = {
+  get;
+  set;
+};
+type Mixed = {
+  a: string;
+  static;
+};
+type Broken = {
+  aaaaaaaaaaaa: string;
+  get;
+};
+type Lead = {
+  set;
+  a: string;
+};
+interface I {
+  get;
+}
+interface J {
+  a: string;
+  set;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+type Flat = { get }
+type Pair = {
+  get;
+  set
+}
+type Mixed = {
+  a: string
+  static
+}
+type Broken = {
+  aaaaaaaaaaaa: string
+  get
+}
+type Lead = {
+  set;
+  a: string
+}
+interface I {
+  get;
+}
+interface J {
+  a: string
+  set;
+}

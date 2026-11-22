@@ -5,12 +5,11 @@ use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::parameters::{CallbackParameterShape, FunctionParameters, ParameterFrame};
-use super::statements::{IncomingStatement, StatementBodyLeading};
+use super::statements::{BracedBodyLayout, IncomingStatement, StatementBodyLeading};
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use super::types::TypeGap;
 use super::types::callable::{
     SignatureParameterLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
-    write_signature_fragments,
 };
 use super::types::generics::{TypeListKind, TypeListPrefix, TypeParameterContext};
 use crate::{FormatError, document::Writer};
@@ -185,6 +184,7 @@ pub(super) struct PreparedFunctionBody<'ast> {
     mode: ContentMode,
     first_statement: Option<IncomingStatement>,
     constraint: LineConstraint,
+    layout: Option<BracedBodyLayout>,
 }
 
 enum FunctionBodyBoundary<'ast> {
@@ -579,7 +579,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_function_signature_with_shape(
         &mut self,
-        signature: PreparedFunctionSignature<'ast>,
+        mut signature: PreparedFunctionSignature<'ast>,
         callback_shape: Option<&mut CallbackParameterShape>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedFunctionBody<'ast>, FormatError> {
@@ -623,14 +623,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                 })?;
                 let result = self.prepare_function_return(result);
-                let object_return = result.has_object_type();
-                let (result, ()) = writer.record_with_value(|writer| {
-                    let output = self.format_function_return_before_body_output(result, writer)?;
-                    self.format_expression_tail(output.pending, writer)
-                })?;
-                writer.group(false, |writer| {
-                    write_signature_fragments(parameters, result, object_return, writer);
-                });
+                let continuation_width = match signature.body.boundary {
+                    FunctionBodyBoundary::Source(comments)
+                    | FunctionBodyBoundary::Formatted(comments)
+                        if comments.is_empty()
+                            && !matches!(signature.body.constraint, LineConstraint::NewLine(_)) =>
+                    {
+                        let body = &mut signature.body;
+                        let layout =
+                            self.prepare_function_body_layout(body.body, body.mode, body.leading);
+                        body.layout = Some(layout);
+                        match layout {
+                            BracedBodyLayout::Empty(
+                                LineConstraint::Unconstrained | LineConstraint::SameLine,
+                            ) => " {}".len(),
+                            _ => " {".len(),
+                        }
+                    }
+                    _ => 0,
+                };
+                let (recorded, ()) = self.record_signature(
+                    parameters,
+                    result,
+                    continuation_width,
+                    writer,
+                    |formatter, result, writer| {
+                        let output =
+                            formatter.format_function_return_before_body_output(result, writer)?;
+                        formatter.format_expression_tail(output.pending, writer)
+                    },
+                )?;
+                writer.group(false, |writer| recorded.write(writer));
             }
             result => {
                 let layout = if signature.parameters.force_break {
@@ -704,6 +727,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             first_statement,
             constraint,
+            layout: None,
         }
     }
 
@@ -872,6 +896,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             first_statement,
             constraint,
+            layout,
         } = source;
         match boundary {
             FunctionBodyBoundary::Source(comments) => {
@@ -900,6 +925,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
             }
         }
-        self.format_function_body(body, mode, first_statement, leading, writer)
+        self.format_function_body(body, mode, first_statement, leading, layout, writer)
     }
 }

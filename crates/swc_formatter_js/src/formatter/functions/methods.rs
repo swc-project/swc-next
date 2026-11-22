@@ -27,10 +27,9 @@ pub(in crate::formatter) enum MethodOwner {
 }
 
 pub(in crate::formatter) struct SourceMethodHeader<'ast> {
-    owner: MethodOwner,
     prefix: SourceMethodPrefix,
     parameter_gap: Option<Span>,
-    enclosing_mode: ContentMode,
+    source: Option<Span>,
     signature: MethodSignature<'ast>,
 }
 
@@ -93,11 +92,8 @@ impl SourceMethodHeader<'_> {
         &self,
         formatter: &Formatter<'_, '_>,
     ) -> bool {
-        if self.enclosing_mode == ContentMode::Verbatim {
-            formatter.source_class_member_needs_field_separator(
-                self.owner.span(formatter.ast),
-                self.prefix.key,
-            )
+        if let Some(span) = self.source {
+            formatter.source_class_member_needs_field_separator(span, self.prefix.key)
         } else {
             self.prefix.needs_field_separator(formatter)
         }
@@ -301,9 +297,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 modes
             }
         };
-        let enclosing_mode = signature.enclosing_mode();
+        // The class member owns decorators outside this method core.
+        let source = (signature.enclosing_mode() == ContentMode::Verbatim)
+            .then(|| Span::new(start, owner.span(ast).end));
         let function_prefix = if self.has_suppression
-            && enclosing_mode == ContentMode::Formatted
+            && source.is_none()
             && (prefix.question.is_none() || prefix.following_mode == ContentMode::Verbatim)
             && match owner {
                 MethodOwner::Object(_) => {
@@ -403,10 +401,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prefix.key_context = key_context;
         prefix.key_mode = self.method_key_mode(&prefix, key_mode);
         Ok(SourceMethodHeader {
-            owner,
             prefix,
             parameter_gap,
-            enclosing_mode,
+            source,
             signature,
         })
     }
@@ -602,14 +599,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let SourceMethodHeader {
-            owner,
             prefix,
             parameter_gap,
-            enclosing_mode,
+            source,
             signature,
         } = header;
-        if enclosing_mode == ContentMode::Verbatim {
-            return self.format_verbatim(owner.span(self.ast), writer);
+        if let Some(span) = source {
+            return self.format_verbatim(span, writer);
         }
         let signature_span = match &signature {
             MethodSignature::Formatted(signature) => signature.span,

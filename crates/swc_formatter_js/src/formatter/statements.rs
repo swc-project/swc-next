@@ -223,6 +223,7 @@ enum BodySource<'ast> {
         FunctionBody,
         Option<IncomingStatement>,
         StatementBodyLeading<'ast>,
+        Option<BracedBodyLayout>,
     ),
     Static {
         body: StaticBlock,
@@ -230,6 +231,13 @@ enum BodySource<'ast> {
         incoming: Option<IncomingStatement>,
         leading: StatementBodyLeading<'ast>,
     },
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum BracedBodyLayout {
+    Verbatim,
+    Empty(LineConstraint),
+    Nonempty(LineConstraint),
 }
 
 struct StatementAnnotationTail<'ast> {
@@ -2415,10 +2423,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         incoming: Option<IncomingStatement>,
         leading: StatementBodyLeading<'ast>,
+        layout: Option<BracedBodyLayout>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.comments.claim(leading.comments())?;
-        self.format_braced_body(BodySource::Function(body, incoming, leading), mode, writer)
+        self.format_braced_body(
+            BodySource::Function(body, incoming, leading, layout),
+            mode,
+            writer,
+        )
+    }
+
+    pub(super) fn prepare_function_body_layout(
+        &self,
+        body: FunctionBody,
+        mode: ContentMode,
+        leading: StatementBodyLeading<'ast>,
+    ) -> BracedBodyLayout {
+        let ast = self.ast;
+        let span = body.span(ast);
+        self.prepare_braced_body_layout(
+            Span::new(span.start + 1, span.end - 1),
+            Some(body.directives(ast)),
+            body.body(ast),
+            mode,
+            leading,
+        )
+    }
+
+    fn prepare_braced_body_layout(
+        &self,
+        content: Span,
+        directives: Option<SubRange<Directive>>,
+        body: SubRange<Stmt>,
+        mode: ContentMode,
+        leading: StatementBodyLeading<'ast>,
+    ) -> BracedBodyLayout {
+        if mode == ContentMode::Verbatim {
+            return BracedBodyLayout::Verbatim;
+        }
+        if !statement_body_has_items(self.ast, directives, body) {
+            let dangling = self.comments.in_range(content);
+            if self.content_mode(dangling) == ContentMode::Verbatim {
+                return BracedBodyLayout::Verbatim;
+            }
+            if dangling.is_empty() && leading.comments().is_empty() {
+                return BracedBodyLayout::Empty(self.opening_line_constraint(content));
+            }
+        }
+        BracedBodyLayout::Nonempty(self.opening_line_constraint(content))
     }
 
     pub(super) fn format_static_block_body(
@@ -2448,7 +2501,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
-        let (span, directives, body, kind, empty_layout, leading) = match source {
+        let (span, directives, body, kind, empty_layout, leading, layout) = match source {
             BodySource::Static {
                 body,
                 span,
@@ -2461,6 +2514,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementSequenceKind::Static { incoming, leading },
                 EmptyBlock::Compact,
                 leading,
+                None,
             ),
             BodySource::Block {
                 node,
@@ -2474,6 +2528,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementSequenceKind::Block { incoming, leading },
                 empty,
                 leading,
+                None,
             ),
             BodySource::Module(module) => (
                 module.span(ast),
@@ -2482,41 +2537,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementSequenceKind::Module,
                 EmptyBlock::Compact,
                 StatementBodyLeading::empty(),
+                None,
             ),
-            BodySource::Function(function, incoming, leading) => (
+            BodySource::Function(function, incoming, leading, layout) => (
                 function.span(ast),
                 Some(function.directives(ast)),
                 function.body(ast),
                 StatementSequenceKind::Function { incoming, leading },
                 EmptyBlock::Compact,
                 leading,
+                layout,
             ),
         };
-        if mode == ContentMode::Verbatim {
-            return self.format_verbatim(span, writer);
-        }
         let content = Span::new(span.start + 1, span.end - 1);
-        let has_items = statement_body_has_items(ast, directives, body);
-        let directives = directives
-            .into_iter()
-            .flat_map(|directives| directives.iter())
-            .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)));
-        let body = body
-            .iter()
-            .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)));
-        let mut items = directives.chain(body).peekable();
-        let leading = leading.comments();
-        let source_empty = if has_items {
-            false
-        } else {
-            let dangling = self.comments.in_range(content);
-            if self.content_mode(dangling) == ContentMode::Verbatim {
-                return self.format_verbatim(span, writer);
-            }
-            dangling.is_empty()
+        let (opening, empty) = match layout.unwrap_or_else(|| {
+            self.prepare_braced_body_layout(content, directives, body, mode, leading)
+        }) {
+            BracedBodyLayout::Verbatim => return self.format_verbatim(span, writer),
+            BracedBodyLayout::Empty(opening) => (opening, true),
+            BracedBodyLayout::Nonempty(opening) => (opening, false),
         };
-        let empty = source_empty && leading.is_empty();
-        let opening = self.opening_line_constraint(content);
         writer.text("{");
         if empty {
             opening.write(writer, FlatSeparator::Empty, |writer| {
@@ -2525,6 +2565,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             });
         } else {
+            let directives = directives
+                .into_iter()
+                .flat_map(|directives| directives.iter())
+                .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)));
+            let body = body
+                .iter()
+                .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)));
+            let mut items = directives.chain(body).peekable();
             // Share the body's coverage with its statement frontier and brace gaps.
             let has_lint_lines = self.lint_line_intersects(content);
             let opening = if opening == LineConstraint::Unconstrained

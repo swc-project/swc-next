@@ -1,0 +1,85 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Computed {
+  [k];
+  (): void;
+}
+
+type Optional = { [k]?; <T>(): T };
+
+interface Annotated {
+  [k]: string;
+  (): void;
+}
+
+interface Method {
+  [get];
+  m(): void;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface Computed {
+  [k];
+  (): void;
+}
+
+type Optional = { [k]?; <T>(): T };
+
+interface Annotated {
+  [k]: string;
+  (): void;
+}
+
+interface Method {
+  [get];
+  m(): void;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface Computed {
+  [k];
+  (): void;
+}
+
+type Optional = {
+  [k]?;
+  <T>(): T;
+};
+
+interface Annotated {
+  [k]: string;
+  (): void;
+}
+
+interface Method {
+  [get];
+  m(): void;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+interface Computed {
+  [k];
+  (): void
+}
+
+type Optional = {
+  [k]?;
+  <T>(): T
+}
+
+interface Annotated {
+  [k]: string
+  (): void
+}
+
+interface Method {
+  [get]
+  m(): void
+}

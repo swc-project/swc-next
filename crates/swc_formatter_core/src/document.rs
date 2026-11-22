@@ -202,6 +202,27 @@ impl<'a> RecordedGroup<'a> {
             ..self.grouped
         }
     }
+
+    /// Whether the shared contents put their final text at the current indent
+    /// when their enclosing group breaks.
+    fn breaks_before_final_text(self) -> bool {
+        matches!(
+            self.contents().elements(),
+            [
+                ..,
+                Instruction::SoftLine | Instruction::NormalLine,
+                Instruction::Text { .. }
+            ]
+        )
+    }
+}
+
+/// Known ASCII widths surrounding a projected layout line.
+struct FlatLineBounds {
+    prefix: usize,
+    suffix: usize,
+    indent: usize,
+    indent_width: usize,
 }
 
 /// Context-free ASCII measurements with a width representable as `u16`.

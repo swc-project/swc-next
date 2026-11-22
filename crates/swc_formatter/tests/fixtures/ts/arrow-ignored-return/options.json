@@ -1,0 +1,5 @@
+[
+  {},
+  { "lineWidth": 30 },
+  { "lineWidth": 30, "indentStyle": "tab", "semicolons": "as-needed" }
+]

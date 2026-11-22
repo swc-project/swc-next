@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface T { readonly a?: // note
+((| B)) }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface T {
+  readonly a?: B; // note
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+interface T {
+  readonly a?: B // note
+}

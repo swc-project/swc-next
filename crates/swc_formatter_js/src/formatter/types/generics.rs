@@ -1684,17 +1684,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // frames. Discover that frontier before choosing the ordinary direct path.
             let leading = if !record_head && tail.is_none() {
                 // A transferable head needs an unclaimed comment inside this type.
-                let leading = if self.comments.in_range(node.node.span(self.ast)).is_empty() {
-                    None
-                } else {
+                let span = node.node.span(self.ast);
+                let has_type_comments = !self.comments.in_range(span).is_empty();
+                let leading = if has_type_comments {
                     self.type_movable_head(node, context)
+                } else {
+                    None
                 };
                 if leading.is_none() {
                     let opening =
                         self.format_parameter_bound_separator(Some(after), gap, writer)?;
                     return writer.indent_if_break(opening.group, |writer| {
-                        if continuation {
-                            let span = node.node.span(self.ast);
+                        // Writing the prefix can only consume comments.
+                        if continuation && has_type_comments {
                             let layout = self.continuation_type_layout(span, opening.layout);
                             self.format_type_body_before_continuation(
                                 span,

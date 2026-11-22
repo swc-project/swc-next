@@ -2,7 +2,10 @@
 
 use rustc_hash::FxHashSet;
 
-use super::{Fragment, FragmentCapabilities, Group, GroupRequest, Instruction as I, Text};
+use super::{
+    FlatLineBounds, Fragment, FragmentCapabilities, Group, GroupRequest, Instruction as I, Text,
+    flat_summary,
+};
 
 fn is_line(element: I<'_>) -> bool {
     matches!(
@@ -53,6 +56,66 @@ pub(super) fn will_break(root: Fragment<'_>) -> bool {
         I::SourceGroup(group) => matches!(group.request(), GroupRequest::Expanded),
         _ => false,
     })
+}
+
+/// Recognize a shared flat scope in one linear instruction view. Treat other
+/// fragments and decisions as possible line boundaries without traversing them.
+pub(super) fn minimum_flat_line_width(
+    root: Fragment<'_>,
+    child: Fragment<'_>,
+    bounds: FlatLineBounds,
+) -> Option<usize> {
+    let mut column = bounds.prefix;
+    let mut indent = Some(bounds.indent);
+    let mut seen = false;
+    let mut pending_space = false;
+    for &element in root.elements() {
+        match element {
+            I::Fragment { elements, .. } if std::ptr::eq(elements.get(), child.elements()) => {
+                if seen {
+                    return None;
+                }
+                column = flat_summary(child.elements())?.advance(column, &mut pending_space);
+                seen = true;
+            }
+            I::Text { source, width }
+                if let Some(width) = Text::from_parts(source, width).clean_ascii_width() =>
+            {
+                column = column
+                    .saturating_add(width)
+                    .saturating_add(usize::from(pending_space));
+                pending_space = false;
+            }
+            I::StartGroup { .. } | I::StartGroupWithFlatWidth { .. } | I::EndGroup => {}
+            I::StartIndent => {
+                indent = indent.map(|width| width.saturating_add(bounds.indent_width));
+            }
+            I::EndIndent => {
+                indent = indent.map(|width| width.saturating_sub(bounds.indent_width));
+            }
+            I::TextIfBreak { source, width } | I::TextIfFlat { source, width }
+                if Text::from_parts(source, width).is_single_line() => {}
+            _ if seen => return Some(column),
+            _ => {
+                column = match element {
+                    I::SoftLine | I::NormalLine | I::SoftLineIfGroupBreaks(_) => {
+                        column.min(indent.unwrap_or_default())
+                    }
+                    I::StartAbsoluteIndent { .. }
+                    | I::StartIndentIfBreak { .. }
+                    | I::StartDedent
+                    | I::StartDedentToRoot
+                    | I::EndRichIndent(_) => {
+                        indent = None;
+                        0
+                    }
+                    _ => 0,
+                };
+                pending_space = false;
+            }
+        }
+    }
+    seen.then(|| column.saturating_add(bounds.suffix))
 }
 
 enum Scan<'a> {
