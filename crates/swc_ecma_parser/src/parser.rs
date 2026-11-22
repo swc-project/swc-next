@@ -14581,7 +14581,8 @@ fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
         | NodeKind::BinaryExpression
         | NodeKind::LogicalExpression
         | NodeKind::TsAsExpression
-        | NodeKind::TsSatisfiesExpression => Precedence::Prefix,
+        | NodeKind::TsSatisfiesExpression
+        | NodeKind::TsTypeAssertion => Precedence::Prefix,
         _ => Precedence::Primary,
     }
 }
@@ -15950,6 +15951,79 @@ mod tests {
 
             assert!(!has_errors("x = typeof a!;", options));
         }
+    }
+
+    #[test]
+    fn type_assertion_continuations() {
+        fn expression_kinds(ast: &Ast<'_>) -> Vec<NodeKind> {
+            ast.root_program()
+                .body(ast)
+                .iter()
+                .map(|id| {
+                    let statement = ast.get_node_in_sub_range(id);
+                    let expression = statement
+                        .as_expression_statement(ast)
+                        .unwrap()
+                        .expression(ast);
+                    ast.node_kind(expression.node_id())
+                })
+                .collect()
+        }
+
+        let allocator = Allocator::new();
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let parse = |source| {
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            take_ast(result.ast)
+        };
+
+        assert!(has_errors("<T>a++(b);", options));
+
+        assert!(has_errors("<T>a++.p;", options));
+
+        assert!(has_errors("<T>a--?.b;", options));
+
+        assert!(has_errors("<T>a++[0];", options));
+
+        assert!(has_errors("<T>a++`t`;", options));
+
+        assert!(has_errors("<T><U>a++(b);", options));
+
+        let ast = parse("<T>a++\n(b);");
+        let kinds = expression_kinds(&ast);
+        assert_eq!(
+            kinds,
+            [NodeKind::TsTypeAssertion, NodeKind::ParenthesizedExpression]
+        );
+
+        let ast = parse("<T>a++\n[0];");
+        let kinds = expression_kinds(&ast);
+        assert_eq!(
+            kinds,
+            [NodeKind::TsTypeAssertion, NodeKind::ArrayExpression]
+        );
+
+        let ast = parse("<T>a++\n`t`;");
+        let kinds = expression_kinds(&ast);
+        assert_eq!(
+            kinds,
+            [NodeKind::TsTypeAssertion, NodeKind::TemplateLiteral]
+        );
+
+        let ast = parse("<T>a(b);");
+        let assertion = expression_kinds(&ast);
+        assert_eq!(assertion, [NodeKind::TsTypeAssertion]);
+        let root = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
+        let expression = root.as_expression_statement(&ast).unwrap().expression(&ast);
+        let operand = expression
+            .as_ts_type_assertion(&ast)
+            .unwrap()
+            .expression(&ast);
+        assert_eq!(ast.node_kind(operand.node_id()), NodeKind::CallExpression);
     }
 
     #[test]
