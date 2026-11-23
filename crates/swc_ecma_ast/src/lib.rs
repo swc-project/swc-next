@@ -355,30 +355,6 @@ impl<'a> Ast<'a> {
 
 #[doc(hidden)]
 impl<'a> Ast<'a> {
-    /// Returns a UTF-8 string handle for the given source range.
-    ///
-    /// # Safety
-    ///
-    /// `start <= end <= self.source().len()` must hold, and both offsets must
-    /// be UTF-8 character boundaries in this AST's source.
-    #[inline]
-    pub unsafe fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
-        // SAFETY: The caller guarantees a valid source range and UTF-8 boundaries.
-        unsafe { self.strings.source_slice(start, end) }
-    }
-
-    /// Returns a WTF-8 string handle for the given source range.
-    ///
-    /// # Safety
-    ///
-    /// `start <= end <= self.source().len()` must hold, and both offsets must
-    /// be UTF-8 character boundaries in this AST's source.
-    #[inline]
-    pub unsafe fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
-        // SAFETY: The caller guarantees a valid source range and UTF-8 boundaries.
-        unsafe { self.strings.source_slice_wtf8(start, end) }
-    }
-
     /// Create a flattening AST backed by `source` and `allocator`.
     ///
     /// # Safety

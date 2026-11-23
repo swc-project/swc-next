@@ -3,7 +3,7 @@ use swc_next_allocator::{
     wtf8::{Wtf8, Wtf8Buf},
 };
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, IdentifierReference, Lang,
+    Ast, AstUtf8, BinaryOperator, CallExpression, DUMMY_SP, ExprData, IdentifierReference, Lang,
     ObjectPropertyKind, PropertyKey, PropertyKind, SetSpan, SourceType, Stmt, StmtData,
     StringLiteral, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
@@ -549,10 +549,11 @@ fn test_number_format() {
 #[test]
 fn numeric_literal_value_invalidates_raw() {
     let allocator = Allocator::new();
+    let source = "0x1";
     // SAFETY: All handles used below belong to this AST and remain valid.
-    let mut ast = unsafe { Ast::new("0x1", &allocator) };
+    let mut ast = unsafe { Ast::new(source, &allocator) };
     // SAFETY: The range covers the entire ASCII source.
-    let raw = unsafe { ast.source_slice(0, 3) };
+    let raw = unsafe { AstUtf8::from_source_range(source, 0, 3) };
     let expression = ast.expr_numeric_literal(DUMMY_SP, 1.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
         unreachable!();
@@ -578,10 +579,11 @@ fn numeric_literal_value_invalidates_raw() {
 #[test]
 fn numeric_literal_value_compares_float_bits() {
     let allocator = Allocator::new();
+    let source = "0";
     // SAFETY: All handles used below belong to this AST and remain valid.
-    let mut ast = unsafe { Ast::new("0", &allocator) };
+    let mut ast = unsafe { Ast::new(source, &allocator) };
     // SAFETY: The range covers the entire ASCII source.
-    let raw = unsafe { ast.source_slice(0, 1) };
+    let raw = unsafe { AstUtf8::from_source_range(source, 0, 1) };
     let expression = ast.expr_numeric_literal(DUMMY_SP, 0.0, Some(raw));
     let ExprData::NumericLiteral(literal) = ast.expr_data(expression) else {
         unreachable!();

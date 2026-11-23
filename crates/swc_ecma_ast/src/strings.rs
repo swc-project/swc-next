@@ -12,6 +12,19 @@ macro_rules! define_ast_string {
         impl $name {
             pub const EMPTY: Self = Self { start: 0, end: 0 };
 
+            /// Returns a string handle for the given source range.
+            ///
+            /// # Safety
+            ///
+            /// `start <= end <= source.len()` must hold, and both offsets must
+            /// be UTF-8 character boundaries. The handle must only be used with
+            /// an AST whose source is `source`.
+            #[inline]
+            pub unsafe fn from_source_range(source: &str, start: u32, end: u32) -> Self {
+                debug_assert!(source.get(start as usize..end as usize).is_some());
+                Self { start, end }
+            }
+
             #[inline]
             pub const fn len(self) -> u32 {
                 debug_assert!(self.end >= self.start);
@@ -136,30 +149,6 @@ impl<'a> StringPool<'a> {
         &self.extra
     }
 
-    /// Returns a UTF-8 string handle for the given source range.
-    ///
-    /// # Safety
-    ///
-    /// `start <= end <= self.source.len()` must hold, and both offsets must
-    /// be UTF-8 character boundaries in the source.
-    #[inline]
-    pub unsafe fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
-        debug_assert!(self.source.get(start as usize..end as usize).is_some());
-        AstUtf8 { start, end }
-    }
-
-    /// Returns a WTF-8 string handle for the given source range.
-    ///
-    /// # Safety
-    ///
-    /// `start <= end <= self.source.len()` must hold, and both offsets must
-    /// be UTF-8 character boundaries in the source.
-    #[inline]
-    pub unsafe fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
-        debug_assert!(self.source.get(start as usize..end as usize).is_some());
-        AstWtf8 { start, end }
-    }
-
     #[inline]
     pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
         let (start, end) = self.add_bytes(text.as_bytes());
@@ -207,10 +196,11 @@ mod tests {
     fn string_lifetimes() {
         let allocator = Allocator::new();
         let (source, first, large, last, surrogate) = {
+            let source = "source";
             // SAFETY: All handles used below belong to this AST and remain valid.
-            let mut ast = unsafe { Ast::new("source", &allocator) };
+            let mut ast = unsafe { Ast::new(source, &allocator) };
             // SAFETY: The range covers the entire ASCII source.
-            let source = ast.get_utf8(unsafe { ast.source_slice(0, 6) });
+            let source = ast.get_utf8(unsafe { AstUtf8::from_source_range(source, 0, 6) });
             let first = ast.add_utf8("first");
             let first = ast.get_utf8(first);
             let large = ast.add_utf8(&"x".repeat(4096));

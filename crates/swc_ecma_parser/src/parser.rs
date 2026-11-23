@@ -1642,7 +1642,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let start = hashbang.start;
             let end = start + hashbang.len;
             // SAFETY: The lexer provides an in-bounds hashbang range at UTF-8 boundaries.
-            let value = unsafe { self.ast.source_slice(start, end) };
+            let value = unsafe { AstUtf8::from_source_range(self.source, start, end) };
             self.ast.hashbang(Span::new(0, end), value)
         });
         let program = self.ast.program(root_span, directives, body, hashbang);
@@ -1871,7 +1871,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag() != TokenTag::PrivateIdentifier && !token.is_escaped() {
             // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-            return unsafe { self.ast.source_slice(token.start(), token.end()) };
+            return unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
         }
 
         self.identifier_name_slow(token)
@@ -1886,7 +1886,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         // SAFETY: Removing an ASCII `#` preserves the token's valid source boundaries.
-        unsafe { self.ast.source_slice(start, token.end()) }
+        unsafe { AstUtf8::from_source_range(self.source, start, token.end()) }
     }
 
     /// Returns the decoded string value without the surrounding quotes.
@@ -1896,10 +1896,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         // SAFETY: The lexer validated the string; removing its ASCII quotes
         // preserves the in-bounds range and UTF-8 boundaries.
-        unsafe {
-            self.ast
-                .source_slice_wtf8(token.start() + 1, token.end() - 1)
-        }
+        unsafe { AstWtf8::from_source_range(self.source, token.start() + 1, token.end() - 1) }
     }
 
     /// Returns the decoded content of a template quasi span.
@@ -1908,12 +1905,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // values need neither a second scan nor an allocation.
         if !token.is_escaped() {
             // SAFETY: The template content span is in bounds and at UTF-8 boundaries.
-            return unsafe { self.ast.source_slice(span.start, span.end) };
+            return unsafe { AstUtf8::from_source_range(self.source, span.start, span.end) };
         }
         let raw = &self.source[span.start as usize..span.end as usize];
         let Some(first_cr) = memchr::memchr(b'\r', raw.as_bytes()) else {
             // SAFETY: Slicing `raw` above validated the source range and UTF-8 boundaries.
-            return unsafe { self.ast.source_slice(span.start, span.end) };
+            return unsafe { AstUtf8::from_source_range(self.source, span.start, span.end) };
         };
         // Template Raw Value normalizes CR and CRLF even when an invalid
         // escape makes the cooked value undefined in a tagged template.
@@ -1929,7 +1926,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
             // SAFETY: The template content span is in bounds and at UTF-8 boundaries.
-            return unsafe { self.ast.source_slice_wtf8(span.start, span.end) };
+            return unsafe { AstWtf8::from_source_range(self.source, span.start, span.end) };
         }
         self.decode_escaped_string(span.start, span.end)
     }
@@ -2899,7 +2896,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_directive(&mut self, string_literal: StringLiteral, span: Span) -> Option<Directive> {
         // SAFETY: The span covers a validated string literal; removing its ASCII
         // quotes preserves the in-bounds range and UTF-8 boundaries.
-        let raw_value = unsafe { self.ast.source_slice(span.start + 1, span.end - 1) };
+        let raw_value =
+            unsafe { AstUtf8::from_source_range(self.source, span.start + 1, span.end - 1) };
         let end = self.eat_semicolon(span.end)?;
         Some(
             self.ast
@@ -9858,13 +9856,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if token.tag() == TokenTag::BigIntLiteral {
             self.advance()?;
             // SAFETY: Removing the ASCII `n` suffix preserves the valid token boundaries.
-            let raw = unsafe { self.ast.source_slice(token.start(), token.end() - 1) };
+            let raw =
+                unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end() - 1) };
             return Some(self.ast.expr_big_int_literal(token.span(), raw));
         }
         self.advance()?;
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { self.ast.source_slice(token.start(), token.end()) };
-        let raw_text = self.ast.get_utf8(raw);
+        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
+        let raw_text = token.text(self.source);
         let value = match token.tag() {
             TokenTag::NumericLiteral => parse_decimal_literal(raw_text),
             TokenTag::HexLiteral => parse_hex_literal(raw_text),
@@ -9891,7 +9890,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let value = self.string_value(token);
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { self.ast.source_slice(token.start(), token.end()) };
+        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9901,7 +9900,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance_jsx_tag()?;
         let value = self.string_value(token);
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { self.ast.source_slice(token.start(), token.end()) };
+        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9932,9 +9931,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // SAFETY: The lexer provides in-bounds regexp ranges at UTF-8 boundaries.
         let (pattern, flags) = unsafe {
             (
-                self.ast
-                    .source_slice(result.pattern.start, result.pattern.end),
-                self.ast.source_slice(result.flags.start, result.flags.end),
+                AstUtf8::from_source_range(self.source, result.pattern.start, result.pattern.end),
+                AstUtf8::from_source_range(self.source, result.flags.start, result.flags.end),
             )
         };
         Some(self.ast.expr_reg_exp_literal(result.span, pattern, flags))
@@ -13165,7 +13163,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 match token.tag() {
                     TokenTag::JsxText => {
                         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-                        let value = unsafe { self.ast.source_slice(token.start(), token.end()) };
+                        let value = unsafe {
+                            AstUtf8::from_source_range(self.source, token.start(), token.end())
+                        };
                         let jsx_text = self.ast.jsx_child_jsx_text(token.span(), value);
                         self.scratch_b.append(jsx_text);
                     }
