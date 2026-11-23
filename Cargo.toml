@@ -54,7 +54,7 @@ swc_core = { version = "=85.0.0", features = [
 ] }
 
 # NAPI-RS
-napi        = "3.16.2"
+napi        = { version = "3.16.2", default-features = false, features = ["dyn-symbols", "napi3"] }
 napi-build  = "2.6.0"
 napi-derive = "3.7.1"
 
