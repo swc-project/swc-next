@@ -6,15 +6,15 @@ const value = 1 as /** @type {number} */ const;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const value = 1 /** @type {number} */ as const;
+const value = 1 as /** @type {number} */ const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value =
-  1 /** @type {number} */ as const;
+  1 as /** @type {number} */ const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const value = 1 /** @type {number} */ as const
+const value = 1 as /** @type {number} */ const

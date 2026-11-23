@@ -8,19 +8,22 @@ const; }
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 function value() {
-  return 1 as const; // marker
+  return 1 as // marker
+    const;
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 function value() {
-  return 1 as const; // marker
+  return 1 as // marker
+    const;
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 function value() {
-  return 1 as const // marker
+  return 1 as // marker
+    const
 }

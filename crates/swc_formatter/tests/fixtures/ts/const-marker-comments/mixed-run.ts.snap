@@ -7,15 +7,18 @@ const;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const value = 1 /* head */ as const; // tail
+const value = 1 as /* head */ // tail
+  const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value =
-  1 /* head */ as const; // tail
+  1 as /* head */ // tail
+    const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const value = 1 /* head */ as const // tail
+const value = 1 as /* head */ // tail
+  const
