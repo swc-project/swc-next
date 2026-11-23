@@ -17,8 +17,8 @@ use self::tails::{
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
-    ExportDefaultDeclarationKindData, ExprData, FunctionBody, GetSpan, Span, StaticBlock, Stmt,
-    StmtData, SubRange, TsModuleBlock,
+    ExportDefaultDeclarationKindData, Expr, ExprData, FunctionBody, GetSpan, Span, StaticBlock,
+    Stmt, StmtData, SubRange, TsModuleBlock,
 };
 
 use super::Formatter;
@@ -136,6 +136,11 @@ enum DirectivePrologue {
 #[derive(Clone, Copy)]
 enum FollowingSyntax {
     Statement,
+    ExpressionStatement {
+        expression: Expr,
+        string_statement: StringStatement,
+        mode: ContentMode,
+    },
     Keyword,
 }
 
@@ -926,6 +931,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     punctuation,
                     StatementPunctuation::Canonical(Semicolons::AsNeeded)
                 ) {
+                let kind = if self.has_suppression
+                    && mode == ContentMode::Formatted
+                    && let Some(next) = pending.as_ref()
+                    && let StatementItem::Statement(next_statement) = next.item
+                    && let StmtData::ExpressionStatement(expression) = ast.stmt_data(next_statement)
+                {
+                    let verbatim = next.mode == ContentMode::Verbatim
+                        || annotation_tail.as_ref().is_some_and(|tail| {
+                            tail.suppression.following == ContentMode::Verbatim
+                        })
+                        || next
+                            .annotation_tail
+                            .as_ref()
+                            .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim);
+                    FollowingSyntax::ExpressionStatement {
+                        expression: expression.expression(ast),
+                        string_statement,
+                        mode: if verbatim {
+                            ContentMode::Verbatim
+                        } else {
+                            ContentMode::Formatted
+                        },
+                    }
+                } else {
+                    kind
+                };
                 ContinuationBoundary::Following {
                     kind,
                     source: if mode == ContentMode::Formatted

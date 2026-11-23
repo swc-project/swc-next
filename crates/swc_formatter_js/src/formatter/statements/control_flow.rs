@@ -13,8 +13,8 @@ use swc_next_ecma_ast::{
 
 use super::{
     ContinuationBoundary, EmptyBlock, FollowingSyntax, Formatter, PrintedStatement,
-    StatementBoundary, StatementItem, StatementLayout, StatementPunctuation, StatementTailRelation,
-    VerbatimContent,
+    StatementBoundary, StatementContent, StatementItem, StatementLayout, StatementPunctuation,
+    StatementTailRelation, VerbatimContent,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -234,12 +234,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .is_some_and(|boundary| boundary.enclosing_mode == ContentMode::Verbatim)
         {
-            self.format_verbatim(span, writer)?;
-            return Ok(StatementBoundary::SourceEnd {
-                end: span.end,
-                has_terminator: self.source(span).ends_with(';'),
-            }
-            .into());
+            return self.format_verbatim_if_statement(node, punctuation, source_candidate, writer);
         }
         let condition = self.prepare_condition(
             node.test(ast),
@@ -286,6 +281,64 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
             .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| self.format_controlled_body(body, writer))
+    }
+
+    fn format_verbatim_if_statement(
+        &mut self,
+        node: IfStatement,
+        punctuation: StatementPunctuation,
+        following: ContinuationBoundary,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let span = node.span(self.ast);
+        let statement = StatementItem::Statement(Stmt::IfStatement(node.into()));
+        let has_terminator = self.statement_source_terminator(span).is_some();
+        let unterminated_body = !has_terminator
+            && matches!(
+                self.statement_content(statement),
+                StatementContent::Semicolon(_)
+            );
+        let punctuation = match (unterminated_body, punctuation) {
+            (true, StatementPunctuation::Canonical(Semicolons::AsNeeded))
+                if following.is_following() =>
+            {
+                let following_needs_guard = match following {
+                    ContinuationBoundary::Following {
+                        kind:
+                            FollowingSyntax::ExpressionStatement {
+                                expression,
+                                string_statement,
+                                mode,
+                            },
+                        ..
+                    } => self.expression_needs_asi_guard(
+                        expression,
+                        ExpressionContext::at(ExpressionPosition::Statement(string_statement))
+                            .with_content_mode(mode),
+                    )?,
+                    _ => false,
+                };
+                if following_needs_guard
+                    || following.needs_generated(statement.raw_type_terminal(self.ast))
+                {
+                    // A leading guard would become part of the copied branch on the next pass.
+                    StatementPunctuation::Canonical(Semicolons::Always)
+                } else {
+                    punctuation
+                }
+            }
+            _ => punctuation,
+        };
+        self.format_verbatim(span, writer)?;
+        if unterminated_body {
+            self.finish_statement(span.end, None, punctuation, writer)
+        } else {
+            Ok(StatementBoundary::SourceEnd {
+                end: span.end,
+                has_terminator,
+            }
+            .into())
+        }
     }
 
     fn prepare_condition(
