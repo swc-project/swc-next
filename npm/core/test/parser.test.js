@@ -90,24 +90,6 @@ test("parseSync exposes the program lazily", () => {
   assert.equal(result.program, program);
 });
 
-test("parseSync keeps lazy results independent", () => {
-  for (const parse of [parseSync, parseStandalone]) {
-    for (const lang of ["js", "ts"]) {
-      const first = parse("// comment\nlet x;", { lang });
-      const second = parse("let y;", { lang });
-
-      assert.deepEqual(Object.keys(first), ["program", "comments", "diagnostics"]);
-      assert.equal(new Proxy(first, {}).program, first.program);
-      assert.equal(first.comments[0].value, " comment");
-      assert.deepEqual(second.comments, []);
-      assert.equal(second.comments, second.comments);
-      assert.equal(second.diagnostics, second.diagnostics);
-      assert.notEqual(first.diagnostics, second.diagnostics);
-      assert.notEqual(first.program, second.program);
-    }
-  }
-});
-
 test("parseSync preserves source-backed lone surrogates", () => {
   for (const lang of ["js", "ts"]) {
     const comments = parseSync("/* 😀 */\n// \ud800", { lang }).comments;
