@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const item = { value: 0 };
+// eslint-disable-next-line no-unused-expressions
+/** @type {{value: 0}} */ (item).value;
+
+/* eslint-disable-next-line no-unused-expressions */
+/** @type {{value: 0}} */ (item).value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const item = { value: 0 };
+// eslint-disable-next-line no-unused-expressions
+/** @type {{value: 0}} */ (item).value;
+
+/* eslint-disable-next-line no-unused-expressions */
+/** @type {{value: 0}} */ (item).value;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const item = { value: 0 }
+// eslint-disable-next-line no-unused-expressions
+;/** @type {{value: 0}} */(item).value;
+
+/* eslint-disable-next-line no-unused-expressions */
+/** @type {{value: 0}} */ (item).value;

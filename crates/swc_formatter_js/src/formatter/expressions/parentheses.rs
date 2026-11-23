@@ -3770,6 +3770,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionStart, FormatError> {
         let binding = context.resolve_emitted_head_binding(&head, binding);
+        let prefix_gap_end = head.gap_end;
         if context
             .expression_start
             .needs_statement_guard(self.options.semicolons)
@@ -3784,6 +3785,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
             ) || self.expression_needs_asi_guard(expression, context)?)
         {
+            // The guard hugs the final annotation. A split prefix still needs its gap.
             head.gap_end = None;
         }
         if context
@@ -3820,7 +3822,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     comments: prefix,
                     content_start: protected[0].span.start,
                     layout: head.layout,
-                    gap_end: head.gap_end.map(|_| protected[0].span.start),
+                    gap_end: prefix_gap_end.map(|_| protected[0].span.start),
                 },
                 ExpressionStart::None,
                 array_comments.as_deref_mut(),
