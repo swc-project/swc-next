@@ -4147,13 +4147,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
         let matches = match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                self.ast.get_utf8(identifier.name(&self.ast)) == expected
+                let name = identifier.name(&self.ast);
+                name.len() as usize == expected.len() && self.ast.get_utf8(name) == expected
             }
-            PropertyKeyData::Expr(expression) => matches!(
-                self.ast.expr_data(expression),
-                ExprData::StringLiteral(string)
-                    if self.ast.get_wtf8(string.value(&self.ast)) == expected
-            ),
+            PropertyKeyData::Expr(expression) => match self.ast.expr_data(expression) {
+                ExprData::StringLiteral(string) => {
+                    let value = string.value(&self.ast);
+                    value.len() as usize == expected.len() && self.ast.get_wtf8(value) == expected
+                }
+                _ => false,
+            },
         };
         if matches {
             Some(key.span(&self.ast))
