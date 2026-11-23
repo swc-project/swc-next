@@ -1,0 +1,108 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (apply<Inner>)<Outer>(argument, anotherArgument);
+const nested = ((apply<First>)<Second>)(value);
+const nestedOptional = ((apply?.callback<First>)<Second>)(value);
+const optional = (apply<Inner>)?.<Outer>(value);
+
+new (Constructor<Inner>)<Outer>();
+
+class Derived extends (Base<Inner>)<Outer> {}
+
+class Nested extends ((Base<First>)<Second>) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = (apply<Inner>)<Outer>(argument, anotherArgument);
+const nested = ((apply<First>)<Second>)(value);
+const nestedOptional = ((apply?.callback<First>)<Second>)(value);
+const optional = apply<Inner>?.<Outer>(value);
+
+new (Constructor<Inner>)<Outer>();
+
+class Derived extends (Base<Inner>)<Outer> {}
+
+class Nested extends ((Base<First>)<Second>) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value =
+  (apply<Inner>)<Outer>(
+    argument,
+    anotherArgument,
+  );
+const nested =
+  ((apply<First>)<Second>)(
+    value,
+  );
+const nestedOptional =
+  ((apply?.callback<First>)<Second>)(
+    value,
+  );
+const optional =
+  apply<Inner>?.<Outer>(
+    value,
+  );
+
+new (Constructor<Inner>)<Outer>();
+
+class Derived extends (Base<Inner>)<Outer> {}
+
+class Nested extends ((Base<First>)<Second>) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  (apply<Inner>)<Outer>(
+    argument,
+    anotherArgument,
+  )
+const nested =
+  ((apply<First>)<Second>)(
+    value,
+  )
+const nestedOptional =
+  ((apply?.callback<First>)<Second>)(
+    value,
+  )
+const optional =
+  apply<Inner>?.<Outer>(
+    value,
+  )
+
+new (Constructor<Inner>)<Outer>()
+
+class Derived extends (Base<Inner>)<Outer> {}
+
+class Nested extends ((Base<First>)<Second>) {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const value =
+	(apply<Inner>)<Outer>(
+		argument,
+		anotherArgument,
+	);
+const nested =
+	((apply<First>)<Second>)(
+		value,
+	);
+const nestedOptional =
+	((apply?.callback<First>)<Second>)(
+		value,
+	);
+const optional =
+	apply<Inner>?.<Outer>(
+		value,
+	);
+
+new (Constructor<Inner>)<Outer>();
+
+class Derived extends (Base<Inner>)<Outer> {}
+
+class Nested extends ((Base<First>)<Second>) {}

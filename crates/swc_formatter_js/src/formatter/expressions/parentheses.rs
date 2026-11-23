@@ -2625,7 +2625,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee { .. }
-                        | ExpressionPosition::NewCallee
+                        | ExpressionPosition::NewCallee { .. }
                         | ExpressionPosition::ArrowBody
                         | ExpressionPosition::RestrictedArgument
                         | ExpressionPosition::YieldArgument

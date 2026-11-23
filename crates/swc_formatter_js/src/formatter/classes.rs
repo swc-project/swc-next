@@ -965,8 +965,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             writer,
             |formatter, writer| {
-                let context = ExpressionContext::at(ExpressionPosition::Superclass)
-                    .with_content_mode(heritage.mode);
+                let context = ExpressionContext::at(ExpressionPosition::Superclass {
+                    has_type_arguments: heritage.arguments.is_some(),
+                })
+                .with_content_mode(heritage.mode);
                 let context = if heritage.arguments.is_some() {
                     context.with_tail_owner(TailOwner::ParentOperation)
                 } else {

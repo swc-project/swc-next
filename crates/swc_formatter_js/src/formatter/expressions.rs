@@ -81,14 +81,19 @@ pub(super) enum ExpressionPosition {
     TypeAssertionOperand,
     NonNullOperand,
     InstantiationOperand,
-    Superclass,
+    Superclass {
+        has_type_arguments: bool,
+    },
     SpreadArgument,
     MemberObject(AccessKind),
     CallCallee {
         access: AccessKind,
+        has_type_arguments: bool,
         curried_call: Option<CallExpression>,
     },
-    NewCallee,
+    NewCallee {
+        has_type_arguments: bool,
+    },
     MemberAssignmentObject,
     SequenceMember,
     ForSequenceMember,
@@ -433,7 +438,7 @@ impl<'ast> ExpressionContext<'ast> {
         Self {
             position,
             arrow_layout: match position {
-                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee => {
+                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee { .. } => {
                     arrows::ArrowLayout::Callee
                 }
                 ExpressionPosition::AssignmentRight(_)
@@ -947,7 +952,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             position,
             ExpressionPosition::UnaryArgument(_)
                 | ExpressionPosition::CallCallee { .. }
-                | ExpressionPosition::NewCallee
+                | ExpressionPosition::NewCallee { .. }
                 | ExpressionPosition::MemberObject(_)
                 | ExpressionPosition::MemberAssignmentObject
         )
@@ -960,7 +965,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionPosition::MemberObject(_)
                     | ExpressionPosition::MemberAssignmentObject
                     | ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::NewCallee
+                    | ExpressionPosition::NewCallee { .. }
                     | ExpressionPosition::NonNullOperand
                     | ExpressionPosition::TypeBinaryOperand
             )
@@ -1204,6 +1209,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             } else {
                                 AccessKind::Ordinary
                             },
+                            has_type_arguments: call.type_arguments(self.ast).is_some(),
                             curried_call: None,
                         },
                     ),
@@ -1310,7 +1316,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => true,
             });
         }
-        let data = if matches!(position, ExpressionPosition::Superclass) {
+        let data = if matches!(position, ExpressionPosition::Superclass { .. }) {
             let mut operand = data;
             let mut non_null = None;
             loop {
@@ -1332,6 +1338,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 ExprData::TsAsExpression(_)
                                     | ExprData::TsSatisfiesExpression(_)
                                     | ExprData::TsTypeAssertion(_)
+                                    | ExprData::TsInstantiationExpression(_)
                             ) {
                             non_null.map_or(operand, ExprData::TsNonNullExpression)
                         } else {
@@ -1366,7 +1373,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if matches!(
             position,
-            ExpressionPosition::Superclass | ExpressionPosition::ArrowBody
+            ExpressionPosition::Superclass { .. } | ExpressionPosition::ArrowBody
         ) && matches!(data, ExprData::Class(node) if !node.decorators(self.ast).is_empty())
         {
             return Some(true);
@@ -1404,7 +1411,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(true);
         }
-        if let Some(needed) = typescript::type_expression_needs_parentheses(data, position) {
+        if let Some(needed) =
+            typescript::type_expression_needs_parentheses(data, position, self.ast)
+        {
             let exposed_tail = match (data, position) {
                 (
                     ExprData::TsTypeAssertion(_),
@@ -1469,8 +1478,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee { .. }
-                        | ExpressionPosition::NewCallee
-                        | ExpressionPosition::Superclass
+                        | ExpressionPosition::NewCallee { .. }
+                        | ExpressionPosition::Superclass { .. }
                         | ExpressionPosition::ConditionalTest
                 ));
             }
@@ -1484,8 +1493,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee { .. }
-                        | ExpressionPosition::NewCallee
-                        | ExpressionPosition::Superclass
+                        | ExpressionPosition::NewCallee { .. }
+                        | ExpressionPosition::Superclass { .. }
                         | ExpressionPosition::ConditionalTest
                         | ExpressionPosition::TypeBinaryOperand
                         | ExpressionPosition::NonNullOperand
@@ -1503,7 +1512,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ..
                     }
                     | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::NewCallee
+                    | ExpressionPosition::NewCallee { .. }
                     | ExpressionPosition::NonNullOperand => true,
                     ExpressionPosition::BinaryOperand {
                         operator,
@@ -1515,7 +1524,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
             ExprData::NewExpression(constructor) => {
-                if matches!(position, ExpressionPosition::Superclass) {
+                if matches!(position, ExpressionPosition::Superclass { .. }) {
                     return Some(true);
                 }
                 if mode == ContentMode::Formatted
@@ -1525,7 +1534,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             | ExpressionPosition::TemplateTag
                             | ExpressionPosition::MemberObject(_)
                             | ExpressionPosition::MemberAssignmentObject
-                            | ExpressionPosition::NewCallee
+                            | ExpressionPosition::NewCallee { .. }
                     )
                 {
                     return Some(false);
@@ -1567,12 +1576,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | ExprData::TsInstantiationExpression(_) => {}
             _ => return None,
         }
-        if matches!(position, ExpressionPosition::NewCallee)
+        if matches!(position, ExpressionPosition::NewCallee { .. })
             && self.new_callee_contains_call(data, mode)
         {
             return Some(true);
         }
-        if matches!(position, ExpressionPosition::Superclass) {
+        if matches!(position, ExpressionPosition::Superclass { .. }) {
             return Some(matches!(
                 data,
                 ExprData::ArrowFunctionExpression(_)
@@ -1590,9 +1599,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         }
         Some(match (position, data) {
-            (ExpressionPosition::NewCallee, ExprData::Class(_)) => true,
+            (ExpressionPosition::NewCallee { .. }, ExprData::Class(_)) => true,
             (
-                ExpressionPosition::NewCallee | ExpressionPosition::CallCallee { .. },
+                ExpressionPosition::NewCallee { .. } | ExpressionPosition::CallCallee { .. },
                 ExprData::Function(_),
             ) => true,
             (
@@ -1605,7 +1614,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::ConditionalExpression(_),
             ) => true,
             (
-                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee,
+                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee { .. },
                 ExprData::UnaryExpression(_)
                 | ExprData::UpdateExpression(_)
                 | ExprData::BinaryExpression(_)

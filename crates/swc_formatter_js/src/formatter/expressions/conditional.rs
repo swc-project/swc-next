@@ -259,7 +259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::Nested
             | ExpressionPosition::RestrictedArgument
             | ExpressionPosition::CallCallee { .. }
-            | ExpressionPosition::NewCallee => context.operand_indent,
+            | ExpressionPosition::NewCallee { .. } => context.operand_indent,
             _ => OperandIndent::Parent,
         };
         let mut test = PreparedConditionalTest {
@@ -455,7 +455,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::Nested
             | ExpressionPosition::RestrictedArgument
             | ExpressionPosition::CallCallee { .. }
-            | ExpressionPosition::NewCallee => context.operand_indent,
+            | ExpressionPosition::NewCallee { .. } => context.operand_indent,
             _ => OperandIndent::Parent,
         };
         let default_before_operator = if chain.is_jsx() {

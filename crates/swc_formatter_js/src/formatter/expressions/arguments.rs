@@ -1796,6 +1796,7 @@ impl<'ast> SourceArguments<'ast> {
         CallCallee {
             expression: self.callee,
             access: self.access(),
+            has_type_arguments: self.type_arguments.is_some(),
             curried_call: self.curried_callee,
             mode: if self.call_mode == ContentMode::Verbatim {
                 self.call_mode

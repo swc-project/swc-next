@@ -521,7 +521,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || context.member_layout == MemberLayout::Tight
             || matches!(
                 context.position,
-                ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
+                ExpressionPosition::NewCallee { .. } | ExpressionPosition::MemberAssignmentObject
             )
             || layout == ExpressionLayout::Flat
         {

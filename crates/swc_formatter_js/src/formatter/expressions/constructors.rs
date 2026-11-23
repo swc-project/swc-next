@@ -23,6 +23,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .type_arguments(self.ast)
             .map(|node| self.prepare_expression_type_arguments(callee, node, AccessKind::Ordinary))
             .transpose()?;
+        let has_type_arguments = types.is_some();
         let suffix_end = types
             .as_ref()
             .map_or(callee_span.end, |types| types.node.span(self.ast).end);
@@ -85,7 +86,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout: CommentRunLayout::FlatLeading(callee_span.start),
                 gap_end: None,
             },
-            ExpressionContext::at(ExpressionPosition::NewCallee)
+            ExpressionContext::at(ExpressionPosition::NewCallee { has_type_arguments })
                 .with_tail_owner(TailOwner::ParentOperation)
                 .with_member_layout(MemberLayout::Tight)
                 .with_content_mode(mode)

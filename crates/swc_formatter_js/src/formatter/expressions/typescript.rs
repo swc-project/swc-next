@@ -1,7 +1,7 @@
 //! TypeScript expression operators keep real operand owners apart from token gaps.
 
 use swc_next_ecma_ast::{
-    BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, Span, TsAsExpression,
+    Ast, BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, Span, TsAsExpression,
     TsInstantiationExpression, TsNonNullExpression, TsType, TsTypeAssertion, TsTypeData,
     TsTypeNameData, TsTypeParameterInstantiation,
 };
@@ -569,7 +569,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_binary_type_expression_suffix(source, tail, writer)
             };
             let receiver = context.is_call_or_member_receiver()
-                || matches!(context.position, ExpressionPosition::NewCallee);
+                || matches!(context.position, ExpressionPosition::NewCallee { .. });
             if receiver && context.parentheses_owner == ParenthesesOwner::Expression {
                 let tail = writer.indent(|writer| {
                     writer.soft_line();
@@ -1801,6 +1801,7 @@ fn is_left_shift_right_operand(position: ExpressionPosition) -> bool {
 pub(super) fn type_expression_needs_parentheses(
     data: ExprData,
     position: ExpressionPosition,
+    ast: &Ast<'_>,
 ) -> Option<bool> {
     match data {
         ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_) => Some(matches!(
@@ -1816,8 +1817,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
                 | ExpressionPosition::TemplateTag
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::Superclass
+                | ExpressionPosition::NewCallee { .. }
+                | ExpressionPosition::Superclass { .. }
                 | ExpressionPosition::ConditionalTest
                 | ExpressionPosition::ConditionalConsequent
                 | ExpressionPosition::ConditionalAlternate
@@ -1837,8 +1838,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
                 | ExpressionPosition::TemplateTag
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::Superclass
+                | ExpressionPosition::NewCallee { .. }
+                | ExpressionPosition::Superclass { .. }
                 | ExpressionPosition::TypeBinaryOperand
                 | ExpressionPosition::NonNullOperand
                 | ExpressionPosition::InstantiationOperand
@@ -1858,12 +1859,21 @@ pub(super) fn type_expression_needs_parentheses(
                     side: OperandSide::Left,
                 }
         )),
-        ExprData::TsInstantiationExpression(_) => Some(match position {
+        ExprData::TsInstantiationExpression(node) => Some(match position {
             ExpressionPosition::MemberObject(_)
             | ExpressionPosition::MemberAssignmentObject
             | ExpressionPosition::TemplateTag
             | ExpressionPosition::NonNullOperand
             | ExpressionPosition::InstantiationOperand => true,
+            ExpressionPosition::CallCallee {
+                access: AccessKind::Ordinary,
+                has_type_arguments,
+                ..
+            }
+            | ExpressionPosition::NewCallee { has_type_arguments }
+            | ExpressionPosition::Superclass { has_type_arguments } => {
+                has_type_arguments || has_nested_instantiation(node.expression(ast), ast)
+            }
             ExpressionPosition::BinaryOperand {
                 operator,
                 side: OperandSide::Left,
@@ -1871,6 +1881,19 @@ pub(super) fn type_expression_needs_parentheses(
             _ => false,
         }),
         _ => None,
+    }
+}
+
+// An outer call, new, or heritage may absorb the last angle list. For
+// nested instantiations that would turn two separate instantiations into one.
+fn has_nested_instantiation(mut expression: Expr, ast: &Ast<'_>) -> bool {
+    loop {
+        match ast.expr_data(expression) {
+            ExprData::ParenthesizedExpression(pair) => expression = pair.expression(ast),
+            ExprData::ChainExpression(chain) => expression = chain.expression(ast),
+            ExprData::TsInstantiationExpression(_) => return true,
+            _ => return false,
+        }
     }
 }
 
