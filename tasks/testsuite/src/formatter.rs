@@ -226,6 +226,17 @@ const IGNORE: &[IgnorePattern] = &[
     // Preserve rendered JSX space counts; Prettier collapses these ASCII spaces.
     IgnorePattern::Exact("jsx/escape/nbsp.js"),
     IgnorePattern::Exact("jsx/text-wrap/test.js"),
+    // Keep signature comments before the opening brace, outside the body.
+    IgnorePattern::Exact("js/class-comment/misc.js"),
+    IgnorePattern::Exact("js/comments/function-declaration.js"),
+    IgnorePattern::Exact("js/comments/function/18146.js"),
+    IgnorePattern::Exact("js/comments/function/between-parentheses-and-function-body.js"),
+    // Keep the block comment before the body brace on its own line.
+    IgnorePattern::Exact("js/trailing-comma/trailing_whitespace.js"),
+    // Keep interface header comments before the body brace.
+    IgnorePattern::Exact("typescript/interface/comments-generic.ts"),
+    IgnorePattern::Exact("typescript/interface2/comments-declare.ts"),
+    IgnorePattern::Exact("typescript/interface2/comments.ts"),
     // Retain the conservative source frame around the ignored expression.
     // Both active ignore targets and their exact contents remain protected.
     IgnorePattern::Exact("js/ignore/issue-13737.js"),
