@@ -2289,7 +2289,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn format_empty_argument_prefix(
+    pub(super) fn format_empty_argument_prefix(
         &self,
         comments: &'ast [Comment],
         operator: Option<Span>,
