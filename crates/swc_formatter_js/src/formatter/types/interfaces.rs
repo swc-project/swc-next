@@ -1,14 +1,14 @@
 //! Interface heads keep their declaration, heritage, body and incoming member owners.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, Comment, GetSpan, Span, SubRange, TsInterfaceBody, TsInterfaceDeclaration,
-    TsInterfaceHeritage, TsTypeElement, TsTypeParameterDeclaration,
+    BindingIdentifier, CommentKind, GetSpan, Span, SubRange, TsInterfaceBody,
+    TsInterfaceDeclaration, TsInterfaceHeritage, TsTypeElement, TsTypeParameterDeclaration,
 };
 
 use super::generics::TypeParameterContext;
 use super::members::{IncomingTypeMember, TypeMemberBodyIncoming, TypeMemberBodyKind};
 use super::{Formatter, TypeGap};
-use crate::formatter::comments::CommentBinding;
+use crate::formatter::comments::{CommentBinding, CommentBoundary, CommentGap};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
 use crate::formatter::statements::DeclarationKeyword;
@@ -30,8 +30,15 @@ struct InterfaceHead<'ast> {
     body: TsInterfaceBody,
     body_mode: ContentMode,
     incoming: Option<IncomingTypeMember>,
-    body_prefix: TypeGap<'ast>,
-    body_leading: Option<&'ast [Comment]>,
+    body_prefix: InterfaceBodyPrefix<'ast>,
+}
+
+enum InterfaceBodyPrefix<'ast> {
+    Source(Span),
+    Comments {
+        boundary: CommentBoundary<'ast>,
+        following: CommentGap,
+    },
 }
 
 struct InterfaceHeritageList<'ast> {
@@ -74,7 +81,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body_mode,
             incoming,
             body_prefix,
-            body_leading,
         } = head;
         let grouped = heritage.as_ref().is_some_and(|heritage| {
             matches!(
@@ -114,7 +120,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write_head(self, writer)?;
         }
-        self.format_type_gap(body_prefix, FlatSeparator::Space, writer)?;
+        match body_prefix {
+            InterfaceBodyPrefix::Source(span) => self.format_verbatim(span, writer)?,
+            InterfaceBodyPrefix::Comments {
+                boundary,
+                following,
+            } => {
+                self.format_comment_boundary(&boundary, writer)?;
+                following.write(writer, FlatSeparator::Space, Writer::space);
+            }
+        }
         let body_span = body.span(self.ast);
         if body_mode == ContentMode::Verbatim {
             self.format_verbatim(body_span, writer)
@@ -125,7 +140,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeMemberBodyKind::Interface,
                 TypeMemberBodyIncoming {
                     member: incoming,
-                    comments: body_leading,
                     ..TypeMemberBodyIncoming::default()
                 },
                 writer,
@@ -271,7 +285,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         let body_gap = Span::new(end, body.span(ast).start);
-        let mut comments = self.comments.in_range(body_gap);
+        let comments = self.comments.in_range(body_gap);
         // The body opener must stay outside the covered line when the heritage
         // list ends on it.
         let body_starts_after_covered_heritage = covered_heritage_line_end
@@ -306,23 +320,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let mut body_leading = None;
-        if !body_gap_is_bound && self.declaration_body_comments_can_move(comments, body_gap) {
-            let first = body
-                .body(ast)
-                .first()
-                .map(|id| ast.get_node_in_sub_range(id));
-            let leading_end = first.map_or(body.span(ast).end - 1, |node: TsTypeElement| {
-                node.span(ast).start
-            });
-            let leading = self
-                .comments
-                .in_range(Span::new(comments[0].span.start, leading_end));
-            if first.is_some() || self.content_mode(leading) == ContentMode::Formatted {
-                body_leading = Some(leading);
-                comments = &[];
+        // The interface header owns comments before the opener, including
+        // an own-line block comment immediately before the body.
+        let body_prefix = if source || body_gap_is_bound {
+            InterfaceBodyPrefix::Source(body_gap)
+        } else {
+            let boundary = self.prepare_comment_boundary(comments, body_gap.start, body_gap.end);
+            let following = if let Some(last) = comments.last()
+                && last.kind == CommentKind::Block
+                && self.layout_position_starts_line(last.span.start)
+            {
+                self.prepare_leading_comment_gap(last.span, last.kind, body_gap.end, false)
+                    .gap
+            } else {
+                boundary.gap()
+            };
+            InterfaceBodyPrefix::Comments {
+                boundary,
+                following,
             }
-        }
+        };
         Ok(InterfaceHead {
             name,
             name_mode,
@@ -332,16 +349,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body,
             body_mode,
             incoming,
-            body_leading,
-            body_prefix: if source || body_gap_is_bound {
-                TypeGap::Source(body_gap)
-            } else {
-                TypeGap::Formatted(self.prepare_comment_boundary(
-                    comments,
-                    body_gap.start,
-                    body_gap.end,
-                ))
-            },
+            body_prefix,
         })
     }
 

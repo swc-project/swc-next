@@ -16,8 +16,8 @@ interface C {
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-interface A {
-  // ordinary header comment
+interface A // ordinary header comment
+{
   x: number;
 }
 
@@ -33,8 +33,8 @@ interface C {
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-interface A {
-  // ordinary header comment
+interface A // ordinary header comment
+{
   x: number;
 }
 
@@ -52,8 +52,8 @@ interface C {
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
-interface A {
-  // ordinary header comment
+interface A // ordinary header comment
+{
   x: number
 }
 
@@ -71,8 +71,8 @@ interface C {
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
-interface A {
-	// ordinary header comment
+interface A // ordinary header comment
+{
 	x: number;
 }
 

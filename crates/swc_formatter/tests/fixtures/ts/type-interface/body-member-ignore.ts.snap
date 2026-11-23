@@ -8,8 +8,8 @@ method( ) :  void }
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-interface A {
-  // body
+interface A // body
+{
   // prettier-ignore
   method( ) :  void
 }
@@ -17,8 +17,8 @@ interface A {
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-interface A {
-  // body
+interface A // body
+{
   // prettier-ignore
   method( ) :  void
 }
@@ -26,8 +26,8 @@ interface A {
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
-interface A {
-  // body
+interface A // body
+{
   // prettier-ignore
   method( ) :  void
 }
@@ -35,8 +35,8 @@ interface A {
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
-interface A {
-	// body
+interface A // body
+{
 	// prettier-ignore
 	method( ) :  void
 }
