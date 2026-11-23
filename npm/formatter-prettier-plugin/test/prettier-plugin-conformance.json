@@ -174,6 +174,46 @@
         "prettierNative": "const view = (\n  <Owner\n    {...value => (\n      /* head */ <Panel\n        value={value}\n      /> /* tail */\n    )}\n  />\n)\n"
       }
     ],
+    "js/arrows/cast-sequence-head/async.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "async () => (\n  /** @type {number} */\n  a, b\n);\n",
+        "prettierNative": "async () =>\n  /** @type {number} */\n  (a, b);\n"
+      }
+    ],
+    "js/arrows/cast-sequence-head/line-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "() => (\n  // c\n  /** @type {number} */ a, b\n);\n",
+        "prettierNative": "() =>\n  // c\n  /** @type {number} */ (a, b);\n"
+      }
+    ],
+    "js/arrows/cast-sequence-head/ordinary.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "() => (\n  /* ordinary */\n  a, b\n);\n",
+        "prettierNative": "() =>\n  /* ordinary */\n  (a, b);\n"
+      }
+    ],
+    "js/arrows/cast-sequence-head/sync.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "() => (\n  /** @type {number} */\n  a, b\n);\n",
+        "prettierNative": "() =>\n  /** @type {number} */\n  (a, b);\n"
+      }
+    ],
     "js/arrows/comment-packets/external/input.jsx": [
       {
         "options": {
@@ -200,16 +240,96 @@
           "indentStyle": "space",
           "arrowParentheses": "always"
         },
-        "swcPlugin": "const f = (a) => (b) =>\n  /** @type {string} */ (\n    3\n  ); /* inner */ /* outer */\n",
+        "swcPlugin": "const f = (a) => (\n  (b) =>\n    /** @type {string} */ (\n      3\n    ) /* inner */\n); /* outer */\n",
         "prettierNative": "const f = (a) => (b) =>\n  /** @type {string} */ (\n    3\n  ) /* inner */; /* outer */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 32,
+          "indentStyle": "space",
+          "arrowParentheses": "as-needed",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f = a => (\n  b =>\n    /** @type {string} */ (\n      3\n    ) /* inner */\n) /* outer */\n",
+        "prettierNative": "const f = a => b =>\n  /** @type {string} */ (\n    3\n  ) /* inner */ /* outer */\n"
       },
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const f = (a) => (b) => /** @type {string} */ (3); /* inner */ /* outer */\n",
+        "swcPlugin": "const f = (a) => ((b) => /** @type {string} */ (3) /* inner */); /* outer */\n",
         "prettierNative": "const f = (a) => (b) => /** @type {string} */ (3) /* inner */; /* outer */\n"
+      }
+    ],
+    "js/arrows/curried-body-tail/inline-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "use(\n  () => (\n    () => value // tail\n  ),\n  1,\n);\n",
+        "prettierNative": "use(\n  () => () =>\n    value, // tail\n  1,\n);\n"
+      }
+    ],
+    "js/arrows/curried-body-tail/line-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "use(\n  () => () =>\n    (\n      value\n      // tail\n    ),\n  1,\n);\n",
+        "prettierNative": "use(\n  () => () =>\n    value,\n    // tail\n  1,\n);\n"
+      }
+    ],
+    "js/arrows/parenthesized-body-comments/own-line-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (value) =>\n  /* body */\n  value;\n",
+        "prettierNative": "const f = (value) => /* body */ value;\n"
+      }
+    ],
+    "js/arrows/sequence-body-comments/line-head-after-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = () => /* body */ (\n  // first value\n  a, b\n);\n",
+        "prettierNative": "const f = () => /* body */ (\n  // first value\n  a,\n  b\n);\n"
+      }
+    ],
+    "js/arrows/sequence-body-comments/line-head-argument.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f(\n  a,\n  () => (\n    // first value\n    b, c\n  ),\n);\n",
+        "prettierNative": "f(\n  a,\n  () => (\n    // first value\n    b,\n    c\n  ),\n);\n"
+      }
+    ],
+    "js/arrows/sequence-body-comments/line-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = () => (\n  // first value\n  a, b\n);\n",
+        "prettierNative": "const f = () => (\n  // first value\n  a,\n  b\n);\n"
+      }
+    ],
+    "js/arrows/verbatim-body-comments/inline-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = () => // head\n  { // prettier-ignore\n};\n",
+        "prettierNative": "const f = () =>\n  // head\n  { // prettier-ignore\n};\n"
       }
     ],
     "js/assignment-operator-comments/cast-source-pair.js": [
@@ -9820,6 +9940,76 @@
         "prettierNative": ";({\n  [key]:\n    // tail\n    value,\n})\n"
       }
     ],
+    "js/expressions/conditional-released-tail/binary-line-separator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const output =\n  (flag\n    ? yes\n    : (\n        no\n        // fallback\n      )) + 1;\n",
+        "prettierNative": "const output =\n  (flag\n    ? yes\n    : no) + 1;\n      // fallback\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/callee-frame-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  flag\n    ? yes\n    : (\n        no\n        // alternate\n      )\n  // fallback\n)();\n",
+        "prettierNative": "(flag\n  ? yes\n  : no)\n    // alternate\n// fallback\n();\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/callee-inline-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(flag ? yes : (no /* fallback */))();\n",
+        "prettierNative": "(flag ? yes : no /* fallback */)();\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/callee-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(flag\n  ? yes\n  : (\n      no\n      // fallback\n    ))();\n",
+        "prettierNative": "(flag\n  ? yes\n  : no)\n    // fallback\n();\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/ignored-alternate-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(flag\n  ? yes\n  : (/* prettier-ignore */ factory(  1,2 )\n      // fallback\n    ))();\n",
+        "prettierNative": "(flag\n  ? yes\n  : /* prettier-ignore */ factory(  1,2 ))\n    // fallback\n();\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/new-without-arguments-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "new (flag\n  ? yes\n  : (\n      no\n      /* fallback */\n    ))();\n",
+        "prettierNative": "new (flag\n  ? yes\n  : no)\n    /* fallback */\n();\n"
+      }
+    ],
+    "js/expressions/conditional-released-tail/new-without-arguments-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "new (flag\n  ? yes\n  : (\n      no\n      // fallback\n    ))();\n",
+        "prettierNative": "new (flag\n  ? yes\n  : no)\n    // fallback\n();\n"
+      }
+    ],
     "js/expressions/conditional/comment-packet.js": [
       {
         "options": {
@@ -11930,6 +12120,36 @@
         },
         "swcPlugin": "const pick = value =>\n\t// @ts-expect-error\n\tvalue ? missingFirst :\n\t\t\tmissingSecond;\n",
         "prettierNative": "const pick = value =>\n\t// @ts-expect-error\n\tvalue\n\t\t? missingFirst\n\t\t: missingSecond;\n"
+      }
+    ],
+    "js/expressions/function-layout/arrow-conditional-body/ordinary-head.js": [
+      {
+        "options": {
+          "lineWidth": 28,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const pick = (\n  value,\n) => /* choose */ value\n    ? 11\n    : 23;\n",
+        "prettierNative": "const pick = (value) =>\n  /* choose */ value\n    ? 11\n    : 23;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "arrowParentheses": "as-needed",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const pick =\n  value => /* choose */ value\n      ? 11\n      : 23\n",
+        "prettierNative": "const pick =\n  value =>\n    /* choose */ value\n      ? 11\n      : 23\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "tab",
+          "indentWidth": 4,
+          "arrowParentheses": "as-needed"
+        },
+        "swcPlugin": "const pick = value => /* choose */ value\n\t\t? 11\n\t\t: 23;\n",
+        "prettierNative": "const pick = value =>\n\t/* choose */ value ? 11 : 23;\n"
       }
     ],
     "js/expressions/function-layout/callback-pure-operation/input.js": [
@@ -15947,6 +16167,46 @@
         "prettierNative": ";// prettier-ignore\n(left +   right).call(first + second)\n"
       }
     ],
+    "js/expressions/sequence-cast-head/assignment-own-line-prefix.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "result = (\n  /* first */\n  /** @type {number} */ (value).toFixed(), second\n);\n",
+        "prettierNative": "result =\n  /* first */\n  /** @type {number} */ ((value).toFixed(), second);\n"
+      }
+    ],
+    "js/expressions/sequence-cast-head/assignment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "out = (\n  /* head */ (/** @type {number} */ t),\n  y,\n  z,\n  w,\n  v,\n  u,\n  s,\n  r,\n  q,\n  p,\n  o,\n  n,\n  m,\n  l,\n  k,\n  j\n);\n",
+        "prettierNative": "out =\n  /* head */ (/** @type {number} */ t,\n  y,\n  z,\n  w,\n  v,\n  u,\n  s,\n  r,\n  q,\n  p,\n  o,\n  n,\n  m,\n  l,\n  k,\n  j);\n"
+      }
+    ],
+    "js/expressions/sequence-cast-head/conditional-branch.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "flag ? (/* outer */ /** @type {number} */ (first), second) : fallback;\n",
+        "prettierNative": "flag ? /* outer */ /** @type {number} */ ((first), second) : fallback;\n"
+      }
+    ],
+    "js/expressions/sequence-cast-head/return.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (/* outer */ /** @type {number} */ (first), second);\n}\n",
+        "prettierNative": "function f() {\n  return /* outer */ /** @type {number} */ ((first), second);\n}\n"
+      }
+    ],
     "js/expressions/sequence-diagnostic-head/declaration.js": [
       {
         "options": {
@@ -16146,7 +16406,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "x = /* head */ /** @type {X} */ (t, y);\n",
+        "swcPlugin": "x = (/* head */ (/** @type {X} */ t), y);\n",
         "prettierNative": "x = /* head */ (/** @type {X} */ t, y);\n"
       },
       {
@@ -16155,7 +16415,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "x = /* head */ /** @type {X} */ (t, y)\n",
+        "swcPlugin": "x = (/* head */ (/** @type {X} */ t), y)\n",
         "prettierNative": "x = /* head */ (/** @type {X} */ t, y)\n"
       },
       {
@@ -16163,7 +16423,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "x =\n  /* head */ /** @type {X} */ (\n    t, y\n  );\n",
+        "swcPlugin": "x = (\n  /* head */ (\n    /** @type {X} */ t\n  ),\n  y\n);\n",
         "prettierNative": "x =\n  /* head */ (/** @type {X} */ t,\n  y);\n"
       }
     ],
@@ -19809,6 +20069,16 @@
         },
         "swcPlugin": "/**@typedef(number)*/ (1);\n",
         "prettierNative": "/**@typedef(number)*/ 1;\n"
+      }
+    ],
+    "js/expressions/unary-cast-sequence/line-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "!(\n  (/** @type {number} */ (first), second) // tail\n);\n",
+        "prettierNative": "!(\n  /** @type {number} */ ((first), second) // tail\n);\n"
       }
     ],
     "js/expressions/unary/comment-frames/active-inner-diagnostic.js": [
@@ -24818,33 +25088,6 @@
         "prettierNative": "first    +second // prettier-ignore\nnext\n"
       }
     ],
-    "js/statements/function-boundaries/arrow-body-comment/input.js": [
-      {
-        "options": {
-          "lineWidth": 20,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "(\n  value,\n) => /* body */ {};\n",
-        "prettierNative": "(value) =>\n  /* body */\n  {};\n"
-      },
-      {
-        "options": {
-          "lineWidth": 20,
-          "indentStyle": "space",
-          "semicolons": "as-needed"
-        },
-        "swcPlugin": ";(\n  value,\n) => /* body */ {}\n",
-        "prettierNative": ";(value) =>\n  /* body */\n  {}\n"
-      },
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "(value) => /* body */ {};\n",
-        "prettierNative": "(value) =>\n  /* body */\n  {};\n"
-      }
-    ],
     "js/statements/function-boundaries/directive-ignored-after-empty/input.js": [
       {
         "options": {
@@ -27732,6 +27975,36 @@
         },
         "swcPlugin": "void (\n  /*#__PURE__*/\n  (/*#__PURE__*/ target()).b()\n);\n",
         "prettierNative": "void (\n  /*#__PURE__*/\n  /*#__PURE__*/ target().b()\n);\n"
+      }
+    ],
+    "jsx/conditional-cast-tail/flat-alternate.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = cond ? (a /** @type {X} */) : <B>child</B>;\n",
+        "prettierNative": "x = cond ? a /** @type {X} */ : <B>child</B>;\n"
+      }
+    ],
+    "jsx/conditional-cast-tail/ignored-operand.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = cond ? (/* prettier-ignore */ fn(  1,2 ) /** @type {X} */) : (\n  <B>\n    {a}\n    <C />\n  </B>\n);\n",
+        "prettierNative": "x = cond ? (\n  /* prettier-ignore */ fn(  1,2 ) /** @type {X} */\n) : (\n  <B>\n    {a}\n    <C />\n  </B>\n);\n"
+      }
+    ],
+    "jsx/conditional-cast-tail/outer-comments.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = cond ? /* outer head */ (\n  a /** @type {X} */\n) /* outer tail */ : (\n  <B>\n    {a}\n    <C />\n  </B>\n);\n",
+        "prettierNative": "x = cond ? (\n  /* outer head */ a /** @type {X} */ /* outer tail */\n) : (\n  <B>\n    {a}\n    <C />\n  </B>\n);\n"
       }
     ],
     "jsx/logical-suffix/arrow.jsx": [
@@ -36481,6 +36754,36 @@
         },
         "swcPlugin": "declare function f(a: number, b: number): void;\ndeclare const first: number;\nf(\n  first,\n  /*#__PURE__*/ // @ts-expect-error\n  missing(),\n);\n",
         "prettierNative": "declare function f(a: number, b: number): void;\ndeclare const first: number;\nf(\n  first /*#__PURE__*/, // @ts-expect-error\n  missing(),\n);\n"
+      }
+    ],
+    "ts/expressions/conditional-released-tail/as-line-separator.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(flag\n  ? yes\n  : (\n      no\n      // fallback\n    )) as Value;\n",
+        "prettierNative": "(flag\n  ? yes\n  : no) as Value;\n    // fallback\n"
+      }
+    ],
+    "ts/expressions/conditional-released-tail/satisfies-line.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(flag\n  ? yes\n  : (\n      no\n      // fallback\n    )) satisfies Value;\n",
+        "prettierNative": "(flag\n  ? yes\n  : no) satisfies Value;\n    // fallback\n"
+      }
+    ],
+    "ts/expressions/conditional-released-tail/satisfies-paragraph-separator.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  flag ? yes : no\n  // fallback\n) satisfies Value;\n",
+        "prettierNative": "(flag ? yes : no) satisfies // fallback\nValue;\n"
       }
     ],
     "ts/expressions/conditional/nullish/protected-test.ts": [
