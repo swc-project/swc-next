@@ -179,17 +179,12 @@ struct SourceFunctionBody<'a> {
 pub(super) struct PreparedFunctionBody<'ast> {
     body: FunctionBody,
     signature_end: u32,
-    boundary: FunctionBodyBoundary<'ast>,
+    comments: &'ast [Comment],
     leading: StatementBodyLeading<'ast>,
     mode: ContentMode,
     first_statement: Option<IncomingStatement>,
     constraint: LineConstraint,
     layout: Option<BracedBodyLayout>,
-}
-
-enum FunctionBodyBoundary<'ast> {
-    Source(&'ast [Comment]),
-    Formatted(&'ast [Comment]),
 }
 
 pub(super) enum FunctionBodyAttachment {
@@ -623,24 +618,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                 })?;
                 let result = self.prepare_function_return(result);
-                let continuation_width = match signature.body.boundary {
-                    FunctionBodyBoundary::Source(comments)
-                    | FunctionBodyBoundary::Formatted(comments)
-                        if comments.is_empty()
-                            && !matches!(signature.body.constraint, LineConstraint::NewLine(_)) =>
-                    {
-                        let body = &mut signature.body;
-                        let layout =
-                            self.prepare_function_body_layout(body.body, body.mode, body.leading);
-                        body.layout = Some(layout);
-                        match layout {
-                            BracedBodyLayout::Empty(
-                                LineConstraint::Unconstrained | LineConstraint::SameLine,
-                            ) => " {}".len(),
-                            _ => " {".len(),
-                        }
+                let continuation_width = if signature.body.comments.is_empty()
+                    && !matches!(signature.body.constraint, LineConstraint::NewLine(_))
+                {
+                    let body = &mut signature.body;
+                    let layout =
+                        self.prepare_function_body_layout(body.body, body.mode, body.leading);
+                    body.layout = Some(layout);
+                    match layout {
+                        BracedBodyLayout::Empty(
+                            LineConstraint::Unconstrained | LineConstraint::SameLine,
+                        ) => " {}".len(),
+                        _ => " {".len(),
                     }
-                    _ => 0,
+                } else {
+                    0
                 };
                 let (recorded, ()) = self.record_signature(
                     parameters,
@@ -698,39 +690,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } = source;
         let mode = self.function_body_content_mode(body, mode);
         let gap = Span::new(signature_end, body.span(self.ast).start);
-        let ordinary = !comments.is_empty()
-            && mode == ContentMode::Formatted
-            && first_statement.is_none()
+        let (comments, leading) =
+            self.prepare_function_body_leading(comments, body, FunctionBodyAttachment::Function);
+        let constraint = if constraint == LineConstraint::Unconstrained
+            && let Some(last) = comments.last()
+            && last.kind == CommentKind::Block
+            && self.layout_position_starts_line(last.span.start)
             && matches!(
                 self.comment_binding(comments, gap, None),
                 CommentBinding::Unbound
-            );
-        // Leave the run at the signature when relocation would change
-        // coverage or compact a blank line on the next pass.
-        let keep_boundary = ordinary
-            && (self.lint_line_at(gap.end).is_some()
-                || comments
-                    .windows(2)
-                    .any(|pair| self.previous_line_is_empty(pair[0].span.end, pair[1].span.start))
-                    && !self.function_body_requires_break(body));
-        let (boundary, leading) = if ordinary && !keep_boundary {
-            self.prepare_function_body_leading(comments, body, FunctionBodyAttachment::Function)
+            ) {
+            match self.line_breaks(last.span.end, gap.end) {
+                0 => constraint,
+                count => LineConstraint::NewLine(count),
+            }
         } else {
-            (comments, StatementBodyLeading::empty())
-        };
-        let boundary = if ordinary
-            && boundary
-                .iter()
-                .all(|comment| comment.kind == CommentKind::Block)
-        {
-            FunctionBodyBoundary::Formatted(boundary)
-        } else {
-            FunctionBodyBoundary::Source(boundary)
+            constraint
         };
         PreparedFunctionBody {
             body,
             signature_end,
-            boundary,
+            comments,
             leading,
             mode,
             first_statement,
@@ -763,6 +743,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         body: FunctionBody,
         attachment: FunctionBodyAttachment,
     ) -> (&'ast [Comment], StatementBodyLeading<'ast>) {
+        if matches!(attachment, FunctionBodyAttachment::Function) {
+            // The signature owns all trivia before its opening brace.
+            return (comments, StatementBodyLeading::empty());
+        }
         let Some(first_line) = comments
             .iter()
             .position(|comment| comment.kind == CommentKind::Line)
@@ -899,39 +883,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let PreparedFunctionBody {
             body,
             signature_end,
-            boundary,
+            comments,
             leading,
             mode,
             first_statement,
             constraint,
             layout,
         } = source;
-        match boundary {
-            FunctionBodyBoundary::Source(comments) => {
-                self.comments.claim(comments)?;
-                self.format_comment_run(
-                    comments,
-                    CommentRunLayout::SourceAfter(signature_end),
-                    writer,
-                )?;
-                if comments
-                    .last()
-                    .is_some_and(|comment| comment.kind == CommentKind::Line)
-                {
-                    writer.hard_line();
-                } else {
-                    constraint.write(writer, FlatSeparator::Space, Writer::space);
-                }
-            }
-            FunctionBodyBoundary::Formatted(comments) => {
-                self.comments.claim(comments)?;
-                constraint.write(writer, FlatSeparator::Space, Writer::space);
-                self.format_comment_run(
-                    comments,
-                    CommentRunLayout::FlatLeading(body.span(self.ast).start),
-                    writer,
-                )?;
-            }
+        self.comments.claim(comments)?;
+        self.format_comment_run(
+            comments,
+            CommentRunLayout::SourceAfter(signature_end),
+            writer,
+        )?;
+        if comments
+            .last()
+            .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            writer.hard_line();
+        } else {
+            constraint.write(writer, FlatSeparator::Space, Writer::space);
         }
         self.format_function_body(body, mode, first_statement, leading, layout, writer)
     }

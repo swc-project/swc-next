@@ -8,8 +8,8 @@ const value=/** @type {any} */ ((function f() // note
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const value = /** @type {any} */ (
-  (function f() {
-    // note
+  (function f() // note
+  {
     return "text";
   })()
 );
@@ -21,8 +21,8 @@ outside.missing();
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
 const value = /** @type {any} */ (
-  (function f() {
-    // note
+  (function f() // note
+  {
     return "text";
   })()
 );
@@ -34,8 +34,8 @@ outside.missing();
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const value = /** @type {any} */ (
-  (function f() {
-    // note
+  (function f() // note
+  {
     return "text"
   })()
 )

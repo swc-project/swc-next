@@ -11,8 +11,8 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
   firstValue,
   secondValue,
   thirdValue,
-) {
-  // body boundary
+) // body boundary
+{
   return (
     firstValue +
     secondValue +
@@ -27,8 +27,8 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
   firstValue,
   secondValue,
   thirdValue,
-) {
-  // body boundary
+) // body boundary
+{
   return (
     firstValue +
     secondValue +
@@ -39,7 +39,7 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-(function (firstValue, secondValue, thirdValue) {
-  // body boundary
+(function (firstValue, secondValue, thirdValue) // body boundary
+{
   return firstValue + secondValue + thirdValue;
 })(1, 2, 3);

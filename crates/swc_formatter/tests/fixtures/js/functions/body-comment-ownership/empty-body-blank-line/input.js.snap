@@ -87,10 +87,11 @@ class Example {
   {}
 }
 
-function nonempty() {
-  // first
+function nonempty()
+// first
 
-  // second
+// second
+{
   return 1;
 }
 
@@ -136,9 +137,10 @@ class Example {
   {}
 }
 
-function nonempty() {
-  // first
+function nonempty()
+// first
 
-  // second
+// second
+{
   return 1
 }

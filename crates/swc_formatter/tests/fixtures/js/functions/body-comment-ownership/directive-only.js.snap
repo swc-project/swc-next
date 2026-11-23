@@ -7,23 +7,23 @@ function f() // note
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-function f() {
+function f() // note
+{
   "use strict";
-  // note
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
-function f() {
+function f() // note
+{
   "use strict";
-  // note
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-function f() {
+function f() // note
+{
   "use strict"
-  // note
 }
