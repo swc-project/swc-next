@@ -1329,7 +1329,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node_span.end,
                     next_span.map_or(content.end, |span| span.start),
                 );
-                let covered = self.lint_line_intersects(gap)
+                // The class closer owns the whitespace after the last trailing comment.
+                let lint_gap = if next.is_none() && self.has_lint_line_directives() {
+                    let source = self.source(gap).trim_end_matches(is_source_whitespace);
+                    Span::new(gap.start, gap.start + source.len() as u32)
+                } else {
+                    gap
+                };
+                let covered = self.lint_line_intersects(lint_gap)
                     || next.is_some()
                         && (opening_source_end.is_some_and(|end| gap.start <= end)
                             || gap.start == gap.end

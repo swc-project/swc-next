@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Methods {
+  run(){}// eslint-disable-next-line
+  }
+
+class Fields {
+  value=1/* eslint-disable-next-line */
+  }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Methods {
+  run() {} // eslint-disable-next-line
+}
+
+class Fields {
+  value = 1; /* eslint-disable-next-line */
+}
