@@ -100,8 +100,8 @@ jwalk         = "0.9.0"
 jsonc-parser  = { version = "0.34.0", features = ["serde"] }
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
-oxc           = { version = "0.159.0", features = ["ast_visit", "semantic"] }
-oxc_allocator = "0.159.0"
+oxc           = { version = "0.160.0", features = ["ast_visit", "semantic"] }
+oxc_allocator = "0.160.0"
 saphyr        = "0.4.0"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
