@@ -83,6 +83,7 @@ struct SourceClassHead<'ast> {
     body_comments: &'ast [Comment],
     body_leading: Option<&'ast [Comment]>,
     body_gap: CommentGap,
+    opening_source_end: Option<u32>,
 }
 
 enum SourceClassPrefix<'ast> {
@@ -435,6 +436,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body_comments,
             body_leading,
             body_gap,
+            opening_source_end,
         } = head;
         let write_header = |writer: &mut Writer<'ast>| {
             let name_gap_formatted = match prefix {
@@ -533,7 +535,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write_header(writer)?;
         }
-        self.format_class_body(body, body_mode, incoming, body_leading, writer)
+        self.format_class_body(
+            body,
+            body_mode,
+            incoming,
+            body_leading,
+            opening_source_end,
+            writer,
+        )
     }
 
     fn source_class_head(
@@ -852,6 +861,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body_span = body.span(ast);
         let body_gap = Span::new(end, body_span.start);
         let mut body_comments = self.comments.in_range(body_gap);
+        let opening_source_end = self.class_opening_source_end(body, body_gap);
         let last = body_comments.last().map_or(end, |comment| comment.span.end);
         let mut body_constraint = self.line_constraint(last, body.span(ast).start);
         if self.content_mode(body_comments) == ContentMode::Verbatim {
@@ -879,7 +889,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut body_leading = None;
-        if self.declaration_body_comments_can_move(body_comments, body_gap) {
+        if opening_source_end.is_none()
+            && self.declaration_body_comments_can_move(body_comments, body_gap)
+        {
             let first = self.class_body_first_member(body);
             let leading_end = first.map_or(body_span.end - 1, |node| node.span(ast).start);
             let leading = self
@@ -906,6 +918,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end,
             body_comments,
             body_leading,
+            opening_source_end,
             body_gap: if body_comments
                 .last()
                 .is_some_and(|comment| comment.kind == CommentKind::Line)
@@ -1120,12 +1133,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| self.ast.get_node_in_sub_range(id))
     }
 
+    // Members sharing the opener's line can otherwise displace the covered line
+    // after a directive in the header.
+    fn class_opening_source_end(&self, body: ClassBody, gap: Span) -> Option<u32> {
+        if !self.has_line_directive_in(gap) {
+            return None;
+        }
+        const LINE_TERMINATORS: [char; 4] = ['\r', '\n', '\u{2028}', '\u{2029}'];
+        let header_start = self
+            .source(gap)
+            .rfind(LINE_TERMINATORS)
+            .map_or(gap.start, |offset| gap.start + offset as u32);
+        if !self.has_line_directive_in(Span::new(header_start, gap.end)) {
+            return None;
+        }
+        let first = self.class_body_first_member(body)?.span(self.ast);
+        let span = body.span(self.ast);
+        let source = self.source(span);
+        let offset = source.find(LINE_TERMINATORS)?;
+        let end = span.start + offset as u32;
+        if first.start >= end {
+            return None;
+        }
+        let suffix = &source[offset..];
+        let terminator_width = if suffix.starts_with("\r\n") {
+            2
+        } else {
+            suffix.chars().next()?.len_utf8()
+        };
+        let covered = self.lint_line_at(end + terminator_width as u32)?;
+        (!self
+            .source(covered)
+            .trim_matches(is_source_whitespace)
+            .is_empty())
+        .then_some(end)
+    }
+
     fn format_class_body(
         &mut self,
         body: ClassBody,
         mode: ContentMode,
         incoming: Option<IncomingClassMember>,
         head_comments: Option<&'ast [Comment]>,
+        opening_source_end: Option<u32>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
@@ -1208,7 +1258,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             PreparedHeadGap::new(leading, HeadGapPlacement::OwnLine)
         };
-        let source_bound = self.lint_line_intersects(Span::new(content.start, first_span.start));
+        let source_bound = opening_source_end.is_some()
+            || self.lint_line_intersects(Span::new(content.start, first_span.start));
         let head = NodeHead {
             comments: leading,
             content_start: first_span.start,
@@ -1224,8 +1275,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             head
         };
-        let first_mode = if incoming
-            .is_some_and(|target| target.node == first && target.mode == ContentMode::Verbatim)
+        let first_mode = if opening_source_end.is_some()
+            || incoming
+                .is_some_and(|target| target.node == first && target.mode == ContentMode::Verbatim)
             || self.content_mode(leading) == ContentMode::Verbatim
         {
             ContentMode::Verbatim
@@ -1240,22 +1292,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             quoting,
         )?;
         writer.text("{");
+        let opening = if opening_source_end.is_some() {
+            LineConstraint::SameLine
+        } else {
+            self.opening_line_constraint(content)
+        };
         let end = writer.indent(|writer| {
-            self.opening_line_constraint(content).write(
-                writer,
-                FlatSeparator::Space,
-                Writer::hard_line,
-            );
+            opening.write(writer, FlatSeparator::Space, Writer::hard_line);
             self.comments.claim(leading)?;
             self.format_node_head(head, ExpressionStart::None, None, writer)?;
             loop {
                 let next = members
                     .next()
                     .map(|node| {
-                        let mode = current
-                            .sibling
-                            .as_ref()
-                            .map_or(ContentMode::Formatted, |source| source.following);
+                        let mode =
+                            if opening_source_end.is_some_and(|end| node.span(ast).start < end) {
+                                ContentMode::Verbatim
+                            } else {
+                                current
+                                    .sibling
+                                    .as_ref()
+                                    .map_or(ContentMode::Formatted, |source| source.following)
+                            };
                         self.prepare_class_member(
                             node,
                             members.peek().copied(),
@@ -1273,10 +1331,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let covered = self.lint_line_intersects(gap)
                     || next.is_some()
-                        && gap.start == gap.end
-                        && gap.start > 0
-                        && (gap.end as usize) < ast.source().len()
-                        && self.lint_line_intersects(Span::new(gap.start - 1, gap.end + 1));
+                        && (opening_source_end.is_some_and(|end| gap.start <= end)
+                            || gap.start == gap.end
+                                && gap.start > 0
+                                && (gap.end as usize) < ast.source().len()
+                                && self
+                                    .lint_line_intersects(Span::new(gap.start - 1, gap.end + 1)));
                 let layout = if current.sibling.is_none() && !covered {
                     ClassMemberBoundaryLayout::Formatted(
                         self.prepare_class_member_gap(gap, next_span),
@@ -1329,11 +1389,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if end.1 == ClassMemberEnd::LineComment {
             writer.hard_line();
         } else {
-            self.line_constraint(end.0, content.end).write(
-                writer,
-                FlatSeparator::Space,
-                Writer::hard_line,
-            );
+            let closing = self.line_constraint(end.0, content.end);
+            let closing =
+                if opening_source_end.is_some() && closing == LineConstraint::Unconstrained {
+                    self.lint_closing_constraint(end.0, content.end)
+                        .unwrap_or(closing)
+                } else {
+                    closing
+                };
+            closing.write(writer, FlatSeparator::Space, Writer::hard_line);
         }
         writer.text("}");
         Ok(())
