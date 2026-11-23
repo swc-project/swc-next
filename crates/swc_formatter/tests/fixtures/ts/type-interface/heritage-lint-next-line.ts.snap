@@ -1,0 +1,67 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface A extends
+// eslint-disable-next-line
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface B extends
+// eslint-disable-next-line
+FirstBase, SecondBase,
+ThirdBase <boolean> { y : boolean }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface A extends
+// eslint-disable-next-line
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface B extends
+// eslint-disable-next-line
+FirstBase, SecondBase,
+  ThirdBase<boolean> {
+  y: boolean;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface A extends
+// eslint-disable-next-line
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface B extends
+// eslint-disable-next-line
+FirstBase, SecondBase,
+  ThirdBase<boolean> {
+  y: boolean;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface A extends
+// eslint-disable-next-line
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface B extends
+// eslint-disable-next-line
+FirstBase, SecondBase,
+  ThirdBase<boolean> {
+  y: boolean
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface A extends
+// eslint-disable-next-line
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface B extends
+// eslint-disable-next-line
+FirstBase, SecondBase,
+	ThirdBase<boolean> {
+	y: boolean;
+}

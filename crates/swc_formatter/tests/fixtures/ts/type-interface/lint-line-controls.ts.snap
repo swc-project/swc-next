@@ -1,0 +1,88 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface A // ordinary header comment
+{ x: number }
+
+interface B extends
+// ordinary heritage comment
+LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface C {
+  x : number // eslint-disable-line
+  y : string
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface A {
+  // ordinary header comment
+  x: number;
+}
+
+interface B
+  // ordinary heritage comment
+  extends LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+
+interface C {
+  x: number; // eslint-disable-line
+  y: string;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface A {
+  // ordinary header comment
+  x: number;
+}
+
+interface B
+  // ordinary heritage comment
+  extends
+    LongNamespace.FirstBase<string>,
+    OtherNamespace.SecondBase<number> {}
+
+interface C {
+  x: number; // eslint-disable-line
+  y: string;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface A {
+  // ordinary header comment
+  x: number
+}
+
+interface B
+  // ordinary heritage comment
+  extends
+    LongNamespace.FirstBase<string>,
+    OtherNamespace.SecondBase<number> {}
+
+interface C {
+  x: number // eslint-disable-line
+  y: string
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface A {
+	// ordinary header comment
+	x: number;
+}
+
+interface B
+	// ordinary heritage comment
+	extends
+		LongNamespace.FirstBase<string>,
+		OtherNamespace.SecondBase<number> {}
+
+interface C {
+	x: number; // eslint-disable-line
+	y: string;
+}
