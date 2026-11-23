@@ -6572,7 +6572,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_identifier_predicate_start(&mut self) -> Option<bool> {
         let current = self.current_token;
-        if current.tag() == TokenTag::This || !current.tag().is_identifier_like() {
+        // `typeof` starts a type query, so `typeof is` queries a value named `is`.
+        if matches!(current.tag(), TokenTag::This | TokenTag::Typeof)
+            || !current.tag().is_identifier_like()
+        {
             return Some(false);
         }
         if !self.next_token_may_start_with(|byte| byte == b'i') {
@@ -20911,6 +20914,21 @@ mod tests {
 
     #[test]
     fn type_queries() {
+        fn return_type(source: &str, options: Options) -> NodeKind {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = read_ast(&parsed.ast);
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let function = statement
+                .as_declaration(ast)
+                .unwrap()
+                .as_function(ast)
+                .unwrap();
+            let ty = function.return_type(ast).unwrap().type_annotation(ast);
+            ast.node_kind(ty.node_id())
+        }
+
         let options = Options {
             lang: Lang::Ts,
             ..Options::default()
@@ -20928,6 +20946,15 @@ mod tests {
 
         let has_errors = errors("one < two as typeof f << other;");
         assert!(has_errors);
+
+        let kind = return_type("function f(): typeof is {}", options);
+        assert_eq!(kind, NodeKind::TsTypeQuery);
+
+        let has_errors = errors("let f = (): typeof is => 1;");
+        assert!(!has_errors);
+
+        let has_errors = errors("type F = () => typeof is;");
+        assert!(!has_errors);
     }
 
     #[test]
