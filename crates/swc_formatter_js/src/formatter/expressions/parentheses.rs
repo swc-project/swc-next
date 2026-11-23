@@ -1511,20 +1511,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentBinding::Unbound
     }
 
+    pub(super) fn source_comments_in_range(&self, span: Span) -> &'ast [Comment] {
+        let comments = self.ast.comments();
+        let first = comments.partition_point(|comment| comment.span.start < span.start);
+        let inside = &comments[first..];
+        let count = inside.partition_point(|comment| comment.span.end <= span.end);
+        &inside[..count]
+    }
+
     fn source_parentheses_comments(
         &self,
         boundary: SourceParentheses,
     ) -> SourceParenthesesComments<'ast> {
-        let comments = self.ast.comments();
-        let range = |span: Span| {
-            let first = comments.partition_point(|comment| comment.span.start < span.start);
-            let inside = &comments[first..];
-            let count = inside.partition_point(|comment| comment.span.end <= span.end);
-            &inside[..count]
-        };
         SourceParenthesesComments {
-            head: range(Span::new(boundary.outer.start, boundary.inner.start)),
-            tail: range(Span::new(boundary.inner.end, boundary.outer.end)),
+            head: self
+                .source_comments_in_range(Span::new(boundary.outer.start, boundary.inner.start)),
+            tail: self.source_comments_in_range(Span::new(boundary.inner.end, boundary.outer.end)),
         }
     }
 
@@ -3460,6 +3462,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    /// The caller owns the group. This pair always prints and encloses the operand's tail.
+    pub(super) fn format_parenthesized_operand(
+        &mut self,
+        writer: &mut Writer<'ast>,
+        operand: impl FnOnce(
+            &mut Self,
+            &mut Writer<'ast>,
+        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        writer.text("(");
+        writer.indent(|writer| {
+            writer.soft_line();
+            let tail = operand(self, writer)?;
+            self.format_expression_tail(tail, writer)
+        })?;
+        writer.soft_line();
+        writer.text(")");
+        Ok(ExpressionOutput::closed(None))
+    }
+
     fn format_expression_content_with_raw_end(
         &mut self,
         expression: Expr,
@@ -3599,15 +3621,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let _scope = self.recursion_scope(expression)?;
             if parenthesize && Self::binary_grammar_pair_owns_indent(context.position) {
                 return writer.group(false, |writer| {
-                    writer.text("(");
-                    writer.indent(|writer| {
-                        writer.soft_line();
-                        let tail = self.format_binary_enclosed(binary, writer)?;
-                        self.format_expression_tail(tail, writer)
-                    })?;
-                    writer.soft_line();
-                    writer.text(")");
-                    Ok(ExpressionOutput::closed(None))
+                    self.format_parenthesized_operand(writer, |formatter, writer| {
+                        formatter.format_binary_enclosed(binary, writer)
+                    })
                 });
             }
             if parenthesize {
@@ -3635,21 +3651,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let _scope = self.recursion_scope(conditional)?;
             return writer.group(false, |writer| {
-                writer.text("(");
-                writer.indent(|writer| {
-                    writer.soft_line();
-                    let tail = self.format_conditional(
+                self.format_parenthesized_operand(writer, |formatter, writer| {
+                    formatter.format_conditional(
                         conditional,
                         context
                             .with_expression_start(ExpressionStart::None)
                             .with_operand_indent(OperandIndent::Parent),
                         writer,
-                    )?;
-                    self.format_expression_tail(tail, writer)
-                })?;
-                writer.soft_line();
-                writer.text(")");
-                Ok(ExpressionOutput::closed(None))
+                    )
+                })
             });
         }
         if parenthesize {

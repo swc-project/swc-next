@@ -102,6 +102,14 @@ struct ConditionalBranch<'ast> {
     retain_tail: bool,
 }
 
+struct JsxConditionalCastTailPair<'ast> {
+    value: Expr,
+    exterior_head: NodeHead<'ast>,
+    head: ResolvedExpressionHead<'ast>,
+    tail: Span,
+    exterior_tail: Span,
+}
+
 /// Source effects are prepared before either operand is printed. Ordinary
 /// attachment waits for the preceding operand's complete pending packet.
 struct ConditionalBoundary<'ast> {
@@ -1234,6 +1242,110 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    fn jsx_conditional_branch_generates_pair(
+        &self,
+        data: ExprData,
+        position: ExpressionPosition,
+    ) -> bool {
+        match data {
+            ExprData::NullLiteral(_) | ExprData::ParenthesizedExpression(_) => false,
+            ExprData::IdentifierReference(identifier) => {
+                self.ast.get_utf8(identifier.name(self.ast)) != "undefined"
+            }
+            ExprData::ConditionalExpression(_) => {
+                !matches!(position, ExpressionPosition::ConditionalAlternate)
+            }
+            _ => true,
+        }
+    }
+
+    fn prepare_jsx_conditional_cast_tail_pair(
+        &self,
+        content: &ExpressionContent,
+        position: ExpressionPosition,
+    ) -> Option<JsxConditionalCastTailPair<'ast>> {
+        if !self.has_type_casts {
+            return None;
+        }
+        let ExprData::ParenthesizedExpression(pair) = content.data else {
+            return None;
+        };
+        let span = pair.span(self.ast);
+        let value = pair.expression(self.ast);
+        let value_span = value.span(self.ast);
+        let source = content
+            .parentheses
+            .map_or(span, |removed| removed.source.outer);
+        let tail_span = Span::new(value_span.end, span.end);
+        let tail = self.source_comments_in_range(tail_span);
+        let mut has_cast = false;
+        let tail_is_unbound = tail.iter().all(|&comment| {
+            let semantics = self.comment_semantics(comment);
+            has_cast |= semantics.type_cast;
+            // The real closer ends the packet. A cast tag here has no target.
+            comment.kind == CommentKind::Block
+                && !semantics.suppression
+                && !semantics.diagnostic
+                && !semantics.file_directive
+                && !semantics.optimizer
+                && !self.comment_needs_jsdoc_enclosure(comment)
+        });
+        if !has_cast
+            || !tail_is_unbound
+            || self.diagnostic_range_is_sensitive(source)
+            || !self.jsx_conditional_branch_generates_pair(self.expression_data(value), position)
+        {
+            return None;
+        }
+
+        let heads = self.source_comments_in_range(Span::new(source.start, value_span.start));
+        let (exterior, leading) =
+            heads.split_at(heads.partition_point(|comment| comment.span.start < span.start));
+        if !matches!(
+            self.expression_head_binding(leading, value),
+            CommentBinding::Unbound
+        ) || leading
+            .iter()
+            .any(|&comment| self.comment_needs_jsdoc_enclosure(comment))
+        {
+            return None;
+        }
+        Some(JsxConditionalCastTailPair {
+            value,
+            exterior_head: self.conditional_branch_head(exterior, span.start, false),
+            head: ResolvedExpressionHead {
+                head: self.conditional_branch_head(leading, value_span.start, false),
+                binding: CommentBinding::Unbound,
+            },
+            tail: tail_span,
+            exterior_tail: Span::new(span.end, source.end),
+        })
+    }
+
+    fn conditional_branch_head(
+        &self,
+        comments: &'ast [Comment],
+        start: u32,
+        preserve_source: bool,
+    ) -> NodeHead<'ast> {
+        let preserve_source = preserve_source
+            || comments.iter().any(|comment| {
+                comment.kind != CommentKind::Block
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0
+            });
+        NodeHead {
+            comments,
+            content_start: start,
+            // Inline block comments use the branch operator's emitted gap.
+            layout: if preserve_source {
+                CommentRunLayout::Source
+            } else {
+                CommentRunLayout::InlineLeading(start)
+            },
+            gap_end: preserve_source.then_some(start),
+        }
+    }
+
     fn format_conditional_branch<T>(
         &mut self,
         branch: ConditionalBranch<'ast>,
@@ -1285,19 +1397,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 parentheses: None,
             };
         }
-        let jsx_pair = chain.is_jsx()
+        let can_use_jsx_pair = chain.is_jsx()
             && mode == ContentMode::Formatted
-            && matches!(boundary.next_binding, CommentBinding::Unbound)
-            && match content.data {
-                ExprData::NullLiteral(_) | ExprData::ParenthesizedExpression(_) => false,
-                ExprData::IdentifierReference(identifier) => {
-                    self.ast.get_utf8(identifier.name(self.ast)) != "undefined"
-                }
-                ExprData::ConditionalExpression(_) => {
-                    !matches!(position, ExpressionPosition::ConditionalAlternate)
-                }
-                _ => true,
-            };
+            && matches!(boundary.next_binding, CommentBinding::Unbound);
+        let jsx_pair =
+            can_use_jsx_pair && self.jsx_conditional_branch_generates_pair(content.data, position);
+        let cast_tail_pair = if can_use_jsx_pair
+            && !jsx_pair
+            && matches!(position, ExpressionPosition::ConditionalConsequent)
+            && boundary.annotation.is_none()
+            && !boundary
+                .leading
+                .iter()
+                .any(|&comment| self.comment_needs_jsdoc_enclosure(comment))
+        {
+            self.prepare_jsx_conditional_cast_tail_pair(&content, position)
+        } else {
+            None
+        };
         let pair_lines = jsx_pair.then(|| {
             let first = boundary
                 .leading
@@ -1321,24 +1438,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary
                 .after_operator
                 .write(writer, FlatSeparator::Empty, |_| {});
-            let source_head = mode == ContentMode::Verbatim
-                || !matches!(boundary.next_binding, CommentBinding::Unbound)
-                || boundary.leading.iter().any(|comment| {
-                    comment.kind != swc_next_ecma_ast::CommentKind::Block
-                        || self.line_breaks(comment.span.start, comment.span.end) != 0
-                });
-            let head = NodeHead {
-                comments: boundary.leading,
-                content_start: source_start,
-                layout: if source_head {
-                    CommentRunLayout::Source
-                } else {
-                    // This head follows the emitted operator, so source-owned
-                    // opening lines become breakable inline comment gaps.
-                    CommentRunLayout::InlineLeading(source_start)
-                },
-                gap_end: source_head.then_some(source_start),
-            };
+            let head = self.conditional_branch_head(
+                boundary.leading,
+                source_start,
+                mode == ContentMode::Verbatim
+                    || !matches!(boundary.next_binding, CommentBinding::Unbound),
+            );
             let operand_indent = if self.is_nullish_conditional_operand(content.data, position) {
                 operand_indent
             } else {
@@ -1351,6 +1456,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .with_tail_owner(TailOwner::ParentOperation);
             if following_mode == ContentMode::Verbatim {
                 context.ignored_parentheses_closing = Some(Span::new(operand_end, source_end));
+            }
+            if let Some(pair) = cast_tail_pair {
+                let _outer_scope = content
+                    .parentheses
+                    .map(|_| self.recursion_scope(original))
+                    .transpose()?
+                    .flatten();
+                self.format_node_head(head, ExpressionStart::None, None, writer)?;
+                self.comments.claim(pair.exterior_head.comments)?;
+                self.format_node_head(pair.exterior_head, ExpressionStart::None, None, writer)?;
+                let mut output =
+                    self.format_parenthesized_operand(writer, |formatter, writer| {
+                        let _scope = formatter.recursion_scope(content.expression)?;
+                        formatter.comments.claim(pair.head.head.comments)?;
+                        let pending = formatter.format_expression_leading_prepared(
+                            pair.value,
+                            None,
+                            pair.head,
+                            context.inside_parentheses(),
+                            None,
+                            writer,
+                        )?;
+                        formatter.capture_expression_tail(pair.tail, pending)
+                    })?;
+                output.pending =
+                    self.capture_expression_tail(pair.exterior_tail, output.pending)?;
+                return finish(self, output, false, writer);
             }
             let generated = boundary.annotation.and_then(|annotation| {
                 self.emitted_head_enclosure_owner(
