@@ -195,6 +195,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         1 + u8::from(memchr::memchr2(b'\n', b'\r', &source[ending.end..]).is_some())
     }
 
+    /// Whether a comment starts on a new source line that visual layout
+    /// would skip. The packet's caller owns its operator and delimiters.
+    pub(super) fn has_source_only_comment_gap(&self, start: u32, comments: &[Comment]) -> bool {
+        let mut previous = start;
+        comments.iter().any(|comment| {
+            let start = previous;
+            previous = comment.span.end;
+            self.line_breaks(start, comment.span.start) == 0
+                && self.source_line_breaks(start, comment.span.start) != 0
+        })
+    }
+
     /// Syntax and tool directives retain every ECMAScript line terminator.
     pub(super) fn source_line_breaks(&self, start: u32, end: u32) -> u8 {
         let mut characters = self.source(Span::new(start, end)).chars().peekable();

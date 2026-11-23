@@ -2396,7 +2396,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || self.expression_has_generated_head_frame(content, context)
             || self.source_exterior_cast_owner(pair).is_some()
             || self
-                .type_binary_operand_parentheses(content, context)
+                .commented_operand_parentheses(content, context)
                 .is_some()
             || self
                 .protected_grammar_parentheses(content, context)
@@ -4128,7 +4128,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if ignored_child.is_none()
             && let Some(boundary) = self
-                .type_binary_operand_parentheses(&content, context)
+                .commented_operand_parentheses(&content, context)
                 .or_else(|| self.protected_grammar_parentheses(&content, context))
                 .or_else(|| self.sequence_member_parentheses(&content, context))
         {
@@ -4514,7 +4514,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode: ContentMode::Formatted,
                 ignored_child: None,
             } => {
-                self.type_binary_operand_parentheses(content, context)
+                self.commented_operand_parentheses(content, context)
                     .is_none()
                     && self
                         .protected_grammar_parentheses(content, context)
@@ -4906,6 +4906,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(head.owner());
             }
             let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
+            if matches!(context.position, ExpressionPosition::Superclass { .. }) {
+                let source_end = tail.as_ref().map_or(inner_span.end, |tail| tail.source_end);
+                let tail_comments = self.comments.between(Span::new(source_end, span.end))?;
+                if self.has_source_only_comment_gap(source_end, tail_comments) {
+                    let tail = ExpressionTail {
+                        source_end,
+                        comments: tail_comments,
+                    };
+                    return self.format_source_operand_tail(tail, array_comments, writer);
+                }
+            }
             let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
             self.format_expression_tail_with_array_comments(tail, array_comments, writer)
         };
@@ -6127,23 +6138,75 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn type_binary_operand_parentheses(
+    fn commented_operand_parentheses(
         &self,
         content: &ExpressionContent,
         context: ExpressionContext<'ast>,
     ) -> Option<SourceParentheses> {
         if context.content_mode != ContentMode::Formatted
-            || !matches!(context.position, ExpressionPosition::TypeBinaryOperand)
+            || !matches!(
+                context.position,
+                ExpressionPosition::TypeBinaryOperand | ExpressionPosition::Superclass { .. }
+            )
         {
             return None;
         }
         let removed = content.parentheses?;
         let tail = removed.tail?;
-        let comments = self.source_parentheses_comments(removed.source).tail;
-        let last = comments.last()?;
-        // Source-separated or multiline tail packets must close before `as`/`satisfies`.
-        // An inline line suffix can remain pending through the type operator.
+        // A required superclass pair owns the trailing comments inside it.
+        if matches!(context.position, ExpressionPosition::Superclass { .. }) {
+            return self
+                .expression_is_parenthesized(content.data, context)
+                .then_some(removed.source);
+        }
+        let last = self
+            .source_parentheses_comments(removed.source)
+            .tail
+            .last()?;
         (self.line_breaks(tail.span.start, last.span.end) != 0).then_some(removed.source)
+    }
+
+    pub(in crate::formatter) fn format_operand_tail_on_source_lines(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let Some(tail) = tail else {
+            return Ok(());
+        };
+        if !self.has_source_only_comment_gap(tail.source_end, tail.comments) {
+            return self.format_expression_tail_with_array_comments(
+                Some(tail),
+                array_comments,
+                writer,
+            );
+        }
+        self.format_source_operand_tail(tail, array_comments, writer)
+    }
+
+    fn format_source_operand_tail(
+        &mut self,
+        tail: ExpressionTail<'ast>,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        // An ECMAScript line separator can put a comment on its own source
+        // line without breaking the document's visual lines.
+        self.comments.claim(tail.comments)?;
+        let mut previous = tail.source_end;
+        for comment in tail.comments {
+            self.source_line_constraint(previous, comment.span.start)
+                .write(writer, FlatSeparator::Space, Writer::space);
+            self.format_comment_run_with_array_comments(
+                std::slice::from_ref(comment),
+                CommentRunLayout::Source,
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+            previous = comment.span.end;
+        }
+        Ok(())
     }
 
     fn ignored_operand_owns_operation_head(

@@ -1,0 +1,29 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Derived extends (Base // superclass ) implements Contract {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Derived
+  extends Base
+  // superclass
+  implements Contract {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Derived
+  extends Base
+  // superclass
+  implements
+    Contract {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+class Derived
+	extends Base
+	// superclass
+	implements Contract {}
