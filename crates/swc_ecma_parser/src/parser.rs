@@ -947,6 +947,7 @@ impl ClassElementModifiers {
 enum ClassModifierStep {
     Consumed,
     Key(PropertyKey),
+    StaticBlock,
     None,
 }
 
@@ -3543,25 +3544,34 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut has_modifiers = false;
         loop {
             let modifier_end = self.current_token.start();
-            if self.current_token.tag() == TokenTag::Static
-                && let Some(block) = self.try_static_block(decorators)?
-            {
-                if has_modifiers {
-                    self.report(
-                        Span::new(element_start, modifier_end),
-                        "Static blocks cannot have modifiers",
-                        ReportOptions::default(),
-                    );
-                    let end = block.span(&self.ast).end;
-                    block.set_span(&mut self.ast, Span::new(element_start, end));
-                }
-                return Some(block);
-            }
             match self.consume_modifier(&mut modifiers)? {
                 ClassModifierStep::Consumed => has_modifiers = true,
                 ClassModifierStep::Key(property_key) => {
                     key = Some(property_key);
                     break;
+                }
+                ClassModifierStep::StaticBlock => {
+                    if !decorators.is_empty() {
+                        self.report(
+                            decorators
+                                .get_node(&self.ast, 0)
+                                .expect("non-empty decorator range contains its first node")
+                                .span(&self.ast),
+                            "Decorators cannot be applied to static blocks",
+                            ReportOptions::default(),
+                        );
+                    }
+                    let block = self.parse_static_block(modifier_end)?;
+                    if has_modifiers {
+                        self.report(
+                            Span::new(element_start, modifier_end),
+                            "Static blocks cannot have modifiers",
+                            ReportOptions::default(),
+                        );
+                        let end = block.span(&self.ast).end;
+                        block.set_span(&mut self.ast, Span::new(element_start, end));
+                    }
+                    return Some(block);
                 }
                 ClassModifierStep::None => break,
             }
@@ -3715,10 +3725,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(ClassModifierStep::None);
         }
 
-        let Some(next) = self.peek_ahead() else {
+        // Both a modifier and a keyword used as a key consume this token.
+        // Keep the next token instead of rewinding and scanning it again.
+        if !self.try_advance() {
             return Some(ClassModifierStep::None);
-        };
+        }
+        let next = self.current_token;
         let next_tag = next.tag();
+        if tag == TokenTag::Static && next_tag == TokenTag::LeftBrace {
+            return Some(ClassModifierStep::StaticBlock);
+        }
         let accessor_before_star =
             next_tag == TokenTag::Star && matches!(tag, TokenTag::Get | TokenTag::Set);
         let can_start_modifier = can_start_element_key(next_tag)
@@ -3730,7 +3746,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             can_start_modifier && !(conflicting_modifier && next.has_line_terminator_before());
 
         if !consume_as_modifier {
-            self.advance_without_escape_check()?;
             let name = self.identifier_name(token);
             return Some(ClassModifierStep::Key(
                 self.ast.property_key_identifier_name(token.span(), name),
@@ -3753,37 +3768,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             modifiers.set(tag);
         }
-        self.advance_without_escape_check()?;
         Some(ClassModifierStep::Consumed)
-    }
-
-    fn try_static_block(
-        &mut self,
-        decorators: SubRange<Decorator>,
-    ) -> Option<Option<ClassElement>> {
-        let static_token = self.current_token;
-        if static_token.tag() != TokenTag::Static || static_token.is_escaped() {
-            return Some(None);
-        }
-        let Some(next) = self.peek_ahead() else {
-            // Normal modifier parsing will report the lexical error.
-            return Some(None);
-        };
-        if next.tag() != TokenTag::LeftBrace {
-            return Some(None);
-        }
-        if !decorators.is_empty() {
-            self.report(
-                decorators
-                    .get_node(&self.ast, 0)
-                    .expect("non-empty decorator range contains its first node")
-                    .span(&self.ast),
-                "Decorators cannot be applied to static blocks",
-                ReportOptions::default(),
-            );
-        }
-        self.advance_without_escape_check()?;
-        self.parse_static_block(static_token.start()).map(Some)
     }
 
     // ClassStaticBlock :
@@ -4527,10 +4512,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_parameter_property_modifiers(&mut self) -> Option<ParameterPropertyModifiers> {
         let mut modifiers = ParameterPropertyModifiers::default();
-        while self.is_parameter_property_modifier_start()? {
+        while is_parameter_property_modifier_tag(self.current_token.tag()) {
             let token = self.current_token;
-            self.advance_without_escape_check()?;
-            self.report_if_escaped_keyword(token);
+            if !self.try_advance_if(|next| {
+                !next.has_line_terminator_before()
+                    && can_follow_parameter_property_modifier(next.tag())
+            })? {
+                break;
+            }
             match token.tag() {
                 TokenTag::Public => modifiers.accessibility = Accessibility::Public,
                 TokenTag::Private => modifiers.accessibility = Accessibility::Private,
@@ -4542,17 +4531,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             modifiers.present = true;
         }
         Some(modifiers)
-    }
-
-    fn is_parameter_property_modifier_start(&mut self) -> Option<bool> {
-        if !is_parameter_property_modifier_tag(self.current_token.tag()) {
-            return Some(false);
-        }
-        let next = self.peek_ahead()?;
-        if next.has_line_terminator_before() {
-            return Some(false);
-        }
-        Some(can_follow_parameter_property_modifier(next.tag()))
     }
 
     // FunctionBody[Yield, Await] :
@@ -7998,11 +7976,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut readonly = false;
         let start = self.current_token.start();
         if tag == TokenTag::Readonly {
-            let next = self.peek_ahead()?;
-            if !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag()) {
-                readonly = true;
-                self.advance()?;
-            }
+            readonly = self.try_advance_if(|next| {
+                !next.has_line_terminator_before() && can_follow_readonly_modifier(next.tag())
+            })?;
         }
         if self.current_token.tag() == TokenTag::LeftBracket && self.is_index_signature_start()? {
             return self.parse_index_signature(start, readonly, false);
@@ -8185,14 +8161,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut kind = TsMethodSignatureKind::Method;
         let head_tag = self.current_token.tag();
         if matches!(head_tag, TokenTag::Get | TokenTag::Set)
-            && can_follow_accessor_keyword(self.peek_ahead()?.tag())
+            && self.try_advance_if(|next| can_follow_accessor_keyword(next.tag()))?
         {
             kind = if head_tag == TokenTag::Get {
                 TsMethodSignatureKind::Get
             } else {
                 TsMethodSignatureKind::Set
             };
-            self.advance()?;
         }
         let computed = self.current_token.tag() == TokenTag::LeftBracket;
         let key = self.parse_property_key(false)?;
@@ -14358,17 +14333,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     /// Advance without reporting lexical errors, restoring lexer state on failure.
     fn try_advance(&mut self) -> bool {
+        self.try_advance_if(|_| true).unwrap_or(false)
+    }
+
+    /// Advances when the next token satisfies `accept`, retaining its lexer side
+    /// effects. Rejected tokens and lexical failures restore the original state.
+    /// Returns `None` on a lexical failure without reporting a diagnostic.
+    #[inline]
+    fn try_advance_if(&mut self, accept: impl FnOnce(Token) -> bool) -> Option<bool> {
         let previous_end = self.current_token.end();
-        let mut next = self.current_token;
-        let peek = self.begin_peek();
+        let mut peek = self.begin_peek();
         peek.lexer.state.prev_token_end = previous_end;
-        if !peek.lexer.try_next_token(&mut next) && peek.lexer.next_token(&mut next).is_err() {
-            return false;
+        let next = peek.next()?;
+        if !accept(next) {
+            return Some(false);
         }
         peek.commit();
         self.check_escaped_keyword();
         self.current_token = next;
-        true
+        Some(true)
     }
 
     #[inline]
@@ -15168,6 +15151,38 @@ mod tests {
         assert_eq!(parsed.lexer.comments.len(), 1);
         assert_eq!(parsed.lexer.comments[0].position, CommentPosition::Trailing);
         assert_eq!(parsed.lexer.comments[0].attached_to, 4);
+
+        let mut parsed = parser("readonly /* note */ next");
+        let checkpoint = parsed.checkpoint();
+        assert_eq!(
+            parsed.try_advance_if(|next| next.tag() == TokenTag::Colon),
+            Some(false)
+        );
+        assert_eq!(parsed.checkpoint(), checkpoint);
+        assert!(parsed.lexer.comments.is_empty());
+        assert_eq!(
+            parsed.try_advance_if(|next| next.tag() == TokenTag::Identifier),
+            Some(true)
+        );
+        assert_eq!(
+            token_texts(parsed.source, &parsed.lexer.tokens),
+            ["readonly", "next"]
+        );
+        assert_eq!(parsed.lexer.comments.len(), 1);
+        assert_eq!(parsed.lexer.comments[0].position, CommentPosition::Leading);
+        assert_eq!(parsed.lexer.comments[0].attached_to, 20);
+
+        let mut parsed = parser("publ\\u0069c next");
+        assert_eq!(parsed.try_advance_if(|_| false), Some(false));
+        assert!(parsed.diagnostics.entries.is_empty());
+        assert_eq!(parsed.try_advance_if(|_| true), Some(true));
+        assert_eq!(parsed.diagnostics.entries.len(), 1);
+
+        let mut parsed = parser("readonly /*");
+        let checkpoint = parsed.checkpoint();
+        assert_eq!(parsed.try_advance_if(|_| true), None);
+        assert_eq!(parsed.checkpoint(), checkpoint);
+        assert!(parsed.diagnostics.entries.is_empty());
 
         let mut parsed = parser("head /*");
         assert!(!parsed.try_advance());
