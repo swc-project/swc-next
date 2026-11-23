@@ -1758,6 +1758,171 @@
         "prettierNative": "class C {\n  static {\n    /* header */ /** @type {number} */ let value = \"x\";\n  }\n}\n"
       }
     ],
+    "js/classes/superclass-assignment-nested-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "Result = class\n  extends (\n    make({\n      // note\n    })\n  ) {};\n",
+        "prettierNative": "Result = class extends (\n  make({\n    // note\n  })\n) {};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "Result = class\n  extends (\n    make({\n      // note\n    })\n  ) {};\n",
+        "prettierNative": "Result = class extends (\n  make({\n    // note\n  })\n) {};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "Result = class\n  extends (\n    make({\n      // note\n    })\n  ) {}\n",
+        "prettierNative": "Result = class extends (\n  make({\n    // note\n  })\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "Result = class\n  extends (\n    make({\n      // note\n    })\n  ) {}\n",
+        "prettierNative": "Result = class extends (\n  make({\n    // note\n  })\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "Result = class\n\textends (\n\t\tmake({\n\t\t\t// note\n\t\t})\n\t) {};\n",
+        "prettierNative": "Result = class extends (\n\tmake({\n\t\t// note\n\t})\n) {};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "Result = class\n  extends (\n    make({\n      // note\n    })\n  ) {}\n",
+        "prettierNative": "Result = class extends (\n  make({\n    // note\n  })\n) {}\n"
+      }
+    ],
+    "js/classes/superclass-inline-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class Derived\n\textends (\n\t\tBase // superclass\n\t) {}\n",
+        "prettierNative": "class Derived extends Base {\n\t// superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n"
+      }
+    ],
+    "js/classes/superclass-own-line-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base\n    // superclass\n  ) {}\n\nconst Example = class\n  extends (\n    getBase()\n    // superclass\n  )\n{\n  method() {}\n};\n\nclass Ignored\n  extends (/* prettier-ignore */ pkg . Base\n    // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n\nconst Example = class extends getBase() {\n  // superclass\n  method() {}\n};\n\nclass Ignored extends /* prettier-ignore */ pkg . Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base\n    // superclass\n  ) {}\n\nconst Example = class\n  extends (\n    getBase()\n    // superclass\n  )\n{\n  method() {}\n};\n\nclass Ignored\n  extends (/* prettier-ignore */ pkg . Base\n    // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n\nconst Example = class extends getBase() {\n  // superclass\n  method() {}\n};\n\nclass Ignored\n  extends /* prettier-ignore */ pkg . Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base\n    // superclass\n  ) {}\n\nconst Example = class\n  extends (\n    getBase()\n    // superclass\n  )\n{\n  method() {}\n}\n\nclass Ignored\n  extends (/* prettier-ignore */ pkg . Base\n    // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n\nconst Example = class extends getBase() {\n  // superclass\n  method() {}\n}\n\nclass Ignored extends /* prettier-ignore */ pkg . Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base\n    // superclass\n  ) {}\n\nconst Example = class\n  extends (\n    getBase()\n    // superclass\n  )\n{\n  method() {}\n}\n\nclass Ignored\n  extends (/* prettier-ignore */ pkg . Base\n    // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n\nconst Example = class extends getBase() {\n  // superclass\n  method() {}\n}\n\nclass Ignored\n  extends /* prettier-ignore */ pkg . Base {\n  // superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class Derived\n\textends (\n\t\tBase\n\t\t// superclass\n\t) {}\n\nconst Example = class\n\textends (\n\t\tgetBase()\n\t\t// superclass\n\t)\n{\n\tmethod() {}\n};\n\nclass Ignored\n\textends (/* prettier-ignore */ pkg . Base\n\t\t// superclass\n\t) {}\n",
+        "prettierNative": "class Derived extends Base {\n\t// superclass\n}\n\nconst Example = class extends getBase() {\n\t// superclass\n\tmethod() {}\n};\n\nclass Ignored\n\textends /* prettier-ignore */ pkg . Base {\n\t// superclass\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Derived\n  extends (\n    Base\n    // superclass\n  ) {}\n\nconst Example = class\n  extends (\n    getBase()\n    // superclass\n  )\n{\n  method() {}\n}\n\nclass Ignored\n  extends (/* prettier-ignore */ pkg . Base\n    // superclass\n  ) {}\n",
+        "prettierNative": "class Derived extends Base {\n  // superclass\n}\n\nconst Example = class extends getBase() {\n  // superclass\n  method() {}\n}\n\nclass Ignored extends /* prettier-ignore */ pkg . Base {\n  // superclass\n}\n"
+      }
+    ],
     "js/comments/assignment-head-packet/blank-member/input.js": [
       {
         "options": {
@@ -9167,6 +9332,16 @@
         },
         "swcPlugin": "schedule(function (firstValue, secondValue, thirdValue) // @ts-expect-error\n{\n  return missingValue;\n}, delay);\n",
         "prettierNative": "schedule(function (firstValue, secondValue, thirdValue) {\n  // @ts-expect-error\n  return missingValue;\n}, delay);\n"
+      }
+    ],
+    "js/expressions/call/fluent-terminal-optional-call.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = x.value.options(y.fooBar(fooBar, y))?.someLongIdentifierName?.([\n  items,\n  /re/g,\n  \"str\",\n  x,\n  1,\n]);\n",
+        "prettierNative": "const value = x.value\n  .options(y.fooBar(fooBar, y))\n  ?.someLongIdentifierName?.([items, /re/g, \"str\", x, 1]);\n"
       }
     ],
     "js/expressions/call/function-composition/diagnostic-boundary.mjs": [
@@ -23785,6 +23960,17 @@
         "prettierNative": "call(\n  zero() /* eslint-disable-next-line no-undef */,\n\n  first(),\n  second(),\n);\n"
       }
     ],
+    "js/statement-source-lines/cast-guard/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const item = { value: 0 }\n// eslint-disable-next-line no-unused-expressions\n;/** @type {{value: 0}} */(item).value;\n\n/* eslint-disable-next-line no-unused-expressions */\n/** @type {{value: 0}} */ (item).value;\n",
+        "prettierNative": "const item = { value: 0 }\n// eslint-disable-next-line no-unused-expressions\n;/** @type {{value: 0}} */ (item).value\n\n/* eslint-disable-next-line no-unused-expressions */\n;/** @type {{value: 0}} */ (item).value\n"
+      }
+    ],
     "js/statement-source-lines/class-next/input.js": [
       {
         "options": {
@@ -28522,6 +28708,60 @@
         "prettierNative": "value as Result /* second */ as Other // first\n"
       }
     ],
+    "ts/assertion-rhs-packets/const-multiline-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "1 as /* explanation\n  continues */\nconst;\n",
+        "prettierNative": "1 as const /* explanation\n  continues */;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "1 as /* explanation\n  continues */\nconst;\n",
+        "prettierNative": "1 as const /* explanation\n  continues */;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "1 as /* explanation\n  continues */\nconst\n",
+        "prettierNative": "1 as const /* explanation\n  continues */\n"
+      }
+    ],
+    "ts/assertion-rhs-packets/named-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies // explanation\n  Result;\n",
+        "prettierNative": "value satisfies Result; // explanation\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies // explanation\n  Result;\n",
+        "prettierNative": "value satisfies Result; // explanation\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "value satisfies // explanation\n  Result\n",
+        "prettierNative": "value satisfies Result // explanation\n"
+      }
+    ],
     "ts/ast-member-prefix/computed-after-field.ts": [
       {
         "options": {
@@ -30564,6 +30804,16 @@
         "prettierNative": "result =\r\n\tnew Box<number>(\r\n\t\t// prettier-ignore\r\n\t\tinvoke( 1 ),\r\n\t);\r\n"
       }
     ],
+    "ts/call-type-arguments/fluent-terminal-call.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const result = x.value.options(y.fooBar(fooBar, y)).someLongIdentifierName<B>([\n  items,\n  /r e/g,\n  \"str\",\n  x,\n  1,\n]);\n\nconst record = x.value\n  .options(y)\n  .someLongIdentifierNameThatIsQuiteLongIndeed<B>({\n    items,\n    re: /re/g,\n    str: \"str\",\n    x,\n    one: 1,\n  });\n",
+        "prettierNative": "const result = x.value\n  .options(y.fooBar(fooBar, y))\n  .someLongIdentifierName<B>([items, /r e/g, \"str\", x, 1]);\n\nconst record = x.value\n  .options(y)\n  .someLongIdentifierNameThatIsQuiteLongIndeed<B>({\n    items,\n    re: /re/g,\n    str: \"str\",\n    x,\n    one: 1,\n  });\n"
+      }
+    ],
     "ts/call-type-arguments/optional-angle-owner.ts": [
       {
         "options": {
@@ -30792,7 +31042,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const inline = 1 as number; // comment\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
+        "swcPlugin": "const inline = (\n  1 // comment\n) as number;\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
         "prettierNative": "const inline = 1 as number; // comment\nconst own = 1 as // comment\nnumber;\nconst packet = 1 satisfies /* first // comment\nsecond */ number;\nconst following = 1 as /* after */ number; // comment\n"
       },
       {
@@ -30801,7 +31051,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const inline = 1 as number // comment\nconst own = (\n  1\n  // comment\n) as number\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number\nconst following = (\n  1 // comment\n  /* after */\n) as number\n",
+        "swcPlugin": "const inline = (\n  1 // comment\n) as number\nconst own = (\n  1\n  // comment\n) as number\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number\nconst following = (\n  1 // comment\n  /* after */\n) as number\n",
         "prettierNative": "const inline = 1 as number // comment\nconst own = 1 as // comment\nnumber\nconst packet = 1 satisfies /* first // comment\nsecond */ number\nconst following = 1 as /* after */ number // comment\n"
       },
       {
@@ -30809,7 +31059,7 @@
           "lineWidth": 40,
           "indentStyle": "space"
         },
-        "swcPlugin": "const inline = 1 as number; // comment\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
+        "swcPlugin": "const inline = (\n  1 // comment\n) as number;\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
         "prettierNative": "const inline = 1 as number; // comment\nconst own = 1 as // comment\nnumber;\nconst packet = 1 satisfies /* first // comment\nsecond */ number;\nconst following =\n  1 as /* after */ number; // comment\n"
       },
       {
@@ -30817,7 +31067,7 @@
           "lineWidth": 120,
           "indentStyle": "space"
         },
-        "swcPlugin": "const inline = 1 as number; // comment\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
+        "swcPlugin": "const inline = (\n  1 // comment\n) as number;\nconst own = (\n  1\n  // comment\n) as number;\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number;\nconst following = (\n  1 // comment\n  /* after */\n) as number;\n",
         "prettierNative": "const inline = 1 as number; // comment\nconst own = 1 as // comment\nnumber;\nconst packet = 1 satisfies /* first // comment\nsecond */ number;\nconst following = 1 as /* after */ number; // comment\n"
       },
       {
@@ -30826,7 +31076,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const inline = 1 as number // comment\nconst own = (\n  1\n  // comment\n) as number\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number\nconst following = (\n  1 // comment\n  /* after */\n) as number\n",
+        "swcPlugin": "const inline = (\n  1 // comment\n) as number\nconst own = (\n  1\n  // comment\n) as number\nconst packet = (\n  1 /* first\nsecond */ // comment\n) satisfies number\nconst following = (\n  1 // comment\n  /* after */\n) as number\n",
         "prettierNative": "const inline = 1 as number // comment\nconst own = 1 as // comment\nnumber\nconst packet = 1 satisfies /* first // comment\nsecond */ number\nconst following =\n  1 as /* after */ number // comment\n"
       }
     ],
@@ -34832,13 +35082,67 @@
         "prettierNative": "const value = 1 as const // @ts-expect-error reason\n"
       }
     ],
+    "ts/const-marker-comments/inactive-annotation.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = 1 as /** @type {number} */ const;\n",
+        "prettierNative": "const value = 1 /** @type {number} */ as const;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value =\n  1 as /** @type {number} */ const;\n",
+        "prettierNative": "const value =\n  1 /** @type {number} */ as const;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = 1 as /** @type {number} */ const\n",
+        "prettierNative": "const value = 1 /** @type {number} */ as const\n"
+      }
+    ],
+    "ts/const-marker-comments/mixed-run.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = 1 as /* head */ // tail\n  const;\n",
+        "prettierNative": "const value = 1 /* head */ as const; // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value =\n  1 as /* head */ // tail\n    const;\n",
+        "prettierNative": "const value =\n  1 /* head */ as const; // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = 1 as /* head */ // tail\n  const\n",
+        "prettierNative": "const value = 1 /* head */ as const // tail\n"
+      }
+    ],
     "ts/const-marker-comments/multiline-tail.ts": [
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const value = 1 as const; /* marker\n detail */\n",
+        "swcPlugin": "const value = 1 as /* marker\n detail */ const;\n",
         "prettierNative": "const value = 1 as const /* marker\n detail */;\n"
       },
       {
@@ -34846,8 +35150,71 @@
           "lineWidth": 24,
           "indentStyle": "space"
         },
-        "swcPlugin": "const value =\n  1 as const; /* marker\n detail */\n",
+        "swcPlugin": "const value =\n  1 as /* marker\n detail */ const;\n",
         "prettierNative": "const value =\n  1 as const /* marker\n detail */;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = 1 as /* marker\n detail */ const\n",
+        "prettierNative": "const value = 1 as const /* marker\n detail */\n"
+      }
+    ],
+    "ts/const-marker-comments/operand-head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "consume(1 as /* marker */ const, 2 as /* named type */ Number);\n",
+        "prettierNative": "consume(1 /* marker */ as const, 2 as /* named type */ Number);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "consume(\n  1 as /* marker */ const,\n  2 as /* named type */ Number,\n);\n",
+        "prettierNative": "consume(\n  1 /* marker */ as const,\n  2 as /* named type */ Number,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "consume(1 as /* marker */ const, 2 as /* named type */ Number)\n",
+        "prettierNative": "consume(1 /* marker */ as const, 2 as /* named type */ Number)\n"
+      }
+    ],
+    "ts/const-marker-comments/suffix-list.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const values = [\n  1 as // marker\n    const,\n  2,\n];\n",
+        "prettierNative": "const values = [\n  1 as const, // marker\n  2,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const values = [\n  1 as // marker\n    const,\n  2,\n];\n",
+        "prettierNative": "const values = [\n  1 as const, // marker\n  2,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const values = [\n  1 as // marker\n    const,\n  2,\n]\n",
+        "prettierNative": "const values = [\n  1 as const, // marker\n  2,\n]\n"
       }
     ],
     "ts/const-marker-comments/suffix-member.ts": [
@@ -34856,7 +35223,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "(1 as const) // marker\n  .toFixed();\n",
+        "swcPlugin": "(\n  1 as // marker\n    const\n).toFixed();\n",
         "prettierNative": "(\n  1 as const // marker\n).toFixed();\n"
       },
       {
@@ -34864,7 +35231,7 @@
           "lineWidth": 24,
           "indentStyle": "space"
         },
-        "swcPlugin": "(1 as const) // marker\n  .toFixed();\n",
+        "swcPlugin": "(\n  1 as // marker\n    const\n).toFixed();\n",
         "prettierNative": "(\n  1 as const // marker\n).toFixed();\n"
       },
       {
@@ -34873,8 +35240,35 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": ";(1 as const) // marker\n  .toFixed()\n",
+        "swcPlugin": ";(\n  1 as // marker\n    const\n).toFixed()\n",
         "prettierNative": ";(\n  1 as const // marker\n).toFixed()\n"
+      }
+    ],
+    "ts/const-marker-comments/suffix-return.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {\n  return 1 as // marker\n    const;\n}\n",
+        "prettierNative": "function value() {\n  return 1 as const; // marker\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function value() {\n  return 1 as // marker\n    const;\n}\n",
+        "prettierNative": "function value() {\n  return 1 as const; // marker\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function value() {\n  return 1 as // marker\n    const\n}\n",
+        "prettierNative": "function value() {\n  return 1 as const // marker\n}\n"
       }
     ],
     "ts/const-marker-comments/suppression.ts": [
@@ -36711,6 +37105,78 @@
         "prettierNative": "result =\r\n\tfn<number> +\r\n\tother;\r\n"
       }
     ],
+    "ts/instantiation-expression/callee-type-argument-ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const result = (apply<Inner>)\n// prettier-ignore\n<  Outer  >(value);\n",
+        "prettierNative": "const result = apply<Inner>// prettier-ignore\n<  Outer  >(value);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const result =\n  (apply<Inner>)\n// prettier-ignore\n<  Outer  >(value);\n",
+        "prettierNative": "const result =\n  apply<Inner>// prettier-ignore\n  <  Outer  >(\n    value,\n  );\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const result =\n  (apply<Inner>)\n// prettier-ignore\n<  Outer  >(\n    value,\n  )\n",
+        "prettierNative": "const result =\n  apply<Inner>// prettier-ignore\n  <  Outer  >(\n    value,\n  )\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "const result =\r\n\t(apply<Inner>)\r\n// prettier-ignore\r\n<  Outer  >(value);\r\n",
+        "prettierNative": "const result =\r\n\tapply<Inner>// prettier-ignore\r\n\t<  Outer  >(\r\n\t\tvalue,\r\n\t);\r\n"
+      }
+    ],
+    "ts/instantiation-expression/callee-type-arguments.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = (apply<Inner>)<Outer>(argument, anotherArgument);\nconst nested = ((apply<First>)<Second>)(value);\nconst nestedOptional = ((apply?.callback<First>)<Second>)(value);\nconst optional = apply<Inner>?.<Outer>(value);\n\nnew (Constructor<Inner>)<Outer>();\n\nclass Derived extends (Base<Inner>)<Outer> {}\n\nclass Nested extends ((Base<First>)<Second>) {}\n",
+        "prettierNative": "const value = apply<Inner><Outer>(argument, anotherArgument);\nconst nested = apply<First><Second>(value);\nconst nestedOptional = apply?.callback<First><Second>(value);\nconst optional = apply<Inner>?.<Outer>(value);\n\nnew Constructor<Inner><Outer>();\n\nclass Derived extends Base<Inner><Outer> {}\n\nclass Nested extends Base<First><Second> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value =\n  (apply<Inner>)<Outer>(\n    argument,\n    anotherArgument,\n  );\nconst nested =\n  ((apply<First>)<Second>)(\n    value,\n  );\nconst nestedOptional =\n  ((apply?.callback<First>)<Second>)(\n    value,\n  );\nconst optional =\n  apply<Inner>?.<Outer>(\n    value,\n  );\n\nnew (Constructor<Inner>)<Outer>();\n\nclass Derived extends (Base<Inner>)<Outer> {}\n\nclass Nested extends ((Base<First>)<Second>) {}\n",
+        "prettierNative": "const value =\n  apply<Inner><Outer>(\n    argument,\n    anotherArgument,\n  );\nconst nested =\n  apply<First><Second>(\n    value,\n  );\nconst nestedOptional =\n  apply?.callback<First><Second>(\n    value,\n  );\nconst optional =\n  apply<Inner>?.<Outer>(\n    value,\n  );\n\nnew Constructor<Inner><Outer>();\n\nclass Derived extends Base<Inner><Outer> {}\n\nclass Nested extends Base<First><Second> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value =\n  (apply<Inner>)<Outer>(\n    argument,\n    anotherArgument,\n  )\nconst nested =\n  ((apply<First>)<Second>)(\n    value,\n  )\nconst nestedOptional =\n  ((apply?.callback<First>)<Second>)(\n    value,\n  )\nconst optional =\n  apply<Inner>?.<Outer>(\n    value,\n  )\n\nnew (Constructor<Inner>)<Outer>()\n\nclass Derived extends (Base<Inner>)<Outer> {}\n\nclass Nested extends ((Base<First>)<Second>) {}\n",
+        "prettierNative": "const value =\n  apply<Inner><Outer>(\n    argument,\n    anotherArgument,\n  )\nconst nested =\n  apply<First><Second>(\n    value,\n  )\nconst nestedOptional =\n  apply?.callback<First><Second>(\n    value,\n  )\nconst optional =\n  apply<Inner>?.<Outer>(\n    value,\n  )\n\nnew Constructor<Inner><Outer>()\n\nclass Derived extends Base<Inner><Outer> {}\n\nclass Nested extends Base<First><Second> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "const value =\r\n\t(apply<Inner>)<Outer>(\r\n\t\targument,\r\n\t\tanotherArgument,\r\n\t);\r\nconst nested =\r\n\t((apply<First>)<Second>)(\r\n\t\tvalue,\r\n\t);\r\nconst nestedOptional =\r\n\t((apply?.callback<First>)<Second>)(\r\n\t\tvalue,\r\n\t);\r\nconst optional =\r\n\tapply<Inner>?.<Outer>(\r\n\t\tvalue,\r\n\t);\r\n\r\nnew (Constructor<Inner>)<Outer>();\r\n\r\nclass Derived extends (Base<Inner>)<Outer> {}\r\n\r\nclass Nested extends ((Base<First>)<Second>) {}\r\n",
+        "prettierNative": "const value =\r\n\tapply<Inner><Outer>(\r\n\t\targument,\r\n\t\tanotherArgument,\r\n\t);\r\nconst nested =\r\n\tapply<First><Second>(\r\n\t\tvalue,\r\n\t);\r\nconst nestedOptional =\r\n\tapply?.callback<First><Second>(\r\n\t\tvalue,\r\n\t);\r\nconst optional =\r\n\tapply<Inner>?.<Outer>(\r\n\t\tvalue,\r\n\t);\r\n\r\nnew Constructor<Inner><Outer>();\r\n\r\nclass Derived extends Base<Inner><Outer> {}\r\n\r\nclass Nested extends Base<First><Second> {}\r\n"
+      }
+    ],
     "ts/instantiation-expression/canonical/operator-operand.ts": [
       {
         "options": {
@@ -36719,6 +37185,42 @@
         },
         "swcPlugin": "const postfix = (a++)<T>;\ncall((a--)<T, U>);\nconst prefix = (++a)<T>;\nconst unary = (!a)<T>;\n",
         "prettierNative": "const postfix = a++<T>;\ncall(a--<T, U>);\nconst prefix = ++a<T>;\nconst unary = !a<T>;\n"
+      }
+    ],
+    "ts/instantiation-expression/constructor-callee-call.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "new (factory()<Item>)();\nnew (factory()!.namespace.Constructor<Item>)();\nnew (factory()[key]<Item>)();\nnew (factory()?.Constructor<Item>)();\n",
+        "prettierNative": "new factory()<Item>();\nnew factory()!.namespace.Constructor<Item>();\nnew factory()[key]<Item>();\nnew factory()?.Constructor<Item>();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "new (factory()<Item>)();\nnew (factory()!\n  .namespace\n  .Constructor<Item>)();\nnew (factory()[\n  key\n]<Item>)();\nnew (factory()\n  ?.Constructor<Item>)();\n",
+        "prettierNative": "new factory()<Item>();\nnew factory()!\n  .namespace\n  .Constructor<Item>();\nnew factory()[\n  key\n]<Item>();\nnew factory()\n  ?.Constructor<Item>();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "new (factory()<Item>)()\nnew (factory()!\n  .namespace\n  .Constructor<Item>)()\nnew (factory()[\n  key\n]<Item>)()\nnew (factory()\n  ?.Constructor<Item>)()\n",
+        "prettierNative": "new factory()<Item>()\nnew factory()!\n  .namespace\n  .Constructor<Item>()\nnew factory()[\n  key\n]<Item>()\nnew factory()\n  ?.Constructor<Item>()\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "new (factory()<Item>)();\r\nnew (factory()!\r\n\t.namespace\r\n\t.Constructor<Item>)();\r\nnew (factory()[\r\n\tkey\r\n]<Item>)();\r\nnew (factory()\r\n\t?.Constructor<Item>)();\r\n",
+        "prettierNative": "new factory()<Item>();\r\nnew factory()!\r\n\t.namespace\r\n\t.Constructor<Item>();\r\nnew factory()[\r\n\tkey\r\n]<Item>();\r\nnew factory()\r\n\t?.Constructor<Item>();\r\n"
       }
     ],
     "ts/instantiation-expression/nested-instantiation.ts": [
@@ -43644,6 +44146,96 @@
         "prettierNative": "interface T {\r\n\t/* prettier-ignore */\r\n\ta:12.00\r\n}\r\n"
       }
     ],
+    "ts/type-keyword-boundaries/callable-constraints.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Parameter = Input extends ((arg: X extends Y ? Yes : No) => Result)\n  ? Yes\n  : No;\n\ntype Constructor = Input extends (new <T = X extends Y ? Yes : No>() => Result)\n  ? Yes\n  : No;\n\ntype Inferred = Input extends [\n  infer T extends ((this: X extends Y ? Yes : No) => Result),\n]\n  ? T\n  : never;\n",
+        "prettierNative": "type Parameter = Input extends (arg: X extends Y ? Yes : No) => Result\n  ? Yes\n  : No;\n\ntype Constructor = Input extends new <T = X extends Y ? Yes : No>() => Result\n  ? Yes\n  : No;\n\ntype Inferred = Input extends [\n  infer T extends (this: X extends Y ? Yes : No) => Result,\n]\n  ? T\n  : never;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/conditional-check-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<T> =\n  (T\n/* check */) extends\n// prettier-ignore\nBox <  T  >\n    ? T\n    : never;\n",
+        "prettierNative": "type Result<T> =\n  T extends /* check */ // prettier-ignore\n  Box <  T  >\n    ? T\n    : never;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/conditional.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Checked =\n  Input extends\n  // prettier-ignore\n  Box <  Bound  >\n    ? Yes\n    : No;\n\ntype Constrained = Input  [  ]/* prettier-ignore */extends Bound ? Yes : No;\n",
+        "prettierNative": "type Checked =\n  Input extends // prettier-ignore\n  Box <  Bound  >\n    ? Yes\n    : No;\n\ntype Constrained = Input  [  ] /* prettier-ignore */ extends Bound ? Yes : No;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/expression.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const asserted = h as\n  // prettier-ignore\n  Box <  Boolean  >;\n\nconst checked = h satisfies\n  // prettier-ignore\n  Box <  Boolean  >;\n",
+        "prettierNative": "const asserted = h as // prettier-ignore\nBox <  Boolean  >;\n\nconst checked = h satisfies // prettier-ignore\nBox <  Boolean  >;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/left-source-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const result = (\n  value\n  // operand\n) as\n  // prettier-ignore\n  Box <  Item  >;\n",
+        "prettierNative": "const result = value as // operand\n// prettier-ignore\nBox <  Item  >;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/mapped.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Constrained = {\n  [\n    \\u004b // prettier-ignore\n in Input\n  ]: K;\n};\n\ntype Remapped = { [K in Input  [  ]/* prettier-ignore */as Name]: K };\n",
+        "prettierNative": "type Constrained = {\n  [\n    \\u004b in Input // prettier-ignore\n  ]: K;\n};\n\ntype Remapped = { [K in Input  [  ] /* prettier-ignore */ as Name]: K };\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/mixed-constraint-head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<\n  R extends\n    /* head */ // operand\n    Limit,\n> = R;\n",
+        "prettierNative": "type Result<\n  R /* head */ extends // operand\n    Limit,\n> = R;\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/released-operand-head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Bound<\n  T extends\n    // constraint\n    Target,\n> = T;\n\ntype Inferred = Input extends infer T extends\n  // inferred constraint\n  Target\n  ? T\n  : never;\n\nconst cast = value as\n  // assertion\n  Target;\n\nconst checked = value satisfies\n  // consistency\n  Target;\n",
+        "prettierNative": "type Bound<\n  T extends // constraint\n    Target,\n> = T;\n\ntype Inferred = Input extends infer T extends // inferred constraint\n  Target\n  ? T\n  : never;\n\nconst cast = value as Target; // assertion\n\nconst checked = value satisfies Target; // consistency\n"
+      }
+    ],
+    "ts/type-keyword-boundaries/rhs-source-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const result = value satisfies /* head */ // operand\n  Shape;\n",
+        "prettierNative": "const result = value /* head */ satisfies // operand\nShape;\n"
+      }
+    ],
     "ts/type-member-boundaries/default-before-accessor.ts": [
       {
         "options": {
@@ -44139,6 +44731,43 @@
         "prettierNative": "type Entry =\r\n\tA.B[/* prettier-ignore */\r\n\t12.00];\r\n"
       }
     ],
+    "ts/type-postfix/own-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type ArrayType = (Element\n/* before array */)[];\n\ntype IndexedType = (Target /* first line\nsecond line */)[Key];\n",
+        "prettierNative": "type ArrayType = Element[];\n/* before array */\n\ntype IndexedType = Target /* first line\nsecond line */[Key];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type ArrayType =\n  (Element\n/* before array */)[];\n\ntype IndexedType =\n  (Target /* first line\nsecond line */)[Key];\n",
+        "prettierNative": "type ArrayType =\n  Element[];\n  /* before array */\n\ntype IndexedType =\n  Target /* first line\nsecond line */[Key];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type ArrayType =\n  (Element\n/* before array */)[]\n\ntype IndexedType =\n  (Target /* first line\nsecond line */)[Key]\n",
+        "prettierNative": "type ArrayType =\n  Element[]\n  /* before array */\n\ntype IndexedType =\n  Target /* first line\nsecond line */[Key]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "type ArrayType =\r\n\t(Element\r\n/* before array */)[];\r\n\r\ntype IndexedType =\r\n\t(Target /* first line\r\nsecond line */)[Key];\r\n",
+        "prettierNative": "type ArrayType =\r\n\tElement[];\r\n\t/* before array */\r\n\r\ntype IndexedType =\r\n\tTarget /* first line\r\nsecond line */[Key];\r\n"
+      }
+    ],
     "ts/type-query-arguments/diagnostic-head.ts": [
       {
         "options": {
@@ -44329,7 +44958,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "type Tail<T extends unknown[]> = T extends [\n  unknown,\n  .../* rest */ (/* infer */ infer R /* result */),\n]\n  ? R\n  : never;\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never;\n",
+        "swcPlugin": "type Tail<T extends unknown[]> = T extends [\n  unknown,\n  .../* rest */ (/* infer */ infer R /* result */),\n]\n  ? R\n  : never;\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R /* element */)[]]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never;\n",
         "prettierNative": "type Tail<T extends unknown[]> = T extends [\n  unknown,\n  .../* rest */ /* infer */ infer R /* result */,\n]\n  ? R\n  : never;\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never;\n"
       },
       {
@@ -44337,7 +44966,7 @@
           "lineWidth": 32,
           "indentStyle": "space"
         },
-        "swcPlugin": "type Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    .../* rest */ (/* infer */ infer R /* result */),\n  ]\n    ? R\n    : never;\n\ntype ArrayTail<\n  T extends unknown[],\n> = T extends [\n  ...(infer R) /* element */[],\n]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    ...// rest\n    infer R,\n  ]\n    ? R\n    : never;\n",
+        "swcPlugin": "type Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    .../* rest */ (/* infer */ infer R /* result */),\n  ]\n    ? R\n    : never;\n\ntype ArrayTail<\n  T extends unknown[],\n> = T extends [\n  ...(infer R /* element */)[],\n]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    ...// rest\n    infer R,\n  ]\n    ? R\n    : never;\n",
         "prettierNative": "type Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    .../* rest */ /* infer */ infer R /* result */,\n  ]\n    ? R\n    : never;\n\ntype ArrayTail<\n  T extends unknown[],\n> = T extends [\n  ...(infer R) /* element */[],\n]\n  ? R\n  : never;\n\ntype Tail<T extends unknown[]> =\n  T extends [\n    unknown,\n    ...// rest\n    infer R,\n  ]\n    ? R\n    : never;\n"
       },
       {
@@ -44346,7 +44975,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "type Tail<T extends unknown[]> = T extends [unknown, .../* rest */ (/* infer */ infer R /* result */)] ? R : never\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]] ? R : never\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never\n",
+        "swcPlugin": "type Tail<T extends unknown[]> = T extends [unknown, .../* rest */ (/* infer */ infer R /* result */)] ? R : never\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R /* element */)[]] ? R : never\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never\n",
         "prettierNative": "type Tail<T extends unknown[]> = T extends [unknown, .../* rest */ /* infer */ infer R /* result */] ? R : never\n\ntype ArrayTail<T extends unknown[]> = T extends [...(infer R) /* element */[]] ? R : never\n\ntype Tail<T extends unknown[]> = T extends [\n  unknown,\n  ...// rest\n  infer R,\n]\n  ? R\n  : never\n"
       },
       {
@@ -44355,7 +44984,7 @@
           "indentStyle": "tab",
           "trailingCommas": "none"
         },
-        "swcPlugin": "type Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t.../* rest */ (/* infer */ infer R /* result */)\n\t]\n\t\t? R\n\t\t: never;\n\ntype ArrayTail<T extends unknown[]> =\n\tT extends [\n\t\t...(infer R) /* element */[]\n\t]\n\t\t? R\n\t\t: never;\n\ntype Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t...// rest\n\t\tinfer R\n\t]\n\t\t? R\n\t\t: never;\n",
+        "swcPlugin": "type Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t.../* rest */ (/* infer */ infer R /* result */)\n\t]\n\t\t? R\n\t\t: never;\n\ntype ArrayTail<T extends unknown[]> =\n\tT extends [\n\t\t...(infer R /* element */)[]\n\t]\n\t\t? R\n\t\t: never;\n\ntype Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t...// rest\n\t\tinfer R\n\t]\n\t\t? R\n\t\t: never;\n",
         "prettierNative": "type Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t.../* rest */ /* infer */ infer R /* result */\n\t]\n\t\t? R\n\t\t: never;\n\ntype ArrayTail<T extends unknown[]> =\n\tT extends [\n\t\t...(infer R) /* element */[]\n\t]\n\t\t? R\n\t\t: never;\n\ntype Tail<T extends unknown[]> =\n\tT extends [\n\t\tunknown,\n\t\t...// rest\n\t\tinfer R\n\t]\n\t\t? R\n\t\t: never;\n"
       }
     ],
@@ -44531,6 +45160,18 @@
         },
         "swcPlugin": "type Value = [\n  number,\n  // @ts-expect-error\n  | MissingType | \"alpha\" | \"beta\" | \"gamma\",\n]\n",
         "prettierNative": "type Value = [\n  number,\n  // @ts-expect-error\n  (\n    | MissingType\n    | \"alpha\"\n    | \"beta\"\n    | \"gamma\"\n  )\n]\n"
+      }
+    ],
+    "ts/type-wrapped-call-arguments/narrow/wrapped-arrow-tail.ts": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "indentWidth": 2,
+          "lineWidth": 20,
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "f((\n  () =>\n    a.b(\n      c,\n    ) /* callback */\n) as T satisfies U);\n",
+        "prettierNative": "f((() =>\n  a.b(\n    c,\n  )) /* callback */ as T satisfies U);\n"
       }
     ],
     "ts/typed-targets/anonymous-cast-nonnull.ts": [
@@ -44766,6 +45407,46 @@
         },
         "swcPlugin": ";(\n// prettier-ignore\nobject  ['field']  as   T\n) = compute(1, 2)\n",
         "prettierNative": ";// prettier-ignore\n(object  ['field']  as   T) =\n  compute(1, 2)\n"
+      }
+    ],
+    "ts/types/removed-operator-head/as-intersection.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a as // c\n  B;\n",
+        "prettierNative": "a as B; // c\n"
+      }
+    ],
+    "ts/types/removed-operator-head/as-union.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a as // c\n  B;\n",
+        "prettierNative": "a as B; // c\n"
+      }
+    ],
+    "ts/types/removed-operator-head/satisfies-intersection.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a satisfies // c\n  B;\n",
+        "prettierNative": "a satisfies B; // c\n"
+      }
+    ],
+    "ts/types/removed-operator-head/satisfies-union.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a satisfies // c\n  B;\n",
+        "prettierNative": "a satisfies B; // c\n"
       }
     ],
     "ts/unary-operand-head/block-member.ts": [
