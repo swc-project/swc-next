@@ -530,6 +530,21 @@ struct PrintedStatement<'ast> {
     operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
 }
 
+impl PrintedStatement<'_> {
+    /// An enclosing source gap or annotation packet owns the tail after this point.
+    fn retain_pending_before(&mut self, end: u32) {
+        if let Some(tail) = &mut self.pending {
+            let count = tail
+                .comments
+                .partition_point(|comment| comment.span.end <= end);
+            tail.comments = &tail.comments[..count];
+            if tail.comments.is_empty() {
+                self.pending = None;
+            }
+        }
+    }
+}
+
 impl From<StatementBoundary> for PrintedStatement<'_> {
     fn from(boundary: StatementBoundary) -> Self {
         Self {
@@ -1136,7 +1151,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     terminate_previous: !prior_statement_terminated,
                 };
             }
-            let printed = match statement {
+            let mut printed = match statement {
                 StatementItem::Directive(_) if source_line.owns() => {
                     self.format_node_head(head, expression_start, None, writer)?;
                     self.format_verbatim(statement_span, writer)?;
@@ -1252,6 +1267,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             };
+            if source_packet.is_none()
+                && let Some(first) = annotation_tail
+                    .as_ref()
+                    .and_then(|tail| tail.comments.first())
+            {
+                printed.retain_pending_before(first.span.start);
+            }
             let operator_tail = printed.operator_tail;
             let (mut boundary, pending_tail) =
                 if source_packet.is_some() || annotation_tail.is_some() {

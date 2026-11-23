@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do display(1); /* body detail */
+// prettier-ignore
+while (again(  2, 3  ));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+do display(1); /* body detail */
+// prettier-ignore
+while (again(  2, 3  ));
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+do display(1) /* body detail */
+// prettier-ignore
+while (again(  2, 3  ))

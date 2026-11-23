@@ -155,7 +155,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let printed = writer.group(false, |writer| {
             writer.text("do");
-            let printed = self.format_controlled_body(body, writer)?;
+            let mut printed = self.format_controlled_body(body, writer)?;
+            if let Some(source) = boundary.source {
+                printed.retain_pending_before(source.start);
+            }
             self.flush_statement_tail(printed, writer)
                 .map(PrintedStatement::from)
         })?;
