@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try // @ts-expect-error
+{ const value: string = 1;
+  consume(value);
+} catch {}
+declare function consume(value: string): void;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try // @ts-expect-error
+{ const value: string = 1;
+  consume(value);
+} catch {}
+declare function consume(value: string): void;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+try // @ts-expect-error
+{ const value: string = 1
+  consume(value)
+} catch {}
+declare function consume(
+  value: string,
+): void
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+try // @ts-expect-error
+{ const value: string = 1;
+	consume(value);
+} catch {}
+declare function consume(value: string): void;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try // @ts-expect-error
+{ const value: string = 1
+  consume(
+    value,
+  )
+} catch {}
+declare function consume(
+  value: string,
+): void

@@ -1,0 +1,94 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try // Try header
+{
+  // Try body
+  run();
+} // Before catch
+catch // Catch header
+{
+  // Catch body
+  recover();
+} // Before finally
+finally // Finally header
+{
+  // Finally body
+  cleanUp();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try // Try header
+{
+  // Try body
+  run();
+} // Before catch
+catch // Catch header
+{
+  // Catch body
+  recover();
+} // Before finally
+finally // Finally header
+{
+  // Finally body
+  cleanUp();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+try // Try header
+{
+  // Try body
+  run()
+} // Before catch
+catch // Catch header
+{
+  // Catch body
+  recover()
+} // Before finally
+finally // Finally header
+{
+  // Finally body
+  cleanUp()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+try // Try header
+{
+	// Try body
+	run();
+} // Before catch
+catch // Catch header
+{
+	// Catch body
+	recover();
+} // Before finally
+finally // Finally header
+{
+	// Finally body
+	cleanUp();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try // Try header
+{
+  // Try body
+  run()
+} // Before catch
+catch // Catch header
+{
+  // Catch body
+  recover()
+} // Before finally
+finally // Finally header
+{
+  // Finally body
+  cleanUp()
+}
