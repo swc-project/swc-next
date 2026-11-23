@@ -461,7 +461,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         let (before, leading) = comments.split_at(before_count);
-        let body = prepared_body.unwrap_or_else(|| self.prepare_arrow_body(body));
+        let mut body = prepared_body.unwrap_or_else(|| self.prepare_arrow_body(body));
         let (mode, first_statement, trailing_constraint) = match &body {
             PreparedArrowBody::FunctionBody(body) if self.has_suppression => {
                 let modes = self.signature_body_modes(
@@ -542,10 +542,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             trailing_constraint
         };
+        let retained_sequence_head = if mode == ContentMode::Formatted
+            && let PreparedArrowBody::Expression {
+                expression,
+                content,
+            } = &mut body
+            && let ExprData::SequenceExpression(sequence) = content.data
+            && let Some(removed) = content.parentheses
+            && (removed.head.has_comments
+                || self.prepare_enclosed_sequence_head(sequence).is_some())
+        {
+            // The sequence's required body pair still owns its first member's head.
+            *content = ExpressionContent {
+                expression: *expression,
+                data: self.ast.expr_data(*expression),
+                parentheses: None,
+            };
+            true
+        } else {
+            false
+        };
         let (head_end, hugs_shape, leading_layout) = match &body {
             PreparedArrowBody::Expression { content, .. } => (
                 content.expression.span(self.ast).start,
-                self.arrow_body_hugs_shape(content.data),
+                retained_sequence_head || self.arrow_body_hugs_shape(content.data),
                 CommentRunLayout::GroupedLeading(body_span.start),
             ),
             PreparedArrowBody::FunctionBody(_) => (

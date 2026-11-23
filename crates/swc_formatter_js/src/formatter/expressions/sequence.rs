@@ -138,6 +138,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         sequence: SequenceExpression,
     ) -> Option<PreparedSequenceHead> {
+        self.released_sequence_head(sequence)
+            .map(|(start, _)| PreparedSequenceHead {
+                owner: sequence,
+                start,
+            })
+    }
+
+    fn released_sequence_head(
+        &self,
+        sequence: SequenceExpression,
+    ) -> Option<(u32, &'ast [Comment])> {
         let first = self
             .ast
             .get_node_in_sub_range(sequence.expressions(self.ast).first()?);
@@ -159,14 +170,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments.partition_point(|comment| comment.span.start < sequence.span(self.ast).start);
         let comments = &comments[first..];
         let count = comments.partition_point(|comment| comment.span.end <= start);
+        let comments = &comments[..count];
         matches!(
-            self.expression_head_binding(&comments[..count], content.expression),
+            self.expression_head_binding(comments, content.expression),
             CommentBinding::Unbound
         )
-        .then_some(PreparedSequenceHead {
-            owner: sequence,
-            start,
-        })
+        .then_some((start, comments))
     }
 
     pub(super) fn sequence_head_has_source_cast(&self, sequence: SequenceExpression) -> bool {

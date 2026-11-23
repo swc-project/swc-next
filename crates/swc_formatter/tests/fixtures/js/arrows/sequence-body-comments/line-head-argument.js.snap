@@ -1,0 +1,16 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a, () => ((// first value
+b), c));
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f(
+  a,
+  () => (
+    // first value
+    b, c
+  ),
+);
