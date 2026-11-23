@@ -705,7 +705,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(comments, gap, None),
                 CommentBinding::Unbound
             );
-        let (boundary, leading) = if ordinary {
+        // Leave separated comments at the signature when an empty body
+        // would compact their blank line on the next pass.
+        let keep_boundary = ordinary
+            && comments
+                .windows(2)
+                .any(|pair| self.previous_line_is_empty(pair[0].span.end, pair[1].span.start))
+            && !self.function_body_requires_break(body);
+        let (boundary, leading) = if ordinary && !keep_boundary {
             self.prepare_function_body_leading(comments, body, FunctionBodyAttachment::Function)
         } else {
             (comments, StatementBodyLeading::empty())
