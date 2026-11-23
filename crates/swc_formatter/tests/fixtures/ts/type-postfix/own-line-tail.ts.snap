@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type ArrayType = (Element
+/* before array */)[];
+
+type IndexedType = (Target /* first line
+second line */)[Key];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type ArrayType = (Element
+/* before array */)[];
+
+type IndexedType = (Target /* first line
+second line */)[Key];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type ArrayType =
+  (Element
+/* before array */)[];
+
+type IndexedType =
+  (Target /* first line
+second line */)[Key];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type ArrayType =
+  (Element
+/* before array */)[]
+
+type IndexedType =
+  (Target /* first line
+second line */)[Key]
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+type ArrayType =
+	(Element
+/* before array */)[];
+
+type IndexedType =
+	(Target /* first line
+second line */)[Key];

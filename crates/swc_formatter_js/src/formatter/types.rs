@@ -4401,7 +4401,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         let conditional_frame = layout == TypeLayout::ConditionalConsequent
             && matches!(child.data, TsTypeData::TsConditionalType(_));
+        // A source line terminator after the element would end the postfix type.
+        let postfix_line_tail = matches!(context, TypeContext::PostfixOperand)
+            && trailing
+                .comments()
+                .last()
+                .is_some_and(|last| self.source_line_breaks(child_span.end, last.span.end) != 0);
         let relocatable_tail = !line_tail
+            && !postfix_line_tail
             && trailing_unbound
             && leading_comments.is_empty()
             && child.source_owner.is_none()
