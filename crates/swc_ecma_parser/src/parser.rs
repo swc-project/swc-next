@@ -6582,6 +6582,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(next.is_keyword(TokenTag::Is) && !next.has_line_terminator_before())
     }
 
+    #[inline(never)]
     fn parse_type(&mut self) -> Option<TsType> {
         self.parse_type_with(Self::parse_type_inner)
     }
