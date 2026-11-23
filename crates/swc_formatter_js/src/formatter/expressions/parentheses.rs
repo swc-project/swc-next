@@ -2618,6 +2618,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || !trailing_binding.allows_relocation(None)
                     && context.tail_owner == TailOwner::ParentOperation
                 || self.ignored_operand_owns_operation_head(ignored, context.position)
+                // The alternate's own tail must stay inside the wrapper around its raw child.
+                || matches!(context.position, ExpressionPosition::ConditionalAlternate)
+                    && tail_end != 0
                 || matches!(
                     context.position,
                     ExpressionPosition::Statement(_)
@@ -4907,6 +4910,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(head) = sequence_head {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(head.owner());
             }
+            if matches!(context.position, ExpressionPosition::ConditionalAlternate)
+                || (matches!(boundary.inner_target,
+                        ParenthesisInner::Expression(expression)
+                        if matches!(self.ast.expr_data(expression), ExprData::ConditionalExpression(_)))
+                    && Self::conditional_tail_needs_enclosure(context))
+            {
+                let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
+                let tail =
+                    self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
+                return self.format_expression_tail_in_pair(tail, true, array_comments, writer);
+            }
             let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
             if matches!(
                 context.position,
@@ -6071,7 +6085,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(frame) = self.prepare_diagnostic_head_frame(content, context) {
             return Some(frame.boundary);
         }
-        let boundary = content.parentheses?.source;
+        let removed = content.parentheses?;
+        let boundary = removed.source;
+        if matches!(content.data, ExprData::ConditionalExpression(_))
+            && Self::conditional_tail_needs_enclosure(context)
+            && removed.tail.is_some()
+        {
+            // The source tail precedes the grammar closer, including at a type suffix.
+            return Some(boundary);
+        }
         let breakable = match content.data {
             ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) => {
                 Self::binary_grammar_pair_owns_indent(context.position)

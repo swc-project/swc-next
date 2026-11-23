@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(flag ? yes : (no // fallback
+)) as Value;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(flag
+  ? yes
+  : (
+      no
+      // fallback
+    )) as Value;

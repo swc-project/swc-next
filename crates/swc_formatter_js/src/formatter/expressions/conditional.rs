@@ -1,6 +1,8 @@
 //! Conditional positions, aligned branches, and prepared operator boundaries.
 
-use swc_next_ecma_ast::{Comment, ConditionalExpression, Expr, ExprData, GetSpan, Span};
+use swc_next_ecma_ast::{
+    Comment, CommentKind, ConditionalExpression, Expr, ExprData, GetSpan, Span,
+};
 
 use super::parentheses::{
     EmittedHeadAnnotation, ExpressionContent, PreparedGeneratedEnclosure, ResolvedExpressionHead,
@@ -97,6 +99,7 @@ struct ConditionalBranch<'ast> {
     position: ExpressionPosition,
     boundary: ResolvedConditionalBoundary<'ast>,
     following_mode: ContentMode,
+    retain_tail: bool,
 }
 
 /// Source effects are prepared before either operand is printed. Ordinary
@@ -193,28 +196,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let continuation = context.conditional_envelope == ConditionalEnvelope::OperationHead;
         let closing_line = continuation
             || !chain.is_jsx() && Self::conditional_grammar_pair_has_breakable_close(context);
+        let mut context = context.with_expression_start(ExpressionStart::None);
+        context.protected_head_start = None;
+        if continuation {
+            context = context.with_operand_indent(OperandIndent::Parent);
+        }
         writer.group(false, |writer| {
             writer.text("(");
-            let mut context = context.with_expression_start(ExpressionStart::None);
-            context.protected_head_start = None;
             let write = |writer: &mut Writer<'ast>| {
-                let context = if continuation {
-                    context.with_operand_indent(OperandIndent::Parent)
-                } else {
-                    context
-                };
                 let output = self.format_prepared_conditional(prepared, context, writer)?;
-                self.format_expression_tail(output.pending, writer)
+                let line_tail = output.pending.as_ref().is_some_and(|tail| {
+                    tail.comments
+                        .last()
+                        .is_some_and(|comment| comment.kind == CommentKind::Line)
+                });
+                self.format_expression_tail(output.pending, writer)?;
+                Ok::<_, FormatError>(line_tail)
             };
-            if continuation {
+            let line_tail = if continuation {
                 writer.indent(|writer| {
                     writer.soft_line();
                     write(writer)
-                })?;
+                })?
             } else {
-                write(writer)?;
-            }
-            if closing_line {
+                write(writer)?
+            };
+            // A line comment must end before the conditional's structural closer.
+            if line_tail {
+                writer.hard_line();
+            } else if closing_line {
                 writer.soft_line();
             }
             writer.text(")");
@@ -327,6 +337,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ConditionalLayout::Root | ConditionalLayout::Test => writer.group(false, write),
             ConditionalLayout::Consequent | ConditionalLayout::Alternate => write(writer),
         }
+    }
+
+    pub(super) fn conditional_tail_needs_enclosure(context: ExpressionContext<'ast>) -> bool {
+        Self::conditional_grammar_pair_is_enclosed(context)
+            || matches!(
+                context.position,
+                ExpressionPosition::BinaryOperand { .. }
+                    | ExpressionPosition::TypeAssertionOperand
+                    | ExpressionPosition::TemplateTag
+                    | ExpressionPosition::UnaryArgument(_)
+                    | ExpressionPosition::ArrowBody
+            )
     }
 
     pub(super) fn conditional_grammar_pair_has_breakable_close(
@@ -504,6 +526,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     position: ExpressionPosition::ConditionalConsequent,
                     boundary: question,
                     following_mode: colon.previous_mode(),
+                    retain_tail: false,
                 },
                 chain,
                 writer,
@@ -526,6 +549,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     position: ExpressionPosition::ConditionalAlternate,
                     boundary: colon,
                     following_mode: ContentMode::Formatted,
+                    retain_tail: context.parentheses_owner == ParenthesesOwner::Parent
+                        || Self::conditional_tail_needs_enclosure(context)
+                        || matches!(context.position, ExpressionPosition::SequenceMember),
                 },
                 chain,
                 writer,
@@ -1226,13 +1252,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             position,
             boundary,
             following_mode,
+            retain_tail,
         } = branch;
         boundary
             .before_operator
             .write(writer, FlatSeparator::Space, Writer::line);
         writer.text(boundary.operator);
         writer.space();
-        let content = boundary.content;
+        let mut content = boundary.content;
         let ConditionalOperand {
             original,
             source_start,
@@ -1244,6 +1271,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             boundary.next_mode
         };
+        if retain_tail
+            && mode == ContentMode::Formatted
+            && content
+                .parentheses
+                .is_some_and(|removed| removed.tail.is_some())
+        {
+            // The alternate keeps its source tail before both the conditional
+            // closer and the enclosing operator, including on the second pass.
+            content = ExpressionContent {
+                expression: original,
+                data: self.ast.expr_data(original),
+                parentheses: None,
+            };
+        }
         let jsx_pair = chain.is_jsx()
             && mode == ContentMode::Formatted
             && matches!(boundary.next_binding, CommentBinding::Unbound)
