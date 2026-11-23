@@ -200,6 +200,10 @@ const IGNORE: &[IgnorePattern] = &[
     // Choose chain layout from canonical contents. Collapsing this fixture's
     // object literal makes Prettier change its output on the second pass.
     IgnorePattern::Exact("js/method-chain/multiple-members.js"),
+    // Keep operand comments before as and type comments between as and const.
+    IgnorePattern::Exact("typescript/as/as-const/as-const.ts"),
+    // Keep comments between as or satisfies and the type they precede.
+    IgnorePattern::Exact("typescript/as/comments/18160.ts"),
     // An ignored parenthesized type owns its complete source frame here.
     // Prettier removes the pair; retain it to honor that ignore contract.
     IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-parenthesized-type.ts"),
