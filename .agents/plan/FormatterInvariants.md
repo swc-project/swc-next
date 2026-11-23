@@ -22,6 +22,20 @@ target relationships; source position, printing owner, and consumer target diffe
 Ordinary blank lines, absolute positions, and AST attachment fields are not inherently
 fixed.
 
+Keep comments on the same side of source tokens that separate syntax owners or
+determine a comment's role. Preserve the relevant line relationship when it
+determines ownership or directive coverage. Layout may change within those bounds.
+
+A function header comment stays before `{`; a body comment stays after it:
+
+```js
+function f() // outer
+{
+  // inner
+  return 42;
+}
+```
+
 Within the documented scope, preserve active tool directives and their coverage,
 including TypeScript diagnostics, optimizer annotations, JSDoc casts, and ignore.
 Inactive directives may become active; do not freeze source to prevent that.
