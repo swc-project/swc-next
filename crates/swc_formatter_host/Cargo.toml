@@ -6,7 +6,7 @@ keywords             = ["formatting", "pretty-printing"]
 license.workspace    = true
 name                 = "swc_next_formatter_host"
 repository.workspace = true
-version              = "0.8.0"
+version              = "0.8.1"
 
 [dependencies]
 swc_next_allocator      = { workspace = true }
