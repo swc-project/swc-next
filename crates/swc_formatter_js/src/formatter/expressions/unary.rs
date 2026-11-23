@@ -416,11 +416,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer,
                         )?
                     };
+                    // A released operand can already lease part of this frame's suffix.
+                    let tail_end = tail
+                        .as_ref()
+                        .and_then(|tail| tail.comments.last())
+                        .map_or(source.argument_span.end, |comment| {
+                            source.argument_span.end.max(comment.span.end)
+                        });
+                    let already_leased = source
+                        .trailing
+                        .partition_point(|comment| comment.span.end <= tail_end);
+                    let trailing = &source.trailing[already_leased..];
                     self.format_expression_tail(tail, writer)?;
-                    self.comments.claim(source.trailing)?;
+                    self.comments.claim(trailing)?;
                     self.format_comment_run(
-                        source.trailing,
-                        CommentRunLayout::SourceAfter(source.argument_span.end),
+                        trailing,
+                        CommentRunLayout::SourceAfter(tail_end),
                         writer,
                     )
                 }
