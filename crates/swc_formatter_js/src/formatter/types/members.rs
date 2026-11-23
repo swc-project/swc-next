@@ -492,10 +492,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 required
                             }
                         };
+                        // A source-owned gap can keep two members on the same
+                        // line even when their enclosing body has expanded.
                         required
                             || next.is_some()
-                                && self.line_constraint(gap_span.start, gap_span.end)
+                                && (self.line_constraint(gap_span.start, gap_span.end)
                                     == LineConstraint::SameLine
+                                    || matches!(gap, MemberGap::Source(_))
+                                        && self.source_line_breaks(gap_span.start, gap_span.end)
+                                            == 0)
                     } else {
                         false
                     };
