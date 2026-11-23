@@ -285,7 +285,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let span = node.span(self.ast);
-        let statement = StatementItem::Statement(Stmt::IfStatement(node.into()));
+        let statement = StatementItem::Statement(Stmt::IfStatement(node));
         let has_terminator = self.statement_source_terminator(span).is_some();
         let unterminated_body = !has_terminator
             && matches!(
