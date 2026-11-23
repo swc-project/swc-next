@@ -9,14 +9,16 @@ while(a);
 ---------- Output ----------
 do {
   foo();
-} while (a); // marker
+} // marker
+while (a);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1}
 ---------- Output ----------
 do {
   foo();
-} while ( // marker
+} // marker
+while (
   a
 );
 
@@ -25,18 +27,21 @@ do {
 ---------- Output ----------
 do {
   foo()
-} while (a) // marker
+} // marker
+while (a)
 
 ---------- Options ----------
 {"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 do {
 	foo();
-} while (a); // marker
+} // marker
+while (a);
 
 ---------- Options ----------
 {"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
 do {
   foo();
-} while (a); // marker
+} // marker
+while (a);

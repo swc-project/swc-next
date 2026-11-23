@@ -9,7 +9,8 @@ while (aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit + anotherCo
 ---------- Output ----------
 do {
   foo();
-} while ( // marker
+} // marker
+while (
   aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
   anotherCondition
 );

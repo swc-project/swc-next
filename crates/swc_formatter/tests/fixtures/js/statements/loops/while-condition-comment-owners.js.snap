@@ -1,0 +1,46 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while // Header
+(// Condition
+ready) step();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+while // Header
+(
+  // Condition
+  ready
+)
+  step();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+while // Header
+(
+  // Condition
+  ready
+)
+  step()
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+while // Header
+(
+  // Condition
+  ready
+)
+  step();
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
+---------- Output ----------
+while // Header
+(
+	// Condition
+	ready
+)
+	step();

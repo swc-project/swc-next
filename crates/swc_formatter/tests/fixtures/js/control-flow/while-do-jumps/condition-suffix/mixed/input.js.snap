@@ -7,11 +7,11 @@ while (ready);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-do {} /* first */ while ( // tail
-  ready
-);
+do {} /* first */ // tail
+while (ready);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-do {} /* first */ while (ready); // tail
+do {} /* first */ // tail
+while (ready);

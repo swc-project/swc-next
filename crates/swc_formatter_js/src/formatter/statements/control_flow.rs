@@ -114,19 +114,6 @@ struct ControlledBodyTail<'ast> {
 }
 
 impl<'ast> ControlledBody<'ast> {
-    fn condition_suffix(&self) -> Option<ConditionLineSuffix<'ast>> {
-        if !matches!(self.shape, ControlledBodyShape::Block)
-            || !matches!(self.end, ControlledBodyEnd::LoopCondition(_))
-        {
-            return None;
-        }
-        let tail = self.annotation_tail.as_ref()?;
-        tail.binding
-            .allows_relocation(None)
-            .then(|| ConditionLineSuffix::new(tail.tail.comments))
-            .flatten()
-    }
-
     fn with_operator_tail(mut self, tail: Option<&'ast super::DeferredOperatorTail<'ast>>) -> Self {
         self.operator_tail = tail;
         self
@@ -157,7 +144,8 @@ impl<'ast> ControlledBody<'ast> {
 
 #[derive(Clone, Copy)]
 enum ConditionPrefix {
-    Canonical,
+    RelocateBeforeOpening,
+    PreserveBeforeOpening,
     Source { source: Span, mode: ContentMode },
 }
 
@@ -166,9 +154,15 @@ enum ConditionHeader<'ast> {
         keyword_end: u32,
         opening: u32,
         before_opening: &'ast [Comment],
-        relocate_before_opening: bool,
+        before_opening_layout: ConditionOpeningLayout,
     },
     Source(Span),
+}
+
+enum ConditionOpeningLayout {
+    Relocate,
+    Flat,
+    Preserve,
 }
 
 #[derive(Clone, Copy)]
@@ -351,7 +345,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             keyword_end,
             body_start,
-            ConditionPrefix::Canonical,
+            ConditionPrefix::PreserveBeforeOpening,
         )
     }
 
@@ -382,18 +376,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let (header, leading, leading_mode, inline) = match prefix {
-            ConditionPrefix::Canonical => {
+            ConditionPrefix::RelocateBeforeOpening | ConditionPrefix::PreserveBeforeOpening => {
                 let split = leading.partition_point(|comment| comment.span.end <= opening);
                 let before_opening = &leading[..split];
-                let relocate_before_opening = self
+                let before_opening_layout = if before_opening.is_empty() {
+                    ConditionOpeningLayout::Relocate
+                } else if matches!(prefix, ConditionPrefix::PreserveBeforeOpening) {
+                    ConditionOpeningLayout::Preserve
+                } else if self
                     .comment_binding(before_opening, head, Some(span))
-                    .allows_relocation(Some(span));
-                let leading = if relocate_before_opening {
+                    .allows_relocation(Some(span))
+                {
+                    ConditionOpeningLayout::Relocate
+                } else {
+                    ConditionOpeningLayout::Flat
+                };
+                let leading = if matches!(before_opening_layout, ConditionOpeningLayout::Relocate) {
                     leading
                 } else {
                     &leading[split..]
                 };
-                let mode = self.content_mode(leading);
+                let mut mode = self.content_mode(leading);
+                if matches!(before_opening_layout, ConditionOpeningLayout::Preserve)
+                    && self.content_mode(before_opening) == ContentMode::Verbatim
+                    && self
+                        .comment_binding(before_opening, head, Some(span))
+                        .allows_relocation(Some(span))
+                {
+                    // An ignore that selects the condition retains its raw expression.
+                    mode = ContentMode::Verbatim;
+                }
                 let inline = before_opening.is_empty()
                     && leading.is_empty()
                     && trailing.is_empty()
@@ -402,7 +414,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     keyword_end,
                     opening,
                     before_opening,
-                    relocate_before_opening,
+                    before_opening_layout,
                 };
                 (header, leading, mode, inline)
             }
@@ -478,7 +490,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_condition_line_suffix(
         &mut self,
         suffix: ConditionLineSuffix<'ast>,
-        opening: FlatSeparator,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.comments.claim(suffix.comments)?;
@@ -486,9 +497,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(());
         };
         if !prefix.is_empty() {
-            if matches!(opening, FlatSeparator::Space) {
-                writer.space();
-            }
             self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
         }
         writer.line_suffix(|writer| {
@@ -528,29 +536,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 keyword_end,
                 opening,
                 before_opening,
-                relocate_before_opening,
+                before_opening_layout,
             } => {
-                if relocate_before_opening {
-                    self.line_constraint(keyword_end, opening).write(
-                        writer,
-                        FlatSeparator::Space,
-                        Writer::space,
-                    );
-                } else {
-                    let first = before_opening
-                        .first()
-                        .map_or(opening, |comment| comment.span.start);
-                    self.line_constraint(keyword_end, first).write(
-                        writer,
-                        FlatSeparator::Space,
-                        Writer::space,
-                    );
-                    self.comments.claim(before_opening)?;
-                    self.format_comment_run(
-                        before_opening,
-                        CommentRunLayout::FlatLeading(opening),
-                        writer,
-                    )?;
+                match before_opening_layout {
+                    ConditionOpeningLayout::Relocate => self
+                        .line_constraint(keyword_end, opening)
+                        .write(writer, FlatSeparator::Space, Writer::space),
+                    ConditionOpeningLayout::Flat => {
+                        let first = before_opening
+                            .first()
+                            .map_or(opening, |comment| comment.span.start);
+                        self.line_constraint(keyword_end, first).write(
+                            writer,
+                            FlatSeparator::Space,
+                            Writer::space,
+                        );
+                        self.comments.claim(before_opening)?;
+                        self.format_comment_run(
+                            before_opening,
+                            CommentRunLayout::FlatLeading(opening),
+                            writer,
+                        )?;
+                    }
+                    ConditionOpeningLayout::Preserve => {
+                        self.comments.claim(before_opening)?;
+                        self.format_comment_run(
+                            before_opening,
+                            CommentRunLayout::SourceAfter(keyword_end),
+                            writer,
+                        )?;
+                        if let Some(&last) = before_opening.last() {
+                            self.comment_gap_after(last, opening, writer);
+                        }
+                    }
                 }
                 writer.text("(");
                 let first = leading
@@ -560,7 +578,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         if let Some(suffix) = suffix {
-            self.format_condition_line_suffix(suffix, FlatSeparator::Empty, writer)?;
+            self.format_condition_line_suffix(suffix, writer)?;
         }
         writer.group(suffix.is_some(), |writer| {
             let mut write_contents = |writer: &mut Writer<'ast>| {
@@ -1016,9 +1034,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .any(|comment| comment.kind == CommentKind::Line)
                 });
                 if line_tail {
-                    if body.condition_suffix().is_none() {
-                        writer.break_parent();
-                    }
+                    writer.break_parent();
                 } else {
                     printed = self.flush_statement_tail(printed, writer)?.into();
                 }
@@ -1118,14 +1134,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => false,
         };
-        let condition_tail = matches!(body.end, ControlledBodyEnd::LoopCondition(_))
-            && tail.is_some_and(|tail| tail.binding.allows_relocation(None));
         let following = if lint_lines {
             let end = comments
                 .last()
                 .map_or(source_end, |comment| comment.span.end);
             CommentGap::Source(self.source_line_constraint(end, span.start))
-        } else if comments.is_empty() && tail_line && !condition_tail {
+        } else if comments.is_empty() && tail_line {
             CommentGap::LineComment
         } else {
             // Canonical punctuation is emitted before this tail, so the last
@@ -1138,9 +1152,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.line_breaks(last.span.end, span.start) != 0
                 || detached.is_some() && last.span.end < body.span.end
         } else {
-            !adjacent
-                || !condition_tail
-                    && last.is_some_and(|last| self.line_breaks(last.span.end, span.start) != 0)
+            !adjacent || last.is_some_and(|last| self.line_breaks(last.span.end, span.start) != 0)
         };
         BodyKeyword {
             span,

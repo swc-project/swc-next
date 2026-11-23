@@ -8,12 +8,15 @@ while (ready);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-do /* first */ {} while (ready); // tail
+do /* first */
+{} // tail
+while (ready);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1}
 ---------- Output ----------
 do /* first */
-{} while ( // tail
+{} // tail
+while (
   ready
 );

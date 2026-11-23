@@ -3,7 +3,7 @@
 mod exceptions;
 mod switch;
 
-use super::{ControlledBodyContent, ControlledBodyEnd, ControlledBodyRole};
+use super::{ConditionPrefix, ControlledBodyContent, ControlledBodyEnd, ControlledBodyRole};
 use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::statements::{
@@ -68,10 +68,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let span = node.span(self.ast);
         let body = node.body(self.ast);
-        let mut condition = self.prepare_condition(
+        let mut condition = self.prepare_condition_with_prefix(
             node.object(self.ast),
             span.start + "with".len() as u32,
             body.span(self.ast).start,
+            ConditionPrefix::RelocateBeforeOpening,
         )?;
         condition.position = crate::formatter::expressions::ExpressionPosition::Nested;
         let body = self
