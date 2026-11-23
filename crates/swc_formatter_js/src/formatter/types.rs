@@ -4392,28 +4392,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .iter()
             .any(|comment| comment.kind == CommentKind::Line);
         let frame = context.frame(child.data, self.ast);
-        // A required compound frame remains the last member's attachment
-        // boundary when reparsed. Nested consequents supply a separate frame.
-        let compound_frame = frame != TypeFrame::None
-            && matches!(
+        // A required operand pair owns its tail on the inside of the closer.
+        let operand_frame = frame != TypeFrame::None
+            && (matches!(
+                context,
+                TypeContext::PostfixOperand
+                    | TypeContext::ConditionalCheck
+                    | TypeContext::ConditionalExtends
+            ) || matches!(
                 child.data,
                 TsTypeData::TsUnionType(_) | TsTypeData::TsIntersectionType(_)
-            );
+            ));
         let conditional_frame = layout == TypeLayout::ConditionalConsequent
             && matches!(child.data, TsTypeData::TsConditionalType(_));
-        // A source line terminator after the element would end the postfix type.
-        let postfix_line_tail = matches!(context, TypeContext::PostfixOperand)
-            && trailing
-                .comments()
-                .last()
-                .is_some_and(|last| self.source_line_breaks(child_span.end, last.span.end) != 0);
         let relocatable_tail = !line_tail
-            && !postfix_line_tail
             && trailing_unbound
             && leading_comments.is_empty()
             && child.source_owner.is_none()
-            && !compound_frame
+            && !operand_frame
             && !conditional_frame
+            // Both the postfix suffix and the conditional keyword need the
+            // preceding operand to end on the same source line.
+            && !(matches!(context, TypeContext::PostfixOperand | TypeContext::ConditionalCheck)
+                && trailing
+                    .comments()
+                    .last()
+                    .is_some_and(|last| self.source_line_breaks(child_span.end, last.span.end) != 0))
             && (matches!(
                 context,
                 TypeContext::PostfixOperand

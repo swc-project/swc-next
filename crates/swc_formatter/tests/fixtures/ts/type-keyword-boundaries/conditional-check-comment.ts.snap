@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Result<T> = (T
+/* check */)extends
+// prettier-ignore
+Box <  T  > ? T : never;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Result<T> =
+  (T
+/* check */) extends
+// prettier-ignore
+Box <  T  >
+    ? T
+    : never;
