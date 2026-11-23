@@ -1,0 +1,15 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+use(() => (() => value // tail
+), 1);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+use(
+  () => (
+    () => value // tail
+  ),
+  1,
+);

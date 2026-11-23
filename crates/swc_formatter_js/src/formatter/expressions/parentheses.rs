@@ -4937,7 +4937,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
-            self.format_expression_tail_with_array_comments(tail, array_comments, writer)
+            if matches!(context.position, ExpressionPosition::ArrowBody) {
+                self.format_expression_tail_in_pair(tail, false, array_comments, writer)
+            } else {
+                self.format_expression_tail_with_array_comments(tail, array_comments, writer)
+            }
         };
         let write = |writer: &mut Writer<'ast>| {
             writer.text("(");
@@ -6072,6 +6076,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             None => PreparedDiagnosticHeadFrame::Inside(frame),
         }
+    }
+
+    pub(super) fn source_pair_has_line_owned_tail(&self, content: &ExpressionContent) -> bool {
+        content
+            .parentheses
+            .and_then(|removed| removed.tail)
+            .is_some_and(|tail| {
+                self.comments.in_range(tail.span).iter().any(|comment| {
+                    comment.kind == CommentKind::Line
+                        || self.layout_position_starts_line(comment.span.start)
+                })
+            })
     }
 
     pub(super) fn protected_grammar_parentheses(

@@ -793,6 +793,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Ok(None);
         }
+        let parentheses = content.parentheses.map(|removed| removed.source);
+        if self.retain_curried_body_tail_pair(body) {
+            return Ok(None);
+        }
         let head = match self.source_arrow(arrow)? {
             SourceArrow::Verbatim(_) => {
                 body.mode = ContentMode::Verbatim;
@@ -804,7 +808,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head,
             leading,
             start,
-            parentheses: content.parentheses.map(|removed| removed.source),
+            parentheses,
         }))
     }
 
@@ -987,18 +991,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .as_ref()
                             .is_none_or(|tail| tail.owner == ArrowLinkTailOwner::Body)
                     });
+                self.retain_curried_body_tail_pair(&mut source_body);
                 let (body, tail) = writer.record_group_with_value(|writer| {
                     let mut output = self.format_arrow_body_content(
                         source_body,
                         ArrowBodyGroup::Independent,
                         writer,
                     )?;
+                    // The enclosing operation owns any released body tail
+                    // together with the suffixes of removed link pairs.
+                    let inline_tails = inline_tails && output.pending.is_none();
                     for link in links.iter().rev().chain(std::iter::once(&first)) {
                         if let Some(trailing) = &link.trailing {
                             if inline_tails {
-                                // Removed delimiters do not join the source gaps
-                                // of independently owned inline tail packets.
-                                self.format_expression_tail(output.pending.take(), writer)?;
                                 self.comments.claim(trailing.comments)?;
                                 self.format_comment_run(
                                     trailing.comments,
@@ -1024,6 +1029,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             should_break,
             body_layout,
         })
+    }
+
+    fn retain_curried_body_tail_pair(&self, source: &mut SourceArrowBody<'ast>) -> bool {
+        if source.mode != ContentMode::Formatted || source.jsx_comments.is_some() {
+            return false;
+        }
+        let PreparedArrowBody::Expression {
+            expression,
+            content,
+        } = &mut source.body
+        else {
+            return false;
+        };
+        if content
+            .parentheses
+            .is_some_and(|removed| removed.tail.is_some())
+            && (matches!(content.data, ExprData::ArrowFunctionExpression(_))
+                || self.source_pair_has_line_owned_tail(content))
+        {
+            // Keep the body's trailing comment before the enclosing operation's separator.
+            *content = ExpressionContent {
+                expression: *expression,
+                data: self.ast.expr_data(*expression),
+                parentheses: None,
+            };
+            source.flat_conditional_pair = false;
+            true
+        } else {
+            false
+        }
     }
 
     fn prepare_arrow_link_tail(&self, boundary: SourceParentheses) -> ArrowLinkTail<'ast> {
