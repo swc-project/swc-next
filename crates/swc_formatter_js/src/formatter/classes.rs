@@ -79,9 +79,7 @@ struct SourceClassHead<'ast> {
     body: ClassBody,
     body_mode: ContentMode,
     incoming: Option<IncomingClassMember>,
-    end: u32,
-    body_comments: &'ast [Comment],
-    body_leading: Option<&'ast [Comment]>,
+    body_boundary: CommentBoundary<'ast>,
     body_gap: CommentGap,
     opening_source_end: Option<u32>,
 }
@@ -432,9 +430,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body,
             body_mode,
             incoming,
-            end,
-            body_comments,
-            body_leading,
+            body_boundary,
             body_gap,
             opening_source_end,
         } = head;
@@ -518,10 +514,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 write_heritage(writer)?;
             }
-            self.comments.claim(body_comments)?;
-            self.format_comment_run(body_comments, CommentRunLayout::SourceAfter(end), writer)?;
+            self.format_comment_boundary(&body_boundary, writer)?;
             body_gap.write(writer, FlatSeparator::Space, |writer| {
-                if layout.grouped() && body_comments.is_empty() && !body.body(self.ast).is_empty() {
+                if layout.grouped() && body_boundary.is_empty() && !body.body(self.ast).is_empty() {
                     writer.soft_line();
                     writer.if_flat(" ");
                 } else {
@@ -535,14 +530,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write_header(writer)?;
         }
-        self.format_class_body(
-            body,
-            body_mode,
-            incoming,
-            body_leading,
-            opening_source_end,
-            writer,
-        )
+        self.format_class_body(body, body_mode, incoming, opening_source_end, writer)
     }
 
     fn source_class_head(
@@ -860,18 +848,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut incoming = None;
         let body_span = body.span(ast);
         let body_gap = Span::new(end, body_span.start);
-        let mut body_comments = self.comments.in_range(body_gap);
+        let body_comments = self.comments.in_range(body_gap);
         let opening_source_end = self.class_opening_source_end(body, body_gap);
-        let last = body_comments.last().map_or(end, |comment| comment.span.end);
-        let mut body_constraint = self.line_constraint(last, body.span(ast).start);
+        // The header owns the comments up to the class body opener.
+        let body_boundary = self.prepare_comment_boundary(body_comments, end, body_span.start);
+        let mut body_gap = body_boundary.gap();
         if self.content_mode(body_comments) == ContentMode::Verbatim {
-            let comments = body_comments;
-            let first = body
-                .body(ast)
-                .iter()
-                .next()
-                .map(|id| ast.get_node_in_sub_range(id));
-            for position in self.suppression_positions(comments, body.span(ast).start) {
+            let first = self.class_body_first_member(body);
+            for position in self.suppression_positions(body_comments, body_span.start) {
                 match position {
                     SuppressionPosition::Inline => body_mode = ContentMode::Verbatim,
                     _ if first.is_some() => {
@@ -883,25 +867,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     _ => body_mode = ContentMode::Verbatim,
                 }
             }
-            if body_mode == ContentMode::Verbatim || incoming.is_some() {
-                let last = comments.last().map_or(end, |comment| comment.span.end);
-                body_constraint = self.source_line_constraint(last, body.span(ast).start);
+            if !matches!(body_gap, CommentGap::LineComment) {
+                body_gap = CommentGap::Source(
+                    self.source_line_constraint(body_boundary.end(), body_span.start),
+                );
             }
-        }
-        let mut body_leading = None;
-        if opening_source_end.is_none()
-            && self.declaration_body_comments_can_move(body_comments, body_gap)
+        } else if let Some(&last) = body_comments.last()
+            && last.kind == CommentKind::Block
         {
-            let first = self.class_body_first_member(body);
-            let leading_end = first.map_or(body_span.end - 1, |node| node.span(ast).start);
-            let leading = self
-                .comments
-                .in_range(Span::new(body_comments[0].span.start, leading_end));
-            if first.is_some() || self.content_mode(leading) == ContentMode::Formatted {
-                body_leading = Some(leading);
-                body_comments = &[];
-                body_constraint = self.line_constraint(end, body_span.start);
-            }
+            body_gap = CommentGap::Source(self.comment_gap_after_constraint(last, body_span.start));
         }
         Ok(PreparedClassHead::Source(SourceClassHead {
             prefix,
@@ -915,51 +889,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body,
             body_mode,
             incoming,
-            end,
-            body_comments,
-            body_leading,
+            body_boundary,
             opening_source_end,
-            body_gap: if body_comments
-                .last()
-                .is_some_and(|comment| comment.kind == CommentKind::Line)
-            {
-                CommentGap::LineComment
-            } else {
-                CommentGap::Source(body_constraint)
-            },
+            body_gap,
         }))
-    }
-
-    pub(super) fn declaration_body_comments_can_move(
-        &self,
-        comments: &[Comment],
-        gap: Span,
-    ) -> bool {
-        let Some(last) = comments.last() else {
-            return false;
-        };
-        if self.content_mode(comments) == ContentMode::Verbatim
-            || self.diagnostic_range_is_sensitive(gap)
-        {
-            return false;
-        }
-        // This boundary has no expression consumer, and file pragmas keep
-        // their file owner. Diagnostic line coverage remains source-bound.
-        let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
-            let semantics = self.comment_semantics(comment);
-            if semantics.diagnostic {
-                CommentBinding::SourceBound
-            } else {
-                CommentBinding::Unbound
-            }
-        });
-        if !binding.allows_relocation(None) {
-            return false;
-        }
-        comments.iter().any(|comment| {
-            comment.kind == CommentKind::Line
-                || self.layout_position_starts_line(comment.span.start)
-        }) || self.line_breaks(last.span.end, gap.end) != 0
     }
 
     fn prepare_class_prefix(
@@ -1174,7 +1107,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         body: ClassBody,
         mode: ContentMode,
         incoming: Option<IncomingClassMember>,
-        head_comments: Option<&'ast [Comment]>,
         opening_source_end: Option<u32>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
@@ -1217,7 +1149,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|id| ast.get_node_in_sub_range(id))
             .peekable();
         let Some(first) = self.class_body_first_member(body) else {
-            let comments = head_comments.unwrap_or_else(|| self.comments.in_range(content));
+            let comments = self.comments.in_range(content);
             if self.content_mode(comments) == ContentMode::Verbatim {
                 return self.format_verbatim(span, writer);
             }
@@ -1233,10 +1165,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("}");
             return Ok(());
         };
-        let leading = head_comments.unwrap_or_else(|| {
-            self.comments
-                .in_range(Span::new(content.start, first.span(ast).start))
-        });
+        let leading = self
+            .comments
+            .in_range(Span::new(content.start, first.span(ast).start));
         let first_span = first.span(ast);
         let leading_start = leading
             .first()

@@ -1,0 +1,74 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example // Class header
+{
+  // First member
+  read() { return 1; }
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Example // Class header
+{
+  // First member
+  read() {
+    return 1;
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Example // Class header
+{
+  // First member
+  read() {
+    return 1;
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+class Example // Class header
+{
+  // First member
+  read() {
+    return 1
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class Example // Class header
+{
+  // First member
+  read() {
+    return 1
+  }
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":2,"lineWidth":20}
+---------- Output ----------
+class Example // Class header
+{
+	// First member
+	read() {
+		return 1;
+	}
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
+---------- Output ----------
+class Example // Class header
+{
+  // First member
+  read() {
+    return 1
+  }
+}

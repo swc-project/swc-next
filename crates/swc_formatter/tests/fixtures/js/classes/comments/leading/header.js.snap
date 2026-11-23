@@ -8,8 +8,8 @@ class C /* first */
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-class C {
-  /* first */
-  // second
+class C /* first */
+// second
+{
   field;
 }

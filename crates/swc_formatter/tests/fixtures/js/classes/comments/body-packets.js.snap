@@ -7,47 +7,47 @@ class C /* opening */ // body
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-class C {
-  /* opening */ // body
+class C /* opening */ // body
+{
   /* member */ method() {}
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-class C {
-  /* opening */ // body
+class C /* opening */ // body
+{
   /* member */ method() {}
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-class C {
-  /* opening */ // body
+class C /* opening */ // body
+{
   /* member */ method() {}
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
-class C {
-  /* opening */ // body
+class C /* opening */ // body
+{
   /* member */ method() {}
 }
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
-class C {
-	/* opening */ // body
+class C /* opening */ // body
+{
 	/* member */ method() {}
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
-class C {
-  /* opening */ // body
+class C /* opening */ // body
+{
   /* member */ method() {}
 }
