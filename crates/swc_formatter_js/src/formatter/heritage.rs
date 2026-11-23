@@ -64,6 +64,7 @@ enum HeritagePrefixLayout<'ast> {
 enum HeritageLeading {
     None,
     Keyword(CommentBinding),
+    AfterKeyword,
     FirstItem,
     Preceding,
 }
@@ -110,6 +111,17 @@ impl HeritagePrefix<'_> {
             } else {
                 HeritageLeading::FirstItem
             };
+        }
+        self
+    }
+
+    pub(super) fn with_comments_after_keyword(mut self) -> Self {
+        if let HeritagePrefixLayout::Formatted {
+            leading: leading @ HeritageLeading::Keyword(CommentBinding::Unbound),
+            ..
+        } = &mut self.layout
+        {
+            *leading = HeritageLeading::AfterKeyword;
         }
         self
     }
@@ -376,6 +388,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 writer,
                             )?;
                         }
+                    }
+                    HeritageLeading::AfterKeyword => {
+                        formatter.format_comment_boundary(&after, writer)?;
+                        keyword_gap.write(writer, FlatSeparator::Space, Writer::line);
                     }
                     HeritageLeading::None => {
                         formatter.format_comment_boundary(&after, writer)?;

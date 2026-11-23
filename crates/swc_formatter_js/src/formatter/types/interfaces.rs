@@ -256,7 +256,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 remaining,
                 end,
                 frame: InterfaceHeritageFrame::Formatted {
-                    prefix: prepared.prefix,
+                    prefix: prepared.prefix.with_comments_after_keyword(),
                     first_mode: prepared.first_mode,
                     layout,
                 },

@@ -22,8 +22,10 @@ interface A // ordinary header comment
 }
 
 interface B
-  // ordinary heritage comment
-  extends LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}
+  extends
+    // ordinary heritage comment
+    LongNamespace.FirstBase<string>,
+    OtherNamespace.SecondBase<number> {}
 
 interface C {
   x: number; // eslint-disable-line
@@ -39,8 +41,8 @@ interface A // ordinary header comment
 }
 
 interface B
-  // ordinary heritage comment
   extends
+    // ordinary heritage comment
     LongNamespace.FirstBase<string>,
     OtherNamespace.SecondBase<number> {}
 
@@ -58,8 +60,8 @@ interface A // ordinary header comment
 }
 
 interface B
-  // ordinary heritage comment
   extends
+    // ordinary heritage comment
     LongNamespace.FirstBase<string>,
     OtherNamespace.SecondBase<number> {}
 
@@ -77,8 +79,8 @@ interface A // ordinary header comment
 }
 
 interface B
-	// ordinary heritage comment
 	extends
+		// ordinary heritage comment
 		LongNamespace.FirstBase<string>,
 		OtherNamespace.SecondBase<number> {}
 
