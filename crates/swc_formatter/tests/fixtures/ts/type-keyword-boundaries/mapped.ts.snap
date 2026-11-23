@@ -1,0 +1,19 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Constrained = { [\u004b // prettier-ignore
+ in(( Input ))]: K };
+
+type Remapped = { [K in Input  [  ]/* prettier-ignore */as(Name)]: K };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Constrained = {
+  [
+    \u004b // prettier-ignore
+ in Input
+  ]: K;
+};
+
+type Remapped = { [K in Input  [  ]/* prettier-ignore */as Name]: K };

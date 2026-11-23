@@ -5,6 +5,48 @@ use std::ops::Range;
 use swc_next_ecma_ast::{Comment, Span};
 
 use super::Formatter;
+use crate::{FormatError, document::Writer};
+
+/// A copied keyword must stay a separate token when its neighboring syntax
+/// is formatted independently and may lose a delimiter.
+#[derive(Clone, Copy, Default)]
+pub(super) struct SourceKeywordSpacing {
+    before: bool,
+    after: bool,
+}
+
+impl SourceKeywordSpacing {
+    pub(super) fn new(gap: Span, keyword: Span) -> Self {
+        Self {
+            before: gap.start == keyword.start,
+            after: gap.end == keyword.end,
+        }
+    }
+
+    pub(super) fn with_copied_left(mut self, copied: bool) -> Self {
+        self.before &= !copied;
+        self
+    }
+
+    pub(super) fn write_before(self, writer: &mut Writer<'_>) {
+        if self.before {
+            writer.space();
+        }
+    }
+
+    pub(super) fn write<'ast>(
+        self,
+        writer: &mut Writer<'ast>,
+        source: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
+    ) -> Result<(), FormatError> {
+        self.write_before(writer);
+        source(writer)?;
+        if self.after {
+            writer.space();
+        }
+        Ok(())
+    }
+}
 
 pub(super) fn is_source_whitespace(character: char) -> bool {
     character.is_whitespace() || character == '\u{feff}'

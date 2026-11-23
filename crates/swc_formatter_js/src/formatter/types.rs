@@ -33,7 +33,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::RhsLayout;
 use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge, TailOwner};
 use super::literals::StringContext;
-use super::source::is_source_whitespace;
+use super::source::{SourceKeywordSpacing, is_source_whitespace};
 use super::statements::DeclarationKeyword;
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSourceGap, SuppressionPosition,
@@ -2621,11 +2621,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_source_type_operator_rhs_output(
         &mut self,
         source: SourceTypeOperator,
+        spacing: SourceKeywordSpacing,
         node: PreparedType,
         context: TypeContext,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_source_type_operator_rhs_body(source, node, context, writer)
+        spacing.write(writer, |writer| {
+            self.format_source_gap(source.prefix, writer)
+        })?;
+        self.format_source_type_rhs_after(source.after, node, context, writer)
             .map(TypeOutput::into_expression)
     }
 
@@ -2637,16 +2641,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_source_gap(source.prefix, writer)?;
+        self.format_source_type_rhs_after(source.after, node, context, writer)
+    }
+
+    fn format_source_type_rhs_after(
+        &mut self,
+        after: Span,
+        node: PreparedType,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let body = self.prepare_operator_rhs_type(node, context)?;
-        let mut opening_end = source.after.start;
-        for comment in self.comments.in_range(source.after) {
+        let mut opening_end = after.start;
+        for comment in self.comments.in_range(after) {
             if self.line_breaks(opening_end, comment.span.start) != 0 {
                 break;
             }
             opening_end = comment.span.end;
         }
-        self.format_source_gap(Span::new(source.after.start, opening_end), writer)?;
-        let head = self.prepare_type_source_head_gap(Span::new(opening_end, source.after.end));
+        self.format_source_gap(Span::new(after.start, opening_end), writer)?;
+        let head = self.prepare_type_source_head_gap(Span::new(opening_end, after.end));
         writer.indent(|writer| {
             self.format_prepared_type_source_head_gap(head, SourceCommentText::Alignable, writer)?;
             self.format_prepared_delimited_type_body(

@@ -69,6 +69,10 @@ enum HeritageLeading {
 }
 
 impl HeritagePrefix<'_> {
+    pub(super) fn source_ends_at(&self, position: u32) -> bool {
+        matches!(self.layout, HeritagePrefixLayout::Source(span) if span.end == position)
+    }
+
     pub(super) fn with_class_preceding_line(mut self) -> Self {
         if let HeritagePrefixLayout::Formatted {
             leading: leading @ HeritageLeading::None,

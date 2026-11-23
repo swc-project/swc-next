@@ -114,6 +114,7 @@ enum ClassCaller {
 
 struct SourceClassHeritage<'ast> {
     caller: ClassCaller,
+    separate_superclass: bool,
     expression: Expr,
     mode: ContentMode,
     prefix: HeritagePrefix<'ast>,
@@ -614,13 +615,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let extends = self
                 .find_token(gap, comments, "extends")
                 .ok_or_else(|| self.unsupported("class extends boundary", class))?;
-            let after_keyword = comments.partition_point(|comment| comment.span.end <= extends);
+            let extends = Span::new(extends, extends + "extends".len() as u32);
+            let after_keyword =
+                comments.partition_point(|comment| comment.span.end <= extends.start);
             if self.heritage_has_directive(&comments[after_keyword..]) {
                 return Ok(PreparedClassHead::Verbatim);
             }
             let prepared = self.prepare_heritage_prefix(
                 gap,
-                Span::new(extends, extends + 7),
+                extends,
                 comments,
                 || {
                     let preceding = parameters
@@ -679,6 +682,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             Some(SourceClassHeritage {
                 caller,
+                separate_superclass: mode == ContentMode::Formatted
+                    && prefix.source_ends_at(extends.end),
                 expression,
                 mode,
                 prefix,
@@ -965,6 +970,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             writer,
             |formatter, writer| {
+                if heritage.separate_superclass {
+                    // A raw `extends` can be adjacent to a removed operand pair.
+                    writer.space();
+                }
                 let context = ExpressionContext::at(ExpressionPosition::Superclass {
                     has_type_arguments: heritage.arguments.is_some(),
                 })

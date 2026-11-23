@@ -18,7 +18,7 @@ use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail, NodeHead,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::source::is_source_whitespace;
+use crate::formatter::source::{SourceKeywordSpacing, is_source_whitespace};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::generics::TypeAnglePacket;
 use crate::formatter::types::{
@@ -218,9 +218,13 @@ impl PreparedBinaryTypeExpression<'_> {
 }
 
 enum BinaryTypeLayout<'ast> {
-    Source(SourceTypeOperator),
+    Source {
+        source: SourceTypeOperator,
+        spacing: SourceKeywordSpacing,
+    },
     SourceRhs {
         prefix: Span,
+        spacing: SourceKeywordSpacing,
         after: CommentBoundary<'ast>,
         head: BinaryTypeHead<'ast>,
     },
@@ -784,6 +788,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         } else if source {
             let source = SourceTypeOperator::new(gap, operator_span);
+            let spacing = SourceKeywordSpacing::new(gap, operator_span)
+                .with_copied_left(left_mode == ContentMode::Verbatim);
             if let Some(after) = self.prepare_type_rhs_boundary(source, *right) {
                 let head = self.prepare_binary_type_head(
                     *right,
@@ -794,11 +800,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 BinaryTypeLayout::SourceRhs {
                     prefix: source.prefix,
+                    spacing,
                     after,
                     head,
                 }
             } else {
-                BinaryTypeLayout::Source(source)
+                BinaryTypeLayout::Source { source, spacing }
             }
         } else if let Some((prefix, tail)) = self
             .prepare_const_marker_comments(*right, operator, after, gap, operator_span.end)
@@ -998,17 +1005,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                 }
             }
-            BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs_output(
-                source,
-                node,
-                TypeContext::TypeExpressionRhs,
-                writer,
-            ),
+            BinaryTypeLayout::Source { source, spacing } => self
+                .format_source_type_operator_rhs_output(
+                    source,
+                    spacing,
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    writer,
+                ),
             BinaryTypeLayout::SourceRhs {
                 prefix,
+                spacing,
                 after,
                 head,
             } => {
+                spacing.write_before(writer);
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
                 if continuation {

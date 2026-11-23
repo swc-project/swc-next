@@ -11,6 +11,7 @@ use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::source::SourceKeywordSpacing;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{
     FormatError, Semicolons,
@@ -56,7 +57,10 @@ struct MappedBoundary<'ast> {
 }
 
 enum MappedBoundaryLayout<'ast> {
-    Source(Span),
+    Source {
+        span: Span,
+        spacing: SourceKeywordSpacing,
+    },
     Preceding(MappedPrecedingBoundary<'ast>),
     Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
@@ -68,7 +72,7 @@ enum MappedBoundaryLayout<'ast> {
 impl MappedBoundary<'_> {
     fn following_layout(&self) -> TypeLayout {
         match self.layout {
-            MappedBoundaryLayout::Source(_) => TypeLayout::OpeningProvided,
+            MappedBoundaryLayout::Source { .. } => TypeLayout::OpeningProvided,
             MappedBoundaryLayout::Preceding(_)
             | MappedBoundaryLayout::Suppressed(_)
             | MappedBoundaryLayout::Formatted { .. } => TypeLayout::Root,
@@ -494,7 +498,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else if let Some(head) = suppressed_head {
             MappedBoundaryLayout::Suppressed(head)
         } else if left_mode == ContentMode::Verbatim || right.source_owner.is_some() {
-            MappedBoundaryLayout::Source(gap)
+            MappedBoundaryLayout::Source {
+                span: gap,
+                spacing: SourceKeywordSpacing::new(gap, operator)
+                    .with_copied_left(left_mode == ContentMode::Verbatim),
+            }
         } else {
             MappedBoundaryLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, operator.start),
@@ -847,7 +855,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     })
                     .map(|output| output.pending);
             }
-            MappedBoundaryLayout::Source(span) => self.format_source_gap(*span, writer),
+            MappedBoundaryLayout::Source { span, spacing } => {
+                spacing.write(writer, |writer| self.format_source_gap(*span, writer))
+            }
             MappedBoundaryLayout::Formatted { before, after } => {
                 self.format_type_comment_gap(before, FlatSeparator::Space, writer)?;
                 writer.text(separator.text());
