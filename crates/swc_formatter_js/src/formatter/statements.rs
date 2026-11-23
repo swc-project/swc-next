@@ -361,9 +361,20 @@ impl StatementItem {
         }
     }
 
-    fn is_bodyless_function(self, ast: &Ast<'_>) -> bool {
-        self.declaration(ast)
-            .is_some_and(|node| matches!(ast.decl_data(node), DeclData::TsFunction(_)))
+    fn needs_terminator_before_block(mut self, ast: &Ast<'_>) -> bool {
+        while let Self::Statement(statement) = self
+            && let StmtData::LabeledStatement(label) = ast.stmt_data(statement)
+        {
+            self = Self::Statement(label.body(ast));
+        }
+        let Some(declaration) = self.declaration(ast) else {
+            return false;
+        };
+        match ast.decl_data(declaration) {
+            DeclData::TsFunction(_) => true,
+            DeclData::TsModuleDeclaration(module) => module.body(ast).is_none(),
+            _ => false,
+        }
     }
 
     fn has_open_type_tail(self, ast: &Ast<'_>) -> bool {
@@ -932,7 +943,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || pending.as_ref().is_some_and(|next| {
                         matches!(next.item, StatementItem::Statement(node)
                             if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
-                    }) && statement.is_bodyless_function(ast))
+                    }) && statement.needs_terminator_before_block(ast))
             {
                 StatementPunctuation::Canonical(Semicolons::Always)
             } else {
