@@ -185,6 +185,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn complete_inherited_sequence_head(
+        &mut self,
+        inherited: &'ast [Comment],
+        first: Expr,
+        first_start: u32,
+    ) -> Result<&'ast [Comment], FormatError> {
+        let Some(leading) = inherited.first() else {
+            return Ok(inherited);
+        };
+        if self.source_cast_head(first).is_none() {
+            return Ok(inherited);
+        }
+        let comments = self.ast.comments();
+        let start = comments.partition_point(|comment| comment.span.start < leading.span.start);
+        let comments = &comments[start..];
+        let end = comments.partition_point(|comment| comment.span.end <= first_start);
+        let complete = &comments[..end];
+        if let Some(interior) = complete.strip_prefix(inherited) {
+            // The parent leased the exterior head. The remaining prefix owns
+            // the same first member and carries its original cast target.
+            self.comments.claim(interior)?;
+            Ok(complete)
+        } else {
+            Ok(inherited)
+        }
+    }
+
     pub(super) fn format_sequence_output(
         &mut self,
         sequence: SequenceExpression,
@@ -238,6 +265,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if enclosed_head {
             context.head_comments = HeadComments::Pending;
         }
+        let inherited = self.complete_inherited_sequence_head(inherited, first, first_start)?;
         let leading = if enclosed_head || !inherited.is_empty() {
             &[]
         } else {
