@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = value =>
+/* body */
+// head
+{ return value; };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const f = (value) =>
+  /* body */
+  // head
+  {
+    return value;
+  };

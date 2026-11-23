@@ -222,6 +222,7 @@ pub(super) struct SourceArrowBody<'a> {
     trailing_constraint: LineConstraint,
     leading_layout: CommentRunLayout,
     body_starts_line: bool,
+    block_head_line: Option<LineConstraint>,
     hug_body: bool,
     flat_conditional_pair: bool,
     jsx_callback: JsxCallbackContext,
@@ -492,10 +493,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             PreparedArrowBody::FunctionBody(body) => self.function_body_content_mode(body, mode),
             PreparedArrowBody::Expression { .. } => mode,
         };
+        let block_head_line = leading
+            .first()
+            .filter(|comment| {
+                mode == ContentMode::Formatted
+                    && first_statement.is_none()
+                    && comment.kind == CommentKind::Block
+            })
+            .and_then(|comment| {
+                if self.layout_position_starts_line(comment.span.start) {
+                    Some(LineConstraint::NewLine(1))
+                } else {
+                    matches!(body, PreparedArrowBody::Expression { .. })
+                        .then_some(LineConstraint::SameLine)
+                }
+            })
+            .filter(|_| {
+                leading
+                    .iter()
+                    .all(|&comment| self.comment_semantics(comment).is_ordinary())
+            });
+        let own_line_block_head = matches!(block_head_line, Some(LineConstraint::NewLine(_)));
         let (leading, body_leading) = if let PreparedArrowBody::FunctionBody(function_body) = body
             && parameters.has_parameters()
             && mode == ContentMode::Formatted
             && first_statement.is_none()
+            && !own_line_block_head
             && !leading.is_empty()
             && matches!(
                 self.comment_binding(leading, Span::new(operator + 2, body_span.start), None),
@@ -537,15 +560,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comments.in_range(Span::new(operator + 2, head_end))
             }
         };
-        let body_starts_line = head_comments.iter().enumerate().any(|(index, comment)| {
-            let next_start = head_comments
-                .get(index + 1)
-                .map_or(head_end, |next| next.span.start);
-            comment.kind == CommentKind::Line
-                || (matches!(leading_layout, CommentRunLayout::GroupedLeading(_))
-                    && self.layout_position_starts_line(comment.span.start)
-                    && self.line_breaks(comment.span.end, next_start) != 0)
-        });
+        let released_opening = match &body {
+            PreparedArrowBody::Expression { content, .. } if mode == ContentMode::Formatted => {
+                content
+                    .parentheses
+                    .map(|removed| removed.source.outer.start)
+            }
+            _ => None,
+        };
+        let body_starts_line = own_line_block_head
+            || head_comments.iter().enumerate().any(|(index, comment)| {
+                let next_start = head_comments
+                    .get(index + 1)
+                    .map_or(head_end, |next| next.span.start);
+                // A break inside a removed pair belongs to the body, beyond its exterior head.
+                let next_start = released_opening
+                    .filter(|&opening| comment.span.end <= opening)
+                    .map_or(next_start, |opening| next_start.min(opening));
+                comment.kind == CommentKind::Line
+                    || (matches!(leading_layout, CommentRunLayout::GroupedLeading(_))
+                        && self.layout_position_starts_line(comment.span.start)
+                        && self.line_breaks(comment.span.end, next_start) != 0)
+            });
         let jsx_comments = if mode == ContentMode::Formatted {
             self.prepare_arrow_jsx_comments(&body, head_comments, operator, body_span.end)
         } else {
@@ -577,6 +613,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing_constraint,
             leading_layout,
             body_starts_line,
+            block_head_line,
             hug_body,
             flat_conditional_pair,
             jsx_callback: JsxCallbackContext::Ordinary,
@@ -1373,6 +1410,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing_constraint,
             leading_layout,
             body_starts_line,
+            block_head_line,
             hug_body,
             flat_conditional_pair,
             jsx_callback,
@@ -1383,7 +1421,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(body_span.start, |comment| comment.span.start);
         let needs_gap = !matches!(body, PreparedArrowBody::FunctionBody(_))
             || mode != ContentMode::Verbatim && first_statement.is_none();
-        let leading_constraint = needs_gap.then(|| self.line_constraint(operator + 2, first));
+        let leading_constraint =
+            needs_gap.then(|| match self.line_constraint(operator + 2, first) {
+                LineConstraint::Unconstrained => {
+                    block_head_line.unwrap_or(LineConstraint::Unconstrained)
+                }
+                constraint => constraint,
+            });
+        let write_exterior_head =
+            |formatter: &mut Self, writer: &mut Writer<'ast>| -> Result<_, FormatError> {
+                formatter.comments.claim(leading)?;
+                if matches!(block_head_line, Some(LineConstraint::NewLine(_))) {
+                    // The exterior packet keeps its line even if the expression's
+                    // opener disappears or the body has its own leading comments.
+                    formatter.format_comment_run(leading, CommentRunLayout::Source, writer)?;
+                    writer.hard_line();
+                    return Ok(&[][..]);
+                }
+                Ok(leading)
+            };
         let write_body = |writer: &mut Writer<'ast>| match body {
             PreparedArrowBody::Expression {
                 expression,
@@ -1399,7 +1455,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .format_arrow_jsx_comments(content, comments, context, writer)
                         .map(ExpressionOutput::unreported);
                 }
-                self.comments.claim(leading)?;
+                let leading = write_exterior_head(self, writer)?;
                 self.format_prepared_expression_with_leading_comments_and_raw_end(
                     expression,
                     content,
@@ -1414,7 +1470,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             PreparedArrowBody::FunctionBody(body) => {
-                self.comments.claim(leading)?;
+                let leading = write_exterior_head(self, writer)?;
                 if mode == ContentMode::Verbatim || first_statement.is_some() {
                     self.format_comment_run(
                         leading,
