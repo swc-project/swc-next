@@ -509,6 +509,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             (leading, StatementBodyLeading::empty())
         };
+        let trailing_constraint = if mode == ContentMode::Verbatim
+            && matches!(body, PreparedArrowBody::FunctionBody(_))
+            && leading
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            self.line_constraint_after_comments(leading, operator + 2, body_span.start)
+        } else {
+            trailing_constraint
+        };
         let (head_end, hugs_shape, leading_layout) = match &body {
             PreparedArrowBody::Expression { content, .. } => (
                 content.expression.span(self.ast).start,
