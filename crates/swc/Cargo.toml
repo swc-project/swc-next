@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next"
 repository.workspace  = true
-version               = "0.8.0"
+version               = "0.8.1"
 
 [features]
 bridge = ["dep:swc_next_bridge"]
