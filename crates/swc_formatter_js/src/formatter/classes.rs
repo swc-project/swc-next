@@ -2524,7 +2524,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 whole = true;
             }
         }
-        let leading = if comments.is_empty() || whole || incoming.is_some() {
+        let covered_opening = self.lint_line_at(opening).is_some()
+            && comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line);
+        let leading = if comments.is_empty() || whole || incoming.is_some() || covered_opening {
             StatementBodyLeading::empty()
         } else {
             // The static body owns one complete prefix, including any existing

@@ -705,13 +705,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(comments, gap, None),
                 CommentBinding::Unbound
             );
-        // Leave separated comments at the signature when an empty body
-        // would compact their blank line on the next pass.
+        // Leave the run at the signature when relocation would change
+        // coverage or compact a blank line on the next pass.
         let keep_boundary = ordinary
-            && comments
-                .windows(2)
-                .any(|pair| self.previous_line_is_empty(pair[0].span.end, pair[1].span.start))
-            && !self.function_body_requires_break(body);
+            && (self.lint_line_at(gap.end).is_some()
+                || comments
+                    .windows(2)
+                    .any(|pair| self.previous_line_is_empty(pair[0].span.end, pair[1].span.start))
+                    && !self.function_body_requires_break(body));
         let (boundary, leading) = if ordinary && !keep_boundary {
             self.prepare_function_body_leading(comments, body, FunctionBodyAttachment::Function)
         } else {
