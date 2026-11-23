@@ -655,7 +655,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    #[cold]
+    #[inline]
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         if target.tag() != TokenTag::Eof {
