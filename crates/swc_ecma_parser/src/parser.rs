@@ -14300,7 +14300,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
     }
 
-    #[inline]
+    #[cold]
     fn next_token(&mut self) -> Option<()> {
         match self.lexer.next_token(&mut self.current_token) {
             Ok(()) => Some(()),

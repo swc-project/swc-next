@@ -696,6 +696,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    #[cold]
     fn read_next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         if target.tag() != TokenTag::Eof {
             self.state.previous_token_tag = Some(target.tag());
