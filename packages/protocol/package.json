@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/protocol",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Shared source for SWC Next internal JavaScript transport protocols",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/transformer",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "The focused JavaScript and TypeScript source transformer for SWC Next",
   "repository": {
     "type": "git",

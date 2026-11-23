@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/formatter-js",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Experimental and unstable ECMAScript document producer for the SWC Prettier plugin",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/helpers",
-  "version": "0.6.1",
+  "version": "0.8.0",
   "description": "Runtime helpers for SWC Next transforms",
   "repository": {
     "type": "git",
