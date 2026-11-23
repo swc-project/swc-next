@@ -1,23 +1,24 @@
 ---
 source: crates/swc_formatter/tests/fixtures/mod.rs
-assertion_line: 58
 ---
 ---------- Input ----------
 x = (/* head */ (/** @type {X} */ t), y);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-x = /* head */ /** @type {X} */ (t, y);
+x = (/* head */ (/** @type {X} */ t), y);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-x = /* head */ /** @type {X} */ (t, y)
+x = (/* head */ (/** @type {X} */ t), y)
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-x =
-  /* head */ /** @type {X} */ (
-    t, y
-  );
+x = (
+  /* head */ (
+    /** @type {X} */ t
+  ),
+  y
+);

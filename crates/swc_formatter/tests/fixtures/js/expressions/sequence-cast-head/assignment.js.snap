@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+out = (/* head */ (/** @type {number} */ t), y, z, w, v, u, s, r, q, p, o, n, m, l, k, j);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+out = (
+  /* head */ (/** @type {number} */ t),
+  y,
+  z,
+  w,
+  v,
+  u,
+  s,
+  r,
+  q,
+  p,
+  o,
+  n,
+  m,
+  l,
+  k,
+  j
+);

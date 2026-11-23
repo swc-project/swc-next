@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (
+/* first */
+/** @type {number} */ (value).toFixed(), second);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+result = (
+  /* first */
+  /** @type {number} */ (value).toFixed(), second
+);
