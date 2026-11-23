@@ -1820,6 +1820,8 @@ impl<'ast> SourceArguments<'ast> {
 pub(super) struct ChainArgumentFacts<'ast> {
     pub(super) has_function: bool,
     pub(super) expansion: Option<ChainArgumentExpansion<'ast>>,
+    pub(super) terminal: bool,
+    pub(super) call_prefix: Option<Fragment<'ast>>,
     /// An argument contains source-expanded objects without intrinsic newlines.
     pub(super) source_expanded_object: bool,
 }
@@ -2549,115 +2551,137 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } = list;
         let first_mode = first.map_or(ContentMode::Formatted, |argument| argument.mode);
         let opening = delimiters.start;
-        let mut has_outside_prefix = false;
-        let (prefix_start, tail) = if let Some(types) = type_arguments {
-            // The angle owner prints this pending tail before its opener.
-            has_outside_prefix =
-                types.has_comments() || tail.as_ref().is_some_and(|tail| !tail.comments.is_empty());
-            let end = types.node.span(ast).end;
-            self.format_expression_type_arguments(types, tail, writer)?;
-            (end, None)
-        } else {
-            (callee_span.end, tail)
-        };
-        let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
-        let content_start = match prefix {
-            SourceArgumentPrefix::Empty { operator, comments } => {
-                let comments = if tail.is_some() {
-                    self.comments.between(Span::new(source_end, opening))?
-                } else {
-                    comments
-                };
-                has_outside_prefix |= !comments.is_empty();
-                self.comments.claim(comments)?;
-                self.format_empty_argument_prefix(comments, operator, source_end, writer)?;
-                if operator.is_some() {
-                    writer.text("?.");
-                }
-                opening + 1
-            }
-            SourceArgumentPrefix::Direct(prefix) => {
-                let before = self.comments.between(Span::new(source_end, opening))?;
-                let prefix_belongs_to_arguments = prefix.belongs_to_arguments();
-                let move_tail = first.is_some()
-                    && (prefix.comments().is_empty() || prefix_belongs_to_arguments)
-                    && tail.as_ref().is_some_and(|tail| {
-                        let binding = self.comment_binding(
-                            tail.comments,
-                            Span::new(source_end, opening + 1),
-                            None,
-                        );
-                        // The formatter's visual line placement ignores
-                        // indentation that will disappear with the source pair.
-                        ArgumentPrefix::can_relocate(tail.comments, binding, None, |start| {
-                            self.layout_position_starts_line(start)
-                        })
-                    });
-                let outside_count = if move_tail {
-                    // A borrowed callee tail becomes part of the first argument
-                    // boundary, including for frames that require it to be clear.
-                    frame = frame.with_borrowed_argument_prefix();
-                    0
-                } else if prefix_belongs_to_arguments {
-                    tail.as_ref().map_or(0, |tail| tail.comments.len())
-                } else {
-                    before.len()
-                };
-                let (outside, inside) = before.split_at(outside_count);
-                has_outside_prefix |= !outside.is_empty();
-                let boundary = self.prepare_comment_boundary(outside, source_end, opening);
-                self.format_comment_boundary(&boundary, writer)?;
-                if prefix_mode == ContentMode::Verbatim
-                    && self.content_mode(outside) == ContentMode::Verbatim
-                {
-                    // A same-line opening would reattach this marker to the first
-                    // argument after reparsing, even when its text stayed outside.
-                    writer.hard_line();
-                } else {
-                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
-                }
-                if inside.is_empty() {
+        let carries_operator =
+            type_arguments.is_some() || matches!(prefix, SourceArgumentPrefix::Optional { .. });
+        let write_prefix = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+            let mut has_outside_prefix = false;
+            let (prefix_start, tail) = if let Some(types) = type_arguments {
+                // The angle owner prints this pending tail before its opener.
+                has_outside_prefix = types.has_comments()
+                    || tail.as_ref().is_some_and(|tail| !tail.comments.is_empty());
+                let end = types.node.span(ast).end;
+                formatter.format_expression_type_arguments(types, tail, writer)?;
+                (end, None)
+            } else {
+                (callee_span.end, tail)
+            };
+            let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
+            let content_start = match prefix {
+                SourceArgumentPrefix::Empty { operator, comments } => {
+                    let comments = if tail.is_some() {
+                        formatter.comments.between(Span::new(source_end, opening))?
+                    } else {
+                        comments
+                    };
+                    has_outside_prefix |= !comments.is_empty();
+                    formatter.comments.claim(comments)?;
+                    formatter
+                        .format_empty_argument_prefix(comments, operator, source_end, writer)?;
+                    if operator.is_some() {
+                        writer.text("?.");
+                    }
                     opening + 1
-                } else if move_tail {
-                    source_end
-                } else {
-                    prefix_start
                 }
-            }
-            SourceArgumentPrefix::Optional {
-                operator,
-                before,
-                after,
-            } => {
-                let before = if tail.is_some() {
-                    self.comments
-                        .between(Span::new(source_end, operator.start))?
-                } else {
-                    before
-                };
-                has_outside_prefix |= !before.is_empty();
-                let boundary = self.prepare_comment_boundary(before, source_end, operator.start);
-                self.format_comment_boundary(&boundary, writer)?;
-                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
-                writer.text("?.");
-                if after.belongs_to_arguments() {
-                    operator.end
-                } else {
-                    let after = after.comments();
-                    has_outside_prefix |= !after.is_empty();
-                    let boundary = self.prepare_comment_boundary(after, operator.end, opening);
-                    self.format_comment_boundary(&boundary, writer)?;
-                    if first.is_some()
-                        && prefix_mode == ContentMode::Verbatim
-                        && self.content_mode(after) == ContentMode::Verbatim
+                SourceArgumentPrefix::Direct(prefix) => {
+                    let before = formatter.comments.between(Span::new(source_end, opening))?;
+                    let prefix_belongs_to_arguments = prefix.belongs_to_arguments();
+                    let move_tail = first.is_some()
+                        && (prefix.comments().is_empty() || prefix_belongs_to_arguments)
+                        && tail.as_ref().is_some_and(|tail| {
+                            let binding = formatter.comment_binding(
+                                tail.comments,
+                                Span::new(source_end, opening + 1),
+                                None,
+                            );
+                            // The formatter's visual line placement ignores
+                            // indentation that will disappear with the source pair.
+                            ArgumentPrefix::can_relocate(tail.comments, binding, None, |start| {
+                                formatter.layout_position_starts_line(start)
+                            })
+                        });
+                    let outside_count = if move_tail {
+                        // A borrowed callee tail becomes part of the first argument
+                        // boundary, including for frames that require it to be clear.
+                        frame = frame.with_borrowed_argument_prefix();
+                        0
+                    } else if prefix_belongs_to_arguments {
+                        tail.as_ref().map_or(0, |tail| tail.comments.len())
+                    } else {
+                        before.len()
+                    };
+                    let (outside, inside) = before.split_at(outside_count);
+                    has_outside_prefix |= !outside.is_empty();
+                    let boundary = formatter.prepare_comment_boundary(outside, source_end, opening);
+                    formatter.format_comment_boundary(&boundary, writer)?;
+                    if prefix_mode == ContentMode::Verbatim
+                        && formatter.content_mode(outside) == ContentMode::Verbatim
                     {
+                        // A same-line opening would reattach this marker to the first
+                        // argument after reparsing, even when its text stayed outside.
                         writer.hard_line();
                     } else {
                         boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
                     }
-                    opening + 1
+                    if inside.is_empty() {
+                        opening + 1
+                    } else if move_tail {
+                        source_end
+                    } else {
+                        prefix_start
+                    }
                 }
-            }
+                SourceArgumentPrefix::Optional {
+                    operator,
+                    before,
+                    after,
+                } => {
+                    let before = if tail.is_some() {
+                        formatter
+                            .comments
+                            .between(Span::new(source_end, operator.start))?
+                    } else {
+                        before
+                    };
+                    has_outside_prefix |= !before.is_empty();
+                    let boundary =
+                        formatter.prepare_comment_boundary(before, source_end, operator.start);
+                    formatter.format_comment_boundary(&boundary, writer)?;
+                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    writer.text("?.");
+                    if after.belongs_to_arguments() {
+                        operator.end
+                    } else {
+                        let after = after.comments();
+                        has_outside_prefix |= !after.is_empty();
+                        let boundary =
+                            formatter.prepare_comment_boundary(after, operator.end, opening);
+                        formatter.format_comment_boundary(&boundary, writer)?;
+                        if first.is_some()
+                            && prefix_mode == ContentMode::Verbatim
+                            && formatter.content_mode(after) == ContentMode::Verbatim
+                        {
+                            writer.hard_line();
+                        } else {
+                            boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                        }
+                        opening + 1
+                    }
+                }
+            };
+            Ok::<_, FormatError>((content_start, has_outside_prefix))
+        };
+        let (content_start, has_outside_prefix) = if carries_operator
+            && let Some(facts) = chain_facts.as_deref_mut()
+            && facts.terminal
+        {
+            // All candidates share the operator and its source-owned comments.
+            let (prefix, opening) =
+                writer.record_with_value(|writer| write_prefix(self, writer))?;
+            writer.write_fragment(prefix);
+            facts.call_prefix = Some(prefix);
+            opening
+        } else {
+            write_prefix(self, writer)?
         };
         let content_start = source_opening.map_or(content_start, |opening| opening.span.end);
         let content = Span::new(content_start, delimiters.end - 1);
