@@ -9863,7 +9863,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
         let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
-        let raw_text = token.text(self.source);
+        // SAFETY: The lexer provided this same valid UTF-8 range for `raw`.
+        let raw_text = unsafe {
+            self.source
+                .get_unchecked(token.start() as usize..token.end() as usize)
+        };
         let value = match token.tag() {
             TokenTag::NumericLiteral => parse_decimal_literal(raw_text),
             TokenTag::HexLiteral => parse_hex_literal(raw_text),
