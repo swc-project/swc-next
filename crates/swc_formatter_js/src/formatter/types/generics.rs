@@ -114,6 +114,7 @@ impl TypeListPrefix<'_> {
 struct ParameterBound<'ast> {
     node: PreparedType,
     boundary: TypeBoundary<'ast>,
+    context: TypeContext,
 }
 
 struct ParameterBoundOpening {
@@ -1309,12 +1310,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok::<_, FormatError>(ParameterBound {
                     node: type_node,
                     boundary,
+                    context: if matches!(context, TypeParameterContext::Infer) {
+                        TypeContext::InferConstraint
+                    } else {
+                        TypeContext::TypeConstraint
+                    },
                 })
             })
             .transpose()?;
         // Preserve the original constraint-before-default error priority.
         let default = default
-            .map(|(node, boundary)| boundary.map(|boundary| ParameterBound { node, boundary }))
+            .map(|(node, boundary)| {
+                boundary.map(|boundary| ParameterBound {
+                    node,
+                    boundary,
+                    context: TypeContext::Root,
+                })
+            })
             .transpose()?;
         let prefix = self.prepare_parameter_prefix(node, name, modifiers, &mut name_mode);
         Ok(PreparedParameter {
@@ -1413,13 +1425,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 (Some(constraint), None) => self.format_parameter_bound(
                     constraint,
-                    TypeContext::TypeConstraint,
                     BoundContinuation::from_following(continuation),
                     writer,
                 ),
                 (None, Some(default)) => self.format_parameter_bound(
                     default,
-                    TypeContext::Root,
                     BoundContinuation::from_following(continuation),
                     writer,
                 ),
@@ -1449,6 +1459,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         layout: super::TypeOperatorLayout::Formatted { before, after },
                         ..
                     },
+                ..
             } if movable && !after.is_empty() => {
                 let comments = self.prepare_bound_comments(&after, node.node.span(self.ast));
                 let (following, before, after, comments) = match comments {
@@ -1472,7 +1483,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let constraint = self.format_parameter_bound(
                     constraint,
-                    TypeContext::TypeConstraint,
                     match following {
                         Some(tail) => BoundContinuation::SyntaxWithTail(tail),
                         None => BoundContinuation::Syntax,
@@ -1493,19 +1503,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             default => {
-                let constraint = self.format_parameter_bound(
-                    constraint,
-                    TypeContext::TypeConstraint,
-                    BoundContinuation::Syntax,
-                    writer,
-                )?;
+                let constraint =
+                    self.format_parameter_bound(constraint, BoundContinuation::Syntax, writer)?;
                 self.format_expression_tail(constraint.pending, writer)?;
-                self.format_parameter_bound(
-                    default,
-                    TypeContext::Root,
-                    BoundContinuation::End,
-                    writer,
-                )
+                self.format_parameter_bound(default, BoundContinuation::End, writer)
             }
         }
     }
@@ -1513,10 +1514,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_parameter_bound(
         &mut self,
         bound: ParameterBound<'ast>,
-        context: TypeContext,
         continuation: BoundContinuation<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
+        let context = bound.context;
         let (role, before, after) = match bound.boundary {
             TypeBoundary {
                 role,
