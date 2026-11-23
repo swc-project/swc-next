@@ -655,7 +655,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    #[inline]
+    #[cold]
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         if target.tag() != TokenTag::Eof {
@@ -696,6 +696,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    #[cold]
     fn read_next_jsx_tag_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         if target.tag() != TokenTag::Eof {
             self.state.previous_token_tag = Some(target.tag());
