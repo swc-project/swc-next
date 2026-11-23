@@ -1,0 +1,54 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (factory()<Item>)();
+new (factory()!.namespace.Constructor<Item>)();
+new (factory()[key]<Item>)();
+new ((factory()?.Constructor)<Item>)();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+new (factory()<Item>)();
+new (factory()!.namespace.Constructor<Item>)();
+new (factory()[key]<Item>)();
+new (factory()?.Constructor<Item>)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+new (factory()<Item>)();
+new (factory()!
+  .namespace
+  .Constructor<Item>)();
+new (factory()[
+  key
+]<Item>)();
+new (factory()
+  ?.Constructor<Item>)();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+new (factory()<Item>)()
+new (factory()!
+  .namespace
+  .Constructor<Item>)()
+new (factory()[
+  key
+]<Item>)()
+new (factory()
+  ?.Constructor<Item>)()
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+new (factory()<Item>)();
+new (factory()!
+	.namespace
+	.Constructor<Item>)();
+new (factory()[
+	key
+]<Item>)();
+new (factory()
+	?.Constructor<Item>)();

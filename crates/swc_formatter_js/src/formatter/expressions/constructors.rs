@@ -108,13 +108,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// The constructor callee must stay a MemberExpression, including its receiver spine.
-    pub(super) fn new_callee_contains_call(
+    pub(super) fn new_callee_spine_needs_parentheses(
         &self,
         mut data: ExprData,
         mut mode: ContentMode,
     ) -> bool {
+        let instantiation_callee = if let ExprData::TsInstantiationExpression(node) = data {
+            let operand = node.expression(self.ast);
+            data = if mode == ContentMode::Formatted {
+                self.expression_data(operand)
+            } else {
+                self.ast.expr_data(operand)
+            };
+            // The instantiation can hide an optional chain at the callee root.
+            if matches!(data, ExprData::ChainExpression(_)) {
+                return true;
+            }
+            true
+        } else {
+            false
+        };
+
         loop {
-            match data {
+            let receiver = match data {
                 ExprData::CallExpression(_) | ExprData::ImportExpression(_) => return true,
                 ExprData::TaggedTemplateExpression(template) => {
                     let Ok((tag, context)) = self.template_tag_head_operand(
@@ -124,30 +140,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return true;
                     };
                     mode = context.content_mode;
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(tag)
-                    } else {
-                        self.ast.expr_data(tag)
-                    };
+                    tag
                 }
-                ExprData::TsNonNullExpression(assertion) => {
-                    let expression = assertion.expression(self.ast);
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(expression)
-                    } else {
-                        self.ast.expr_data(expression)
-                    };
+                ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                ExprData::MemberExpression(member) => member.object(self.ast),
+                // Keep the instantiation distinct from the constructor's own
+                // type arguments when its receiver spine contains a call.
+                ExprData::TsInstantiationExpression(node) if instantiation_callee => {
+                    node.expression(self.ast)
                 }
-                ExprData::MemberExpression(member) => {
-                    let object = member.object(self.ast);
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(object)
-                    } else {
-                        self.ast.expr_data(object)
-                    };
+                ExprData::ChainExpression(node) if instantiation_callee => {
+                    node.expression(self.ast)
                 }
                 _ => return false,
-            }
+            };
+            data = if mode == ContentMode::Formatted {
+                self.expression_data(receiver)
+            } else {
+                self.ast.expr_data(receiver)
+            };
         }
     }
 }

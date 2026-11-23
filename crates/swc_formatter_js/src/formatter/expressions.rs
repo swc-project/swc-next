@@ -1414,19 +1414,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(needed) =
             typescript::type_expression_needs_parentheses(data, position, self.ast)
         {
-            let exposed_tail = match (data, position) {
-                (
-                    ExprData::TsTypeAssertion(_),
-                    ExpressionPosition::BinaryOperand {
-                        operator,
-                        side: OperandSide::Left,
+            return Some(
+                needed
+                    || match (data, position) {
+                        (
+                            ExprData::TsTypeAssertion(_),
+                            ExpressionPosition::BinaryOperand {
+                                operator,
+                                side: OperandSide::Left,
+                            },
+                        ) if self.ast.is_ts() => {
+                            self.instantiation_tail_needs_parentheses(data, operator, mode)
+                        }
+                        (
+                            ExprData::TsInstantiationExpression(_),
+                            ExpressionPosition::NewCallee { .. },
+                        ) => self.new_callee_spine_needs_parentheses(data, mode),
+                        _ => false,
                     },
-                ) if !needed && self.ast.is_ts() => {
-                    self.instantiation_tail_needs_parentheses(data, operator, mode)
-                }
-                _ => false,
-            };
-            return Some(needed || exposed_tail);
+            );
         }
         // Both TypeScript suffixes attach to left-hand-side expressions.
         if matches!(
@@ -1577,7 +1583,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => return None,
         }
         if matches!(position, ExpressionPosition::NewCallee { .. })
-            && self.new_callee_contains_call(data, mode)
+            && self.new_callee_spine_needs_parentheses(data, mode)
         {
             return Some(true);
         }
