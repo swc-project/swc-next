@@ -4906,7 +4906,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(head.owner());
             }
             let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
-            if matches!(context.position, ExpressionPosition::Superclass { .. }) {
+            if matches!(
+                context.position,
+                ExpressionPosition::TypeBinaryOperand | ExpressionPosition::Superclass { .. }
+            ) {
                 let source_end = tail.as_ref().map_or(inner_span.end, |tail| tail.source_end);
                 let tail_comments = self.comments.between(Span::new(source_end, span.end))?;
                 if self.has_source_only_comment_gap(source_end, tail_comments) {
@@ -6153,17 +6156,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let removed = content.parentheses?;
         let tail = removed.tail?;
-        // A required superclass pair owns the trailing comments inside it.
-        if matches!(context.position, ExpressionPosition::Superclass { .. }) {
-            return self
-                .expression_is_parenthesized(content.data, context)
-                .then_some(removed.source);
+        // A required pair keeps its own trailing comments. An optional pair
+        // can also be needed to keep the next type operator off a comment line.
+        if self.expression_is_parenthesized(content.data, context) {
+            return Some(removed.source);
+        }
+        if !matches!(context.position, ExpressionPosition::TypeBinaryOperand) {
+            return None;
         }
         let last = self
             .source_parentheses_comments(removed.source)
             .tail
             .last()?;
-        (self.line_breaks(tail.span.start, last.span.end) != 0).then_some(removed.source)
+        (last.kind == CommentKind::Line
+            || self.source_line_breaks(tail.span.start, last.span.end) != 0)
+            .then_some(removed.source)
     }
 
     pub(in crate::formatter) fn format_operand_tail_on_source_lines(

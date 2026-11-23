@@ -15,7 +15,9 @@ const following = (1 // comment
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const inline = 1 as number; // comment
+const inline = (
+  1 // comment
+) as number;
 const own = (
   1
   // comment
@@ -32,7 +34,9 @@ const following = (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const inline = 1 as number // comment
+const inline = (
+  1 // comment
+) as number
 const own = (
   1
   // comment
@@ -49,7 +53,9 @@ const following = (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
-const inline = 1 as number; // comment
+const inline = (
+  1 // comment
+) as number;
 const own = (
   1
   // comment
@@ -66,7 +72,9 @@ const following = (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":120}
 ---------- Output ----------
-const inline = 1 as number; // comment
+const inline = (
+  1 // comment
+) as number;
 const own = (
   1
   // comment
@@ -83,7 +91,9 @@ const following = (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40,"semicolons":"as-needed"}
 ---------- Output ----------
-const inline = 1 as number // comment
+const inline = (
+  1 // comment
+) as number
 const own = (
   1
   // comment
