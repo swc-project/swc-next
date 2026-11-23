@@ -6582,9 +6582,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(next.is_keyword(TokenTag::Is) && !next.has_line_terminator_before())
     }
 
-    #[inline(never)]
     fn parse_type(&mut self) -> Option<TsType> {
-        self.parse_type_with(Self::parse_type_inner)
+        if self.ts_context.disallow_conditional_types() {
+            return self.parse_type_allowing_conditional();
+        }
+        self.parse_type_inner()
+    }
+
+    #[inline(never)]
+    fn parse_type_allowing_conditional(&mut self) -> Option<TsType> {
+        self.ts_context
+            .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let result = self.parse_type_inner();
+        self.ts_context
+            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        result
     }
 
     fn parse_type_with(
