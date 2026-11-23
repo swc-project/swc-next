@@ -6586,7 +6586,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type(&mut self) -> Option<TsType> {
-        self.parse_type_with(Self::parse_type_inner)
+        if self.ts_context.disallow_conditional_types() {
+            return self.parse_type_allowing_conditional();
+        }
+        self.parse_type_inner()
+    }
+
+    #[inline(never)]
+    fn parse_type_allowing_conditional(&mut self) -> Option<TsType> {
+        self.ts_context
+            .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let result = self.parse_type_inner();
+        self.ts_context
+            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        result
     }
 
     fn parse_type_with(
@@ -6653,7 +6666,76 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    /// A plain identifier is the most common type start. It never starts a
+    /// function, constructor, keyword, or operator type, so parse the reference
+    /// before entering the general dispatch.
+    #[inline]
     fn parse_type_inner(&mut self) -> Option<TsType> {
+        let token = self.current_token;
+        if token.tag() == TokenTag::Identifier {
+            return self.parse_identifier_type(token);
+        }
+        self.parse_non_identifier_type()
+    }
+
+    fn parse_identifier_type(&mut self, token: Token) -> Option<TsType> {
+        debug_assert_eq!(token.tag(), TokenTag::Identifier);
+        if self.advance_without_escape_check().is_none() {
+            return self.report_expected_identifier_type();
+        }
+
+        let tag = self.current_token.tag();
+        let span = token.span();
+        let name = self.identifier_name(token);
+        let identifier = self.ast.identifier_reference(span, name);
+        let name = TsTypeName::IdentifierReference(identifier);
+        match tag {
+            TokenTag::Dot => self.parse_qualified_identifier_type(token.start(), identifier),
+            TokenTag::LessThan | TokenTag::LeftShift
+                if !self.current_token.has_line_terminator_before() =>
+            {
+                self.parse_type_reference_with_arguments(span.start, name)
+                    .and_then(|primary| self.parse_type_from_primary(primary))
+                    .or_else(|| self.report_expected_identifier_type())
+            }
+            TokenTag::LeftBracket
+            | TokenTag::Question
+            | TokenTag::LogicalNot
+            | TokenTag::BitwiseAnd
+            | TokenTag::BitwiseOr
+            | TokenTag::Extends => {
+                let primary = self.ast.ts_type_ts_type_reference(span, name, None);
+                self.parse_type_continuation(primary)
+                    .or_else(|| self.report_expected_identifier_type())
+            }
+            _ => Some(self.ast.ts_type_ts_type_reference(span, name, None)),
+        }
+    }
+
+    #[inline(never)]
+    fn parse_qualified_identifier_type(
+        &mut self,
+        start: u32,
+        identifier: IdentifierReference,
+    ) -> Option<TsType> {
+        self.extend_qualified_name(TsQualifiedNameLeft::IdentifierReference(identifier), start)
+            .and_then(|name| self.parse_type_reference(start, name))
+            .and_then(|primary| self.parse_type_from_primary(primary))
+            .or_else(|| self.report_expected_identifier_type())
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn report_expected_identifier_type(&mut self) -> Option<TsType> {
+        self.report_expected(
+            self.current_token.span(),
+            "Expected a type",
+            ReportOptions::default(),
+        );
+        None
+    }
+
+    fn parse_non_identifier_type(&mut self) -> Option<TsType> {
         let tag = self.current_token.tag();
         let may_start_function_or_constructor_type = matches!(
             tag,
