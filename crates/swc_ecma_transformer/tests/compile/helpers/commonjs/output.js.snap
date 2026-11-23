@@ -1,8 +1,39 @@
 ---
 source: crates/swc_ecma_transformer/tests/compile.rs
 ---
-var _swc_helpers = require("@swc-next/helpers");
+function _type_of(obj) {
+  "use strict";
+  return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
+}
+function _to_primitive(input, hint) {
+  "use strict";
+  if (_type_of(input) !== "object" || input === null) return input;
+  var prim = input[Symbol.toPrimitive];
+  if (prim !== void 0) {
+    var res = prim.call(input, hint || "default");
+    if (_type_of(res) !== "object") return res;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return (hint === "string" ? String : Number)(input);
+}
+function _to_property_key(arg) {
+  "use strict";
+  var key = _to_primitive(arg, "string");
+  return _type_of(key) === "symbol" ? key : String(key);
+}
+function _set_function_name(fn, name, prefix) {
+  "use strict";
+  if (typeof name === "symbol") {
+    name = name.description;
+    name = name === void 0 ? "" : "[" + name + "]";
+  }
+  try {
+    Object.defineProperty(fn, "name", { configurable: true, value: prefix ? prefix + " " + name : name });
+  } catch (_) {
+  }
+  return fn;
+}
 var _computedKey, _staticBlock;
-const obj = { [_computedKey = _swc_helpers._to_property_key(key())]: (class {
-  static #_ = _staticBlock = () => (_swc_helpers._set_function_name(this, _computedKey), init(), this);
+const obj = { [_computedKey = _to_property_key(key())]: (class {
+  static #_ = _staticBlock = () => (_set_function_name(this, _computedKey), init(), this);
 }, _staticBlock()) };

@@ -1175,6 +1175,7 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     ast: Ast<'a>,
     source: &'a str,
+    source_base: u32,
     source_type: SourceType,
     lang: Lang,
     preserve_parens: bool,
@@ -1213,6 +1214,32 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     type_start_paren: Option<u32>,
     type_argument_lookahead: TypeArgumentLookahead,
     computed_key_lookahead: ComputedKeyLookahead,
+}
+
+// The parser owns the target AST while it appends nodes. Return it to the
+// caller even if parsing unwinds, so its existing handles remain valid.
+struct AppendingParser<'target, 'a> {
+    parser: Parser<'a, NoTokenParserConfig>,
+    target: &'target mut Ast<'a>,
+    source_type: SourceType,
+    lang: Lang,
+    nodes: usize,
+    extra_data: usize,
+    committed: bool,
+}
+
+impl Drop for AppendingParser<'_, '_> {
+    fn drop(&mut self) {
+        if !self.committed {
+            // SAFETY: This parse only builds detached nodes and fields. No
+            // handle to the appended storage escapes an unsuccessful parse.
+            unsafe { self.parser.ast.truncate(self.nodes, self.extra_data) };
+        }
+        self.parser
+            .ast
+            .set_source_metadata(self.source_type, self.lang);
+        mem::swap(&mut self.parser.ast, self.target);
+    }
 }
 
 pub struct ParseReturn<'a> {
@@ -1490,6 +1517,57 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     (estimated_nodes, estimated_extra)
 }
 
+impl<'a> Parser<'a> {
+    /// Parse JavaScript module source into an existing AST and return a detached
+    /// program and its newly allocated node range. The original root, source
+    /// metadata and comments are retained.
+    /// The appended nodes have dummy spans. On error, diagnostics use offsets
+    /// into `source` and the appended nodes and fields are discarded.
+    pub fn parse_synthetic_module(
+        ast: &mut Ast<'a>,
+        source: &'a str,
+    ) -> Result<SyntheticModule, Vec<Diagnostic>> {
+        let start = ast.node_count();
+        let extra_data = ast.extra_data_count();
+        let source_type = ast.source_type();
+        let lang = ast.lang();
+        let source_base = ast.add_synthetic_source(source);
+        let options = Options {
+            comments: CommentMode::None,
+            ..Options::default()
+        };
+        let mut parser = Parser::init(ast.allocator(), source, options, NoTokenParserConfig);
+        parser.source_base = source_base;
+        let mut append = AppendingParser {
+            parser,
+            target: ast,
+            source_type,
+            lang,
+            nodes: start,
+            extra_data,
+            committed: false,
+        };
+        mem::swap(&mut append.parser.ast, append.target);
+        let parser = &mut append.parser;
+        if parser.advance().is_none() {
+            parser.current_token = Token::eof(0);
+        }
+        parser.enter_program_context(SourceType::Module);
+        let body = parser.parse_program_body();
+        let (body, diagnostics) = parser.program_parts(body);
+        if !diagnostics.is_empty() {
+            return Err(diagnostics);
+        }
+        let program = parser
+            .ast
+            .program(DUMMY_SP, body.directives, body.body, None);
+        parser.ast.clear_spans_from(start);
+        let nodes = start..parser.ast.node_count();
+        append.committed = true;
+        Ok(SyntheticModule { program, nodes })
+    }
+}
+
 impl<'a, C: ParserConfig> Parser<'a, C> {
     pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
@@ -1509,6 +1587,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             lexer,
             ast,
             source,
+            source_base: 0,
             source_type: options.source_type,
             lang: options.lang,
             preserve_parens: options.preserve_parens,
@@ -1619,10 +1698,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.statement_context = source_type.into();
     }
 
-    fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
+    fn program_parts(&mut self, parsed_body: Option<ParsedBody>) -> (ParsedBody, Vec<Diagnostic>) {
         debug_assert!(self.cover.initialized_names.is_empty());
         self.report_module_mode_errors();
-        let mut diagnostics = self.diagnostics.finish();
+        let mut diagnostics = mem::take(&mut self.diagnostics).finish();
         if parsed_body.is_none() && diagnostics.is_empty() {
             diagnostics.push(Diagnostic::error(
                 "Invalid statement",
@@ -1630,10 +1709,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ));
         }
         // A failed body still needs a program root for callers inspecting diagnostics.
-        let ParsedBody { directives, body } = parsed_body.unwrap_or(ParsedBody {
+        let body = parsed_body.unwrap_or(ParsedBody {
             directives: SubRange::empty(),
             body: SubRange::empty(),
         });
+
+        (body, diagnostics)
+    }
+
+    fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
+        let (ParsedBody { directives, body }, diagnostics) = self.program_parts(parsed_body);
 
         // Create the root node and set it as the AST's root.
         let end = self.current_token.end();
@@ -1642,7 +1727,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let start = hashbang.start;
             let end = start + hashbang.len;
             // SAFETY: The lexer provides an in-bounds hashbang range at UTF-8 boundaries.
-            let value = unsafe { AstUtf8::from_source_range(self.source, start, end) };
+            let value = unsafe { self.source_utf8(start, end) };
             self.ast.hashbang(Span::new(0, end), value)
         });
         let program = self.ast.program(root_span, directives, body, hashbang);
@@ -1864,6 +1949,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    #[inline(always)]
+    unsafe fn source_utf8(&self, start: u32, end: u32) -> AstUtf8 {
+        // SAFETY: Caller guarantees an in-bounds UTF-8 range in `self.source`, and
+        // `self.source_base` maps `self.source` into `self.ast`'s string pool.
+        unsafe { AstUtf8::from_source_range_with_base(self.source, self.source_base, start, end) }
+    }
+
+    #[inline(always)]
+    unsafe fn source_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
+        // SAFETY: Caller guarantees an in-bounds UTF-8 range in `self.source`, and
+        // `self.source_base` maps `self.source` into `self.ast`'s string pool.
+        unsafe { AstWtf8::from_source_range_with_base(self.source, self.source_base, start, end) }
+    }
+
     /// Returns the resolved name for an identifier-like token.
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
@@ -1871,7 +1970,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag() != TokenTag::PrivateIdentifier && !token.is_escaped() {
             // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-            return unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
+            return unsafe { self.source_utf8(token.start(), token.end()) };
         }
 
         self.identifier_name_slow(token)
@@ -1886,7 +1985,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         // SAFETY: Removing an ASCII `#` preserves the token's valid source boundaries.
-        unsafe { AstUtf8::from_source_range(self.source, start, token.end()) }
+        unsafe { self.source_utf8(start, token.end()) }
     }
 
     /// Returns the decoded string value without the surrounding quotes.
@@ -1896,7 +1995,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         // SAFETY: The lexer validated the string; removing its ASCII quotes
         // preserves the in-bounds range and UTF-8 boundaries.
-        unsafe { AstWtf8::from_source_range(self.source, token.start() + 1, token.end() - 1) }
+        unsafe { self.source_wtf8(token.start() + 1, token.end() - 1) }
     }
 
     /// Returns the decoded content of a template quasi span.
@@ -1905,12 +2004,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // values need neither a second scan nor an allocation.
         if !token.is_escaped() {
             // SAFETY: The template content span is in bounds and at UTF-8 boundaries.
-            return unsafe { AstUtf8::from_source_range(self.source, span.start, span.end) };
+            return unsafe { self.source_utf8(span.start, span.end) };
         }
         let raw = &self.source[span.start as usize..span.end as usize];
         let Some(first_cr) = memchr::memchr(b'\r', raw.as_bytes()) else {
             // SAFETY: Slicing `raw` above validated the source range and UTF-8 boundaries.
-            return unsafe { AstUtf8::from_source_range(self.source, span.start, span.end) };
+            return unsafe { self.source_utf8(span.start, span.end) };
         };
         // Template Raw Value normalizes CR and CRLF even when an invalid
         // escape makes the cooked value undefined in a tagged template.
@@ -1926,7 +2025,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
             // SAFETY: The template content span is in bounds and at UTF-8 boundaries.
-            return unsafe { AstWtf8::from_source_range(self.source, span.start, span.end) };
+            return unsafe { self.source_wtf8(span.start, span.end) };
         }
         self.decode_escaped_string(span.start, span.end)
     }
@@ -2896,8 +2995,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_directive(&mut self, string_literal: StringLiteral, span: Span) -> Option<Directive> {
         // SAFETY: The span covers a validated string literal; removing its ASCII
         // quotes preserves the in-bounds range and UTF-8 boundaries.
-        let raw_value =
-            unsafe { AstUtf8::from_source_range(self.source, span.start + 1, span.end - 1) };
+        let raw_value = unsafe { self.source_utf8(span.start + 1, span.end - 1) };
         let end = self.eat_semicolon(span.end)?;
         Some(
             self.ast
@@ -9859,13 +9957,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if token.tag() == TokenTag::BigIntLiteral {
             self.advance()?;
             // SAFETY: Removing the ASCII `n` suffix preserves the valid token boundaries.
-            let raw =
-                unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end() - 1) };
+            let raw = unsafe { self.source_utf8(token.start(), token.end() - 1) };
             return Some(self.ast.expr_big_int_literal(token.span(), raw));
         }
         self.advance()?;
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
+        let raw = unsafe { self.source_utf8(token.start(), token.end()) };
         // SAFETY: The lexer provided this same valid UTF-8 range for `raw`.
         let raw_text = unsafe {
             self.source
@@ -9897,7 +9994,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let value = self.string_value(token);
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
+        let raw = unsafe { self.source_utf8(token.start(), token.end()) };
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9907,7 +10004,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance_jsx_tag()?;
         let value = self.string_value(token);
         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-        let raw = unsafe { AstUtf8::from_source_range(self.source, token.start(), token.end()) };
+        let raw = unsafe { self.source_utf8(token.start(), token.end()) };
         Some(self.ast.string_literal(token.span(), value, raw))
     }
 
@@ -9938,8 +10035,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // SAFETY: The lexer provides in-bounds regexp ranges at UTF-8 boundaries.
         let (pattern, flags) = unsafe {
             (
-                AstUtf8::from_source_range(self.source, result.pattern.start, result.pattern.end),
-                AstUtf8::from_source_range(self.source, result.flags.start, result.flags.end),
+                self.source_utf8(result.pattern.start, result.pattern.end),
+                self.source_utf8(result.flags.start, result.flags.end),
             )
         };
         Some(self.ast.expr_reg_exp_literal(result.span, pattern, flags))
@@ -13170,9 +13267,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 match token.tag() {
                     TokenTag::JsxText => {
                         // SAFETY: The lexer provides an in-bounds token range at UTF-8 boundaries.
-                        let value = unsafe {
-                            AstUtf8::from_source_range(self.source, token.start(), token.end())
-                        };
+                        let value = unsafe { self.source_utf8(token.start(), token.end()) };
                         let jsx_text = self.ast.jsx_child_jsx_text(token.span(), value);
                         self.scratch_b.append(jsx_text);
                     }
@@ -15012,6 +15107,97 @@ mod tests {
     fn take_ast(cell: AstCtx<'_>) -> Ast<'_> {
         // SAFETY: These tests keep all handles with their originating AST.
         unsafe { cell.into_ast() }
+    }
+
+    #[test]
+    fn synthetic_module() {
+        let allocator = Allocator::new();
+        let options = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let parsed = Parser::init(
+            &allocator,
+            "// user\noriginal;",
+            options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parsed.diagnostics.is_empty());
+        let mut ast = take_ast(parsed.ast);
+        let root = ast.root_program();
+        let original = root.body(&ast).get_node(&ast, 0).unwrap();
+        let span = original.span(&ast);
+        let start = ast.node_count();
+        let comments = ast.comments().len();
+
+        let first_function = |ast: &Ast<'_>, program: Program| {
+            program
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_function(ast)
+                .unwrap()
+        };
+        let module = Parser::parse_synthetic_module(
+            &mut ast,
+            "function helper() { return 'text'; } export { helper };",
+        )
+        .unwrap();
+        assert_eq!(module.nodes, start..ast.node_count());
+        assert!(module.nodes.contains(&module.program.node_id().index()));
+        let function = first_function(&ast, module.program);
+        assert_eq!(
+            ast.get_utf8(function.id(&ast).unwrap().name(&ast)),
+            "helper"
+        );
+        assert!(function.node_id().index() >= start);
+        assert_eq!(function.span(&ast), DUMMY_SP);
+        assert_eq!(ast.root_program(), root);
+        assert_eq!(ast.source_type(), SourceType::Script);
+        assert_eq!(ast.source(), "// user\noriginal;");
+        assert_eq!(ast.comments().len(), comments);
+        assert_eq!(original.span(&ast), span);
+
+        let next = Parser::parse_synthetic_module(&mut ast, "function next() {}").unwrap();
+        assert_eq!(next.nodes, module.nodes.end..ast.node_count());
+        assert!(next.nodes.contains(&next.program.node_id().index()));
+
+        let node_count = ast.node_count();
+        let extra_count = ast.extra_data_count();
+        assert!(Parser::parse_synthetic_module(&mut ast, "function invalid() {").is_err());
+        assert_eq!(ast.node_count(), node_count);
+        assert_eq!(ast.extra_data_count(), extra_count);
+        assert_eq!(ast.root_program(), root);
+
+        let empty = Parser::init(&allocator, "", options, NoTokenParserConfig).parse();
+        assert!(empty.diagnostics.is_empty());
+        let mut empty_ast = take_ast(empty.ast);
+        let empty_module = Parser::parse_synthetic_module(
+            &mut empty_ast,
+            "function helper() { return 'text'; } export { helper };",
+        )
+        .unwrap();
+        let empty_fn = first_function(&empty_ast, empty_module.program);
+        assert_eq!(
+            empty_ast.get_utf8(empty_fn.id(&empty_ast).unwrap().name(&empty_ast)),
+            "helper"
+        );
+        let ret = empty_fn
+            .body(&empty_ast)
+            .body(&empty_ast)
+            .get_node(&empty_ast, 0)
+            .unwrap()
+            .as_return_statement(&empty_ast)
+            .unwrap();
+        let value = ret
+            .argument(&empty_ast)
+            .unwrap()
+            .as_string_literal(&empty_ast)
+            .unwrap();
+        assert_eq!(empty_ast.get_wtf8(value.value(&empty_ast)), "text");
     }
 
     fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {

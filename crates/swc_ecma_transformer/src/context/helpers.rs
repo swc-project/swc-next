@@ -6,11 +6,11 @@
 use super::TransformCtx;
 use crate::{
     context::{semantic::BoundIdentifier, statement_injector::Anchor},
-    helpers::{HelperKind, PreparedHelper},
+    helpers::{HelperKind, HelperMode, PreparedHelper},
 };
 use swc_next_ecma_ast::{
-    Argument, BindingIdentifier, BindingPattern, DUMMY_SP, Decl, Expr, ImportDeclarationSpecifier,
-    ImportOrExportKind, Program, PropertyKey, ScopeId, Stmt, SubRange, VariableKind,
+    Argument, DUMMY_SP, Expr, ImportDeclarationSpecifier, ImportOrExportKind, Program, PropertyKey,
+    ScopeId, Stmt, SubRange,
 };
 use swc_next_ecma_semantic::SymbolFlags;
 
@@ -25,6 +25,10 @@ impl TransformCtx<'_, '_> {
     /// _swc_helpers._to_property_key
     /// ```
     pub(crate) fn helper_callee(&mut self, helper: HelperKind, scope: ScopeId) -> Expr {
+        if self.state.helpers.mode == HelperMode::Inline || !self.ast.is_module() {
+            let binding = self.ensure_inline_helper(helper);
+            return Expr::IdentifierReference(binding.reference_read(self, scope, DUMMY_SP));
+        }
         let namespace = match self.state.helpers.bound_identifier() {
             Some(namespace) => namespace,
             None => {
@@ -43,6 +47,17 @@ impl TransformCtx<'_, '_> {
         )
     }
 
+    pub(super) fn ensure_inline_helper(&mut self, helper: HelperKind) -> BoundIdentifier {
+        if let Some(binding) = self.state.helpers.inline_binding(helper) {
+            return binding;
+        }
+        self.state.helpers.begin_preparing(helper);
+        let prepared = self.prepare_inline_helper(helper);
+        let binding = prepared.bound_identifier;
+        self.state.helpers.insert_inline(helper, prepared);
+        binding
+    }
+
     /// Allocate a collision-free name and register its binding in program scope,
     /// then build the detached import declaration. This allocates AST
     /// nodes and semantic information without attaching the declaration.
@@ -56,30 +71,8 @@ impl TransformCtx<'_, '_> {
             self,
             self.program_scope(),
             "_swc_helpers",
-            if self.ast.is_module() {
-                SymbolFlags::IMPORT
-            } else {
-                SymbolFlags::FUNCTION_SCOPED_VAR
-            },
+            SymbolFlags::IMPORT,
         );
-        if !self.ast.is_module() {
-            let scope = self.program_scope();
-            let name = self.ast.add_utf8("require");
-            let require = self.add_node(|ast| ast.identifier_reference(DUMMY_SP, name));
-            let target = self.semantic().binding(scope, b"require");
-            self.register_reference(scope, require, target, Default::default());
-            let source = self.ast.add_wtf8(swc_next_helpers::MODULE.into());
-            let source = Expr::StringLiteral(
-                self.add_node(|ast| ast.string_literal(DUMMY_SP, source, ast.empty_utf8())),
-            );
-            let initializer =
-                self.call(Expr::IdentifierReference(require), [Argument::Expr(source)]);
-            let statement = self.helper_var(bound_identifier.identifier, initializer);
-            return PreparedHelper {
-                bound_identifier,
-                statement,
-            };
-        }
         let specifier =
             ImportDeclarationSpecifier::ImportNamespaceSpecifier(self.add_node(|ast| {
                 ast.import_namespace_specifier(DUMMY_SP, bound_identifier.identifier)
@@ -103,7 +96,7 @@ impl TransformCtx<'_, '_> {
         }
     }
 
-    /// Move the cached namespace declaration into the program's statement queue.
+    /// Move cached external or inline declarations into the program's statement queue.
     /// This queues attachment only; `flush_statements` later prepends them.
     /// Repeating this call without preparing more helpers queues nothing.
     ///
@@ -113,8 +106,11 @@ impl TransformCtx<'_, '_> {
     /// const C = _swc_helpers._set_function_name(class {}, "C");
     /// ```
     pub(crate) fn inject_helpers(&mut self, program: Program) {
-        if let Some(statement) = self.state.helpers.take_statement() {
-            self.inject_statement(program.node_id(), statement, Anchor::First);
+        let container = program.node_id();
+        for statement in self.state.helpers.take_statements() {
+            self.state
+                .statement_injector
+                .insert(container, statement, Anchor::First);
         }
     }
 
@@ -158,27 +154,5 @@ impl TransformCtx<'_, '_> {
                 ast.call_expression(DUMMY_SP, callee, None, arguments, false, false)
             }),
         )
-    }
-    /// Wrap an existing helper binding and initializer in a detached `var`
-    /// declaration, retaining the registered binding identifier and its symbol.
-    ///
-    /// For the `_swc_helpers` binding and a require initializer, build:
-    /// ```js
-    /// var _swc_helpers = require("@swc-next/helpers");
-    /// ```
-    fn helper_var(&mut self, binding: BindingIdentifier, init: Expr) -> Stmt {
-        let declarator = self.add_node(|ast| {
-            ast.variable_declarator(
-                DUMMY_SP,
-                BindingPattern::BindingIdentifier(binding),
-                None,
-                Some(init),
-                false,
-            )
-        });
-        let declarators = self.ast.add_sub_range([declarator]);
-        Stmt::Declaration(Decl::VariableDeclaration(self.add_node(|ast| {
-            ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false)
-        })))
     }
 }

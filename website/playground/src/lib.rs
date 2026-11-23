@@ -130,7 +130,7 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
             Normalizer::normalize(&mut ast);
         }
         let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
-        Transformer::transform(
+        let transformed = Transformer::transform(
             semantic,
             TransformerOptions {
                 typescript: typescript.then(TypeScriptOptions::default),
@@ -141,6 +141,17 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
                 ..TransformerOptions::default()
             },
         );
+        if let Some(error) = transformed
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.severity == Severity::Error)
+        {
+            let message = match &error.help {
+                Some(help) => format!("{}. {help}", error.message),
+                None => error.message.to_string(),
+            };
+            return Err(message);
+        }
     }
     let output = generate(
         &ast,

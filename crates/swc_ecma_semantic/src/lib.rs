@@ -19,12 +19,17 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
+use std::ops::{Index, IndexMut};
+
 use swc_next_allocator::{
-    Idx, IndexSlice,
+    Allocator, Idx, IndexSlice,
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::{ArenaIndexVec, ArenaVec},
 };
-use swc_next_ecma_ast::{Ast, AstCtx, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{
+    Ast, AstCtx, AstWtf8, Diagnostic, Lang, NodeId, Program, ScopeId, SourceType, SymbolId,
+    SyntheticModule, VisitWith,
+};
 
 use crate::{
     binder::{Range, SymbolLinks, TsMemberIndex},
@@ -106,7 +111,7 @@ pub struct Semantic<'a> {
     hoisting_variables: ArenaIndexVec<'a, ScopeId, HoistingMap<'a>>,
 
     /// Each node records one binding, reference, or created scope identity.
-    node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    node_semantic: NodeSemanticIndex<'a>,
 
     ts_members: TsMemberIndex<'a>,
 }
@@ -117,6 +122,54 @@ enum NodeSemanticId {
     Symbol(SymbolId),
     Reference(ReferenceId),
     Scope(ScopeId),
+}
+
+/// Dense storage for a program's nodes, which may be appended to another AST.
+#[derive(Debug)]
+struct NodeSemanticIndex<'a> {
+    start: usize,
+    entries: ArenaVec<'a, NodeSemanticId>,
+}
+
+impl<'a> NodeSemanticIndex<'a> {
+    fn new(start: usize, node_count: usize, allocator: &'a Allocator) -> Self {
+        let count = node_count - start;
+        let mut entries = ArenaVec::with_capacity_in(count, allocator);
+        entries.resize(count, NodeSemanticId::None);
+        Self { start, entries }
+    }
+
+    fn grow_to(&mut self, node_count: usize) {
+        let count = node_count.saturating_sub(self.start);
+        if count > self.entries.len() {
+            self.entries.resize(count, NodeSemanticId::None);
+        }
+    }
+
+    #[inline]
+    fn get(&self, node: NodeId) -> NodeSemanticId {
+        node.index()
+            .checked_sub(self.start)
+            .and_then(|index| self.entries.get(index))
+            .copied()
+            .unwrap_or(NodeSemanticId::None)
+    }
+}
+
+impl Index<NodeId> for NodeSemanticIndex<'_> {
+    type Output = NodeSemanticId;
+
+    #[inline]
+    fn index(&self, node: NodeId) -> &Self::Output {
+        &self.entries[node.index() - self.start]
+    }
+}
+
+impl IndexMut<NodeId> for NodeSemanticIndex<'_> {
+    #[inline]
+    fn index_mut(&mut self, node: NodeId) -> &mut Self::Output {
+        &mut self.entries[node.index() - self.start]
+    }
 }
 
 impl NodeSemanticId {
@@ -198,20 +251,20 @@ impl<'a> Semantic<'a> {
     /// binding or member declaration site. Source-module and anonymous default
     /// export symbols are queried through the TypeScript export APIs.
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        self.node_semantic[node].symbol()
+        self.node_semantic.get(node).symbol()
     }
 
     /// The reference recorded at `node`, or `None` when the node is
     /// not a reference site.
     pub fn reference_of(&self, node: NodeId) -> Option<ReferenceId> {
-        self.node_semantic[node].reference()
+        self.node_semantic.get(node).reference()
     }
 
     /// The scope created by the given node, or `None` if the node is not a
     /// scope-creating site. If a node creates multiple scopes, returns the
     /// last one created (for example, the program's source-type wrapper).
     pub fn scope_of(&self, node: NodeId) -> Option<ScopeId> {
-        self.node_semantic[node].scope()
+        self.node_semantic.get(node).scope()
     }
 
     /// The TypeScript source module's symbol, or `None` outside a TypeScript module.
@@ -661,7 +714,7 @@ impl Iterator for SymbolIterator<'_> {
 
 pub struct ReferenceIterator<'a> {
     references: &'a IndexSlice<ReferenceId, [Reference]>,
-    node_semantic: &'a IndexSlice<NodeId, [NodeSemanticId]>,
+    node_semantic: &'a NodeSemanticIndex<'a>,
     index: u32,
 }
 
@@ -679,7 +732,7 @@ impl Iterator for ReferenceIterator<'_> {
             let reference = *self.references.raw.get(index)?;
             self.index += 1;
             let id = ReferenceId::from_usize(index);
-            if self.node_semantic[reference.node].reference().is_some() {
+            if self.node_semantic.get(reference.node).reference().is_some() {
                 return Some(ReferenceEntry { id, reference });
             }
         }
@@ -794,17 +847,60 @@ pub struct AnalyzeOptions {
 pub fn analyze<'a, A: AstBorrow<'a>>(ast: A, options: AnalyzeOptions) -> SemanticReturn<'a, A> {
     // SAFETY: Analysis only reads handles obtained from this AST.
     let tree = unsafe { ast.as_ast_ctx().ast() };
-    let (semantic, diagnostics) = analyze_impl(tree, options);
+    let (semantic, diagnostics) = analyze_impl(tree, 0..tree.node_count(), options);
     SemanticReturn {
         semantic: SemanticAst { ast, semantic },
         diagnostics,
     }
 }
 
+/// Analyze a detached JavaScript module appended to an existing program AST.
+/// The result returned by the parser identifies the program and its allocated
+/// node range. The model covers only that module and uses its existing node IDs.
+pub fn analyze_synthetic_module<'a>(
+    ast: &mut Ast<'a>,
+    module: SyntheticModule,
+) -> Semantic<'a> {
+    struct RestoreProgram<'borrow, 'a> {
+        ast: &'borrow mut Ast<'a>,
+        program: Program,
+        source_type: SourceType,
+        lang: Lang,
+    }
+
+    impl Drop for RestoreProgram<'_, '_> {
+        fn drop(&mut self) {
+            self.ast.set_root_program(self.program);
+            self.ast.set_source_metadata(self.source_type, self.lang);
+        }
+    }
+
+    assert!(module.nodes.contains(&module.program.node_id().index()));
+    assert!(module.nodes.end <= ast.node_count());
+    let restore = RestoreProgram {
+        program: ast.root_program(),
+        source_type: ast.source_type(),
+        lang: ast.lang(),
+        ast,
+    };
+    restore.ast.set_root_program(module.program);
+    restore
+        .ast
+        .set_source_metadata(SourceType::Module, Lang::Js);
+    let (semantic, diagnostics) =
+        analyze_impl(restore.ast, module.nodes, AnalyzeOptions::default());
+    debug_assert!(diagnostics.is_empty());
+    semantic
+}
+
 // Keep AST traversal non-generic over the context's ownership or borrow form.
-fn analyze_impl<'a>(tree: &Ast<'a>, options: AnalyzeOptions) -> (Semantic<'a>, Vec<Diagnostic>) {
+fn analyze_impl<'a>(
+    tree: &Ast<'a>,
+    nodes: std::ops::Range<usize>,
+    options: AnalyzeOptions,
+) -> (Semantic<'a>, Vec<Diagnostic>) {
     let root = tree.root_program();
-    let mut builder = SemanticBuilder::new(tree, options.check_syntax);
+    let mut builder = SemanticBuilder::new(tree, nodes, options.check_syntax);
     root.visit_with(&mut builder);
     builder.build()
 }
@@ -822,7 +918,7 @@ pub fn check_syntax(ast: &AstCtx<'_>, checks: SyntaxChecks) -> Vec<Diagnostic> {
     }
     // SAFETY: Syntax checking only reads handles obtained from this AST.
     let ast = unsafe { ast.ast() };
-    let mut builder = SemanticBuilder::new(ast, checks);
+    let mut builder = SemanticBuilder::new(ast, 0..ast.node_count(), checks);
     ast.root_program().visit_with(&mut builder);
     builder.into_diagnostics()
 }

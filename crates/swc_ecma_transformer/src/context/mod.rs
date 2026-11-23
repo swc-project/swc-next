@@ -1,8 +1,12 @@
-use swc_next_ecma_ast::{Ast, GetSpan, NodeId, NodeKindData, ScopeId, Stmt, TraverseMutCtx};
+use swc_next_ecma_ast::{
+    Ast, Diagnostic, Expr, GetSpan, NodeId, NodeKindData, ScopeId, Stmt, TraverseMutCtx,
+};
 
 mod comments;
 mod container;
 mod helpers;
+mod inline_helpers;
+mod rename_binding;
 mod semantic;
 mod statement_injector;
 
@@ -11,7 +15,10 @@ pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
-use crate::{helpers::Helpers, uid::UidGenerator};
+use crate::{
+    helpers::{HelperMode, Helpers},
+    uid::UidGenerator,
+};
 use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 
 /// Configuration, caches and pending work for a single transform.
@@ -20,24 +27,26 @@ pub(crate) struct TransformerState<'a> {
     pub(crate) path: Vec<NodeId>,
     pub(crate) scope_stack: Vec<ScopeId>,
     pub(crate) semantic: ScopeModel<'a>,
-    pub(crate) helpers: Helpers,
+    pub(crate) helpers: Helpers<'a>,
     pub(crate) statement_injector: StatementInjector,
     pub(crate) container: Container,
     pub(crate) comments: CommentState,
     pub(crate) used_names: Option<UidGenerator<'a>>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
 }
 
 impl<'a> TransformerState<'a> {
-    pub(crate) fn new(semantic: ScopeModel<'a>) -> Self {
+    pub(crate) fn new(semantic: ScopeModel<'a>, helper_mode: HelperMode) -> Self {
         Self {
             path: Vec::with_capacity(64),
             scope_stack: Vec::with_capacity(64),
             semantic,
-            helpers: Helpers::default(),
+            helpers: Helpers::new(helper_mode),
             statement_injector: Default::default(),
             container: Default::default(),
             comments: Default::default(),
             used_names: None,
+            diagnostics: Vec::new(),
         }
     }
 }
@@ -207,4 +216,23 @@ impl TransformCtx<'_, '_> {
             statement_injector::Anchor::After(anchor),
         );
     }
+}
+
+pub(crate) fn transparent_expr_inner(node: NodeId, ast: &Ast<'_>) -> Option<Expr> {
+    match ast.kind_data(node) {
+        NodeKindData::ParenthesizedExpression(node) => Some(node.expression(ast)),
+        NodeKindData::TsAsExpression(node) => Some(node.expression(ast)),
+        NodeKindData::TsSatisfiesExpression(node) => Some(node.expression(ast)),
+        NodeKindData::TsTypeAssertion(node) => Some(node.expression(ast)),
+        NodeKindData::TsNonNullExpression(node) => Some(node.expression(ast)),
+        NodeKindData::TsInstantiationExpression(node) => Some(node.expression(ast)),
+        _ => None,
+    }
+}
+
+pub(crate) fn unwrap_transparent_expr(mut expr: Expr, ast: &Ast<'_>) -> Expr {
+    while let Some(inner) = transparent_expr_inner(expr.node_id(), ast) {
+        expr = inner;
+    }
+    expr
 }

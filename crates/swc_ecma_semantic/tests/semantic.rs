@@ -369,3 +369,51 @@ fn semantic() {
         })
     });
 }
+
+#[test]
+fn synthetic_module_host_node_queries() {
+    use swc_next_allocator::Allocator;
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        "const host = 1; host;",
+        Options::default(),
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    // SAFETY: Handles belong to this AST and are only read after synthetic analysis.
+    let mut ast = unsafe { parsed.ast.into_ast() };
+    let root = ast.root_program();
+    let decl = root
+        .body(&ast)
+        .get_node(&ast, 0)
+        .unwrap()
+        .as_declaration(&ast)
+        .unwrap()
+        .as_variable_declaration(&ast)
+        .unwrap()
+        .declarators(&ast)
+        .get_node(&ast, 0)
+        .unwrap()
+        .id(&ast);
+    let usage = root
+        .body(&ast)
+        .get_node(&ast, 1)
+        .unwrap()
+        .as_expression_statement(&ast)
+        .unwrap()
+        .expression(&ast);
+
+    let module = Parser::parse_synthetic_module(&mut ast, "export function f() { return 1; }")
+        .expect("valid synthetic module");
+    let synthetic_program = module.program;
+    let semantic = swc_next_ecma_semantic::analyze_synthetic_module(&mut ast, module);
+
+    assert!(semantic.scope_of(root.node_id()).is_none());
+    assert!(semantic.symbol_of(decl.node_id()).is_none());
+    assert!(semantic.reference_of(usage.node_id()).is_none());
+    assert!(semantic.scope_of(synthetic_program.node_id()).is_some());
+}

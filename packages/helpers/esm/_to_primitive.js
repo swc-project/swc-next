@@ -5,7 +5,7 @@ export function _to_primitive(input, hint) {
 
     var prim = input[Symbol.toPrimitive];
 
-    if (prim !== undefined) {
+    if (prim !== void 0) {
         var res = prim.call(input, hint || "default");
         if (_type_of(res) !== "object") return res;
         throw new TypeError("@@toPrimitive must return a primitive value.");

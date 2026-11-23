@@ -448,16 +448,9 @@ fn inferred_name(
         .expect("class parent scope");
     let mut value = class.node_id();
     for parent in ancestors {
-        let transparent_value = match ctx.ast().kind_data(parent) {
-            NodeKindData::ParenthesizedExpression(node) => Some(node.expression(ctx.ast())),
-            NodeKindData::TsAsExpression(node) => Some(node.expression(ctx.ast())),
-            NodeKindData::TsSatisfiesExpression(node) => Some(node.expression(ctx.ast())),
-            NodeKindData::TsTypeAssertion(node) => Some(node.expression(ctx.ast())),
-            NodeKindData::TsNonNullExpression(node) => Some(node.expression(ctx.ast())),
-            NodeKindData::TsInstantiationExpression(node) => Some(node.expression(ctx.ast())),
-            _ => None,
-        };
-        if transparent_value.is_some_and(|expression| expression.node_id() == value) {
+        if crate::context::transparent_expr_inner(parent, ctx.ast())
+            .is_some_and(|expression| expression.node_id() == value)
+        {
             value = parent;
             continue;
         }
@@ -612,28 +605,11 @@ fn inferred_property_key_name(
 }
 
 fn anonymous_function_or_class(value: Expr, ast: &Ast<'_>) -> bool {
+    let value = crate::context::unwrap_transparent_expr(value, ast);
     match ast.kind_data(value.node_id()) {
         NodeKindData::Function(function) => function.id(ast).is_none(),
         NodeKindData::ArrowFunctionExpression(_) => true,
         NodeKindData::Class(class) => class.id(ast).is_none(),
-        NodeKindData::ParenthesizedExpression(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
-        NodeKindData::TsAsExpression(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
-        NodeKindData::TsSatisfiesExpression(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
-        NodeKindData::TsTypeAssertion(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
-        NodeKindData::TsNonNullExpression(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
-        NodeKindData::TsInstantiationExpression(expression) => {
-            anonymous_function_or_class(expression.expression(ast), ast)
-        }
         _ => false,
     }
 }

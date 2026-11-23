@@ -71,4 +71,3 @@ test("helper exports set function names", () => {
   assert.equal(setFunctionName(frozen, "renamed"), frozen);
   assert.equal(frozen.name, "original");
 });
-

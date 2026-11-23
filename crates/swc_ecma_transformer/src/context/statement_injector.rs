@@ -27,6 +27,13 @@ pub(crate) struct StatementInjector {
 }
 
 impl StatementInjector {
+    pub(crate) fn insert(&mut self, container_id: NodeId, statement: Stmt, anchor: Anchor) {
+        self.stmts
+            .entry(container_id)
+            .or_default()
+            .push(Insertion { statement, anchor });
+    }
+
     pub fn is_empty(&self) -> bool {
         self.stmts.values().all(|v| v.is_empty()) && self.vars.values().all(|v| v.is_empty())
     }
@@ -34,10 +41,9 @@ impl StatementInjector {
 
 impl TransformCtx<'_, '_> {
     pub fn inject_statement(&mut self, container_id: NodeId, statement: Stmt, anchor: Anchor) {
-        let insertion = Insertion { statement, anchor };
-        let injector = &mut self.state.statement_injector;
-        let stmts = injector.stmts.entry(container_id).or_default();
-        stmts.push(insertion);
+        self.state
+            .statement_injector
+            .insert(container_id, statement, anchor);
     }
 
     pub fn inject_variable(&mut self, container_id: NodeId, var: BindingIdentifier) {

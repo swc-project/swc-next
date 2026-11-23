@@ -25,6 +25,29 @@ macro_rules! define_ast_string {
                 Self { start, end }
             }
 
+            /// Returns a string handle for the given source range shifted by `base`.
+            ///
+            /// # Safety
+            ///
+            /// `start <= end <= source.len()` must hold, both offsets must be UTF-8
+            /// character boundaries, `base + end` must not overflow `u32`, and the
+            /// shifted range must refer to `source` in the target AST's string pool.
+            #[doc(hidden)]
+            #[inline]
+            pub unsafe fn from_source_range_with_base(
+                source: &str,
+                base: u32,
+                start: u32,
+                end: u32,
+            ) -> Self {
+                debug_assert!(source.get(start as usize..end as usize).is_some());
+                debug_assert!(base.checked_add(end).is_some());
+                Self {
+                    start: base + start,
+                    end: base + end,
+                }
+            }
+
             #[inline]
             pub const fn len(self) -> u32 {
                 debug_assert!(self.end >= self.start);
@@ -149,6 +172,22 @@ impl<'a> StringPool<'a> {
         &self.extra
     }
 
+    pub fn add_synthetic_source(&mut self, source: &str) -> u32 {
+        if source.is_empty() {
+            return 0;
+        }
+        let start = self
+            .source
+            .len()
+            .checked_add(self.extra.len())
+            .expect("string pool offset overflow");
+        let end = start
+            .checked_add(source.len())
+            .expect("string pool offset overflow");
+        assert!(end <= u32::MAX as usize, "string pool exceeds u32 range");
+        self.extra.extend_from_slice(source.as_bytes());
+        start as u32
+    }
     #[inline]
     pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
         let (start, end) = self.add_bytes(text.as_bytes());
