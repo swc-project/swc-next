@@ -1795,6 +1795,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut right_mode = ContentMode::Formatted;
         let layout = 'layout: {
             if !self.has_suppression || self.content_mode(comments) != ContentMode::Verbatim {
+                if matches!(role, TypeBoundaryRole::Constraint(_))
+                    && self.has_source_only_comment_gap(operator.end, after)
+                {
+                    break 'layout TypeOperatorLayout::Source(SourceTypeOperator::new(
+                        gap, operator,
+                    ));
+                }
                 if matches!(
                     role,
                     TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
@@ -2588,6 +2595,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let comments = self.comments.in_range(source.after);
+        if self.has_source_only_comment_gap(source.after.start, comments) {
+            return None;
+        }
         let mut start = source.after.start;
         for comment in comments {
             if comment.span.start < start

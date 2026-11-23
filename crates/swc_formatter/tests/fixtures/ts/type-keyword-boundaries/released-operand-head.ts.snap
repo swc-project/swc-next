@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Bound<T extends (// constraint
+Target)> = T;
+
+type Inferred = Input extends infer T extends (// inferred constraint
+Target) ? T : never;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Bound<
+  T extends
+    // constraint
+    Target,
+> = T;
+
+type Inferred = Input extends infer T extends
+  // inferred constraint
+  Target
+  ? T
+  : never;

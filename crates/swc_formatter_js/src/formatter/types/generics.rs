@@ -21,7 +21,7 @@ use crate::formatter::expressions::arguments::{
     ArgumentLayout, DelimitedClose, FollowingItem, ItemBoundary, PreparedItem, Separator,
     TrailingCommaPolicy,
 };
-use crate::formatter::source::is_source_horizontal_whitespace;
+use crate::formatter::source::{is_source_horizontal_whitespace, is_source_whitespace};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{
     FormatError, TrailingCommas,
@@ -1665,7 +1665,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     PreparedBoundContent::Head { recorded, tail },
                 );
             }
-            let (gap, record_head) = match comments {
+            let (mut gap, record_head) = match comments {
                 PreparedBoundaryComments::Head { .. }
                     if node.source_owner.is_none()
                         && !self.diagnostic_range_is_sensitive(Span::new(
@@ -1716,6 +1716,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
+            if after.is_empty()
+                && matches!(node.data, TsTypeData::TsParenthesizedType(_))
+                && leading.is_some_and(|head| {
+                    head.comments.first().is_some_and(|first| {
+                        !self.layout_line_starts_line(first.span.start)
+                            && self
+                                .source(Span::new(node.node.span(self.ast).start, first.span.start))
+                                .chars()
+                                .all(|character| {
+                                    character == '(' || is_source_whitespace(character)
+                                })
+                    }) && head
+                        .comments
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                })
+            {
+                gap = CommentGap::Source(LineConstraint::NewLine(1));
+            }
             let body = self.prepare_operator_rhs_type(node, context)?;
             let (movable, leading) = match (&body.content, leading) {
                 (super::compound::PreparedTypeContent::Type(_), Some(leading)) => {

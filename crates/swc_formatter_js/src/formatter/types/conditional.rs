@@ -414,7 +414,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let operator_span = Span::new(operator, operator + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
-        let mut source = false;
+        let mut source = matches!(separator, ConditionalTypeSeparator::Extends)
+            && self.has_source_only_comment_gap(operator_span.end, after);
         let mut suppressed_head = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let packet_owner = match (separator, left.data) {
