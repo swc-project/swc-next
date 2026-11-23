@@ -7,14 +7,17 @@ Result;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-value satisfies Result; // explanation
+value satisfies // explanation
+  Result;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-value satisfies Result; // explanation
+value satisfies // explanation
+  Result;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-value satisfies Result // explanation
+value satisfies // explanation
+  Result

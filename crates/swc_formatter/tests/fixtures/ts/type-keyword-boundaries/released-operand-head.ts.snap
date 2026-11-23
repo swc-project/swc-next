@@ -7,6 +7,12 @@ Target)> = T;
 
 type Inferred = Input extends infer T extends (// inferred constraint
 Target) ? T : never;
+
+const cast = value as (// assertion
+Target);
+
+const checked = value satisfies (// consistency
+Target);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
@@ -21,3 +27,11 @@ type Inferred = Input extends infer T extends
   Target
   ? T
   : never;
+
+const cast = value as
+  // assertion
+  Target;
+
+const checked = value satisfies
+  // consistency
+  Target;

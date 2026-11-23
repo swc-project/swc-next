@@ -602,7 +602,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             &mut annotation,
             operator,
-            tail_owner,
             type_operator_follows,
         )?;
         Ok(PreparedBinaryTypeExpression {
@@ -632,7 +631,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         right: &mut PreparedType,
         operator: TypeBinaryOperator,
-        tail_owner: TailOwner,
         type_operator_follows: bool,
     ) -> Result<BinaryTypeBoundary<'ast>, FormatError> {
         let gap = Span::new(
@@ -652,7 +650,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let split = comments.partition_point(|comment| comment.span.end <= start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
-        let mut source = false;
+        let mut source = self.has_source_only_comment_gap(operator_span.end, after);
         let mut suppressed_head = None;
         let mut preceding_packet = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
@@ -769,13 +767,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let layout = if let Some((packet, after)) = preceding_packet {
             let operator_end = start + token.len() as u32;
-            let head = self.prepare_binary_type_head(
-                *right,
-                TypeContext::Root,
-                &after,
-                operator_end,
-                tail_owner,
-            );
+            let head =
+                self.prepare_binary_type_head(*right, TypeContext::Root, &after, operator_end);
             BinaryTypeLayout::Preceding {
                 packet,
                 after,
@@ -796,7 +789,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     TypeContext::Root,
                     &after,
                     operator_span.end,
-                    tail_owner,
                 );
                 BinaryTypeLayout::SourceRhs {
                     prefix: source.prefix,
@@ -823,13 +815,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             let operator_end = start + token.len() as u32;
             let after = self.prepare_comment_boundary(after, operator_end, gap.end);
-            let head = self.prepare_binary_type_head(
-                *right,
-                TypeContext::Root,
-                &after,
-                operator_end,
-                tail_owner,
-            );
+            let head =
+                self.prepare_binary_type_head(*right, TypeContext::Root, &after, operator_end);
             BinaryTypeLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, start),
                 after,
@@ -861,7 +848,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 assertion.expression(self.ast),
                 &mut right,
                 TypeBinaryOperator::As,
-                TailOwner::Expression,
                 false,
             )
             .ok()?;

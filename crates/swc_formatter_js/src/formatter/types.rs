@@ -31,7 +31,7 @@ use super::comments::{
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::RhsLayout;
-use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge, TailOwner};
+use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge};
 use super::literals::StringContext;
 use super::source::{SourceKeywordSpacing, is_source_whitespace};
 use super::statements::DeclarationKeyword;
@@ -317,11 +317,6 @@ enum BinaryTypeHeadLayout<'ast> {
     InlineNamed,
     /// A named RHS owns its complete block head without a continuation scope.
     Named,
-    /// An atomic name can hand its ordinary operator-line packet to its caller.
-    TrailingNamed {
-        name: IdentifierReference,
-        tail: ExpressionTail<'ast>,
-    },
     Caller {
         leading: Option<compound::MovableTypeHead<'ast>>,
         own_line: Option<LineConstraint>,
@@ -5296,7 +5291,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         after: &CommentBoundary<'ast>,
         operator_end: u32,
-        tail_owner: TailOwner,
     ) -> BinaryTypeHead<'ast> {
         let projected = node
             .suppressed_projection()
@@ -5380,7 +5374,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             (after.comments(), target.start)
         };
-        if let TsTypeData::TsTypeReference(reference) = node.data {
+        if matches!(node.data, TsTypeData::TsTypeReference(_)) {
             let blocks = comments
                 .iter()
                 .all(|comment| comment.kind == CommentKind::Block);
@@ -5397,24 +5391,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     BinaryTypeHeadLayout::Named
                 });
             }
-            // A continuing operation owns another token/comment boundary. Keep
-            // this complete head here rather than leasing a queued line across it.
-            if tail_owner == TailOwner::Expression
-                && reference.type_arguments(self.ast).is_none()
-                && let TsTypeNameData::IdentifierReference(name) =
-                    self.ast.ts_type_name_data(reference.type_name(self.ast))
-                && comments
-                    .first()
-                    .is_some_and(|first| self.line_breaks(operator_end, first.span.start) == 0)
-            {
-                return BinaryTypeHead(BinaryTypeHeadLayout::TrailingNamed {
-                    name,
-                    tail: ExpressionTail {
-                        source_end: operator_end,
-                        comments,
-                    },
-                });
-            }
         }
         let own_line = empty_opening.or_else(|| {
             let first = comments.first()?;
@@ -5423,6 +5399,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // the actual external operator boundary. Keep its proven entry.
                 let starts_line = self.layout_line_starts_line(first.span.start)
                     || self.line_breaks(first.span.start, first.span.end) != 0;
+                if !starts_line && first.kind == CommentKind::Line
+                    && matches!(context, TypeContext::Root)
+                {
+                    let mut data = node.data;
+                    while let TsTypeData::TsParenthesizedType(pair) = data {
+                        data = self.ast.ts_type_data(pair.type_annotation(self.ast));
+                    }
+                    if matches!(data, TsTypeData::TsTypeReference(reference)
+                        if reference.type_arguments(self.ast).is_none()
+                            && matches!(self.ast.ts_type_name_data(reference.type_name(self.ast)), TsTypeNameData::IdentifierReference(_)))
+                    {
+                        // Use the real operand's opening when the removed '('
+                        // was the only token preceding an inline line comment.
+                        return Some(LineConstraint::NewLine(1));
+                    }
+                }
                 starts_line
                     && comments.iter().enumerate().any(|(index, comment)| {
                         let next = comments
@@ -5518,11 +5510,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_gap_after(*last, node.node.span(self.ast).start, writer);
             }
             return self.format_prepared_type_body(node, context, layout, writer);
-        }
-        if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
-            // This name has no nested token boundary to consume the leased packet.
-            writer.text(self.type_reference_spelling(name));
-            return Ok(TypeOutput::from_pending(Some(tail)));
         }
         let BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line }) = head else {
             if after.is_empty() {

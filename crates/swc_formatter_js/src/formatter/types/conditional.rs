@@ -12,7 +12,6 @@ use super::{
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::expressions::TailOwner;
 use crate::formatter::source::SourceKeywordSpacing;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
@@ -687,7 +686,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     TypeContext::ConditionalExtends,
                     &after,
                     after.source_end(),
-                    TailOwner::ParentOperation,
                 );
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();

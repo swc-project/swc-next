@@ -7,4 +7,5 @@ a as // c
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a as B; // c
+a as // c
+  B;

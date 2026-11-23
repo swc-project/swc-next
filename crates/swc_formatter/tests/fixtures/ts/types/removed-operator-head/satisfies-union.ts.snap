@@ -7,4 +7,5 @@ a satisfies // c
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a satisfies B; // c
+a satisfies // c
+  B;
