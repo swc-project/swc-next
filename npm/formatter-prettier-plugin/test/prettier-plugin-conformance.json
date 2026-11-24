@@ -16029,6 +16029,25 @@
         "prettierNative": "void /** @type {number} #__PURE__ */ (\n  \"value\"\n).toFixed()\n"
       }
     ],
+    "js/expressions/optimizer-target-binding/nested-pairs.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(/*#__PURE__*/ (\n    /*#__PURE__*/ a\n  )\n);\n(/*#__PURE__*/ (\n    /*@__PURE__*/ a\n  )\n);\n(/*#__PURE__*/ (\n    /* interior */ (\n      /*@__PURE__*/ a\n    ) /* closing */\n  )\n);\nresult =\n  (/*#__PURE__*/ (\n      /*#__PURE__*/ value\n    )\n  );\nuse(\n  (/*#__PURE__*/ (\n      /*#__PURE__*/ value\n    )\n  ),\n);\n(/*#__PURE__*/ (\n    /*#__PURE__*/ value\n  )\n).field;\n(/*#__PURE__*/ (/*@__PURE__*/ effect()\n  )\n)();\n(/*#__PURE__*/ (\n    /*@__NO_SIDE_EFFECTS__*/ effect\n  )()\n);\n(/*#__PURE__*/ (\n    /** @type {number} */ (\n      /*@__PURE__*/ value\n    )\n  )\n);\nfunction f() {\n  (/*#__PURE__*/ (\n      /*@__PURE__*/ \"use strict\"\n    )\n  );\n}\n",
+        "prettierNative": "/*#__PURE__*/ /*#__PURE__*/ a;\n/*#__PURE__*/ /*@__PURE__*/ a;\n/*#__PURE__*/ /* interior */ /*@__PURE__*/ a; /* closing */\nresult =\n  /*#__PURE__*/ /*#__PURE__*/ value;\nuse(\n  /*#__PURE__*/ /*#__PURE__*/ value,\n);\n/*#__PURE__*/ /*#__PURE__*/ value.field;\n/*#__PURE__*/ /*@__PURE__*/ effect()();\n/*#__PURE__*/ /*@__NO_SIDE_EFFECTS__*/ effect();\n/*#__PURE__*/ /** @type {number} */ (\n  /*@__PURE__*/ value\n);\nfunction f() {\n  /*#__PURE__*/ /*@__PURE__*/ (\"use strict\");\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(/*#__PURE__*/ (\n    /*#__PURE__*/ a\n  )\n)\n;(/*#__PURE__*/ (\n    /*@__PURE__*/ a\n  )\n)\n;(/*#__PURE__*/ (\n    /* interior */ (\n      /*@__PURE__*/ a\n    ) /* closing */\n  )\n)\nresult =\n  (/*#__PURE__*/ (\n      /*#__PURE__*/ value\n    )\n  )\nuse(\n  (/*#__PURE__*/ (\n      /*#__PURE__*/ value\n    )\n  ),\n)\n;(/*#__PURE__*/ (\n    /*#__PURE__*/ value\n  )\n).field\n;(/*#__PURE__*/ (/*@__PURE__*/ effect()\n  )\n)()\n;(/*#__PURE__*/ (\n    /*@__NO_SIDE_EFFECTS__*/ effect\n  )()\n)\n;(/*#__PURE__*/ (\n    /** @type {number} */ (\n      /*@__PURE__*/ value\n    )\n  )\n)\nfunction f() {\n  ;(/*#__PURE__*/ (\n      /*@__PURE__*/ \"use strict\"\n    )\n  )\n}\n",
+        "prettierNative": "/*#__PURE__*/ /*#__PURE__*/ a\n/*#__PURE__*/ /*@__PURE__*/ a\n/*#__PURE__*/ /* interior */ /*@__PURE__*/ a /* closing */\nresult =\n  /*#__PURE__*/ /*#__PURE__*/ value\nuse(\n  /*#__PURE__*/ /*#__PURE__*/ value,\n)\n/*#__PURE__*/ /*#__PURE__*/ value.field\n/*#__PURE__*/ /*@__PURE__*/ effect()()\n/*#__PURE__*/ /*@__NO_SIDE_EFFECTS__*/ effect()\n;/*#__PURE__*/ /** @type {number} */ (\n  /*@__PURE__*/ value\n)\nfunction f() {\n  ;/*#__PURE__*/ /*@__PURE__*/ (\"use strict\")\n}\n"
+      }
+    ],
     "js/expressions/optimizer-target-binding/prefix-head/keyword-optimizer.js": [
       {
         "options": {
