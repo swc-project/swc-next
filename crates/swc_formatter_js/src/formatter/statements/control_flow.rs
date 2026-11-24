@@ -178,7 +178,6 @@ struct Condition<'ast> {
     expression: Expr,
     position: ExpressionPosition,
     closing: u32,
-    tail_end: u32,
     leading: &'ast [Comment],
     mode: ContentMode,
     inline: bool,
@@ -405,7 +404,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             position: ExpressionPosition::ControlCondition,
             closing,
-            tail_end: closing,
             leading,
             mode,
             inline,
@@ -508,7 +506,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             position,
             closing,
-            tail_end,
             leading,
             mode,
             inline,
@@ -559,7 +556,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None,
                     writer,
                 )?;
-                let tail = self.capture_expression_tail(Span::new(span.end, tail_end), tail)?;
+                let tail = self.capture_expression_tail(Span::new(span.end, closing), tail)?;
                 let last = tail.as_ref().and_then(|tail| tail.comments.last());
                 let end = last.map_or(span.end, |comment| comment.span.end);
                 self.format_expression_tail(tail, writer)?;

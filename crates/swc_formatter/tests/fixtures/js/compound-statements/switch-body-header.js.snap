@@ -1,0 +1,50 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (state) // Header
+{ // Body
+  default:
+    run();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+switch (state) // Header
+{
+  // Body
+  default:
+    run();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+switch (state) // Header
+{
+  // Body
+  default:
+    run()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+switch (state) // Header
+{
+	// Body
+	default:
+		run();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+switch (
+  state
+) // Header
+{
+  // Body
+  default:
+    run()
+}

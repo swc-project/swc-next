@@ -117,7 +117,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let body = Span::new(opening + 1, span.end - 1);
-        let mut first_gap = self.compound_gap(Span::new(
+        let first_gap = self.compound_gap(Span::new(
             body.start,
             first.map_or(body.end, |node| node.span(ast).start),
         ));
@@ -163,35 +163,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comment_binding(first_gap.comments, first_gap.span, None)
                 .allows_relocation(None);
         let closing = condition.closing;
-        let split = condition_tail
-            .comments
-            .partition_point(|comment| comment.span.end <= closing);
-        let mut after = CompoundGap {
+        let after = CompoundGap {
             span: Span::new(closing + 1, opening),
-            comments: &condition_tail.comments[split..],
+            comments: &condition_tail.comments[condition_tail
+                .comments
+                .partition_point(|comment| comment.span.end <= closing)..],
             layout: GapLayout::Formatted,
         };
-        if !source_header
-            && self
-                .comment_binding(after.comments, after.span, None)
-                .allows_relocation(None)
-        {
-            condition.tail_end = opening;
-            after.comments = &[];
-            if first.is_some() && first_gap_relocatable {
-                let split = first_gap.comments.partition_point(|comment| {
-                    self.line_breaks(body.start, comment.span.start) == 0
-                });
-                if let Some(last) = first_gap.comments[..split]
-                    .last()
-                    .filter(|comment| comment.kind == CommentKind::Line)
-                {
-                    condition.tail_end = last.span.end;
-                    condition.inline = false;
-                    first_gap.comments = &first_gap.comments[split..];
-                }
-            }
-        }
         let case_leading = first_gap_relocatable && !first_gap.comments.is_empty();
         writer.group(false, |writer| {
             writer.text("switch");
