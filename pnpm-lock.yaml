@@ -410,6 +410,9 @@ importers:
       '@swc-next/formatter-js':
         specifier: workspace:*
         version: link:../formatter-js
+      '@swc-next/formatter-markdown':
+        specifier: workspace:*
+        version: link:../formatter-markdown
     devDependencies:
       '@swc-next/formatter':
         specifier: workspace:*

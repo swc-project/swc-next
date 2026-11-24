@@ -86,9 +86,19 @@ export default mergeRslibConfig(baseConfig, {
     },
     {
       id: "formatter-prettier-plugin",
+      source: {
+        entry: {
+          markdown: path.join(
+            root,
+            "npm/formatter-prettier-plugin/src-js/markdown.js",
+          ),
+        },
+      },
       output: {
+        cleanDistPath: true,
         externals: [
           "@swc-next/formatter-js",
+          "@swc-next/formatter-markdown",
           "prettier/doc",
           "prettier/plugins/estree",
         ],

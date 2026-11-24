@@ -8,16 +8,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js"
     }
   },
   "files": [
-    "dist/index.js",
-    "dist/index.d.ts",
+    "dist",
     "README.md"
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@swc-next/formatter-js": "workspace:*"
+    "@swc-next/formatter-js": "workspace:*",
+    "@swc-next/formatter-markdown": "workspace:*"
   },
   "peerDependencies": {
     "prettier": "catalog:"
