@@ -1,5 +1,8 @@
 use rustc_hash::FxHashMap;
-use swc_next_allocator::IndexVec;
+use swc_next_allocator::{
+    hash_set::HashSet as ArenaHashSet,
+    vec::{ArenaIndexVec, ArenaVec},
+};
 use swc_next_ecma_ast::*;
 
 use super::analyzer::scope::{Assignments, Scope};
@@ -10,27 +13,30 @@ pub(super) fn analyzer_and_collect_unresolved(
     ast: &Ast<'_>,
     resolver: &Resolver,
 ) -> FxHashMap<SymbolId, String> {
+    let allocator = ast.allocator();
     let mut analyzer = AnalyzerAndCollector {
         ast,
         resolver,
-        scope: Scope {
-            function: true,
-            ..Default::default()
-        },
-        hoisted: Vec::new(),
-        symbols: IndexVec::from_vec(vec![SymbolUsage::Unseen; resolver.symbol_count()]),
+        scope: Scope::new(true, allocator),
+        hoisted: allocator.vec(),
+        symbols: ArenaIndexVec::from_iter_in(
+            std::iter::repeat_n(SymbolUsage::Unseen, resolver.symbol_count()),
+            allocator,
+        ),
         pattern: false,
         hoist: false,
     };
     ast.root_program().visit_with(&mut analyzer);
-    let unresolved = analyzer
-        .symbols
-        .iter_enumerated()
-        .filter(|(_, usage)| **usage == SymbolUsage::Referenced)
-        .map(|(id, _)| ast.get_utf8(resolver.symbol_name(id)))
-        .collect();
+    let unresolved = ArenaHashSet::from_iter_in(
+        analyzer
+            .symbols
+            .iter_enumerated()
+            .filter(|(_, usage)| **usage == SymbolUsage::Referenced)
+            .map(|(id, _)| ast.get_utf8(resolver.symbol_name(id))),
+        allocator,
+    );
     analyzer.scope.prepare_renaming();
-    let mut assignments = Assignments::new(resolver.symbol_count());
+    let mut assignments = Assignments::new(resolver.symbol_count(), allocator);
     analyzer
         .scope
         .rename_in_normal_mode(ast, resolver, &unresolved, &mut assignments);
@@ -48,8 +54,8 @@ struct AnalyzerAndCollector<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     resolver: &'visit Resolver,
     scope: Scope<'ast>,
-    hoisted: Vec<SymbolId>,
-    symbols: IndexVec<SymbolId, SymbolUsage>,
+    hoisted: ArenaVec<'ast, SymbolId>,
+    symbols: ArenaIndexVec<'ast, SymbolId, SymbolUsage>,
     pattern: bool,
     hoist: bool,
 }
@@ -58,14 +64,9 @@ impl AnalyzerAndCollector<'_, '_> {
     /// SWC scope entry: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L89>.
     /// SWC hoisted declarations: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L117>.
     fn with_scope(&mut self, function: bool, op: impl FnOnce(&mut Self)) {
-        let parent = std::mem::replace(
-            &mut self.scope,
-            Scope {
-                function,
-                ..Default::default()
-            },
-        );
-        let hoisted = std::mem::take(&mut self.hoisted);
+        let allocator = self.ast.allocator();
+        let parent = std::mem::replace(&mut self.scope, Scope::new(function, allocator));
+        let hoisted = std::mem::replace(&mut self.hoisted, allocator.vec());
         let flags = (self.pattern, self.hoist);
         self.hoist = false;
         op(self);

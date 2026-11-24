@@ -1,22 +1,37 @@
 use std::borrow::Cow;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-use swc_next_allocator::IndexVec;
+use rustc_hash::FxHashMap;
+use swc_next_allocator::{
+    Allocator,
+    hash_map::HashMap as ArenaHashMap,
+    hash_set::HashSet as ArenaHashSet,
+    vec::{ArenaIndexVec, ArenaVec},
+};
 use swc_next_ecma_ast::{Ast, SymbolId};
 
 use crate::common::resolver::context::Resolver;
 
-#[derive(Default)]
 pub(in crate::common::rename) struct Scope<'ast> {
     pub(in crate::common::rename) function: bool,
-    pub(in crate::common::rename) all: FxHashSet<SymbolId>,
-    pub(in crate::common::rename) queue: Vec<SymbolId>,
-    pub(in crate::common::rename) queued: FxHashSet<SymbolId>,
-    pub(in crate::common::rename) reserved: FxHashSet<&'ast str>,
-    pub(in crate::common::rename) children: Vec<Scope<'ast>>,
+    pub(in crate::common::rename) all: ArenaHashSet<'ast, SymbolId>,
+    pub(in crate::common::rename) queue: ArenaVec<'ast, SymbolId>,
+    pub(in crate::common::rename) queued: ArenaHashSet<'ast, SymbolId>,
+    pub(in crate::common::rename) reserved: ArenaHashSet<'ast, &'ast str>,
+    pub(in crate::common::rename) children: ArenaVec<'ast, Scope<'ast>>,
 }
 
 impl<'ast> Scope<'ast> {
+    pub(in crate::common::rename) fn new(function: bool, allocator: &'ast Allocator) -> Self {
+        Self {
+            function,
+            all: ArenaHashSet::new_in(allocator),
+            queue: allocator.vec(),
+            queued: ArenaHashSet::new_in(allocator),
+            reserved: ArenaHashSet::new_in(allocator),
+            children: allocator.vec(),
+        }
+    }
+
     /// SWC declaration queue: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L52>.
     /// SWC var hoisting: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L53>.
     pub(in crate::common::rename) fn add_decl(&mut self, id: SymbolId) {
@@ -46,10 +61,10 @@ impl<'ast> Scope<'ast> {
         &self,
         ast: &Ast<'ast>,
         resolver: &Resolver,
-        unresolved: &FxHashSet<&'ast str>,
+        unresolved: &ArenaHashSet<'ast, &'ast str>,
         assignments: &mut Assignments<'ast>,
     ) {
-        let mut latest = FxHashMap::<&str, usize>::default();
+        let mut latest = ArenaHashMap::<&str, usize>::new_in(ast.allocator());
         for &id in &self.queue {
             let original = ast.get_utf8(resolver.symbol_name(id));
             if original == "eval" || assignments.assigned[id].is_some() {
@@ -80,17 +95,20 @@ impl<'ast> Scope<'ast> {
 }
 
 pub(in crate::common::rename) struct Assignments<'ast> {
-    reverse: FxHashMap<Cow<'ast, str>, Vec<SymbolId>>,
+    reverse: FxHashMap<Cow<'ast, str>, ArenaVec<'ast, SymbolId>>,
     // The first symbol assigned to a name identifies that group in both indexes.
-    assigned: IndexVec<SymbolId, Option<SymbolId>>,
+    assigned: ArenaIndexVec<'ast, SymbolId, Option<SymbolId>>,
     pub(in crate::common::rename) renames: FxHashMap<SymbolId, String>,
 }
 
 impl<'ast> Assignments<'ast> {
-    pub(in crate::common::rename) fn new(symbol_count: usize) -> Self {
+    pub(in crate::common::rename) fn new(symbol_count: usize, allocator: &'ast Allocator) -> Self {
         Self {
             reverse: FxHashMap::default(),
-            assigned: IndexVec::from_vec(vec![None; symbol_count]),
+            assigned: ArenaIndexVec::from_iter_in(
+                std::iter::repeat_n(None, symbol_count),
+                allocator,
+            ),
             renames: FxHashMap::default(),
         }
     }
@@ -99,13 +117,14 @@ impl<'ast> Assignments<'ast> {
         if let Cow::Owned(name) = &name {
             self.renames.insert(id, name.clone());
         }
-        let group = self.reverse.entry(name).or_default();
+        let allocator = self.assigned.bump();
+        let group = self.reverse.entry(name).or_insert_with(|| allocator.vec());
         self.assigned[id] = Some(group.first().copied().unwrap_or(id));
         group.push(id);
     }
 
     /// SWC conflict check: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L199>.
-    fn conflicts(&self, name: &str, id: SymbolId, all: &FxHashSet<SymbolId>) -> bool {
+    fn conflicts(&self, name: &str, id: SymbolId, all: &ArenaHashSet<'ast, SymbolId>) -> bool {
         let Some(group) = self.reverse.get(name) else {
             return false;
         };
