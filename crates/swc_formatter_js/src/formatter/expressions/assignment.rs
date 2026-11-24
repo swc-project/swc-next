@@ -339,6 +339,12 @@ impl<'ast> AssignmentBoundary<'ast> {
     }
 }
 
+pub(in crate::formatter) enum InitializerSource {
+    Value,
+    /// An ignore before the equals sign binds the value and its preceding source line.
+    SuppressedBeforeEquals,
+}
+
 /// The original RHS endpoint stays separate from its parent's prepared tail owner.
 pub(in crate::formatter) enum AssignmentSourceEnd<'ast> {
     Expression(u32),
@@ -1387,6 +1393,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         PreparedHeadGaps::new(prefix, head, grouped).map(|gaps| &*self.allocator.alloc(gaps))
+    }
+
+    pub(in crate::formatter) fn prepare_initializer_boundary(
+        &self,
+        left: Span,
+        rhs: &AssignmentRhs<'_>,
+        operator: Span,
+        source: InitializerSource,
+        context: ExpressionContext<'ast>,
+    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
+        let end = rhs.expression.span(self.ast).end;
+        let mut boundary = self.assignment_boundary_with_source(
+            left.end,
+            rhs,
+            operator,
+            AssignmentSourceEnd::Expression(end),
+            context,
+        )?;
+        if matches!(source, InitializerSource::SuppressedBeforeEquals) {
+            boundary.mode = ContentMode::Verbatim;
+            if let Some(comment) = boundary.before.last() {
+                boundary.before_operator =
+                    self.source_line_constraint(comment.span.end, operator.start);
+            }
+        }
+        self.prepare_assignment_rhs(rhs, &mut boundary, &context)?;
+        Ok(boundary)
     }
 
     pub(in crate::formatter) fn assignment_boundary(

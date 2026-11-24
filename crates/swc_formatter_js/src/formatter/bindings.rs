@@ -5,7 +5,7 @@ use super::comments::{
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
-use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
+use super::expressions::assignment::{AssignmentBoundary, InitializerSource, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionOutput, ExpressionPosition};
@@ -229,6 +229,29 @@ fn binding_separator(separator: Separator, constraint: LineConstraint, writer: &
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// Untyped declarators and enum members share the same two ignore targets before '='.
+    pub(super) fn declarator_initializer_source(
+        &self,
+        comments: &[Comment],
+        operator: u32,
+    ) -> (ContentMode, InitializerSource) {
+        let mut left = ContentMode::Formatted;
+        let mut source = InitializerSource::Value;
+        if self.has_suppression {
+            let before =
+                &comments[..comments.partition_point(|comment| comment.span.end <= operator)];
+            for position in self.suppression_positions(before, operator) {
+                match position {
+                    SuppressionPosition::Inline => left = ContentMode::Verbatim,
+                    SuppressionPosition::OwnLine | SuppressionPosition::EndOfLine => {
+                        source = InitializerSource::SuppressedBeforeEquals;
+                    }
+                }
+            }
+        }
+        (left, source)
+    }
+
     pub(super) fn prepare_annotated_binding(
         &self,
         pattern: BindingPattern,
