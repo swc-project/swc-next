@@ -13,7 +13,8 @@ use crate::common::resolver::context::Resolver;
 
 pub(in crate::common::rename) struct Scope<'ast> {
     pub(in crate::common::rename) function: bool,
-    pub(in crate::common::rename) all: ArenaHashSet<'ast, SymbolId>,
+    // Collected during the walk, then sorted and deduplicated for conflict checks.
+    pub(in crate::common::rename) all: ArenaVec<'ast, SymbolId>,
     pub(in crate::common::rename) queue: ArenaVec<'ast, SymbolId>,
     pub(in crate::common::rename) queued: ArenaHashSet<'ast, SymbolId>,
     pub(in crate::common::rename) reserved: ArenaHashSet<'ast, &'ast str>,
@@ -24,7 +25,7 @@ impl<'ast> Scope<'ast> {
     pub(in crate::common::rename) fn new(function: bool, allocator: &'ast Allocator) -> Self {
         Self {
             function,
-            all: ArenaHashSet::new_in(allocator),
+            all: allocator.vec(),
             queue: allocator.vec(),
             queued: ArenaHashSet::new_in(allocator),
             reserved: ArenaHashSet::new_in(allocator),
@@ -35,7 +36,7 @@ impl<'ast> Scope<'ast> {
     /// SWC declaration queue: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L52>.
     /// SWC var hoisting: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L53>.
     pub(in crate::common::rename) fn add_decl(&mut self, id: SymbolId) {
-        self.all.insert(id);
+        self.add_usage(id);
         if self.queued.insert(id) {
             self.queue.push(id);
         }
@@ -43,16 +44,20 @@ impl<'ast> Scope<'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L74>.
     pub(in crate::common::rename) fn add_usage(&mut self, id: SymbolId) {
-        self.all.insert(id);
+        if self.all.last().copied() != Some(id) {
+            self.all.push(id);
+        }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L91>.
     pub(in crate::common::rename) fn prepare_renaming(&mut self) {
         for child in &mut self.children {
             child.prepare_renaming();
-            self.all.extend(child.all.iter().copied());
+            self.all.extend_from_slice_copy(&child.all);
             self.reserved.extend(child.reserved.iter().copied());
         }
+        self.all.sort_unstable();
+        self.all.dedup();
     }
 
     /// SWC scope traversal: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L102>.
@@ -124,7 +129,7 @@ impl<'ast> Assignments<'ast> {
     }
 
     /// SWC conflict check: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L199>.
-    fn conflicts(&self, name: &str, id: SymbolId, all: &ArenaHashSet<'ast, SymbolId>) -> bool {
+    fn conflicts(&self, name: &str, id: SymbolId, all: &[SymbolId]) -> bool {
         let Some(group) = self.reverse.get(name) else {
             return false;
         };
@@ -136,7 +141,7 @@ impl<'ast> Assignments<'ast> {
         } else {
             group
                 .iter()
-                .any(|&other| other != id && all.contains(&other))
+                .any(|&other| other != id && all.binary_search(&other).is_ok())
         }
     }
 }

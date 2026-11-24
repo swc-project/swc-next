@@ -25,6 +25,7 @@ pub(super) struct Transform<'a, 'ast> {
     pub(super) var_list: Vec<SymbolId>,
     pub(super) export_var_list: Vec<SymbolId>,
     comment_moves: [HashMap<u32, u32>; 2],
+    statement_buffer: Vec<Stmt>,
 }
 
 impl<'a, 'ast> Transform<'a, 'ast> {
@@ -48,6 +49,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             var_list: Vec::new(),
             export_var_list: Vec::new(),
             comment_moves: Default::default(),
+            statement_buffer: Vec::new(),
         }
     }
 
@@ -98,7 +100,9 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         module: bool,
     ) -> SubRange<Stmt> {
         let saved = std::mem::take(&mut self.var_list);
-        let mut output = Vec::new();
+        // Nested statement lists append after the caller's statements and
+        // drain their own suffix before returning.
+        let start = self.statement_buffer.len();
         for slot in statements.iter() {
             let statement = self.ast.get_node_in_sub_range(slot);
             let original_empty = statement.is_empty_statement(self.ast);
@@ -111,14 +115,15 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                     || !statement.is_empty_statement(self.ast)
                     || statement.span(self.ast) != DUMMY_SP)
             {
-                output.push(statement);
+                self.statement_buffer.push(statement);
             }
         }
         let variables = std::mem::replace(&mut self.var_list, saved);
         if !variables.is_empty() {
-            output.push(Stmt::Declaration(self.variables(variables)));
+            let declaration = self.variables(variables);
+            self.statement_buffer.push(Stmt::Declaration(declaration));
         }
-        self.ast.add_sub_range(output)
+        self.ast.add_sub_range(self.statement_buffer.drain(start..))
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L2104>.

@@ -5,9 +5,10 @@
 pub(crate) mod context;
 
 use self::context::{NodeContext, Symbols};
-use std::collections::HashSet;
+use std::{collections::HashSet, hash::BuildHasher};
 
-use rustc_hash::FxHashMap;
+use hashbrown::HashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 
 use swc_next_allocator::{Idx, IndexVec};
 
@@ -20,9 +21,9 @@ use crate::common::build::for_each_binding_ident;
 ///
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L136>.
 fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
-    let mut scopes = IndexVec::new();
-    let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
-    let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
+    let unresolved_scope_id = ScopeId::from_usize(0);
+    let top_level_scope_id = ScopeId::from_usize(1);
+    let scopes = vec![Scope::new(top_level_scope_id, ScopeKind::Fn)];
     let label_scope_id = ScopeId::from_usize(ScopeId::MAX);
 
     let mut resolver = Resolver {
@@ -33,7 +34,8 @@ fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
         top_level_scope_id,
         unresolved_scope_id,
         label_scope_id,
-        current: top_level_scope_id,
+        scope_depth: 0,
+        next_scope: 2,
         is_module: false,
         decl_kind: DeclKind::Lexical,
         strict_mode: false,
@@ -44,7 +46,7 @@ fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
     JsNameResolver {
         top_level_scope_id,
         unresolved_scope_id,
-        next_scope: resolver.scopes.len(),
+        next_scope: resolver.next_scope,
         nodes: resolver.nodes,
         symbols: resolver.symbols,
     }
@@ -60,9 +62,9 @@ struct JsNameResolver {
 
 #[derive(Debug)]
 struct Scope<'ast> {
-    parent: Option<ScopeId>,
+    id: ScopeId,
     kind: ScopeKind,
-    declared_symbols: FxHashMap<&'ast [u8], Binding>,
+    declared_symbols: HashMap<&'ast [u8], Binding, FxBuildHasher>,
     declared_types: FxHashMap<&'ast [u8], SymbolId>,
 }
 
@@ -75,11 +77,11 @@ struct Binding {
 
 impl<'ast> Scope<'ast> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L193>.
-    fn new(kind: ScopeKind, parent: Option<ScopeId>) -> Self {
+    fn new(id: ScopeId, kind: ScopeKind) -> Self {
         Self {
-            parent,
+            id,
             kind,
-            declared_symbols: FxHashMap::default(),
+            declared_symbols: HashMap::default(),
             declared_types: FxHashMap::default(),
         }
     }
@@ -164,13 +166,16 @@ impl ScopeOwner {
 /// resolved while walking the source in order.
 struct Resolver<'ast> {
     ast: &'ast Ast<'ast>,
-    scopes: IndexVec<ScopeId, Scope<'ast>>,
+    // Reuse binding maps by nesting depth. Scope IDs still
+    // distinguish sibling scopes even when they use the same storage.
+    scopes: Vec<Scope<'ast>>,
     nodes: IndexVec<NodeId, NodeContext>,
     symbols: Symbols,
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
     label_scope_id: ScopeId,
-    current: ScopeId,
+    scope_depth: usize,
+    next_scope: usize,
     is_module: bool,
     decl_kind: DeclKind,
     strict_mode: bool,
@@ -192,9 +197,9 @@ impl<'ast> Resolver<'ast> {
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L334>.
     fn declare_type(&mut self, identifier: BindingIdentifier) {
         let name = identifier.name(self.ast);
-        let symbol = self.symbols.intern(self.ast, self.current, name);
+        let symbol = self.symbols.intern(self.ast, self.current(), name);
         let bytes = self.name(name);
-        self.scopes[self.current]
+        self.scopes[self.scope_depth]
             .declared_types
             .insert(bytes, symbol);
         self.set_symbol_once(identifier.node_id(), symbol);
@@ -206,12 +211,10 @@ impl<'ast> Resolver<'ast> {
         if let Some(symbol) = self.resolve_value(bytes) {
             return symbol;
         }
-        let mut scope = Some(self.current);
-        while let Some(id) = scope {
-            if let Some(&symbol) = self.scopes[id].declared_types.get(bytes) {
+        for scope in self.active_scopes().iter().rev() {
+            if let Some(&symbol) = scope.declared_types.get(bytes) {
                 return symbol;
             }
-            scope = self.scopes[id].parent;
         }
         self.symbols
             .intern(self.ast, self.unresolved_scope_id, name)
@@ -234,16 +237,17 @@ impl<'ast> Resolver<'ast> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L219>.
-    fn is_declared(&self, name: &[u8], start_scope: ScopeId) -> Option<DeclKind> {
-        let mut scope = Some(start_scope);
-        while let Some(scope_id) = scope {
-            let current = &self.scopes[scope_id];
-            if let Some(binding) = current.declared_symbols.get(name) {
-                return Some(binding.kind);
-            }
-            scope = current.parent;
-        }
-        None
+    fn is_declared(&self, name: &[u8]) -> Option<DeclKind> {
+        self.lookup_value(name, false)
+            .map(|(_, binding)| binding.kind)
+    }
+
+    fn active_scopes(&self) -> &[Scope<'ast>] {
+        &self.scopes[..=self.scope_depth]
+    }
+
+    fn current(&self) -> ScopeId {
+        self.scopes[self.scope_depth].id
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L284>.
@@ -251,17 +255,25 @@ impl<'ast> Resolver<'ast> {
     where
         F: FnOnce(&mut Self),
     {
-        let scope = self.current;
         let decl_kind = self.decl_kind;
         let strict_mode = self.strict_mode;
 
         let kind = owner.kind();
-        let child_scope = self.scopes.push(Scope::new(kind, Some(scope)));
-        self.current = child_scope;
+        let child_scope = ScopeId::from_usize(self.next_scope);
+        self.next_scope += 1;
+        self.scope_depth += 1;
+        if let Some(scope) = self.scopes.get_mut(self.scope_depth) {
+            scope.id = child_scope;
+            scope.kind = kind;
+            scope.declared_symbols.clear();
+            scope.declared_types.clear();
+        } else {
+            self.scopes.push(Scope::new(child_scope, kind));
+        }
         self.set_owner_scope_once(owner, child_scope);
         op(self);
 
-        self.current = scope;
+        self.scope_depth -= 1;
         self.decl_kind = decl_kind;
         self.strict_mode = strict_mode;
     }
@@ -282,16 +294,19 @@ impl<'ast> Resolver<'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L366>.
     fn lookup_value(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<(ScopeId, Binding)> {
-        let mut scope = Some(self.current);
-        while let Some(scope_id) = scope {
-            let current = &self.scopes[scope_id];
-            if let Some(&binding) = current.declared_symbols.get(name) {
-                return Some((scope_id, binding));
+        // Every value map uses the same hasher, so ancestors can reuse this hash.
+        let hash = FxBuildHasher.hash_one(name);
+        for scope in self.active_scopes().iter().rev() {
+            if let Some((_, &binding)) = scope
+                .declared_symbols
+                .raw_entry()
+                .from_key_hashed_nocheck(hash, name)
+            {
+                return Some((scope.id, binding));
             }
-            if current.kind == ScopeKind::Fn && stop_at_fn_scope {
+            if stop_at_fn_scope && scope.kind == ScopeKind::Fn {
                 return None;
             }
-            scope = current.parent;
         }
         None
     }
@@ -316,14 +331,15 @@ impl<'ast> Resolver<'ast> {
 
     fn declare(&mut self, name: AstUtf8, kind: DeclKind) -> SymbolId {
         let bytes = self.name(name);
-        let binding = self.scopes[self.current]
+        let scope = self.current();
+        let binding = self.scopes[self.scope_depth]
             .declared_symbols
             .entry(bytes)
             .or_insert(Binding { kind, symbol: None });
         binding.kind = kind;
         *binding
             .symbol
-            .get_or_insert_with(|| self.symbols.intern(self.ast, self.current, name))
+            .get_or_insert_with(|| self.symbols.intern(self.ast, scope, name))
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
@@ -379,7 +395,7 @@ impl<'ast> Resolver<'ast> {
         self.decl_kind = old_kind;
 
         let body = function.body(self.ast);
-        self.set_owner_scope_once(ScopeOwner::FunctionBody(body), self.current);
+        self.set_owner_scope_once(ScopeOwner::FunctionBody(body), self.current());
         let old_strict_mode = self.strict_mode;
         if !self.strict_mode {
             self.strict_mode = self.has_use_strict(body.directives(self.ast));
@@ -392,7 +408,7 @@ impl<'ast> Resolver<'ast> {
     fn visit_stmt_within_child_scope(&mut self, statement: Stmt) {
         self.with_child(ScopeOwner::ImplicitBlockStatement(statement), |child| {
             if let StmtData::BlockStatement(block) = child.ast.stmt_data(statement) {
-                child.set_owner_scope_once(ScopeOwner::BlockStatement(block), child.current);
+                child.set_owner_scope_once(ScopeOwner::BlockStatement(block), child.current());
                 block.body(child.ast).visit_with(child);
             } else {
                 statement.visit_with(child);
@@ -408,7 +424,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1163>.
     fn visit_program(&mut self, program: Program) {
-        self.set_owner_scope_once(ScopeOwner::Program(program), self.current);
+        self.set_owner_scope_once(ScopeOwner::Program(program), self.current());
         self.is_module = self.ast.is_module();
         self.strict_mode = self.is_module || self.has_use_strict(program.directives(self.ast));
         program.body(self.ast).visit_with(self);
@@ -500,7 +516,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_catch_clause(&mut self, catch: CatchClause) {
         let body = catch.body(self.ast);
         self.with_child(ScopeOwner::CatchClause(catch), |child| {
-            child.set_owner_scope_once(ScopeOwner::BlockStatement(body), child.current);
+            child.set_owner_scope_once(ScopeOwner::BlockStatement(body), child.current());
             catch.param(child.ast).visit_with(child);
             body.body(child.ast).visit_with(child);
         });
@@ -546,7 +562,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
             match child.ast.arrow_function_body_data(arrow.body(child.ast)) {
                 ArrowFunctionBodyData::FunctionBody(body) => {
-                    child.set_owner_scope_once(ScopeOwner::FunctionBody(body), child.current);
+                    child.set_owner_scope_once(ScopeOwner::FunctionBody(body), child.current());
                     let old_strict_mode = child.strict_mode;
                     if !child.strict_mode {
                         child.strict_mode = child.has_use_strict(body.directives(child.ast));
@@ -854,7 +870,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                         name.as_bytes()
                     }
                 };
-                child.scopes[child.current].declared_symbols.insert(
+                child.scopes[child.scope_depth].declared_symbols.insert(
                     name,
                     Binding {
                         kind: DeclKind::Lexical,
@@ -1061,7 +1077,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
                 return;
             }
             if matches!(
-                self.resolver.is_declared(name, self.resolver.current),
+                self.resolver.is_declared(name),
                 Some(DeclKind::Lexical | DeclKind::Param)
             ) {
                 return;
