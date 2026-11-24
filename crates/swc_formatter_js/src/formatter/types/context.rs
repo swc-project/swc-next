@@ -379,11 +379,22 @@ fn exposes_conditional_type(data: TsTypeData, ast: &Ast<'_>, depth: usize) -> bo
     })
 }
 
+// A trailing `?` can consume the constraint as a conditional return type.
+// Only the path to the printed right edge can expose that ambiguity.
 fn return_is_constrained_infer(mut node: TsType, ast: &Ast<'_>) -> bool {
     loop {
         match ast.ts_type_data(node) {
             TsTypeData::TsParenthesizedType(parentheses) => {
                 node = parentheses.type_annotation(ast);
+            }
+            TsTypeData::TsFunctionType(function) => {
+                node = function.return_type(ast).type_annotation(ast);
+            }
+            TsTypeData::TsConstructorType(constructor) => {
+                node = constructor.return_type(ast).type_annotation(ast);
+            }
+            TsTypeData::TsConditionalType(conditional) => {
+                node = conditional.false_type(ast);
             }
             TsTypeData::TsTypePredicate(predicate) => {
                 let Some(annotation) = predicate.type_annotation(ast) else {

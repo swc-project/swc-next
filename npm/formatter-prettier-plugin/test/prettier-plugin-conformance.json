@@ -46972,6 +46972,78 @@
         "prettierNativeError": "'with' expected. (15:33)"
       }
     ],
+    "ts/type-infer/conditional-return-constrained-infer.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> = T extends (() => A extends B ? C : infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type X<T> = T extends () => A extends B ? C : infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> =\n  T extends (() => A extends B\n    ? C\n    : infer U extends\n        string)\n    ? U\n    : never;\n",
+        "prettierNative": "type X<T> =\n  T extends () => A extends B\n    ? C\n    : infer U extends\n        string\n    ? U\n    : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X<\n  T,\n> =\n  T extends (() => A extends B\n    ? C\n    : infer U extends\n        string)\n    ? U\n    : never\n",
+        "prettierNative": "type X<\n  T,\n> =\n  T extends () => A extends B\n    ? C\n    : infer U extends\n        string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X<T> =\r\n\tT extends (() => A extends B\r\n\t\t? C\r\n\t\t: infer U extends\r\n\t\t\t\tstring)\r\n\t\t? U\r\n\t\t: never;\r\n",
+        "prettierNative": "type X<T> =\r\n\tT extends () => A extends B\r\n\t\t? C\r\n\t\t: infer U extends\r\n\t\t\t\tstring\r\n\t\t? U\r\n\t\t: never;\r\n"
+      }
+    ],
+    "ts/type-infer/curried-constrained-infer.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> = T extends (() => new () => (x: any) => x is infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type X<T> = T extends () => new () => (x: any) => x is infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> =\n  T extends (() => new () => (\n    x: any,\n  ) => x is infer U extends\n    string)\n    ? U\n    : never;\n",
+        "prettierNative": "type X<T> =\n  T extends () => new () => (\n    x: any,\n  ) => x is infer U extends\n    string\n    ? U\n    : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X<\n  T,\n> =\n  T extends (() => new () => (\n    x: any,\n  ) => x is infer U extends\n    string)\n    ? U\n    : never\n",
+        "prettierNative": "type X<\n  T,\n> =\n  T extends () => new () => (\n    x: any,\n  ) => x is infer U extends\n    string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X<T> =\r\n\tT extends (() => new () => (\r\n\t\tx: any,\r\n\t) => x is infer U extends\r\n\t\tstring)\r\n\t\t? U\r\n\t\t: never;\r\n",
+        "prettierNative": "type X<T> =\r\n\tT extends () => new () => (\r\n\t\tx: any,\r\n\t) => x is infer U extends\r\n\t\tstring\r\n\t\t? U\r\n\t\t: never;\r\n"
+      }
+    ],
     "ts/type-interface/body-diagnostic.ts": [
       {
         "options": {
