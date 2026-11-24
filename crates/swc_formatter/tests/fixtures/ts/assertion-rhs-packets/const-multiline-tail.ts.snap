@@ -8,17 +8,20 @@ const;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-1 as const /* explanation
-  continues */;
+1 as /* explanation
+  continues */
+const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-1 as const /* explanation
-  continues */;
+1 as /* explanation
+  continues */
+const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-1 as const /* explanation
+1 as /* explanation
   continues */
+const

@@ -6,17 +6,17 @@ consume(1 as /* marker */ const, 2 as /* named type */ Number);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-consume(1 /* marker */ as const, 2 as /* named type */ Number);
+consume(1 as /* marker */ const, 2 as /* named type */ Number);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 consume(
-  1 /* marker */ as const,
+  1 as /* marker */ const,
   2 as /* named type */ Number,
 );
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-consume(1 /* marker */ as const, 2 as /* named type */ Number)
+consume(1 as /* marker */ const, 2 as /* named type */ Number)

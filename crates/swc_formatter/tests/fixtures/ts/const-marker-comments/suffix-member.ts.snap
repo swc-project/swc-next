@@ -7,17 +7,23 @@ const).toFixed();
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-(1 as const) // marker
-  .toFixed();
+(
+  1 as // marker
+    const
+).toFixed();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
-(1 as const) // marker
-  .toFixed();
+(
+  1 as // marker
+    const
+).toFixed();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-;(1 as const) // marker
-  .toFixed()
+;(
+  1 as // marker
+    const
+).toFixed()

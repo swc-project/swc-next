@@ -12,7 +12,7 @@ use super::{
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::expressions::TailOwner;
+use crate::formatter::source::SourceKeywordSpacing;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
 
@@ -52,6 +52,7 @@ enum ConditionalBranchRole<'ast> {
 enum ConditionalTypeLayout<'ast> {
     Source {
         span: Span,
+        spacing: SourceKeywordSpacing,
         opening: TypeLayout,
     },
     Preceding {
@@ -412,7 +413,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let operator_span = Span::new(operator, operator + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
-        let mut source = false;
+        let mut source = matches!(separator, ConditionalTypeSeparator::Extends)
+            && self.has_source_only_comment_gap(operator_span.end, after);
         let mut suppressed_head = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let packet_owner = match (separator, left.data) {
@@ -527,7 +529,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 TypeLayout::OpeningProvided
             };
-            ConditionalTypeLayout::Source { span: gap, opening }
+            let spacing = match separator {
+                ConditionalTypeSeparator::Extends => SourceKeywordSpacing::new(gap, operator_span),
+                ConditionalTypeSeparator::Question | ConditionalTypeSeparator::Colon => {
+                    SourceKeywordSpacing::default()
+                }
+            };
+            ConditionalTypeLayout::Source {
+                span: gap,
+                spacing,
+                opening,
+            }
         } else {
             let (before, after) = match separator {
                 ConditionalTypeSeparator::Extends => (before, after),
@@ -674,7 +686,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     TypeContext::ConditionalExtends,
                     &after,
                     after.source_end(),
-                    TailOwner::ParentOperation,
                 );
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
@@ -695,8 +706,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                 );
             }
-            ConditionalTypeLayout::Source { span, opening } => {
-                self.format_source_gap(span, writer)?;
+            ConditionalTypeLayout::Source {
+                span,
+                spacing,
+                opening,
+            } => {
+                spacing.write(writer, |writer| self.format_source_gap(span, writer))?;
                 opening
             }
             ConditionalTypeLayout::Formatted { before, after } => {

@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+export default class extends(MissingBase) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":2,"lineWidth":20}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
+---------- Output ----------
+// @ts-ignore
+export default class extends MissingBase {}

@@ -521,7 +521,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || context.member_layout == MemberLayout::Tight
             || matches!(
                 context.position,
-                ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
+                ExpressionPosition::NewCallee { .. } | ExpressionPosition::MemberAssignmentObject
             )
             || layout == ExpressionLayout::Flat
         {
@@ -1699,10 +1699,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok::<_, FormatError>(())
         })?;
         let (doc, source_flat, argument_expansion) = if let Some(arguments) = terminal_arguments {
-            let (source_flat, expanded) = match facts.arguments.expansion.take() {
+            let expansion = facts.arguments.expansion.take();
+            let alternative_prefix = if expansion.is_some()
+                && let Some(call_prefix) = facts.arguments.call_prefix.take()
+            {
+                writer.join_fragments(prefix, false, call_prefix)
+            } else {
+                prefix
+            };
+            let (source_flat, expanded) = match expansion {
                 Some(ChainArgumentExpansion::Array(expanded)) => (None, Some(expanded)),
                 Some(ChainArgumentExpansion::Object { flat, expanded })
-                    if let Some(prefix) = prefix.try_flat() =>
+                    if let Some(prefix) = alternative_prefix.try_flat() =>
                 {
                     let (call, ()) = writer.record_with_value(|writer| {
                         writer.write_flat_fragment(prefix);
@@ -1727,7 +1735,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (
                 writer.join_fragments(prefix, false, arguments),
                 source_flat,
-                expanded.map(|expanded| writer.join_fragments(prefix, false, expanded)),
+                expanded.map(|expanded| writer.join_fragments(alternative_prefix, false, expanded)),
             )
         } else {
             (prefix, None, None)
@@ -1796,6 +1804,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         facts.has_parent_call_group |= matches!(arguments.group, ArgumentGroup::ParentCall);
         let mut argument_facts = ChainArgumentFacts {
             has_function: facts.arguments.has_function,
+            terminal: source.parts.peek().is_none(),
             ..ChainArgumentFacts::default()
         };
         let output = source.head_argument_frame.write(writer, |writer| {
@@ -1808,6 +1817,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         facts.arguments.has_function = argument_facts.has_function;
         facts.arguments.expansion = argument_facts.expansion;
+        facts.arguments.call_prefix = argument_facts.call_prefix;
         facts.arguments.source_expanded_object |= argument_facts.source_expanded_object;
         facts.has_boundary_comments |= output.has_outside_prefix;
         facts.source_break |= output.has_outside_prefix;

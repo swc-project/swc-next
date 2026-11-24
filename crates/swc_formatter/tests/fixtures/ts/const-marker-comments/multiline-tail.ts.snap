@@ -7,18 +7,18 @@ const value = 1 as /* marker
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const value = 1 as const; /* marker
- detail */
+const value = 1 as /* marker
+ detail */ const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const value =
-  1 as const; /* marker
- detail */
+  1 as /* marker
+ detail */ const;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const value = 1 as const /* marker
- detail */
+const value = 1 as /* marker
+ detail */ const

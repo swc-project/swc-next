@@ -1,8 +1,11 @@
 //! Type grammar roles decide the parentheses around actual borrowed children.
 
-use swc_next_ecma_ast::{Ast, TsLiteralData, TsType, TsTypeData, TsTypeNameData};
+use swc_next_ecma_ast::{
+    Ast, FormalParameterItemData, TsLiteralData, TsType, TsTypeData, TsTypeNameData,
+};
 
 use crate::document::BodyOpening;
+use crate::formatter::MAX_RECURSION_DEPTH;
 
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeContext {
@@ -27,6 +30,7 @@ pub(in crate::formatter) enum TypeContext {
     ConditionalCheck,
     ConditionalExtends,
     TypeConstraint,
+    InferConstraint,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -170,14 +174,25 @@ impl TypeContext {
                     TsTypeData::TsJsDocNullableType(node) => node.postfix(ast),
                     TsTypeData::TsFunctionType(node) => {
                         return_is_constrained_infer(node.return_type(ast).type_annotation(ast), ast)
+                            || exposes_conditional_type(data, ast, MAX_RECURSION_DEPTH)
                     }
                     TsTypeData::TsConstructorType(node) => {
                         return_is_constrained_infer(node.return_type(ast).type_annotation(ast), ast)
+                            || exposes_conditional_type(data, ast, MAX_RECURSION_DEPTH)
                     }
                     _ => false,
                 };
             }
             Self::TypeConstraint => return matches!(data, TsTypeData::TsConditionalType(_)),
+            Self::InferConstraint => {
+                return match data {
+                    TsTypeData::TsConditionalType(_) => true,
+                    TsTypeData::TsFunctionType(_) | TsTypeData::TsConstructorType(_) => {
+                        exposes_conditional_type(data, ast, MAX_RECURSION_DEPTH)
+                    }
+                    _ => false,
+                };
+            }
             Self::PostfixOperand => {
                 if matches!(data, TsTypeData::TsJsDocUnknownType(_)) {
                     return true;
@@ -303,6 +318,65 @@ fn jsdoc_operand_looks_like_parameter(data: TsTypeData, ast: &Ast<'_>) -> bool {
         }
         _ => false,
     }
+}
+
+fn type_without_parentheses(mut data: TsTypeData, ast: &Ast<'_>) -> TsTypeData {
+    while let TsTypeData::TsParenthesizedType(pair) = data {
+        data = ast.ts_type_data(pair.type_annotation(ast));
+    }
+    data
+}
+
+/// A callable's parameters and defaults inherit the surrounding parser restriction.
+/// Return types and delimited type containers have their own conditional scope.
+fn exposes_conditional_type(data: TsTypeData, ast: &Ast<'_>, depth: usize) -> bool {
+    let (parameters, this, type_parameters) = match type_without_parentheses(data, ast) {
+        TsTypeData::TsConditionalType(_) => return true,
+        TsTypeData::TsFunctionType(node) => (
+            node.params(ast),
+            node.this_param(ast),
+            node.type_parameters(ast),
+        ),
+        TsTypeData::TsConstructorType(node) => (node.params(ast), None, node.type_parameters(ast)),
+        _ => return false,
+    };
+    if depth == 0 {
+        return true;
+    }
+    let exposes = |node: TsType| exposes_conditional_type(ast.ts_type_data(node), ast, depth - 1);
+    if this
+        .and_then(|node| node.type_annotation(ast))
+        .is_some_and(|annotation| exposes(annotation.type_annotation(ast)))
+    {
+        return true;
+    }
+    if parameters.items(ast).iter().any(|id| {
+        let parameter = match ast.formal_parameter_item_data(ast.get_node_in_sub_range(id)) {
+            FormalParameterItemData::FormalParameter(node) => node,
+            FormalParameterItemData::TsParameterProperty(node) => node.parameter(ast),
+        };
+        parameter
+            .type_annotation(ast)
+            .is_some_and(|annotation| exposes(annotation.type_annotation(ast)))
+    }) || parameters
+        .rest(ast)
+        .and_then(|rest| rest.type_annotation(ast))
+        .is_some_and(|annotation| exposes(annotation.type_annotation(ast)))
+    {
+        return true;
+    }
+    type_parameters.is_some_and(|parameters| {
+        parameters.params(ast).iter().any(|id| {
+            let parameter = ast.get_node_in_sub_range(id);
+            parameter.default(ast).is_some_and(exposes)
+                || parameter.constraint(ast).is_some_and(|constraint| {
+                    let data = type_without_parentheses(ast.ts_type_data(constraint), ast);
+                    // A direct conditional constraint already retains its own pair.
+                    !matches!(data, TsTypeData::TsConditionalType(_))
+                        && exposes_conditional_type(data, ast, depth - 1)
+                })
+        })
+    })
 }
 
 fn return_is_constrained_infer(mut node: TsType, ast: &Ast<'_>) -> bool {

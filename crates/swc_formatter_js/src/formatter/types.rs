@@ -31,9 +31,9 @@ use super::comments::{
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::RhsLayout;
-use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge, TailOwner};
+use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge};
 use super::literals::StringContext;
-use super::source::is_source_whitespace;
+use super::source::{SourceKeywordSpacing, is_source_whitespace};
 use super::statements::DeclarationKeyword;
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSourceGap, SuppressionPosition,
@@ -317,11 +317,6 @@ enum BinaryTypeHeadLayout<'ast> {
     InlineNamed,
     /// A named RHS owns its complete block head without a continuation scope.
     Named,
-    /// An atomic name can hand its ordinary operator-line packet to its caller.
-    TrailingNamed {
-        name: IdentifierReference,
-        tail: ExpressionTail<'ast>,
-    },
     Caller {
         leading: Option<compound::MovableTypeHead<'ast>>,
         own_line: Option<LineConstraint>,
@@ -1795,6 +1790,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut right_mode = ContentMode::Formatted;
         let layout = 'layout: {
             if !self.has_suppression || self.content_mode(comments) != ContentMode::Verbatim {
+                if matches!(role, TypeBoundaryRole::Constraint(_))
+                    && self.has_source_only_comment_gap(operator.end, after)
+                {
+                    break 'layout TypeOperatorLayout::Source(SourceTypeOperator::new(
+                        gap, operator,
+                    ));
+                }
                 if matches!(
                     role,
                     TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
@@ -2588,6 +2590,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let comments = self.comments.in_range(source.after);
+        if self.has_source_only_comment_gap(source.after.start, comments) {
+            return None;
+        }
         let mut start = source.after.start;
         for comment in comments {
             if comment.span.start < start
@@ -2621,11 +2626,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_source_type_operator_rhs_output(
         &mut self,
         source: SourceTypeOperator,
+        spacing: SourceKeywordSpacing,
         node: PreparedType,
         context: TypeContext,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_source_type_operator_rhs_body(source, node, context, writer)
+        spacing.write(writer, |writer| {
+            self.format_source_gap(source.prefix, writer)
+        })?;
+        self.format_source_type_rhs_after(source.after, node, context, writer)
             .map(TypeOutput::into_expression)
     }
 
@@ -2637,16 +2646,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_source_gap(source.prefix, writer)?;
+        self.format_source_type_rhs_after(source.after, node, context, writer)
+    }
+
+    fn format_source_type_rhs_after(
+        &mut self,
+        after: Span,
+        node: PreparedType,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<TypeOutput<'ast>, FormatError> {
         let body = self.prepare_operator_rhs_type(node, context)?;
-        let mut opening_end = source.after.start;
-        for comment in self.comments.in_range(source.after) {
+        let mut opening_end = after.start;
+        for comment in self.comments.in_range(after) {
             if self.line_breaks(opening_end, comment.span.start) != 0 {
                 break;
             }
             opening_end = comment.span.end;
         }
-        self.format_source_gap(Span::new(source.after.start, opening_end), writer)?;
-        let head = self.prepare_type_source_head_gap(Span::new(opening_end, source.after.end));
+        self.format_source_gap(Span::new(after.start, opening_end), writer)?;
+        let head = self.prepare_type_source_head_gap(Span::new(opening_end, after.end));
         writer.indent(|writer| {
             self.format_prepared_type_source_head_gap(head, SourceCommentText::Alignable, writer)?;
             self.format_prepared_delimited_type_body(
@@ -4378,21 +4397,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .iter()
             .any(|comment| comment.kind == CommentKind::Line);
         let frame = context.frame(child.data, self.ast);
-        // A required compound frame remains the last member's attachment
-        // boundary when reparsed. Nested consequents supply a separate frame.
-        let compound_frame = frame != TypeFrame::None
-            && matches!(
+        // A required operand pair owns its tail on the inside of the closer.
+        let operand_frame = frame != TypeFrame::None
+            && (matches!(
+                context,
+                TypeContext::PostfixOperand
+                    | TypeContext::ConditionalCheck
+                    | TypeContext::ConditionalExtends
+            ) || matches!(
                 child.data,
                 TsTypeData::TsUnionType(_) | TsTypeData::TsIntersectionType(_)
-            );
+            ));
         let conditional_frame = layout == TypeLayout::ConditionalConsequent
             && matches!(child.data, TsTypeData::TsConditionalType(_));
         let relocatable_tail = !line_tail
             && trailing_unbound
             && leading_comments.is_empty()
             && child.source_owner.is_none()
-            && !compound_frame
+            && !operand_frame
             && !conditional_frame
+            // Both the postfix suffix and the conditional keyword need the
+            // preceding operand to end on the same source line.
+            && !(matches!(context, TypeContext::PostfixOperand | TypeContext::ConditionalCheck)
+                && trailing
+                    .comments()
+                    .last()
+                    .is_some_and(|last| self.source_line_breaks(child_span.end, last.span.end) != 0))
             && (matches!(
                 context,
                 TypeContext::PostfixOperand
@@ -5261,7 +5291,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: TypeContext,
         after: &CommentBoundary<'ast>,
         operator_end: u32,
-        tail_owner: TailOwner,
     ) -> BinaryTypeHead<'ast> {
         let projected = node
             .suppressed_projection()
@@ -5345,7 +5374,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             (after.comments(), target.start)
         };
-        if let TsTypeData::TsTypeReference(reference) = node.data {
+        if matches!(node.data, TsTypeData::TsTypeReference(_)) {
             let blocks = comments
                 .iter()
                 .all(|comment| comment.kind == CommentKind::Block);
@@ -5362,24 +5391,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     BinaryTypeHeadLayout::Named
                 });
             }
-            // A continuing operation owns another token/comment boundary. Keep
-            // this complete head here rather than leasing a queued line across it.
-            if tail_owner == TailOwner::Expression
-                && reference.type_arguments(self.ast).is_none()
-                && let TsTypeNameData::IdentifierReference(name) =
-                    self.ast.ts_type_name_data(reference.type_name(self.ast))
-                && comments
-                    .first()
-                    .is_some_and(|first| self.line_breaks(operator_end, first.span.start) == 0)
-            {
-                return BinaryTypeHead(BinaryTypeHeadLayout::TrailingNamed {
-                    name,
-                    tail: ExpressionTail {
-                        source_end: operator_end,
-                        comments,
-                    },
-                });
-            }
         }
         let own_line = empty_opening.or_else(|| {
             let first = comments.first()?;
@@ -5388,6 +5399,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // the actual external operator boundary. Keep its proven entry.
                 let starts_line = self.layout_line_starts_line(first.span.start)
                     || self.line_breaks(first.span.start, first.span.end) != 0;
+                if !starts_line && first.kind == CommentKind::Line
+                    && matches!(context, TypeContext::Root)
+                {
+                    let mut data = node.data;
+                    while let TsTypeData::TsParenthesizedType(pair) = data {
+                        data = self.ast.ts_type_data(pair.type_annotation(self.ast));
+                    }
+                    if matches!(data, TsTypeData::TsTypeReference(reference)
+                        if reference.type_arguments(self.ast).is_none()
+                            && matches!(self.ast.ts_type_name_data(reference.type_name(self.ast)), TsTypeNameData::IdentifierReference(_)))
+                    {
+                        // Use the real operand's opening when the removed '('
+                        // was the only token preceding an inline line comment.
+                        return Some(LineConstraint::NewLine(1));
+                    }
+                }
                 starts_line
                     && comments.iter().enumerate().any(|(index, comment)| {
                         let next = comments
@@ -5483,11 +5510,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_gap_after(*last, node.node.span(self.ast).start, writer);
             }
             return self.format_prepared_type_body(node, context, layout, writer);
-        }
-        if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
-            // This name has no nested token boundary to consume the leased packet.
-            writer.text(self.type_reference_spelling(name));
-            return Ok(TypeOutput::from_pending(Some(tail)));
         }
         let BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line }) = head else {
             if after.is_empty() {

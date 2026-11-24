@@ -5,6 +5,48 @@ use std::ops::Range;
 use swc_next_ecma_ast::{Comment, Span};
 
 use super::Formatter;
+use crate::{FormatError, document::Writer};
+
+/// A copied keyword must stay a separate token when its neighboring syntax
+/// is formatted independently and may lose a delimiter.
+#[derive(Clone, Copy, Default)]
+pub(super) struct SourceKeywordSpacing {
+    before: bool,
+    after: bool,
+}
+
+impl SourceKeywordSpacing {
+    pub(super) fn new(gap: Span, keyword: Span) -> Self {
+        Self {
+            before: gap.start == keyword.start,
+            after: gap.end == keyword.end,
+        }
+    }
+
+    pub(super) fn with_copied_left(mut self, copied: bool) -> Self {
+        self.before &= !copied;
+        self
+    }
+
+    pub(super) fn write_before(self, writer: &mut Writer<'_>) {
+        if self.before {
+            writer.space();
+        }
+    }
+
+    pub(super) fn write<'ast>(
+        self,
+        writer: &mut Writer<'ast>,
+        source: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
+    ) -> Result<(), FormatError> {
+        self.write_before(writer);
+        source(writer)?;
+        if self.after {
+            writer.space();
+        }
+        Ok(())
+    }
+}
 
 pub(super) fn is_source_whitespace(character: char) -> bool {
     character.is_whitespace() || character == '\u{feff}'
@@ -151,6 +193,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return 0;
         };
         1 + u8::from(memchr::memchr2(b'\n', b'\r', &source[ending.end..]).is_some())
+    }
+
+    /// Whether a comment starts on a new source line that visual layout
+    /// would skip. The packet's caller owns its operator and delimiters.
+    pub(super) fn has_source_only_comment_gap(&self, start: u32, comments: &[Comment]) -> bool {
+        let mut previous = start;
+        comments.iter().any(|comment| {
+            let start = previous;
+            previous = comment.span.end;
+            self.line_breaks(start, comment.span.start) == 0
+                && self.source_line_breaks(start, comment.span.start) != 0
+        })
     }
 
     /// Syntax and tool directives retain every ECMAScript line terminator.

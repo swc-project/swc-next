@@ -65,8 +65,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExpressionPosition::MemberAssignmentObject
                 | ExpressionPosition::CallCallee { .. }
                 | ExpressionPosition::TemplateTag
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::Superclass
+                | ExpressionPosition::NewCallee { .. }
+                | ExpressionPosition::Superclass { .. }
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::AssignmentTarget
                 | ExpressionPosition::ForInitializer {
@@ -86,7 +86,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Self::jsx_expression_needs_parentheses(position)
             && !matches!(
                 position,
-                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee
+                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee { .. }
             )
     }
 

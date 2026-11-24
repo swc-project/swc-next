@@ -37,6 +37,7 @@ pub(super) struct CallCallee {
     pub(super) expression: Expr,
     pub(super) mode: ContentMode,
     pub(super) access: AccessKind,
+    pub(super) has_type_arguments: bool,
     pub(super) curried_call: Option<CallExpression>,
 }
 impl CallCallee {
@@ -46,6 +47,7 @@ impl CallCallee {
     ) -> ExpressionContext<'ast> {
         let mut callee = ExpressionContext::at(ExpressionPosition::CallCallee {
             access: self.access,
+            has_type_arguments: self.has_type_arguments,
             curried_call: self.curried_call,
         })
         .with_parent_head(context)
@@ -143,6 +145,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(CallCallee {
             expression,
             access,
+            has_type_arguments: call.type_arguments(ast).is_some(),
             mode,
             curried_call,
         })
@@ -254,7 +257,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && callee_context.member_chain_layout != super::MemberChainLayout::Local
                 && !matches!(
                     context.position,
-                    ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
+                    ExpressionPosition::NewCallee { .. }
+                        | ExpressionPosition::MemberAssignmentObject
                 )
                 && matches!(&member, PreparedMember::Formatted(member)
                     if self.member_callee_has_own_layout(member))

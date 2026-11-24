@@ -1,0 +1,131 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = x.value.options(y.fooBar(fooBar, y)).someLongIdentifierName<B>([items, /r e/g, "str", x, 1]);
+
+const record = x.value.options(y).someLongIdentifierNameThatIsQuiteLongIndeed<B>({items, re: /re/g, str: "str", x, one: 1});
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const result = x.value.options(y.fooBar(fooBar, y)).someLongIdentifierName<B>([
+  items,
+  /r e/g,
+  "str",
+  x,
+  1,
+]);
+
+const record = x.value
+  .options(y)
+  .someLongIdentifierNameThatIsQuiteLongIndeed<B>({
+    items,
+    re: /re/g,
+    str: "str",
+    x,
+    one: 1,
+  });
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const result =
+  x.value
+    .options(
+      y.fooBar(
+        fooBar,
+        y,
+      ),
+    )
+    .someLongIdentifierName<B>(
+      [
+        items,
+        /r e/g,
+        "str",
+        x,
+        1,
+      ],
+    );
+
+const record =
+  x.value
+    .options(y)
+    .someLongIdentifierNameThatIsQuiteLongIndeed<B>(
+      {
+        items,
+        re: /re/g,
+        str: "str",
+        x,
+        one: 1,
+      },
+    );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+const result =
+  x.value
+    .options(
+      y.fooBar(
+        fooBar,
+        y,
+      ),
+    )
+    .someLongIdentifierName<B>(
+      [
+        items,
+        /r e/g,
+        "str",
+        x,
+        1,
+      ],
+    )
+
+const record =
+  x.value
+    .options(
+      y,
+    )
+    .someLongIdentifierNameThatIsQuiteLongIndeed<B>(
+      {
+        items,
+        re: /re/g,
+        str: "str",
+        x,
+        one: 1,
+      },
+    )
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+const result =
+	x.value
+		.options(
+			y.fooBar(
+				fooBar,
+				y,
+			),
+		)
+		.someLongIdentifierName<B>(
+			[
+				items,
+				/r e/g,
+				"str",
+				x,
+				1,
+			],
+		);
+
+const record =
+	x.value
+		.options(y)
+		.someLongIdentifierNameThatIsQuiteLongIndeed<B>(
+			{
+				items,
+				re: /re/g,
+				str: "str",
+				x,
+				one: 1,
+			},
+		);

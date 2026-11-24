@@ -21,7 +21,7 @@ use crate::formatter::expressions::arguments::{
     ArgumentLayout, DelimitedClose, FollowingItem, ItemBoundary, PreparedItem, Separator,
     TrailingCommaPolicy,
 };
-use crate::formatter::source::is_source_horizontal_whitespace;
+use crate::formatter::source::{is_source_horizontal_whitespace, is_source_whitespace};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{
     FormatError, TrailingCommas,
@@ -114,6 +114,7 @@ impl TypeListPrefix<'_> {
 struct ParameterBound<'ast> {
     node: PreparedType,
     boundary: TypeBoundary<'ast>,
+    context: TypeContext,
 }
 
 struct ParameterBoundOpening {
@@ -1309,12 +1310,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok::<_, FormatError>(ParameterBound {
                     node: type_node,
                     boundary,
+                    context: if matches!(context, TypeParameterContext::Infer) {
+                        TypeContext::InferConstraint
+                    } else {
+                        TypeContext::TypeConstraint
+                    },
                 })
             })
             .transpose()?;
         // Preserve the original constraint-before-default error priority.
         let default = default
-            .map(|(node, boundary)| boundary.map(|boundary| ParameterBound { node, boundary }))
+            .map(|(node, boundary)| {
+                boundary.map(|boundary| ParameterBound {
+                    node,
+                    boundary,
+                    context: TypeContext::Root,
+                })
+            })
             .transpose()?;
         let prefix = self.prepare_parameter_prefix(node, name, modifiers, &mut name_mode);
         Ok(PreparedParameter {
@@ -1413,13 +1425,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 (Some(constraint), None) => self.format_parameter_bound(
                     constraint,
-                    TypeContext::TypeConstraint,
                     BoundContinuation::from_following(continuation),
                     writer,
                 ),
                 (None, Some(default)) => self.format_parameter_bound(
                     default,
-                    TypeContext::Root,
                     BoundContinuation::from_following(continuation),
                     writer,
                 ),
@@ -1449,6 +1459,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         layout: super::TypeOperatorLayout::Formatted { before, after },
                         ..
                     },
+                ..
             } if movable && !after.is_empty() => {
                 let comments = self.prepare_bound_comments(&after, node.node.span(self.ast));
                 let (following, before, after, comments) = match comments {
@@ -1472,7 +1483,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let constraint = self.format_parameter_bound(
                     constraint,
-                    TypeContext::TypeConstraint,
                     match following {
                         Some(tail) => BoundContinuation::SyntaxWithTail(tail),
                         None => BoundContinuation::Syntax,
@@ -1493,19 +1503,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             default => {
-                let constraint = self.format_parameter_bound(
-                    constraint,
-                    TypeContext::TypeConstraint,
-                    BoundContinuation::Syntax,
-                    writer,
-                )?;
+                let constraint =
+                    self.format_parameter_bound(constraint, BoundContinuation::Syntax, writer)?;
                 self.format_expression_tail(constraint.pending, writer)?;
-                self.format_parameter_bound(
-                    default,
-                    TypeContext::Root,
-                    BoundContinuation::End,
-                    writer,
-                )
+                self.format_parameter_bound(default, BoundContinuation::End, writer)
             }
         }
     }
@@ -1513,10 +1514,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_parameter_bound(
         &mut self,
         bound: ParameterBound<'ast>,
-        context: TypeContext,
         continuation: BoundContinuation<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<TypeOutput<'ast>, FormatError> {
+        let context = bound.context;
         let (role, before, after) = match bound.boundary {
             TypeBoundary {
                 role,
@@ -1664,7 +1665,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     PreparedBoundContent::Head { recorded, tail },
                 );
             }
-            let (gap, record_head) = match comments {
+            let (mut gap, record_head) = match comments {
                 PreparedBoundaryComments::Head { .. }
                     if node.source_owner.is_none()
                         && !self.diagnostic_range_is_sensitive(Span::new(
@@ -1715,6 +1716,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
+            if after.is_empty()
+                && matches!(node.data, TsTypeData::TsParenthesizedType(_))
+                && leading.is_some_and(|head| {
+                    head.comments.first().is_some_and(|first| {
+                        !self.layout_line_starts_line(first.span.start)
+                            && self
+                                .source(Span::new(node.node.span(self.ast).start, first.span.start))
+                                .chars()
+                                .all(|character| {
+                                    character == '(' || is_source_whitespace(character)
+                                })
+                    }) && head
+                        .comments
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                })
+            {
+                gap = CommentGap::Source(LineConstraint::NewLine(1));
+            }
             let body = self.prepare_operator_rhs_type(node, context)?;
             let (movable, leading) = match (&body.content, leading) {
                 (super::compound::PreparedTypeContent::Type(_), Some(leading)) => {

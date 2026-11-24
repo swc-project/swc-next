@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Checked = (Input)extends
+  // prettier-ignore
+  Box <  Bound  > ? Yes : No;
+
+type Constrained = Input  [  ]/* prettier-ignore */extends(Bound) ? Yes : No;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Checked =
+  Input extends
+  // prettier-ignore
+  Box <  Bound  >
+    ? Yes
+    : No;
+
+type Constrained = Input  [  ]/* prettier-ignore */extends Bound ? Yes : No;

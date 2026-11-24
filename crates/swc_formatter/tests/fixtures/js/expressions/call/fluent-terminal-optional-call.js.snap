@@ -1,0 +1,78 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = x.value.options(y.fooBar(fooBar, y))?.someLongIdentifierName?.([items, /re/g, "str", x, 1]);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value =
+  x.value
+    .options(
+      y.fooBar(
+        fooBar,
+        y,
+      ),
+    )
+    ?.someLongIdentifierName?.(
+      [
+        items,
+        /re/g,
+        "str",
+        x,
+        1,
+      ],
+    );
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value = x.value.options(y.fooBar(fooBar, y))?.someLongIdentifierName?.([
+  items,
+  /re/g,
+  "str",
+  x,
+  1,
+]);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  x.value
+    .options(
+      y.fooBar(
+        fooBar,
+        y,
+      ),
+    )
+    ?.someLongIdentifierName?.(
+      [
+        items,
+        /re/g,
+        "str",
+        x,
+        1,
+      ],
+    )
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"trailingCommas":"es5"}
+---------- Output ----------
+const value =
+  x.value
+    .options(
+      y.fooBar(
+        fooBar,
+        y
+      )
+    )
+    ?.someLongIdentifierName?.(
+      [
+        items,
+        /re/g,
+        "str",
+        x,
+        1,
+      ]
+    );

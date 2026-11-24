@@ -23,6 +23,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .type_arguments(self.ast)
             .map(|node| self.prepare_expression_type_arguments(callee, node, AccessKind::Ordinary))
             .transpose()?;
+        let has_type_arguments = types.is_some();
         let suffix_end = types
             .as_ref()
             .map_or(callee_span.end, |types| types.node.span(self.ast).end);
@@ -85,7 +86,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout: CommentRunLayout::FlatLeading(callee_span.start),
                 gap_end: None,
             },
-            ExpressionContext::at(ExpressionPosition::NewCallee)
+            ExpressionContext::at(ExpressionPosition::NewCallee { has_type_arguments })
                 .with_tail_owner(TailOwner::ParentOperation)
                 .with_member_layout(MemberLayout::Tight)
                 .with_content_mode(mode)
@@ -107,13 +108,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// The constructor callee must stay a MemberExpression, including its receiver spine.
-    pub(super) fn new_callee_contains_call(
+    pub(super) fn new_callee_spine_needs_parentheses(
         &self,
         mut data: ExprData,
         mut mode: ContentMode,
     ) -> bool {
+        let instantiation_callee = if let ExprData::TsInstantiationExpression(node) = data {
+            let operand = node.expression(self.ast);
+            data = if mode == ContentMode::Formatted {
+                self.expression_data(operand)
+            } else {
+                self.ast.expr_data(operand)
+            };
+            // The instantiation can hide an optional chain at the callee root.
+            if matches!(data, ExprData::ChainExpression(_)) {
+                return true;
+            }
+            true
+        } else {
+            false
+        };
+
         loop {
-            match data {
+            let receiver = match data {
                 ExprData::CallExpression(_) | ExprData::ImportExpression(_) => return true,
                 ExprData::TaggedTemplateExpression(template) => {
                     let Ok((tag, context)) = self.template_tag_head_operand(
@@ -123,30 +140,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return true;
                     };
                     mode = context.content_mode;
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(tag)
-                    } else {
-                        self.ast.expr_data(tag)
-                    };
+                    tag
                 }
-                ExprData::TsNonNullExpression(assertion) => {
-                    let expression = assertion.expression(self.ast);
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(expression)
-                    } else {
-                        self.ast.expr_data(expression)
-                    };
+                ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                ExprData::MemberExpression(member) => member.object(self.ast),
+                // Keep the instantiation distinct from the constructor's own
+                // type arguments when its receiver spine contains a call.
+                ExprData::TsInstantiationExpression(node) if instantiation_callee => {
+                    node.expression(self.ast)
                 }
-                ExprData::MemberExpression(member) => {
-                    let object = member.object(self.ast);
-                    data = if mode == ContentMode::Formatted {
-                        self.expression_data(object)
-                    } else {
-                        self.ast.expr_data(object)
-                    };
+                ExprData::ChainExpression(node) if instantiation_callee => {
+                    node.expression(self.ast)
                 }
                 _ => return false,
-            }
+            };
+            data = if mode == ContentMode::Formatted {
+                self.expression_data(receiver)
+            } else {
+                self.ast.expr_data(receiver)
+            };
         }
     }
 }

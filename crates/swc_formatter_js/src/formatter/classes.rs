@@ -29,7 +29,7 @@ use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
 use super::member_separator::{MemberBody, MemberSeparator};
-use super::source::is_source_whitespace;
+use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSourceGap, DelimitedSuppression, SuppressionPosition,
@@ -114,6 +114,8 @@ enum ClassCaller {
 
 struct SourceClassHeritage<'ast> {
     caller: ClassCaller,
+    separate_superclass: bool,
+    superclass_tail_opening: Option<LineConstraint>,
     expression: Expr,
     mode: ContentMode,
     prefix: HeritagePrefix<'ast>,
@@ -614,13 +616,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let extends = self
                 .find_token(gap, comments, "extends")
                 .ok_or_else(|| self.unsupported("class extends boundary", class))?;
-            let after_keyword = comments.partition_point(|comment| comment.span.end <= extends);
+            let extends = Span::new(extends, extends + "extends".len() as u32);
+            let after_keyword =
+                comments.partition_point(|comment| comment.span.end <= extends.start);
             if self.heritage_has_directive(&comments[after_keyword..]) {
                 return Ok(PreparedClassHead::Verbatim);
             }
             let prepared = self.prepare_heritage_prefix(
                 gap,
-                Span::new(extends, extends + 7),
+                extends,
                 comments,
                 || {
                     let preceding = parameters
@@ -667,8 +671,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
+            let expression_comments = self.comments.in_range(expression.span(ast));
+            let superclass_tail_opening = if mode == ContentMode::Formatted
+                && let Some(first) = expression_comments.first()
+                && matches!(
+                    ast.expr_data(expression),
+                    ExprData::ParenthesizedExpression(_)
+                )
+                && expression_comments.last().is_some_and(|comment| {
+                    let own_line = self.source_position_starts_line(comment.span.start);
+                    let line_comment = comment.kind == CommentKind::Line;
+                    // The body cannot receive this packet. With a following
+                    // suffix, fence only a line the suffix would absorb or move.
+                    (first_implements.is_none()
+                        && arguments.is_none()
+                        && (line_comment || own_line))
+                        || line_comment && own_line && arguments.is_some()
+                }) {
+                // A comment originally inline after the pair's opening keeps
+                // its relationship to the following operand, including ignore.
+                let opening =
+                    self.source(Span::new(expression.span(ast).start + 1, first.span.start));
+                Some(
+                    if opening
+                        .chars()
+                        .all(|ch| ch == '(' || is_source_horizontal_whitespace(ch))
+                    {
+                        LineConstraint::SameLine
+                    } else {
+                        LineConstraint::NewLine(1)
+                    },
+                )
+            } else {
+                None
+            };
             grouped |= prepared.prefix.has_comments
-                || !self.comments.in_range(expression.span(ast)).is_empty()
+                || !expression_comments.is_empty()
                 || matches!(caller, ClassCaller::Ordinary)
                     && arguments.is_none()
                     && self.heritage_expression_is_member(expression);
@@ -679,6 +717,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             Some(SourceClassHeritage {
                 caller,
+                separate_superclass: mode == ContentMode::Formatted
+                    && prefix.source_ends_at(extends.end),
+                superclass_tail_opening,
                 expression,
                 mode,
                 prefix,
@@ -965,16 +1006,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             writer,
             |formatter, writer| {
-                let context = ExpressionContext::at(ExpressionPosition::Superclass)
-                    .with_content_mode(heritage.mode);
+                if heritage.separate_superclass {
+                    // A raw `extends` can be adjacent to a removed operand pair.
+                    writer.space();
+                }
+                let context = ExpressionContext::at(ExpressionPosition::Superclass {
+                    has_type_arguments: heritage.arguments.is_some(),
+                })
+                .with_content_mode(heritage.mode);
                 let context = if heritage.arguments.is_some() {
                     context.with_tail_owner(TailOwner::ParentOperation)
                 } else {
                     context
                 };
-                let write_superclass = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+                let format_superclass = |formatter: &mut Self, writer: &mut Writer<'ast>| {
                     formatter.format_expression(heritage.expression, context, writer)
                 };
+                // This frame keeps a released tail on its superclass line and
+                // before the type arguments or class body.
+                let recorded = if let Some(opening) = heritage.superclass_tail_opening {
+                    let (superclass, tail) =
+                        writer.record_with_value(|writer| format_superclass(formatter, writer))?;
+                    if tail.is_some() {
+                        writer.text("(");
+                        writer.indent(|writer| {
+                            opening.write(writer, FlatSeparator::Empty, |_| {});
+                            writer.write_fragment(superclass);
+                            formatter.format_operand_tail_on_source_lines(tail, None, writer)
+                        })?;
+                        writer.hard_line();
+                        writer.text(")");
+                        if let Some(arguments) = heritage.arguments {
+                            formatter.format_expression_type_arguments(arguments, None, writer)?;
+                        }
+                        return Ok(());
+                    }
+                    Some((superclass, tail))
+                } else {
+                    None
+                };
+                // An interior line comment can trigger recording without a
+                // released tail. The caller still owns the superclass layout.
+                let write_superclass =
+                    |formatter: &mut Self, writer: &mut Writer<'ast>| match recorded {
+                        Some((superclass, tail)) => {
+                            writer.write_fragment(superclass);
+                            Ok(tail)
+                        }
+                        None => format_superclass(formatter, writer),
+                    };
                 let tail = if matches!(heritage.caller, ClassCaller::Assignment)
                     && heritage.mode == ContentMode::Formatted
                     && !formatter
@@ -996,7 +1076,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let Some(arguments) = heritage.arguments {
                     formatter.format_expression_type_arguments(arguments, tail, writer)
                 } else {
-                    formatter.format_expression_tail(tail, writer)
+                    formatter.format_operand_tail_on_source_lines(tail, None, writer)
                 }
             },
         )

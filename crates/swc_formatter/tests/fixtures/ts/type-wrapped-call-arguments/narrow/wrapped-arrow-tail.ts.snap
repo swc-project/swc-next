@@ -6,7 +6,9 @@ f((() => a.b(c) /* callback */) as T satisfies U);
 ---------- Options ----------
 {"indentStyle":"space","indentWidth":2,"lineWidth":20,"quoteStyle":"single"}
 ---------- Output ----------
-f((() =>
-  a.b(
-    c,
-  )) /* callback */ as T satisfies U);
+f((
+  () =>
+    a.b(
+      c,
+    ) /* callback */
+) as T satisfies U);

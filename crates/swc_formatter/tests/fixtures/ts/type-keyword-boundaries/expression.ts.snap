@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const asserted = (h)as
+  // prettier-ignore
+  Box <  Boolean  >;
+
+const checked = (h)satisfies
+  // prettier-ignore
+  Box <  Boolean  >;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const asserted = h as
+  // prettier-ignore
+  Box <  Boolean  >;
+
+const checked = h satisfies
+  // prettier-ignore
+  Box <  Boolean  >;

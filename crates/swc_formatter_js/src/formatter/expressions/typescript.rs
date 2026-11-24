@@ -1,7 +1,7 @@
 //! TypeScript expression operators keep real operand owners apart from token gaps.
 
 use swc_next_ecma_ast::{
-    BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, Span, TsAsExpression,
+    Ast, BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, Span, TsAsExpression,
     TsInstantiationExpression, TsNonNullExpression, TsType, TsTypeAssertion, TsTypeData,
     TsTypeNameData, TsTypeParameterInstantiation,
 };
@@ -15,10 +15,10 @@ use super::{
 };
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
-    CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail, NodeHead,
+    CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, NodeHead,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::source::is_source_whitespace;
+use crate::formatter::source::{SourceKeywordSpacing, is_source_whitespace};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::generics::TypeAnglePacket;
 use crate::formatter::types::{
@@ -218,9 +218,13 @@ impl PreparedBinaryTypeExpression<'_> {
 }
 
 enum BinaryTypeLayout<'ast> {
-    Source(SourceTypeOperator),
+    Source {
+        source: SourceTypeOperator,
+        spacing: SourceKeywordSpacing,
+    },
     SourceRhs {
         prefix: Span,
+        spacing: SourceKeywordSpacing,
         after: CommentBoundary<'ast>,
         head: BinaryTypeHead<'ast>,
     },
@@ -235,7 +239,8 @@ enum BinaryTypeLayout<'ast> {
     },
     ConstMarker {
         before: CommentBoundary<'ast>,
-        prefix: &'ast [Comment],
+        after: CommentBoundary<'ast>,
+        head: BinaryTypeHead<'ast>,
         tail: Option<ExpressionTail<'ast>>,
     },
     Formatted {
@@ -569,7 +574,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_binary_type_expression_suffix(source, tail, writer)
             };
             let receiver = context.is_call_or_member_receiver()
-                || matches!(context.position, ExpressionPosition::NewCallee);
+                || matches!(context.position, ExpressionPosition::NewCallee { .. });
             if receiver && context.parentheses_owner == ParenthesesOwner::Expression {
                 let tail = writer.indent(|writer| {
                     writer.soft_line();
@@ -592,15 +597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PreparedBinaryTypeExpression<'ast>, FormatError> {
         let mut annotation = self.prepare_type(annotation, ContentMode::Formatted);
         let tail_owner = context.tail_owner;
-        let type_operator_follows =
-            matches!(context.position, ExpressionPosition::TypeBinaryOperand);
-        let boundary = self.prepare_binary_type_boundary(
-            expression,
-            &mut annotation,
-            operator,
-            tail_owner,
-            type_operator_follows,
-        )?;
+        let boundary = self.prepare_binary_type_boundary(expression, &mut annotation, operator)?;
         Ok(PreparedBinaryTypeExpression {
             boundary,
             annotation,
@@ -628,8 +625,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         right: &mut PreparedType,
         operator: TypeBinaryOperator,
-        tail_owner: TailOwner,
-        type_operator_follows: bool,
     ) -> Result<BinaryTypeBoundary<'ast>, FormatError> {
         let gap = Span::new(
             expression.span(self.ast).end,
@@ -648,7 +643,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let split = comments.partition_point(|comment| comment.span.end <= start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
-        let mut source = false;
+        let mut source = self.has_source_only_comment_gap(operator_span.end, after);
         let mut suppressed_head = None;
         let mut preceding_packet = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
@@ -765,13 +760,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let layout = if let Some((packet, after)) = preceding_packet {
             let operator_end = start + token.len() as u32;
-            let head = self.prepare_binary_type_head(
-                *right,
-                TypeContext::Root,
-                &after,
-                operator_end,
-                tail_owner,
-            );
+            let head =
+                self.prepare_binary_type_head(*right, TypeContext::Root, &after, operator_end);
             BinaryTypeLayout::Preceding {
                 packet,
                 after,
@@ -784,45 +774,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         } else if source {
             let source = SourceTypeOperator::new(gap, operator_span);
+            let spacing = SourceKeywordSpacing::new(gap, operator_span)
+                .with_copied_left(left_mode == ContentMode::Verbatim);
             if let Some(after) = self.prepare_type_rhs_boundary(source, *right) {
                 let head = self.prepare_binary_type_head(
                     *right,
                     TypeContext::Root,
                     &after,
                     operator_span.end,
-                    tail_owner,
                 );
                 BinaryTypeLayout::SourceRhs {
                     prefix: source.prefix,
+                    spacing,
                     after,
                     head,
                 }
             } else {
-                BinaryTypeLayout::Source(source)
+                BinaryTypeLayout::Source { source, spacing }
             }
-        } else if let Some((prefix, tail)) = self
-            .prepare_const_marker_comments(*right, operator, after, gap, operator_span.end)
-            .filter(|(_, tail)| {
-                // The next `as` or `satisfies` must stay on the same line.
-                // A pending suffix can break that boundary or overtake its comments.
-                tail.is_none() || !type_operator_follows
-            })
+        } else if let Some((after, tail)) =
+            self.prepare_const_marker_comments(*right, operator, after, gap, operator_span.end)
         {
+            let head =
+                self.prepare_binary_type_head(*right, TypeContext::Root, &after, operator_span.end);
             BinaryTypeLayout::ConstMarker {
                 before: self.prepare_comment_boundary(before, gap.start, start),
-                prefix,
+                after,
+                head,
                 tail,
             }
         } else {
             let operator_end = start + token.len() as u32;
             let after = self.prepare_comment_boundary(after, operator_end, gap.end);
-            let head = self.prepare_binary_type_head(
-                *right,
-                TypeContext::Root,
-                &after,
-                operator_end,
-                tail_owner,
-            );
+            let head =
+                self.prepare_binary_type_head(*right, TypeContext::Root, &after, operator_end);
             BinaryTypeLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, start),
                 after,
@@ -836,9 +821,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    /// The terminal const assertion and its statement share the same pending packet.
-    /// A source packet before the semicolon is prepared here as well, so a moved
-    /// operator packet has the same owner when its output is formatted again.
+    /// Prepare the packet between a terminal const assertion and its semicolon.
+    /// The assertion retains the comments between its own keywords.
     pub(in crate::formatter) fn prepare_const_assertion_statement_tail(
         &self,
         assertion: TsAsExpression,
@@ -854,8 +838,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 assertion.expression(self.ast),
                 &mut right,
                 TypeBinaryOperator::As,
-                TailOwner::Expression,
-                false,
             )
             .ok()?;
         let BinaryTypeLayout::ConstMarker { tail, .. } = boundary.layout else {
@@ -874,8 +856,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if tail.is_none() && comments.is_empty() {
             return None;
         }
-        // The marker's deferred Block packet starts with a mandatory comment
-        // line. Flat source suffixes keep the canonical statement-tail owner.
+        // A multiline block in this slot needs the explicit before-semicolon owner.
         if comments
             .first()
             .is_some_and(|first| self.line_breaks(first.span.start, first.span.end) == 0)
@@ -904,9 +885,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
     }
 
-    /// `const` is an assertion marker, not an attachable type reference.
-    /// Its inline blocks belong to the operand; a remaining ordinary run is
-    /// deferred to the assertion's parent, which owns closing punctuation.
+    /// Keep the marker's head as one lexical packet. Its suffix facts are
+    /// used only to decide whether a separate statement tail can be moved.
     fn prepare_const_marker_comments(
         &self,
         right: PreparedType,
@@ -914,7 +894,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &'ast [Comment],
         gap: Span,
         operator_end: u32,
-    ) -> Option<(&'ast [Comment], Option<ExpressionTail<'ast>>)> {
+    ) -> Option<(CommentBoundary<'ast>, Option<ExpressionTail<'ast>>)> {
         if !matches!(operator, TypeBinaryOperator::As)
             || !self.is_const_marker_type(right)
             || self.diagnostic_range_is_sensitive(gap)
@@ -930,8 +910,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .count();
         for (index, &comment) in comments.iter().enumerate() {
             let semantics = self.comment_semantics(comment);
-            // Inline annotations remain before a grammar keyword on both sides
-            // of the move. A suffix could expose a following expression target.
+            // A bound annotation needs its explicit source placement even
+            // when the const assertion is the end of the statement.
             if semantics.suppression
                 || semantics.diagnostic
                 || semantics.file_directive
@@ -948,7 +928,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_end,
             comments: suffix,
         });
-        Some((prefix, tail))
+        Some((
+            self.prepare_comment_boundary(comments, operator_end, gap.end),
+            tail,
+        ))
     }
 
     fn is_const_marker_type(&self, right: PreparedType) -> bool {
@@ -998,17 +981,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                 }
             }
-            BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs_output(
-                source,
-                node,
-                TypeContext::TypeExpressionRhs,
-                writer,
-            ),
+            BinaryTypeLayout::Source { source, spacing } => self
+                .format_source_type_operator_rhs_output(
+                    source,
+                    spacing,
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    writer,
+                ),
             BinaryTypeLayout::SourceRhs {
                 prefix,
+                spacing,
                 after,
                 head,
             } => {
+                spacing.write_before(writer);
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
                 if continuation {
@@ -1038,24 +1025,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             BinaryTypeLayout::ConstMarker {
                 before,
-                prefix,
-                tail,
-            } => {
-                self.format_comment_boundary(&before, writer)?;
-                before.gap().write_separator(writer);
-                if !prefix.is_empty() {
-                    self.comments.claim(prefix)?;
-                    self.format_inline_trailing_comments_with_opening(
-                        prefix,
-                        CommentOpening::Provided,
-                        writer,
-                    )?;
-                    writer.text(" ");
-                }
-                writer.text("as const");
-                Ok(ExpressionOutput::closed(tail))
+                after,
+                head,
+                ..
             }
-            BinaryTypeLayout::Formatted {
+            | BinaryTypeLayout::Formatted {
                 before,
                 after,
                 head,
@@ -1801,6 +1775,7 @@ fn is_left_shift_right_operand(position: ExpressionPosition) -> bool {
 pub(super) fn type_expression_needs_parentheses(
     data: ExprData,
     position: ExpressionPosition,
+    ast: &Ast<'_>,
 ) -> Option<bool> {
     match data {
         ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_) => Some(matches!(
@@ -1816,8 +1791,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
                 | ExpressionPosition::TemplateTag
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::Superclass
+                | ExpressionPosition::NewCallee { .. }
+                | ExpressionPosition::Superclass { .. }
                 | ExpressionPosition::ConditionalTest
                 | ExpressionPosition::ConditionalConsequent
                 | ExpressionPosition::ConditionalAlternate
@@ -1837,8 +1812,8 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
                 | ExpressionPosition::TemplateTag
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::Superclass
+                | ExpressionPosition::NewCallee { .. }
+                | ExpressionPosition::Superclass { .. }
                 | ExpressionPosition::TypeBinaryOperand
                 | ExpressionPosition::NonNullOperand
                 | ExpressionPosition::InstantiationOperand
@@ -1858,12 +1833,21 @@ pub(super) fn type_expression_needs_parentheses(
                     side: OperandSide::Left,
                 }
         )),
-        ExprData::TsInstantiationExpression(_) => Some(match position {
+        ExprData::TsInstantiationExpression(node) => Some(match position {
             ExpressionPosition::MemberObject(_)
             | ExpressionPosition::MemberAssignmentObject
             | ExpressionPosition::TemplateTag
             | ExpressionPosition::NonNullOperand
             | ExpressionPosition::InstantiationOperand => true,
+            ExpressionPosition::CallCallee {
+                access: AccessKind::Ordinary,
+                has_type_arguments,
+                ..
+            }
+            | ExpressionPosition::NewCallee { has_type_arguments }
+            | ExpressionPosition::Superclass { has_type_arguments } => {
+                has_type_arguments || has_nested_instantiation(node.expression(ast), ast)
+            }
             ExpressionPosition::BinaryOperand {
                 operator,
                 side: OperandSide::Left,
@@ -1871,6 +1855,19 @@ pub(super) fn type_expression_needs_parentheses(
             _ => false,
         }),
         _ => None,
+    }
+}
+
+// An outer call, new, or heritage may absorb the last angle list. For
+// nested instantiations that would turn two separate instantiations into one.
+fn has_nested_instantiation(mut expression: Expr, ast: &Ast<'_>) -> bool {
+    loop {
+        match ast.expr_data(expression) {
+            ExprData::ParenthesizedExpression(pair) => expression = pair.expression(ast),
+            ExprData::ChainExpression(chain) => expression = chain.expression(ast),
+            ExprData::TsInstantiationExpression(_) => return true,
+            _ => return false,
+        }
     }
 }
 

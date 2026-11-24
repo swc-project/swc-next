@@ -8,7 +8,8 @@ const, 2];
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 const values = [
-  1 as const, // marker
+  1 as // marker
+    const,
   2,
 ];
 
@@ -16,7 +17,8 @@ const values = [
 {"indentStyle":"space","lineWidth":24}
 ---------- Output ----------
 const values = [
-  1 as const, // marker
+  1 as // marker
+    const,
   2,
 ];
 
@@ -24,6 +26,7 @@ const values = [
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 const values = [
-  1 as const, // marker
+  1 as // marker
+    const,
   2,
 ]

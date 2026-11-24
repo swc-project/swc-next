@@ -1,0 +1,10 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = value satisfies /* head */ // operand Shape;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const result = value satisfies /* head */ // operand
+  Shape;
