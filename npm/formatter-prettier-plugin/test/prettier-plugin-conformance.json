@@ -39288,6 +39288,44 @@
         "prettierNativeError": "Computed property names are not allowed in enums. (1:10)"
       }
     ],
+    "ts/declarations/enum-core/initializer-suffix-before-block.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "enum E {\n  A = // first\n    \"text\" /* second\n third */,\n}\n",
+        "prettierNative": "enum E {\n  A = \"text\" /* second // first\n third */,\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "enum E {\n  A = // first\n    \"text\" /* second\n third */,\n}\n",
+        "prettierNative": "enum E {\n  A = \"text\" /* second // first\n third */,\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "enum E {\n  A = // first\n    \"text\" /* second\n third */,\n}\n",
+        "prettierNative": "enum E {\n  A = \"text\" /* second // first\n third */,\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "enum E {\n  A = // first\n    \"text\" /* second\n third */,\n}\n",
+        "prettierNative": "enum E {\n  A = \"text\" /* second // first\n third */,\n}\n"
+      }
+    ],
     "ts/decorators/bodyless-method.ts": [
       {
         "options": {
