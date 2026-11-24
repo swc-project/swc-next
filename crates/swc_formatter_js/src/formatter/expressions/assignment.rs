@@ -343,10 +343,12 @@ pub(in crate::formatter) enum InitializerSource {
     Value,
     /// An ignore before the equals sign binds the value and its preceding source line.
     SuppressedBeforeEquals,
+    /// A class-field terminator binds the original value tail.
+    ValueWithBoundTail,
 }
 
 /// The original RHS endpoint stays separate from its parent's prepared tail owner.
-pub(in crate::formatter) enum AssignmentSourceEnd<'ast> {
+enum AssignmentSourceEnd<'ast> {
     Expression(u32),
     /// The real parent keeps an already prepared trailing packet bound to this value.
     ValueWithBoundTail(u32),
@@ -1404,19 +1406,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
         let end = rhs.expression.span(self.ast).end;
-        let mut boundary = self.assignment_boundary_with_source(
-            left.end,
-            rhs,
-            operator,
-            AssignmentSourceEnd::Expression(end),
-            context,
-        )?;
+        let source_end = match source {
+            InitializerSource::ValueWithBoundTail => AssignmentSourceEnd::ValueWithBoundTail(end),
+            _ => AssignmentSourceEnd::Expression(end),
+        };
+        let mut boundary =
+            self.assignment_boundary_with_source(left.end, rhs, operator, source_end, context)?;
         if matches!(source, InitializerSource::SuppressedBeforeEquals) {
             boundary.mode = ContentMode::Verbatim;
             if let Some(comment) = boundary.before.last() {
                 boundary.before_operator =
                     self.source_line_constraint(comment.span.end, operator.start);
             }
+        } else if context.content_mode == ContentMode::Verbatim {
+            boundary.mode = ContentMode::Verbatim;
         }
         self.prepare_assignment_rhs(rhs, &mut boundary, &context)?;
         Ok(boundary)
@@ -1439,7 +1442,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(in crate::formatter) fn assignment_boundary_with_source(
+    fn assignment_boundary_with_source(
         &self,
         left_end: u32,
         rhs: &AssignmentRhs<'_>,

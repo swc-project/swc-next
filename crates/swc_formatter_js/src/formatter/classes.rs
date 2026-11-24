@@ -18,7 +18,7 @@ use super::comments::{
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::{
-    AssignmentSourceEnd, DeferredOperatorTail, OperatorTailDestination, RhsLayout,
+    DeferredOperatorTail, InitializerSource, OperatorTailDestination, RhsLayout,
 };
 use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
@@ -2106,25 +2106,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let content = self.expression_content(right);
                 let rhs = self.assignment_rhs(right, &content);
                 let source = if tail_source && semicolon.is_some() {
-                    AssignmentSourceEnd::ValueWithBoundTail(right.span(ast).end)
+                    InitializerSource::ValueWithBoundTail
                 } else {
-                    AssignmentSourceEnd::Expression(right.span(ast).end)
+                    InitializerSource::Value
                 };
                 let initializer_context = ExpressionContext::class_field_initializer()
                     .with_tail_owner(TailOwner::ParentOperation)
                     .with_content_mode(right_mode);
-                let mut boundary = self.assignment_boundary_with_source(
-                    left_end,
+                let boundary = self.prepare_initializer_boundary(
+                    Span::new(key_start, left_end),
                     &rhs,
                     Span::new(operator, operator + 1),
                     source,
                     initializer_context,
                 )?;
                 value_tail_operator_prefix = boundary.has_value_tail_operator_prefix();
-                if right_mode == ContentMode::Verbatim {
-                    boundary.mode = right_mode;
-                }
-                self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
                 let rhs_layout = self.ordinary_rhs_layout(
                     &rhs,
                     ExpressionContext::class_field_initializer()
