@@ -1,10 +1,12 @@
 //! SWC's enum constant evaluator before #12455.
 use crate::common::resolver::context::Resolver;
+use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
-use swc_next_allocator::wtf8::Wtf8Buf;
+use swc_next_allocator::wtf8::{Wtf8, Wtf8Buf};
 use swc_next_ecma_ast::*;
 
-pub(super) type TsEnumRecord = HashMap<(SymbolId, Wtf8Buf), TsEnumRecordValue>;
+pub(super) type EnumMembers<'ast> = FxHashMap<&'ast Wtf8, TsEnumRecordValue>;
+pub(super) type TsEnumRecord<'ast> = FxHashMap<SymbolId, EnumMembers<'ast>>;
 
 #[derive(Clone)]
 pub(super) enum TsEnumRecordValue {
@@ -81,37 +83,40 @@ impl EvalCtx {
     };
 }
 
-pub(super) struct EnumValueComputer<'a> {
+pub(super) struct EnumValueComputer<'a, 'ast> {
     pub(super) enum_id: SymbolId,
     pub(super) resolver: &'a Resolver,
-    pub(super) record: &'a TsEnumRecord,
-    pub(super) ambient: &'a TsEnumRecord,
+    pub(super) record: &'a TsEnumRecord<'ast>,
+    pub(super) ambient: &'a TsEnumRecord<'ast>,
     pub(super) const_vars: &'a HashMap<SymbolId, TsEnumRecordValue>,
     pub(super) const_only: Option<&'a HashSet<SymbolId>>,
     pub(super) ambient_const_only: Option<&'a HashSet<SymbolId>>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L134>.
-pub(super) fn static_enum_member_name(ast: &Ast<'_>, member: MemberExpression) -> Option<Wtf8Buf> {
+pub(super) fn static_enum_member_name<'ast>(
+    ast: &Ast<'ast>,
+    member: MemberExpression,
+) -> Option<&'ast Wtf8> {
     let key = member.property(ast);
     if !member.computed(ast) {
         return key
             .as_identifier_name(ast)
-            .map(|id| Wtf8Buf::from_str(ast.get_utf8(id.name(ast))));
+            .map(|id| Wtf8::from_str(ast.get_utf8(id.name(ast))));
     }
     match ast.expr_data(key.as_expr(ast)?) {
-        ExprData::StringLiteral(string) => Some(ast.get_wtf8(string.value(ast)).to_owned()),
+        ExprData::StringLiteral(string) => Some(ast.get_wtf8(string.value(ast))),
         ExprData::TemplateLiteral(template)
             if template.expressions(ast).is_empty() && template.quasis(ast).len() == 1 =>
         {
             let quasi = ast.get_node_in_sub_range(template.quasis(ast).iter().next().unwrap());
-            (!quasi.is_cooked_undefined(ast)).then(|| ast.get_wtf8(quasi.cooked(ast)).to_owned())
+            (!quasi.is_cooked_undefined(ast)).then(|| ast.get_wtf8(quasi.cooked(ast)))
         }
         _ => None,
     }
 }
 
-impl EnumValueComputer<'_> {
+impl EnumValueComputer<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L214>.
     pub(super) fn compute(
         &self,
@@ -133,12 +138,9 @@ impl EnumValueComputer<'_> {
                 let node = identifier.node_id();
                 if self.resolver.is_unresolved(node) {
                     let name = ast.get_utf8(identifier.name(ast));
-                    let key = (self.enum_id, Wtf8Buf::from_str(name));
-                    if let Some(value) = self.record.get(&key).or_else(|| {
-                        (context.allow_const_var && self.ambient_is_resolvable(&key.0))
-                            .then(|| self.ambient.get(&key))
-                            .flatten()
-                    }) {
+                    if let Some(value) =
+                        self.lookup_member(self.enum_id, Wtf8::from_str(name), context)
+                    {
                         if value.is_const() {
                             value.clone()
                         } else {
@@ -339,6 +341,24 @@ impl EnumValueComputer<'_> {
         self.ambient_const_only.is_none_or(|set| set.contains(id))
     }
 
+    fn lookup_member(
+        &self,
+        id: SymbolId,
+        name: &Wtf8,
+        context: EvalCtx,
+    ) -> Option<&TsEnumRecordValue> {
+        self.record
+            .get(&id)
+            .and_then(|members| members.get(name))
+            .or_else(|| {
+                if context.allow_const_var && self.ambient_is_resolvable(&id) {
+                    self.ambient.get(&id)?.get(name)
+                } else {
+                    None
+                }
+            })
+    }
+
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L409>.
     fn compute_member(
         &self,
@@ -359,14 +379,7 @@ impl EnumValueComputer<'_> {
         if self.const_only.is_some_and(|set| !set.contains(&id)) {
             return opaque;
         }
-        let key = (id, name);
-        self.record
-            .get(&key)
-            .or_else(|| {
-                (context.allow_const_var && self.ambient_is_resolvable(&key.0))
-                    .then(|| self.ambient.get(&key))
-                    .flatten()
-            })
+        self.lookup_member(id, name, context)
             .filter(|value| !matches!(value, TsEnumRecordValue::Void))
             .cloned()
             .unwrap_or(opaque)

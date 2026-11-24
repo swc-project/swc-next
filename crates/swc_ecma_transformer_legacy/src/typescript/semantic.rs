@@ -6,40 +6,51 @@ use super::{
 };
 use crate::common::resolver::context::Resolver;
 use std::collections::{HashMap, HashSet};
+use swc_next_allocator::IndexVec;
 use swc_next_ecma_ast::*;
 
 #[derive(Default)]
-pub(super) struct SemanticInfo {
-    pub(super) usage: HashSet<SymbolId>,
-    pub(super) id_type: HashSet<SymbolId>,
-    pub(super) id_value: HashSet<SymbolId>,
+pub(super) struct SemanticInfo<'ast> {
+    pub(super) symbols: IndexVec<SymbolId, SymbolFacts>,
     pub(super) exported_binding: HashMap<SymbolId, Option<SymbolId>>,
-    pub(super) enum_record: TsEnumRecord,
-    pub(super) ambient_enum_record: TsEnumRecord,
+    pub(super) enum_record: TsEnumRecord<'ast>,
+    pub(super) ambient_enum_record: TsEnumRecord<'ast>,
     pub(super) const_enum: HashSet<SymbolId>,
     pub(super) namespace_import_equals_usage: HashSet<NodeId>,
     pub(super) const_vars: HashMap<SymbolId, TsEnumRecordValue>,
 }
 
-impl SemanticInfo {
-    pub(super) fn has_pure_type(&self, id: &SymbolId) -> bool {
-        self.id_type.contains(id) && !self.id_value.contains(id)
+#[derive(Clone, Default)]
+pub(super) struct SymbolFacts {
+    pub(super) used: bool,
+    pub(super) is_type: bool,
+    pub(super) is_value: bool,
+}
+
+impl SemanticInfo<'_> {
+    pub(super) fn has_pure_type(&self, id: SymbolId) -> bool {
+        let facts = &self.symbols[id];
+        facts.is_type && !facts.is_value
     }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L48>.
-pub(super) fn analyze_program(
-    ast: &mut Ast<'_>,
-    resolver: &mut Resolver,
+pub(super) fn analyze_program<'ast>(
+    ast: &mut Ast<'ast>,
+    resolver: &Resolver,
     options: &TypeScriptOptions,
     seed: HashSet<SymbolId>,
-) -> SemanticInfo {
+) -> SemanticInfo<'ast> {
+    let mut symbols = IndexVec::from_vec(vec![SymbolFacts::default(); resolver.symbol_count()]);
+    for id in seed {
+        symbols[id].used = true;
+    }
     let mut analyzer = SemanticAnalyzer {
         ast,
         resolver,
         options,
         info: SemanticInfo {
-            usage: seed,
+            symbols,
             ..Default::default()
         },
         import_chain: HashMap::new(),
@@ -50,7 +61,14 @@ pub(super) fn analyze_program(
     };
     analyzer.collect_module();
     analyzer.ast.root_program().visit_with(&mut analyzer);
-    analyze_import_chain(&mut analyzer.info.usage, &mut analyzer.import_chain);
+    let usage = analyzer
+        .info
+        .symbols
+        .iter_enumerated()
+        .filter_map(|(id, facts)| facts.used.then_some(id));
+    for id in analyze_import_chain(usage, &mut analyzer.import_chain) {
+        analyzer.info.symbols[id].used = true;
+    }
     analyzer.info
 }
 
@@ -62,26 +80,29 @@ struct NamespaceBlock {
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L100>.
-fn analyze_import_chain(usage: &mut HashSet<SymbolId>, chain: &mut HashMap<SymbolId, SymbolId>) {
-    let mut new_usage = HashSet::new();
-    for id in usage.iter() {
-        let mut next = chain.remove(id);
+fn analyze_import_chain(
+    usage: impl Iterator<Item = SymbolId>,
+    chain: &mut HashMap<SymbolId, SymbolId>,
+) -> Vec<SymbolId> {
+    let mut new_usage = Vec::new();
+    for id in usage {
+        let mut next = chain.remove(&id);
         while let Some(id) = next {
             next = chain.remove(&id);
-            new_usage.insert(id);
+            new_usage.push(id);
         }
         if chain.is_empty() {
             break;
         }
     }
-    usage.extend(new_usage);
+    new_usage
 }
 
 struct SemanticAnalyzer<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
-    resolver: &'a mut Resolver,
+    resolver: &'a Resolver,
     options: &'a TypeScriptOptions,
-    info: SemanticInfo,
+    info: SemanticInfo<'ast>,
     import_chain: HashMap<SymbolId, SymbolId>,
     namespace_blocks: Vec<NamespaceBlock>,
     namespace_id: Option<SymbolId>,
@@ -94,7 +115,7 @@ impl SemanticAnalyzer<'_, '_> {
         self.resolver.symbol_of(id.node_id())
     }
     fn usage(&mut self, id: SymbolId) {
-        self.info.usage.insert(id);
+        self.info.symbols[id].used = true;
         if let Some(block) = self.namespace_blocks.last_mut() {
             block.usage.insert(id);
         }
@@ -131,7 +152,8 @@ impl SemanticAnalyzer<'_, '_> {
                                 ) => (specifier.local(self.ast), false),
                             };
                         if type_only || import.import_kind(self.ast) == ImportOrExportKind::Type {
-                            self.info.id_type.insert(self.binding(id));
+                            let id = self.binding(id);
+                            self.info.symbols[id].is_type = true;
                         }
                     }
                 }
@@ -147,7 +169,8 @@ impl SemanticAnalyzer<'_, '_> {
                         _ => None,
                     };
                     if let Some(id) = id {
-                        self.info.id_value.insert(self.binding(id));
+                        let id = self.binding(id);
+                        self.info.symbols[id].is_value = true;
                     }
                 }
                 _ => {}
@@ -162,29 +185,32 @@ impl SemanticAnalyzer<'_, '_> {
                 for slot in declaration.declarators(self.ast).iter() {
                     let declaration = self.ast.get_node_in_sub_range(slot);
                     for id in utils::find_pat_ids(self.ast, declaration.id(self.ast)) {
-                        self.info.id_value.insert(self.binding(id));
+                        let id = self.binding(id);
+                        self.info.symbols[id].is_value = true;
                     }
                 }
             }
             DeclData::Function(function) => {
                 if let Some(id) = function.id(self.ast) {
-                    self.info.id_value.insert(self.binding(id));
+                    let id = self.binding(id);
+                    self.info.symbols[id].is_value = true;
                 }
             }
             DeclData::TsFunction(function) => {
                 if let Some(id) = function.id(self.ast) {
-                    self.info.id_value.insert(self.binding(id));
+                    let id = self.binding(id);
+                    self.info.symbols[id].is_value = true;
                 }
             }
             DeclData::Class(class) => {
                 if let Some(id) = class.id(self.ast) {
-                    self.info.id_value.insert(self.binding(id));
+                    let id = self.binding(id);
+                    self.info.symbols[id].is_value = true;
                 }
             }
             DeclData::TsEnumDeclaration(enumeration) => {
-                self.info
-                    .id_value
-                    .insert(self.binding(enumeration.id(self.ast)));
+                let id = self.binding(enumeration.id(self.ast));
+                self.info.symbols[id].is_value = true;
             }
             DeclData::TsModuleDeclaration(module) => {
                 if let Some(&node) =
@@ -192,26 +218,26 @@ impl SemanticAnalyzer<'_, '_> {
                 {
                     let id = self.resolver.symbol_of(node);
                     if retain::namespace_body_is_concrete(self.ast, module) {
-                        self.info.id_value.insert(id);
+                        self.info.symbols[id].is_value = true;
                     } else {
-                        self.info.id_type.insert(id);
+                        self.info.symbols[id].is_type = true;
                     }
                 }
             }
             DeclData::TsInterfaceDeclaration(interface) => {
-                self.info
-                    .id_type
-                    .insert(self.binding(interface.id(self.ast)));
+                let id = self.binding(interface.id(self.ast));
+                self.info.symbols[id].is_type = true;
             }
             DeclData::TsTypeAliasDeclaration(alias) => {
-                self.info.id_type.insert(self.binding(alias.id(self.ast)));
+                let id = self.binding(alias.id(self.ast));
+                self.info.symbols[id].is_type = true;
             }
             DeclData::TsImportEqualsDeclaration(import) => {
                 let id = self.binding(import.id(self.ast));
                 if import.import_kind(self.ast) == ImportOrExportKind::Type {
-                    self.info.id_type.insert(id);
+                    self.info.symbols[id].is_type = true;
                 } else {
-                    self.info.id_value.insert(id);
+                    self.info.symbols[id].is_value = true;
                 }
             }
             DeclData::TsGlobalDeclaration(_) => {}
@@ -403,7 +429,8 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         self.namespace_blocks.push(NamespaceBlock::default());
         block.visit_children_with(self);
         let mut block = self.namespace_blocks.pop().unwrap();
-        analyze_import_chain(&mut block.usage, &mut block.import_chain);
+        let new_usage = analyze_import_chain(block.usage.iter().copied(), &mut block.import_chain);
+        block.usage.extend(new_usage);
         for (id, node, exported, type_only) in block.imports {
             if !type_only && (exported || block.usage.contains(&id)) {
                 self.info.namespace_import_equals_usage.insert(node);
@@ -479,17 +506,25 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
                 && matches!(default, TsEnumRecordValue::Void)
                 && !ambient
             {
-                TsEnumRecordValue::String(name.clone())
+                TsEnumRecordValue::String(name.to_owned())
             } else {
                 default.clone()
             };
             default = value.inc();
             if ambient {
                 if value.is_const() {
-                    self.info.ambient_enum_record.insert((id, name), value);
+                    self.info
+                        .ambient_enum_record
+                        .entry(id)
+                        .or_default()
+                        .insert(name, value);
                 }
             } else {
-                self.info.enum_record.insert((id, name), value);
+                self.info
+                    .enum_record
+                    .entry(id)
+                    .or_default()
+                    .insert(name, value);
             }
         }
     }

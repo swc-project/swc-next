@@ -1,16 +1,13 @@
+use swc_next_allocator::wtf8::Wtf8;
 use swc_next_ecma_ast::*;
 
-pub(super) fn enum_member_name(
-    ast: &Ast<'_>,
-    name: TsEnumMemberName,
-) -> swc_next_allocator::wtf8::Wtf8Buf {
-    use swc_next_allocator::wtf8::Wtf8Buf;
+pub(super) fn enum_member_name<'ast>(ast: &Ast<'ast>, name: TsEnumMemberName) -> &'ast Wtf8 {
     match ast.ts_enum_member_name_data(name) {
-        TsEnumMemberNameData::IdentifierName(id) => Wtf8Buf::from_str(ast.get_utf8(id.name(ast))),
-        TsEnumMemberNameData::StringLiteral(string) => ast.get_wtf8(string.value(ast)).to_owned(),
+        TsEnumMemberNameData::IdentifierName(id) => Wtf8::from_str(ast.get_utf8(id.name(ast))),
+        TsEnumMemberNameData::StringLiteral(string) => ast.get_wtf8(string.value(ast)),
         TsEnumMemberNameData::TemplateLiteral(template) => {
             let quasi = ast.get_node_in_sub_range(template.quasis(ast).iter().next().unwrap());
-            ast.get_wtf8(quasi.cooked(ast)).to_owned()
+            ast.get_wtf8(quasi.cooked(ast))
         }
     }
 }

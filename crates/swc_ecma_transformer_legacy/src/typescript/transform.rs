@@ -3,19 +3,19 @@ use super::{
     ImportsNotUsedAsValues, TsImportExportAssignConfig, TypeScriptOptions, retain,
     semantic::SemanticInfo,
     ts_enum,
-    ts_enum::{EnumValueComputer, EvalCtx, TsEnumRecordValue},
+    ts_enum::{EnumMembers, EnumValueComputer, EvalCtx, TsEnumRecordValue},
     utils,
 };
 use crate::common::{constructor::inject_after_super, resolver::context::Resolver};
 use std::collections::{HashMap, HashSet};
-use swc_next_allocator::wtf8::Wtf8Buf;
+use swc_next_allocator::wtf8::Wtf8;
 use swc_next_ecma_ast::*;
 
 pub(super) struct Transform<'a, 'ast> {
     pub(super) ast: &'a mut Ast<'ast>,
     pub(super) resolver: &'a mut Resolver,
     pub(super) options: &'a TypeScriptOptions,
-    pub(super) semantic: SemanticInfo,
+    pub(super) semantic: SemanticInfo<'ast>,
     pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) in_namespace: bool,
     pub(super) namespace_id: Option<SymbolId>,
@@ -32,7 +32,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         ast: &'a mut Ast<'ast>,
         resolver: &'a mut Resolver,
         options: &'a TypeScriptOptions,
-        semantic: SemanticInfo,
+        semantic: SemanticInfo<'ast>,
     ) -> Self {
         Self {
             ast,
@@ -187,10 +187,8 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                                 ) => (specifier.local(self.ast), false),
                             };
                         let id = self.resolver.symbol_of(id.node_id());
-                        (!type_only
-                            && !self.semantic.id_value.contains(&id)
-                            && self.semantic.usage.contains(&id))
-                        .then_some(specifier)
+                        let facts = &self.semantic.symbols[id];
+                        (!type_only && !facts.is_value && facts.used).then_some(specifier)
                     })
                     .collect();
                 let retain = !specifiers.is_empty()
@@ -215,7 +213,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                             && let Some(id) = specifier.local(self.ast).as_identifier_name(self.ast)
                             && self
                                 .semantic
-                                .has_pure_type(&self.resolver.symbol_of(id.node_id()))
+                                .has_pure_type(self.resolver.symbol_of(id.node_id()))
                         {
                             return None;
                         }
@@ -233,15 +231,12 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 .and_then(|expression| expression.as_identifier_reference(self.ast))
                 .is_some_and(|id| {
                     self.semantic
-                        .has_pure_type(&self.resolver.symbol_of(id.node_id()))
+                        .has_pure_type(self.resolver.symbol_of(id.node_id()))
                 }),
             StmtData::Declaration(declaration) => match self.ast.decl_data(declaration) {
                 DeclData::TsImportEqualsDeclaration(import) => {
                     import.import_kind(self.ast) != ImportOrExportKind::Type
-                        && self
-                            .semantic
-                            .usage
-                            .contains(&self.binding_id(import.id(self.ast)))
+                        && self.semantic.symbols[self.binding_id(import.id(self.ast))].used
                 }
                 DeclData::TsModuleDeclaration(module) => {
                     self.strip_namespace_module_items_with_semantic(module);
@@ -379,7 +374,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             return None;
         }
         let name = ts_enum::static_enum_member_name(self.ast, member)?;
-        let value = self.semantic.enum_record.get(&(id, name))?;
+        let value = self.semantic.enum_record.get(&id)?.get(name)?;
         value.is_const().then(|| value.expression(self.ast))
     }
 }
@@ -1359,13 +1354,6 @@ impl Transform<'_, '_> {
             && enumeration.is_const(self.ast)
             && !exported
             && !self.semantic.exported_binding.contains_key(&id);
-        let names: HashSet<_> = self
-            .semantic
-            .enum_record
-            .keys()
-            .filter(|(owner, _)| owner == &id)
-            .map(|(_, name)| name.clone())
-            .collect();
         let mut members = Vec::new();
         for slot in enumeration.body(self.ast).members(self.ast).iter() {
             let member = self.ast.get_node_in_sub_range(slot);
@@ -1373,7 +1361,8 @@ impl Transform<'_, '_> {
             let mut value = self
                 .semantic
                 .enum_record
-                .get(&(id, name.clone()))
+                .get(&id)
+                .and_then(|members| members.get(name))
                 .unwrap()
                 .clone();
             if matches!(value, TsEnumRecordValue::Opaque(_))
@@ -1395,7 +1384,7 @@ impl Transform<'_, '_> {
                         ast: self.ast,
                         resolver: self.resolver,
                         id,
-                        names: &names,
+                        members: &self.semantic.enum_record[&id],
                     };
                     *expression = expression
                         .visit_mut_with(&mut rewriter)
@@ -1415,7 +1404,7 @@ impl Transform<'_, '_> {
         let mut statements = Vec::new();
         for (name, value, span) in members {
             let string = matches!(value, TsEnumRecordValue::String(_));
-            let name_value = self.ast.add_wtf8(&name);
+            let name_value = self.ast.add_wtf8(name);
             let name = self
                 .ast
                 .expr_string_literal(DUMMY_SP, name_value, AstUtf8::EMPTY);
@@ -1547,14 +1536,14 @@ struct EnumMemberRefQuery<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut crate::common::resolver::context::Resolver,
     id: SymbolId,
-    names: &'a HashSet<Wtf8Buf>,
+    members: &'a EnumMembers<'ast>,
 }
 impl EnumMemberRefQuery<'_, '_> {
     fn matches(&self, node: NodeId, name: AstUtf8) -> bool {
         self.resolver.is_unresolved(node)
             && self
-                .names
-                .contains(&Wtf8Buf::from_str(self.ast.get_utf8(name)))
+                .members
+                .contains_key(Wtf8::from_str(self.ast.get_utf8(name)))
     }
     fn query(&mut self, node: NodeId, name: AstUtf8) -> Option<Expr> {
         if !self.matches(node, name) {

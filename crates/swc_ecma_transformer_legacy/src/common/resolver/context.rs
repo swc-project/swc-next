@@ -172,6 +172,10 @@ impl Resolver {
         self.symbols.entries[symbol].scope
     }
 
+    pub(crate) fn symbol_count(&self) -> usize {
+        self.symbols.entries.len()
+    }
+
     pub(crate) fn symbol_name(&self, symbol: SymbolId) -> AstUtf8 {
         self.symbols.entries[symbol].name
     }

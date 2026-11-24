@@ -1,14 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use rustc_hash::FxHashMap;
+use swc_next_allocator::IndexVec;
 use swc_next_ecma_ast::*;
 
-use super::analyzer::scope::Scope;
+use super::analyzer::scope::{Assignments, Scope};
 use crate::common::resolver::context::Resolver;
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L537>.
 pub(super) fn analyzer_and_collect_unresolved(
     ast: &Ast<'_>,
     resolver: &Resolver,
-) -> HashMap<SymbolId, String> {
+) -> FxHashMap<SymbolId, String> {
     let mut analyzer = AnalyzerAndCollector {
         ast,
         resolver,
@@ -17,37 +18,38 @@ pub(super) fn analyzer_and_collect_unresolved(
             ..Default::default()
         },
         hoisted: Vec::new(),
-        ids: HashSet::new(),
-        declarations: HashSet::new(),
+        symbols: IndexVec::from_vec(vec![SymbolUsage::Unseen; resolver.symbol_count()]),
         pattern: false,
         hoist: false,
     };
     ast.root_program().visit_with(&mut analyzer);
     let unresolved = analyzer
-        .ids
-        .difference(&analyzer.declarations)
-        .map(|&id| ast.get_utf8(resolver.symbol_name(id)))
+        .symbols
+        .iter_enumerated()
+        .filter(|(_, usage)| **usage == SymbolUsage::Referenced)
+        .map(|(id, _)| ast.get_utf8(resolver.symbol_name(id)))
         .collect();
     analyzer.scope.prepare_renaming();
-    let mut renames = HashMap::new();
-    analyzer.scope.rename_in_normal_mode(
-        ast,
-        resolver,
-        &unresolved,
-        &mut HashMap::new(),
-        &mut renames,
-    );
-    renames.retain(|id, name| ast.get_utf8(resolver.symbol_name(*id)) != *name);
-    renames
+    let mut assignments = Assignments::new(resolver.symbol_count());
+    analyzer
+        .scope
+        .rename_in_normal_mode(ast, resolver, &unresolved, &mut assignments);
+    assignments.renames
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SymbolUsage {
+    Unseen,
+    Referenced,
+    Declared,
 }
 
 struct AnalyzerAndCollector<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     resolver: &'visit Resolver,
-    scope: Scope,
+    scope: Scope<'ast>,
     hoisted: Vec<SymbolId>,
-    ids: HashSet<SymbolId>,
-    declarations: HashSet<SymbolId>,
+    symbols: IndexVec<SymbolId, SymbolUsage>,
     pattern: bool,
     hoist: bool,
 }
@@ -92,8 +94,7 @@ impl AnalyzerAndCollector<'_, '_> {
         let Some(id) = self.resolver.symbol(binding.node_id()) else {
             return;
         };
-        self.ids.insert(id);
-        self.declarations.insert(id);
+        self.symbols[id] = SymbolUsage::Declared;
         if self.ast.get_utf8(binding.name(self.ast)) != "arguments" {
             self.add_decl(id, hoist);
         }
@@ -102,10 +103,17 @@ impl AnalyzerAndCollector<'_, '_> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L183>.
     fn usage(&mut self, node: NodeId, name: AstUtf8) {
         if let Some(id) = self.resolver.symbol(node) {
-            self.ids.insert(id);
+            self.record_reference(id);
             if self.ast.get_utf8(name) != "arguments" {
                 self.scope.add_usage(id);
             }
+        }
+    }
+
+    fn record_reference(&mut self, id: SymbolId) {
+        let usage = &mut self.symbols[id];
+        if *usage == SymbolUsage::Unseen {
+            *usage = SymbolUsage::Referenced;
         }
     }
 
@@ -176,7 +184,7 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
         {
             let raw = self.ast.get_utf8(raw);
             if matches!(raw, "NaN" | "Infinity") {
-                self.scope.reserved.insert(raw.into());
+                self.scope.reserved.insert(raw);
             }
         }
     }
@@ -416,7 +424,9 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
     fn visit_jsx_element_name(&mut self, node: JsxElementName) {
         match self.ast.jsx_element_name_data(node) {
             JsxElementNameData::JsxIdentifier(identifier) => {
-                self.ids.extend(self.resolver.symbol(identifier.node_id()));
+                if let Some(id) = self.resolver.symbol(identifier.node_id()) {
+                    self.record_reference(id);
+                }
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self)
@@ -429,7 +439,9 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
     fn visit_jsx_member_expression_object(&mut self, node: JsxMemberExpressionObject) {
         match self.ast.jsx_member_expression_object_data(node) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                self.ids.extend(self.resolver.symbol(identifier.node_id()));
+                if let Some(id) = self.resolver.symbol(identifier.node_id()) {
+                    self.record_reference(id);
+                }
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self)
