@@ -1511,14 +1511,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentBinding::Unbound
     }
 
-    pub(super) fn source_comments_in_range(&self, span: Span) -> &'ast [Comment] {
-        let comments = self.ast.comments();
-        let first = comments.partition_point(|comment| comment.span.start < span.start);
-        let inside = &comments[first..];
-        let count = inside.partition_point(|comment| comment.span.end <= span.end);
-        &inside[..count]
-    }
-
     fn source_parentheses_comments(
         &self,
         boundary: SourceParentheses,
@@ -4929,7 +4921,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
                 let tail =
                     self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
-                return self.format_expression_tail_in_pair(tail, true, array_comments, writer);
+                return self.format_expression_tail_with_layout(
+                    tail,
+                    CommentRunLayout::ConditionalTail,
+                    array_comments,
+                    writer,
+                );
             }
             let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
             if matches!(
@@ -4948,7 +4945,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
             if matches!(context.position, ExpressionPosition::ArrowBody) {
-                self.format_expression_tail_in_pair(tail, false, array_comments, writer)
+                self.format_expression_tail_with_layout(
+                    tail,
+                    CommentRunLayout::EnclosedTail,
+                    array_comments,
+                    writer,
+                )
             } else {
                 self.format_expression_tail_with_array_comments(tail, array_comments, writer)
             }
@@ -6221,49 +6223,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         (last.kind == CommentKind::Line
             || self.source_line_breaks(tail.span.start, last.span.end) != 0)
             .then_some(removed.source)
-    }
-
-    pub(in crate::formatter) fn format_operand_tail_on_source_lines(
-        &mut self,
-        tail: Option<ExpressionTail<'ast>>,
-        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let Some(tail) = tail else {
-            return Ok(());
-        };
-        if !self.has_source_only_comment_gap(tail.source_end, tail.comments) {
-            return self.format_expression_tail_with_array_comments(
-                Some(tail),
-                array_comments,
-                writer,
-            );
-        }
-        self.format_source_operand_tail(tail, array_comments, writer)
-    }
-
-    fn format_source_operand_tail(
-        &mut self,
-        tail: ExpressionTail<'ast>,
-        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        // An ECMAScript line separator can put a comment on its own source
-        // line without breaking the document's visual lines.
-        self.comments.claim(tail.comments)?;
-        let mut previous = tail.source_end;
-        for comment in tail.comments {
-            self.source_line_constraint(previous, comment.span.start)
-                .write(writer, FlatSeparator::Space, Writer::space);
-            self.format_comment_run_with_array_comments(
-                std::slice::from_ref(comment),
-                CommentRunLayout::Source,
-                array_comments.as_deref_mut(),
-                writer,
-            )?;
-            previous = comment.span.end;
-        }
-        Ok(())
     }
 
     fn ignored_operand_owns_operation_head(
