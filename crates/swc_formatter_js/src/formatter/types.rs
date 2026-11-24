@@ -1621,7 +1621,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_type_boundary(boundary, writer)?;
             return self.format_prepared_type(node, TypeContext::Root, writer);
         };
-        if union.alias_layout() == TypeLayout::Root {
+        if after.is_empty() && union.alias_layout() == TypeLayout::Root {
             self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
             return writer.group(false, |writer| {
                 rhs_layout.write(

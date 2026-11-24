@@ -47269,6 +47269,16 @@
         "prettierNative": "type A =\r\n\t/* outer */ /* inner */\r\n\tLeft & Right;\r\n"
       }
     ],
+    "ts/type-compound/nullable-head/annotations/input.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Reference = /*#__PURE__*/\n  A | null;\ntype Cast = /** @type {A} */\n  A | null;\ntype Object = /*@__PURE__*/\n  { a: 1 } | void;\ntype Reversed = /*#__NO_SIDE_EFFECTS__*/\n  null | A;\n",
+        "prettierNative": "type Reference =\n  | /*#__PURE__*/ A\n  | null;\ntype Cast =\n  | /** @type {A} */ A\n  | null;\ntype Object =\n  | /*@__PURE__*/ {\n      a: 1;\n    }\n  | void;\ntype Reversed =\n  /*#__NO_SIDE_EFFECTS__*/\n  null | A;\n"
+      }
+    ],
     "ts/type-compound/parentheses-diagnostic.ts": [
       {
         "options": {

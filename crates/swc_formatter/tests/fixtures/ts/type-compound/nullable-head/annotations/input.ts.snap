@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Reference = /*#__PURE__*/ A | null;
+type Cast = /** @type {A} */ (A) | null;
+type Object = /*@__PURE__*/ { a: 1 } | void;
+type Reversed = /*#__NO_SIDE_EFFECTS__*/
+  null | A;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Reference = /*#__PURE__*/
+  A | null;
+type Cast = /** @type {A} */
+  A | null;
+type Object = /*@__PURE__*/
+  { a: 1 } | void;
+type Reversed = /*#__NO_SIDE_EFFECTS__*/
+  null | A;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Reference = /*#__PURE__*/ A | null;
+type Cast = /** @type {A} */ A | null;
+type Object = /*@__PURE__*/ { a: 1 } | void;
+type Reversed = /*#__NO_SIDE_EFFECTS__*/ null | A;
