@@ -559,6 +559,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
     }
 
+    pub(super) fn diagnostic_directive_immediately_before(&self, position: u32) -> bool {
+        let ends = &self.diagnostic_lines.directive_ends;
+        let count = ends.partition_point(|&end| end <= position);
+        ends[..count].last().is_some_and(|&end| {
+            self.source(Span::new(end, position))
+                .chars()
+                .all(is_source_whitespace)
+        })
+    }
+
     pub(super) fn comment_is_diagnostic_directive(&self, comment: Comment) -> bool {
         self.diagnostic_lines
             .directive_ends

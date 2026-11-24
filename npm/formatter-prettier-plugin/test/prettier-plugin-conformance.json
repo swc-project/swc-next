@@ -39688,6 +39688,42 @@
         "prettierNative": "export function evaluate(\n  first: string,\n): void {\n  for (\n    (first in\n    // @ts-expect-error\n    missingRhs) /* tail */;\n    missingCondition;\n    missingUpdate\n  ) {}\n  const outsideSentinel: number =\n    \"outside\";\n}\n"
       }
     ],
+    "ts/expressions/diagnostic-logical-group/and.tsx": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80
+        },
+        "swcPlugin": "x = a && /* @ts-expect-error */ (b && <C />);\n",
+        "prettierNative": "x = a && /* @ts-expect-error */ b && <C />;\n"
+      },
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 20
+        },
+        "swcPlugin": "x =\n  a &&\n  /* @ts-expect-error */ (b && <C />);\n",
+        "prettierNative": "x = a &&\n  /* @ts-expect-error */ b && (\n    <C />\n  );\n"
+      }
+    ],
+    "ts/expressions/diagnostic-logical-group/or.ts": [
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 80
+        },
+        "swcPlugin": "x = a || /* @ts-ignore */ (b || c);\n",
+        "prettierNative": "x = a || /* @ts-ignore */ b || c;\n"
+      },
+      {
+        "options": {
+          "indentStyle": "space",
+          "lineWidth": 20
+        },
+        "swcPlugin": "x =\n  a ||\n  /* @ts-ignore */ (b || c);\n",
+        "prettierNative": "x =\n  a ||\n  /* @ts-ignore */ b ||\n  c;\n"
+      }
+    ],
     "ts/expressions/optional-call-opening/optional-typed.ts": [
       {
         "options": {
