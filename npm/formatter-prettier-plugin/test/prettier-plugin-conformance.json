@@ -19731,6 +19731,77 @@
         "prettierNative": "(first, /** @type {number} */ (third = fourth));\r\n"
       }
     ],
+    "js/expressions/sequence/unicode-before-comma.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(a // first\n,\n  // second\n  b);\n",
+        "prettierNative": "(a, // first\n// second\n  b);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(a // first\n,\n  // second\n  b)\n",
+        "prettierNative": ";(a, // first\n// second\n  b)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(a // first\n,\n  // second\n  b);\n",
+        "prettierNative": "(a, // first\n// second\n  b);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(a // first\n,\n  // second\n  b);\n",
+        "prettierNative": "(a, // first\n// second\n  b);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 4
+        },
+        "swcPlugin": "(a // first\n,\n    // second\n    b);\n",
+        "prettierNative": "(a, // first\n// second\n    b);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "(a // first\n,\n\t// second\n\tb);\n",
+        "prettierNative": "(a, // first\n// second\n\tb);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 1
+        },
+        "swcPlugin": "(a // first\n,\n // second\n b);\n",
+        "prettierNative": "(a, // first\n// second\n b);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "(a // first\r\n,\r\n  // second\r\n  b);\r\n",
+        "prettierNative": "(a, // first\r\n// second\r\n  b);\r\n"
+      }
+    ],
     "js/expressions/string-width/keys/arabic.js": [
       {
         "options": {

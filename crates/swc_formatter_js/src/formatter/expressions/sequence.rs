@@ -56,6 +56,7 @@ struct SequenceCommentPartition<'ast> {
     trailing: &'ast [Comment],
     leading: &'ast [Comment],
     before_count: usize,
+    line_comments_surround_comma: bool,
     packet_end: Option<usize>,
     sensitive: bool,
 }
@@ -634,7 +635,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         suppression: Option<DelimitedSuppression>,
     ) -> Option<SequenceTrailingPacket<'ast>> {
         let source = Span::new(previous.span(self.ast).end, next.span(self.ast).start);
-        if self.line_breaks(source.start, comma) != 0 {
+        if self.source_line_breaks(source.start, comma) != 0 {
             return None;
         }
         // The source boundary excludes the next pair's interior. Within that
@@ -645,7 +646,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let first = packet.first()?;
         let last = packet.last()?;
         let opening = Span::new(comma + 1, first.span.start);
-        if self.line_breaks(opening.start, opening.end) != 0
+        if self.source_line_breaks(opening.start, opening.end) != 0
             || !self.source(opening).chars().all(is_source_whitespace)
         {
             return None;
@@ -740,6 +741,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 trailing: &[],
                 leading: &[],
                 before_count: 0,
+                line_comments_surround_comma: false,
                 packet_end: None,
                 sensitive,
             });
@@ -752,42 +754,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let before_count = comments.partition_point(|comment| comment.span.end <= comma);
-        let (trailing, leading) = if sensitive {
-            comments.split_at(before_count)
+        let (before, after) = comments.split_at(before_count);
+        let line_comments_surround_comma = before
+            .iter()
+            .any(|comment| comment.kind == CommentKind::Line)
+            && after
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line);
+        let (trailing, leading) = if sensitive || line_comments_surround_comma {
+            (before, after)
         } else {
             self.split_separator_comments(comments, before_count, start, Some(end))
         };
-        let packet_end = boundary.packet.as_ref().and_then(|packet| {
-            let first = packet.comments[0];
-            let last = packet.comments[packet.comments.len() - 1];
-            let first_index = before_count;
-            let end_index = first_index + packet.comments.len();
-            // A pending operand tail cannot be moved merely to reach
-            // this later packet. Its existing source partition stays intact.
-            let owner_retained = match packet.binding {
-                SequencePacketBinding::InlineLine { source } => {
-                    source.start == start
-                        && last.span.end <= source.end
-                        && end_index
-                            == comments.partition_point(|comment| comment.span.end <= last.span.end)
-                }
-                _ => !sensitive,
-            };
-            (owner_retained
-                && trailing.len() >= first_index
-                && comments
-                    .get(first_index)
-                    .is_some_and(|comment| comment.span == first.span)
-                && comments
-                    .get(end_index - 1)
-                    .is_some_and(|comment| comment.span == last.span))
-            .then_some(end_index)
-        });
+        let packet_end = boundary
+            .packet
+            .as_ref()
+            .filter(|_| !line_comments_surround_comma)
+            .and_then(|packet| {
+                let first = packet.comments[0];
+                let last = packet.comments[packet.comments.len() - 1];
+                let first_index = before_count;
+                let end_index = first_index + packet.comments.len();
+                // A pending operand tail cannot be moved merely to reach
+                // this later packet. Its existing source partition stays intact.
+                let owner_retained = match packet.binding {
+                    SequencePacketBinding::InlineLine { source } => {
+                        source.start == start
+                            && last.span.end <= source.end
+                            && end_index
+                                == comments
+                                    .partition_point(|comment| comment.span.end <= last.span.end)
+                    }
+                    _ => !sensitive,
+                };
+                (owner_retained
+                    && trailing.len() >= first_index
+                    && comments
+                        .get(first_index)
+                        .is_some_and(|comment| comment.span == first.span)
+                    && comments
+                        .get(end_index - 1)
+                        .is_some_and(|comment| comment.span == last.span))
+                .then_some(end_index)
+            });
         Ok(SequenceCommentPartition {
             comments,
             trailing,
             leading,
             before_count,
+            line_comments_surround_comma,
             packet_end,
             sensitive,
         })
@@ -845,6 +860,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing,
             leading,
             before_count,
+            line_comments_surround_comma,
             packet_end,
             sensitive,
         } = partition;
@@ -891,6 +907,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_constraint_after_comments(boundary.trailing, start, comma);
                 boundary.separator = self.line_constraint(comma + 1, next);
             }
+        } else if line_comments_surround_comma
+            && let (Some(&last), Some(comma)) = (boundary.trailing.last(), boundary.comma)
+        {
+            boundary.before_comma = self.comment_gap_after_constraint(last, comma);
         }
         Ok(SequenceComments::Formatted)
     }
