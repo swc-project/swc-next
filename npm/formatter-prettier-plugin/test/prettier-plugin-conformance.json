@@ -29088,6 +29088,42 @@
         "prettierNative": "for (// Header\n/* Binding */ const value of values) {\n\trun(value);\n}\n"
       }
     ],
+    "js/statements/loops/for-using-escaped-binding.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      }
+    ],
     "js/statements/loops/while-condition-comment-owners.js": [
       {
         "options": {
