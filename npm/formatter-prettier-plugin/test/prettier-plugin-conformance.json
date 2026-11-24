@@ -38233,6 +38233,46 @@
         "prettierNative": "const value = 1 /* prettier-ignore */ as const\n"
       }
     ],
+    "ts/control-flow/diagnostic-case-gap/expect-error-before-case.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    0; /* @ts-expect-error */ case 2:\n    missing()\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    0\n  /* @ts-expect-error */ case 2:\n    missing()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    0; /* @ts-expect-error */ case 2:\n    missing();\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    0;\n  /* @ts-expect-error */ case 2:\n    missing();\n}\n"
+      }
+    ],
+    "ts/control-flow/diagnostic-case-gap/ignore-before-default.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    break; /* @ts-ignore */ default:\n    missing()\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    break\n  /* @ts-ignore */ default:\n    missing()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    break; /* @ts-ignore */ default:\n    missing();\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    break;\n  /* @ts-ignore */ default:\n    missing();\n}\n"
+      }
+    ],
     "ts/control-flow/diagnostic-keyword-gap/input.ts": [
       {
         "options": {
