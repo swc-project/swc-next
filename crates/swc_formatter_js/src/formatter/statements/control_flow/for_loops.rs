@@ -486,7 +486,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut previous_end = gap.span.start;
         for comment in comments {
-            if self.line_breaks(previous_end, comment.span.start) != 0 {
+            if self.source_line_breaks(previous_end, comment.span.start) != 0 {
                 return Ok(None);
             }
             previous_end = comment.span.end;
