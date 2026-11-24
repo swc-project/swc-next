@@ -30,6 +30,7 @@ use super::comments::{
     PreparedTrailingRun, SourceCommentText,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
+use super::expressions::assignment::InitializerSource;
 use super::expressions::assignment::RhsLayout;
 use super::expressions::{CopiedRawOwner, ExpressionOutput, ExpressionRightEdge};
 use super::literals::StringContext;
@@ -5201,14 +5202,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .with_decorated_function_call(self.decorated_function_call_content(&content));
             }
             let rhs = self.assignment_rhs(right, &content);
-            let mut boundary = self.assignment_boundary(
-                left_end,
+            let boundary = self.prepare_initializer_boundary(
+                owner,
                 &rhs,
                 Span::new(operator, operator + 1),
-                right.span(self.ast).end,
+                InitializerSource::VALUE,
                 context,
             )?;
-            self.prepare_assignment_rhs(&rhs, &mut boundary, &context)?;
             let data = if is_identifier_annotation {
                 self.source_parentheses_rhs_content(
                     &content,

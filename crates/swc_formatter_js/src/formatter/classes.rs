@@ -2106,9 +2106,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let content = self.expression_content(right);
                 let rhs = self.assignment_rhs(right, &content);
                 let source = if tail_source && semicolon.is_some() {
-                    InitializerSource::ValueWithBoundTail
+                    InitializerSource::BOUND_VALUE
                 } else {
-                    InitializerSource::Value
+                    InitializerSource::VALUE
                 };
                 let initializer_context = ExpressionContext::class_field_initializer()
                     .with_tail_owner(TailOwner::ParentOperation)

@@ -339,12 +339,37 @@ impl<'ast> AssignmentBoundary<'ast> {
     }
 }
 
-pub(in crate::formatter) enum InitializerSource {
-    Value,
+pub(in crate::formatter) struct InitializerSource {
     /// An ignore before the equals sign binds the value and its preceding source line.
-    SuppressedBeforeEquals,
+    pub(in crate::formatter) suppressed_before_equals: bool,
+    tail: InitializerTail,
+}
+
+enum InitializerTail {
+    Value,
+    /// A list owns a comment beyond the value that occupies its trailing edge.
+    ThroughComment(u32),
     /// A class-field terminator binds the original value tail.
-    ValueWithBoundTail,
+    Bound,
+}
+
+impl InitializerSource {
+    pub(in crate::formatter) const VALUE: Self = Self {
+        suppressed_before_equals: false,
+        tail: InitializerTail::Value,
+    };
+
+    pub(in crate::formatter) const BOUND_VALUE: Self = Self {
+        tail: InitializerTail::Bound,
+        ..Self::VALUE
+    };
+
+    pub(in crate::formatter) fn with_following_comment(end: Option<u32>) -> Self {
+        Self {
+            tail: end.map_or(InitializerTail::Value, InitializerTail::ThroughComment),
+            ..Self::VALUE
+        }
+    }
 }
 
 /// The original RHS endpoint stays separate from its parent's prepared tail owner.
@@ -478,14 +503,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_operator_tail_destination(context.operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(right, &content);
-        let mut boundary = self.assignment_boundary(
-            target.left_end(),
+        let boundary = self.prepare_initializer_boundary(
+            Span::new(target.span().start, target.left_end()),
             &rhs,
             target.operator_span,
-            right.span(self.ast).end,
+            InitializerSource::VALUE,
             right_context,
         )?;
-        self.prepare_assignment_rhs(&rhs, &mut boundary, &right_context)?;
         let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
         let mut layout = self.assignment_layout(&rhs, context.position, right_context, &boundary);
         let binding = target.binding();
@@ -1405,14 +1429,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source: InitializerSource,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let end = rhs.expression.span(self.ast).end;
-        let source_end = match source {
-            InitializerSource::ValueWithBoundTail => AssignmentSourceEnd::ValueWithBoundTail(end),
-            _ => AssignmentSourceEnd::Expression(end),
+        let value_end = rhs.expression.span(self.ast).end;
+        let source_end = match source.tail {
+            InitializerTail::Value => AssignmentSourceEnd::Expression(value_end),
+            InitializerTail::ThroughComment(end) => AssignmentSourceEnd::Expression(end),
+            InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value_end),
         };
         let mut boundary =
             self.assignment_boundary_with_source(left.end, rhs, operator, source_end, context)?;
-        if matches!(source, InitializerSource::SuppressedBeforeEquals) {
+        if source.suppressed_before_equals {
             boundary.mode = ContentMode::Verbatim;
             if let Some(comment) = boundary.before.last() {
                 boundary.before_operator =
@@ -1423,23 +1448,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         self.prepare_assignment_rhs(rhs, &mut boundary, &context)?;
         Ok(boundary)
-    }
-
-    pub(in crate::formatter) fn assignment_boundary(
-        &self,
-        left_end: u32,
-        rhs: &AssignmentRhs<'_>,
-        operator_span: Span,
-        source_right_end: u32,
-        context: ExpressionContext<'ast>,
-    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        self.assignment_boundary_with_source(
-            left_end,
-            rhs,
-            operator_span,
-            AssignmentSourceEnd::Expression(source_right_end),
-            context,
-        )
     }
 
     fn assignment_boundary_with_source(
@@ -2078,7 +2086,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Prepare the value only after its parent has selected the final source mode.
     #[inline]
-    pub(in crate::formatter) fn prepare_assignment_rhs(
+    fn prepare_assignment_rhs(
         &self,
         rhs: &AssignmentRhs<'_>,
         boundary: &mut AssignmentBoundary<'ast>,

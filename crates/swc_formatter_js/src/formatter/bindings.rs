@@ -236,7 +236,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator: u32,
     ) -> (ContentMode, InitializerSource) {
         let mut left = ContentMode::Formatted;
-        let mut source = InitializerSource::Value;
+        let mut source = InitializerSource::VALUE;
         if self.has_suppression {
             let before =
                 &comments[..comments.partition_point(|comment| comment.span.end <= operator)];
@@ -244,7 +244,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 match position {
                     SuppressionPosition::Inline => left = ContentMode::Verbatim,
                     SuppressionPosition::OwnLine | SuppressionPosition::EndOfLine => {
-                        source = InitializerSource::SuppressedBeforeEquals;
+                        source.suppressed_before_equals = true;
                     }
                 }
             }
@@ -740,7 +740,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator,
             comments,
         } = gap;
-        let left_end = gap.start;
         let right_start = gap.end;
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
@@ -787,24 +786,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .trim_matches(super::source::is_source_whitespace);
                     self.line_breaks(right_end, comment.span.start) == 0 && matches!(gap, "" | ",")
                 })
-                .map_or(right_end, |comment| comment.span.end);
+                .map(|comment| comment.span.end);
             let rhs = self.assignment_rhs(right, &content);
             let initializer_context = ExpressionContext::binding_initializer();
-            let mut boundary = self.assignment_boundary(
-                left_end,
+            let mut boundary = self.prepare_initializer_boundary(
+                left,
                 &rhs,
                 operator,
-                source_end,
+                InitializerSource::with_following_comment(source_end),
                 initializer_context,
             )?;
-            self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
             let first = source_comments.partition_point(|comment| comment.span.start < left.start);
             let source_clear_left = source_comments
                 .get(first)
                 .is_none_or(|comment| comment.span.start >= left.end);
             let comments = self
                 .comments
-                .in_range(Span::new(left_end, boundary.binding_head_end()));
+                .in_range(Span::new(left.end, boundary.binding_head_end()));
             let head_comments = if source_clear_left
                 && !comments.is_empty()
                 && boundary.before.is_empty()
