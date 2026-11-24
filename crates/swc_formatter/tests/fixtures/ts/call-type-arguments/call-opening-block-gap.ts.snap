@@ -1,0 +1,101 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f<T  , U> /* gap */ (  // prettier-ignore
+ a   +   b);
+f<T  , U> /* gap */ (  // prettier-ignore
+ // prettier-ignore
+ a   +   b, c   +   d);
+new F<T> /* gap */ ( // prettier-ignore
+ () => { return  1; });
+f?.<T> /* one */ /* two */ ( // prettier-ignore
+ a   +   b, { value:  1 });
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f<T  , U> /* gap */(  // prettier-ignore
+  a + b,
+);
+f<T  , U> /* gap */(  // prettier-ignore
+ // prettier-ignore
+  a   +   b,
+  c + d,
+);
+new F<T> /* gap */( // prettier-ignore
+  () => {
+    return 1;
+  },
+);
+f?.<T> /* one */ /* two */( // prettier-ignore
+  a + b,
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+f<T  , U> /* gap */(  // prettier-ignore
+  a + b,
+);
+f<T  , U> /* gap */(  // prettier-ignore
+ // prettier-ignore
+  a   +   b,
+  c + d,
+);
+new F<T> /* gap */( // prettier-ignore
+  () => {
+    return 1;
+  },
+);
+f?.<T> /* one */ /* two */( // prettier-ignore
+  a + b,
+  { value: 1 },
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+f<T  , U> /* gap */(  // prettier-ignore
+  a +
+    b,
+)
+f<T  , U> /* gap */(  // prettier-ignore
+ // prettier-ignore
+  a   +   b,
+  c +
+    d,
+)
+new F<T> /* gap */( // prettier-ignore
+  () => {
+    return 1
+  },
+)
+f?.<T> /* one */ /* two */( // prettier-ignore
+  a +
+    b,
+  {
+    value: 1,
+  },
+)
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+f<T  , U> /* gap */(  // prettier-ignore
+	a + b,
+);
+f<T  , U> /* gap */(  // prettier-ignore
+ // prettier-ignore
+	a   +   b,
+	c + d,
+);
+new F<T> /* gap */( // prettier-ignore
+	() => {
+		return 1;
+	},
+);
+f?.<T> /* one */ /* two */( // prettier-ignore
+	a + b,
+	{ value: 1 },
+);

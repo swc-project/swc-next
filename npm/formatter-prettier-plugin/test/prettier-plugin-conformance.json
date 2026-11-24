@@ -33874,6 +33874,42 @@
         "prettierNative": "result =\r\n\tFactory.first<number>(\r\n\t\t// prettier-ignore\r\n\t\t{ one :1, two:2 },\r\n\t\t(entry) => {\r\n\t\t\tconst next =\r\n\t\t\t\tentry + 1;\r\n\t\t\treturn next;\r\n\t\t},\r\n\t).second<string>(\r\n\t\tother,\r\n\t);\r\n"
       }
     ],
+    "ts/call-type-arguments/call-opening-block-gap.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a + b,\n);\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1;\n  },\n);\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a + b,\n  { value: 1 },\n);\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(a + b);\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */ // prettier-ignore\n(() => {\n  return 1;\n});\nf?.<T> /* one */ /* two */ // prettier-ignore\n(a + b, { value: 1 });\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a + b,\n);\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1;\n  },\n);\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a + b,\n  { value: 1 },\n);\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(a + b);\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */ // prettier-ignore\n(() => {\n  return 1;\n});\nf?.<T> /* one */ /* two */ // prettier-ignore\n(a + b, {\n  value: 1,\n});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a +\n    b,\n)\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c +\n    d,\n)\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1\n  },\n)\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a +\n    b,\n  {\n    value: 1,\n  },\n)\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(\n  a +\n    b,\n)\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c +\n    d,\n)\nnew F<T> /* gap */ // prettier-ignore\n(\n  () => {\n    return 1\n  },\n)\nf?.<T> /* one */ /* two */ // prettier-ignore\n(\n  a +\n    b,\n  {\n    value: 1,\n  },\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\r\n\ta + b,\r\n);\r\nf<T  , U> /* gap */(  // prettier-ignore\r\n // prettier-ignore\r\n\ta   +   b,\r\n\tc + d,\r\n);\r\nnew F<T> /* gap */( // prettier-ignore\r\n\t() => {\r\n\t\treturn 1;\r\n\t},\r\n);\r\nf?.<T> /* one */ /* two */( // prettier-ignore\r\n\ta + b,\r\n\t{ value: 1 },\r\n);\r\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\r\n(a + b);\r\nf<T  , U> /* gap */ // prettier-ignore\r\n(\r\n\t// prettier-ignore\r\n\ta   +   b,\r\n\tc + d,\r\n);\r\nnew F<T> /* gap */ // prettier-ignore\r\n(() => {\r\n\treturn 1;\r\n});\r\nf?.<T> /* one */ /* two */ // prettier-ignore\r\n(a + b, {\r\n\tvalue: 1,\r\n});\r\n"
+      }
+    ],
     "ts/call-type-arguments/call-opening-owner.ts": [
       {
         "options": {
