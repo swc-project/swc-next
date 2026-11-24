@@ -30691,6 +30691,42 @@
         "prettierNative": "// @ts-expect-error\nvar first = unknownFirst,\n  second = unknownSecond\nunknownThird()\n"
       }
     ],
+    "js/statements/variables/protected/ignored-initializer-head.js": [
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b);\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)();\n}\n",
+        "prettierNative": "let x = // prettier-ignore\n  /* sequence */ (a,\n  b);\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b)\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)()\n}\n",
+        "prettierNative": "let x = // prettier-ignore\n  /* sequence */ (a,\n  b)\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b);\nlet y = /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)();\n}\n",
+        "prettierNative": "let x = /* sequence */ (a, b); // prettier-ignore\nlet y = /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b)\nlet y = /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)()\n}\n",
+        "prettierNative": "let x = /* sequence */ (a, b) // prettier-ignore\nlet y = /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)()\n}\n"
+      }
+    ],
     "js/statements/variables/protected/source-packet.js": [
       {
         "options": {
