@@ -187,6 +187,7 @@ struct Condition<'ast> {
 #[derive(Clone, Copy)]
 struct BodyKeyword {
     span: Span,
+    preceding_line: Option<Comment>,
     following: CommentGap,
     adjacent: bool,
     line: bool,
@@ -651,13 +652,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let keyword = self.prepare_body_keyword(&body, span, detached);
             if self.options.semicolons == Semicolons::AsNeeded
                 && keyword.detached.is_none()
+                && keyword.preceding_line.is_none()
                 && matches!(
                     keyword.following,
                     CommentGap::Source(LineConstraint::SameLine)
                 )
                 && self.line_breaks(content_end, span.start) == 0
             {
-                // The constrained keyword gap cannot supply a line break for ASI.
+                // Neither the line comment tail nor the constrained gap supplies ASI.
                 body.punctuation = StatementPunctuation::Canonical(Semicolons::Always);
             }
             body.keyword = Some(keyword);
@@ -1086,19 +1088,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let lint_lines = self.has_lint_line_directives()
             && (self.has_line_directive_in(gap)
                 || self.lint_line_intersects(Span::new(source_end, span.end)));
-        let tail_line = match (tail, last) {
-            (Some(tail), Some(comment)) => {
-                comment.kind == CommentKind::Line
-                    && (tail.binding.allows_relocation(None) || comment.span.end > body.span.end)
-            }
-            _ => false,
-        };
+        let preceding_line = last.copied().filter(|comment| {
+            comment.kind == CommentKind::Line
+                && (comment.span.end > body.span.end
+                    || tail.is_some_and(|tail| tail.binding.allows_relocation(None)))
+        });
         let following = if lint_lines {
             let end = comments
                 .last()
                 .map_or(source_end, |comment| comment.span.end);
             CommentGap::Source(self.source_line_constraint(end, span.start))
-        } else if comments.is_empty() && tail_line {
+        } else if comments.is_empty() && preceding_line.is_some() {
             CommentGap::LineComment
         } else {
             // Canonical punctuation is emitted before this tail, so the last
@@ -1115,6 +1115,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         BodyKeyword {
             span,
+            preceding_line,
             following,
             adjacent,
             line,
@@ -1151,6 +1152,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let binding = self.comment_binding(comments, span, None);
             if keyword.detached.is_some() {
                 writer.hard_line();
+            } else if let Some(comment) = keyword
+                .preceding_line
+                .filter(|comment| comment.span.end == source_end)
+            {
+                self.comment_gap_after(comment, first, writer);
             } else {
                 self.line_constraint(source_end, first).write(
                     writer,

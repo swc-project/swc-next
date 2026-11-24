@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (true) String(0); /* @ts-expect-error */ else String(1);
+missing();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+if (true)
+  String(
+    0,
+  ); /* @ts-expect-error */ else String(1);
+missing();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+if (true) String(0); /* @ts-expect-error */ else String(1);
+missing();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if (true) String(0); /* @ts-expect-error */ else String(1)
+missing()

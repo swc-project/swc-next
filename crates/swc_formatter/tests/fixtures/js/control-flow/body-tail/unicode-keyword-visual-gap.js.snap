@@ -1,0 +1,27 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (a) b(); // note 
+/*@__PURE__*/ else c();
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+if (a)
+  b(); // note
+/*@__PURE__*/ else
+  c();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+if (a)
+  b(); // note
+/*@__PURE__*/ else c();
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if (a)
+  b() // note
+/*@__PURE__*/ else c()

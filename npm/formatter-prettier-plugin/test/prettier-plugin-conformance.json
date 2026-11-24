@@ -4618,6 +4618,114 @@
         "prettierNative": "/* eslint-disable-line no-unused-labels */\nlabel: f();\n"
       }
     ],
+    "js/control-flow/body-tail/unicode-do-keyword.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a(); // note\n/* @ts-expect-error */ while (b());\nconst n = missing;\n",
+        "prettierNative": "do\n  a(); // note\nwhile (\n  /* @ts-expect-error */ b()\n);\nconst n = missing;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a(); // note\n/* @ts-expect-error */ while (b());\nconst n = missing;\n",
+        "prettierNative": "do\n  a(); // note\nwhile (/* @ts-expect-error */ b());\nconst n = missing;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  a() // note\n/* @ts-expect-error */ while (b())\nconst n = missing\n",
+        "prettierNative": "do\n  a() // note\nwhile (/* @ts-expect-error */ b())\nconst n = missing\n"
+      }
+    ],
+    "js/control-flow/body-tail/unicode-if-keyword.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (a)\n  b(); // note\n/*@__PURE__*/ else\n  c();\n",
+        "prettierNative": "if (a)\n  b(); // note\n  /*@__PURE__*/\nelse c();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (a)\n  b(); // note\n/*@__PURE__*/ else c();\n",
+        "prettierNative": "if (a)\n  b(); // note\n  /*@__PURE__*/\nelse c();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (a)\n  b() // note\n/*@__PURE__*/ else c()\n",
+        "prettierNative": "if (a)\n  b() // note\n  /*@__PURE__*/\nelse c()\n"
+      }
+    ],
+    "js/control-flow/body-tail/unicode-keyword-visual-gap.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (a)\n  b(); // note\n/*@__PURE__*/ else\n  c();\n",
+        "prettierNative": "if (a)\n  b(); // note\n\n/*@__PURE__*/ else\n  c();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (a)\n  b(); // note\n/*@__PURE__*/ else c();\n",
+        "prettierNative": "if (a)\n  b(); // note\n\n/*@__PURE__*/ else c();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (a)\n  b() // note\n/*@__PURE__*/ else c()\n",
+        "prettierNative": "if (a)\n  b() // note\n\n/*@__PURE__*/ else c()\n"
+      }
+    ],
+    "js/control-flow/body-tail/unicode-keyword-whitespace.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (true)\n  String(\n    0,\n  ); /* @ts-expect-error */ else String(1);\nmissing();\n",
+        "prettierNative": "if (true)\n  String(0);\n  /* @ts-expect-error */\nelse String(1);\nmissing();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (true) String(0); /* @ts-expect-error */ else String(1);\nmissing();\n",
+        "prettierNative": "if (true)\n  String(0);\n  /* @ts-expect-error */\nelse String(1);\nmissing();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (true) String(0); /* @ts-expect-error */ else String(1)\nmissing()\n",
+        "prettierNative": "if (true)\n  String(0)\n  /* @ts-expect-error */\nelse String(1)\nmissing()\n"
+      }
+    ],
     "js/control-flow/final-header-owner/bound-control.js": [
       {
         "options": {
