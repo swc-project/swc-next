@@ -1,0 +1,509 @@
+use swc_next_formatter_core::Writer;
+use swc_next_formatter_host::EmbeddedError;
+use swc_next_markdown_parser::{
+    Block, BlockExtension, BlockKind, Heading, Ignore, List, ListItem, Task,
+};
+
+use crate::{Formatter, ProseWrap};
+
+#[derive(Clone, Copy)]
+pub(super) enum Container {
+    Document,
+    Quote,
+    Footnote,
+    Item {
+        loose: bool,
+        alternate_marker: bool,
+        continuation_indent: &'static str,
+        task: Option<Task>,
+    },
+}
+
+#[derive(Clone, Copy)]
+struct ListLayout {
+    alternate_marker: bool,
+    minimum_indent: usize,
+}
+
+impl<'a> Formatter<'a, '_, '_> {
+    pub(super) fn blocks(
+        &mut self,
+        blocks: &[Block],
+        container: Container,
+        writer: &mut Writer<'a>,
+    ) -> Result<bool, EmbeddedError> {
+        let mut index = 0;
+        let mut previous = None;
+        let mut alternate_list = false;
+        let mut ignore_next = false;
+        // Range directives apply to document siblings. Single-block directives
+        // also work inside lists and block quotes.
+        let last_ignore_end = if matches!(container, Container::Document) {
+            blocks
+                .iter()
+                .rposition(|block| matches!(block.kind, BlockKind::Ignore(Ignore::End)))
+        } else {
+            None
+        };
+
+        while let Some(block) = blocks.get(index) {
+            if matches!(block.kind, BlockKind::Blank) {
+                index += 1;
+                continue;
+            }
+
+            if let Some(before) = previous {
+                writer.literal_line_with_indent();
+                if !ignore_next && self.needs_blank_line(&blocks[..index], before, block, container)
+                {
+                    writer.hard_line();
+                }
+            }
+
+            let consecutive_lists = matches!(
+                (previous.map(|block: &Block| &block.kind), &block.kind),
+                (Some(BlockKind::List(previous)), BlockKind::List(current))
+                    if previous.ordered == current.ordered
+            );
+            alternate_list = consecutive_lists && !alternate_list;
+            if ignore_next {
+                self.raw_block(block, container, writer);
+                if matches!(container, Container::Quote)
+                    && self.options.prose_wrap == ProseWrap::Always
+                    && matches!(block.kind, BlockKind::List(_))
+                    && matches!(&blocks[index + 1..], [last] if matches!(last.kind, BlockKind::Blank))
+                {
+                    writer.hard_line();
+                    writer.trim();
+                }
+                ignore_next = false;
+            } else if matches!(block.kind, BlockKind::Ignore(Ignore::Start))
+                && last_ignore_end.is_some_and(|end| end > index)
+                && let Some(end) = blocks[index + 1..]
+                    .iter()
+                    .position(|block| matches!(block.kind, BlockKind::Ignore(Ignore::End)))
+            {
+                let last = index + 1 + end;
+                write_source_lines(
+                    writer,
+                    &self.document.source[block.span.start..blocks[last].span.end],
+                );
+                previous = Some(&blocks[last]);
+                index = last + 1;
+                continue;
+            } else {
+                let minimum_indent = if matches!(block.kind, BlockKind::List(_)) {
+                    blocks[index + 1..]
+                        .iter()
+                        .find(|block| !matches!(block.kind, BlockKind::Blank))
+                        .map_or(0, indentation_before_code)
+                } else {
+                    0
+                };
+                let list = ListLayout {
+                    alternate_marker: alternate_list,
+                    minimum_indent,
+                };
+                self.present_block(block, container, previous.is_none(), list, writer)?;
+                ignore_next = matches!(block.kind, BlockKind::Ignore(Ignore::Next));
+            }
+            previous = Some(block);
+            index += 1;
+        }
+        Ok(previous.is_some())
+    }
+
+    fn present_block(
+        &mut self,
+        block: &Block,
+        container: Container,
+        first: bool,
+        list: ListLayout,
+        writer: &mut Writer<'a>,
+    ) -> Result<(), EmbeddedError> {
+        let alignment = match container {
+            Container::Item {
+                task: Some(task), ..
+            } if first && matches!(block.kind, BlockKind::Paragraph(_)) => {
+                writer.text(if task.checked { "[x] " } else { "[ ] " });
+                "    "
+            }
+            Container::Item {
+                continuation_indent,
+                ..
+            } if !first || matches!(block.kind, BlockKind::List(_)) => {
+                if matches!(block.kind, BlockKind::IndentedCode(_) | BlockKind::Html) {
+                    ""
+                } else {
+                    writer.text(continuation_indent);
+                    continuation_indent
+                }
+            }
+            _ => "",
+        };
+        self.aligned(alignment, writer, |formatter, writer| {
+            if first && matches!(container, Container::Footnote) {
+                // Indented code needs its own line to retain its code-block indentation.
+                let must_break = matches!(block.kind, BlockKind::IndentedCode(_));
+                writer.group(must_break, |writer| {
+                    writer.soft_line();
+                    formatter.block(block, container, first, list, writer)
+                })
+            } else {
+                formatter.block(block, container, first, list, writer)
+            }
+        })
+    }
+
+    fn block(
+        &mut self,
+        block: &Block,
+        container: Container,
+        first: bool,
+        list_layout: ListLayout,
+        writer: &mut Writer<'a>,
+    ) -> Result<(), EmbeddedError> {
+        match &block.kind {
+            BlockKind::Paragraph(inlines) => {
+                self.inlines(block, inlines, self.options.prose_wrap, writer);
+            }
+            BlockKind::Heading(heading) => self.heading(block, heading, writer),
+            BlockKind::ThematicBreak => writer.text(match container {
+                Container::Document if first => "***",
+                Container::Item {
+                    alternate_marker: false,
+                    ..
+                } => "***",
+                _ => "---",
+            }),
+            BlockKind::BlockQuote(children) => {
+                if children
+                    .iter()
+                    .any(|block| !matches!(block.kind, BlockKind::Blank))
+                {
+                    writer.text("> ");
+                    self.aligned("> ", writer, |formatter, writer| {
+                        formatter.blocks(children, Container::Quote, writer)
+                    })?;
+                } else {
+                    writer.text(">");
+                }
+            }
+            BlockKind::List(list) => {
+                let parent_aligned = self.lists_aligned;
+                self.lists_aligned =
+                    parent_aligned && list_layout.minimum_indent == 0 && self.is_aligned_list(list);
+                let result = self.list(list, list_layout, writer);
+                self.lists_aligned = parent_aligned;
+                result?;
+            }
+            BlockKind::Fence(fence) => self.fence(block, fence, writer)?,
+            BlockKind::IndentedCode(code) => {
+                let spelling = self.text(block.span);
+                if spelling.starts_with("    ") || spelling.starts_with('\t') {
+                    writer.text("    ");
+                    writer.align_text("    ", |writer| {
+                        super::fences::write_code_lines(writer, &code.value, false);
+                    });
+                } else {
+                    super::fences::unlabelled_fence(&code.value, writer);
+                }
+            }
+            BlockKind::Definition(definition) => self.definition(block, definition, writer),
+            BlockKind::Table(table) => self.table(block, table, writer),
+            BlockKind::Extension(BlockExtension::Footnote { label, blocks }) => {
+                self.footnote(*label, blocks, writer)?;
+            }
+            BlockKind::Extension(BlockExtension::Math { meta, body, .. }) => {
+                self.display_math(*meta, body, writer);
+            }
+            BlockKind::FrontMatter(matter) => self.front_matter(block, matter, writer)?,
+            BlockKind::Html
+            | BlockKind::Ignore(_)
+            | BlockKind::Extension(_)
+            | BlockKind::Recovery(_)
+            | BlockKind::Raw => {
+                self.raw_block(block, container, writer);
+            }
+            BlockKind::Blank => {}
+        }
+        Ok(())
+    }
+
+    fn heading(&self, block: &Block, heading: &Heading, writer: &mut Writer<'a>) {
+        if heading.opening.is_none() {
+            self.inlines(block, &heading.children, self.options.prose_wrap, writer);
+            if let Some(underline) = heading.closing {
+                writer.hard_line();
+                writer.text(self.text(underline));
+            }
+        } else {
+            writer.text("#".repeat(usize::from(heading.level)));
+            if !heading.children.is_empty() {
+                writer.space();
+                self.inlines(block, &heading.children, ProseWrap::Never, writer);
+            }
+        }
+    }
+
+    fn needs_blank_line(
+        &self,
+        siblings: &[Block],
+        previous: &Block,
+        next: &Block,
+        container: Container,
+    ) -> bool {
+        if matches!(
+            (&previous.kind, &next.kind),
+            (BlockKind::Definition(_), BlockKind::Definition(_))
+        ) {
+            return false;
+        }
+        let source_blank =
+            has_blank_line(&self.document.source[previous.span.end..next.span.start]);
+        if matches!(previous.kind, BlockKind::Definition(_))
+            && matches!(&next.kind, BlockKind::Heading(heading) if heading.opening.is_none())
+        {
+            // Adjacent definitions at the start of a Setext paragraph share
+            // its original source range. Keep a single-line definition separate.
+            let previous_definition = siblings
+                .iter()
+                .rev()
+                .nth(1)
+                .is_some_and(|block| matches!(block.kind, BlockKind::Definition(_)));
+            return source_blank || (previous.lines.len() == 1 && !previous_definition);
+        }
+        if matches!(
+            previous.kind,
+            BlockKind::Extension(BlockExtension::Liquid { .. })
+        ) || matches!(
+            next.kind,
+            BlockKind::Extension(BlockExtension::Liquid { .. })
+        ) {
+            return source_blank;
+        }
+        if matches!(&next.kind, BlockKind::Html | BlockKind::Ignore(_))
+            && matches!(
+                &previous.kind,
+                BlockKind::Html | BlockKind::Ignore(_) | BlockKind::Paragraph(_)
+            )
+        {
+            return source_blank;
+        }
+        if let Container::Item { loose, .. } = container {
+            if matches!(next.kind, BlockKind::List(_)) {
+                return source_blank && !matches!(previous.kind, BlockKind::List(_));
+            }
+            if !loose {
+                return source_blank;
+            }
+        }
+        true
+    }
+
+    fn raw_block(&self, block: &Block, container: Container, writer: &mut Writer<'a>) {
+        if matches!(container, Container::Document) {
+            write_source_lines(writer, self.text(block.span));
+        } else {
+            write_source_lines(
+                writer,
+                &block.logical_text(self.document.source, block.span),
+            );
+        }
+    }
+
+    fn list(
+        &mut self,
+        list: &List,
+        layout: ListLayout,
+        writer: &mut Writer<'a>,
+    ) -> Result<(), EmbeddedError> {
+        let mut previous: Option<&ListItem> = None;
+        let start = list.start.unwrap_or(1);
+        let item_number = |item: &ListItem| {
+            self.text(item.marker)
+                .trim_end_matches(['.', ')'])
+                .parse::<u64>()
+                .ok()
+        };
+        let use_ones = list.ordered
+            && list.items.get(1).and_then(item_number) == Some(1)
+            && (start != 0 || list.items.get(2).and_then(item_number) == Some(1));
+        let tab_width = usize::from(self.context.print_options().indent_width.value());
+        for (index, item) in list.items.iter().enumerate() {
+            if let Some(before) = previous {
+                writer.hard_line();
+                if self.loose_item(before)
+                    || has_blank_line(&self.document.source[before.span.end..item.span.start])
+                {
+                    writer.hard_line();
+                }
+            }
+            let marker = if list.ordered {
+                let number = if use_ones && index != 0 {
+                    1
+                } else {
+                    start.saturating_add(index as u64).min(999_999_999)
+                };
+                let delimiter = if layout.alternate_marker { ')' } else { '.' };
+                format!("{number}{delimiter}")
+            } else if layout.alternate_marker {
+                "*".to_string()
+            } else {
+                "-".to_string()
+            };
+            let first = item
+                .blocks
+                .iter()
+                .find(|block| !matches!(block.kind, BlockKind::Blank));
+            // Empty markers and code bodies on the marker line both use a
+            // one-column separator when CommonMark computes the item indent.
+            let aligned_padding = if list.ordered && self.lists_aligned && tab_width != 0 {
+                let extra = (tab_width - (marker.len() + 1) % tab_width) % tab_width;
+                if extra <= 3 { 1 + extra } else { 1 }
+            } else {
+                1
+            };
+            let padding =
+                if first.is_none_or(|block| matches!(block.kind, BlockKind::IndentedCode(_))) {
+                    1
+                } else {
+                    layout
+                        .minimum_indent
+                        .saturating_sub(marker.len())
+                        .clamp(aligned_padding, 4)
+                };
+            let leading = layout
+                .minimum_indent
+                .saturating_sub(marker.len() + padding)
+                .min(3);
+            let indent = leading + marker.len() + padding;
+            writer.text(&"   "[..leading]);
+            writer.text(marker);
+            if first.is_some() {
+                writer.text(&"    "[..padding]);
+                let mut children = item
+                    .blocks
+                    .iter()
+                    .filter(|b| !matches!(b.kind, BlockKind::Blank));
+                let preserve_html_column = match (children.next(), children.next(), children.next())
+                {
+                    (Some(first), Some(html), None) if matches!(html.kind, BlockKind::Html) => {
+                        self.content_column(first) != self.content_column(html)
+                    }
+                    _ => false,
+                };
+                let prefix = if preserve_html_column {
+                    ""
+                } else {
+                    self.context.allocator().alloc_str(&" ".repeat(indent))
+                };
+                let continuation = tab_width.saturating_sub(indent).min(3);
+                let container = Container::Item {
+                    loose: self.loose_item(item),
+                    alternate_marker: layout.alternate_marker,
+                    continuation_indent: &"   "[..continuation],
+                    task: item.task,
+                };
+                self.aligned(prefix, writer, |formatter, writer| {
+                    formatter.blocks(&item.blocks, container, writer)
+                })?;
+            }
+            previous = Some(item);
+        }
+        Ok(())
+    }
+
+    fn loose_item(&self, item: &ListItem) -> bool {
+        let mut children = item
+            .blocks
+            .iter()
+            .filter(|block| !matches!(block.kind, BlockKind::Blank));
+        let mut previous = children.next();
+        children.any(|block| {
+            previous.replace(block).is_some_and(|before| {
+                has_blank_line(&self.document.source[before.span.end..block.span.start])
+            })
+        })
+    }
+
+    fn is_aligned_list(&self, list: &List) -> bool {
+        if !list.ordered {
+            return true;
+        }
+        // The first two items distinguish deliberate column alignment from a
+        // single space after every marker. Use original positions, before renumbering.
+        let position = |item: &ListItem| {
+            let block = item
+                .blocks
+                .iter()
+                .find(|b| !matches!(b.kind, BlockKind::Blank))?;
+            let gap = &self.document.source[item.marker.end..block.span.start];
+            let padded = gap
+                .as_bytes()
+                .get(..2)
+                .is_some_and(|bytes| bytes.iter().all(u8::is_ascii_whitespace));
+            Some((self.content_column(block), padded))
+        };
+        let Some((first, padded)) = list.items.first().and_then(position) else {
+            return false;
+        };
+        if padded {
+            return true;
+        }
+        let width = usize::from(self.context.print_options().indent_width.value());
+        let on_tab_stop = width != 0 && first.is_multiple_of(width);
+        match list.items.get(1) {
+            None => on_tab_stop,
+            Some(second) => position(second)
+                .is_some_and(|(column, padded)| column == first && (on_tab_stop || padded)),
+        }
+    }
+
+    fn content_column(&self, block: &Block) -> usize {
+        let line = block.lines[0];
+        let text = self.text(line.content);
+        line.content.start - line.raw.start
+            + (text.len() - text.trim_start_matches([' ', '\t']).len())
+    }
+}
+
+fn indentation_before_code(block: &Block) -> usize {
+    let BlockKind::IndentedCode(code) = &block.kind else {
+        return 0;
+    };
+    // A following code block must stay at a smaller column than the item body;
+    // otherwise a second parse would consume it as part of the list.
+    let extra = code
+        .value
+        .bytes()
+        .take_while(|byte| matches!(byte, b' ' | b'\t'))
+        .map(|byte| if byte == b'\t' { 4 } else { 1 })
+        .sum::<usize>();
+    5 + extra
+}
+
+fn has_blank_line(gap: &str) -> bool {
+    let mut carriage_return = false;
+    let mut lines = 0;
+    for byte in gap.bytes() {
+        if byte == b'\r' || (byte == b'\n' && !carriage_return) {
+            lines += 1;
+            if lines == 2 {
+                return true;
+            }
+        }
+        carriage_return = byte == b'\r';
+    }
+    false
+}
+
+pub(super) fn write_source_lines(writer: &mut Writer<'_>, mut source: &str) {
+    while let Some(index) = memchr::memchr2(b'\r', b'\n', source.as_bytes()) {
+        writer.text_copied(&source[..index]);
+        writer.literal_line_with_indent();
+        let rest = &source[index..];
+        source = &rest[1 + usize::from(rest.starts_with("\r\n"))..];
+    }
+    writer.text_copied(source);
+}

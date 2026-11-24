@@ -3952,6 +3952,8 @@ dependencies = [
  "swc_next_formatter_core",
  "swc_next_formatter_host",
  "swc_next_formatter_js",
+ "swc_next_formatter_markdown",
+ "swc_next_markdown_parser",
 ]
 
 [[package]]
@@ -4003,6 +4005,17 @@ dependencies = [
  "swc_next",
  "swc_next_bridge",
  "swc_next_formatter",
+]
+
+[[package]]
+name = "swc_next_formatter_markdown"
+version = "0.8.0"
+dependencies = [
+ "memchr",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_markdown_parser",
+ "swc_next_simd",
 ]
 
 [[package]]

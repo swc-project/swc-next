@@ -485,6 +485,11 @@ pub struct Doc<'a> {
 }
 
 impl<'a> Doc<'a> {
+    /// Whether the root has no layout instructions.
+    pub fn is_empty(&self) -> bool {
+        self.root.elements().is_empty()
+    }
+
     /// Whether the Doc contains an explicit line instruction, independent of
     /// print width. Visits both IfBreak branches and line suffixes, follows
     /// only the primary contents of conditional groups, and respects flat

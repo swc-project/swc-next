@@ -51,22 +51,28 @@ pub(crate) fn lines(source: &str) -> Vec<SourceLine> {
             Some(_) => end + 1,
             None => end,
         };
-        let raw = Span::new(start, end);
-        let bom = start == 0 && source.starts_with('\u{feff}');
-        lines.push(SourceLine {
-            raw,
-            content: Span::new(if bom { 3 } else { start }, end),
-            ending: Span::new(end, next),
-            virtual_spaces: 0,
-            column: 0,
-            lazy: false,
-        });
+        let mut line = SourceLine::new(Span::new(start, end), Span::new(end, next));
+        if start == 0 && source.starts_with('\u{feff}') {
+            line.content.start = 3;
+        }
+        lines.push(line);
         start = next;
     }
     lines
 }
 
 impl SourceLine {
+    pub(crate) fn new(raw: Span, ending: Span) -> Self {
+        Self {
+            raw,
+            content: raw,
+            ending,
+            virtual_spaces: 0,
+            column: 0,
+            lazy: false,
+        }
+    }
+
     pub fn physical(self) -> Span {
         Span::new(self.raw.start, self.ending.end)
     }

@@ -520,3 +520,78 @@ fn ambient_module_attribute_recovery() {
         assert_eq!(format_ast(&reparsed.ast, options).unwrap(), output);
     }
 }
+
+#[test]
+fn markdown_source_and_ast() {
+    use swc_next_formatter::markdown::{FormatOptions, format, format_ast};
+
+    let mut options = FormatOptions::default();
+    options.layout.line_ending = LineEnding::CrLf;
+    let input = "\u{feff}> - example\r\n>   ```ts\r\n>   const x:number=1\r\n>   ```\r\n";
+    let expected = "\u{feff}> - example\r\n>   ```ts\r\n>   const x: number = 1;\r\n>   ```\r\n";
+    let output = format(input, options).unwrap();
+    assert_eq!(output, expected);
+    assert_eq!(
+        format_ast(&swc_next_markdown_parser::parse(input), options).unwrap(),
+        expected
+    );
+    assert_eq!(format(&output, options).unwrap(), output);
+}
+
+#[test]
+fn markdown_fence_dispatch() {
+    use swc_next_formatter::markdown::{FormatOptions, format};
+
+    let mut options = FormatOptions::default();
+    let unknown = "```example extra\n  x    =1\n```\n";
+    assert_eq!(format(unknown, options).unwrap(), unknown);
+
+    let incomplete = "```ts\nconst =\n```\n";
+    assert_eq!(format(incomplete, options).unwrap(), incomplete);
+
+    let nested = "~~~~md\n```ts\nconst x=1\n```\n~~~~\n";
+    assert_eq!(
+        format(nested, options).unwrap(),
+        "````md\n```ts\nconst x = 1;\n```\n````\n"
+    );
+
+    options.embedded.max_depth = 1;
+    let error = format(nested, options).unwrap_err();
+    assert_eq!(
+        error.kind(),
+        swc_next_formatter_host::EmbeddedErrorKind::DepthLimit { max_depth: 1 }
+    );
+
+    options.embedded.enabled = false;
+    let unformatted = "```ts\nconst x:number=1\n```\n";
+    assert_eq!(format(unformatted, options).unwrap(), unformatted);
+}
+
+#[test]
+fn markdown_embedded_host() {
+    use swc_next_formatter::{BuiltinFormatters, markdown};
+
+    let options = markdown::FormatOptions::default();
+    let formatters = BuiltinFormatters {
+        js: SyntaxOptions {
+            quote_style: QuoteStyle::Single,
+            semicolons: Semicolons::AsNeeded,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let input = "[link](url \"title\")\n\n```ts\nconst x=\"value\"\n```\n";
+    let output = markdown::format_with_dispatcher(input, options, &formatters).unwrap();
+    assert_eq!(
+        output,
+        "[link](url \"title\")\n\n```ts\nconst x = 'value'\n```\n"
+    );
+
+    let dispatcher = EcmaDispatcher {
+        producer: EcmaDocumentProducer::default(),
+        syntax: formatters.js,
+    };
+    let ast = swc_next_markdown_parser::parse(input);
+    let output = markdown::format_ast_with_dispatcher(&ast, options, &dispatcher).unwrap();
+    assert_eq!(output, input);
+}

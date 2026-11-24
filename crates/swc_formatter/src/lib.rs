@@ -6,13 +6,24 @@
 //! These internal APIs and binary formats do not follow semantic versioning.
 //! Use matching SWC Next JavaScript wrappers and native/Wasm bindings.
 //!
-//! Provides JavaScript and TypeScript source formatting and configuration.
+//! Provides JavaScript, TypeScript and Markdown source formatting and configuration.
 //! Enable `serde` for camelCase configuration deserialization.
 //! The `bridge` feature enables the internal binary transport helpers.
 
 use swc_next_formatter_core::{InvalidIndentWidth, PrintOptions};
 
+mod builtins;
 pub mod js;
+pub mod markdown;
+
+pub use builtins::BuiltinFormatters;
+
+fn restore_bom(source: &str, mut output: String) -> String {
+    if source.starts_with('\u{feff}') {
+        output.insert(0, '\u{feff}');
+    }
+    output
+}
 
 /// Shared layout options. Omitted fields use the native document printer defaults.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
