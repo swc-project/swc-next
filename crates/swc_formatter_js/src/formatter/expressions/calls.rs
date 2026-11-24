@@ -209,7 +209,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Resolve the complete emitted call once, then carry its packet fact
             // through the lexical callee/receiver path to the original printer.
             let exposed = if arguments.callee_mode == ContentMode::Formatted {
-                self.exposed_expression_head(arguments.callee, callee_context)?
+                self.exposed_expression_head(arguments.callee, &callee_context)?
             } else {
                 None
             };

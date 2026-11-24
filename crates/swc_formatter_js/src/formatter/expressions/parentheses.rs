@@ -5179,7 +5179,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn exposed_expression_head(
         &self,
         expression: Expr,
-        context: ExpressionContext<'ast>,
+        context: &ExpressionContext<'ast>,
     ) -> Result<Option<ResolvedExpressionHead<'ast>>, FormatError> {
         let span = expression.span(self.ast);
         // Each projected operand begins at the same source token. Only a
@@ -5190,7 +5190,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some((removed, comments)) = self.exposed_expression_parentheses(
             expression,
             None,
-            context,
+            *context,
             self.comments.in_range(span),
             ExposedHeadPurpose::Binding,
         )?
