@@ -29,11 +29,11 @@ impl TypeScript<'_> {
         &self,
         ast: &mut Ast<'_>,
         resolver: &mut Resolver,
-        seed: HashSet<SymbolId>,
+        id_usage: HashSet<SymbolId>,
     ) -> Vec<Diagnostic> {
         let options = self.config;
         let last_module = self.get_last_module_span(ast);
-        let semantic = semantic::analyze_program(ast, resolver, options, seed);
+        let semantic = semantic::analyze_program(ast, resolver, options, id_usage);
         let mut transform = transform::Transform::new(ast, resolver, options, semantic);
         transform.visit_mut_program();
         let diagnostics = transform.diagnostics;
@@ -97,12 +97,12 @@ struct TypeScriptReact<'a> {
 impl TypeScriptReact<'_> {
     fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver) -> Vec<Diagnostic> {
         let options = self.typescript.config;
-        let seed = if ast.is_module() && !options.verbatim_module_syntax {
+        let id_usage = if ast.is_module() && !options.verbatim_module_syntax {
             jsx_usage(ast, options, resolver)
         } else {
             HashSet::new()
         };
-        self.typescript.process(ast, resolver, seed)
+        self.typescript.process(ast, resolver, id_usage)
     }
 }
 
@@ -122,8 +122,8 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// element or fragment needs them. Leading pragma comments add their roots.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
 fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
-    let mut usage = HashSet::new();
-    if let Some(id) = symbol_for_jsx(
+    let mut id_usage = HashSet::new();
+    if let Some(id) = id_for_jsx(
         ast,
         resolver,
         options
@@ -132,9 +132,9 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
             .as_deref()
             .unwrap_or("React.createElement"),
     ) {
-        usage.insert(id);
+        id_usage.insert(id);
     }
-    if let Some(id) = symbol_for_jsx(
+    if let Some(id) = id_for_jsx(
         ast,
         resolver,
         options
@@ -143,7 +143,7 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
             .as_deref()
             .unwrap_or("React.Fragment"),
     ) {
-        usage.insert(id);
+        id_usage.insert(id);
     }
     let program = ast.root_program();
     // SWC's module span starts at its first token; Next's program span starts
@@ -177,17 +177,17 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
                 let value = words.next();
                 if matches!(directive, "@jsx" | "@jsxFrag")
                     && let Some(value) = value
-                    && let Some(id) = symbol_for_jsx(ast, resolver, value)
+                    && let Some(id) = id_for_jsx(ast, resolver, value)
                 {
-                    usage.insert(id);
+                    id_usage.insert(id);
                 }
             }
         }
     }
-    usage
+    id_usage
 }
 
-fn symbol_for_jsx(ast: &Ast<'_>, resolver: &Resolver, value: &str) -> Option<SymbolId> {
+fn id_for_jsx(ast: &Ast<'_>, resolver: &Resolver, value: &str) -> Option<SymbolId> {
     let name = value.split('.').next()?.trim();
     if name == "this" {
         return None;

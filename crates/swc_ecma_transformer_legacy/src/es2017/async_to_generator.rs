@@ -26,20 +26,20 @@ enum AwaitForMode {
 
 #[derive(Default)]
 struct FnState {
-    transform: bool,
-    generator: bool,
-    arrow: bool,
+    should_transform: bool,
+    is_generator: bool,
+    is_arrow: bool,
     await_for_mode: Option<AwaitForMode>,
     use_this: bool,
     use_arguments: bool,
     use_super: bool,
-    constructor: bool,
+    in_constructor: bool,
 }
 pub(crate) struct AsyncToGeneratorPass {
     transform_async_to_generator: bool,
     options: AsyncToGeneratorOptions,
-    state: Option<FnState>,
-    stack: Vec<Option<FnState>>,
+    fn_state: Option<FnState>,
+    fn_state_stack: Vec<Option<FnState>>,
     constructors: HashMap<NodeId, bool>,
     this_var: Option<BindingIdentifier>,
 }
@@ -51,15 +51,15 @@ impl AsyncToGeneratorPass {
         Self {
             transform_async_to_generator,
             options,
-            state: None,
-            stack: Vec::new(),
+            fn_state: None,
+            fn_state_stack: Vec::new(),
             constructors: HashMap::new(),
             this_var: None,
         }
     }
     fn push(&mut self, state: FnState) {
-        self.stack.push(self.state.take());
-        self.state = Some(state);
+        self.fn_state_stack.push(self.fn_state.take());
+        self.fn_state = Some(state);
     }
 }
 
@@ -94,7 +94,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         if let Some(derived) = self.constructors.get(&node.node_id()) {
             if *derived {
                 self.push(FnState {
-                    constructor: true,
+                    in_constructor: true,
                     ..Default::default()
                 });
             }
@@ -102,8 +102,8 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
             let generator = node.generator(ctx.ast);
             let is_async = node.r#async(ctx.ast);
             self.push(FnState {
-                transform: is_async && (generator || self.transform_async_to_generator),
-                generator,
+                should_transform: is_async && (generator || self.transform_async_to_generator),
+                is_generator: generator,
                 await_for_mode: is_async.then_some(if generator {
                     AwaitForMode::AsyncGenerator
                 } else if self.transform_async_to_generator {
@@ -124,7 +124,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
     ) -> TraverseAction<Function> {
         if let Some(derived) = self.constructors.get(&node.node_id()) {
             if *derived {
-                let state = self.state.take().unwrap();
+                let state = self.fn_state.take().unwrap();
                 if state.use_this {
                     let binding = self.this_var.take().unwrap();
                     let body = node.body(ctx.ast);
@@ -139,13 +139,13 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                     let statements = b::prepend_stmts(ctx.ast, [decl], body.body(ctx.ast));
                     body.set_body(ctx.ast, statements);
                 }
-                self.state = self.stack.pop().unwrap();
+                self.fn_state = self.fn_state_stack.pop().unwrap();
             }
             return TraverseAction::Continue;
         }
-        let mut state = self.state.take().unwrap();
-        self.state = self.stack.pop().unwrap();
-        if !state.transform {
+        let mut state = self.fn_state.take().unwrap();
+        self.fn_state = self.fn_state_stack.pop().unwrap();
+        if !state.should_transform {
             return TraverseAction::Continue;
         }
         let body = node.body(ctx.ast);
@@ -204,16 +204,19 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<ArrowFunctionExpression> {
         if node.r#async(ctx.ast) {
-            let constructor = self.state.as_ref().is_some_and(|state| state.constructor);
+            let in_constructor = self
+                .fn_state
+                .as_ref()
+                .is_some_and(|state| state.in_constructor);
             self.push(FnState {
-                transform: self.transform_async_to_generator,
-                arrow: true,
+                should_transform: self.transform_async_to_generator,
+                is_arrow: true,
                 await_for_mode: Some(if self.transform_async_to_generator {
                     AwaitForMode::Generator
                 } else {
                     AwaitForMode::NativeAsync
                 }),
-                constructor,
+                in_constructor,
                 ..Default::default()
             });
         }
@@ -228,16 +231,16 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         if !node.r#async(ctx.ast) {
             return TraverseAction::Continue;
         }
-        let state = self.state.take().unwrap();
-        self.state = self.stack.pop().unwrap();
-        if let Some(parent) = &mut self.state
-            && (state.transform || parent.transform || parent.arrow)
+        let state = self.fn_state.take().unwrap();
+        self.fn_state = self.fn_state_stack.pop().unwrap();
+        if let Some(parent) = &mut self.fn_state
+            && (state.should_transform || parent.should_transform || parent.is_arrow)
         {
             parent.use_this |= state.use_this;
             parent.use_arguments |= state.use_arguments;
             parent.use_super |= state.use_super;
         }
-        if !state.transform {
+        if !state.should_transform {
             return TraverseAction::Continue;
         }
         let body = node.body(ctx.ast);
@@ -246,7 +249,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         } else {
             (body, Vec::new())
         };
-        if state.constructor && state.use_this {
+        if state.in_constructor && state.use_this {
             let binding = *self
                 .this_var
                 .get_or_insert_with(|| ctx.state.resolver.private_binding(ctx.ast, "_this"));
@@ -284,7 +287,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         _: Super,
         _: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Super> {
-        if let Some(state) = &mut self.state {
+        if let Some(state) = &mut self.fn_state {
             state.use_super = true;
         }
         TraverseAction::Continue
@@ -295,10 +298,10 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         node: Expr,
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Expr> {
-        let Some(state) = &mut self.state else {
+        let Some(state) = &mut self.fn_state else {
             return TraverseAction::Continue;
         };
-        if state.transform || state.arrow {
+        if state.should_transform || state.is_arrow {
             if node.is_this_expression(ctx.ast) {
                 state.use_this = true;
             }
@@ -309,12 +312,12 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 state.use_arguments = true;
             }
         }
-        if !state.transform {
+        if !state.should_transform {
             return TraverseAction::Continue;
         }
         if let Some(await_) = node.as_await_expression(ctx.ast) {
             let mut argument = await_.argument(ctx.ast);
-            if state.generator {
+            if state.is_generator {
                 let helper = ctx.state.helper(ctx.ast, "await_async_generator");
                 argument = b::call(ctx.ast, helper, [argument], false);
             }
@@ -346,7 +349,10 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Stmt> {
         if node.is_labeled_statement(ctx.ast)
-            && let Some(mode) = self.state.as_ref().and_then(|state| state.await_for_mode)
+            && let Some(mode) = self
+                .fn_state
+                .as_ref()
+                .and_then(|state| state.await_for_mode)
             && let Some(replacement) = handle_await_for(ctx, node, mode)
         {
             return TraverseAction::ReplaceContinue(replacement);
@@ -359,7 +365,10 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Stmt> {
         if node.is_for_of_statement(ctx.ast)
-            && let Some(mode) = self.state.as_ref().and_then(|state| state.await_for_mode)
+            && let Some(mode) = self
+                .fn_state
+                .as_ref()
+                .and_then(|state| state.await_for_mode)
             && let Some(replacement) = handle_await_for(ctx, node, mode)
         {
             return TraverseAction::ReplaceSkip(replacement);
@@ -389,7 +398,7 @@ fn make_fn_ref(
     ));
     let helper = ctx.state.helper(
         ctx.ast,
-        if state.generator {
+        if state.is_generator {
             "wrap_async_generator"
         } else {
             "async_to_generator"
@@ -404,7 +413,7 @@ fn make_fn_ref(
             .resolver
             .marked_reference(ctx.ast, "arguments", true);
         b::call(ctx.ast, callee, [this, arguments], false)
-    } else if state.use_this && !state.constructor {
+    } else if state.use_this && !state.in_constructor {
         let callee = b::member(ctx.ast, function, "call");
         let this = ctx.ast.expr_this_expression(DUMMY_SP);
         b::call(ctx.ast, callee, [this], false)

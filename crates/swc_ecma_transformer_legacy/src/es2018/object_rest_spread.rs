@@ -15,13 +15,13 @@ use swc_next_ecma_ast::*;
 
 pub(crate) struct ObjectRestSpreadPass {
     options: Config,
-    exports: HashMap<NodeId, Vec<BindingIdentifier>>,
+    export_idents: HashMap<NodeId, Vec<BindingIdentifier>>,
 }
 impl ObjectRestSpreadPass {
     pub(crate) fn new(options: Config) -> Self {
         Self {
             options,
-            exports: HashMap::new(),
+            export_idents: HashMap::new(),
         }
     }
 
@@ -51,17 +51,17 @@ impl ObjectRestSpreadPass {
                         )
                     })
                     .collect();
-                self.exports.insert(variable.node_id(), ids);
+                self.export_idents.insert(variable.node_id(), ids);
             }
         }
     }
-    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L422>.
+    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L427>.
     fn rewrite_exports(
         &mut self,
         program: Program,
         ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
     ) {
-        if self.exports.is_empty() {
+        if self.export_idents.is_empty() {
             return;
         }
         let mut body = Vec::new();
@@ -69,7 +69,7 @@ impl ObjectRestSpreadPass {
             let statement = ctx.ast.get_node_in_sub_range(slot);
             if let Some(export) = statement.as_export_named_declaration(ctx.ast)
                 && let Some(declaration) = export.declaration(ctx.ast)
-                && let Some(ids) = self.exports.remove(&declaration.node_id())
+                && let Some(ids) = self.export_idents.remove(&declaration.node_id())
             {
                 body.push(Stmt::Declaration(declaration));
                 let mut specifiers = Vec::new();
@@ -168,10 +168,10 @@ impl ObjectRestSpreadPass {
                 ast: ctx.ast,
                 context: &mut ctx.state,
                 options: self.options,
-                output: RestOutput::Declarations(Vec::new()),
+                out: RestOutput::Declarations(Vec::new()),
             };
             lowerer.visit(pattern, reference);
-            let RestOutput::Declarations(declarations) = lowerer.output else {
+            let RestOutput::Declarations(declarations) = lowerer.out else {
                 unreachable!()
             };
             (
@@ -188,11 +188,11 @@ impl ObjectRestSpreadPass {
                 ast: ctx.ast,
                 context: &mut ctx.state,
                 options: self.options,
-                output: RestOutput::Expressions(Vec::new()),
+                out: RestOutput::Expressions(Vec::new()),
             };
             lowerer.visit(pattern, reference);
             let result = lowerer.reference(binding);
-            let RestOutput::Expressions(mut expressions) = lowerer.output else {
+            let RestOutput::Expressions(mut expressions) = lowerer.out else {
                 unreachable!()
             };
             expressions.push(result);
@@ -306,7 +306,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                     ast: ctx.ast,
                     context: &mut ctx.state,
                     options: self.options,
-                    output: RestOutput::Expressions(Vec::new()),
+                    out: RestOutput::Expressions(Vec::new()),
                 };
                 let binding = lowerer.declare_temp("_ref");
                 lowerer.assign(
@@ -316,7 +316,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                 let reference = lowerer.reference(binding);
                 lowerer.visit(pattern, reference);
                 let result = lowerer.reference(binding);
-                let RestOutput::Expressions(mut expressions) = lowerer.output else {
+                let RestOutput::Expressions(mut expressions) = lowerer.out else {
                     unreachable!()
                 };
                 expressions.push(result);
@@ -354,7 +354,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                 ast: ctx.ast,
                 context: &mut ctx.state,
                 options: self.options,
-                output: RestOutput::Declarations(Vec::new()),
+                out: RestOutput::Declarations(Vec::new()),
             };
             if !init.is_identifier_reference(lowerer.ast) {
                 let name = build::alias_ident_for(lowerer.ast, init, "_ref");
@@ -363,7 +363,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                 init = lowerer.reference(binding);
             }
             lowerer.visit(declaration.id(lowerer.ast), init);
-            let RestOutput::Declarations(output) = lowerer.output else {
+            let RestOutput::Declarations(output) = lowerer.out else {
                 unreachable!()
             };
             declarations.extend(output);
@@ -403,10 +403,10 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                 ast: ctx.ast,
                 context: &mut ctx.state,
                 options: self.options,
-                output: RestOutput::Declarations(Vec::new()),
+                out: RestOutput::Declarations(Vec::new()),
             };
             lowerer.visit(pattern, reference);
-            let RestOutput::Declarations(declarations) = lowerer.output else {
+            let RestOutput::Declarations(declarations) = lowerer.out else {
                 unreachable!()
             };
             let statement = build::declaration(ctx.ast, VariableKind::Let, declarations);
@@ -452,13 +452,13 @@ struct RestLowerer<'a, 'state, 'ast> {
     ast: &'a mut Ast<'ast>,
     context: &'a mut TraverseCtx<'state>,
     options: Config,
-    output: RestOutput,
+    out: RestOutput,
 }
 
 impl RestLowerer<'_, '_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L917>.
     fn declare_temp(&mut self, name: &str) -> BindingIdentifier {
-        if matches!(self.output, RestOutput::Expressions(_)) {
+        if matches!(self.out, RestOutput::Expressions(_)) {
             self.context.insert_var(self.ast, name)
         } else {
             self.context.resolver.private_binding(self.ast, name)
@@ -472,7 +472,7 @@ impl RestLowerer<'_, '_, '_> {
     }
 
     fn assign(&mut self, pattern: BindingPattern, init: Expr) {
-        match self.output {
+        match self.out {
             RestOutput::Declarations(ref mut declarations) => declarations.push(
                 self.ast
                     .variable_declarator(DUMMY_SP, pattern, None, Some(init), false),
@@ -485,7 +485,7 @@ impl RestLowerer<'_, '_, '_> {
                     init,
                     AssignmentOperator::Assign,
                 );
-                if let RestOutput::Expressions(expressions) = &mut self.output {
+                if let RestOutput::Expressions(expressions) = &mut self.out {
                     expressions.push(assignment);
                 }
             }
@@ -504,15 +504,15 @@ impl RestLowerer<'_, '_, '_> {
     fn visit(&mut self, pattern: BindingPattern, init: Expr) {
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::ObjectPattern(object) => {
-                self.split_object_pattern(object, init, Vec::new())
+                self.visit_object(object, init, Vec::new())
             }
             BindingPatternData::ArrayPattern(array) => self.split_array_pattern(array, init),
             _ => self.assign(pattern, init),
         }
     }
 
-    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L683>.
-    fn split_object_pattern(
+    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L678>.
+    fn visit_object(
         &mut self,
         object: ObjectPattern,
         init: Expr,
@@ -568,7 +568,7 @@ impl RestLowerer<'_, '_, '_> {
                     let object = self
                         .ast
                         .object_pattern(object.span(self.ast), remaining, rest);
-                    self.split_object_pattern(object, after, captured);
+                    self.visit_object(object, after, captured);
                 }
                 return;
             }
@@ -879,7 +879,7 @@ impl ParamCollector {
             ast: ctx.ast,
             context: &mut ctx.state,
             options: self.options,
-            output: RestOutput::Declarations(Vec::new()),
+            out: RestOutput::Declarations(Vec::new()),
         };
         if patterns.len() == 1 && !patterns[0].is_assignment_pattern(lowerer.ast) {
             lowerer.visit(patterns[0], values[0]);
@@ -951,7 +951,7 @@ impl ParamCollector {
             let value = lowerer.ast.expr_array_expression(DUMMY_SP, elements);
             lowerer.assign(pattern, value);
         }
-        let RestOutput::Declarations(declarations) = lowerer.output else {
+        let RestOutput::Declarations(declarations) = lowerer.out else {
             unreachable!()
         };
         vec![build::declaration(ctx.ast, VariableKind::Let, declarations)]

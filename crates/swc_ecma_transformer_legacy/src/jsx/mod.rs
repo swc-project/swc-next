@@ -791,7 +791,7 @@ impl Jsx<'_> {
             JsxAttributeValueData::StringLiteral(literal) => {
                 // Next stores quoted JSX text without decoding its entities.
                 let raw = ast.get_wtf8(literal.value(ast)).as_str().unwrap();
-                let value = decode_attribute(raw);
+                let value = read_jsx_str(raw);
                 let value = ast.add_wtf8(&value);
                 Some(ast.expr_string_literal(literal.span(ast), value, AstUtf8::EMPTY))
             }
@@ -854,13 +854,15 @@ impl Jsx<'_> {
                 );
                 string(ast, name.span(ast), &value)
             }
-            JsxElementNameData::JsxMemberExpression(member) => self.jsx_member(member, ast),
+            JsxElementNameData::JsxMemberExpression(member) => {
+                self.convert_obj(JsxMemberExpressionObject::JsxMemberExpression(member), ast)
+            }
         }
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1506>.
-    fn jsx_member(&mut self, node: JsxMemberExpression, ast: &mut Ast<'_>) -> Expr {
-        let object = match ast.jsx_member_expression_object_data(node.object(ast)) {
+    fn convert_obj(&mut self, object: JsxMemberExpressionObject, ast: &mut Ast<'_>) -> Expr {
+        match ast.jsx_member_expression_object_data(object) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
                 if ast.get_utf8(identifier.name(ast)) == "this" {
                     ast.expr_this_expression(identifier.span(ast))
@@ -869,18 +871,18 @@ impl Jsx<'_> {
                 }
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
-                self.jsx_member(member, ast)
+                let object = self.convert_obj(member.object(ast), ast);
+                let name = member.property(ast).name(ast);
+                let property = ast.identifier_name(member.property(ast).span(ast), name);
+                ast.expr_member_expression(
+                    member.span(ast),
+                    object,
+                    PropertyKey::IdentifierName(property),
+                    false,
+                    false,
+                )
             }
-        };
-        let name = node.property(ast).name(ast);
-        let property = ast.identifier_name(node.property(ast).span(ast), name);
-        ast.expr_member_expression(
-            node.span(ast),
-            object,
-            PropertyKey::IdentifierName(property),
-            false,
-            false,
-        )
+        }
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1483>.
@@ -1169,7 +1171,7 @@ pub(super) fn decode_entities(mut raw: &str) -> Wtf8Buf {
 /// JSX child whitespace normalization to attribute strings.
 ///
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_parser/src/lexer/mod.rs#L1427>.
-pub(super) fn decode_attribute(raw: &str) -> Wtf8Buf {
+pub(super) fn read_jsx_str(raw: &str) -> Wtf8Buf {
     let mut value = Wtf8Buf::new();
     let mut chunk_start = 0;
     let mut position = 0;

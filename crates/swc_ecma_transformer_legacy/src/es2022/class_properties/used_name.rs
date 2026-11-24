@@ -2,7 +2,7 @@ use swc_next_ecma_ast::*;
 
 pub(super) struct UsedNameCollector<'a, 'ast> {
     pub ast: &'a Ast<'ast>,
-    pub names: Vec<String>,
+    pub used_names: Vec<String>,
 }
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/used_name.rs#L23>.
 impl<'ast> Visit<'ast> for UsedNameCollector<'_, 'ast> {
@@ -22,7 +22,7 @@ impl<'ast> Visit<'ast> for UsedNameCollector<'_, 'ast> {
         }
     }
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        self.names
+        self.used_names
             .push(self.ast.get_utf8(node.name(self.ast)).to_owned());
     }
 }

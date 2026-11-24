@@ -102,7 +102,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         for slot in statements.iter() {
             let statement = self.ast.get_node_in_sub_range(slot);
             let original_empty = statement.is_empty_statement(self.ast);
-            if module && (original_empty || !self.retain_statement(statement)) {
+            if module && (original_empty || !self.should_retain_stmt(statement)) {
                 continue;
             }
             let statement = statement.visit_mut_with(self).unwrap_or(statement);
@@ -146,7 +146,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L348>.
-    fn retain_statement(&self, statement: Stmt) -> bool {
+    fn should_retain_stmt(&self, statement: Stmt) -> bool {
         match self.ast.stmt_data(statement) {
             StmtData::Declaration(declaration) => retain::should_retain_decl(self.ast, declaration),
             StmtData::ExportNamedDeclaration(export) => {
@@ -157,7 +157,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                     })
             }
             StmtData::EmptyStatement(_) => true,
-            _ => retain::concrete(self.ast, statement),
+            _ => retain::is_concrete(self.ast, statement),
         }
     }
 
@@ -239,7 +239,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                         && self.semantic.symbols[self.binding_id(import.id(self.ast))].used
                 }
                 DeclData::TsModuleDeclaration(module) => {
-                    self.strip_namespace_module_items_with_semantic(module);
+                    self.strip_namespace_body_with_semantic(module);
                     true
                 }
                 _ => true,
@@ -249,13 +249,13 @@ impl<'a, 'ast> Transform<'a, 'ast> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L835>.
-    fn strip_namespace_module_items_with_semantic(&mut self, module: TsModuleDeclaration) {
+    fn strip_namespace_body_with_semantic(&mut self, module: TsModuleDeclaration) {
         match module
             .body(self.ast)
             .map(|body| self.ast.ts_module_body_data(body))
         {
             Some(TsModuleBodyData::TsModuleDeclaration(module)) => {
-                self.strip_namespace_module_items_with_semantic(module)
+                self.strip_namespace_body_with_semantic(module)
             }
             Some(TsModuleBodyData::TsModuleBlock(block)) => {
                 let statements: Vec<_> = block
@@ -283,7 +283,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                         .as_declaration(self.ast)
                         .and_then(|declaration| declaration.as_ts_module_declaration(self.ast))
                     {
-                        self.strip_namespace_module_items_with_semantic(module);
+                        self.strip_namespace_body_with_semantic(module);
                     }
                 }
                 let statements = self.ast.add_sub_range(statements);
@@ -386,7 +386,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L348>.
     fn visit_mut_stmt(&mut self, statement: Stmt) -> Option<Stmt> {
-        if !self.retain_statement(statement) {
+        if !self.should_retain_stmt(statement) {
             return Some(self.empty());
         }
         match self.ast.stmt_data(statement) {
@@ -820,7 +820,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L520>.
     fn visit_mut_jsx_element_name(&mut self, name: JsxElementName) -> Option<JsxElementName> {
-        self.jsx_name(name)
+        self.query_jsx(name)
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L110>.
     fn visit_mut_ts_type(&mut self, _: TsType) -> Option<TsType> {
@@ -1028,15 +1028,15 @@ impl Transform<'_, '_> {
         let mut collector = AwaitBindingCollector {
             ast: self.ast,
             resolver: self.resolver,
-            used: HashSet::new(),
-            seen: HashSet::new(),
-            bindings: Vec::new(),
+            used_syms: HashSet::new(),
+            seen_await_bindings: HashSet::new(),
+            await_binding_ids: Vec::new(),
         };
         collector.ast.root_program().visit_with(&mut collector);
-        let mut used = collector.used;
+        let mut used_syms = collector.used_syms;
         let mut renames = HashMap::new();
         let mut suffix = 0;
-        for id in collector.bindings {
+        for id in collector.await_binding_ids {
             let name = loop {
                 let name = if suffix == 0 {
                     "_await".into()
@@ -1044,7 +1044,7 @@ impl Transform<'_, '_> {
                     format!("_await{suffix}")
                 };
                 suffix += 1;
-                if used.insert(name.clone()) {
+                if used_syms.insert(name.clone()) {
                     break name;
                 }
             };
@@ -1075,9 +1075,9 @@ fn computed_constructor(ast: &mut Ast<'_>) -> PropertyKey {
 struct AwaitBindingCollector<'a, 'ast> {
     ast: &'a Ast<'ast>,
     resolver: &'a Resolver,
-    used: HashSet<String>,
-    seen: HashSet<SymbolId>,
-    bindings: Vec<SymbolId>,
+    used_syms: HashSet<String>,
+    seen_await_bindings: HashSet<SymbolId>,
+    await_binding_ids: Vec<SymbolId>,
 }
 impl<'ast> Visit<'ast> for AwaitBindingCollector<'_, 'ast> {
     fn ast(&self) -> &Ast<'ast> {
@@ -1087,23 +1087,23 @@ impl<'ast> Visit<'ast> for AwaitBindingCollector<'_, 'ast> {
         let name = self.ast.get_utf8(identifier.name(self.ast));
         if name == "await"
             && let Some(id) = self.resolver.symbol(identifier.node_id())
-            && self.seen.insert(id)
+            && self.seen_await_bindings.insert(id)
         {
-            self.bindings.push(id);
+            self.await_binding_ids.push(id);
         }
-        self.used.insert(name.to_owned());
+        self.used_syms.insert(name.to_owned());
     }
     fn visit_identifier_reference(&mut self, identifier: IdentifierReference) {
-        self.used
+        self.used_syms
             .insert(self.ast.get_utf8(identifier.name(self.ast)).into());
     }
     fn visit_jsx_identifier(&mut self, identifier: JsxIdentifier) {
-        self.used
+        self.used_syms
             .insert(self.ast.get_utf8(identifier.name(self.ast)).into());
     }
     fn visit_module_export_name(&mut self, name: ModuleExportName) {
         if let Some(id) = name.as_identifier_name(self.ast) {
-            self.used
+            self.used_syms
                 .insert(self.ast.get_utf8(id.name(self.ast)).into());
         }
     }
@@ -1211,11 +1211,11 @@ impl Transform<'_, '_> {
                 match self.ast.decl_data(declaration) {
                     DeclData::Function(function) => {
                         statements.push(Stmt::Declaration(declaration));
-                        statements.push(self.assign_export(function.id(self.ast).unwrap()));
+                        statements.push(self.assign_prop(function.id(self.ast).unwrap()));
                     }
                     DeclData::Class(class) => {
                         statements.push(Stmt::Declaration(declaration));
-                        statements.push(self.assign_export(class.id(self.ast).unwrap()));
+                        statements.push(self.assign_prop(class.id(self.ast).unwrap()));
                     }
                     DeclData::VariableDeclaration(variable) => {
                         let mut expressions = Vec::new();
@@ -1287,7 +1287,7 @@ impl Transform<'_, '_> {
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1613>.
-    fn assign_export(&mut self, binding: BindingIdentifier) -> Stmt {
+    fn assign_prop(&mut self, binding: BindingIdentifier) -> Stmt {
         let owner = self.namespace_id.unwrap();
         let object = self.resolver.symbol_reference(self.ast, owner);
         let left = utils::member(
@@ -1373,18 +1373,18 @@ impl Transform<'_, '_> {
                     enum_id: id,
                     resolver: self.resolver,
                     record: &self.semantic.enum_record,
-                    ambient: &self.semantic.ambient_enum_record,
+                    ambient_record: &self.semantic.ambient_enum_record,
                     const_vars: &self.semantic.const_vars,
-                    const_only: None,
-                    ambient_const_only: None,
+                    const_enum_only: None,
+                    ambient_const_enum_only: None,
                 }
                 .compute(self.ast, init, EvalCtx::RECOMPUTE);
                 if let TsEnumRecordValue::Opaque(expression) = &mut value {
                     let mut rewriter = EnumMemberRefQuery {
                         ast: self.ast,
                         resolver: self.resolver,
-                        id,
-                        members: &self.semantic.enum_record[&id],
+                        enum_id: id,
+                        member_names: &self.semantic.enum_record[&id],
                     };
                     *expression = expression
                         .visit_mut_with(&mut rewriter)
@@ -1461,7 +1461,7 @@ impl Transform<'_, '_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1900>.
-    fn jsx_name(&mut self, name: JsxElementName) -> Option<JsxElementName> {
+    fn query_jsx(&mut self, name: JsxElementName) -> Option<JsxElementName> {
         if !self.rewrite {
             return None;
         }
@@ -1535,21 +1535,21 @@ fn rewrite_jsx_object(
 struct EnumMemberRefQuery<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut crate::common::resolver::context::Resolver,
-    id: SymbolId,
-    members: &'a EnumMembers<'ast>,
+    enum_id: SymbolId,
+    member_names: &'a EnumMembers<'ast>,
 }
 impl EnumMemberRefQuery<'_, '_> {
     fn matches(&self, node: NodeId, name: AstUtf8) -> bool {
         self.resolver.is_unresolved(node)
             && self
-                .members
+                .member_names
                 .contains_key(Wtf8::from_str(self.ast.get_utf8(name)))
     }
-    fn query(&mut self, node: NodeId, name: AstUtf8) -> Option<Expr> {
+    fn query_ref(&mut self, node: NodeId, name: AstUtf8) -> Option<Expr> {
         if !self.matches(node, name) {
             return None;
         }
-        let object = self.resolver.symbol_reference(self.ast, self.id);
+        let object = self.resolver.symbol_reference(self.ast, self.enum_id);
         let name = self.ast.get_utf8(name).to_owned();
         Some(utils::member(self.ast, object, &name))
     }
@@ -1561,7 +1561,7 @@ impl<'ast> VisitMut<'ast> for EnumMemberRefQuery<'_, 'ast> {
     fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
         expression.visit_mut_children_with(self);
         let id = expression.as_identifier_reference(self.ast)?;
-        self.query(id.node_id(), id.name(self.ast))
+        self.query_ref(id.node_id(), id.name(self.ast))
     }
     fn visit_mut_simple_assignment_target(
         &mut self,
@@ -1569,7 +1569,7 @@ impl<'ast> VisitMut<'ast> for EnumMemberRefQuery<'_, 'ast> {
     ) -> Option<SimpleAssignmentTarget> {
         target.visit_mut_children_with(self);
         let id = target.as_identifier_reference(self.ast)?;
-        let expression = self.query(id.node_id(), id.name(self.ast))?;
+        let expression = self.query_ref(id.node_id(), id.name(self.ast))?;
         Some(utils::target(self.ast, expression))
     }
     fn visit_mut_object_property(&mut self, property: ObjectProperty) -> Option<ObjectProperty> {
@@ -1595,7 +1595,7 @@ impl<'ast> VisitMut<'ast> for EnumMemberRefQuery<'_, 'ast> {
         if !self.matches(id.node_id(), id.name(self.ast)) {
             return None;
         }
-        let member = jsx_member(self.ast, self.resolver, self.id, id)
+        let member = jsx_member(self.ast, self.resolver, self.enum_id, id)
             .as_jsx_member_expression(self.ast)
             .unwrap();
         Some(JsxMemberExpressionObject::JsxMemberExpression(member))
@@ -1606,7 +1606,7 @@ impl<'ast> VisitMut<'ast> for EnumMemberRefQuery<'_, 'ast> {
         if !self.matches(id.node_id(), id.name(self.ast)) {
             return None;
         }
-        Some(jsx_member(self.ast, self.resolver, self.id, id))
+        Some(jsx_member(self.ast, self.resolver, self.enum_id, id))
     }
 }
 

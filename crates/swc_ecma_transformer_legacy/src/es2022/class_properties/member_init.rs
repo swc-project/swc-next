@@ -12,7 +12,7 @@ pub(super) enum MemberInit {
 }
 
 pub(super) struct PubProp {
-    pub key: PropertyKey,
+    pub name: PropertyKey,
     pub computed: bool,
     pub value: Expr,
 }
@@ -70,17 +70,17 @@ impl MemberInitRecord {
         ctx: &mut TraverseCtx<'_>,
         options: Config,
     ) -> Vec<Expr> {
-        let mut normal = Vec::new();
-        let mut values = Vec::new();
+        let mut normal_init = Vec::new();
+        let mut value_init = Vec::new();
         for init in self.record {
-            let value_init = matches!(init, MemberInit::PubProp(_) | MemberInit::PrivProp(_));
+            let is_value_init = matches!(init, MemberInit::PubProp(_) | MemberInit::PrivProp(_));
             let this = ast.expr_this_expression(DUMMY_SP);
             let expression = match init {
                 MemberInit::PubProp(PubProp {
-                    key,
+                    name,
                     computed,
                     value,
-                }) => public(ast, ctx, options, this, key, computed, value),
+                }) => public(ast, ctx, options, this, name, computed, value),
                 MemberInit::PrivProp(PrivProp { name, value }) => {
                     let descriptor = get_value_desc(ast, value);
                     private_init(
@@ -133,14 +133,14 @@ impl MemberInitRecord {
                 }
                 MemberInit::StaticBlock(_) => unreachable!(),
             };
-            if value_init {
-                values.push(expression);
+            if is_value_init {
+                value_init.push(expression);
             } else {
-                normal.push(expression);
+                normal_init.push(expression);
             }
         }
-        normal.extend(values);
-        normal
+        normal_init.extend(value_init);
+        normal_init
     }
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/member_init.rs#L197>.
     pub(super) fn into_init_static(
@@ -150,21 +150,21 @@ impl MemberInitRecord {
         options: Config,
         class: BindingIdentifier,
     ) -> Vec<Stmt> {
-        let mut normal = Vec::new();
-        let mut values = Vec::new();
+        let mut normal_init = Vec::new();
+        let mut value_init = Vec::new();
         for init in self.record {
-            let value_init = matches!(
+            let is_value_init = matches!(
                 init,
                 MemberInit::PubProp(_) | MemberInit::PrivProp(_) | MemberInit::StaticBlock(_)
             );
             let target = ctx.resolver.reference(ast, class);
             let statement = match init {
                 MemberInit::PubProp(PubProp {
-                    key,
+                    name,
                     computed,
                     value,
                 }) => {
-                    let expression = public(ast, ctx, options, target, key, computed, value);
+                    let expression = public(ast, ctx, options, target, name, computed, value);
                     ast.stmt_expression_statement(DUMMY_SP, expression)
                 }
                 MemberInit::StaticBlock(expression) => {
@@ -211,14 +211,14 @@ impl MemberInitRecord {
                     }
                 }
             };
-            if value_init {
-                values.push(statement);
+            if is_value_init {
+                value_init.push(statement);
             } else {
-                normal.push(statement);
+                normal_init.push(statement);
             }
         }
-        normal.extend(values);
-        normal
+        normal_init.extend(value_init);
+        normal_init
     }
 }
 fn private_init(

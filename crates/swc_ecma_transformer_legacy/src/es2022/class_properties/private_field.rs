@@ -5,26 +5,26 @@ use swc_next_ecma_ast::*;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct PrivateKind {
-    pub static_: bool,
-    pub method: bool,
-    pub get: bool,
-    pub set: bool,
+    pub is_static: bool,
+    pub is_method: bool,
+    pub has_getter: bool,
+    pub has_setter: bool,
 }
 impl PrivateKind {
     fn is_method(self) -> bool {
-        self.method && !self.get && !self.set
+        self.is_method && !self.has_getter && !self.has_setter
     }
     fn is_readonly(self) -> bool {
-        self.method && !self.set
+        self.is_method && !self.has_setter
     }
     fn is_writeonly(self) -> bool {
-        self.method && !self.get && self.set
+        self.is_method && !self.has_getter && self.has_setter
     }
 }
 pub(super) struct Private {
-    pub class: BindingIdentifier,
+    pub class_name: BindingIdentifier,
     pub scope: ScopeId,
-    pub names: HashMap<String, PrivateKind>,
+    pub ident: HashMap<String, PrivateKind>,
 }
 impl Private {
     pub(super) fn binding(
@@ -57,7 +57,7 @@ impl PrivateRecord {
         self.0
             .iter()
             .rev()
-            .find(|private| private.names.contains_key(name))
+            .find(|private| private.ident.contains_key(name))
             .unwrap()
     }
 }
@@ -65,7 +65,7 @@ impl PrivateRecord {
 #[derive(Clone, Copy)]
 enum PrivateAccessType {
     Get,
-    Destructure,
+    DestructureSet,
     Update,
 }
 pub(super) struct PrivateAccessVisitor<'a, 'ast, 'r> {
@@ -73,7 +73,7 @@ pub(super) struct PrivateAccessVisitor<'a, 'ast, 'r> {
     pub ctx: &'a mut TraverseCtx<'r>,
     pub private: &'a PrivateRecord,
     pub options: Config,
-    pub variables: Vec<VariableDeclarator>,
+    pub vars: Vec<VariableDeclarator>,
 }
 impl PrivateAccessVisitor<'_, '_, '_> {
     fn info(
@@ -86,8 +86,8 @@ impl PrivateAccessVisitor<'_, '_, '_> {
         BindingIdentifier,
     ) {
         let private = self.private.get(name);
-        let kind = private.names[name];
-        let class = private.class;
+        let kind = private.ident[name];
+        let class = private.class_name;
         let binding = private.binding(self.ast, self.ctx, &format!("_{name}"));
         let method_name = if is_reserved(name) {
             format!("__{name}")
@@ -100,7 +100,7 @@ impl PrivateAccessVisitor<'_, '_, '_> {
     fn temp(&mut self, object: Expr) -> BindingIdentifier {
         let name = b::alias_ident_for(self.ast, object, "_ref");
         let binding = self.ctx.resolver.private_binding(self.ast, &name);
-        self.variables.push(b::declarator(self.ast, binding, None));
+        self.vars.push(b::declarator(self.ast, binding, None));
         binding
     }
     fn helper(&mut self, name: &'static str, arguments: impl IntoIterator<Item = Expr>) -> Expr {
@@ -133,10 +133,10 @@ impl PrivateAccessVisitor<'_, '_, '_> {
         let (kind, class, binding, method) = self.info(&name);
         let object = member.object(self.ast);
         let reference = self.ctx.resolver.reference(self.ast, binding);
-        if kind.static_ {
+        if kind.is_static {
             let class = self.ctx.resolver.reference(self.ast, class);
             let helper = match access {
-                PrivateAccessType::Destructure => "class_static_private_field_destructure",
+                PrivateAccessType::DestructureSet => "class_static_private_field_destructure",
                 PrivateAccessType::Update => "class_static_private_field_update",
                 PrivateAccessType::Get if kind.is_method() => "class_static_private_method_get",
                 _ => "class_static_private_field_spec_get",
@@ -155,7 +155,7 @@ impl PrivateAccessVisitor<'_, '_, '_> {
             };
         }
         if !matches!(access, PrivateAccessType::Get) {
-            let helper = if matches!(access, PrivateAccessType::Destructure) {
+            let helper = if matches!(access, PrivateAccessType::DestructureSet) {
                 "class_private_field_destructure"
             } else {
                 "class_private_field_update"
@@ -228,7 +228,7 @@ impl PrivateAccessVisitor<'_, '_, '_> {
                 .0;
             b::compound(self.ast, assign.operator(self.ast), read, right)
         };
-        if kind.static_ {
+        if kind.is_static {
             let class = self.ctx.resolver.reference(self.ast, class);
             let name = self.ctx.resolver.reference(self.ast, binding);
             self.helper(
@@ -251,19 +251,15 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
         self.ast
     }
     fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
-        let old = std::mem::take(&mut self.variables);
+        let old = std::mem::take(&mut self.vars);
         node.visit_mut_children_with(self);
-        if !self.variables.is_empty() {
-            let decl = b::declaration(
-                self.ast,
-                VariableKind::Var,
-                std::mem::take(&mut self.variables),
-            );
+        if !self.vars.is_empty() {
+            let decl = b::declaration(self.ast, VariableKind::Var, std::mem::take(&mut self.vars));
             let body = node.body(self.ast);
             let stmts = b::prepend_stmts(self.ast, [decl], body.body(self.ast));
             body.set_body(self.ast, stmts);
         }
-        self.variables = old;
+        self.vars = old;
         None
     }
     fn visit_mut_simple_assignment_target(
@@ -278,7 +274,7 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
             } else {
                 member.visit_mut_children_with(self);
                 let result = self
-                    .convert_private_member(member, PrivateAccessType::Destructure, None)
+                    .convert_private_member(member, PrivateAccessType::DestructureSet, None)
                     .0;
                 return Some(b::target(self.ast, result));
             }
@@ -325,7 +321,7 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
                     node,
                 );
                 node = expression;
-                self.variables.extend(vars);
+                self.vars.extend(vars);
             } else {
                 // SWC visits each chain link separately. Give the prefix a
                 // temporary wrapper for that visit, then flatten any surviving
@@ -456,9 +452,9 @@ impl<'ast> VisitMut<'ast> for BrandCheckHandler<'_, 'ast, '_> {
         if right.as_identifier_reference(self.ast).is_some_and(|id| {
             self.ctx
                 .resolver
-                .same_symbol(id.node_id(), current.class.node_id())
+                .same_symbol(id.node_id(), current.class_name.node_id())
         }) {
-            let left = self.ctx.resolver.reference(self.ast, current.class);
+            let left = self.ctx.resolver.reference(self.ast, current.class_name);
             return Some(self.ast.expr_binary_expression(
                 DUMMY_SP,
                 left,
@@ -467,8 +463,8 @@ impl<'ast> VisitMut<'ast> for BrandCheckHandler<'_, 'ast, '_> {
             ));
         }
         let private = self.private.get(name);
-        if private.names[name].static_ {
-            let class = self.ctx.resolver.reference(self.ast, private.class);
+        if private.ident[name].is_static {
+            let class = self.ctx.resolver.reference(self.ast, private.class_name);
             return Some(self.ast.expr_binary_expression(
                 DUMMY_SP,
                 right,
@@ -489,7 +485,7 @@ pub(super) fn visit_private_in_expr(
     mut visitor: PrivateAccessVisitor<'_, '_, '_>,
 ) -> (Expr, Vec<VariableDeclarator>) {
     let expr = expr.visit_mut_with(&mut visitor).unwrap_or(expr);
-    (expr, visitor.variables)
+    (expr, visitor.vars)
 }
 
 // SWC Atom::is_reserved_in_any, used for moved private-method declarations.

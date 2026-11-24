@@ -39,10 +39,10 @@ pub(super) fn analyze_program<'ast>(
     ast: &mut Ast<'ast>,
     resolver: &Resolver,
     options: &TypeScriptOptions,
-    seed: HashSet<SymbolId>,
+    seed_usage: HashSet<SymbolId>,
 ) -> SemanticInfo<'ast> {
     let mut symbols = IndexVec::from_vec(vec![SymbolFacts::default(); resolver.symbol_count()]);
-    for id in seed {
+    for id in seed_usage {
         symbols[id].used = true;
     }
     let mut analyzer = SemanticAnalyzer {
@@ -54,7 +54,7 @@ pub(super) fn analyze_program<'ast>(
             ..Default::default()
         },
         import_chain: HashMap::new(),
-        namespace_blocks: Vec::new(),
+        namespace_block_stack: Vec::new(),
         namespace_id: None,
         skip_transform_info: false,
         exported: false,
@@ -76,7 +76,7 @@ pub(super) fn analyze_program<'ast>(
 struct NamespaceBlock {
     usage: HashSet<SymbolId>,
     import_chain: HashMap<SymbolId, SymbolId>,
-    imports: Vec<(SymbolId, NodeId, bool, bool)>,
+    import_equals: Vec<(SymbolId, NodeId, bool, bool)>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L100>.
@@ -104,7 +104,7 @@ struct SemanticAnalyzer<'a, 'ast> {
     options: &'a TypeScriptOptions,
     info: SemanticInfo<'ast>,
     import_chain: HashMap<SymbolId, SymbolId>,
-    namespace_blocks: Vec<NamespaceBlock>,
+    namespace_block_stack: Vec<NamespaceBlock>,
     namespace_id: Option<SymbolId>,
     skip_transform_info: bool,
     exported: bool,
@@ -116,7 +116,7 @@ impl SemanticAnalyzer<'_, '_> {
     }
     fn usage(&mut self, id: SymbolId) {
         self.info.symbols[id].used = true;
-        if let Some(block) = self.namespace_blocks.last_mut() {
+        if let Some(block) = self.namespace_block_stack.last_mut() {
             block.usage.insert(id);
         }
     }
@@ -256,10 +256,10 @@ impl SemanticAnalyzer<'_, '_> {
             enum_id: id,
             resolver: self.resolver,
             record: &self.info.enum_record,
-            ambient: &self.info.ambient_enum_record,
+            ambient_record: &self.info.ambient_enum_record,
             const_vars: &self.info.const_vars,
-            const_only: mutable.then_some(&self.info.const_enum),
-            ambient_const_only: ambient_mutable.then_some(&self.info.const_enum),
+            const_enum_only: mutable.then_some(&self.info.const_enum),
+            ambient_const_enum_only: ambient_mutable.then_some(&self.info.const_enum),
         }
         .compute(self.ast, expression, context)
     }
@@ -313,9 +313,9 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
     fn visit_ts_import_equals_declaration(&mut self, import: TsImportEqualsDeclaration) {
         let id = self.binding(import.id(self.ast));
         let type_only = import.import_kind(self.ast) == ImportOrExportKind::Type;
-        if let Some(block) = self.namespace_blocks.last_mut() {
+        if let Some(block) = self.namespace_block_stack.last_mut() {
             block
-                .imports
+                .import_equals
                 .push((id, import.node_id(), self.exported, type_only));
         }
         if !self.skip_transform_info && self.exported {
@@ -332,7 +332,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         let Some(root) = self.resolver.symbol(root.node_id()) else {
             return;
         };
-        if let Some(block) = self.namespace_blocks.last_mut() {
+        if let Some(block) = self.namespace_block_stack.last_mut() {
             if self.exported {
                 block.usage.insert(root);
                 block.usage.insert(id);
@@ -426,17 +426,17 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L573>.
     fn visit_ts_module_block(&mut self, block: TsModuleBlock) {
-        self.namespace_blocks.push(NamespaceBlock::default());
+        self.namespace_block_stack.push(NamespaceBlock::default());
         block.visit_children_with(self);
-        let mut block = self.namespace_blocks.pop().unwrap();
+        let mut block = self.namespace_block_stack.pop().unwrap();
         let new_usage = analyze_import_chain(block.usage.iter().copied(), &mut block.import_chain);
         block.usage.extend(new_usage);
-        for (id, node, exported, type_only) in block.imports {
+        for (id, node, exported, type_only) in block.import_equals {
             if !type_only && (exported || block.usage.contains(&id)) {
                 self.info.namespace_import_equals_usage.insert(node);
             }
         }
-        if let Some(parent) = self.namespace_blocks.last_mut() {
+        if let Some(parent) = self.namespace_block_stack.last_mut() {
             parent.usage.extend(block.usage);
             parent.import_chain.extend(block.import_chain);
         }

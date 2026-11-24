@@ -27,7 +27,7 @@ pub(super) fn namespace_body_is_concrete(ast: &Ast<'_>, module: TsModuleDeclarat
         Some(TsModuleBodyData::TsModuleBlock(block)) => block
             .body(ast)
             .iter()
-            .any(|slot| concrete(ast, ast.get_node_in_sub_range(slot))),
+            .any(|slot| is_concrete(ast, ast.get_node_in_sub_range(slot))),
         Some(TsModuleBodyData::TsModuleDeclaration(module)) => {
             namespace_body_is_concrete(ast, module)
         }
@@ -48,13 +48,13 @@ fn concrete_decl(ast: &Ast<'_>, declaration: Decl) -> bool {
             .body(ast)
             .body(ast)
             .iter()
-            .any(|slot| concrete(ast, ast.get_node_in_sub_range(slot))),
+            .any(|slot| is_concrete(ast, ast.get_node_in_sub_range(slot))),
         _ => true,
     }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/retain.rs#L74>.
-pub(super) fn concrete(ast: &Ast<'_>, statement: Stmt) -> bool {
+pub(super) fn is_concrete(ast: &Ast<'_>, statement: Stmt) -> bool {
     match ast.stmt_data(statement) {
         StmtData::Declaration(declaration) => concrete_decl(ast, declaration),
         StmtData::ExportNamedDeclaration(export) => {

@@ -26,23 +26,23 @@ pub(crate) fn class_fields_use_set(
 }
 impl ClassFieldsUseSet<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_compat/src/class_fields_use_set.rs#L125>.
-    fn statements(&mut self, body: SubRange<Stmt>) -> SubRange<Stmt> {
+    fn visit_mut_stmts_like(&mut self, body: SubRange<Stmt>) -> SubRange<Stmt> {
         let mut statements = Vec::new();
         let mut computed = ComputedFieldsHandler {
             ast: self.ast,
             resolver: self.resolver,
             pure_getters: self.options.pure_getters,
-            variables: Vec::new(),
-            static_inits: Vec::new(),
+            var_decls: Vec::new(),
+            static_init_blocks: Vec::new(),
         };
         for slot in body.iter() {
             let statement = computed.ast.get_node_in_sub_range(slot);
             statement.visit_mut_with(&mut computed);
-            if !computed.variables.is_empty() {
+            if !computed.var_decls.is_empty() {
                 statements.push(b::declaration(
                     computed.ast,
                     VariableKind::Let,
-                    std::mem::take(&mut computed.variables),
+                    std::mem::take(&mut computed.var_decls),
                 ));
             }
             // Reborrow after the computed-key pass, matching SWC's two visitors.
@@ -61,7 +61,7 @@ impl<'ast> VisitMut<'ast> for ClassFieldsUseSet<'_, 'ast> {
         self.ast
     }
     fn visit_mut_stmts(&mut self, body: SubRange<Stmt>) -> Option<SubRange<Stmt>> {
-        Some(self.statements(body))
+        Some(self.visit_mut_stmts_like(body))
     }
 }
 
@@ -162,8 +162,8 @@ struct ComputedFieldsHandler<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut Resolver,
     pure_getters: bool,
-    variables: Vec<VariableDeclarator>,
-    static_inits: Vec<Stmt>,
+    var_decls: Vec<VariableDeclarator>,
+    static_init_blocks: Vec<Stmt>,
 }
 impl<'ast> VisitMut<'ast> for ComputedFieldsHandler<'_, 'ast> {
     fn ast(&mut self) -> &mut Ast<'ast> {
@@ -177,15 +177,15 @@ impl<'ast> VisitMut<'ast> for ComputedFieldsHandler<'_, 'ast> {
         if prop.computed(self.ast) {
             let expression = prop.key(self.ast).as_expr(self.ast).unwrap();
             if !b::is_literal(self.ast, expression)
-                && !simple(self.ast, expression, self.pure_getters)
+                && !is_simple_pure_expr(self.ast, expression, self.pure_getters)
             {
                 let binding = self.resolver.private_binding(self.ast, "prop");
-                self.variables.push(b::declarator(self.ast, binding, None));
+                self.var_decls.push(b::declarator(self.ast, binding, None));
                 let reference = self.resolver.reference(self.ast, binding);
                 prop.set_key(self.ast, PropertyKey::Expr(reference));
                 let reference = self.resolver.reference(self.ast, binding);
                 let assignment = b::assign(self.ast, reference, expression);
-                self.static_inits
+                self.static_init_blocks
                     .push(self.ast.stmt_expression_statement(DUMMY_SP, assignment));
             }
         }
@@ -201,10 +201,10 @@ impl<'ast> VisitMut<'ast> for ComputedFieldsHandler<'_, 'ast> {
     }
     fn visit_mut_class_body(&mut self, node: ClassBody) -> Option<ClassBody> {
         node.visit_mut_children_with(self);
-        if !self.static_inits.is_empty() {
+        if !self.static_init_blocks.is_empty() {
             let statements = self
                 .ast
-                .add_sub_range(std::mem::take(&mut self.static_inits));
+                .add_sub_range(std::mem::take(&mut self.static_init_blocks));
             let block = ClassElement::StaticBlock(self.ast.static_block(DUMMY_SP, statements));
             let body: Vec<_> = std::iter::once(block)
                 .chain(
@@ -220,7 +220,7 @@ impl<'ast> VisitMut<'ast> for ComputedFieldsHandler<'_, 'ast> {
     }
 }
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/lib.rs#L1346>.
-fn simple(ast: &Ast<'_>, expression: Expr, pure_getters: bool) -> bool {
+fn is_simple_pure_expr(ast: &Ast<'_>, expression: Expr, pure_getters: bool) -> bool {
     match ast.expr_data(expression) {
         ExprData::IdentifierReference(_)
         | ExprData::ThisExpression(_)
@@ -236,13 +236,14 @@ fn simple(ast: &Ast<'_>, expression: Expr, pure_getters: bool) -> bool {
                 UnaryOperator::Void | UnaryOperator::LogicalNot
             ) =>
         {
-            simple(ast, unary.argument(ast), pure_getters)
+            is_simple_pure_expr(ast, unary.argument(ast), pure_getters)
         }
         ExprData::MemberExpression(member) if pure_getters => simple_member(ast, member),
         _ => false,
     }
 }
 fn simple_member(ast: &Ast<'_>, member: MemberExpression) -> bool {
-    simple(ast, member.object(ast), true)
-        && (!member.computed(ast) || simple(ast, member.property(ast).as_expr(ast).unwrap(), true))
+    is_simple_pure_expr(ast, member.object(ast), true)
+        && (!member.computed(ast)
+            || is_simple_pure_expr(ast, member.property(ast).as_expr(ast).unwrap(), true))
 }

@@ -35,22 +35,25 @@ enum Memo {
     Cache(BindingIdentifier),
     Raw(Expr),
 }
+
+impl Memo {
+    fn into_expr(self, ast: &mut Ast<'_>, resolver: &mut Resolver) -> Expr {
+        match self {
+            Self::Cache(binding) => resolver.reference(ast, binding),
+            Self::Raw(expression) => build::clone_expr(ast, resolver, expression),
+        }
+    }
+}
+
 enum Gathering {
     Member(MemberExpression, Option<Memo>),
     Call(CallExpression, Option<Memo>),
 }
 
 impl OptionalChaining<'_, '_> {
-    fn memo_expr(&mut self, memo: Memo) -> Expr {
-        match memo {
-            Memo::Cache(binding) => self.resolver.reference(self.ast, binding),
-            Memo::Raw(expression) => build::clone_expr(self.ast, self.resolver, expression),
-        }
-    }
-
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/optional_chaining_impl.rs#L359>.
     fn memoize(&mut self, expression: Expr, call: bool) -> Memo {
-        fn simple(ast: &Ast<'_>, expression: Expr) -> bool {
+        fn is_simple_member(ast: &Ast<'_>, expression: Expr) -> bool {
             match ast.expr_data(expression) {
                 ExprData::IdentifierReference(_) | ExprData::ThisExpression(_) => true,
                 ExprData::MemberExpression(member)
@@ -58,7 +61,7 @@ impl OptionalChaining<'_, '_> {
                         && !member.optional(ast)
                         && !chain_part(ast, member.object(ast)) =>
                 {
-                    member.object(ast).is_super(ast) || simple(ast, member.object(ast))
+                    member.object(ast).is_super(ast) || is_simple_member(ast, member.object(ast))
                 }
                 _ => false,
             }
@@ -66,7 +69,7 @@ impl OptionalChaining<'_, '_> {
         let resolved = expression
             .as_identifier_reference(self.ast)
             .is_some_and(|id| !self.resolver.is_unresolved(id.node_id()));
-        if resolved || call && self.options.pure_getter && simple(self.ast, expression) {
+        if resolved || call && self.options.pure_getter && is_simple_member(self.ast, expression) {
             return Memo::Raw(expression);
         }
         let name = build::alias_ident_for(self.ast, expression, "_this");
@@ -153,7 +156,7 @@ impl OptionalChaining<'_, '_> {
                     let test = self.init_and_eq_null_or_undefined(memo, current);
                     conditionals.push(test);
                     receiver = Some(memo);
-                    let object = self.memo_expr(memo);
+                    let object = memo.into_expr(self.ast, self.resolver);
                     self.ast.expr_member_expression(
                         member.span(self.ast),
                         object,
@@ -183,14 +186,15 @@ impl OptionalChaining<'_, '_> {
                                 }
                                 this
                             });
-                            arguments.insert(0, Argument::Expr(self.memo_expr(this)));
+                            arguments
+                                .insert(0, Argument::Expr(this.into_expr(self.ast, self.resolver)));
                         }
                         true
                     } else {
                         false
                     };
                     conditionals.push(self.init_and_eq_null_or_undefined(memo, current));
-                    let callee = self.memo_expr(memo);
+                    let callee = memo.into_expr(self.ast, self.resolver);
                     let callee = if method {
                         build::member(self.ast, callee, "call")
                     } else {
@@ -234,7 +238,7 @@ impl OptionalChaining<'_, '_> {
                 let left = self.resolver.reference(self.ast, binding);
                 build::assign(self.ast, left, init)
             }
-            Memo::Raw(_) => self.memo_expr(memo),
+            Memo::Raw(_) => memo.into_expr(self.ast, self.resolver),
         };
         let null = self.ast.expr_null_literal(DUMMY_SP);
         let null_test = self.ast.expr_binary_expression(
@@ -250,7 +254,7 @@ impl OptionalChaining<'_, '_> {
         if self.options.no_document_all {
             return null_test;
         }
-        let left = self.memo_expr(memo);
+        let left = memo.into_expr(self.ast, self.resolver);
         let undefined = build::undefined(self.ast);
         let undefined_test =
             self.ast

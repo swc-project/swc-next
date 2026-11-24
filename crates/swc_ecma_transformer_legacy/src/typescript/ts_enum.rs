@@ -87,10 +87,10 @@ pub(super) struct EnumValueComputer<'a, 'ast> {
     pub(super) enum_id: SymbolId,
     pub(super) resolver: &'a Resolver,
     pub(super) record: &'a TsEnumRecord<'ast>,
-    pub(super) ambient: &'a TsEnumRecord<'ast>,
+    pub(super) ambient_record: &'a TsEnumRecord<'ast>,
     pub(super) const_vars: &'a HashMap<SymbolId, TsEnumRecordValue>,
-    pub(super) const_only: Option<&'a HashSet<SymbolId>>,
-    pub(super) ambient_const_only: Option<&'a HashSet<SymbolId>>,
+    pub(super) const_enum_only: Option<&'a HashSet<SymbolId>>,
+    pub(super) ambient_const_enum_only: Option<&'a HashSet<SymbolId>>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L134>.
@@ -338,7 +338,8 @@ impl EnumValueComputer<'_, '_> {
     }
 
     fn ambient_is_resolvable(&self, id: &SymbolId) -> bool {
-        self.ambient_const_only.is_none_or(|set| set.contains(id))
+        self.ambient_const_enum_only
+            .is_none_or(|set| set.contains(id))
     }
 
     fn lookup_member(
@@ -352,7 +353,7 @@ impl EnumValueComputer<'_, '_> {
             .and_then(|members| members.get(name))
             .or_else(|| {
                 if context.allow_const_var && self.ambient_is_resolvable(&id) {
-                    self.ambient.get(&id)?.get(name)
+                    self.ambient_record.get(&id)?.get(name)
                 } else {
                     None
                 }
@@ -376,7 +377,7 @@ impl EnumValueComputer<'_, '_> {
         let Some(id) = self.resolver.symbol(identifier.node_id()) else {
             return opaque;
         };
-        if self.const_only.is_some_and(|set| !set.contains(&id)) {
+        if self.const_enum_only.is_some_and(|set| !set.contains(&id)) {
             return opaque;
         }
         self.lookup_member(id, name, context)

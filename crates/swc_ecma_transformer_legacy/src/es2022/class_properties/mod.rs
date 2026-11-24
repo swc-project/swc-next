@@ -105,7 +105,7 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
             ctx: self.ctx,
             private: &self.private,
             options: self.options,
-            variables: Vec::new(),
+            vars: Vec::new(),
         }
     }
     fn super_fields(
@@ -153,16 +153,16 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                 ClassElementData::MethodDefinition(method) => (
                     method.key(self.ast),
                     PrivateKind {
-                        method: true,
-                        static_: method.r#static(self.ast),
-                        get: method.kind(self.ast) == MethodDefinitionKind::Get,
-                        set: method.kind(self.ast) == MethodDefinitionKind::Set,
+                        is_method: true,
+                        is_static: method.r#static(self.ast),
+                        has_getter: method.kind(self.ast) == MethodDefinitionKind::Get,
+                        has_setter: method.kind(self.ast) == MethodDefinitionKind::Set,
                     },
                 ),
                 ClassElementData::PropertyDefinition(prop) if !prop.accessor(self.ast) => (
                     prop.key(self.ast),
                     PrivateKind {
-                        static_: prop.r#static(self.ast),
+                        is_static: prop.r#static(self.ast),
                         ..Default::default()
                     },
                 ),
@@ -170,14 +170,14 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
             };
             if let Some(name) = b::private_name(self.ast, key) {
                 if let Some(previous) = names.get_mut(&name) {
-                    let pair = previous.method
-                        && kind.method
-                        && previous.static_ == kind.static_
-                        && ((kind.get && !previous.get && previous.set)
-                            || (kind.set && !previous.set && previous.get));
+                    let pair = previous.is_method
+                        && kind.is_method
+                        && previous.is_static == kind.is_static
+                        && ((kind.has_getter && !previous.has_getter && previous.has_setter)
+                            || (kind.has_setter && !previous.has_setter && previous.has_getter));
                     if pair {
-                        previous.get |= kind.get;
-                        previous.set |= kind.set;
+                        previous.has_getter |= kind.has_getter;
+                        previous.has_setter |= kind.has_setter;
                     } else {
                         let mut diagnostic =
                             Diagnostic::error("duplicate private name", key.span(self.ast));
@@ -191,9 +191,9 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
         }
         let scope = self.ctx.resolver.fresh_scope();
         self.private.push(Private {
-            class: class_id,
+            class_name: class_id,
             scope,
-            names,
+            ident: names,
         });
         class.visit_mut_children_with(self);
         let body = class.body(self.ast);
@@ -330,10 +330,10 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                         if !prop.r#static(self.ast) {
                             let mut collector = UsedNameCollector {
                                 ast: self.ast,
-                                names: Vec::new(),
+                                used_names: Vec::new(),
                             };
                             key.visit_with(&mut collector);
-                            used_keys.extend(collector.names);
+                            used_keys.extend(collector.used_names);
                         }
                         if prop.computed(self.ast) {
                             let key = prop.key(self.ast).as_expr(self.ast).unwrap();
@@ -408,7 +408,7 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                             .visit_mut_with(&mut ThisInStaticFolder {
                                 ast: self.ast,
                                 resolver: self.ctx.resolver,
-                                class_name: class_id,
+                                ident: class_id,
                             })
                             .unwrap_or(value);
                     }
@@ -429,7 +429,7 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                         })
                     } else {
                         MemberInit::PubProp(PubProp {
-                            key: prop.key(self.ast),
+                            name: prop.key(self.ast),
                             computed: prop.computed(self.ast),
                             value,
                         })
