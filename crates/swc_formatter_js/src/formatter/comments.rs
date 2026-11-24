@@ -799,6 +799,20 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// Partition all AST comments using the next pending comment as a search hint.
+    /// Both neighboring comments must agree with the proposed split.
+    pub(super) fn partition_source_comments(
+        &self,
+        before: impl Fn(&Comment) -> bool,
+    ) -> (&'ast [Comment], &'ast [Comment]) {
+        let all = self.ast.comments();
+        let (left, right) = all.split_at(all.len() - self.comments.remaining.len());
+        if left.last().is_none_or(&before) && right.first().is_none_or(|comment| !before(comment)) {
+            return (left, right);
+        }
+        all.split_at(all.partition_point(before))
+    }
+
     /// Queries the complete source packet, including comments already claimed by a child.
     pub(super) fn source_comments_in_range(&self, span: Span) -> &'ast [Comment] {
         comments_in_range(self.ast.comments(), span)

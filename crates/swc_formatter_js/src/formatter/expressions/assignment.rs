@@ -1448,9 +1448,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_opening = content
                 .parentheses
                 .map(|removed| removed.source.outer.start);
-            let source_comments = self.ast.comments();
-            let first = source_comments.partition_point(|comment| comment.span.start < left_end);
-            let remaining = &source_comments[first..];
+            let (previous, remaining) =
+                self.partition_source_comments(|comment| comment.span.start < left_end);
             let original_right_start = content.expression.span(self.ast).start;
             let (original_count, original_before_count) = if self.has_suppression {
                 let count =
@@ -1475,9 +1474,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let overlaps_left = first
-                .checked_sub(1)
-                .is_some_and(|index| source_comments[index].span.end > left_end);
+            let overlaps_left = previous
+                .last()
+                .is_some_and(|comment| comment.span.end > left_end);
             let has_source_packet = overlaps_left
                 || remaining
                     .first()

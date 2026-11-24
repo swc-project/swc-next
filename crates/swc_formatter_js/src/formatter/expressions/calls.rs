@@ -63,10 +63,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.diagnostic_range_is_sensitive(span) {
             return false;
         }
-        let comments = self.ast.comments();
-        let first = comments.partition_point(|comment| comment.span.end <= span.start);
+        let (_, comments) =
+            self.partition_source_comments(|comment| comment.span.end <= span.start);
         comments
-            .get(first)
+            .first()
             .is_none_or(|comment| comment.span.start >= span.end)
     }
 
@@ -99,7 +99,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
         }
-        if self.call_span_is_source_clear(span) {
+        let (_, comments) =
+            self.partition_source_comments(|comment| comment.span.end <= span.start);
+        if comments
+            .first()
+            .is_none_or(|comment| comment.span.start >= span.end)
+        {
             return true;
         }
         let EmittedHeadBinding::Resolved {
@@ -109,9 +114,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         else {
             return false;
         };
-        let comments = self.ast.comments();
-        let first = comments.partition_point(|comment| comment.span.end <= span.start);
-        let comments = &comments[first..];
         let count = comments.partition_point(|comment| comment.span.start < span.end);
         let comments = &comments[..count];
         // The complete unbound packet is emitted before the callee. Every

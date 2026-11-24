@@ -579,9 +579,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.diagnostic_range_is_sensitive(covered_span) {
             return None;
         }
-        let comments = self.ast.comments();
-        let first = comments.partition_point(|comment| comment.span.end <= covered_span.start);
-        let comments = &comments[first..];
+        let (_, comments) =
+            self.partition_source_comments(|comment| comment.span.end <= covered_span.start);
         let count = comments.partition_point(|comment| comment.span.start < covered_span.end);
         let mut comments = &comments[..count];
         let mut current = Expr::CallExpression(call);
