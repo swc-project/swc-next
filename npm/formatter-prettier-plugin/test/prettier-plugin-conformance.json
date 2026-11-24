@@ -19557,6 +19557,17 @@
         "prettierNative": "// prettier-ignore\r\n(first+second, third);\r\n"
       }
     ],
+    "js/expressions/sequence/ignore-statement.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// prettier-ignore\na  ,  b\n// prettier-ignore\n;(c  ,  d)\n",
+        "prettierNative": "// prettier-ignore\n;a  ,  b\n// prettier-ignore\n;(c  ,  d)\n"
+      }
+    ],
     "js/expressions/sequence/inline-line-source-owner/following-tail/input.js": [
       {
         "options": {

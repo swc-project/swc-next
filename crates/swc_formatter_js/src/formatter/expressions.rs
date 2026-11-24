@@ -1466,6 +1466,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(true);
         }
         match data {
+            ExprData::SequenceExpression(_)
+                if matches!(position, ExpressionPosition::Statement(_)) =>
+            {
+                // A statement's source can contain an unparenthesized comma expression.
+                return Some(mode == ContentMode::Formatted);
+            }
             ExprData::SequenceExpression(_) => {
                 return Some(!matches!(
                     position,
