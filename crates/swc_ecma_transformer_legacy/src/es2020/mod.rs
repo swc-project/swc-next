@@ -1,10 +1,9 @@
 //! ES2020 transform options.
 
-mod nullish_coalescing;
-mod optional_chaining;
+pub(crate) mod nullish_coalescing;
 
-pub use nullish_coalescing::NullishCoalescingOptions;
-pub use optional_chaining::OptionalChainingOptions;
+pub use crate::es2022::optional_chaining_impl::Config as OptionalChainingOptions;
+pub use nullish_coalescing::Config as NullishCoalescingOptions;
 
 /// Selects ES2020 transforms. All transforms are disabled by default.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -16,3 +15,5 @@ pub struct ES2020Options {
     /// Lower optional chaining. `None` disables the pass.
     pub optional_chaining: Option<OptionalChainingOptions>,
 }
+
+pub(crate) mod export_namespace_from;

@@ -8,3 +8,5 @@ pub struct ES2021Options {
     /// [`ES2020Options::nullish_coalescing`](crate::es2020::ES2020Options::nullish_coalescing).
     pub logical_assignments: bool,
 }
+
+pub(crate) mod logical_assignment_operators;

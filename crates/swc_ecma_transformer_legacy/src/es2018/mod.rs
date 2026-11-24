@@ -1,8 +1,8 @@
 //! ES2018 transform options. RegExp features are configured separately.
 
-mod object_rest_spread;
+pub(crate) mod object_rest_spread;
 
-pub use object_rest_spread::ObjectRestSpreadOptions;
+pub use object_rest_spread::Config as ObjectRestSpreadOptions;
 
 /// Selects ES2018 transforms. All transforms are disabled by default.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

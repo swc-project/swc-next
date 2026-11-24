@@ -2,8 +2,8 @@
 //!
 //! Options follow SWC Next's per-edition and language grouping, with the fields
 //! and defaults of legacy SWC's transform configurations. [`Transformer::transform`]
-//! accepts a mutable AST without a semantic model. JSX and TypeScript lowering are implemented;
-//! other selected transforms report errors until they are ported. The source inventory is in
+//! accepts a mutable AST without a semantic model. JSX, TypeScript, ES2016–ES2022,
+//! and RegExp lowering are available. The source inventory is in
 //! `docs/transform-inventory.md`.
 //!
 //! Configuring one edition does not enable another edition or RegExp lowering.
@@ -45,6 +45,7 @@
 //!         },
 //!         es2021: ES2021Options { logical_assignments: true },
 //!         es2022: ES2022Options {
+//!             class_fields_use_set: None,
 //!             static_blocks: true,
 //!             class_properties: Some(ClassPropertiesOptions::default()),
 //!             private_in_object: true,
@@ -76,7 +77,7 @@ pub mod jsx;
 pub mod regexp;
 pub mod typescript;
 
-mod resolver;
+mod common;
 mod transformer;
 pub use transformer::{Transformer, TransformerReturn};
 

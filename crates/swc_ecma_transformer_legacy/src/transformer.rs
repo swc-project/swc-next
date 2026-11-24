@@ -1,6 +1,12 @@
-use swc_next_ecma_ast::{AstCtx, Diagnostic, Span};
+use swc_next_ecma_ast::{
+    AstCtx, Diagnostic, Program, Span, TraverseMut, TraverseMutCtx, TraverseMutWith,
+};
 
-use crate::{TransformerOptions, jsx, resolver::Resolver, typescript};
+use crate::{
+    TransformerOptions,
+    common::{TraverseCtx, resolver::context::Resolver, var_declarations::VarDeclarations},
+    jsx, typescript,
+};
 
 /// Diagnostics produced while transforming an AST in place.
 #[derive(Debug, Default)]
@@ -15,7 +21,7 @@ impl Transformer {
     /// Transforms a program in place without requiring a semantic model.
     ///
     /// Call after parsing. The caller does not need to normalize or analyze the
-    /// AST. Any analysis needed by future ports belongs inside this pipeline.
+    /// AST. Analysis needed by the selected passes belongs inside this pipeline.
     /// Previously computed semantic indexes must be recomputed after mutation.
     /// Name resolution runs before the selected passes; hygiene runs once after
     /// all passes have finished.
@@ -35,8 +41,9 @@ impl Transformer {
     /// assert!(result.diagnostics.is_empty());
     /// ```
     ///
-    /// JSX and TypeScript lowering are available. Other selected transforms produce an error
-    /// diagnostic until their legacy implementation has been ported.
+    /// Supports the selected JSX, TypeScript, ES2016–ES2022 and RegExp passes.
+    /// Runtime helpers are loaded from `@swc/helpers`.
+    /// React Refresh reports a diagnostic because it is not implemented.
     ///
     /// # Panics
     ///
@@ -50,7 +57,7 @@ impl Transformer {
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
         if let Some(typescript) = &options.typescript {
-            diagnostics.extend(typescript::transform(
+            diagnostics.extend(typescript::typescript(
                 ast,
                 typescript,
                 options.jsx.is_some(),
@@ -58,7 +65,7 @@ impl Transformer {
             ));
         }
         if let Some(jsx) = &options.jsx {
-            diagnostics.extend(jsx::transform(
+            diagnostics.extend(jsx::jsx(
                 ast,
                 jsx,
                 options.filename.as_deref(),
@@ -74,74 +81,113 @@ impl Transformer {
                 diagnostics.push(diagnostic);
             }
         }
-        let selected = [
-            (options.env.es2022.static_blocks, "static_blocks"),
-            (
-                options.env.es2022.class_properties.is_some(),
-                "class_properties",
-            ),
-            (options.env.es2022.private_in_object, "private_in_object"),
-            (
-                options.env.es2021.logical_assignments,
-                "logical_assignments",
-            ),
-            (
-                options.env.es2020.export_namespace_from,
-                "export_namespace_from",
-            ),
-            (
-                options.env.es2020.nullish_coalescing.is_some(),
-                "nullish_coalescing",
-            ),
-            (
-                options.env.es2020.optional_chaining.is_some(),
-                "optional_chaining",
-            ),
-            (
-                options.env.es2019.optional_catch_binding,
-                "optional_catch_binding",
-            ),
-            (
-                options.env.es2018.object_rest_spread.is_some(),
-                "object_rest_spread",
-            ),
-            (
-                options.env.es2017.async_to_generator.is_some(),
-                "async_to_generator",
-            ),
-            (options.env.es2016.exponentiation, "exponentiation"),
-            (options.env.regexp.dot_all_regex, "dot_all_regex"),
-            (options.env.regexp.has_indices, "has_indices"),
-            (
-                options.env.regexp.lookbehind_assertion,
-                "lookbehind_assertion",
-            ),
-            (
-                options.env.regexp.named_capturing_groups_regex,
-                "named_capturing_groups_regex",
-            ),
-            (
-                options.env.regexp.duplicate_named_capturing_groups_regex,
-                "duplicate_named_capturing_groups_regex",
-            ),
-            (options.env.regexp.sticky_regex, "sticky_regex"),
-            (
-                options.env.regexp.unicode_property_regex,
-                "unicode_property_regex",
-            ),
-            (options.env.regexp.unicode_regex, "unicode_regex"),
-            (options.env.regexp.unicode_sets_regex, "unicode_sets_regex"),
-        ];
-        diagnostics.extend(selected.into_iter().filter(|(enabled, _)| *enabled).map(
-            |(_, name)| {
-                let mut diagnostic =
-                    Diagnostic::error("Legacy transform has not been ported yet", Span::new(0, 0));
-                diagnostic.help = Some(name.into());
-                diagnostic
-            },
-        ));
+        let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
+        let program = context.ast.root_program();
+        if let Some(options) = options.env.es2022.class_fields_use_set {
+            crate::es2022::class_fields_use_set::class_fields_use_set(
+                context.ast,
+                context.state.resolver,
+                options,
+            );
+        }
+        if options.env.es2022.static_blocks {
+            let _ = program.traverse_mut_with(
+                &mut crate::es2022::class_static_block::ClassStaticBlock,
+                &mut context,
+            );
+        }
+        if let Some(options) = options.env.es2022.class_properties {
+            diagnostics.extend(crate::es2022::class_properties::class_properties(
+                context.ast,
+                &mut context.state,
+                options,
+            ));
+        }
+        if options.env.es2022.private_in_object {
+            let _ = program.traverse_mut_with(
+                &mut VarDeclarations {
+                    hook:
+                        crate::es2022::private_property_in_object::PrivatePropertyInObjectPass::new(
+                        ),
+                    scope_arrow_exprs: false,
+                },
+                &mut context,
+            );
+        }
+        if options.env.es2021.logical_assignments {
+            hook_pass_with_var_declarations(
+                program,
+                crate::es2021::logical_assignment_operators::LogicalAssignmentOperatorsPass,
+                &mut context,
+            );
+        }
+        if let Some(options) = options.env.es2020.optional_chaining {
+            crate::es2022::optional_chaining_impl::optional_chaining_impl(
+                context.ast,
+                context.state.resolver,
+                options,
+            );
+        }
+        if options.env.es2020.export_namespace_from {
+            crate::es2020::export_namespace_from::pass(context.ast, context.state.resolver);
+        }
+        if let Some(options) = options.env.es2020.nullish_coalescing {
+            hook_pass_with_var_declarations(
+                program,
+                crate::es2020::nullish_coalescing::NullishCoalescingPass(options),
+                &mut context,
+            );
+        }
+        if options.env.es2019.optional_catch_binding {
+            crate::es2019::optional_catch_binding::pass(context.ast, context.state.resolver);
+        }
+        if let Some(options) = options.env.es2018.object_rest_spread {
+            hook_pass_with_var_declarations(
+                program,
+                crate::es2018::object_rest_spread::ObjectRestSpreadPass::new(options),
+                &mut context,
+            );
+        }
+        if let Some(options) = options.env.es2017.async_to_generator {
+            let _ = program.traverse_mut_with(
+                &mut crate::es2017::async_to_generator::AsyncToGeneratorPass::new(options),
+                &mut context,
+            );
+        }
+        if options.env.es2016.exponentiation {
+            hook_pass_with_var_declarations(
+                program,
+                crate::es2016::exponentiation_operator::ExponentiationOperatorPass,
+                &mut context,
+            );
+        }
+        let _ = program.traverse_mut_with(
+            &mut crate::regexp::RegexpPass(options.env.regexp),
+            &mut context,
+        );
+        context
+            .state
+            .helpers
+            .inject_helpers(context.ast, context.state.resolver);
+        context.state.resolver.register(context.ast);
         // SWC runs hygiene once, after all transform passes, before its fixer.
         resolver.hygiene(ast);
         TransformerReturn { diagnostics }
     }
+}
+
+/// SWC composes the lowering hook with VarDeclarations in a single traversal.
+/// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/lib.rs#L90>.
+fn hook_pass_with_var_declarations<'ast, 'r>(
+    program: Program,
+    hook: impl TraverseMut<'ast, TraverseCtx<'r>>,
+    ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'r>>,
+) {
+    let _ = program.traverse_mut_with(
+        &mut VarDeclarations {
+            hook,
+            scope_arrow_exprs: true,
+        },
+        ctx,
+    );
 }

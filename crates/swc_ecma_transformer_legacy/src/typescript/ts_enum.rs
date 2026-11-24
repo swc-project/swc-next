@@ -1,13 +1,13 @@
 //! SWC's enum constant evaluator before #12455.
-use crate::resolver::{Id, Resolver};
+use crate::common::resolver::context::{Id, Resolver};
 use std::collections::{HashMap, HashSet};
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::*;
 
-pub(super) type Record = HashMap<(Id, Wtf8Buf), Value>;
+pub(super) type TsEnumRecord = HashMap<(Id, Wtf8Buf), TsEnumRecordValue>;
 
 #[derive(Clone)]
-pub(super) enum Value {
+pub(super) enum TsEnumRecordValue {
     String(Wtf8Buf),
     Number {
         value: f64,
@@ -18,7 +18,7 @@ pub(super) enum Value {
     Void,
 }
 
-impl Value {
+impl TsEnumRecordValue {
     pub(super) fn number(value: f64) -> Self {
         Self::Number {
             value,
@@ -26,10 +26,10 @@ impl Value {
             span: DUMMY_SP,
         }
     }
-    pub(super) fn constant(&self) -> bool {
+    pub(super) fn is_const(&self) -> bool {
         matches!(self, Self::String(_) | Self::Number { .. })
     }
-    pub(super) fn increment(&self) -> Self {
+    pub(super) fn inc(&self) -> Self {
         match self {
             Self::Number { value, .. } => Self::number(value + 1.0),
             _ => Self::Void,
@@ -49,10 +49,12 @@ impl Value {
             }
         }
     }
-    fn push_string(&self, output: &mut Wtf8Buf) -> bool {
+    fn push_to_string(&self, output: &mut Wtf8Buf) -> bool {
         match self {
             Self::String(value) => output.push_wtf8(value),
-            Self::Number { value, .. } => output.push_str(&number_string(*value)),
+            Self::Number { value, .. } => {
+                output.push_str(&crate::common::build::number_string(*value))
+            }
             _ => return false,
         }
         true
@@ -79,18 +81,18 @@ impl EvalCtx {
     };
 }
 
-pub(super) struct Computer<'a> {
+pub(super) struct EnumValueComputer<'a> {
     pub(super) enum_id: &'a Id,
     pub(super) resolver: &'a Resolver,
-    pub(super) record: &'a Record,
-    pub(super) ambient: &'a Record,
-    pub(super) const_vars: &'a HashMap<Id, Value>,
+    pub(super) record: &'a TsEnumRecord,
+    pub(super) ambient: &'a TsEnumRecord,
+    pub(super) const_vars: &'a HashMap<Id, TsEnumRecordValue>,
     pub(super) const_only: Option<&'a HashSet<Id>>,
     pub(super) ambient_const_only: Option<&'a HashSet<Id>>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L134>.
-pub(super) fn static_member(ast: &Ast<'_>, member: MemberExpression) -> Option<Wtf8Buf> {
+pub(super) fn static_enum_member_name(ast: &Ast<'_>, member: MemberExpression) -> Option<Wtf8Buf> {
     let key = member.property(ast);
     if !member.computed(ast) {
         return key
@@ -109,15 +111,20 @@ pub(super) fn static_member(ast: &Ast<'_>, member: MemberExpression) -> Option<W
     }
 }
 
-impl Computer<'_> {
+impl EnumValueComputer<'_> {
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L214>.
-    pub(super) fn compute(&self, ast: &mut Ast<'_>, expression: Expr, context: EvalCtx) -> Value {
-        let opaque = Value::Opaque(expression);
+    pub(super) fn compute(
+        &self,
+        ast: &mut Ast<'_>,
+        expression: Expr,
+        context: EvalCtx,
+    ) -> TsEnumRecordValue {
+        let opaque = TsEnumRecordValue::Opaque(expression);
         match ast.expr_data(expression) {
             ExprData::StringLiteral(string) => {
-                Value::String(ast.get_wtf8(string.value(ast)).to_owned())
+                TsEnumRecordValue::String(ast.get_wtf8(string.value(ast)).to_owned())
             }
-            ExprData::NumericLiteral(number) => Value::Number {
+            ExprData::NumericLiteral(number) => TsEnumRecordValue::Number {
                 value: number.value(ast),
                 raw: number.raw(ast),
                 span: number.span(ast),
@@ -129,25 +136,25 @@ impl Computer<'_> {
                 if id.scope == self.resolver.unresolved() {
                     let key = (self.enum_id.clone(), Wtf8Buf::from_str(&id.name));
                     if let Some(value) = self.record.get(&key).or_else(|| {
-                        (context.allow_const_var && self.ambient_resolvable(&key.0))
+                        (context.allow_const_var && self.ambient_is_resolvable(&key.0))
                             .then(|| self.ambient.get(&key))
                             .flatten()
                     }) {
-                        if value.constant() {
+                        if value.is_const() {
                             value.clone()
                         } else {
                             // This is a reference to an opaque sibling member.
-                            // Context registration is done by the enum reference rewriter.
+                            // TraverseCtx registration is done by the enum reference rewriter.
                             opaque
                         }
                     } else {
                         match id.name.as_str() {
-                            "Infinity" => Value::Number {
+                            "Infinity" => TsEnumRecordValue::Number {
                                 value: f64::INFINITY,
                                 raw: Some(identifier.name(ast)),
                                 span: identifier.span(ast),
                             },
-                            "NaN" => Value::Number {
+                            "NaN" => TsEnumRecordValue::Number {
                                 value: f64::NAN,
                                 raw: Some(identifier.name(ast)),
                                 span: identifier.span(ast),
@@ -164,20 +171,20 @@ impl Computer<'_> {
             ExprData::ParenthesizedExpression(paren) => {
                 self.compute(ast, paren.expression(ast), context)
             }
-            ExprData::UnaryExpression(unary) => self.unary(ast, unary, context),
-            ExprData::BinaryExpression(binary) => self.binary(ast, binary, context),
-            ExprData::MemberExpression(member) => self.member(ast, member, context),
+            ExprData::UnaryExpression(unary) => self.compute_unary(ast, unary, context),
+            ExprData::BinaryExpression(binary) => self.compute_bin(ast, binary, context),
+            ExprData::MemberExpression(member) => self.compute_member(ast, member, context),
             ExprData::ChainExpression(chain) => {
                 if let Some(member) = chain.expression(ast).as_member_expression(ast) {
-                    match self.member(ast, member, context) {
-                        Value::Opaque(_) => opaque,
+                    match self.compute_member(ast, member, context) {
+                        TsEnumRecordValue::Opaque(_) => opaque,
                         value => value,
                     }
                 } else {
                     opaque
                 }
             }
-            ExprData::TemplateLiteral(template) => self.template(ast, template, context),
+            ExprData::TemplateLiteral(template) => self.compute_tpl(ast, template, context),
             ExprData::TsAsExpression(wrapper) => {
                 self.wrapper(ast, wrapper.expression(ast), context)
             }
@@ -197,9 +204,9 @@ impl Computer<'_> {
         }
     }
 
-    fn wrapper(&self, ast: &mut Ast<'_>, inner: Expr, context: EvalCtx) -> Value {
+    fn wrapper(&self, ast: &mut Ast<'_>, inner: Expr, context: EvalCtx) -> TsEnumRecordValue {
         if context.ts_is_opaque {
-            Value::Opaque(inner)
+            TsEnumRecordValue::Opaque(inner)
         } else {
             self.compute(
                 ast,
@@ -213,17 +220,22 @@ impl Computer<'_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L309>.
-    fn unary(&self, ast: &mut Ast<'_>, unary: UnaryExpression, context: EvalCtx) -> Value {
+    fn compute_unary(
+        &self,
+        ast: &mut Ast<'_>,
+        unary: UnaryExpression,
+        context: EvalCtx,
+    ) -> TsEnumRecordValue {
         let operator = unary.operator(ast);
         if !matches!(
             operator,
             UnaryOperator::Positive | UnaryOperator::Negate | UnaryOperator::BitwiseNot
         ) {
-            return Value::Opaque(Expr::UnaryExpression(unary));
+            return TsEnumRecordValue::Opaque(Expr::UnaryExpression(unary));
         }
         let inner = self.compute(ast, unary.argument(ast), context);
-        if let Value::Number { value, .. } = inner {
-            Value::number(match operator {
+        if let TsEnumRecordValue::Number { value, .. } = inner {
+            TsEnumRecordValue::number(match operator {
                 UnaryOperator::Positive => value,
                 UnaryOperator::Negate => -value,
                 UnaryOperator::BitwiseNot => f64::from(!to_int32(value)),
@@ -231,12 +243,17 @@ impl Computer<'_> {
             })
         } else {
             let inner = inner.expression(ast);
-            Value::Opaque(ast.expr_unary_expression(unary.span(ast), inner, operator))
+            TsEnumRecordValue::Opaque(ast.expr_unary_expression(unary.span(ast), inner, operator))
         }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L335>.
-    fn binary(&self, ast: &mut Ast<'_>, binary: BinaryExpression, context: EvalCtx) -> Value {
+    fn compute_bin(
+        &self,
+        ast: &mut Ast<'_>,
+        binary: BinaryExpression,
+        context: EvalCtx,
+    ) -> TsEnumRecordValue {
         let operator = binary.operator(ast);
         if !matches!(
             operator,
@@ -253,22 +270,25 @@ impl Computer<'_> {
                 | BinaryOperator::BitwiseAnd
                 | BinaryOperator::BitwiseXor
         ) {
-            return Value::Opaque(Expr::BinaryExpression(binary));
+            return TsEnumRecordValue::Opaque(Expr::BinaryExpression(binary));
         }
         let left = self.compute(ast, binary.left(ast), context);
         let right = self.compute(ast, binary.right(ast), context);
         if operator == BinaryOperator::Add
-            && (matches!(left, Value::String(_)) || matches!(right, Value::String(_)))
+            && (matches!(left, TsEnumRecordValue::String(_))
+                || matches!(right, TsEnumRecordValue::String(_)))
         {
             let mut value = Wtf8Buf::new();
-            if left.push_string(&mut value) && right.push_string(&mut value) {
-                return Value::String(value);
+            if left.push_to_string(&mut value) && right.push_to_string(&mut value) {
+                return TsEnumRecordValue::String(value);
             }
         }
-        if let (Value::Number { value: left, .. }, Value::Number { value: right, .. }) =
-            (&left, &right)
+        if let (
+            TsEnumRecordValue::Number { value: left, .. },
+            TsEnumRecordValue::Number { value: right, .. },
+        ) = (&left, &right)
         {
-            return Value::number(match operator {
+            return TsEnumRecordValue::number(match operator {
                 BinaryOperator::Add => left + right,
                 BinaryOperator::Subtract => left - right,
                 BinaryOperator::Multiply => left * right,
@@ -296,27 +316,37 @@ impl Computer<'_> {
                 _ => unreachable!(),
             });
         }
-        let left = if left.constant() {
+        let left = if left.is_const() {
             left.expression(ast)
         } else {
             binary.left(ast)
         };
-        let right = if right.constant() {
+        let right = if right.is_const() {
             right.expression(ast)
         } else {
             binary.right(ast)
         };
-        Value::Opaque(ast.expr_binary_expression(binary.span(ast), left, right, operator))
+        TsEnumRecordValue::Opaque(ast.expr_binary_expression(
+            binary.span(ast),
+            left,
+            right,
+            operator,
+        ))
     }
 
-    fn ambient_resolvable(&self, id: &Id) -> bool {
+    fn ambient_is_resolvable(&self, id: &Id) -> bool {
         self.ambient_const_only.is_none_or(|set| set.contains(id))
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L409>.
-    fn member(&self, ast: &Ast<'_>, member: MemberExpression, context: EvalCtx) -> Value {
-        let opaque = Value::Opaque(Expr::MemberExpression(member));
-        let Some(name) = static_member(ast, member) else {
+    fn compute_member(
+        &self,
+        ast: &Ast<'_>,
+        member: MemberExpression,
+        context: EvalCtx,
+    ) -> TsEnumRecordValue {
+        let opaque = TsEnumRecordValue::Opaque(Expr::MemberExpression(member));
+        let Some(name) = static_enum_member_name(ast, member) else {
             return opaque;
         };
         let Some(identifier) = member.object(ast).as_identifier_reference(ast) else {
@@ -332,18 +362,23 @@ impl Computer<'_> {
         self.record
             .get(&key)
             .or_else(|| {
-                (context.allow_const_var && self.ambient_resolvable(&key.0))
+                (context.allow_const_var && self.ambient_is_resolvable(&key.0))
                     .then(|| self.ambient.get(&key))
                     .flatten()
             })
-            .filter(|value| !matches!(value, Value::Void))
+            .filter(|value| !matches!(value, TsEnumRecordValue::Void))
             .cloned()
             .unwrap_or(opaque)
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L451>.
-    fn template(&self, ast: &mut Ast<'_>, template: TemplateLiteral, context: EvalCtx) -> Value {
-        let opaque = Value::Opaque(Expr::TemplateLiteral(template));
+    fn compute_tpl(
+        &self,
+        ast: &mut Ast<'_>,
+        template: TemplateLiteral,
+        context: EvalCtx,
+    ) -> TsEnumRecordValue {
+        let opaque = TsEnumRecordValue::Opaque(Expr::TemplateLiteral(template));
         let mut quasis = template.quasis(ast).iter();
         let Some(first) = quasis.next() else {
             return opaque;
@@ -358,7 +393,7 @@ impl Computer<'_> {
             let expression = ast.get_node_in_sub_range(expression);
             if !self
                 .compute(ast, expression, context)
-                .push_string(&mut value)
+                .push_to_string(&mut value)
             {
                 return opaque;
             }
@@ -369,7 +404,7 @@ impl Computer<'_> {
             let cooked = quasi.cooked(ast);
             value.push_wtf8(ast.get_wtf8(cooked));
         }
-        Value::String(value)
+        TsEnumRecordValue::String(value)
     }
 }
 
@@ -380,32 +415,4 @@ fn to_int32(value: f64) -> i32 {
         return 0;
     }
     value.trunc().rem_euclid(4294967296.0) as u32 as i32
-}
-
-/// Next AST adapter for SWC's ECMAScript number-to-string conversion.
-/// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_utils/src/number.rs#L1>.
-fn number_string(value: f64) -> String {
-    if value.is_nan() {
-        return "NaN".into();
-    }
-    if value == f64::INFINITY {
-        return "Infinity".into();
-    }
-    if value == f64::NEG_INFINITY {
-        return "-Infinity".into();
-    }
-    if value == 0.0 {
-        return "0".into();
-    }
-    if value.abs() < 1e-6 || value.abs() >= 1e21 {
-        let value = format!("{value:e}");
-        let (significand, exponent) = value.split_once('e').unwrap();
-        if exponent.starts_with('-') {
-            value
-        } else {
-            format!("{significand}e+{exponent}")
-        }
-    } else {
-        value.to_string()
-    }
 }

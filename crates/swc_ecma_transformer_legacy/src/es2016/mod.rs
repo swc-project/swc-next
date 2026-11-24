@@ -6,3 +6,5 @@ pub struct ES2016Options {
     /// Lower `**` and `**=` using SWC's `exponentiation` pass.
     pub exponentiation: bool,
 }
+
+pub(crate) mod exponentiation_operator;

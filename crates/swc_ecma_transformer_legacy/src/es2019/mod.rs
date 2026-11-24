@@ -6,3 +6,5 @@ pub struct ES2019Options {
     /// Add a binding to catch clauses that omit one.
     pub optional_catch_binding: bool,
 }
+
+pub(crate) mod optional_catch_binding;

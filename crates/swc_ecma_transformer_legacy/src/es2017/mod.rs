@@ -1,6 +1,6 @@
 //! ES2017 transform options.
 
-mod async_to_generator;
+pub(crate) mod async_to_generator;
 
 pub use async_to_generator::AsyncToGeneratorOptions;
 

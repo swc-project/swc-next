@@ -1,10 +1,10 @@
 //! SWC's usage, export, enum and namespace-alias collection before #12455.
 use super::{
     TypeScriptOptions, retain,
-    ts_enum::{Computer, EvalCtx, Record, Value},
+    ts_enum::{EnumValueComputer, EvalCtx, TsEnumRecord, TsEnumRecordValue},
     utils,
 };
-use crate::resolver::{Id, Resolver};
+use crate::common::resolver::context::{Id, Resolver};
 use std::collections::{HashMap, HashSet};
 use swc_next_ecma_ast::*;
 
@@ -14,27 +14,27 @@ pub(super) struct SemanticInfo {
     pub(super) id_type: HashSet<Id>,
     pub(super) id_value: HashSet<Id>,
     pub(super) exported_binding: HashMap<Id, Option<Id>>,
-    pub(super) enum_record: Record,
-    pub(super) ambient_enum_record: Record,
+    pub(super) enum_record: TsEnumRecord,
+    pub(super) ambient_enum_record: TsEnumRecord,
     pub(super) const_enum: HashSet<Id>,
     pub(super) namespace_import_equals_usage: HashSet<NodeId>,
-    pub(super) const_vars: HashMap<Id, Value>,
+    pub(super) const_vars: HashMap<Id, TsEnumRecordValue>,
 }
 
 impl SemanticInfo {
-    pub(super) fn pure_type(&self, id: &Id) -> bool {
+    pub(super) fn has_pure_type(&self, id: &Id) -> bool {
         self.id_type.contains(id) && !self.id_value.contains(id)
     }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L48>.
-pub(super) fn analyze(
+pub(super) fn analyze_program(
     ast: &mut Ast<'_>,
     resolver: &mut Resolver,
     options: &TypeScriptOptions,
     seed: HashSet<Id>,
 ) -> SemanticInfo {
-    let mut analyzer = Analyzer {
+    let mut analyzer = SemanticAnalyzer {
         ast,
         resolver,
         options,
@@ -50,7 +50,7 @@ pub(super) fn analyze(
     };
     analyzer.collect_module();
     analyzer.ast.root_program().visit_with(&mut analyzer);
-    follow_import_chain(&mut analyzer.info.usage, &mut analyzer.import_chain);
+    analyze_import_chain(&mut analyzer.info.usage, &mut analyzer.import_chain);
     analyzer.resolver.register(analyzer.ast);
     analyzer.info
 }
@@ -63,7 +63,7 @@ struct NamespaceBlock {
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L100>.
-fn follow_import_chain(usage: &mut HashSet<Id>, chain: &mut HashMap<Id, Id>) {
+fn analyze_import_chain(usage: &mut HashSet<Id>, chain: &mut HashMap<Id, Id>) {
     let mut new_usage = HashSet::new();
     for id in usage.iter() {
         let mut next = chain.remove(id);
@@ -78,7 +78,7 @@ fn follow_import_chain(usage: &mut HashSet<Id>, chain: &mut HashMap<Id, Id>) {
     usage.extend(new_usage);
 }
 
-struct Analyzer<'a, 'ast> {
+struct SemanticAnalyzer<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut Resolver,
     options: &'a TypeScriptOptions,
@@ -90,7 +90,7 @@ struct Analyzer<'a, 'ast> {
     exported: bool,
 }
 
-impl Analyzer<'_, '_> {
+impl SemanticAnalyzer<'_, '_> {
     fn binding(&self, id: BindingIdentifier) -> Id {
         self.resolver.id(id.node_id(), id.name(self.ast), self.ast)
     }
@@ -162,7 +162,7 @@ impl Analyzer<'_, '_> {
             DeclData::VariableDeclaration(declaration) => {
                 for slot in declaration.declarators(self.ast).iter() {
                     let declaration = self.ast.get_node_in_sub_range(slot);
-                    for id in utils::binding_ids(self.ast, declaration.id(self.ast)) {
+                    for id in utils::find_pat_ids(self.ast, declaration.id(self.ast)) {
                         self.info.id_value.insert(self.binding(id));
                     }
                 }
@@ -192,7 +192,7 @@ impl Analyzer<'_, '_> {
                     utils::namespace_names(self.ast, module.id(self.ast)).first()
                 {
                     let id = self.resolver.id(node, name, self.ast);
-                    if retain::namespace(self.ast, module) {
+                    if retain::namespace_body_is_concrete(self.ast, module) {
                         self.info.id_value.insert(id);
                     } else {
                         self.info.id_type.insert(id);
@@ -226,8 +226,8 @@ impl Analyzer<'_, '_> {
         context: EvalCtx,
         mutable: bool,
         ambient_mutable: bool,
-    ) -> Value {
-        Computer {
+    ) -> TsEnumRecordValue {
+        EnumValueComputer {
             enum_id: id,
             resolver: self.resolver,
             record: &self.info.enum_record,
@@ -240,7 +240,7 @@ impl Analyzer<'_, '_> {
     }
 }
 
-impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
+impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
     fn ast(&self) -> &Ast<'ast> {
         self.ast
     }
@@ -250,7 +250,7 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L365>.
     fn visit_decl(&mut self, declaration: Decl) {
         let skip = self.skip_transform_info;
-        self.skip_transform_info |= !retain::declaration(self.ast, declaration);
+        self.skip_transform_info |= !retain::should_retain_decl(self.ast, declaration);
         declaration.visit_children_with(self);
         self.skip_transform_info = skip;
     }
@@ -297,7 +297,9 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
         if type_only {
             return;
         }
-        let Some(root) = utils::entity_root(self.ast, import.module_reference(self.ast)) else {
+        let Some(root) =
+            super::shared::get_module_ident(self.ast, import.module_reference(self.ast))
+        else {
             return;
         };
         let root = self
@@ -334,7 +336,7 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
                     .iter()
                     .flat_map(|slot| {
                         let decl = self.ast.get_node_in_sub_range(slot);
-                        utils::binding_ids(self.ast, decl.id(self.ast))
+                        utils::find_pat_ids(self.ast, decl.id(self.ast))
                     })
                     .collect(),
                 DeclData::TsEnumDeclaration(enumeration) => vec![enumeration.id(self.ast)],
@@ -404,7 +406,7 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
         self.namespace_blocks.push(NamespaceBlock::default());
         block.visit_children_with(self);
         let mut block = self.namespace_blocks.pop().unwrap();
-        follow_import_chain(&mut block.usage, &mut block.import_chain);
+        analyze_import_chain(&mut block.usage, &mut block.import_chain);
         for (id, node, exported, type_only) in block.imports {
             if !type_only && (exported || block.usage.contains(&id)) {
                 self.info.namespace_import_equals_usage.insert(node);
@@ -440,7 +442,7 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
                 self.options.ts_enum_is_mutable,
                 self.options.ts_enum_is_mutable,
             );
-            if value.constant() {
+            if value.is_const() {
                 self.info.const_vars.insert(id, value);
             }
         }
@@ -455,13 +457,13 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
         }
         let ambient = self.skip_transform_info;
         let mut default = if self.options.flow_syntax && !ambient {
-            Value::Void
+            TsEnumRecordValue::Void
         } else {
-            Value::number(0.0)
+            TsEnumRecordValue::number(0.0)
         };
         for slot in enumeration.body(self.ast).members(self.ast).iter() {
             let member = self.ast.get_node_in_sub_range(slot);
-            let name = utils::enum_name(self.ast, member.id(self.ast));
+            let name = super::shared::enum_member_name(self.ast, member.id(self.ast));
             let value = if let Some(init) = member.initializer(self.ast) {
                 self.compute(
                     init,
@@ -476,14 +478,17 @@ impl<'ast> Visit<'ast> for Analyzer<'_, 'ast> {
                 )
             } else if ambient && !enumeration.is_const(self.ast) {
                 continue;
-            } else if self.options.flow_syntax && matches!(default, Value::Void) && !ambient {
-                Value::String(name.clone())
+            } else if self.options.flow_syntax
+                && matches!(default, TsEnumRecordValue::Void)
+                && !ambient
+            {
+                TsEnumRecordValue::String(name.clone())
             } else {
                 default.clone()
             };
-            default = value.increment();
+            default = value.inc();
             if ambient {
-                if value.constant() {
+                if value.is_const() {
                     self.info
                         .ambient_enum_record
                         .insert((id.clone(), name), value);

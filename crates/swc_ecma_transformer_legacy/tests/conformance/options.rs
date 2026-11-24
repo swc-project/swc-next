@@ -21,7 +21,7 @@ use swc_next_ecma_transformer_legacy::{
     es2019::ES2019Options,
     es2020::{ES2020Options, NullishCoalescingOptions, OptionalChainingOptions},
     es2021::ES2021Options,
-    es2022::{ClassPropertiesOptions, ES2022Options},
+    es2022::{ClassFieldsUseSetOptions, ClassPropertiesOptions, ES2022Options},
     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
     regexp::RegExpOptions,
     typescript::{JsxImportOptions, TsImportExportAssignConfig, TypeScriptOptions},
@@ -82,7 +82,13 @@ fn convert(config: Config, path: &Path) -> Options {
     };
     let default_transform = TransformConfig::default();
     let transform = config.jsc.transform.as_ref().unwrap_or(&default_transform);
-    let assumptions = config.jsc.assumptions.unwrap_or_default();
+    let assumptions = config.jsc.assumptions.unwrap_or_else(|| {
+        if config.jsc.loose.into_bool() {
+            swc_core::ecma::transforms::base::assumptions::Assumptions::all()
+        } else {
+            Default::default()
+        }
+    });
     let set_public_fields =
         assumptions.set_public_class_fields || !transform.use_define_for_class_fields.into_bool();
     let mut options = TransformerOptions {
@@ -128,6 +134,9 @@ fn convert(config: Config, path: &Path) -> Options {
                 logical_assignments: enabled(Feature::LogicalAssignmentOperators),
             },
             es2022: ES2022Options {
+                class_fields_use_set: set_public_fields.then_some(ClassFieldsUseSetOptions {
+                    pure_getters: assumptions.pure_getters,
+                }),
                 static_blocks: enabled(Feature::ClassStaticBlock),
                 class_properties: enabled(Feature::ClassProperties).then_some(
                     ClassPropertiesOptions {

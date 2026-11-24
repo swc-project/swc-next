@@ -20,7 +20,7 @@ is publicly reachable. `private/method` denotes a declaration without `pub`.
 Implementation rows cover `Visit`, `VisitMut`, `Fold`, `VisitMutHook`, `Pass`,
 `CompilerPass`, `Repeated`, `Check`, `ParVisit`, `ParVisitMut`, and `ParFold`.
 Each source link points at the exact declaration, including nested/local visitors.
-The RegExp transformer uses a different AST but is retained as a dependency.
+The upstream RegExp pattern transforms use a separate AST.
 
 ## Counts by crate
 

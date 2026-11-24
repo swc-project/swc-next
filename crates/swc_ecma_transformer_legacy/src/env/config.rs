@@ -3,7 +3,7 @@ use crate::{
     es2017::AsyncToGeneratorOptions,
     es2018::ObjectRestSpreadOptions,
     es2020::{NullishCoalescingOptions, OptionalChainingOptions},
-    es2022::ClassPropertiesOptions,
+    es2022::{ClassFieldsUseSetOptions, ClassPropertiesOptions},
 };
 
 use super::{EnvOptions, Target, TargetError, compat::Feature};
@@ -80,6 +80,7 @@ config!(
 );
 config!(/// Explicit ES2022 transform overrides.
     ES2022Config {
+        class_fields_use_set: BoolOr<ClassFieldsUseSetConfig>,
         static_blocks: bool,
         class_properties: BoolOr<ClassPropertiesConfig>,
         private_in_object: bool,
@@ -92,9 +93,12 @@ config!(
         dot_all_regex: bool,
         has_indices: bool,
         lookbehind_assertion: bool,
+        /// Reserved for named capture group lowering. Currently ignored.
         named_capturing_groups_regex: bool,
+        /// Reserved for duplicate named capture group lowering. Currently ignored.
         duplicate_named_capturing_groups_regex: bool,
         sticky_regex: bool,
+        /// Reserved for Unicode property escape lowering. Currently ignored.
         unicode_property_regex: bool,
         unicode_regex: bool,
         unicode_sets_regex: bool,
@@ -120,6 +124,8 @@ pass_config!(/// SWC nullish-coalescing flags.
     NullishCoalescingConfig => NullishCoalescingOptions { no_document_all });
 pass_config!(/// SWC optional-chaining flags; `pure_getter` is singular in SWC.
     OptionalChainingConfig => OptionalChainingOptions { no_document_all, pure_getter });
+pass_config!(/// SWC class-field assignment flags.
+    ClassFieldsUseSetConfig => ClassFieldsUseSetOptions { pure_getters });
 pass_config!(/// SWC class-properties flags; `pure_getter` is singular in SWC.
     ClassPropertiesConfig => ClassPropertiesOptions {
         private_as_properties, set_public_fields, constant_super, no_document_all, pure_getter,
@@ -206,6 +212,10 @@ impl EnvConfig {
             self.es2022,
             static_blocks,
             private_in_object
+        );
+        apply_pass(
+            &self.es2022.class_fields_use_set,
+            &mut options.es2022.class_fields_use_set,
         );
         apply_pass(
             &self.es2022.class_properties,

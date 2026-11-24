@@ -2,7 +2,7 @@
 use swc_next_ecma_ast::*;
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/retain.rs#L28>.
-pub(super) fn declaration(ast: &Ast<'_>, declaration: Decl) -> bool {
+pub(super) fn should_retain_decl(ast: &Ast<'_>, declaration: Decl) -> bool {
     match ast.decl_data(declaration) {
         DeclData::TsInterfaceDeclaration(_)
         | DeclData::TsTypeAliasDeclaration(_)
@@ -14,19 +14,23 @@ pub(super) fn declaration(ast: &Ast<'_>, declaration: Decl) -> bool {
         DeclData::TsImportEqualsDeclaration(import) => {
             import.import_kind(ast) != ImportOrExportKind::Type
         }
-        DeclData::TsModuleDeclaration(module) => !module.declare(ast) && namespace(ast, module),
+        DeclData::TsModuleDeclaration(module) => {
+            !module.declare(ast) && namespace_body_is_concrete(ast, module)
+        }
         _ => true,
     }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/retain.rs#L50>.
-pub(super) fn namespace(ast: &Ast<'_>, module: TsModuleDeclaration) -> bool {
+pub(super) fn namespace_body_is_concrete(ast: &Ast<'_>, module: TsModuleDeclaration) -> bool {
     match module.body(ast).map(|body| ast.ts_module_body_data(body)) {
         Some(TsModuleBodyData::TsModuleBlock(block)) => block
             .body(ast)
             .iter()
             .any(|slot| concrete(ast, ast.get_node_in_sub_range(slot))),
-        Some(TsModuleBodyData::TsModuleDeclaration(module)) => namespace(ast, module),
+        Some(TsModuleBodyData::TsModuleDeclaration(module)) => {
+            namespace_body_is_concrete(ast, module)
+        }
         None => false,
     }
 }
@@ -36,7 +40,7 @@ fn concrete_decl(ast: &Ast<'_>, declaration: Decl) -> bool {
         DeclData::TsInterfaceDeclaration(_)
         | DeclData::TsTypeAliasDeclaration(_)
         | DeclData::TsFunction(_) => false,
-        DeclData::TsModuleDeclaration(module) => namespace(ast, module),
+        DeclData::TsModuleDeclaration(module) => namespace_body_is_concrete(ast, module),
         DeclData::TsImportEqualsDeclaration(import) => {
             import.import_kind(ast) == ImportOrExportKind::Value
         }
