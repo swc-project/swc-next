@@ -335,9 +335,9 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
                 node = expression;
                 self.variables.extend(vars);
             } else {
-                // SWC wraps each chain link. Visit a preceding chain as its
-                // own expression before handling the outer non-private link.
-                // In particular v?.#m?.() lowers the private prefix first.
+                // SWC visits each chain link separately. Give the prefix a
+                // temporary wrapper for that visit, then flatten any surviving
+                // chain back into the same spine.
                 let child = base
                     .as_member_expression(self.ast)
                     .map(|member| member.object(self.ast))
@@ -352,7 +352,6 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
                     let prefix = prefix.visit_mut_with(self).unwrap_or(prefix);
                     let prefix = prefix
                         .as_chain_expression(self.ast)
-                        .filter(|chain| !optional_spine(self.ast, chain.expression(self.ast)))
                         .map_or(prefix, |chain| chain.expression(self.ast));
                     if let Some(member) = base.as_member_expression(self.ast) {
                         member.set_object(self.ast, prefix);
