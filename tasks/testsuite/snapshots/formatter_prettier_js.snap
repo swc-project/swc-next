@@ -1,21 +1,21 @@
 formatter * prettier 3.9.9 * js
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 802
+Fixture files: 825
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1066/1083 (98.43%)
-Snapshot matched: 1066/1083
-AST parity: 1083/1083
-AST mismatched: 0/1083
-AST format errors: 0/1083
-Mismatched: 17/1083
-Known mismatches: 8/1083
-Unclassified mismatches: 9/1083
-Format errors: 0/1083
-Panicked: 0/1083
-Not idempotent: 0/1083
-Ignored files: 273
-Parse errors: 0/1083
+Passed: 1067/1114 (95.78%)
+Snapshot matched: 1067/1114
+AST parity: 1114/1114
+AST mismatched: 0/1114
+AST format errors: 0/1114
+Mismatched: 47/1114
+Known mismatches: 38/1114
+Unclassified mismatches: 9/1114
+Format errors: 0/1114
+Panicked: 0/1114
+Not idempotent: 0/1114
+Ignored files: 250
+Parse errors: 0/1114
 Expected parser errors: 36
 Unsupported option sets: 14
 
@@ -60,6 +60,39 @@ Unsupported option sets: 14
 
 # Known divergences
 
+## Keep JSDoc casts bound to their original receiver
+
+- js/comments-closure-typecast/comment-in-the-middle.js (default options)
+- js/comments-closure-typecast/no-semi/not-on-same-line.js (semi: false)
+- js/comments-closure-typecast/no-semi/with-other-comments.js (semi: false)
+
+## Keep comments before their array elision comma
+
+- js/arrays/numbers-with-holes.js (default options)
+
+## Keep ignore markers on their original verbatim target
+
+- js/ignore/issue-11077.js (default options)
+- js/ignore/issue-13737.js (default options)
+- js/ignore/issue-14404.js (default options)
+- js/ignore/semi/class-expression-decorator.js (default options)
+- js/ignore/semi/class-expression-decorator.js (semi: false)
+- js/ignore/semi/head-ignored.js (default options)
+- js/ignore/semi/head-ignored.js (semi: false)
+
+## Keep signature comments outside the body they precede
+
+- js/class-comment/misc.js (default options)
+- js/comments/function-declaration.js (default options)
+- js/comments/function-declaration.js (semi: false)
+- js/comments/function/18146.js (default options)
+- js/comments/function/between-parentheses-and-function-body.js (default options)
+
+## Keep source parentheses around commented curried arrow bodies
+
+- js/arrows/currying-4.js (arrowParens: "always")
+- js/arrows/currying-4.js (arrowParens: "avoid")
+
 ## Preserve comments on their original side of operator and terminator tokens
 
 - js/babel-plugins/bigint.js (default options)
@@ -70,6 +103,30 @@ Unsupported option sets: 14
 - js/comments/empty-statements.js (semi: false)
 - js/comments/variable-declarator.js (default options)
 - js/comments/variable-declarator.js (semi: false)
+
+## Preserve the complete hashbang payload
+
+- js/comments/trailing_space.js (default options)
+- js/comments/trailing_space.js (semi: false)
+
+## Preserve the original rendered JSX text
+
+- js/unicode/nbsp-jsx.js (default options)
+- jsx/escape/nbsp.js (default options)
+- jsx/text-wrap/test.js (default options)
+
+## Preserve which lines TypeScript diagnostic directives cover
+
+- js/comments/issue-11050.js (default options)
+- js/comments/issue-11050.js (semi: false)
+
+## Prettier 3.9.9 changes these outputs on a second pass
+
+- js/arrows/arrow-chain-with-trailing-comments.js (arrowParens: "always")
+- js/arrows/arrow-chain-with-trailing-comments.js (arrowParens: "avoid")
+- js/comments/tagged-template-literal.js (default options)
+- js/comments/tagged-template-literal.js (semi: false)
+- jsx/comments/in-attributes.js (bracketSameLine: true)
 
 # Failed
 
