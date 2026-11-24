@@ -1,0 +1,107 @@
+formatter * prettier 3.10.1 * markdown
+========================================
+Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
+Scope: physical Markdown files and snapshot snippets
+Embedded languages: SWC for nested Markdown, Prettier plugins for other languages
+Passed: 1478/1489 (99.26%)
+Snapshot matched: 1478/1489
+Source and AST output parity: 1489/1489
+Mismatched: 11/1489
+Known mismatches: 11/1489
+Unclassified mismatches: 0/1489
+Not idempotent: 0/1489
+Cases compared after fence alignment: 1489/1489
+Fence alignment differences: 0/1489
+Unsupported cases: 2
+
+# Suites
+
+auto-link: 289/289 matched, 0 not idempotent, 0 unsupported
+blockquote: 30/30 matched, 0 not idempotent, 0 unsupported
+blockquote/prose-wrap-always: 5/5 matched, 0 not idempotent, 0 unsupported
+break: 2/2 matched, 0 not idempotent, 0 unsupported
+break/list-item: 2/2 matched, 0 not idempotent, 0 unsupported
+broken-plugins: 1/1 matched, 0 not idempotent, 0 unsupported
+code: 31/31 matched, 0 not idempotent, 0 unsupported
+code/angular: 8/8 matched, 0 not idempotent, 0 unsupported
+code/lwc: 4/4 matched, 0 not idempotent, 0 unsupported
+commonmark-test-suite: 640/650 matched, 0 not idempotent, 0 unsupported
+commonmark-test-suite-legacy: 66/67 matched, 0 not idempotent, 0 unsupported
+cursor: 0/0 matched, 0 not idempotent, 1 unsupported
+definition: 3/3 matched, 0 not idempotent, 0 unsupported
+delete: 2/2 matched, 0 not idempotent, 0 unsupported
+emphasis: 10/10 matched, 0 not idempotent, 0 unsupported
+fenced-code-block: 5/5 matched, 0 not idempotent, 0 unsupported
+footnote: 2/2 matched, 0 not idempotent, 0 unsupported
+footnoteDefinition: 16/16 matched, 0 not idempotent, 0 unsupported
+footnoteReference: 1/1 matched, 0 not idempotent, 0 unsupported
+front-matter: 4/4 matched, 0 not idempotent, 0 unsupported
+gfm-test-suite: 47/47 matched, 0 not idempotent, 0 unsupported
+heading: 5/5 matched, 0 not idempotent, 0 unsupported
+heading/setext: 10/10 matched, 0 not idempotent, 0 unsupported
+html: 24/24 matched, 0 not idempotent, 0 unsupported
+html/html: 6/6 matched, 0 not idempotent, 0 unsupported
+ignore: 3/3 matched, 0 not idempotent, 0 unsupported
+image: 3/3 matched, 0 not idempotent, 0 unsupported
+imageReference: 4/4 matched, 0 not idempotent, 0 unsupported
+indentation: 1/1 matched, 0 not idempotent, 0 unsupported
+inlineCode: 18/18 matched, 0 not idempotent, 0 unsupported
+jsx-semi: 2/2 matched, 0 not idempotent, 0 unsupported
+link: 7/7 matched, 0 not idempotent, 0 unsupported
+link/parser-regression: 2/2 matched, 0 not idempotent, 0 unsupported
+link/quotes: 4/4 matched, 0 not idempotent, 0 unsupported
+linkReference: 14/14 matched, 0 not idempotent, 0 unsupported
+linkReference/case-and-space: 3/3 matched, 0 not idempotent, 0 unsupported
+liquid: 26/26 matched, 0 not idempotent, 0 unsupported
+list: 23/23 matched, 0 not idempotent, 0 unsupported
+list/blank-lines: 5/5 matched, 0 not idempotent, 0 unsupported
+list/empty-list-items: 2/2 matched, 0 not idempotent, 0 unsupported
+list/html-before-nested-list: 3/3 matched, 0 not idempotent, 0 unsupported
+list/html-indent: 4/4 matched, 0 not idempotent, 0 unsupported
+list/huge-first-number: 1/1 matched, 0 not idempotent, 0 unsupported
+list/indent: 3/3 matched, 0 not idempotent, 1 unsupported
+list/parser-regression: 8/8 matched, 0 not idempotent, 0 unsupported
+list/tab-width: 1/1 matched, 0 not idempotent, 0 unsupported
+list/task-list: 1/1 matched, 0 not idempotent, 0 unsupported
+long-table: 2/2 matched, 0 not idempotent, 0 unsupported
+markdown: 4/4 matched, 0 not idempotent, 0 unsupported
+math: 7/7 matched, 0 not idempotent, 0 unsupported
+multiparser-css: 1/1 matched, 0 not idempotent, 0 unsupported
+multiparser-js: 4/4 matched, 0 not idempotent, 0 unsupported
+multiparser-json: 3/3 matched, 0 not idempotent, 0 unsupported
+paragraph: 18/18 matched, 0 not idempotent, 0 unsupported
+spec-legacy: 5/5 matched, 0 not idempotent, 0 unsupported
+splitCjkText: 8/8 matched, 0 not idempotent, 0 unsupported
+strong: 2/2 matched, 0 not idempotent, 0 unsupported
+table: 9/9 matched, 0 not idempotent, 0 unsupported
+table/empty-table: 4/4 matched, 0 not idempotent, 0 unsupported
+thematicBreak: 2/2 matched, 0 not idempotent, 0 unsupported
+toml: 2/2 matched, 0 not idempotent, 0 unsupported
+wiki-link: 48/48 matched, 0 not idempotent, 0 unsupported
+wiki-link/alias: 1/1 matched, 0 not idempotent, 0 unsupported
+word: 1/1 matched, 0 not idempotent, 0 unsupported
+yaml: 6/6 matched, 0 not idempotent, 0 unsupported
+
+# Known divergences
+
+## Preserve literal emphasis markers and their surrounding emphasis pairs
+
+- markdown/commonmark-test-suite/snippet: example-412.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-438.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-441.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-450.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-453.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-469.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-470.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite-legacy/snippet: 0.25/example-441.md (Emphasis and strong emphasis) - {"proseWrap":"always"}
+
+## Preserve whitespace in unformatted Markdown code blocks
+
+- markdown/commonmark-test-suite/snippet: example-112.md (Indented code blocks) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-118.md (Indented code blocks) - {"proseWrap":"always"}
+- markdown/commonmark-test-suite/snippet: example-129.md (Fenced code blocks) - {"proseWrap":"always"}
+
+# Unsupported cases
+
+- markdown/cursor/17227.md: unsupported Prettier option cursorOffset=1
+- markdown/list/indent/indent.md - {"proseWrap":"always","tabWidth":999}: unsupported Prettier option tabWidth=999

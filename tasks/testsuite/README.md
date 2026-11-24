@@ -38,7 +38,8 @@ worktrees sharing a Git common directory.
 
 ## Formatter conformance
 
-Run the Prettier compatibility matrix:
+Install the workspace JavaScript dependencies before running the Prettier
+compatibility matrix.
 
 ```sh
 cargo run -p testsuite --bin formatter --profile conformance
@@ -55,12 +56,29 @@ entry-point parity, and second-pass idempotency. These checks do not establish
 full semantic equivalence. Formatting and parser failures remain visible as
 syntax support grows.
 
-Summaries are written to `snapshots/formatter_prettier_{js,typescript}.snap`.
-All output mismatches count toward the raw snapshot match rate. Register a
-verified difference in [the divergence list](src/formatter/divergences.rs) by
-fixture and option set. A full run fails if a registered option set no longer
-produces an output mismatch. Output that fails a correctness check remains a
-failure. CI checks the generated reports against the committed snapshots.
+All output mismatches count toward the raw snapshot match rate. The formatter
+suites track verified differences by fixture and option set in
+[the divergence list](src/formatter/divergences.rs). A full run fails if a
+registered option set no longer produces an output mismatch. Output that fails
+a correctness check remains a failure.
+
+The Markdown suite includes CommonMark and GFM examples from the upstream
+snapshots. SWC formats the document and nested Markdown fences. Other fenced
+languages and front matter use the same plugins as Prettier. Rust combines their
+Docs with the surrounding Markdown. Unlabeled fences, unknown languages, and
+disabled embedding preserve the fenced body, including trailing spaces. The
+suite compares output from the source and AST entry points and formats the
+result a second time. Registered Markdown differences also require an exact
+match with the recorded SWC output.
+
+Use `--markdown` to run only the Markdown suite.
+
+```sh
+cargo run -p testsuite --bin formatter --profile conformance -- --markdown
+```
+
+The default run writes `snapshots/formatter_prettier_{js,typescript,markdown}.snap`.
+CI checks the generated reports against the committed snapshots.
 
 Inspect matching inputs and detailed diffs without changing reports:
 

@@ -4213,6 +4213,7 @@ dependencies = [
 name = "testsuite"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "clap",
  "jsonc-parser 0.34.0",
  "jwalk",
@@ -4230,7 +4231,10 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_formatter",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
  "swc_next_formatter_js",
+ "swc_next_markdown_parser",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-//! Prettier conformance for the JavaScript, JSX, and TypeScript formatter.
+//! Prettier conformance for JavaScript, JSX, TypeScript and Markdown formatting.
 //!
 //! The runner reads Prettier's own `runFormatTest` specifications and committed
 //! Jest snapshots. This keeps the oracle independent from both our formatter
@@ -19,7 +19,10 @@ use std::{
 };
 
 mod divergences;
+mod markdown;
 mod options;
+
+pub use markdown::run_markdown_conformance;
 
 use divergences::KNOWN_DIVERGENCES;
 use options::{format_options, unsupported_option_names};
