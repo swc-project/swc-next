@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 802
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1072/1083 (98.98%)
-Snapshot matched: 1072/1083
+Passed: 1066/1083 (98.43%)
+Snapshot matched: 1066/1083
 AST parity: 1083/1083
 AST mismatched: 0/1083
 AST format errors: 0/1083
-Mismatched: 11/1083
+Mismatched: 17/1083
 Format errors: 0/1083
 Panicked: 0/1083
 Not idempotent: 0/1083
@@ -58,8 +58,12 @@ Unsupported option sets: 14
 
 # Failed
 
+- js/babel-plugins/bigint.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/binary-expressions/chain-expression.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/class-comment/superclass.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/comments/binary-expressions.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/dangling_for.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
+- js/comments/empty-statements.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/try.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/variable-declarator.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/while-like/switch.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent

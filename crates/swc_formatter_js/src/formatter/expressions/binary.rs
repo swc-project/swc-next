@@ -1485,28 +1485,60 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments.len()
         };
         let comments = self.comments.take(comments.len());
-        let mut trailing_count = 0;
-        let mut previous_end = left_end;
-        for (index, comment) in comments[..trailing_limit].iter().enumerate() {
-            if self.line_breaks(previous_end, comment.span.start) != 0 {
-                break;
+        let before_operator = &comments[..before_count];
+        let retains_operator_gap = before_operator
+            .iter()
+            .position(|comment| comment.kind == CommentKind::Line)
+            .is_some_and(|line| {
+                comments
+                    .get(line + 1)
+                    .is_some_and(|next| next.span.end <= right.span(self.ast).start)
+                    || self.comment_run_has_own_line_tail(before_operator, left_end)
+            });
+        let trailing_count = if retains_operator_gap {
+            before_count
+        } else {
+            let mut trailing_count = 0;
+            let mut previous_end = left_end;
+            let mut previous_is_line = false;
+            for (index, comment) in comments[..trailing_limit].iter().enumerate() {
+                let is_line = comment.kind == CommentKind::Line;
+                let breaks = if previous_is_line || is_line {
+                    self.source_line_breaks(previous_end, comment.span.start)
+                } else {
+                    self.line_breaks(previous_end, comment.span.start)
+                };
+                if breaks != 0 {
+                    break;
+                }
+                previous_end = comment.span.end;
+                previous_is_line = is_line;
+                if index < before_count
+                    || is_line
+                    || self.line_breaks(
+                        comment.span.end,
+                        comments
+                            .get(index + 1)
+                            .map_or(right_start, |next| next.span.start),
+                    ) != 0
+                {
+                    trailing_count = index + 1;
+                }
             }
-            previous_end = comment.span.end;
-            if index < before_count
-                || comment.kind == CommentKind::Line
-                || self.line_breaks(
-                    comment.span.end,
-                    comments
-                        .get(index + 1)
-                        .map_or(right_start, |next| next.span.start),
-                ) != 0
-            {
-                trailing_count = index + 1;
-            }
-        }
+            trailing_count
+        };
         let (trailing, leading) = comments.split_at(trailing_count);
-        self.format_comment_run(trailing, CommentRunLayout::SourceAfter(left_end), writer)?;
-        writer.space();
+        let trailing_layout = if retains_operator_gap {
+            CommentRunLayout::SourceLineTail(left_end)
+        } else {
+            CommentRunLayout::SourceAfter(left_end)
+        };
+        self.format_comment_run(trailing, trailing_layout, writer)?;
+        if let Some(&last) = trailing.last().filter(|_| retains_operator_gap) {
+            self.comment_gap_after(last, operator_start, writer);
+        } else {
+            writer.space();
+        }
         writer.text(operator);
         let leading_before = leading.partition_point(|comment| comment.span.end <= operator_start);
         let (before, after) = leading.split_at(leading_before);
@@ -1527,6 +1559,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             mode,
             opening: if matches!(layout, OperandLayout::Inline)
+                && !retains_operator_gap
                 && trailing
                     .last()
                     .is_some_and(|comment| comment.kind == CommentKind::Line)
@@ -1545,7 +1578,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut comments = comments.iter().peekable();
         while let Some(comment) = comments.next() {
             let following = comments.peek().map_or(next_start, |next| next.span.start);
-            if self.line_breaks(comment.span.end, following) != 0 {
+            if comment.kind == CommentKind::Line
+                || self.line_breaks(comment.span.end, following) != 0
+            {
                 return true;
             }
         }

@@ -4930,7 +4930,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
                 return self.format_expression_tail_with_layout(
                     tail,
-                    CommentRunLayout::ConditionalTail,
+                    CommentRunLayout::SourceLineTail,
                     array_comments,
                     writer,
                 );

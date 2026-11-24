@@ -10366,6 +10366,68 @@
         "prettierNative": "const x = someLongConditionName && { // c\n  aLongPropertyName: 1,\n  anotherLongPropertyName: 2,\n  third: 3,\n};\n"
       }
     ],
+    "js/expressions/binary/unicode-operator-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a <\n  // note\n  b;\n",
+        "prettierNative": "a < // note\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a <\n  // note\n  b\n",
+        "prettierNative": "a < // note\n  b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a <\n  // note\n  b;\n",
+        "prettierNative": "a < // note\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a <\n  // note\n  b;\n",
+        "prettierNative": "a < // note\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "a <\n\t// note\n\tb;\n",
+        "prettierNative": "a < // note\n\tb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "a <\r\n  // note\r\n  b;\r\n",
+        "prettierNative": "a < // note\r\n  b;\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "a <\n  // note\n  b;\n",
+        "prettierNative": "a < // note\n  b;\n"
+      }
+    ],
     "js/expressions/call-boundaries/empty-prefix/cast-callee.js": [
       {
         "options": {
@@ -13896,6 +13958,68 @@
         },
         "swcPlugin": "label: /*#__PURE__*/\n(run()\n// prettier-ignore\n).value;\n",
         "prettierNative": "/*#__PURE__*/\nlabel: (run()\n// prettier-ignore\n).value;\n"
+      }
+    ],
+    "js/expressions/logical/unicode-operator-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a // first\n  /* second */\n  &&\n  b;\n",
+        "prettierNative": "a && // first\n  /* second */\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a // first\n  /* second */\n  &&\n  b\n",
+        "prettierNative": "a && // first\n  /* second */\n  b\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a // first\n  /* second */\n  &&\n  b;\n",
+        "prettierNative": "a && // first\n  /* second */\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "a // first\n  /* second */\n  &&\n  b;\n",
+        "prettierNative": "a && // first\n  /* second */\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "a // first\n\t/* second */\n\t&&\n\tb;\n",
+        "prettierNative": "a && // first\n\t/* second */\n\tb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "a // first\r\n  /* second */\r\n  &&\r\n  b;\r\n",
+        "prettierNative": "a && // first\r\n  /* second */\r\n  b;\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "a // first\n  /* second */\n  &&\n  b;\n",
+        "prettierNative": "a && // first\n  /* second */\n  b;\n"
       }
     ],
     "js/expressions/member/computed-lines.js": [
@@ -29803,6 +29927,35 @@
         },
         "swcPlugin": "let x /* prettier-ignore */\n= 1+2\n",
         "prettierNative": "let x = /* prettier-ignore */ 1+2\n"
+      }
+    ],
+    "js/templates/slot-binary-own-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "_ = `${\n  a\n  // comment\n  +\n  b\n}`;\n",
+        "prettierNative": "_ = `${\n  a +\n  // comment\n  b\n}`;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "_ = `${\n  a\n  // comment\n  +\n  b\n}`\n",
+        "prettierNative": "_ = `${\n  a +\n  // comment\n  b\n}`\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "_ = `${\r\n  a\r\n  // comment\r\n  +\r\n  b\r\n}`;\r\n",
+        "prettierNative": "_ = `${\r\n  a +\r\n  // comment\r\n  b\r\n}`;\r\n"
       }
     ],
     "js/templates/tag-boundary/packets.js": [
