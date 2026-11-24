@@ -4019,6 +4019,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_formatter_markdown_bridge"
+version = "0.8.1"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_formatter_markdown",
+ "swc_next_markdown_parser",
+]
+
+[[package]]
 name = "swc_next_generator_bridge"
 version = "0.8.1"
 dependencies = [

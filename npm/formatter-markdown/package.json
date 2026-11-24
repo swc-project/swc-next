@@ -1,0 +1,74 @@
+{
+  "name": "@swc-next/formatter-markdown",
+  "version": "0.8.1",
+  "description": "Experimental and unstable Markdown document producer for SWC Next",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "npm/formatter-markdown"
+  },
+  "main": "dist/index.js",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/binding.d.ts",
+    "dist/binding.js",
+    "dist/index.d.ts",
+    "dist/index.js"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
+    "build:js": "pnpm -w exec rslib build --lib formatter-markdown",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter-markdown --output-dir dist",
+    "test": "pnpm build:js && node --test test/*.test.js",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
+    "prepack": "pnpm build:js"
+  },
+  "keywords": [
+    "formatter",
+    "markdown",
+    "swc"
+  ],
+  "license": "Apache-2.0",
+  "napi": {
+    "binaryName": "swc-next-formatter-markdown",
+    "packageName": "@swc-next/formatter-markdown-binding",
+    "targets": [
+      "aarch64-apple-darwin",
+      "aarch64-pc-windows-msvc",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "armv7-unknown-linux-gnueabihf",
+      "i686-pc-windows-msvc",
+      "powerpc64le-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-musl",
+      "s390x-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl"
+    ]
+  },
+  "wasm": {
+    "binaryName": "swc-next-formatter-markdown",
+    "packageName": "@swc-next/formatter-markdown-binding-wasm"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "@swc-next/formatter": "workspace:*",
+    "@swc-next/protocol": "workspace:*",
+    "@types/node": "catalog:",
+    "cross-env": "catalog:"
+  }
+}

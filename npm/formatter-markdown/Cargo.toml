@@ -1,0 +1,22 @@
+[package]
+description           = "Experimental and unstable native and Wasm Markdown formatter bindings"
+edition               = "2024"
+homepage.workspace    = true
+keywords              = ["markdown", "formatting"]
+license.workspace     = true
+name                  = "swc_next_formatter_markdown_bridge"
+repository.workspace  = true
+version               = "0.8.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+swc_next_bridge             = { workspace = true }
+swc_next_formatter_core     = { workspace = true }
+swc_next_formatter_host     = { workspace = true }
+swc_next_formatter_markdown = { workspace = true }
+swc_next_markdown_parser    = { workspace = true }
+
+[build-dependencies]
+napi-build = { workspace = true }

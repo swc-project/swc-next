@@ -10,6 +10,7 @@ const components = [
   "core-browser",
   "formatter",
   "formatter-js",
+  "formatter-markdown",
   "formatter-prettier-plugin",
 ];
 
