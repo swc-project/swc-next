@@ -370,15 +370,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ConditionPrefix::Canonical => {
                 let split = leading.partition_point(|comment| comment.span.end <= opening);
                 let (before_opening, leading) = leading.split_at(split);
-                let mut mode = self.content_mode(leading);
-                if self.content_mode(before_opening) == ContentMode::Verbatim
+                let mode = if !self.has_suppression {
+                    ContentMode::Formatted
+                } else if self.content_mode(before_opening) == ContentMode::Verbatim
                     && self
                         .comment_binding(before_opening, head, Some(span))
                         .allows_relocation(Some(span))
                 {
                     // The ignore's content owner is independent of the opener's comments.
-                    mode = ContentMode::Verbatim;
-                }
+                    ContentMode::Verbatim
+                } else {
+                    self.content_mode(leading)
+                };
                 let inline = before_opening.is_empty()
                     && leading.is_empty()
                     && trailing.is_empty()
@@ -394,7 +397,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 (ConditionHeader::Source(source), &[][..], mode, false)
             }
         };
-        let mode = if leading_mode == ContentMode::Verbatim {
+        let mode = if !self.has_suppression || leading_mode == ContentMode::Verbatim {
             leading_mode
         } else {
             self.trailing_content_mode(Span::new(span.end, closing), true)
