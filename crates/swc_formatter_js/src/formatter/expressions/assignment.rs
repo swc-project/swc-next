@@ -2021,13 +2021,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary.after_operator =
                     self.comment_gap_after_constraint(*last, first.span.start);
             }
-            if let Some((last, previous)) = boundary.before.split_last()
-                && last.kind == CommentKind::Line
-                && self.line_breaks(
-                    previous.last().map_or(left_end, |comment| comment.span.end),
-                    last.span.start,
-                ) != 0
-                && boundary.before_operator == LineConstraint::Unconstrained
+            if boundary.before_operator == LineConstraint::Unconstrained
+                && self.comment_run_has_own_line_tail(boundary.before, left_end)
             {
                 // Own-line comments are emitted directly, unlike deferred line suffixes.
                 boundary.before_operator = LineConstraint::NewLine(1);

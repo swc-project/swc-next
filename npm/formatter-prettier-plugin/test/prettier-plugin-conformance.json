@@ -563,6 +563,33 @@
         "prettierNative": "target = // @ts-expect-error\n  /** @type {number} */ (first);\n"
       }
     ],
+    "js/assignment-operator-comments/unicode-own-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "var a // first\n  // second\n  =\n  1,\n  b;\n",
+        "prettierNative": "var a = // first\n    // second\n    1,\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "var a // first\n  // second\n  =\n  1,\n  b;\n",
+        "prettierNative": "var a = // first\n    // second\n    1,\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "var a // first\n  // second\n  =\n  1,\n  b\n",
+        "prettierNative": "var a = // first\n    // second\n    1,\n  b\n"
+      }
+    ],
     "js/assignment-pattern/array-separator-ownership/hole-comments/input.js": [
       {
         "options": {
