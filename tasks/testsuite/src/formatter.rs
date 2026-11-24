@@ -192,6 +192,12 @@ const IGNORE: &[IgnorePattern] = &[
     // Preserve lexical order around empty constructor parameters. Prettier
     // swaps comments outside the parameter list with comments inside it.
     IgnorePattern::Exact("typescript/comments/method_types.ts"),
+    // Retain parentheses that keep each tail comment with its curried arrow body.
+    IgnorePattern::Exact("js/arrows/currying-4.js"),
+    // Keep own-line JSDoc before the inner arrow on its own line.
+    IgnorePattern::Exact("js/arrows/issue-17421.js"),
+    // Keep block comments that start on the arrow's line on that line.
+    IgnorePattern::Exact("typescript/arrow/comments/issue-11100.ts"),
     // Keep receiver-bound ignore markers inside their source pair. Moving them
     // before the statement expands their target from BinaryExpression or
     // AwaitExpression to the complete ExpressionStatement.

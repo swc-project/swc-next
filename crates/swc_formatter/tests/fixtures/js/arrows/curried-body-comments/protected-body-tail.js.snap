@@ -6,20 +6,24 @@ const f = a => (b => /** @type {string} */ (3) /* inner */) /* outer */;
 ---------- Options ----------
 {"arrowParentheses":"always","indentStyle":"space","lineWidth":32}
 ---------- Output ----------
-const f = (a) => (b) =>
-  /** @type {string} */ (
-    3
-  ); /* inner */ /* outer */
+const f = (a) => (
+  (b) =>
+    /** @type {string} */ (
+      3
+    ) /* inner */
+); /* outer */
 
 ---------- Options ----------
 {"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":32,"semicolons":"as-needed"}
 ---------- Output ----------
-const f = a => b =>
-  /** @type {string} */ (
-    3
-  ) /* inner */ /* outer */
+const f = a => (
+  b =>
+    /** @type {string} */ (
+      3
+    ) /* inner */
+) /* outer */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const f = (a) => (b) => /** @type {string} */ (3); /* inner */ /* outer */
+const f = (a) => ((b) => /** @type {string} */ (3) /* inner */); /* outer */

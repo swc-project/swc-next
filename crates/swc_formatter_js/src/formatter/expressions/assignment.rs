@@ -438,7 +438,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             });
         }
-        let content = self.expression_content(right);
+        let mut content = self.expression_content(right);
+        if self.has_type_casts
+            && let ExprData::SequenceExpression(sequence) = content.data
+            && let Some(removed) = content.parentheses
+            && (self.sequence_first_member_keeps_cast_pair(sequence)
+                || removed.head.has_comments
+                    && self.assignment_cast_prefix_needs_source_pair(
+                        target.operator_span.end,
+                        Span::new(removed.source.outer.start, removed.source.inner.start),
+                    )
+                    && self.sequence_head_has_source_cast(sequence))
+        {
+            // Keep the RHS opener in front of the sequence's exterior head.
+            content = ExpressionContent {
+                expression: right,
+                data: self.ast.expr_data(right),
+                parentheses: None,
+            };
+        }
         let data = content.data;
         let operator = target.operator();
         let parent = match context.position {
@@ -1609,6 +1627,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // Only an actual released packet needs an emitted owner or gap.
                 // Retained heads have already contributed their own-line constraint.
                 let Some(head) = released_head.filter(|head| !head.is_empty()) else {
+                    boundary.cast_leading =
+                        self.assignment_released_sequence_cast_layout(content.data, *head_context);
                     break 'prepared boundary;
                 };
                 let released =
@@ -2055,6 +2075,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    fn assignment_cast_prefix_needs_source_pair(&self, operator_end: u32, span: Span) -> bool {
+        self.comments
+            .in_range(span)
+            .split_first()
+            .is_some_and(|(&prefix, following)| {
+                self.comment_semantics(prefix).is_ordinary()
+                    && (self.layout_position_starts_line(prefix.span.start)
+                        || prefix.kind == CommentKind::Block
+                            && following.first().is_some_and(|&annotation| {
+                                self.comment_semantics(annotation).type_cast
+                                    && self.layout_position_starts_line(annotation.span.start)
+                            })
+                        || self
+                            .comments
+                            .in_range(Span::new(operator_end, span.start))
+                            .last()
+                            .is_some_and(|exterior| {
+                                self.line_breaks(exterior.span.end, span.start) != 0
+                            }))
+            })
+    }
+
     fn assignment_generated_cast_layout(
         &self,
         content: &ExpressionContent,
@@ -2062,7 +2104,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
     ) -> Option<CastLeadingLayout> {
         let packet = heads.released.unwrap_or(heads.leading);
-        let annotation = packet.annotation?;
+        let Some(annotation) = packet.annotation else {
+            return self.assignment_released_sequence_cast_layout(content.data, context);
+        };
         let ExprData::SequenceExpression(sequence) = content.data else {
             return None;
         };
@@ -2087,6 +2131,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CastLeadingLayout::Flat
             },
         )
+    }
+
+    fn assignment_released_sequence_cast_layout(
+        &self,
+        data: ExprData,
+        context: ExpressionContext<'ast>,
+    ) -> Option<CastLeadingLayout> {
+        let ExprData::SequenceExpression(sequence) = data else {
+            return None;
+        };
+        let gap = self.released_sequence_cast_gap(sequence, context)?;
+        Some(if self.line_breaks(gap.start, gap.end) != 0 {
+            CastLeadingLayout::Break
+        } else {
+            CastLeadingLayout::Flat
+        })
     }
 
     fn assignment_layout(

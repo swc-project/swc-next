@@ -1511,20 +1511,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentBinding::Unbound
     }
 
+    pub(super) fn source_comments_in_range(&self, span: Span) -> &'ast [Comment] {
+        let comments = self.ast.comments();
+        let first = comments.partition_point(|comment| comment.span.start < span.start);
+        let inside = &comments[first..];
+        let count = inside.partition_point(|comment| comment.span.end <= span.end);
+        &inside[..count]
+    }
+
     fn source_parentheses_comments(
         &self,
         boundary: SourceParentheses,
     ) -> SourceParenthesesComments<'ast> {
-        let comments = self.ast.comments();
-        let range = |span: Span| {
-            let first = comments.partition_point(|comment| comment.span.start < span.start);
-            let inside = &comments[first..];
-            let count = inside.partition_point(|comment| comment.span.end <= span.end);
-            &inside[..count]
-        };
         SourceParenthesesComments {
-            head: range(Span::new(boundary.outer.start, boundary.inner.start)),
-            tail: range(Span::new(boundary.inner.end, boundary.outer.end)),
+            head: self
+                .source_comments_in_range(Span::new(boundary.outer.start, boundary.inner.start)),
+            tail: self.source_comments_in_range(Span::new(boundary.inner.end, boundary.outer.end)),
         }
     }
 
@@ -2618,6 +2620,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || !trailing_binding.allows_relocation(None)
                     && context.tail_owner == TailOwner::ParentOperation
                 || self.ignored_operand_owns_operation_head(ignored, context.position)
+                // The alternate's own tail must stay inside the wrapper around its raw child.
+                || matches!(context.position, ExpressionPosition::ConditionalAlternate)
+                    && tail_end != 0
                 || matches!(
                     context.position,
                     ExpressionPosition::Statement(_)
@@ -3457,6 +3462,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    /// The caller owns the group. This pair always prints and encloses the operand's tail.
+    pub(super) fn format_parenthesized_operand(
+        &mut self,
+        writer: &mut Writer<'ast>,
+        operand: impl FnOnce(
+            &mut Self,
+            &mut Writer<'ast>,
+        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        writer.text("(");
+        writer.indent(|writer| {
+            writer.soft_line();
+            let tail = operand(self, writer)?;
+            self.format_expression_tail(tail, writer)
+        })?;
+        writer.soft_line();
+        writer.text(")");
+        Ok(ExpressionOutput::closed(None))
+    }
+
     fn format_expression_content_with_raw_end(
         &mut self,
         expression: Expr,
@@ -3596,15 +3621,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let _scope = self.recursion_scope(expression)?;
             if parenthesize && Self::binary_grammar_pair_owns_indent(context.position) {
                 return writer.group(false, |writer| {
-                    writer.text("(");
-                    writer.indent(|writer| {
-                        writer.soft_line();
-                        let tail = self.format_binary_enclosed(binary, writer)?;
-                        self.format_expression_tail(tail, writer)
-                    })?;
-                    writer.soft_line();
-                    writer.text(")");
-                    Ok(ExpressionOutput::closed(None))
+                    self.format_parenthesized_operand(writer, |formatter, writer| {
+                        formatter.format_binary_enclosed(binary, writer)
+                    })
                 });
             }
             if parenthesize {
@@ -3632,21 +3651,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let _scope = self.recursion_scope(conditional)?;
             return writer.group(false, |writer| {
-                writer.text("(");
-                writer.indent(|writer| {
-                    writer.soft_line();
-                    let tail = self.format_conditional(
+                self.format_parenthesized_operand(writer, |formatter, writer| {
+                    formatter.format_conditional(
                         conditional,
                         context
                             .with_expression_start(ExpressionStart::None)
                             .with_operand_indent(OperandIndent::Parent),
                         writer,
-                    )?;
-                    self.format_expression_tail(tail, writer)
-                })?;
-                writer.soft_line();
-                writer.text(")");
-                Ok(ExpressionOutput::closed(None))
+                    )
+                })
             });
         }
         if parenthesize {
@@ -4907,6 +4920,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(head) = sequence_head {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(head.owner());
             }
+            if matches!(context.position, ExpressionPosition::ConditionalAlternate)
+                || (matches!(boundary.inner_target,
+                        ParenthesisInner::Expression(expression)
+                        if matches!(self.ast.expr_data(expression), ExprData::ConditionalExpression(_)))
+                    && Self::conditional_tail_needs_enclosure(context))
+            {
+                let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
+                let tail =
+                    self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
+                return self.format_expression_tail_in_pair(tail, true, array_comments, writer);
+            }
             let tail = content(self, inner_context, array_comments.as_deref_mut(), writer)?;
             if matches!(
                 context.position,
@@ -4923,7 +4947,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
-            self.format_expression_tail_with_array_comments(tail, array_comments, writer)
+            if matches!(context.position, ExpressionPosition::ArrowBody) {
+                self.format_expression_tail_in_pair(tail, false, array_comments, writer)
+            } else {
+                self.format_expression_tail_with_array_comments(tail, array_comments, writer)
+            }
         };
         let write = |writer: &mut Writer<'ast>| {
             writer.text("(");
@@ -6060,6 +6088,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn source_pair_has_line_owned_tail(&self, content: &ExpressionContent) -> bool {
+        content
+            .parentheses
+            .and_then(|removed| removed.tail)
+            .is_some_and(|tail| {
+                self.comments.in_range(tail.span).iter().any(|comment| {
+                    comment.kind == CommentKind::Line
+                        || self.layout_position_starts_line(comment.span.start)
+                })
+            })
+    }
+
     pub(super) fn protected_grammar_parentheses(
         &self,
         content: &ExpressionContent,
@@ -6071,7 +6111,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(frame) = self.prepare_diagnostic_head_frame(content, context) {
             return Some(frame.boundary);
         }
-        let boundary = content.parentheses?.source;
+        let removed = content.parentheses?;
+        let boundary = removed.source;
+        if matches!(content.data, ExprData::ConditionalExpression(_))
+            && Self::conditional_tail_needs_enclosure(context)
+            && removed.tail.is_some()
+        {
+            // The source tail precedes the grammar closer, including at a type suffix.
+            return Some(boundary);
+        }
         let breakable = match content.data {
             ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) => {
                 Self::binary_grammar_pair_owns_indent(context.position)

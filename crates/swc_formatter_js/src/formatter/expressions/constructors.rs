@@ -99,6 +99,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             if let Some(types) = types {
                 self.format_expression_type_arguments(types, tail, writer)?;
+            } else if let Some(tail) = &tail
+                && tail
+                    .comments
+                    .iter()
+                    .any(|comment| self.source_position_starts_line(comment.span.start))
+            {
+                // The synthesized list has the same opening boundary as a real empty list.
+                self.comments.claim(tail.comments)?;
+                self.format_empty_argument_prefix(tail.comments, None, tail.source_end, writer)?;
             } else {
                 self.format_expression_tail(tail, writer)?;
             }

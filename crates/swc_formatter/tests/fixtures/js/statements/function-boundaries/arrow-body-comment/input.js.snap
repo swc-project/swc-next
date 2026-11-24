@@ -8,18 +8,20 @@ value =>
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-(
-  value,
-) => /* body */ {};
+(value) =>
+  /* body */
+  {};
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
-;(
-  value,
-) => /* body */ {}
+;(value) =>
+  /* body */
+  {}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-(value) => /* body */ {};
+(value) =>
+  /* body */
+  {};

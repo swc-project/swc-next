@@ -1,0 +1,12 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!(/** @type {number} */ (first), second // tail
+);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+!(
+  (/** @type {number} */ (first), second) // tail
+);

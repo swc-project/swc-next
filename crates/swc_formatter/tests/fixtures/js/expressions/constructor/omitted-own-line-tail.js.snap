@@ -1,0 +1,55 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = new (Ctor
+// line tail
+) + 1;
+
+const items = [new (Ctor
+/* block tail */
+), 1];
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const value =
+  new Ctor
+  // line tail
+  () + 1;
+
+const items = [
+  new Ctor
+  /* block tail */
+  (),
+  1,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const value =
+  new Ctor
+  // line tail
+  () + 1;
+
+const items = [
+  new Ctor
+  /* block tail */
+  (),
+  1,
+];
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+const value =
+  new Ctor
+  // line tail
+  () + 1
+
+const items = [
+  new Ctor
+  /* block tail */
+  (),
+  1,
+]

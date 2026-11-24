@@ -8,6 +8,7 @@ a, b);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-() =>
+() => (
   /* ordinary */
-  (a, b);
+  a, b
+);

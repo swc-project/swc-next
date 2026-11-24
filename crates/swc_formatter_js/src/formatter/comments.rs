@@ -104,6 +104,10 @@ pub(super) enum CommentRunLayout {
     /// Keep terminal Blocks in place and suffix an ordinary Line after a Block.
     SourceDangling,
     SourceAfter(u32),
+    /// Inside a retained operand, an ordinary visually inline line comment is a suffix.
+    EnclosedTail(u32),
+    /// Preserve source-only line gaps before a conditional's retained tail comments.
+    ConditionalTail(u32),
     /// Preserve source order when a released expression tail joins a statement suffix.
     StatementTail(u32),
     SourceLeading {
@@ -2183,15 +2187,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None => None,
             };
             let prepared = self.prepare_comment(comment)?;
+            let conditional_gap = if let CommentRunLayout::ConditionalTail(start) = layout {
+                let end = previous.as_ref().map_or(start, |comment| comment.span.end);
+                Some((end, self.source_line_breaks(end, comment.span.start)))
+            } else {
+                None
+            };
             let line_suffix = match (layout, comment.kind) {
+                (CommentRunLayout::ConditionalTail(_), CommentKind::Line) => {
+                    conditional_gap.is_some_and(|(_, breaks)| breaks == 0)
+                        && previous
+                            .as_ref()
+                            .is_none_or(|comment| comment.kind != CommentKind::Line)
+                }
                 (
-                    CommentRunLayout::SourceAfter(start) | CommentRunLayout::StatementTail(start),
+                    CommentRunLayout::SourceAfter(start)
+                    | CommentRunLayout::EnclosedTail(start)
+                    | CommentRunLayout::StatementTail(start),
                     CommentKind::Line,
                 ) => {
                     let end = previous
                         .as_ref()
                         .map_or(start, |previous| previous.span.end);
-                    self.source_line_breaks(end, comment.span.start) == 0
+                    let enclosed = matches!(layout, CommentRunLayout::EnclosedTail(_));
+                    !(enclosed
+                        && previous
+                            .as_ref()
+                            .is_some_and(|previous| previous.kind == CommentKind::Line))
+                        && (self.source_line_breaks(end, comment.span.start) == 0
+                            || enclosed
+                                && self.line_breaks(end, comment.span.start) == 0
+                                && self.comment_semantics(comment).is_ordinary())
                 }
                 (CommentRunLayout::SourceDangling, CommentKind::Line) => {
                     previous
@@ -2202,15 +2228,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 _ => false,
             };
-            if let Some(previous) = previous.as_ref() {
+            if let Some((start, breaks)) = conditional_gap
+                && breaks != 0
+                && self.line_breaks(start, comment.span.start) == 0
+            {
+                LineConstraint::NewLine(breaks).write(writer, FlatSeparator::Space, Writer::space);
+            } else if let Some(previous) = previous.as_ref() {
                 let nestled = previous.span.end == prepared.span.start
                     && previous.is_alignable()
                     && prepared.is_alignable();
                 if previous.kind == CommentKind::Line
-                    && (matches!(layout, CommentRunLayout::StatementTail(_))
-                        || adjacency
-                            .previous
-                            .is_some_and(|comment| comment.span == previous.span))
+                    && (matches!(
+                        layout,
+                        CommentRunLayout::StatementTail(_)
+                            | CommentRunLayout::EnclosedTail(_)
+                            | CommentRunLayout::ConditionalTail(_)
+                    ) || adjacency
+                        .previous
+                        .is_some_and(|comment| comment.span == previous.span))
                 {
                     // Flush the suffix and preserve the remaining source gap.
                     writer.hard_line();
@@ -2230,6 +2265,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | CommentRunLayout::SourceProjected(_)
                         | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
+                        | CommentRunLayout::EnclosedTail(_)
+                        | CommentRunLayout::ConditionalTail(_)
                         | CommentRunLayout::StatementTail(_)
                         | CommentRunLayout::SourceLeading { .. } => self
                             .comment_gap_after_with_packet(
@@ -2281,6 +2318,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             } else if let CommentRunLayout::SourceAfter(start)
+            | CommentRunLayout::EnclosedTail(start)
+            | CommentRunLayout::ConditionalTail(start)
             | CommentRunLayout::StatementTail(start) = layout
                 && !line_suffix
             {
@@ -2387,6 +2426,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 last.span.start,
             ) != 0
     }
+    pub(super) fn format_expression_tail_in_pair(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        conditional: bool,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if let Some(tail) = tail {
+            self.comments.claim(tail.comments)?;
+            let layout = if conditional {
+                CommentRunLayout::ConditionalTail(tail.source_end)
+            } else {
+                CommentRunLayout::EnclosedTail(tail.source_end)
+            };
+            self.format_comment_run_with_array_comments(
+                tail.comments,
+                layout,
+                array_comments,
+                writer,
+            )?;
+        }
+        Ok(())
+    }
+
     pub(super) fn format_expression_tail_with_array_comments(
         &mut self,
         tail: Option<ExpressionTail<'ast>>,

@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = cond ? (/* prettier-ignore */ fn(  1,2 ) /** @type {X} */) : <B>{a}<C /></B>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x = cond ? (/* prettier-ignore */ fn(  1,2 ) /** @type {X} */) : (
+  <B>
+    {a}
+    <C />
+  </B>
+);

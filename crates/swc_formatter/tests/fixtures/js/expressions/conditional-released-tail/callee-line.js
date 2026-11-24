@@ -1,0 +1,3 @@
+(flag ? yes : (no
+// fallback
+))();

@@ -3,7 +3,9 @@
 use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, GetSpan, SequenceExpression, Span};
 
 use super::assignment::OperatorTailDestination;
-use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParentheses};
+use super::parentheses::{
+    ExpressionContent, PreparedGeneratedEnclosure, ResolvedExpressionHead, SourceParentheses,
+};
 use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, HeadComments, TailOwner,
 };
@@ -111,7 +113,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let context = ExpressionContext::at(position);
         self.jsx_source_pair_is_enclosed(expression, content, context)
             || content.parentheses.is_some()
-                && self.expression_is_parenthesized(content.data, context)
+                && (self.expression_is_parenthesized(content.data, context)
+                    || self.sequence_member_cast_pair(content).is_some())
     }
 
     pub(super) fn sequence_member_parentheses(
@@ -128,8 +131,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let removed = content.parentheses?;
-        (removed.head.has_comments && self.expression_is_parenthesized(content.data, context))
-            .then_some(removed.source)
+        if !removed.head.has_comments {
+            return None;
+        }
+        if self.expression_is_parenthesized(content.data, context) {
+            return Some(removed.source);
+        }
+        self.sequence_member_cast_pair(content)
+    }
+
+    fn sequence_member_cast_pair(&self, content: &ExpressionContent) -> Option<SourceParentheses> {
+        let removed = content.parentheses?;
+        if !self.has_type_casts || !removed.head.has_comments {
+            return None;
+        }
+        // A tag inside one member's pair cannot become a cast on the whole sequence.
+        let head = Span::new(removed.source.outer.start, removed.source.inner.start);
+        (self
+            .comments
+            .in_range(head)
+            .iter()
+            .any(|&comment| self.comment_semantics(comment).type_cast)
+            && self.source_cast_head(content.expression).is_none())
+        .then_some(removed.source)
+    }
+
+    pub(super) fn sequence_first_member_keeps_cast_pair(
+        &self,
+        sequence: SequenceExpression,
+    ) -> bool {
+        self.has_type_casts
+            && sequence
+                .expressions(self.ast)
+                .first()
+                .is_some_and(|member| {
+                    let first = self.ast.get_node_in_sub_range(member);
+                    self.sequence_member_cast_pair(&self.expression_content(first))
+                        .is_some()
+                })
     }
 
     /// A real enclosing pair can own the ordinary head exposed by removing the
@@ -138,6 +177,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         sequence: SequenceExpression,
     ) -> Option<PreparedSequenceHead> {
+        self.released_sequence_head(sequence)
+            .map(|(start, _)| PreparedSequenceHead {
+                owner: sequence,
+                start,
+            })
+    }
+
+    fn released_sequence_head(
+        &self,
+        sequence: SequenceExpression,
+    ) -> Option<(u32, &'ast [Comment])> {
         let first = self
             .ast
             .get_node_in_sub_range(sequence.expressions(self.ast).first()?);
@@ -159,14 +209,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments.partition_point(|comment| comment.span.start < sequence.span(self.ast).start);
         let comments = &comments[first..];
         let count = comments.partition_point(|comment| comment.span.end <= start);
+        let comments = &comments[..count];
         matches!(
-            self.expression_head_binding(&comments[..count], content.expression),
+            self.expression_head_binding(comments, content.expression),
             CommentBinding::Unbound
         )
-        .then_some(PreparedSequenceHead {
-            owner: sequence,
-            start,
-        })
+        .then_some((start, comments))
     }
 
     pub(super) fn sequence_head_has_source_cast(&self, sequence: SequenceExpression) -> bool {
@@ -174,6 +222,69 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.source_cast_head(self.ast.get_node_in_sub_range(id))
                 .is_some()
         })
+    }
+
+    /// The enclosing operator can use the same lexical frame the sequence will print.
+    pub(super) fn released_sequence_cast_gap(
+        &self,
+        sequence: SequenceExpression,
+        context: ExpressionContext<'ast>,
+    ) -> Option<Span> {
+        if !self.has_type_casts {
+            return None;
+        }
+        let (start, comments) = self.released_sequence_head(sequence)?;
+        let head = NodeHead {
+            comments,
+            content_start: start,
+            layout: CommentRunLayout::Leading(start),
+            gap_end: None,
+        };
+        self.generated_sequence_head_enclosure(sequence, &head, context)?;
+        Some(Span::new(comments.last()?.span.end, start))
+    }
+
+    fn generated_sequence_head_enclosure(
+        &self,
+        sequence: SequenceExpression,
+        head: &NodeHead<'ast>,
+        context: ExpressionContext<'ast>,
+    ) -> Option<PreparedGeneratedEnclosure> {
+        let expression = Expr::SequenceExpression(sequence);
+        let content = ExpressionContent {
+            expression,
+            data: ExprData::SequenceExpression(sequence),
+            parentheses: None,
+        };
+        self.generated_enclosure_owner(expression, &content, head, CommentBinding::Unbound, context)
+            .map(|owner| PreparedGeneratedEnclosure { owner, content })
+    }
+
+    fn complete_inherited_sequence_head(
+        &mut self,
+        inherited: &'ast [Comment],
+        first: Expr,
+        first_start: u32,
+    ) -> Result<&'ast [Comment], FormatError> {
+        let Some(leading) = inherited.first() else {
+            return Ok(inherited);
+        };
+        if self.source_cast_head(first).is_none() {
+            return Ok(inherited);
+        }
+        let comments = self.ast.comments();
+        let start = comments.partition_point(|comment| comment.span.start < leading.span.start);
+        let comments = &comments[start..];
+        let end = comments.partition_point(|comment| comment.span.end <= first_start);
+        let complete = &comments[..end];
+        if let Some(interior) = complete.strip_prefix(inherited) {
+            // The parent leased the exterior head. The remaining prefix owns
+            // the same first member and carries its original cast target.
+            self.comments.claim(interior)?;
+            Ok(complete)
+        } else {
+            Ok(inherited)
+        }
     }
 
     pub(super) fn format_sequence_output(
@@ -229,6 +340,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if enclosed_head {
             context.head_comments = HeadComments::Pending;
         }
+        let inherited = self.complete_inherited_sequence_head(inherited, first, first_start)?;
         let leading = if enclosed_head || !inherited.is_empty() {
             &[]
         } else {
@@ -264,19 +376,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let generated = if parenthesize && self.has_type_casts && !leading.is_empty() {
-            let content = ExpressionContent {
-                expression: Expr::SequenceExpression(sequence),
-                data: ExprData::SequenceExpression(sequence),
-                parentheses: None,
-            };
-            self.generated_enclosure_owner(
-                Expr::SequenceExpression(sequence),
-                &content,
-                &head,
-                CommentBinding::Unbound,
-                context,
-            )
-            .map(|owner| super::parentheses::PreparedGeneratedEnclosure { owner, content })
+            self.generated_sequence_head_enclosure(sequence, &head, context)
         } else {
             None
         };

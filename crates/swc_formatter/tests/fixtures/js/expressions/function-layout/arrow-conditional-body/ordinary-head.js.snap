@@ -11,8 +11,9 @@ const pick = (value) => (/* choose */ value ? 11 : 23);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":28}
 ---------- Output ----------
-const pick = (value) =>
-  /* choose */ value
+const pick = (
+  value,
+) => /* choose */ value
     ? 11
     : 23;
 
@@ -20,13 +21,13 @@ const pick = (value) =>
 {"arrowParentheses":"as-needed","indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 const pick =
-  value =>
-    /* choose */ value
+  value => /* choose */ value
       ? 11
       : 23
 
 ---------- Options ----------
 {"arrowParentheses":"as-needed","indentStyle":"tab","indentWidth":4,"lineWidth":40}
 ---------- Output ----------
-const pick = value =>
-	/* choose */ value ? 11 : 23;
+const pick = value => /* choose */ value
+		? 11
+		: 23;

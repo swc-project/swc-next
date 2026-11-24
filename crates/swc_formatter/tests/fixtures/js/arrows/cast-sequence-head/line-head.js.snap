@@ -1,6 +1,5 @@
 ---
 source: crates/swc_formatter/tests/fixtures/mod.rs
-assertion_line: 58
 ---
 ---------- Input ----------
 () => (
@@ -9,6 +8,7 @@ assertion_line: 58
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-() =>
+() => (
   // c
-  /** @type {number} */ (a, b);
+  /** @type {number} */ a, b
+);
