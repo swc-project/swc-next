@@ -39285,6 +39285,78 @@
         "prettierNative": "result = <\r\n\tstring | number /* prettier-ignore */\r\n>f(1);\r\n"
       }
     ],
+    "ts/expression-operators/asserts-ignored-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\r\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\r\n"
+      }
+    ],
+    "ts/expression-operators/asserts-type-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies (B & keyof asserts) as asserts;\n",
+        "prettierNative": "value satisfies B & keyof asserts as asserts;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies (B &\n  keyof asserts) as asserts;\n",
+        "prettierNative": "value satisfies B &\n  keyof asserts as asserts;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "value satisfies (B &\n  keyof asserts) as asserts\n",
+        "prettierNative": "value satisfies B &\n  keyof asserts as asserts\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "value satisfies (B &\r\n\tkeyof asserts) as asserts;\r\n",
+        "prettierNative": "value satisfies B &\r\n\tkeyof asserts as asserts;\r\n"
+      }
+    ],
     "ts/expression-operators/non-null-operand-comments/line.ts": [
       {
         "options": {
@@ -45837,6 +45909,42 @@
         "prettierNative": "type T = (AlphaLongType &\n  BetaLongType)[];\n  // c\n"
       }
     ],
+    "ts/type-conditional/asserts-check.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<T> = (T | asserts) extends (() => new () => infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type Result<T> = T | asserts extends () => new () => infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<T> = (\n  T | asserts\n) extends (() => new () => infer U extends\n  string)\n  ? U\n  : never;\n",
+        "prettierNative": "type Result<T> =\n  | T\n  | asserts extends () => new () => infer U extends\n  string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type Result<\n  T,\n> =\n  (\n    | T\n    | asserts\n  ) extends (() => new () => infer U extends\n    string)\n    ? U\n    : never\n",
+        "prettierNative": "type Result<\n  T,\n> =\n\n    | T\n    | asserts extends () => new () => infer U extends\n    string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type Result<T> = (\r\n\tT | asserts\r\n) extends (() => new () => infer U extends\r\n\tstring)\r\n\t? U\r\n\t: never;\r\n",
+        "prettierNative": "type Result<T> =\r\n\t| T\r\n\t| asserts extends () => new () => infer U extends\r\n\tstring\r\n\t? U\r\n\t: never;\r\n"
+      }
+    ],
     "ts/type-conditional/branch-mixed-head.ts": [
       {
         "options": {
@@ -45881,6 +45989,42 @@
         },
         "swcPlugin": "type Outcome<T> =\r\n\tT extends string ?\r\n/* prettier-ignore */\r\n1  | 2\r\n\t\t: 3;\r\n",
         "prettierNative": "type Outcome<T> =\r\n\tT extends string\r\n\t\t? /* prettier-ignore */\r\n\t\t\t1  | 2\r\n\t\t: 3;\r\n"
+      }
+    ],
+    "ts/type-conditional/escaped-asserts-check.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X = (assert\\u0073) extends B ? 1 : 2;\n",
+        "prettierNative": "type X = asserts extends B ? 1 : 2;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X =\n  (assert\\u0073) extends B\n    ? 1\n    : 2;\n",
+        "prettierNative": "type X =\n  asserts extends B\n    ? 1\n    : 2;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X =\n  (assert\\u0073) extends B\n    ? 1\n    : 2\n",
+        "prettierNative": "type X =\n  asserts extends B\n    ? 1\n    : 2\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X =\r\n\t(assert\\u0073) extends B\r\n\t\t? 1\r\n\t\t: 2;\r\n",
+        "prettierNative": "type X =\r\n\tasserts extends B\r\n\t\t? 1\r\n\t\t: 2;\r\n"
       }
     ],
     "ts/type-conditional/extends-whole-ignore.ts": [
@@ -47506,6 +47650,42 @@
         },
         "swcPlugin": "const result = value satisfies /* head */ // operand\n  Shape;\n",
         "prettierNative": "const result = value /* head */ satisfies // operand\nShape;\n"
+      }
+    ],
+    "ts/type-mapped/asserts-name-constraint.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Keys<T> = { [K in (() => keyof asserts) as T]: K };\n",
+        "prettierNative": "type Keys<T> = { [K in () => keyof asserts as T]: K };\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Keys<T> = {\n  [\n    K in (() => keyof asserts) as T\n  ]: K;\n};\n",
+        "prettierNative": "type Keys<T> = {\n  [\n    K in () => keyof asserts as T\n  ]: K;\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type Keys<\n  T,\n> =\n  {\n    [\n      K in (() => keyof asserts) as T\n    ]: K\n  }\n",
+        "prettierNative": "type Keys<\n  T,\n> =\n  {\n    [\n      K in () => keyof asserts as T\n    ]: K\n  }\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type Keys<T> = {\r\n\t[\r\n\t\tK in (() => keyof asserts) as T\r\n\t]: K;\r\n};\r\n",
+        "prettierNative": "type Keys<T> = {\r\n\t[\r\n\t\tK in () => keyof asserts as T\r\n\t]: K;\r\n};\r\n"
       }
     ],
     "ts/type-member-boundaries/default-before-accessor.ts": [

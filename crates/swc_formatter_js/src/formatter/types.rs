@@ -3520,8 +3520,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map(|pending| finish(pending, ExpressionRightEdge::Unreported));
             }
         }
-        if matches!(context, TypeContext::TypeExpressionRhs) && node.source_owner == Some(node.node)
+        if matches!(context, TypeContext::TypeExpressionRhs { .. })
+            && node.source_owner == Some(node.node)
         {
+            if context.needs_verbatim_keyword_parentheses(node.data, self.ast) {
+                writer.text("(");
+                self.format_verbatim(node.node.span(self.ast), writer)?;
+                writer.text(")");
+                return Ok(finish(
+                    TypeOutput::closed(),
+                    ExpressionRightEdge::Unreported,
+                ));
+            }
             let pending = self.format_type_data_body(
                 node,
                 layout,
@@ -4212,7 +4222,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let raw_frame = source_owner == Some(child)
             && match context {
                 TypeContext::ArrowReturn => true,
-                TypeContext::TypeExpressionRhs => raw_type_has_open_end(child, ast),
+                TypeContext::TypeExpressionRhs { .. } => raw_type_has_open_end(child, ast),
                 _ => false,
             };
         let retained =
@@ -5524,6 +5534,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_binary_type_rhs_before_continuation(
         &mut self,
         node: PreparedType,
+        context: TypeContext,
         after: &CommentBoundary<'ast>,
         head: BinaryTypeHead<'ast>,
         writer: &mut Writer<'ast>,
@@ -5533,12 +5544,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let span = node.node.span(self.ast);
             let layout = self.continuation_type_layout(span, TypeLayout::Root);
             self.format_type_body_before_continuation(span, writer, |formatter, writer| {
-                formatter.format_prepared_type_body(
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    layout,
-                    writer,
-                )
+                formatter.format_prepared_type_body(node, context, layout, writer)
             })
         } else if matches!(
             self.comment_boundary_binding(after, node.node.span(self.ast)),
@@ -5548,22 +5554,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let layout = self.continuation_type_layout(span, TypeLayout::Root);
             self.format_type_body_before_continuation(span, writer, |formatter, writer| {
                 formatter.format_binary_type_rhs_head_body_with_layout(
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    after,
-                    head,
-                    layout,
-                    writer,
+                    node, context, after, head, layout, writer,
                 )
             })
         } else {
-            self.format_binary_type_rhs_head_body(
-                node,
-                TypeContext::TypeExpressionRhs,
-                after,
-                head,
-                writer,
-            )
+            self.format_binary_type_rhs_head_body(node, context, after, head, writer)
         }
         .map(TypeOutput::into_expression)
     }

@@ -5,12 +5,15 @@ use swc_next_ecma_ast::{
 };
 
 use crate::document::BodyOpening;
-use crate::formatter::MAX_RECURSION_DEPTH;
+use crate::formatter::{MAX_RECURSION_DEPTH, suppression::ContentMode};
 
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeContext {
     Root,
-    TypeExpressionRhs,
+    BeforeKeyword,
+    TypeExpressionRhs {
+        before_keyword: bool,
+    },
     Parenthesized,
     ArrowReturn,
     PostfixOperand,
@@ -145,17 +148,34 @@ impl TypeContext {
         }
     }
 
+    pub(super) fn needs_verbatim_keyword_parentheses(
+        self,
+        data: TsTypeData,
+        ast: &Ast<'_>,
+    ) -> bool {
+        matches!(
+            self,
+            Self::TypeExpressionRhs {
+                before_keyword: true
+            }
+        ) && ends_with_bare_asserts(data, ast, ContentMode::Verbatim)
+    }
+
     pub(super) fn needs_parentheses(self, data: TsTypeData, ast: &Ast<'_>) -> bool {
         let minimum = match self {
             Self::Root | Self::Parenthesized => return false,
-            Self::TypeExpressionRhs => {
-                return match data {
-                    TsTypeData::TsParenthesizedType(_) => false,
-                    TsTypeData::TsTypeOperator(node) => {
-                        super::type_operator_requires_terminator(node, ast)
-                    }
-                    _ => super::type_data_requires_terminator(data, ast),
-                };
+            Self::BeforeKeyword => {
+                return ends_with_bare_asserts(data, ast, ContentMode::Formatted);
+            }
+            Self::TypeExpressionRhs { before_keyword } => {
+                return before_keyword && ends_with_bare_asserts(data, ast, ContentMode::Formatted)
+                    || match data {
+                        TsTypeData::TsParenthesizedType(_) => false,
+                        TsTypeData::TsTypeOperator(node) => {
+                            super::type_operator_requires_terminator(node, ast)
+                        }
+                        _ => super::type_data_requires_terminator(data, ast),
+                    };
             }
             Self::ArrowReturn => return matches!(data, TsTypeData::TsFunctionType(_)),
             Self::ConditionalCheck => {
@@ -166,7 +186,7 @@ impl TypeContext {
                         | TsTypeData::TsConstructorType(_)
                         | TsTypeData::TsJsDocNullableType(_)
                         | TsTypeData::TsJsDocUnknownType(_)
-                );
+                ) || ends_with_bare_asserts(data, ast, ContentMode::Formatted);
             }
             Self::ConditionalExtends => {
                 return match data {
@@ -377,6 +397,82 @@ fn exposes_conditional_type(data: TsTypeData, ast: &Ast<'_>, depth: usize) -> bo
                 })
         })
     })
+}
+
+// On the same line, a following keyword can turn a bare `asserts` into
+// the head of a type predicate. Follow the right edge until a delimiter or
+// a grammar pair supplied by the child position closes it.
+fn ends_with_bare_asserts(mut data: TsTypeData, ast: &Ast<'_>, mode: ContentMode) -> bool {
+    let mut context = TypeContext::Root;
+    loop {
+        if mode == ContentMode::Formatted {
+            data = type_without_parentheses(data, ast);
+            if context.needs_parentheses(data, ast) {
+                return false;
+            }
+        }
+        let (child, child_context) = match data {
+            TsTypeData::TsTypeReference(reference) => {
+                if reference.type_arguments(ast).is_some() {
+                    return false;
+                }
+                let TsTypeNameData::IdentifierReference(name) =
+                    ast.ts_type_name_data(reference.type_name(ast))
+                else {
+                    return false;
+                };
+                return ast.get_utf8(name.name(ast)) == "asserts";
+            }
+            TsTypeData::TsUnionType(union) => {
+                let Some(last) = union.types(ast).last() else {
+                    return false;
+                };
+                (ast.get_node_in_sub_range(last), TypeContext::UnionMember)
+            }
+            TsTypeData::TsIntersectionType(intersection) => {
+                let Some(last) = intersection.types(ast).last() else {
+                    return false;
+                };
+                (ast.get_node_in_sub_range(last), TypeContext::CompoundMember)
+            }
+            TsTypeData::TsTypeOperator(operator) => (
+                operator.type_annotation(ast),
+                TypeContext::ModifierClosedOperand,
+            ),
+            TsTypeData::TsJsDocNullableType(node) if !node.postfix(ast) => {
+                (node.type_annotation(ast), TypeContext::JsDocNullableOperand)
+            }
+            TsTypeData::TsJsDocNonNullableType(node) if !node.postfix(ast) => {
+                (node.type_annotation(ast), TypeContext::JsDocPrimaryOperand)
+            }
+            TsTypeData::TsInferType(infer) => {
+                let Some(constraint) = infer.type_parameter(ast).constraint(ast) else {
+                    return false;
+                };
+                (constraint, TypeContext::InferConstraint)
+            }
+            TsTypeData::TsTypePredicate(predicate) => {
+                let Some(annotation) = predicate.type_annotation(ast) else {
+                    return false;
+                };
+                (annotation.type_annotation(ast), TypeContext::Root)
+            }
+            TsTypeData::TsFunctionType(function) => (
+                function.return_type(ast).type_annotation(ast),
+                TypeContext::Root,
+            ),
+            TsTypeData::TsConstructorType(constructor) => (
+                constructor.return_type(ast).type_annotation(ast),
+                TypeContext::Root,
+            ),
+            TsTypeData::TsConditionalType(conditional) => {
+                (conditional.false_type(ast), TypeContext::Root)
+            }
+            _ => return false,
+        };
+        data = ast.ts_type_data(child);
+        context = child_context;
+    }
 }
 
 // A trailing `?` can consume the constraint as a conditional return type.
