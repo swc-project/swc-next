@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+with // Header
+(/* Object */ bindings) {
+  use(value);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+with // Header
+(/* Object */ bindings) {
+  use(value);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+with // Header
+(
+  /* Object */ bindings
+) {
+  use(value)
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+with // Header
+(/* Object */ bindings) {
+	use(value);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+with // Header
+(
+  /* Object */ bindings
+) {
+  use(
+    value,
+  )
+}

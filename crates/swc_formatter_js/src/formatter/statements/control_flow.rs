@@ -144,8 +144,7 @@ impl<'ast> ControlledBody<'ast> {
 
 #[derive(Clone, Copy)]
 enum ConditionPrefix {
-    RelocateBeforeOpening,
-    PreserveBeforeOpening,
+    Canonical,
     Source { source: Span, mode: ContentMode },
 }
 
@@ -154,15 +153,8 @@ enum ConditionHeader<'ast> {
         keyword_end: u32,
         opening: u32,
         before_opening: &'ast [Comment],
-        before_opening_layout: ConditionOpeningLayout,
     },
     Source(Span),
-}
-
-enum ConditionOpeningLayout {
-    Relocate,
-    Flat,
-    Preserve,
 }
 
 #[derive(Clone, Copy)]
@@ -345,7 +337,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             keyword_end,
             body_start,
-            ConditionPrefix::PreserveBeforeOpening,
+            ConditionPrefix::Canonical,
         )
     }
 
@@ -376,34 +368,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let (header, leading, leading_mode, inline) = match prefix {
-            ConditionPrefix::RelocateBeforeOpening | ConditionPrefix::PreserveBeforeOpening => {
+            ConditionPrefix::Canonical => {
                 let split = leading.partition_point(|comment| comment.span.end <= opening);
-                let before_opening = &leading[..split];
-                let before_opening_layout = if before_opening.is_empty() {
-                    ConditionOpeningLayout::Relocate
-                } else if matches!(prefix, ConditionPrefix::PreserveBeforeOpening) {
-                    ConditionOpeningLayout::Preserve
-                } else if self
-                    .comment_binding(before_opening, head, Some(span))
-                    .allows_relocation(Some(span))
-                {
-                    ConditionOpeningLayout::Relocate
-                } else {
-                    ConditionOpeningLayout::Flat
-                };
-                let leading = if matches!(before_opening_layout, ConditionOpeningLayout::Relocate) {
-                    leading
-                } else {
-                    &leading[split..]
-                };
+                let (before_opening, leading) = leading.split_at(split);
                 let mut mode = self.content_mode(leading);
-                if matches!(before_opening_layout, ConditionOpeningLayout::Preserve)
-                    && self.content_mode(before_opening) == ContentMode::Verbatim
+                if self.content_mode(before_opening) == ContentMode::Verbatim
                     && self
                         .comment_binding(before_opening, head, Some(span))
                         .allows_relocation(Some(span))
                 {
-                    // An ignore that selects the condition retains its raw expression.
+                    // The ignore's content owner is independent of the opener's comments.
                     mode = ContentMode::Verbatim;
                 }
                 let inline = before_opening.is_empty()
@@ -414,7 +388,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     keyword_end,
                     opening,
                     before_opening,
-                    before_opening_layout,
                 };
                 (header, leading, mode, inline)
             }
@@ -506,6 +479,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn format_control_header_gap(
+        &mut self,
+        comments: &'ast [Comment],
+        start: u32,
+        next: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if let Some(&last) = comments.last() {
+            self.comments.claim(comments)?;
+            self.format_comment_run(comments, CommentRunLayout::SourceAfter(start), writer)?;
+            self.comment_gap_after(last, next, writer);
+        } else {
+            self.line_constraint(start, next)
+                .write(writer, FlatSeparator::Space, Writer::space);
+        }
+        Ok(())
+    }
+
     fn format_condition_with_suffix(
         &mut self,
         condition: Condition<'ast>,
@@ -536,40 +527,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 keyword_end,
                 opening,
                 before_opening,
-                before_opening_layout,
             } => {
-                match before_opening_layout {
-                    ConditionOpeningLayout::Relocate => self
-                        .line_constraint(keyword_end, opening)
-                        .write(writer, FlatSeparator::Space, Writer::space),
-                    ConditionOpeningLayout::Flat => {
-                        let first = before_opening
-                            .first()
-                            .map_or(opening, |comment| comment.span.start);
-                        self.line_constraint(keyword_end, first).write(
-                            writer,
-                            FlatSeparator::Space,
-                            Writer::space,
-                        );
-                        self.comments.claim(before_opening)?;
-                        self.format_comment_run(
-                            before_opening,
-                            CommentRunLayout::FlatLeading(opening),
-                            writer,
-                        )?;
-                    }
-                    ConditionOpeningLayout::Preserve => {
-                        self.comments.claim(before_opening)?;
-                        self.format_comment_run(
-                            before_opening,
-                            CommentRunLayout::SourceAfter(keyword_end),
-                            writer,
-                        )?;
-                        if let Some(&last) = before_opening.last() {
-                            self.comment_gap_after(last, opening, writer);
-                        }
-                    }
-                }
+                self.format_control_header_gap(before_opening, keyword_end, opening, writer)?;
                 writer.text("(");
                 let first = leading
                     .first()

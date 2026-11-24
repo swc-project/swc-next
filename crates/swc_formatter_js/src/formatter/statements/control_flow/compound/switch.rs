@@ -1,6 +1,5 @@
 //! Case heads, statement sequences, and source packets between real case owners.
 
-use super::super::ConditionPrefix;
 use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
 use crate::formatter::comments::{
     CommentCursor, CommentRunLayout, NodeHead, PreparedCommentAdjacency,
@@ -130,12 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let keyword_end = span.start + 6;
-        let mut condition = self.prepare_condition_with_prefix(
-            discriminant,
-            keyword_end,
-            opening,
-            ConditionPrefix::RelocateBeforeOpening,
-        )?;
+        let mut condition = self.prepare_condition(discriminant, keyword_end, opening)?;
         let leading = self.compound_gap(Span::new(keyword_end, disc_span.start));
         let condition_tail = self.compound_gap(Span::new(disc_span.end, opening));
         let mut first_mode = ContentMode::Formatted;

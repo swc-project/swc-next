@@ -76,7 +76,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // keyword-to-opener gap belong to the header, outside the condition.
         let prefix = boundary
             .source
-            .map_or(ConditionPrefix::PreserveBeforeOpening, |source| {
+            .map_or(ConditionPrefix::Canonical, |source| {
                 ConditionPrefix::Source {
                     source,
                     mode: boundary.following,
