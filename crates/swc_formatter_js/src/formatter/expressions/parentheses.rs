@@ -1430,6 +1430,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
+        if self.has_suppression
+            && !head.is_empty()
+            && let ParenthesisInner::Expression(child) = boundary.inner_target
+            && self.binary_has_ignored_left(child)
+        {
+            // The source pair owns its head before the ignored operand's own
+            // opener. Parenthesis removal would move that head outside the pair.
+            return None;
+        }
         let mut prepared_head =
             self.source_parentheses_head(head, boundary, optimizer_binding, emitted_inner, || {
                 cast(ParenthesisCastPosition::Inner)

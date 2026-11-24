@@ -10529,6 +10529,130 @@
         "prettierNative": "first && [1, 2] /* prettier-ignore */ && second;\n"
       }
     ],
+    "js/expressions/binary/ignore-nested-operand-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x =\n\t(\n\t\t/* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n\t\ty\n\t) * z;\n",
+        "prettierNative": "x =\n\t/* outer */ (// inner\n\t(x ? a : b) + // prettier-ignore\n\t\ty) *\n\tz;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x =\r\n  (\r\n    /* outer */ ( // inner\r\n x ? a : b) + // prettier-ignore\r\n    y\r\n  ) * z;\r\n",
+        "prettierNative": "x =\r\n  /* outer */ (// inner\r\n  (x ? a : b) + // prettier-ignore\r\n    y) *\r\n  z;\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      }
+    ],
+    "js/expressions/binary/ignore-nested-right-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  )\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x =\n\tz *\n\t(\n\t\t/* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n\t\ty\n\t);\n",
+        "prettierNative": "x =\n\tz *\n\t/* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n\t\ty);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x =\r\n  z *\r\n  (\r\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\r\n    y\r\n  );\r\n",
+        "prettierNative": "x =\r\n  z *\r\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\r\n    y);\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      }
+    ],
     "js/expressions/binary/ignore-operation-head.js": [
       {
         "options": {

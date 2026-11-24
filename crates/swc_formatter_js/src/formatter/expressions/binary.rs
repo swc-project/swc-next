@@ -346,6 +346,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some((binary, content.parentheses.map(|removed| removed.source)))
     }
 
+    pub(super) fn binary_has_ignored_left(&self, mut expression: Expr) -> bool {
+        while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression) {
+            expression = pair.expression(self.ast);
+        }
+        let Some(binary) = BinaryLike::from_data(self.ast.expr_data(expression), self.ast) else {
+            return false;
+        };
+        self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
+            .is_ok_and(|entry| entry.left_mode() == ContentMode::Verbatim)
+    }
+
     fn prepare_binary_entry(
         &self,
         binary: BinaryLike,
@@ -362,7 +373,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let right_start = binary.right.span(self.ast).start;
         let span = Span::new(binary.left.span(self.ast).end, right_start);
-        let comments = self.comments.in_range(span);
+        let comments = self.source_comments_in_range(span);
         if self.content_mode(comments) != ContentMode::Verbatim {
             return Ok(entry);
         }
@@ -511,40 +522,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn binary_head_start(&self, expression: Expr) -> u32 {
-        let content = self.expression_content(expression);
-        self.binary_head_start_from_content(expression, &content)
-    }
-
-    fn binary_head_start_from_content(
+    fn binary_head_start(
         &self,
-        expression: Expr,
+        mut expression: Expr,
         content: &super::parentheses::ExpressionContent,
-    ) -> u32 {
-        if matches!(content.data, ExprData::ParenthesizedExpression(_))
-            || content
-                .parentheses
-                .is_some_and(|removed| !matches!(removed.head.binding, CommentBinding::Unbound))
-        {
-            return expression.span(self.ast).start;
-        }
-        let Some(binary) = BinaryLike::from_data(content.data, self.ast) else {
-            return content.expression.span(self.ast).start;
-        };
-        let mut expression = binary.left;
+    ) -> Result<u32, FormatError> {
+        let mut content = content;
+        let mut next_content;
         loop {
-            let content = self.expression_content(expression);
             if matches!(content.data, ExprData::ParenthesizedExpression(_))
                 || content
                     .parentheses
                     .is_some_and(|removed| !matches!(removed.head.binding, CommentBinding::Unbound))
             {
-                return expression.span(self.ast).start;
+                return Ok(expression.span(self.ast).start);
             }
-            match BinaryLike::from_data(content.data, self.ast) {
-                Some(binary) => expression = binary.left,
-                None => return content.expression.span(self.ast).start,
+            let Some(binary) = BinaryLike::from_data(content.data, self.ast) else {
+                return Ok(content.expression.span(self.ast).start);
+            };
+            expression = binary.left;
+            if self.has_suppression {
+                let left = expression.span(self.ast);
+                if self.prepare_binary_entry(binary, left.end)?.left_mode() == ContentMode::Verbatim
+                {
+                    // The raw left operand's head still belongs to that operand.
+                    return Ok(left.start);
+                }
             }
+            next_content = self.expression_content(expression);
+            content = &next_content;
         }
     }
 
@@ -562,9 +568,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             entry.binary.left.span(self.ast).start
         } else if owner.expression == expression {
             let prepared = owner.prepare(self);
-            self.binary_head_start_from_content(expression, &prepared.content)
+            self.binary_head_start(expression, &prepared.content)?
         } else {
-            self.binary_head_start(expression)
+            self.binary_head_start(expression, &self.expression_content(expression))?
         };
         let comments = self.comments.between(Span::new(start, end))?;
         let binding = if comments.is_empty() {
@@ -1372,7 +1378,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if comments.is_empty() {
                     outer_start
                 } else {
-                    let head_end = self.binary_head_start_from_content(right, content);
+                    let head_end = self.binary_head_start(right, content)?;
                     let first =
                         comments.partition_point(|comment| comment.span.start < outer_start);
                     let head = &comments[first..];
