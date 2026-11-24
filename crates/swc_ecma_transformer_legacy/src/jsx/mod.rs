@@ -5,9 +5,11 @@ use swc_next_ecma_ast::*;
 
 use crate::common::resolver::context::Resolver;
 
+mod display_name;
 mod jsx_self;
 mod jsx_src;
 mod parser;
+mod pure_annotations;
 mod refresh;
 mod static_check;
 
@@ -120,6 +122,8 @@ pub(crate) fn jsx(
     };
     let program = ast.root_program();
     let _ = program.traverse_mut_with(&mut jsx, &mut TraverseMutCtx::new(ast, ()));
+    display_name::hook(ast, jsx.resolver);
+    pure_annotations::hook(ast, jsx.resolver, &mut jsx.pure_positions);
     let diagnostics = jsx.diagnostics;
     // CallExpression::pure represents SWC's synthetic annotation. Remove only
     // identical existing annotations which SWC's add_pure_comment deduplicates.

@@ -35,6 +35,18 @@ pub struct Options {
 
 /// Read the nearest .swcrc; SWC selects and adjusts its configuration.
 pub fn read(path: &Path, root: &Path) -> Result<Option<Options>, String> {
+    let mut selected = read_config(path, root)?;
+    if let Some(options) = &mut selected {
+        let relative = path.strip_prefix(root).unwrap().to_string_lossy();
+        options.transformer.filename = Some(format!(
+            "$DIR/tests/compile/{}",
+            relative.replace('\\', "/")
+        ));
+    }
+    Ok(selected)
+}
+
+fn read_config(path: &Path, root: &Path) -> Result<Option<Options>, String> {
     for directory in path.parent().unwrap().ancestors() {
         let config = directory.join(".swcrc");
         if config.is_file() {
@@ -65,12 +77,20 @@ fn from_source(source: &str, path: &Path) -> Result<Option<Options>, String> {
 fn select(config: Rc, path: &Path) -> Result<Option<Options>, String> {
     config
         .into_config(Some(path))
-        .map(|config| config.map(|config| convert(config, path)))
+        .map(|config| config.map(convert))
         .map_err(|error| error.to_string())
 }
 
-fn convert(config: Config, path: &Path) -> Options {
-    let loose = config.jsc.loose.into_bool() || config.env.as_ref().is_some_and(|env| env.loose);
+fn convert(config: Config) -> Options {
+    let loose = config
+        .env
+        .as_ref()
+        .map_or_else(|| config.jsc.loose.into_bool(), |env| env.loose);
+    let disable_builtin_transforms = config
+        .jsc
+        .experimental
+        .disable_builtin_transforms_for_internal_testing
+        .into_bool();
     let features = config
         .env
         .map(|env| SwcEnvConfig::from(env).get_feature_config());
@@ -91,18 +111,18 @@ fn convert(config: Config, path: &Path) -> Options {
     });
     let set_public_fields =
         assumptions.set_public_class_fields || !transform.use_define_for_class_fields.into_bool();
+    let async_options = AsyncToGeneratorOptions {
+        ignore_function_length: assumptions.ignore_function_length,
+    };
     let mut options = TransformerOptions {
-        filename: Some(path.file_name().unwrap().to_string_lossy().into_owned()),
         env: EnvOptions {
             es2016: ES2016Options {
                 exponentiation: enabled(Feature::ExponentiationOperator),
             },
             es2017: ES2017Options {
-                async_to_generator: (enabled(Feature::AsyncToGenerator)
-                    || enabled(Feature::AsyncGeneratorFunctions))
-                .then_some(AsyncToGeneratorOptions {
-                    ignore_function_length: assumptions.ignore_function_length,
-                }),
+                async_to_generator: enabled(Feature::AsyncToGenerator).then_some(async_options),
+                async_generator_functions: enabled(Feature::AsyncGeneratorFunctions)
+                    .then_some(async_options),
             },
             es2018: ES2018Options {
                 object_rest_spread: enabled(Feature::ObjectRestSpread).then_some(
@@ -120,7 +140,7 @@ fn convert(config: Config, path: &Path) -> Options {
                 export_namespace_from: enabled(Feature::ExportNamespaceFrom),
                 nullish_coalescing: enabled(Feature::NullishCoalescing).then_some(
                     NullishCoalescingOptions {
-                        no_document_all: loose || assumptions.no_document_all,
+                        no_document_all: assumptions.no_document_all,
                     },
                 ),
                 optional_chaining: enabled(Feature::OptionalChaining).then_some(
@@ -172,7 +192,8 @@ fn convert(config: Config, path: &Path) -> Options {
         _ => Lang::Js,
     };
     let react = &transform.react;
-    let jsx_enabled = lang.is_jsx() && react.runtime != Some(Runtime::Preserve);
+    let jsx_enabled =
+        !disable_builtin_transforms && lang.is_jsx() && react.runtime != Some(Runtime::Preserve);
     if jsx_enabled {
         #[allow(deprecated)]
         let jsx = JsxOptions {
@@ -197,7 +218,7 @@ fn convert(config: Config, path: &Path) -> Options {
         };
         options.jsx = Some(jsx);
     }
-    if lang.is_typescript() {
+    if lang.is_typescript() && !disable_builtin_transforms {
         options.typescript = Some(TypeScriptOptions {
             verbatim_module_syntax: transform.verbatim_module_syntax.into_bool(),
             native_class_properties: !set_public_fields && !enabled(Feature::ClassProperties),
@@ -224,6 +245,9 @@ fn convert(config: Config, path: &Path) -> Options {
             ..Default::default()
         });
     }
+    if disable_builtin_transforms {
+        options.env = EnvOptions::default();
+    }
     Options {
         parser: ParserOptions {
             lang,
@@ -242,5 +266,41 @@ fn convert(config: Config, path: &Path) -> Options {
             comments: config.jsc.preserve_all_comments.into_bool(),
             ..Default::default()
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn env_options(config: &str) -> EnvOptions {
+        from_source(config, Path::new("input.js"))
+            .unwrap()
+            .unwrap()
+            .transformer
+            .env
+    }
+
+    #[test]
+    fn loose() {
+        let options = env_options(r#"{"env":{"targets":{"chrome":"70"},"loose":true}}"#);
+        assert!(!options.es2020.nullish_coalescing.unwrap().no_document_all);
+        assert!(options.es2020.optional_chaining.unwrap().no_document_all);
+
+        let options = env_options(
+            r#"{"env":{"targets":{"chrome":"70"}},"jsc":{"loose":true,"assumptions":{}}}"#,
+        );
+        assert!(!options.es2020.optional_chaining.unwrap().no_document_all);
+        assert!(
+            !options
+                .es2022
+                .class_properties
+                .unwrap()
+                .private_as_properties
+        );
+
+        let options = env_options(r#"{"jsc":{"target":"es2019","loose":true,"assumptions":{}}}"#);
+        assert!(!options.es2020.nullish_coalescing.unwrap().no_document_all);
+        assert!(options.es2020.optional_chaining.unwrap().no_document_all);
     }
 }

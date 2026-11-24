@@ -8,6 +8,9 @@ pub use async_to_generator::AsyncToGeneratorOptions;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct ES2017Options {
     /// Lower async functions and async generators, matching SWC's standalone
-    /// `async_to_generator` pass. `None` disables the pass.
+    /// Lower ordinary async functions and async generators.
     pub async_to_generator: Option<AsyncToGeneratorOptions>,
+    /// Lower async generators and `for await` while preserving ordinary async functions.
+    /// If both passes are enabled, `async_to_generator` supplies their options.
+    pub async_generator_functions: Option<AsyncToGeneratorOptions>,
 }

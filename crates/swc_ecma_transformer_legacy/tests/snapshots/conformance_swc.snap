@@ -4,8 +4,8 @@ source: crates/swc_ecma_transformer_legacy/tests/conformance.rs
 transform_legacy * swc
 ========================
 Total: 2089
-Passed: 786
-Failed: 1292
+Passed: 829
+Failed: 1249
 Panicked: 0
 Skipped: 11
 Failed: codegen/comment-1/es5/input/index.tsx - transformed output differs from SWC snapshot
@@ -499,7 +499,8 @@ Failed: jsc-paths/vercel-site/1/input/node_modules/.pnpm/nanoid@4.0.2/node_modul
 Failed: jsc-paths/vercel-site/1/input/node_modules/.pnpm/nanoid@4.0.2/node_modules/nanoid/nanoid.js - transformed output differs from SWC snapshot
 Failed: jsc-paths/vercel-site/1/input/node_modules/.pnpm/nanoid@4.0.2/node_modules/nanoid/non-secure/index.js - transformed output differs from SWC snapshot
 Failed: jsc-paths/vercel-site/1/input/node_modules/.pnpm/nanoid@4.0.2/node_modules/nanoid/url-alphabet/index.js - transformed output differs from SWC snapshot
-Failed: lints/const-assign/1/input/input.js - transformed output differs from SWC snapshot
+Failed: lints/const-assign/1/input/input.js - transform: expected 21 errors, got 0
+Failed: lints/const-assign/2/input/input.js - transform: expected 22 errors, got 0
 Failed: lints/constructor-super/default/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/default-case-last/default/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/default-param-last/js/input/input.js - configuration: data did not match any variant of untagged enum Rc
@@ -507,20 +508,25 @@ Failed: lints/default-param-last/ts/input/input.ts - configuration: data did not
 Failed: lints/dot-notation/pattern/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/dot-notation/restrict-keywords/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/dot-notation/simple/input/input.js - configuration: data did not match any variant of untagged enum Rc
-Failed: lints/duplicate-bindings/catch-clause/1/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/function/1/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/import-require/input/input.ts - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/module/export/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/module/export-default-class-expr/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/module/export-default-fn-expr/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/parameter/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/var/1/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-bindings/var/2/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-exports/1/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-exports/2/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/duplicate-exports/4/input/input.ts - transformed output differs from SWC snapshot
-Failed: lints/duplicate-exports/5/input/input.ts - transformed output differs from SWC snapshot
-Failed: lints/duplicate-exports/6/input/input.ts - transformed output differs from SWC snapshot
+Failed: lints/duplicate-bindings/catch-clause/1/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/function/1/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/function/2/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/function/3/input/input.js - transform: expected 2 errors, got 0
+Failed: lints/duplicate-bindings/import-import/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/import-require/input/input.ts - transform: expected 2 errors, got 0
+Failed: lints/duplicate-bindings/module/export/input/input.js - transform: expected 3 errors, got 0
+Failed: lints/duplicate-bindings/module/export-default-class-expr/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/module/export-default-fn-expr/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/module/import/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/parameter/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-bindings/var/1/input/input.js - transform: expected 3 errors, got 0
+Failed: lints/duplicate-bindings/var/2/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-exports/1/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-exports/2/input/input.js - transform: expected 1 errors, got 0
+Failed: lints/duplicate-exports/3/input/input.ts - transform: expected 1 errors, got 0
+Failed: lints/duplicate-exports/4/input/input.ts - transform: expected 1 errors, got 0
+Failed: lints/duplicate-exports/5/input/input.ts - transform: expected 2 errors, got 0
+Failed: lints/duplicate-exports/6/input/input.ts - transform: expected 1 errors, got 0
 Failed: lints/eqeqeq/always/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/eqeqeq/never/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/lint-config-error-level/1/input/input.js - configuration: data did not match any variant of untagged enum Rc
@@ -537,11 +543,11 @@ Failed: lints/no-cond-assign/default/input/input.js - configuration: data did no
 Failed: lints/no-console/allow/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/no-console/default/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/no-debugger/1/input/input.js - configuration: data did not match any variant of untagged enum Rc
-Failed: lints/no-dupe-args/1/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/no-dupe-args/2/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/no-dupe-args/3/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/no-dupe-args/4/input/input.js - transformed output differs from SWC snapshot
-Failed: lints/no-dupe-args/hash-mode/input/input.js - transformed output differs from SWC snapshot
+Failed: lints/no-dupe-args/1/input/input.js - transform: expected 12 errors, got 0
+Failed: lints/no-dupe-args/2/input/input.js - transform: expected 8 errors, got 0
+Failed: lints/no-dupe-args/3/input/input.js - transform: expected 3 errors, got 0
+Failed: lints/no-dupe-args/4/input/input.js - transform: expected 3 errors, got 0
+Failed: lints/no-dupe-args/hash-mode/input/input.js - transform: expected 40 errors, got 0
 Failed: lints/no-empty-function/allowing/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/no-empty-function/default/js/input/input.js - configuration: data did not match any variant of untagged enum Rc
 Failed: lints/no-empty-function/default/ts/input/input.ts - configuration: data did not match any variant of untagged enum Rc
@@ -706,7 +712,6 @@ Failed: minify/regressions/issues-9xxx/9015/input/1.js - transformed output diff
 Failed: minify/regressions/issues-9xxx/9020/input/1.js - parser: Shorthand property cannot have a default value in object expression: Use '{ a: a = 1 }' syntax or this is only valid in destructuring patterns.
 Failed: minify/regressions/issues-9xxx/9673/input/1.js - transformed output differs from SWC snapshot
 Failed: module/diagnostics/esnext/export-assign/input/input.ts - snapshot: No such file or directory (os error 2)
-Failed: module/diagnostics/esnext/import-assign/input/input.ts - transform: Import assignment cannot be used when targeting ECMAScript modules.
 Failed: module/ignore-dynamic/1/input/index.js - transformed output differs from SWC snapshot
 Failed: module/inline-regressions/issue-225/input/input.js - transformed output differs from SWC snapshot
 Failed: module/inline-regressions/issue-389/input/input.js - transformed output differs from SWC snapshot
@@ -771,49 +776,12 @@ Failed: options/react-compiler/emit-decorator-metadata/input/index.tsx - transfo
 Failed: options/react-compiler/environment-function-outlining-disabled/input/index.tsx - transformed output differs from SWC snapshot
 Failed: options/react-compiler/environment-function-outlining-enabled/input/index.tsx - transformed output differs from SWC snapshot
 Failed: options/react-compiler/feature-only/before-jsx/input/input.js - transformed output differs from SWC snapshot
-Failed: react/display-name/assignment-expression/input/input.js - transformed output differs from SWC snapshot
-Failed: react/display-name/assignment-expression-with-member/input/input.js - transformed output differs from SWC snapshot
-Failed: react/display-name/nested/input/input.js - transformed output differs from SWC snapshot
-Failed: react/display-name/object-property/input/input.js - transformed output differs from SWC snapshot
-Failed: react/display-name/variable-declarator/input/input.js - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/issue-351/input/input.js - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/shopify-1/input/input.js - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/shopify-2/input/src/App/App.tsx - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/shopify-3/input/src/App/App.tsx - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/shopify-4/input/src/App/App.tsx - transformed output differs from SWC snapshot
-Failed: react/jsx/autoImport/react-defined/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx/cmt/1/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx/issue-4703/1/input/input.js - transform: pragma cannot be set when runtime is automatic
-Failed: react/jsx/issue-5099/2/input/input.js - transform: Runtime must be either `classic` or `automatic`.
-Failed: react/jsx/issue-6939/input/input.js - transform: The value of property 'key' should not be empty
-Failed: react/jsx/issue-6987/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx/pure/false-pragma-comment-automatic-runtime/input/input.js - transform: pragma cannot be set when runtime is automatic
-Failed: react/jsx/pure/true-pragma-comment-automatic-runtime/input/input.js - transform: pragma cannot be set when runtime is automatic
-Failed: react/jsx/pure/unset-pragma-comment-automatic-runtime/input/input.js - transform: pragma cannot be set when runtime is automatic
-Failed: react/jsx/react/should-disallow-xml-namespacing/input/input.js - transform: JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
-Failed: react/jsx/react/should-handle-attributed-elements/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx/react/should-throw-error-namespaces-if-not-flag/input/input.js - transform: JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
-Failed: react/jsx/react-automatic/should-disallow-xml-namespacing/input/input.js - transform: JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
-Failed: react/jsx/react-automatic/should-handle-attributed-elements/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx/react-automatic/should-throw-error-namespaces-if-not-flag/input/input.js - transform: JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
 Failed: react/jsx-transform/classic/react-arrow-functions/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-display-name-assignment-expression/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-display-name-export-default/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-display-name-object-declaration/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-display-name-property-assignment/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-display-name-variable-declaration/input/input.js - transformed output differs from SWC snapshot
-Failed: react/jsx-transform/classic/react-should-handle-attributed-elements/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/clone-element/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/create-context/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/create-element/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/create-factory/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/create-portal/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/create-ref/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/forward-ref/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/is-valid-element/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/lazy/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/memo/input/input.js - transformed output differs from SWC snapshot
-Failed: react/pure-annotations/non-pure-react-dom/input/input.js - transformed output differs from SWC snapshot
 Failed: react/refresh/javascript/dont-consider-iife-as-hoc/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
 Failed: react/refresh/javascript/ignore-not-hoc/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
 Failed: react/refresh/javascript/ignore-unnamed-function-declarations/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
@@ -845,7 +813,6 @@ Failed: react/regressions/issues-5xxx/5608/input/index.js - transformed output d
 Failed: react/regressions/issues-5xxx/5865/input/index.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-6xxx/6407/input/index.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-8xxx/8199/input/1.js - transformed output differs from SWC snapshot
-Failed: react/regressions/issues-8xxx/8210/input/1.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-8xxx/8228/input/1.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-8xxx/8505/input/index.ts - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-8xxx/8572/input/1.js - snapshot: No such file or directory (os error 2)
@@ -866,16 +833,11 @@ Failed: regressions/issues-10xxx/10346/input/input.js - transformed output diffe
 Failed: regressions/issues-10xxx/10651/input/input.jsx - transformed output differs from SWC snapshot
 Failed: regressions/issues-10xxx/10877/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11046/es5/input/index.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-11xxx/11047/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11047/es5/input/index.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-11xxx/11048/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11048/es5/input/index.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-11xxx/11049/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11049/es5/input/index.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-11xxx/11050/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11050/es5/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11051/input/input.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-11xxx/11052/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11052/es5/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11379/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-11xxx/11539/input/index.js - transformed output differs from SWC snapshot
@@ -927,10 +889,8 @@ Failed: regressions/issues-2xxx/2150/input/index.js - transformed output differs
 Failed: regressions/issues-2xxx/2164/es5/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2170/case1/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2208/input/index.js - transformed output differs from SWC snapshot
-Failed: regressions/issues-2xxx/2225/case1/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2232/case1/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2232/case2/input/index.ts - transformed output differs from SWC snapshot
-Failed: regressions/issues-2xxx/2248/es2017/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2248/es5/input/index.js - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2310/input/index.tsx - transformed output differs from SWC snapshot
 Failed: regressions/issues-2xxx/2330/1/input/index.ts - transformed output differs from SWC snapshot
@@ -1092,7 +1052,6 @@ Failed: typescript/class-properties/standard/issue-2234/input/input.ts - transfo
 Failed: typescript/class-properties/standard/issue-3001/1/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/class-properties/standard/issue-3001/2/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/class-properties/standard/issue-366/2/input/input.ts - snapshot: No such file or directory (os error 2)
-Failed: typescript/class-properties/standard/issue-5947/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/class-properties/standard/namespace-bindings/ambient-instantiation/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/class-properties/standard/namespace-bindings/emission-identities/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/class-properties/standard/namespace-bindings/exported-type-alias/input/input.ts - transformed output differs from SWC snapshot
@@ -1119,7 +1078,6 @@ Failed: typescript/regressions/issues-11xxx/11761/input/c.ts - transformed outpu
 Failed: typescript/regressions/issues-1xxx/1135/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1160/input/entry.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1232/cjs/input/index.js - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-1xxx/1235/case-1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1252/case1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1259/input/index.js - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1278/input/index.ts - transformed output differs from SWC snapshot
@@ -1159,7 +1117,6 @@ Failed: typescript/regressions/issues-1xxx/1682/case1/input/index.ts - transform
 Failed: typescript/regressions/issues-1xxx/1682/case2/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1718/case1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1726/case1/input/index.tsx - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-1xxx/1752/case1/input/index.js - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1782/case1/input/index.tsx - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1869/decorator/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1938/cjs/input/index.js - transformed output differs from SWC snapshot

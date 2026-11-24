@@ -56,7 +56,11 @@ config!(
     }
 );
 config!(/// Explicit ES2017 transform overrides.
-    ES2017Config { async_to_generator: BoolOr<AsyncToGeneratorConfig> });
+    ES2017Config {
+        async_to_generator: BoolOr<AsyncToGeneratorConfig>,
+        async_generator_functions: BoolOr<AsyncToGeneratorConfig>,
+    }
+);
 config!(/// Explicit ES2018 transform overrides.
     ES2018Config { object_rest_spread: BoolOr<ObjectRestSpreadConfig> });
 config!(
@@ -159,11 +163,10 @@ impl EnvConfig {
         let needs = |feature| target.as_ref().is_some_and(|target| target.needs(feature));
         let mut options = EnvOptions::default();
         options.es2016.exponentiation = needs(Feature::Exponentiation);
-        // SWC's standalone async pass lowers ordinary async functions and async
-        // generators together; either target requirement selects that pass.
-        options.es2017.async_to_generator = (needs(Feature::AsyncToGenerator)
-            || needs(Feature::AsyncGeneratorFunctions))
-        .then_some(Default::default());
+        options.es2017.async_to_generator =
+            needs(Feature::AsyncToGenerator).then_some(Default::default());
+        options.es2017.async_generator_functions =
+            needs(Feature::AsyncGeneratorFunctions).then_some(Default::default());
         options.es2018.object_rest_spread =
             needs(Feature::ObjectRestSpread).then_some(Default::default());
         options.es2019.optional_catch_binding = needs(Feature::OptionalCatchBinding);
@@ -191,6 +194,10 @@ impl EnvConfig {
         apply_pass(
             &self.es2017.async_to_generator,
             &mut options.es2017.async_to_generator,
+        );
+        apply_pass(
+            &self.es2017.async_generator_functions,
+            &mut options.es2017.async_generator_functions,
         );
         apply_pass(
             &self.es2018.object_rest_spread,
@@ -276,6 +283,10 @@ mod tests {
         assert!(options.es2019.optional_catch_binding);
         assert!(options.regexp.unicode_sets_regex);
 
+        let options = resolve(Target::EsVersion(EsVersion::Es2017));
+        assert!(options.es2017.async_to_generator.is_none());
+        assert!(options.es2017.async_generator_functions.is_some());
+
         let options = resolve(Target::EsVersion(EsVersion::EsNext));
         assert_eq!(options, EnvOptions::default());
 
@@ -285,6 +296,12 @@ mod tests {
         assert!(options.es2022.class_properties.is_some());
 
         let options = resolve(engine(Engine::Node, "16"));
+        assert!(options.es2022.class_properties.is_none());
+
+        let options = resolve(engine(Engine::Chrome, "83"));
+        assert!(options.es2022.class_properties.is_some());
+
+        let options = resolve(engine(Engine::Chrome, "84"));
         assert!(options.es2022.class_properties.is_none());
 
         let options = resolve(engine(Engine::Node, "8.9"));
@@ -350,6 +367,7 @@ mod tests {
             target: Some(Target::EsVersion(EsVersion::EsNext)),
             es2017: ES2017Config {
                 async_to_generator: Some(BoolOr::Bool(true)),
+                ..Default::default()
             },
             ..Default::default()
         };

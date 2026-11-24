@@ -58,6 +58,28 @@ fn check_diagnostics(diagnostics: &[Diagnostic]) -> Result<(), String> {
     Ok(())
 }
 
+fn check_transform_diagnostics(output: &Path, diagnostics: &[Diagnostic]) -> Result<(), String> {
+    let stderr = match fs::read_to_string(output.with_added_extension("stderr")) {
+        Ok(stderr) => stderr,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return check_diagnostics(diagnostics);
+        }
+        Err(error) => return Err(format!("diagnostic snapshot: {error}")),
+    };
+    let expected = stderr
+        .lines()
+        .filter(|line| line.starts_with("  x "))
+        .count();
+    let actual = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == Severity::Error)
+        .count();
+    if actual != expected {
+        return Err(format!("expected {expected} errors, got {actual}"));
+    }
+    Ok(())
+}
+
 fn parse<'a>(
     allocator: &'a Allocator,
     source: &'a str,
@@ -84,7 +106,8 @@ fn run(input: &Path, output: &Path, root: &Path) -> Result<bool, String> {
     let allocator = Allocator::new();
     let mut ast = parse(&allocator, &source, options.parser)?;
     let result = Transformer::transform(&mut ast, options.transformer);
-    check_diagnostics(&result.diagnostics).map_err(|error| format!("transform: {error}"))?;
+    check_transform_diagnostics(output, &result.diagnostics)
+        .map_err(|error| format!("transform: {error}"))?;
     let expected_allocator = Allocator::new();
     let expected = parse(&expected_allocator, &expected, options.parser)
         .map_err(|error| format!("snapshot {error}"))?;

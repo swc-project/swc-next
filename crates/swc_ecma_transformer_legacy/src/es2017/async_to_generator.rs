@@ -13,17 +13,30 @@ use crate::common::{
 use std::collections::HashMap;
 use swc_next_ecma_ast::*;
 
+mod loop_head_scope;
+
+use self::loop_head_scope::LoopHeadScope;
+
+#[derive(Clone, Copy)]
+enum AwaitForMode {
+    NativeAsync,
+    Generator,
+    AsyncGenerator,
+}
+
 #[derive(Default)]
 struct FnState {
     transform: bool,
     generator: bool,
     arrow: bool,
+    await_for_mode: Option<AwaitForMode>,
     use_this: bool,
     use_arguments: bool,
     use_super: bool,
     constructor: bool,
 }
 pub(crate) struct AsyncToGeneratorPass {
+    transform_async_to_generator: bool,
     options: AsyncToGeneratorOptions,
     state: Option<FnState>,
     stack: Vec<Option<FnState>>,
@@ -31,8 +44,12 @@ pub(crate) struct AsyncToGeneratorPass {
     this_var: Option<BindingIdentifier>,
 }
 impl AsyncToGeneratorPass {
-    pub(crate) fn new(options: AsyncToGeneratorOptions) -> Self {
+    pub(crate) fn new(
+        transform_async_to_generator: bool,
+        options: AsyncToGeneratorOptions,
+    ) -> Self {
         Self {
+            transform_async_to_generator,
             options,
             state: None,
             stack: Vec::new(),
@@ -46,8 +63,6 @@ impl AsyncToGeneratorPass {
     }
 }
 
-/// Standalone SWC enables both ordinary async and async-generator lowering;
-/// the hook's NativeAsync-only branches are not selected by this entry point.
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/lib.rs#L175>.
 impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
     fn enter_class(
@@ -84,9 +99,18 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 });
             }
         } else {
+            let generator = node.generator(ctx.ast);
+            let is_async = node.r#async(ctx.ast);
             self.push(FnState {
-                transform: node.r#async(ctx.ast),
-                generator: node.generator(ctx.ast),
+                transform: is_async && (generator || self.transform_async_to_generator),
+                generator,
+                await_for_mode: is_async.then_some(if generator {
+                    AwaitForMode::AsyncGenerator
+                } else if self.transform_async_to_generator {
+                    AwaitForMode::Generator
+                } else {
+                    AwaitForMode::NativeAsync
+                }),
                 ..Default::default()
             });
         }
@@ -182,8 +206,13 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         if node.r#async(ctx.ast) {
             let constructor = self.state.as_ref().is_some_and(|state| state.constructor);
             self.push(FnState {
-                transform: true,
+                transform: self.transform_async_to_generator,
                 arrow: true,
+                await_for_mode: Some(if self.transform_async_to_generator {
+                    AwaitForMode::Generator
+                } else {
+                    AwaitForMode::NativeAsync
+                }),
                 constructor,
                 ..Default::default()
             });
@@ -201,10 +230,15 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         }
         let state = self.state.take().unwrap();
         self.state = self.stack.pop().unwrap();
-        if let Some(parent) = &mut self.state {
+        if let Some(parent) = &mut self.state
+            && (state.transform || parent.transform || parent.arrow)
+        {
             parent.use_this |= state.use_this;
             parent.use_arguments |= state.use_arguments;
             parent.use_super |= state.use_super;
+        }
+        if !state.transform {
+            return TraverseAction::Continue;
         }
         let body = node.body(ctx.ast);
         let (mut body, mut statements) = if state.use_super {
@@ -312,9 +346,8 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Stmt> {
         if node.is_labeled_statement(ctx.ast)
-            && self.state.as_ref().is_some_and(|state| state.transform)
-            && let Some(replacement) =
-                handle_await_for(ctx, node, self.state.as_ref().unwrap().generator)
+            && let Some(mode) = self.state.as_ref().and_then(|state| state.await_for_mode)
+            && let Some(replacement) = handle_await_for(ctx, node, mode)
         {
             return TraverseAction::ReplaceContinue(replacement);
         }
@@ -326,9 +359,8 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
     ) -> TraverseAction<Stmt> {
         if node.is_for_of_statement(ctx.ast)
-            && self.state.as_ref().is_some_and(|state| state.transform)
-            && let Some(replacement) =
-                handle_await_for(ctx, node, self.state.as_ref().unwrap().generator)
+            && let Some(mode) = self.state.as_ref().and_then(|state| state.await_for_mode)
+            && let Some(replacement) = handle_await_for(ctx, node, mode)
         {
             return TraverseAction::ReplaceSkip(replacement);
         }
@@ -419,7 +451,7 @@ fn could_potentially_throw(
 fn handle_await_for(
     ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
     mut statement: Stmt,
-    generator: bool,
+    mode: AwaitForMode,
 ) -> Option<Stmt> {
     let mut labels = Vec::new();
     while let Some(label) = statement.as_labeled_statement(ctx.ast) {
@@ -430,8 +462,17 @@ fn handle_await_for(
     if !loop_.r#await(ctx.ast) {
         return None;
     }
+    let native_async = matches!(mode, AwaitForMode::NativeAsync);
+    let loop_head_scope = if native_async {
+        LoopHeadScope::new(ctx.ast, ctx.state.resolver, loop_)
+    } else {
+        None
+    };
     let value = ctx.state.resolver.private_binding(ctx.ast, "_value");
     let iterator = ctx.state.resolver.private_binding(ctx.ast, "_iterator");
+    let next_method = native_async.then(|| ctx.state.resolver.private_binding(ctx.ast, "_next"));
+    let return_method =
+        native_async.then(|| ctx.state.resolver.private_binding(ctx.ast, "_return"));
     let iterator_error = ctx
         .state
         .resolver
@@ -480,7 +521,30 @@ fn handle_await_for(
             ctx.ast.stmt_expression_statement(DUMMY_SP, expr)
         }
     };
-    let mut body = vec![first, next];
+    let mut body = Vec::new();
+    if let Some(next_method) = next_method {
+        let next = call_iterator_method(ctx, iterator, next_method);
+        let next = await_iteration(ctx, next, mode);
+        let reference = ctx.state.resolver.reference(ctx.ast, step);
+        let assignment = b::assign(ctx.ast, reference, next);
+        body.push(ctx.ast.stmt_expression_statement(DUMMY_SP, assignment));
+        body.push(check_iterator_object(ctx, step));
+        let reference = ctx.state.resolver.reference(ctx.ast, step);
+        let done = b::member(ctx.ast, reference, "done");
+        let incomplete = ctx
+            .ast
+            .expr_unary_expression(DUMMY_SP, done, UnaryOperator::LogicalNot);
+        let reference = ctx.state.resolver.reference(ctx.ast, abrupt);
+        let assignment = b::assign(ctx.ast, reference, incomplete);
+        body.push(ctx.ast.stmt_expression_statement(DUMMY_SP, assignment));
+        let reference = ctx.state.resolver.reference(ctx.ast, abrupt);
+        let done = ctx
+            .ast
+            .expr_unary_expression(DUMMY_SP, reference, UnaryOperator::LogicalNot);
+        let stop = ctx.ast.stmt_break_statement(DUMMY_SP, None);
+        body.push(ctx.ast.stmt_if_statement(DUMMY_SP, done, stop, None));
+    }
+    body.extend([first, next]);
     let original = loop_.body(ctx.ast);
     if let Some(block) = original.as_block_statement(ctx.ast) {
         body.extend(
@@ -495,39 +559,68 @@ fn handle_await_for(
     let body = Stmt::BlockStatement(b::block(ctx.ast, body));
     let helper = ctx.state.helper(ctx.ast, "async_iterator");
     let init = b::call(ctx.ast, helper, [loop_.right(ctx.ast)], false);
-    let iterator_decl = b::declarator(ctx.ast, iterator, Some(init));
-    let step_decl = b::declarator(ctx.ast, step, None);
-    let init = b::declaration(ctx.ast, VariableKind::Var, vec![iterator_decl, step_decl])
+    let mut try_stmts = Vec::new();
+    let mut init_var_decls = Vec::new();
+    if let Some(next_method) = next_method {
+        if let Some(loop_head_scope) = loop_head_scope {
+            loop_head_scope.init_iterator(
+                ctx.ast,
+                ctx.state.resolver,
+                iterator,
+                init,
+                &mut try_stmts,
+            );
+        } else {
+            try_stmts.push(Stmt::Declaration(b::variable(
+                ctx.ast,
+                VariableKind::Var,
+                iterator,
+                Some(init),
+                DUMMY_SP,
+            )));
+        }
+        try_stmts.push(check_iterator_object(ctx, iterator));
+        let reference = ctx.state.resolver.reference(ctx.ast, iterator);
+        let next = b::member(ctx.ast, reference, "next");
+        init_var_decls.push(b::declarator(ctx.ast, next_method, Some(next)));
+    } else {
+        init_var_decls.push(b::declarator(ctx.ast, iterator, Some(init)));
+    }
+    init_var_decls.push(b::declarator(ctx.ast, step, None));
+    let init = b::declaration(ctx.ast, VariableKind::Var, init_var_decls)
         .as_declaration(ctx.ast)
         .unwrap()
         .as_variable_declaration(ctx.ast)
         .unwrap();
-    let reference = ctx.state.resolver.reference(ctx.ast, iterator);
-    let callee = b::member(ctx.ast, reference, "next");
-    let next = b::call(ctx.ast, callee, [], false);
-    let next = await_iteration(ctx, next, generator);
-    let reference = ctx.state.resolver.reference(ctx.ast, step);
-    let next = b::assign(ctx.ast, reference, next);
-    let done = b::member(ctx.ast, next, "done");
-    let done = ctx
-        .ast
-        .expr_unary_expression(DUMMY_SP, done, UnaryOperator::LogicalNot);
-    let reference = ctx.state.resolver.reference(ctx.ast, abrupt);
-    let test = b::assign(ctx.ast, reference, done);
+    let test = (!native_async).then(|| {
+        let reference = ctx.state.resolver.reference(ctx.ast, iterator);
+        let callee = b::member(ctx.ast, reference, "next");
+        let next = b::call(ctx.ast, callee, [], false);
+        let next = await_iteration(ctx, next, mode);
+        let reference = ctx.state.resolver.reference(ctx.ast, step);
+        let next = b::assign(ctx.ast, reference, next);
+        let done = b::member(ctx.ast, next, "done");
+        let done = ctx
+            .ast
+            .expr_unary_expression(DUMMY_SP, done, UnaryOperator::LogicalNot);
+        let reference = ctx.state.resolver.reference(ctx.ast, abrupt);
+        b::assign(ctx.ast, reference, done)
+    });
     let reference = ctx.state.resolver.reference(ctx.ast, abrupt);
     let false_ = ctx.ast.expr_boolean_literal(DUMMY_SP, false);
     let update = b::assign(ctx.ast, reference, false_);
     let mut for_ = Stmt::ForStatement(ctx.ast.for_statement(
         DUMMY_SP,
         Some(ForStatementInit::VariableDeclaration(init)),
-        Some(test),
+        test,
         Some(update),
         body,
     ));
     for (span, label) in labels.into_iter().rev() {
         for_ = Stmt::LabeledStatement(ctx.ast.labeled_statement(span, label, for_));
     }
-    let try_body = b::block(ctx.ast, [for_]);
+    try_stmts.push(for_);
+    let try_body = b::block(ctx.ast, try_stmts);
     let reference = ctx.state.resolver.reference(ctx.ast, did_error);
     let true_ = ctx.ast.expr_boolean_literal(DUMMY_SP, true);
     let mark = b::assign(ctx.ast, reference, true_);
@@ -551,14 +644,32 @@ fn handle_await_for(
         .ast
         .stmt_if_statement(DUMMY_SP, condition, throw_body, None);
     let inner_finally = b::block(ctx.ast, [throw]);
+    let call = if let Some(return_method) = return_method {
+        call_iterator_method(ctx, iterator, return_method)
+    } else {
+        let reference = ctx.state.resolver.reference(ctx.ast, iterator);
+        let return_ = b::member(ctx.ast, reference, "return");
+        b::call(ctx.ast, return_, [], false)
+    };
+    let awaited = await_iteration(ctx, call, mode);
+    let close_body = if native_async {
+        let reference = ctx.state.resolver.reference(ctx.ast, step);
+        let assignment = b::assign(ctx.ast, reference, awaited);
+        let assignment = ctx.ast.stmt_expression_statement(DUMMY_SP, assignment);
+        let validate = check_iterator_object(ctx, step);
+        b::block(ctx.ast, [assignment, validate])
+    } else {
+        let awaited = ctx.ast.stmt_expression_statement(DUMMY_SP, awaited);
+        b::block(ctx.ast, [awaited])
+    };
     let reference = ctx.state.resolver.reference(ctx.ast, iterator);
     let return_ = b::member(ctx.ast, reference, "return");
-    let call = b::call(ctx.ast, return_, [], false);
-    let awaited = await_iteration(ctx, call, generator);
-    let awaited = ctx.ast.stmt_expression_statement(DUMMY_SP, awaited);
-    let close_body = Stmt::BlockStatement(b::block(ctx.ast, [awaited]));
-    let reference = ctx.state.resolver.reference(ctx.ast, iterator);
-    let return_ = b::member(ctx.ast, reference, "return");
+    let return_ = if let Some(return_method) = return_method {
+        let reference = ctx.state.resolver.reference(ctx.ast, return_method);
+        b::assign(ctx.ast, reference, return_)
+    } else {
+        return_
+    };
     let null = ctx.ast.expr_null_literal(DUMMY_SP);
     let test = ctx
         .ast
@@ -567,7 +678,9 @@ fn handle_await_for(
     let test = ctx
         .ast
         .expr_logical_expression(DUMMY_SP, reference, test, LogicalOperator::And);
-    let close = ctx.ast.stmt_if_statement(DUMMY_SP, test, close_body, None);
+    let close = ctx
+        .ast
+        .stmt_if_statement(DUMMY_SP, test, Stmt::BlockStatement(close_body), None);
     let close = b::block(ctx.ast, [close]);
     let inner_try =
         Stmt::TryStatement(
@@ -586,20 +699,82 @@ fn handle_await_for(
     let false_ = ctx.ast.expr_boolean_literal(DUMMY_SP, false);
     let did_error = b::declarator(ctx.ast, did_error, Some(false_));
     let error = b::declarator(ctx.ast, iterator_error, None);
-    let declarations = b::declaration(ctx.ast, VariableKind::Var, vec![abrupt, did_error, error]);
+    let mut declarations = vec![abrupt, did_error, error];
+    if let Some(return_method) = return_method {
+        declarations.push(b::declarator(ctx.ast, return_method, None));
+    }
+    let declarations = b::declaration(ctx.ast, VariableKind::Var, declarations);
     Some(Stmt::BlockStatement(b::block(
         ctx.ast,
         [declarations, try_],
     )))
 }
 
+fn call_iterator_method(
+    ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
+    iterator: BindingIdentifier,
+    method: BindingIdentifier,
+) -> Expr {
+    let reflect = ctx
+        .state
+        .resolver
+        .marked_reference(ctx.ast, "Reflect", true);
+    let apply = b::member(ctx.ast, reflect, "apply");
+    let method = ctx.state.resolver.reference(ctx.ast, method);
+    let receiver = ctx.state.resolver.reference(ctx.ast, iterator);
+    let args = ctx.ast.expr_array_expression(DUMMY_SP, SubRange::empty());
+    b::call(ctx.ast, apply, [method, receiver, args], false)
+}
+
+fn check_iterator_object(
+    ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
+    value: BindingIdentifier,
+) -> Stmt {
+    let mut is_not_type = |kind| {
+        let value = ctx.state.resolver.reference(ctx.ast, value);
+        let actual = ctx
+            .ast
+            .expr_unary_expression(DUMMY_SP, value, UnaryOperator::Typeof);
+        let expected = b::string(ctx.ast, kind);
+        ctx.ast
+            .expr_binary_expression(DUMMY_SP, actual, expected, BinaryOperator::StrictNotEqual)
+    };
+    let not_object = is_not_type("object");
+    let not_function = is_not_type("function");
+    let primitive =
+        ctx.ast
+            .expr_logical_expression(DUMMY_SP, not_object, not_function, LogicalOperator::And);
+    let reference = ctx.state.resolver.reference(ctx.ast, value);
+    let null = ctx.ast.expr_null_literal(DUMMY_SP);
+    let is_null =
+        ctx.ast
+            .expr_binary_expression(DUMMY_SP, reference, null, BinaryOperator::StrictEqual);
+    let invalid =
+        ctx.ast
+            .expr_logical_expression(DUMMY_SP, is_null, primitive, LogicalOperator::Or);
+    let error = ctx
+        .state
+        .resolver
+        .marked_reference(ctx.ast, "TypeError", true);
+    let message = b::string(ctx.ast, "Iterator result is not an object");
+    let arguments = ctx.ast.add_sub_range([Argument::Expr(message)]);
+    let error = ctx
+        .ast
+        .expr_new_expression(DUMMY_SP, error, None, arguments);
+    let throw = ctx.ast.stmt_throw_statement(DUMMY_SP, error);
+    ctx.ast.stmt_if_statement(DUMMY_SP, invalid, throw, None)
+}
+
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L1143>.
 fn await_iteration(
     ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
     mut expression: Expr,
-    generator: bool,
+    mode: AwaitForMode,
 ) -> Expr {
-    if generator {
+    if matches!(mode, AwaitForMode::NativeAsync) {
+        return Expr::AwaitExpression(ctx.ast.await_expression(DUMMY_SP, expression));
+    }
+    if matches!(mode, AwaitForMode::AsyncGenerator) {
         let helper = ctx.state.helper(ctx.ast, "await_async_generator");
         expression = b::call(ctx.ast, helper, [expression], false);
     }

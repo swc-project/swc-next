@@ -33,6 +33,7 @@
 //!         es2016: ES2016Options { exponentiation: true },
 //!         es2017: ES2017Options {
 //!             async_to_generator: Some(AsyncToGeneratorOptions::default()),
+//!             ..Default::default()
 //!         },
 //!         es2018: ES2018Options {
 //!             object_rest_spread: Some(ObjectRestSpreadOptions::default()),

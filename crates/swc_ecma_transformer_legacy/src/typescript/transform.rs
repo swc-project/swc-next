@@ -552,7 +552,9 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L440>.
     fn visit_mut_binding_pattern(&mut self, pattern: BindingPattern) -> Option<BindingPattern> {
-        pattern.visit_mut_children_with(self);
+        if let Some(replacement) = pattern.visit_mut_children_with(self) {
+            return Some(replacement);
+        }
         if let Some(id) = pattern.as_binding_identifier(self.ast)
             && let Some(replacement) = self.query_ref(id.node_id(), id.name(self.ast))
         {
@@ -1734,10 +1736,16 @@ impl Transform<'_, '_> {
                         Stmt::Declaration(declaration)
                     };
                 }
-                TsImportExportAssignConfig::EsNext => self.diagnostics.push(Diagnostic::error(
-                    "Import assignment cannot be used when targeting ECMAScript modules.",
-                    import.span(self.ast),
-                )),
+                TsImportExportAssignConfig::EsNext => {
+                    let mut diagnostic = Diagnostic::error(
+                        "Import assignment cannot be used when targeting ECMAScript modules.",
+                        import.span(self.ast),
+                    );
+                    diagnostic.help = Some(
+                        "Consider using `import * as ns from \"mod\"`, `import {a} from \"mod\"`, `import d from \"mod\"`, or another module format instead.".into(),
+                    );
+                    self.diagnostics.push(diagnostic);
+                }
             }
         }
         if inject {

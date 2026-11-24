@@ -148,9 +148,16 @@ impl Transformer {
                 &mut context,
             );
         }
-        if let Some(options) = options.env.es2017.async_to_generator {
+        let es2017 = options.env.es2017;
+        if let Some(options) = es2017
+            .async_to_generator
+            .or(es2017.async_generator_functions)
+        {
             let _ = program.traverse_mut_with(
-                &mut crate::es2017::async_to_generator::AsyncToGeneratorPass::new(options),
+                &mut crate::es2017::async_to_generator::AsyncToGeneratorPass::new(
+                    es2017.async_to_generator.is_some(),
+                    options,
+                ),
                 &mut context,
             );
         }
