@@ -21584,6 +21584,68 @@
         "prettierNative": "!(\n  // @ts-expect-error\n  (first\n    ? second\n    : third)\n);\n"
       }
     ],
+    "js/expressions/update/postfix-comment-separator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f((a /* note  */)++, `text text`);\n",
+        "prettierNative": "f(a /* note  */++, `text text`);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "f((a /* note  */)++, `text text`)\n",
+        "prettierNative": "f(a /* note  */++, `text text`)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f(\n  (a /* note  */)++,\n  `text text`,\n);\n",
+        "prettierNative": "f(\n  a /* note  */++,\n  `text text`,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f(\n  (\n    a /* note  */\n  )++,\n  `text text`,\n);\n",
+        "prettierNative": "f(\n  a /* note  */++,\n  `text text`,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "f(\n\t(\n\t\ta /* note  */\n\t)++,\n\t`text text`,\n);\n",
+        "prettierNative": "f(\n\ta /* note  */++,\n\t`text text`,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "f((a /* note  */)++, `text text`);\r\n",
+        "prettierNative": "f(a /* note  */++, `text text`);\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "f((a /* note  */)++, `text text`);\n",
+        "prettierNative": "f(a /* note  */++, `text text`);\n"
+      }
+    ],
     "js/function-receiver/ignored-tag.js": [
       {
         "options": {

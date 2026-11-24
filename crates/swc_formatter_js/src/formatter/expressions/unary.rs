@@ -574,7 +574,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .take_while(|comment| {
                     comment.kind == CommentKind::Block
                         && self.line_breaks(source_end, comment.span.start) == 0
-                        && self.line_breaks(comment.span.start, comment.span.end) == 0
+                        && self.source_line_breaks(comment.span.start, comment.span.end) == 0
                 })
                 .count();
             let inline = self.comments.take(count);

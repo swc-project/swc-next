@@ -1,0 +1,52 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f((a /* note  */)++, `text text`);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+f((a /* note  */)++, `text text`);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+f((a /* note  */)++, `text text`)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+f(
+  (a /* note  */)++,
+  `text text`,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+f(
+  (
+    a /* note  */
+  )++,
+  `text text`,
+);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+f(
+	(
+		a /* note  */
+	)++,
+	`text text`,
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+f((a /* note  */)++, `text text`);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+f((a /* note  */)++, `text text`);
