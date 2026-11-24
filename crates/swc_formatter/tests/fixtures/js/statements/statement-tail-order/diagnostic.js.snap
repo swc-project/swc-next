@@ -8,13 +8,15 @@ b;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a; // @ts-ignore
-/** @type {x} */
+(
+  a // @ts-ignore
+); /** @type {x} */
 b;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a // @ts-ignore
-/** @type {x} */
+;(
+  a // @ts-ignore
+); /** @type {x} */
 b

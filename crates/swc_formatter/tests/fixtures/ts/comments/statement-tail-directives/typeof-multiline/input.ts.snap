@@ -8,13 +8,17 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 next;---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-typeof first; /* header
- * @ts-ignore */
+(
+  typeof first /* header
+   * @ts-ignore */
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-typeof first /* header
- * @ts-ignore */
+;(
+  typeof first /* header
+   * @ts-ignore */
+)
 next

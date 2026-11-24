@@ -226,11 +226,11 @@ impl DiagnosticLines {
 
     /// Coverage starts on a later physical line; the directive's own suffix is
     /// sensitive to layout but is not itself a covered line.
-    fn covered_at(&self, position: u32) -> bool {
+    fn covered_line_at(&self, position: u32) -> Option<&DiagnosticLine> {
         let index = self.lines.partition_point(|line| line.span.end < position);
         self.lines
             .get(index)
-            .is_some_and(|line| line.span.start <= position && line.is_covered())
+            .filter(|line| line.span.start <= position && line.is_covered())
     }
 }
 
@@ -474,7 +474,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn diagnostic_line_is_covered(&self, position: u32) -> bool {
-        self.diagnostic_lines.covered_at(position)
+        self.diagnostic_lines.covered_line_at(position).is_some()
+    }
+
+    /// An interior directive can cover the closer on a line after the operand.
+    pub(super) fn diagnostic_covers_closing_line(&self, enclosure: Span, content_end: u32) -> bool {
+        self.diagnostic_lines
+            .covered_line_at(enclosure.end - 1)
+            .is_some_and(|line| {
+                content_end <= line.span.start && enclosure.start < line.directive_end
+            })
     }
 
     /// The sensitive physical line whose remaining source tokens are terminal punctuation.

@@ -10,15 +10,17 @@ d */
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a;
-// @ts-ignore
-/* c
+(
+  a
+  // @ts-ignore
+); /* c
 d */
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a
-// @ts-ignore
-/* c
+;(
+  a
+  // @ts-ignore
+) /* c
 d */

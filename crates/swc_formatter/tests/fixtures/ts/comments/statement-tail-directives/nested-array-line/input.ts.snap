@@ -7,47 +7,55 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 next;---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-[
-  [first, second],
-  [third, fourth],
-]; // @ts-expect-error
+(
+  [
+    [first, second],
+    [third, fourth],
+  ] // @ts-expect-error
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
-[
+(
   [
-    first,
-    second,
-  ],
-  [
-    third,
-    fourth,
-  ],
-]; // @ts-expect-error
+    [
+      first,
+      second,
+    ],
+    [
+      third,
+      fourth,
+    ],
+  ] // @ts-expect-error
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-;[
-  [first, second],
-  [third, fourth],
-] // @ts-expect-error
+;(
+  [
+    [first, second],
+    [third, fourth],
+  ] // @ts-expect-error
+)
 next
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
-;[
+;(
   [
-    first,
-    second,
-  ],
-  [
-    third,
-    fourth,
-  ],
-] // @ts-expect-error
+    [
+      first,
+      second,
+    ],
+    [
+      third,
+      fourth,
+    ],
+  ] // @ts-expect-error
+)
 next

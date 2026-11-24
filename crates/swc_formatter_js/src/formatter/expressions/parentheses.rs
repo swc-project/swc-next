@@ -1380,6 +1380,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_tail_comments: false,
             });
         }
+        // Removing this closer would send the directive to a different line,
+        // even when its head or tail packet can otherwise leave the pair.
+        if self.diagnostic_covers_closing_line(boundary.outer, boundary.inner.end) {
+            return None;
+        }
         let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
         let mut prepared_head =
             self.source_parentheses_head(head, boundary, optimizer_binding, emitted_inner, || {

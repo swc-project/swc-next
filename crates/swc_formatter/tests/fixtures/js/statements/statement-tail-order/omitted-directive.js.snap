@@ -10,14 +10,16 @@ b;
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 "use strict";
-a; // @ts-ignore
-/* next */
+(
+  a // @ts-ignore
+); /* next */
 b;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 "use strict"
-a // @ts-ignore
-/* next */
+;(
+  a // @ts-ignore
+) /* next */
 b

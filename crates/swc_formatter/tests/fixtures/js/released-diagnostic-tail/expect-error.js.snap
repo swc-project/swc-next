@@ -8,13 +8,15 @@ b;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a;
-/* @ts-expect-error */
-/** @type {x} */
+(
+  a /* @ts-expect-error */
+); /** @type {x} */
 b;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a /* @ts-expect-error */; /** @type {x} */
+;(
+  a /* @ts-expect-error */
+); /** @type {x} */
 b

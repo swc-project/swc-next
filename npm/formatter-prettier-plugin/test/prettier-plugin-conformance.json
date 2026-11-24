@@ -3065,6 +3065,60 @@
         "prettierNative": "const o = {\n  p: B /* c3 */,\n  // c\n}\n"
       }
     ],
+    "js/comments/leading-gap-scans/released-boundary/after/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  item\n  // @ts-ignore\n);\n\nnext();\n",
+        "prettierNative": "item;\n// @ts-ignore\n\nnext();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  item\n  // @ts-ignore\n);\n\nnext();\n",
+        "prettierNative": "item;\n// @ts-ignore\n\nnext();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  item\n  // @ts-ignore\n)\n\nnext()\n",
+        "prettierNative": "item\n// @ts-ignore\n\nnext()\n"
+      }
+    ],
+    "js/comments/leading-gap-scans/released-boundary/both/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  item\n\n  // @ts-ignore\n);\n\nnext();\n",
+        "prettierNative": "item;\n\n// @ts-ignore\n\nnext();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  item\n\n  // @ts-ignore\n);\n\nnext();\n",
+        "prettierNative": "item;\n\n// @ts-ignore\n\nnext();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  item\n\n  // @ts-ignore\n)\n\nnext()\n",
+        "prettierNative": "item\n\n// @ts-ignore\n\nnext()\n"
+      }
+    ],
     "js/comments/leading-gap-scans/released-boundary/ignore-array/input.js": [
       {
         "options": {
@@ -16599,6 +16653,68 @@
         "prettierNative": "// @ts-ignore\n/** @type {number} */ ((first), missing);\n"
       }
     ],
+    "js/expressions/parentheses/diagnostic-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first // @ts-ignore\n);\nnext;\n",
+        "prettierNative": "first; // @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  first // @ts-ignore\n)\nnext\n",
+        "prettierNative": "first // @ts-ignore\nnext\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first // @ts-ignore\n);\nnext;\n",
+        "prettierNative": "first; // @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first // @ts-ignore\n);\nnext;\n",
+        "prettierNative": "first; // @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "(\n\tfirst // @ts-ignore\n);\nnext;\n",
+        "prettierNative": "first; // @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "(\r\n  first // @ts-ignore\r\n);\r\nnext;\r\n",
+        "prettierNative": "first; // @ts-ignore\r\nnext;\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "(\n  first // @ts-ignore\n);\nnext;\n",
+        "prettierNative": "first; // @ts-ignore\nnext;\n"
+      }
+    ],
     "js/expressions/parentheses/diagnostic-unary-line.js": [
       {
         "options": {
@@ -17587,6 +17703,24 @@
         },
         "swcPlugin": "target =\n  // @ts-expect-error\n  first + second; third;\n",
         "prettierNative": "target =\n  // @ts-expect-error\n  first + second;\nthird;\n"
+      }
+    ],
+    "js/expressions/parentheses/statement-tail-carrier/following-binary/input.js": [
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first +\n  second *\n    third // @ts-ignore\n);\n\nfirst +\n  /* before */ (second +\n    third);\n",
+        "prettierNative": "first +\n  second *\n    third; // @ts-ignore\n\nfirst +\n  /* before */ (second +\n    third);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first +\n  second * third // @ts-ignore\n);\n\nfirst +\n  /* before */ (second +\n    third);\n",
+        "prettierNative": "first +\n  second * third; // @ts-ignore\n\nfirst +\n  /* before */ (second +\n    third);\n"
       }
     ],
     "js/expressions/parentheses/statement-tail-carrier/multiline-prefix/input.js": [
@@ -25615,13 +25749,32 @@
         "prettierNative": "({\n  // @ts-ignore\n  k:\n    (a = // @ts-expect-error\n      b = // @ts-ignore\n      c =\n        d),\n});\n"
       }
     ],
+    "js/released-diagnostic-tail/block-closer.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (x) {\n  (\n    a\n    // @ts-ignore\n  ); }\n",
+        "prettierNative": "if (x) {\n  a;\n  // @ts-ignore\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (x) {\n  ;(\n    a\n    // @ts-ignore\n  ) }\n",
+        "prettierNative": "if (x) {\n  a\n  // @ts-ignore\n}\n"
+      }
+    ],
     "js/released-diagnostic-tail/expect-error.js": [
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-expect-error */\n/** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a /* @ts-expect-error */\n); /** @type {x} */\nb;\n",
         "prettierNative": "a; /* @ts-expect-error */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25630,7 +25783,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-expect-error */; /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a /* @ts-expect-error */\n); /** @type {x} */\nb\n",
         "prettierNative": "a /* @ts-expect-error */\n/** @type {x} */\nb\n"
       }
     ],
@@ -25640,7 +25793,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-ignore */\n/** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n); /** @type {x} */\nb;\n",
         "prettierNative": "a; /* @ts-ignore */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25649,7 +25802,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */; /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n); /** @type {x} */\nb\n",
         "prettierNative": "a /* @ts-ignore */\n/** @type {x} */\nb\n"
       }
     ],
@@ -25659,7 +25812,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* before */ /* @ts-ignore */ /* after */\n/* ordinary */ /** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a /* before */ /* @ts-ignore */ /* after */\n); /* ordinary */ /** @type {x} */\nb;\n",
         "prettierNative": "a; /* before */ /* @ts-ignore */ /* after */ /* ordinary */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25668,7 +25821,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* before */ /* @ts-ignore */ /* after */; /* ordinary */ /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a /* before */ /* @ts-ignore */ /* after */\n); /* ordinary */ /** @type {x} */\nb\n",
         "prettierNative": "a /* before */ /* @ts-ignore */ /* after */ /* ordinary */\n/** @type {x} */\nb\n"
       }
     ],
@@ -25678,7 +25831,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a; // @ts-ignore\n/* ordinary */ /** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a // @ts-ignore\n); /* ordinary */ /** @type {x} */\nb;\n",
         "prettierNative": "a; // @ts-ignore\n/* ordinary */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25687,8 +25840,27 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a // @ts-ignore\n/* ordinary */ /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a // @ts-ignore\n); /* ordinary */ /** @type {x} */\nb\n",
         "prettierNative": "a // @ts-ignore\n/* ordinary */\n/** @type {x} */\nb\n"
+      }
+    ],
+    "js/released-diagnostic-tail/next-statement-line-target.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-ignore\n); b.c;\n",
+        "prettierNative": "a; // @ts-ignore\nb.c;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-ignore\n); b.c\n",
+        "prettierNative": "a // @ts-ignore\nb.c\n"
       }
     ],
     "js/released-diagnostic-tail/next-statement-target.js": [
@@ -25697,7 +25869,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a; /* @ts-ignore */\n/* x */ b.c = 1;\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n); /* x */ b.c = 1;\n",
         "prettierNative": "a; /* @ts-ignore */ /* x */\nb.c = 1;\n"
       },
       {
@@ -25706,8 +25878,27 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */\n/* x */ b.c = 1\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n) /* x */; b.c = 1\n",
         "prettierNative": "a /* @ts-ignore */ /* x */\nb.c = 1\n"
+      }
+    ],
+    "js/released-diagnostic-tail/no-following.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a /* @ts-ignore */\n);\n",
+        "prettierNative": "a; /* @ts-ignore */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n)\n",
+        "prettierNative": "a /* @ts-ignore */\n"
       }
     ],
     "js/released-diagnostic-tail/optimizer.js": [
@@ -25716,7 +25907,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-ignore */\n/* @__PURE__ */\ncall();\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n); /* @__PURE__ */\ncall();\n",
         "prettierNative": "a; /* @ts-ignore */ /* @__PURE__ */\ncall();\n"
       },
       {
@@ -25725,7 +25916,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */; /* @__PURE__ */\ncall()\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n); /* @__PURE__ */\ncall()\n",
         "prettierNative": "a /* @ts-ignore */ /* @__PURE__ */\ncall()\n"
       }
     ],
@@ -25735,7 +25926,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-ignore */\n/* ordinary */ /** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n); /* ordinary */ /** @type {x} */\nb;\n",
         "prettierNative": "a; /* @ts-ignore */ /* ordinary */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25744,7 +25935,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */; /* ordinary */ /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n); /* ordinary */ /** @type {x} */\nb\n",
         "prettierNative": "a /* @ts-ignore */ /* ordinary */\n/** @type {x} */\nb\n"
       }
     ],
@@ -25754,7 +25945,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-expect-error */\n/* ordinary */ /* @__PURE__ */\ncall();\n",
+        "swcPlugin": "(\n  a /* @ts-expect-error */\n); /* ordinary */ /* @__PURE__ */\ncall();\n",
         "prettierNative": "a; /* @ts-expect-error */ /* ordinary */ /* @__PURE__ */\ncall();\n"
       },
       {
@@ -25763,7 +25954,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-expect-error */; /* ordinary */ /* @__PURE__ */\ncall()\n",
+        "swcPlugin": ";(\n  a /* @ts-expect-error */\n); /* ordinary */ /* @__PURE__ */\ncall()\n",
         "prettierNative": "a /* @ts-expect-error */ /* ordinary */ /* @__PURE__ */\ncall()\n"
       }
     ],
@@ -25773,7 +25964,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a; /* @ts-ignore */\n/* ordinary */\nb;\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n); /* ordinary */\nb;\n",
         "prettierNative": "a; /* @ts-ignore */ /* ordinary */\nb;\n"
       },
       {
@@ -25782,7 +25973,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */\n/* ordinary */\nb\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n) /* ordinary */\nb\n",
         "prettierNative": "a /* @ts-ignore */ /* ordinary */\nb\n"
       }
     ],
@@ -25792,7 +25983,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n/* @ts-ignore */\n\n/* ordinary */ /** @type {x} */\nb;\n",
+        "swcPlugin": "(\n  a /* @ts-ignore */\n);\n/* ordinary */ /** @type {x} */\nb;\n",
         "prettierNative": "a; /* @ts-ignore */ /* ordinary */\n/** @type {x} */\nb;\n"
       },
       {
@@ -25801,7 +25992,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a /* @ts-ignore */\n/* ordinary */ /** @type {x} */\nb\n",
+        "swcPlugin": ";(\n  a /* @ts-ignore */\n)\n/* ordinary */ /** @type {x} */\nb\n",
         "prettierNative": "a /* @ts-ignore */ /* ordinary */\n/** @type {x} */\nb\n"
       }
     ],
@@ -25830,7 +26021,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "a;\n// @ts-ignore\n/* c\nd */\n",
+        "swcPlugin": "(\n  a\n  // @ts-ignore\n); /* c\nd */\n",
         "prettierNative": "a; /* c\n// @ts-ignore\nd */\n"
       },
       {
@@ -25839,7 +26030,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "a\n// @ts-ignore\n/* c\nd */\n",
+        "swcPlugin": ";(\n  a\n  // @ts-ignore\n) /* c\nd */\n",
         "prettierNative": "a /* c\n// @ts-ignore\nd */\n"
       }
     ],
@@ -29405,6 +29596,44 @@
         "prettierNative": "// @ts-ignore\nmissing // tail\n/** @type {x} */\nb\n"
       }
     ],
+    "js/statements/statement-tail-order/diagnostic.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-ignore\n); /** @type {x} */\nb;\n",
+        "prettierNative": "a; // @ts-ignore\n/** @type {x} */\nb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-ignore\n); /** @type {x} */\nb\n",
+        "prettierNative": "a // @ts-ignore\n/** @type {x} */\nb\n"
+      }
+    ],
+    "js/statements/statement-tail-order/expect.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-expect-error\n); /* next */\nb;\n",
+        "prettierNative": "a; // @ts-expect-error\n/* next */\nb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-expect-error\n) /* next */\nb\n",
+        "prettierNative": "a // @ts-expect-error\n/* next */\nb\n"
+      }
+    ],
     "js/statements/statement-tail-order/lint-line-separator.js": [
       {
         "options": {
@@ -29441,6 +29670,82 @@
         },
         "swcPlugin": "// @ts-ignore\n;(missing // @ts-ignore\n); /** @type {x} */\nb\n",
         "prettierNative": "// @ts-ignore\nmissing // @ts-ignore\n/** @type {x} */\nb\n"
+      }
+    ],
+    "js/statements/statement-tail-order/omitted-diagnostic.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-ignore\n); /** @type {x} */\nb;\n",
+        "prettierNative": "a; // @ts-ignore\n/** @type {x} */\nb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-ignore\n); /** @type {x} */\nb\n",
+        "prettierNative": "a // @ts-ignore\n/** @type {x} */\nb\n"
+      }
+    ],
+    "js/statements/statement-tail-order/omitted-directive.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "\"use strict\";\n(\n  a // @ts-ignore\n); /* next */\nb;\n",
+        "prettierNative": "\"use strict\";\na; // @ts-ignore\n/* next */\nb;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "\"use strict\"\n;(\n  a // @ts-ignore\n) /* next */\nb\n",
+        "prettierNative": "\"use strict\"\na // @ts-ignore\n/* next */\nb\n"
+      }
+    ],
+    "js/statements/statement-tail-order/omitted-prologue.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-ignore\n); /* next */\n(\"use strict\");\n",
+        "prettierNative": "a; // @ts-ignore\n/* next */\n(\"use strict\");\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-ignore\n) /* next */\n;(\"use strict\")\n",
+        "prettierNative": "a // @ts-ignore\n/* next */\n;(\"use strict\")\n"
+      }
+    ],
+    "js/statements/statement-tail-order/pure.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a // @ts-ignore\n); /*#__PURE__*/\ncall();\n",
+        "prettierNative": "a; // @ts-ignore\n/*#__PURE__*/\ncall();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  a // @ts-ignore\n); /*#__PURE__*/\ncall()\n",
+        "prettierNative": "a // @ts-ignore\n/*#__PURE__*/\ncall()\n"
       }
     ],
     "js/statements/suspension-boundaries/async-arrow-inline/input.js": [
@@ -35635,6 +35940,171 @@
         "prettierNative": "type T<\n  A /* prettier-ignore */ extends /* c */\n  /* prettier-ignore */ B,\n> = A;\n"
       }
     ],
+    "ts/comments/statement-tail-directives/array-line/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  [first, second, third] /// @ts-ignore\n);\nnext;\n",
+        "prettierNative": "[first, second, third]; /// @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  [\n    first,\n    second,\n    third,\n  ] /// @ts-ignore\n);\nnext;\n",
+        "prettierNative": "[\n  first,\n  second,\n  third,\n]; /// @ts-ignore\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  [first, second, third] /// @ts-ignore\n)\nnext\n",
+        "prettierNative": ";[first, second, third] /// @ts-ignore\nnext\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  [\n    first,\n    second,\n    third,\n  ] /// @ts-ignore\n)\nnext\n",
+        "prettierNative": ";[\n  first,\n  second,\n  third,\n] /// @ts-ignore\nnext\n"
+      }
+    ],
+    "ts/comments/statement-tail-directives/binary-block/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first + second + third /* @ts-ignore */\n);\nnext;\n",
+        "prettierNative": "first + second + third; /* @ts-ignore */\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  first +\n  second +\n  third /* @ts-ignore */\n);\nnext;\n",
+        "prettierNative": "first +\n  second +\n  third; /* @ts-ignore */\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  first + second + third /* @ts-ignore */\n)\nnext\n",
+        "prettierNative": "first + second + third /* @ts-ignore */\nnext\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  first +\n  second +\n  third /* @ts-ignore */\n)\nnext\n",
+        "prettierNative": "first +\n  second +\n  third /* @ts-ignore */\nnext\n"
+      }
+    ],
+    "ts/comments/statement-tail-directives/nested-array-line/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  [\n    [first, second],\n    [third, fourth],\n  ] // @ts-expect-error\n);\nnext;\n",
+        "prettierNative": "[\n  [first, second],\n  [third, fourth],\n]; // @ts-expect-error\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  [\n    [\n      first,\n      second,\n    ],\n    [\n      third,\n      fourth,\n    ],\n  ] // @ts-expect-error\n);\nnext;\n",
+        "prettierNative": "[\n  [\n    first,\n    second,\n  ],\n  [\n    third,\n    fourth,\n  ],\n]; // @ts-expect-error\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  [\n    [first, second],\n    [third, fourth],\n  ] // @ts-expect-error\n)\nnext\n",
+        "prettierNative": ";[\n  [first, second],\n  [third, fourth],\n] // @ts-expect-error\nnext\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  [\n    [\n      first,\n      second,\n    ],\n    [\n      third,\n      fourth,\n    ],\n  ] // @ts-expect-error\n)\nnext\n",
+        "prettierNative": ";[\n  [\n    first,\n    second,\n  ],\n  [\n    third,\n    fourth,\n  ],\n] // @ts-expect-error\nnext\n"
+      }
+    ],
+    "ts/comments/statement-tail-directives/typeof-multiline/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  typeof first /* header\n   * @ts-ignore */\n);\nnext;\n",
+        "prettierNative": "typeof first; /* header\n * @ts-ignore */\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  typeof first /* header\n   * @ts-ignore */\n)\nnext\n",
+        "prettierNative": "typeof first /* header\n * @ts-ignore */\nnext\n"
+      }
+    ],
+    "ts/comments/statement-tail-directives/unary-block/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  !first /* @ts-ignore */\n);\nnext;\n",
+        "prettierNative": "!first; /* @ts-ignore */\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  !first /* @ts-ignore */\n)\nnext\n",
+        "prettierNative": "!first /* @ts-ignore */\nnext\n"
+      }
+    ],
+    "ts/comments/statement-tail-directives/unary-line-bom/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  !first //﻿@ts-expect-error\n);\nnext;\n",
+        "prettierNative": "!first; //﻿@ts-expect-error\nnext;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(\n  !first //﻿@ts-expect-error\n)\nnext\n",
+        "prettierNative": "!first //﻿@ts-expect-error\nnext\n"
+      }
+    ],
     "ts/comments/type-angle-source-head/assertion-ownline/input.ts": [
       {
         "options": {
@@ -39656,6 +40126,36 @@
         },
         "swcPlugin": "// @ts-ignore\nconst v = a ? (b // inner\n    ) /* @ts-ignore */ : /* prettier-ignore */ missing(   );\n",
         "prettierNative": "// @ts-ignore\nconst v = a\n  ? b // inner\n    /* @ts-ignore */\n  : /* prettier-ignore */ missing(   );\n"
+      }
+    ],
+    "ts/expressions/diagnostic-closing-line/head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "declare const a: number;\ndeclare const foo: object;\nconst value = (\n  /* @ts-expect-error */ a\n);\nfoo.unknownMethod();\n",
+        "prettierNative": "declare const a: number;\ndeclare const foo: object;\nconst value = /* @ts-expect-error */ a;\nfoo.unknownMethod();\n"
+      }
+    ],
+    "ts/expressions/diagnostic-closing-line/own-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "declare const a: number;\ndeclare const foo: object;\n(\n  a\n  // @ts-ignore\n);\nfoo.unknownMethod();\n",
+        "prettierNative": "declare const a: number;\ndeclare const foo: object;\na;\n// @ts-ignore\nfoo.unknownMethod();\n"
+      }
+    ],
+    "ts/expressions/diagnostic-closing-line/tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "declare const a: number;\ndeclare const foo: object;\n(\n  a // @ts-ignore\n);\nfoo.unknownMethod();\n",
+        "prettierNative": "declare const a: number;\ndeclare const foo: object;\na; // @ts-ignore\nfoo.unknownMethod();\n"
       }
     ],
     "ts/expressions/diagnostic-grammar-boundary/conditional-test.ts": [
