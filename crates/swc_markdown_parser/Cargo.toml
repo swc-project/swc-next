@@ -1,0 +1,14 @@
+[package]
+description           = "Source-backed Markdown parser"
+edition               = "2024"
+homepage.workspace    = true
+license.workspace     = true
+name                  = "swc_next_markdown_parser"
+repository.workspace  = true
+version               = "0.8.0"
+
+[dependencies]
+html-escape        = { workspace = true }
+memchr             = { workspace = true }
+swc_next_simd      = { workspace = true, features = ["memchr"] }
+unicode-properties = { workspace = true, features = ["general-category"] }
