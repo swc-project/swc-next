@@ -1,0 +1,24 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = (((value
+// tail
+)))!.member;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x =
+  (
+    value
+    // tail
+  )!.member;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+x =
+  (
+    value
+    // tail
+  )!.member;

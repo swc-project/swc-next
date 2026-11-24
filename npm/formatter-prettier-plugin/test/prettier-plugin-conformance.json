@@ -31457,6 +31457,96 @@
         "prettierNative": "const select = (\n  value  :Entry // prettier-ignore\n): Promise<Entry> => value\n"
       }
     ],
+    "ts/assertion-comment-boundaries/released-tail-assignment-as.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  x = value\n  /* tail */\n) as T;\n",
+        "prettierNative": "(x = value) as T;\n/* tail */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  x = value\n  /* tail */\n) as T;\n",
+        "prettierNative": "(x = value) as T;\n/* tail */\n"
+      }
+    ],
+    "ts/assertion-comment-boundaries/released-tail-binary-as.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a | b\n  // tail\n) as T;\n",
+        "prettierNative": "(a |\n  b) as T;\n  // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a | b\n  // tail\n) as T;\n",
+        "prettierNative": "(a |\n  b) as T;\n  // tail\n"
+      }
+    ],
+    "ts/assertion-comment-boundaries/released-tail-non-null-member.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    value\n    // tail\n  )!.member;\n",
+        "prettierNative": "x =\n  value!\n  // tail\n  .member;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    value\n    // tail\n  )!.member;\n",
+        "prettierNative": "x =\n  value!\n  // tail\n  .member;\n"
+      }
+    ],
+    "ts/assertion-comment-boundaries/released-tail-non-null-template.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = `before${\n  (\n    left | right\n    // operand\n  )!.member()\n  // slot\n}after${1}`;\n",
+        "prettierNative": "x = `before${\n  (left |\n    right)!.member()\n    // operand\n  // slot\n}after${1}`;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = `before${\n  (\n    left | right\n    // operand\n  )!.member()\n  // slot\n}after${1}`;\n",
+        "prettierNative": "x = `before${\n  (left |\n    right)!.member()\n    // operand\n  // slot\n}after${1}`;\n"
+      }
+    ],
+    "ts/assertion-comment-boundaries/released-tail-sequence-satisfies.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a, b\n  // tail\n) satisfies T;\n",
+        "prettierNative": "(a,\nb) satisfies T;\n// tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(\n  a, b\n  // tail\n) satisfies T;\n",
+        "prettierNative": "(a,\nb) satisfies T;\n// tail\n"
+      }
+    ],
     "ts/assertion-head-ownership/block-member.ts": [
       {
         "options": {
