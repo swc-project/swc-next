@@ -6195,6 +6195,59 @@
         "prettierNative": "do {\r\n  foo();\r\n} while (a); // marker\r\n"
       }
     ],
+    "js/control-flow/while-do-jumps/do-retained-gap-pre-terminator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (b);\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (c);\n",
+        "prettierNative": "do\n  a; // before\n  /* after */\nwhile (/* also before */ /* prettier-ignore */ b);\ndo\n  if (a) b; // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (\n  b\n);\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (\n  c\n);\n",
+        "prettierNative": "do\n  a; // before\n  /* after */\nwhile (\n  /* also before */ /* prettier-ignore */ b\n);\ndo\n  if (a) b; // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (b)\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (c)\n",
+        "prettierNative": "do\n  a // before\n  /* after */\nwhile (/* also before */ /* prettier-ignore */ b)\ndo\n  if (a) b // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (\n  b\n)\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (\n  c\n)\n",
+        "prettierNative": "do\n  a // before\n  /* after */\nwhile (\n  /* also before */ /* prettier-ignore */ b\n)\ndo\n  if (a) b // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "do\n\ta // before\n\t/* also before */; /* after */ while /* prettier-ignore */ (\n\tb\n);\ndo\n\tif (a)\n\t\tb // before\n\t\t// also before\n\t\t; while /* prettier-ignore */ (\n\tc\n);\n",
+        "prettierNative": "do\n\ta; // before\n\t/* after */\nwhile (\n\t/* also before */ /* prettier-ignore */ b\n);\ndo\n\tif (a) b; // before\nwhile (\n\t// also before\n\t/* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "do\r\n  a // before\r\n  /* also before */; /* after */ while /* prettier-ignore */ (\r\n  b\r\n);\r\ndo\r\n  if (a)\r\n    b // before\r\n    // also before\r\n    ; while /* prettier-ignore */ (c);\r\n",
+        "prettierNative": "do\r\n  a; // before\r\n  /* after */\r\nwhile (\r\n  /* also before */ /* prettier-ignore */ b\r\n);\r\ndo\r\n  if (a) b; // before\r\nwhile (\r\n  // also before\r\n  /* prettier-ignore */ c\r\n);\r\n"
+      }
+    ],
     "js/control-flow/while-do-jumps/do-source-line-gap.js": [
       {
         "options": {

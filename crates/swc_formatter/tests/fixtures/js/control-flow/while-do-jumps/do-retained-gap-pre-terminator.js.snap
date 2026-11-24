@@ -1,0 +1,94 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do a // before
+/* also before */; /* after */ while /* prettier-ignore */ ( b ) ;
+do if (a) b // before
+// also before
+; while /* prettier-ignore */ ( c );
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+do
+  a // before
+  /* also before */; /* after */ while /* prettier-ignore */ (b);
+do
+  if (a)
+    b // before
+    // also before
+    ; while /* prettier-ignore */ (c);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+do
+  a // before
+  /* also before */; /* after */ while /* prettier-ignore */ (
+  b
+);
+do
+  if (a)
+    b // before
+    // also before
+    ; while /* prettier-ignore */ (
+  c
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+do
+  a // before
+  /* also before */; /* after */ while /* prettier-ignore */ (b)
+do
+  if (a)
+    b // before
+    // also before
+    ; while /* prettier-ignore */ (c)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+do
+  a // before
+  /* also before */; /* after */ while /* prettier-ignore */ (
+  b
+)
+do
+  if (a)
+    b // before
+    // also before
+    ; while /* prettier-ignore */ (
+  c
+)
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":20}
+---------- Output ----------
+do
+	a // before
+	/* also before */; /* after */ while /* prettier-ignore */ (
+	b
+);
+do
+	if (a)
+		b // before
+		// also before
+		; while /* prettier-ignore */ (
+	c
+);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+do
+  a // before
+  /* also before */; /* after */ while /* prettier-ignore */ (
+  b
+);
+do
+  if (a)
+    b // before
+    // also before
+    ; while /* prettier-ignore */ (c);
