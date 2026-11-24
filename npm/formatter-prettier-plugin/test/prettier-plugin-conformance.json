@@ -37536,6 +37536,87 @@
         "prettierNative": "function f(): // @ts-ignore\nA &\n  B {}\n  // c\n"
       }
     ],
+    "ts/compound-type-continuation/diagnostic-multiline-result-arrow.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const g = ():\n// @ts-expect-error\n(A\n  &\n    B[]\n  // tail\n) => 1;\n",
+        "prettierNative": "const g = (): // @ts-expect-error\nA &\n  B[] => 1;\n  // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const g = ():\n// @ts-expect-error\n(A\n  &\n    B[]\n  // tail\n) => 1;\n",
+        "prettierNative": "const g =\n  (): // @ts-expect-error\n  A &\n    B[] => 1;\n    // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const g = ():\n// @ts-expect-error\n(A\n  &\n    B[]\n  // tail\n) => 1\n",
+        "prettierNative": "const g = (): // @ts-expect-error\nA &\n  B[] => 1\n  // tail\n"
+      }
+    ],
+    "ts/compound-type-continuation/diagnostic-multiline-result-predicate.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  f(x: unknown):\n  // @ts-expect-error\n  x is (A\n    &\n      B\n    // tail\n  ) {\n    return true;\n  }\n}\n",
+        "prettierNative": "class C {\n  f(x: unknown): // @ts-expect-error\n  x is A &\n    B {\n    // tail\n    return true;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  f(x: unknown):\n  // @ts-expect-error\n  x is (A\n    &\n      B\n    // tail\n  ) {\n    return true;\n  }\n}\n",
+        "prettierNative": "class C {\n  f(\n    x: unknown,\n  ): // @ts-expect-error\n  x is A &\n    B {\n    // tail\n    return true;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C {\n  f(x: unknown):\n  // @ts-expect-error\n  x is (A\n    &\n      B\n    // tail\n  ) {\n    return true\n  }\n}\n",
+        "prettierNative": "class C {\n  f(x: unknown): // @ts-expect-error\n  x is A &\n    B {\n    // tail\n    return true\n  }\n}\n"
+      }
+    ],
+    "ts/compound-type-continuation/diagnostic-multiline-result-union.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f():\n// @ts-ignore\n(A\n  | B\n  // tail\n) {}\n",
+        "prettierNative": "function f():\n  // @ts-ignore\n  | A\n  | B {}\n  // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f():\n// @ts-ignore\n(A\n  | B\n  // tail\n) {}\n",
+        "prettierNative": "function f():\n  // @ts-ignore\n  | A\n  | B {}\n  // tail\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f():\n// @ts-ignore\n(A\n  | B\n  // tail\n) {}\n",
+        "prettierNative": "function f():\n  // @ts-ignore\n  | A\n  | B {}\n  // tail\n"
+      }
+    ],
     "ts/compound-type-continuation/generic-constraint-default.ts": [
       {
         "options": {

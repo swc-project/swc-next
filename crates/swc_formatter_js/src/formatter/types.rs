@@ -3753,10 +3753,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .filter(|comment| comment.kind == CommentKind::Line)
                 .map(|_| CommentGap::LineComment)
         });
+        // A continuation pair must keep the covered head on its original line.
+        let opening = self.line_constraint(span.start, span.start);
         writer.group(false, |writer| {
             writer.text("(");
             writer.indent(|writer| {
-                writer.soft_line();
+                opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 writer.write_fragment(content);
                 self.format_expression_tail(output.pending, writer)
             })?;
@@ -4447,12 +4449,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return writer.group(false, |writer| {
                 writer.text("(");
                 self.format_verbatim(Span::new(span.start + 1, child_span.start), writer)?;
-                let tail = self.format_prepared_type_body(
-                    child,
-                    TypeContext::Parenthesized,
-                    TypeLayout::OpeningProvided,
-                    writer,
-                )?;
+                // A retained continuation pair uses the same body indentation
+                // as the generated pair on the first pass.
+                let tail = if source
+                    && line_tail
+                    && leading_comments.is_empty()
+                    && self.diagnostic_line_is_sensitive(span.start)
+                    && self.source_line_breaks(span.start + 1, child_span.start) == 0
+                    && trailing
+                        .comments()
+                        .iter()
+                        .all(|&comment| self.comment_semantics(comment).is_ordinary())
+                {
+                    writer.indent(|writer| {
+                        self.format_prepared_type_body(
+                            child,
+                            TypeContext::Parenthesized,
+                            TypeLayout::CallerIndented,
+                            writer,
+                        )
+                    })?
+                } else {
+                    self.format_prepared_type_body(
+                        child,
+                        TypeContext::Parenthesized,
+                        TypeLayout::OpeningProvided,
+                        writer,
+                    )?
+                };
                 self.format_expression_tail(tail.pending, writer)?;
                 self.format_verbatim(Span::new(child_span.end, span.end - 1), writer)?;
                 writer.text(")");

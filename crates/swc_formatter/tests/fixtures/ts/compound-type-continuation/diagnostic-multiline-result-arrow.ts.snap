@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const g = ():
+// @ts-expect-error
+A
+& (B[]
+// tail
+) => 1;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const g = ():
+// @ts-expect-error
+(A
+  &
+    B[]
+  // tail
+) => 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const g = ():
+// @ts-expect-error
+(A
+  &
+    B[]
+  // tail
+) => 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+const g = ():
+// @ts-expect-error
+(A
+  &
+    B[]
+  // tail
+) => 1
