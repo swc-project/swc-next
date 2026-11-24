@@ -3287,7 +3287,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && context.parentheses_owner == ParenthesesOwner::Expression
         {
             let content = prepared.get_or_insert_with(|| self.expression_content(expression));
-            self.generated_enclosure_owner(expression, content, &head, binding, context)
+            self.generated_enclosure_owner(
+                expression,
+                content.data,
+                head.comments,
+                head.content_start,
+                binding,
+                context,
+            )
         } else {
             None
         };
@@ -4993,28 +5000,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn generated_enclosure_owner(
         &self,
         expression: Expr,
-        content: &ExpressionContent,
-        head: &NodeHead<'ast>,
+        data: ExprData,
+        comments: &[Comment],
+        head_start: u32,
         binding: CommentBinding,
         context: ExpressionContext<'ast>,
     ) -> Option<GeneratedEnclosureOwner> {
         if !self.has_type_casts
-            || head.comments.is_empty()
+            || comments.is_empty()
             || !matches!(binding, CommentBinding::Unbound)
             || context.content_mode != ContentMode::Formatted
             || context.parentheses_owner != ParenthesesOwner::Expression
-            || self.expression_needs_parentheses(
-                content.data,
-                context.position,
-                context.content_mode,
-            ) != Some(true)
+            || self.expression_needs_parentheses(data, context.position, context.content_mode)
+                != Some(true)
         {
             return None;
         }
         // This complete exterior run is the emitted adjacency owner. A binary
         // hoist may cross removed source openers before reaching its lexical head.
-        let annotation = self.source_cast_before(head.content_start)?;
-        if !head.comments.contains(&annotation)
+        let annotation = self.source_cast_before(head_start)?;
+        if !comments.contains(&annotation)
             || self.diagnostic_range_is_sensitive(Span::new(
                 annotation.span.start,
                 expression.span(self.ast).end,

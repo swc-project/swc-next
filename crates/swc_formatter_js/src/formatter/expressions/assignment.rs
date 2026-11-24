@@ -1660,10 +1660,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 let start = parenthesized.span(self.ast).start;
                 let end = child.span(self.ast).start;
-                let first = source_comments.partition_point(|comment| comment.span.start < start);
-                let head = &source_comments[first..];
-                let count = head.partition_point(|comment| comment.span.end <= end);
-                let head = &head[..count];
+                let head = self.source_comments_in_range(Span::new(start, end));
                 boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
             }
             let sensitive = !clear_rhs_source && self.diagnostic_range_is_sensitive(span);
