@@ -390,6 +390,7 @@ pub(super) struct SourceOpeningPacket<'ast> {
     pub(super) content: Expr,
     pub(super) content_start: u32,
     pub(super) comments: &'ast [Comment],
+    body_mode: Option<ContentMode>,
 }
 
 struct SourceParenthesesComments<'ast> {
@@ -599,7 +600,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 content,
                 content_start,
                 comments,
+                body_mode: None,
             })
+    }
+
+    /// A source-bound separator keeps the lexical pairs around its value. Cast
+    /// and ignore decisions still belong to their individual source wrappers.
+    pub(super) fn source_comment_frame(
+        &self,
+        expression: Expr,
+    ) -> Option<SourceOpeningPacket<'ast>> {
+        let mut content = expression;
+        let mut mode = ContentMode::Formatted;
+        while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(content) {
+            let child = pair.expression(self.ast);
+            mode = self.parentheses_content_mode(
+                SourceParentheses {
+                    outer: pair.span(self.ast),
+                    inner: child.span(self.ast),
+                    inner_target: ParenthesisInner::Expression(child),
+                },
+                mode,
+            );
+            content = child;
+        }
+        if content == expression {
+            return None;
+        }
+        let outer = expression.span(self.ast);
+        let inner = content.span(self.ast);
+        let comments = self.source_comments_in_range(Span::new(outer.start, inner.start));
+        if comments.is_empty()
+            && self
+                .source_comments_in_range(Span::new(inner.end, outer.end))
+                .is_empty()
+        {
+            return None;
+        }
+        Some(SourceOpeningPacket {
+            outer,
+            content,
+            content_start: inner.start,
+            comments,
+            body_mode: Some(mode),
+        })
     }
 
     /// The parent has resolved this packet's owner; its original pairs retain the binding.
@@ -611,12 +655,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let content_span = source.content.span(self.ast);
         let closing = Span::new(content_span.end, source.outer.end);
-        let mode = if context.content_mode == ContentMode::Verbatim
-            || self.content_mode(self.comments.in_range(closing)) == ContentMode::Verbatim
-        {
+        let mode = if context.content_mode == ContentMode::Verbatim {
             ContentMode::Verbatim
         } else {
-            ContentMode::Formatted
+            source
+                .body_mode
+                .unwrap_or_else(|| self.content_mode(self.comments.in_range(closing)))
         };
         self.format_verbatim(Span::new(source.outer.start, content_span.start), writer)?;
         let mut pending = None;

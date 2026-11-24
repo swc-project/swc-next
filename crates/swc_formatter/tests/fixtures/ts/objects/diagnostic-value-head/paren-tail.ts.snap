@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = { k: ((a /* inside */) /* outside */),
+// @ts-ignore
+y: 1 };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x = {
+  k: ((a /* inside */) /* outside */),
+  // @ts-ignore
+  y: 1, };
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+x = {
+	k: ((a /* inside */) /* outside */),
+	// @ts-ignore
+	y: 1, };

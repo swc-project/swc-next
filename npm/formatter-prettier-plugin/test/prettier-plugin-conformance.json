@@ -24920,6 +24920,16 @@
         "prettierNative": "const result = {\n  /* ordinary */ // @ts-ignore\n  key: /** @type {number} */ (\"wrong\"),\n};\n"
       }
     ],
+    "js/objects/property-packet-owners/protected/paren-cast-tail.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: /** @type {number} */ ((a /* inside */) /* middle */) /* outside */,\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: /** @type {number} */ (\n    a /* inside */ /* middle */\n  ) /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
+      }
+    ],
     "js/objects/relocated-colon-gap/occupied-line.js": [
       {
         "options": {
@@ -42834,6 +42844,78 @@
         },
         "swcPlugin": "({\n\t// @ts-ignore\n\tk\n\n\t: /* a */ // l\n\n\t\t// B\n\t\t1,\n});\n",
         "prettierNative": "({\n\t// @ts-ignore\n\t/* a */ // l\n\n\tk:\n\t\t// B\n\t\t1,\n});\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: (a // tail\n),\n  // @ts-expect-error\n  y: 1, };\n",
+        "prettierNative": "x = {\n  // tail\n  k: a,\n  // @ts-expect-error\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: (a // tail\n),\n\t// @ts-expect-error\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\t// tail\n\tk: a,\n\t// @ts-expect-error\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-suppression-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: (/* prettier-ignore */ (a  +  b /* inside */) /* middle */) /* outside */,\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: /* prettier-ignore */ a  +  b /* inside */ /* middle */ /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: (/* prettier-ignore */ (a  +  b /* inside */) /* middle */) /* outside */,\n\t// @ts-ignore\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\tk: /* prettier-ignore */ a  +  b /* inside */ /* middle */ /* outside */,\n\t// @ts-ignore\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: ((a /* inside */) /* outside */),\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: a /* inside */ /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: ((a /* inside */) /* outside */),\n\t// @ts-ignore\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\tk: a /* inside */ /* outside */,\n\t// @ts-ignore\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/spread-paren-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: 0,\n  // @ts-ignore\n  ...(y /* inside */) /* outside */, z, };\n",
+        "prettierNative": "x = {\n  k: 0,\n  // @ts-ignore\n  ...y /* inside */ /* outside */,\n  z,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: 0,\n\t// @ts-ignore\n\t...(y /* inside */) /* outside */, z, };\n",
+        "prettierNative": "x = {\n\tk: 0,\n\t// @ts-ignore\n\t...y /* inside */ /* outside */,\n\tz,\n};\n"
       }
     ],
     "ts/objects/property-head-fixedpoint/assignment.ts": [
