@@ -1,6 +1,8 @@
 //! SWC's JSX transform on the Next AST.
 
-use std::collections::{HashMap, HashSet};
+use std::borrow::Cow;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::*;
 
 use crate::common::resolver::context::Resolver;
@@ -20,7 +22,10 @@ use jsx_self::JsxSelfCtx;
 use jsx_src::JsxSrc;
 use parser::jsx::decode_jsx_entity;
 use static_check::should_use_create_element;
-use swc_next_allocator::wtf8::{Wtf8, Wtf8Buf};
+use swc_next_allocator::{
+    vec::ArenaVec,
+    wtf8::{Wtf8, Wtf8Buf},
+};
 
 /// SWC's React JSX runtime selection. The default runtime is classic.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -92,13 +97,17 @@ pub(crate) fn jsx(
     if !diagnostics.is_empty() {
         return diagnostics;
     }
-    let mut comments: HashMap<u32, Vec<Comment>> = HashMap::default();
+    let mut comments: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
     for &comment in ast.comments() {
+        if comment.kind != CommentKind::Block || comment.position != CommentPosition::Leading {
+            continue;
+        }
         comments
             .entry(comment.attached_to)
             .or_default()
             .push(comment);
     }
+    let development = options.development.unwrap_or_default();
     let mut jsx = Jsx {
         resolver,
         runtime: options.runtime.unwrap_or_default(),
@@ -109,16 +118,16 @@ pub(crate) fn jsx(
         import_create_element: None,
         pragma: pragma.into(),
         pragma_frag: pragma_frag.into(),
-        development: options.development.unwrap_or_default(),
+        development,
         throw_if_namespace: options.throw_if_namespace.unwrap_or(true),
         filename: filename.unwrap_or_default().into(),
-        source: JsxSrc::new(ast.source()),
+        source: development.then(|| JsxSrc::new(ast.source())),
         self_ctx: JsxSelfCtx::default(),
-        method_functions: HashSet::default(),
+        method_functions: FxHashSet::default(),
         comments,
         diagnostics,
         top_level_node: true,
-        pure_positions: HashSet::new(),
+        pure_positions: FxHashSet::default(),
     };
     let program = ast.root_program();
     let _ = program.traverse_mut_with(&mut jsx, &mut TraverseMutCtx::new(ast, ()));
@@ -127,20 +136,13 @@ pub(crate) fn jsx(
     let diagnostics = jsx.diagnostics;
     // CallExpression::pure represents SWC's synthetic annotation. Remove only
     // identical existing annotations which SWC's add_pure_comment deduplicates.
-    let comments = ast
-        .comments()
-        .iter()
-        .copied()
-        .filter(|comment| {
-            !(comment.position == CommentPosition::Leading
-                && jsx.pure_positions.contains(&comment.attached_to)
-                && ast.get_utf8(comment.value(ast.source().as_bytes())) == "#__PURE__")
-        })
-        .collect::<Vec<_>>();
-    ast.set_attached_comments(swc_next_allocator::vec::ArenaVec::from_iter_in(
-        comments,
-        ast.allocator(),
-    ));
+    let mut comments = ArenaVec::with_capacity_in(ast.comments().len(), ast.allocator());
+    comments.extend(ast.comments().iter().copied().filter(|comment| {
+        !(comment.position == CommentPosition::Leading
+            && jsx.pure_positions.contains(&comment.attached_to)
+            && ast.get_utf8(comment.value(ast.source().as_bytes())) == "#__PURE__")
+    }));
+    ast.set_attached_comments(comments);
     let lang = match ast.lang() {
         Lang::Jsx => Lang::Js,
         Lang::Tsx => Lang::Ts,
@@ -163,13 +165,14 @@ struct Jsx<'r> {
     development: bool,
     throw_if_namespace: bool,
     filename: String,
-    source: JsxSrc,
+    source: Option<JsxSrc>,
     self_ctx: JsxSelfCtx,
-    method_functions: HashSet<NodeId>,
-    comments: HashMap<u32, Vec<Comment>>,
+    method_functions: FxHashSet<NodeId>,
+    // JSX directives are only read from leading block comments.
+    comments: FxHashMap<u32, Vec<Comment>>,
     diagnostics: Vec<Diagnostic>,
     top_level_node: bool,
-    pure_positions: HashSet<u32>,
+    pure_positions: FxHashSet<u32>,
 }
 
 impl Jsx<'_> {
@@ -362,9 +365,11 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
             .map(|id| ast.get_node_in_sub_range(id))
             .collect::<Vec<_>>();
         if node.span(ast) != DUMMY_SP {
-            let source = self
-                .source
-                .jsx_dev_source_arg(ast, node.span(ast), &self.filename);
+            let source = self.source.as_ref().unwrap().jsx_dev_source_arg(
+                ast,
+                node.span(ast),
+                &self.filename,
+            );
             attributes.push(self.add_attribute(ast, "__source", source));
         }
         if self.self_ctx.can_add_self() {
@@ -505,11 +510,13 @@ impl Jsx<'_> {
                 if self.development {
                     args.push(Argument::Expr(undefined(ast)));
                     args.push(Argument::Expr(ast.expr_boolean_literal(DUMMY_SP, use_jsxs)));
-                    args.push(Argument::Expr(self.source.jsx_dev_source_arg(
-                        ast,
-                        fragment.opening_fragment(ast).span(ast),
-                        &self.filename,
-                    )));
+                    args.push(Argument::Expr(
+                        self.source.as_ref().unwrap().jsx_dev_source_arg(
+                            ast,
+                            fragment.opening_fragment(ast).span(ast),
+                            &self.filename,
+                        ),
+                    ));
                     let this = if self.self_ctx.can_add_self() {
                         ast.expr_this_expression(DUMMY_SP)
                     } else {
@@ -536,12 +543,8 @@ impl Jsx<'_> {
         let top_level_node = self.top_level_node;
         let span = element.span(ast);
         let opening = element.opening_element(ast);
-        let attributes = opening
-            .attributes(ast)
-            .iter()
-            .map(|id| ast.get_node_in_sub_range(id))
-            .collect::<Vec<_>>();
-        let use_create_element = should_use_create_element(&attributes, ast);
+        let attributes = opening.attributes(ast);
+        let use_create_element = should_use_create_element(attributes, ast);
         self.top_level_node = false;
         let name = self.jsx_name(opening.name(ast), ast);
         self.add_pure_comment(span);
@@ -551,7 +554,8 @@ impl Jsx<'_> {
                 let mut key = None;
                 let mut source = None;
                 let mut this = None;
-                for attribute in attributes {
+                for slot in attributes.iter() {
+                    let attribute = ast.get_node_in_sub_range(slot);
                     match ast.jsx_attribute_item_data(attribute) {
                         JsxAttributeItemData::JsxAttribute(attribute) => {
                             match ast.jsx_attribute_name_data(attribute.name(ast)) {
@@ -665,13 +669,12 @@ impl Jsx<'_> {
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1026>.
     fn children(&mut self, children: SubRange<JsxChild>, ast: &mut Ast<'_>) -> Vec<Argument> {
-        let children = children
-            .iter()
-            .map(|id| ast.get_node_in_sub_range(id))
-            .collect::<Vec<_>>();
         children
-            .into_iter()
-            .filter_map(|child| self.jsx_elem_child_to_expr(child, ast))
+            .iter()
+            .filter_map(|slot| {
+                let child = ast.get_node_in_sub_range(slot);
+                self.jsx_elem_child_to_expr(child, ast)
+            })
             .collect()
     }
 
@@ -710,7 +713,7 @@ impl Jsx<'_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1064>.
     fn fold_attrs_for_classic(
         &mut self,
-        attributes: Vec<JsxAttributeItem>,
+        attributes: SubRange<JsxAttributeItem>,
         ast: &mut Ast<'_>,
     ) -> Expr {
         if attributes.is_empty() {
@@ -718,7 +721,8 @@ impl Jsx<'_> {
         }
         let count = attributes.len();
         let mut properties = Vec::new();
-        for attribute in attributes {
+        for slot in attributes.iter() {
+            let attribute = ast.get_node_in_sub_range(slot);
             match ast.jsx_attribute_item_data(attribute) {
                 JsxAttributeItemData::JsxAttribute(attribute) => {
                     properties.push(self.attr_to_prop(attribute, ast));
@@ -791,8 +795,10 @@ impl Jsx<'_> {
             JsxAttributeValueData::StringLiteral(literal) => {
                 // Next stores quoted JSX text without decoding its entities.
                 let raw = ast.get_wtf8(literal.value(ast)).as_str().unwrap();
-                let value = read_jsx_str(raw);
-                let value = ast.add_wtf8(&value);
+                let value = match read_jsx_str(raw) {
+                    Cow::Borrowed(_) => literal.value(ast),
+                    Cow::Owned(value) => ast.add_wtf8(&value),
+                };
                 Some(ast.expr_string_literal(literal.span(ast), value, AstUtf8::EMPTY))
             }
             JsxAttributeValueData::JsxExpressionContainer(container) => {
@@ -950,9 +956,6 @@ impl JsxDirectives {
     ) -> Self {
         let mut directives = Self::default();
         for comment in comments {
-            if comment.kind != CommentKind::Block || comment.position != CommentPosition::Leading {
-                continue;
-            }
             let text = ast.get_utf8(comment.value(ast.source().as_bytes()));
             for line in text.lines() {
                 let line = line.trim();
@@ -1152,8 +1155,13 @@ impl Jsx<'_> {
 // JSX whitespace handling ported from SWC's React transform.
 
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_parser/src/lexer/state.rs#L607>.
-pub(super) fn decode_entities(mut raw: &str) -> Wtf8Buf {
+pub(super) fn decode_entities(raw: &str) -> Cow<'_, Wtf8> {
+    let Some(first_entity) = raw.find('&') else {
+        return Cow::Borrowed(Wtf8::from_str(raw));
+    };
     let mut value = Wtf8Buf::with_capacity(raw.len());
+    value.push_str(&raw[..first_entity]);
+    let mut raw = &raw[first_entity..];
     while let Some(character) = raw.chars().next() {
         if let Some((code_point, len)) = decode_jsx_entity(raw) {
             value.push(code_point);
@@ -1163,7 +1171,7 @@ pub(super) fn decode_entities(mut raw: &str) -> Wtf8Buf {
             raw = &raw[character.len_utf8()..];
         }
     }
-    value
+    Cow::Owned(value)
 }
 
 /// Decode quoted attribute contents with SWC's `read_jsx_str` chunk boundaries.
@@ -1171,7 +1179,7 @@ pub(super) fn decode_entities(mut raw: &str) -> Wtf8Buf {
 /// JSX child whitespace normalization to attribute strings.
 ///
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_parser/src/lexer/mod.rs#L1427>.
-pub(super) fn read_jsx_str(raw: &str) -> Wtf8Buf {
+pub(super) fn read_jsx_str(raw: &str) -> Cow<'_, Wtf8> {
     let mut value = Wtf8Buf::new();
     let mut chunk_start = 0;
     let mut position = 0;
@@ -1205,8 +1213,12 @@ pub(super) fn read_jsx_str(raw: &str) -> Wtf8Buf {
             position += character.len_utf8();
         }
     }
-    value.push_str(&raw[chunk_start..]);
-    value
+    if chunk_start == 0 {
+        Cow::Borrowed(Wtf8::from_str(raw))
+    } else {
+        value.push_str(&raw[chunk_start..]);
+        Cow::Owned(value)
+    }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/str.rs#L101>.
@@ -1215,12 +1227,15 @@ fn is_line_terminator(character: char) -> bool {
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1590>.
-pub(super) fn jsx_text_to_str_with_raw(value: &Wtf8, raw: &str) -> Wtf8Buf {
+pub(super) fn jsx_text_to_str_with_raw<'a>(value: &'a Wtf8, raw: &str) -> Cow<'a, Wtf8> {
     // Fast path: if no HTML entities (raw == value), use the simple algorithm
     if let Some(value) = value.as_str()
         && value == raw
     {
-        return Wtf8Buf::from_string(jsx_text_to_str_impl(value));
+        return match jsx_text_to_str_impl(value) {
+            Cow::Borrowed(text) => Cow::Borrowed(Wtf8::from_str(text)),
+            Cow::Owned(text) => Cow::Owned(Wtf8Buf::from_string(text)),
+        };
     }
     // Build a mask of which code point positions in value came from HTML
     // entities.
@@ -1270,7 +1285,7 @@ fn build_entity_mask(value: &Wtf8, mut raw: &str) -> Vec<bool> {
 /// entities.
 ///
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1641>.
-fn jsx_text_to_str_with_entity_mask(t: &Wtf8, entity_mask: &[bool]) -> Wtf8Buf {
+fn jsx_text_to_str_with_entity_mask<'a>(t: &'a Wtf8, entity_mask: &[bool]) -> Cow<'a, Wtf8> {
     // Fast path: if no line terminators and no trimmable whitespace
     // (whitespace that's not from entities at the leading edge)
     let chars: Vec<_> = wtf8_chars(t).collect();
@@ -1280,7 +1295,7 @@ fn jsx_text_to_str_with_entity_mask(t: &Wtf8, entity_mask: &[bool]) -> Wtf8Buf {
     // The original jsx_text_to_str_impl preserves leading/trailing whitespace on
     // single-line text
     if !t.is_empty() && !has_line_terminator {
-        return t.to_owned();
+        return Cow::Borrowed(t);
     }
 
     let mut acc: Option<Wtf8Buf> = None;
@@ -1332,11 +1347,11 @@ fn jsx_text_to_str_with_entity_mask(t: &Wtf8, entity_mask: &[bool]) -> Wtf8Buf {
     }
 
     if let Some(acc) = acc {
-        acc
+        Cow::Owned(acc)
     } else if let Some((start, end)) = only_line {
-        t.slice(start, end).to_owned()
+        Cow::Borrowed(t.slice(start, end))
     } else {
-        Wtf8Buf::default()
+        Cow::Borrowed(Wtf8::from_str(""))
     }
 }
 
@@ -1439,14 +1454,14 @@ fn add_line_of_jsx_text_wtf8(
 /// Internal implementation that works with &str
 #[inline]
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1873>.
-fn jsx_text_to_str_impl(t: &str) -> String {
+fn jsx_text_to_str_impl(t: &str) -> Cow<'_, str> {
     // Fast path: if no line terminators and no leading/trailing whitespace
     if !t.is_empty()
         && !t.chars().any(is_line_terminator)
         && !t.starts_with(is_white_space_single_line)
         && !t.ends_with(is_white_space_single_line)
     {
-        return t.to_owned();
+        return Cow::Borrowed(t);
     }
 
     let mut acc: Option<String> = None;
@@ -1475,11 +1490,9 @@ fn jsx_text_to_str_impl(t: &str) -> String {
     }
 
     if let Some(acc) = acc {
-        acc
-    } else if let Some(only_line) = only_line {
-        only_line.into()
+        Cow::Owned(acc)
     } else {
-        "".into()
+        Cow::Borrowed(only_line.unwrap_or_default())
     }
 }
 

@@ -359,7 +359,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             return None;
         }
         let id = self.resolver.symbol(node)?;
-        let owner = (*self.semantic.exported_binding.get(&id)?)?;
+        let owner = self.semantic.export_namespace(id)?;
         let object = self.resolver.symbol_reference(self.ast, owner);
         Some(utils::member(self.ast, object, self.ast.get_utf8(name)))
     }
@@ -1358,7 +1358,7 @@ impl Transform<'_, '_> {
         let remove = !self.options.verbatim_module_syntax
             && enumeration.is_const(self.ast)
             && !exported
-            && !self.semantic.exported_binding.contains_key(&id);
+            && !self.semantic.symbols[id].is_exported;
         let mut members = Vec::new();
         for slot in enumeration.body(self.ast).members(self.ast).iter() {
             let member = self.ast.get_node_in_sub_range(slot);
@@ -1473,16 +1473,11 @@ impl Transform<'_, '_> {
         match self.ast.jsx_element_name_data(name) {
             JsxElementNameData::JsxIdentifier(id) => {
                 let binding = self.resolver.symbol(id.node_id())?;
-                let owner = (*self.semantic.exported_binding.get(&binding)?)?;
+                let owner = self.semantic.export_namespace(binding)?;
                 Some(jsx_member(self.ast, self.resolver, owner, id))
             }
             JsxElementNameData::JsxMemberExpression(member) => {
-                rewrite_jsx_object(
-                    self.ast,
-                    self.resolver,
-                    &self.semantic.exported_binding,
-                    member,
-                );
+                rewrite_jsx_object(self.ast, self.resolver, &self.semantic, member);
                 None
             }
             _ => None,
@@ -1511,15 +1506,15 @@ fn jsx_member(
 fn rewrite_jsx_object(
     ast: &mut Ast<'_>,
     resolver: &mut crate::common::resolver::context::Resolver,
-    exports: &std::collections::HashMap<SymbolId, Option<SymbolId>>,
+    semantic: &SemanticInfo<'_>,
     member: JsxMemberExpression,
 ) {
     match ast.jsx_member_expression_object_data(member.object(ast)) {
         JsxMemberExpressionObjectData::JsxIdentifier(id) => {
             if let Some(binding) = resolver.symbol(id.node_id())
-                && let Some(Some(owner)) = exports.get(&binding)
+                && let Some(owner) = semantic.export_namespace(binding)
             {
-                let replacement = jsx_member(ast, resolver, *owner, id)
+                let replacement = jsx_member(ast, resolver, owner, id)
                     .as_jsx_member_expression(ast)
                     .unwrap();
                 member.set_object(
@@ -1529,7 +1524,7 @@ fn rewrite_jsx_object(
             }
         }
         JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
-            rewrite_jsx_object(ast, resolver, exports, member)
+            rewrite_jsx_object(ast, resolver, semantic, member)
         }
     }
 }

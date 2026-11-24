@@ -12,7 +12,6 @@ use swc_next_ecma_ast::*;
 #[derive(Default)]
 pub(super) struct SemanticInfo<'ast> {
     pub(super) symbols: IndexVec<SymbolId, SymbolFacts>,
-    pub(super) exported_binding: HashMap<SymbolId, Option<SymbolId>>,
     pub(super) enum_record: TsEnumRecord<'ast>,
     pub(super) ambient_enum_record: TsEnumRecord<'ast>,
     pub(super) const_enum: HashSet<SymbolId>,
@@ -25,9 +24,21 @@ pub(super) struct SymbolFacts {
     pub(super) used: bool,
     pub(super) is_type: bool,
     pub(super) is_value: bool,
+    pub(super) is_exported: bool,
+    export_namespace: Option<SymbolId>,
 }
 
 impl SemanticInfo<'_> {
+    fn record_export(&mut self, id: SymbolId, namespace: Option<SymbolId>) {
+        let facts = &mut self.symbols[id];
+        facts.is_exported = true;
+        facts.export_namespace = namespace;
+    }
+
+    pub(super) fn export_namespace(&self, id: SymbolId) -> Option<SymbolId> {
+        self.symbols.get(id)?.export_namespace
+    }
+
     pub(super) fn has_pure_type(&self, id: SymbolId) -> bool {
         let facts = &self.symbols[id];
         facts.is_type && !facts.is_value
@@ -319,7 +330,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
                 .push((id, import.node_id(), self.exported, type_only));
         }
         if !self.skip_transform_info && self.exported {
-            self.info.exported_binding.insert(id, self.namespace_id);
+            self.info.record_export(id, self.namespace_id);
         }
         if type_only {
             return;
@@ -377,9 +388,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
                 _ => Vec::new(),
             };
             for id in ids {
-                self.info
-                    .exported_binding
-                    .insert(self.binding(id), self.namespace_id);
+                self.info.record_export(self.binding(id), self.namespace_id);
             }
         } else if export.export_kind(self.ast) == ImportOrExportKind::Value
             && export.source(self.ast).is_none()
@@ -391,7 +400,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
                 {
                     let id = self.resolver.symbol_of(id.node_id());
                     if !self.skip_transform_info {
-                        self.info.exported_binding.insert(id, self.namespace_id);
+                        self.info.record_export(id, self.namespace_id);
                     }
                     self.usage(id);
                 }
@@ -406,8 +415,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             && let Some(id) = expression.as_identifier_reference(self.ast)
         {
             self.info
-                .exported_binding
-                .insert(self.resolver.symbol_of(id.node_id()), self.namespace_id);
+                .record_export(self.resolver.symbol_of(id.node_id()), self.namespace_id);
         }
     }
 

@@ -3921,6 +3921,7 @@ dependencies = [
  "insta",
  "jsonc-parser 0.34.0",
  "jwalk",
+ "memchr",
  "rustc-hash",
  "serde_json",
  "swc_core",

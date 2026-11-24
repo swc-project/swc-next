@@ -1,3 +1,4 @@
+use memchr::memchr2_iter;
 use swc_next_ecma_ast::*;
 
 use super::{object, property, string, undefined};
@@ -10,14 +11,13 @@ impl JsxSrc {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_common/src/syntax_pos/analyze_source_file.rs#L19>.
     pub(crate) fn new(source: &str) -> Self {
         let mut lines = vec![0];
-        let mut previous_cr = false;
-        for (offset, character) in source.char_indices() {
-            if character == '\n' && previous_cr {
+        let bytes = source.as_bytes();
+        for offset in memchr2_iter(b'\r', b'\n', bytes) {
+            if bytes[offset] == b'\n' && offset > 0 && bytes[offset - 1] == b'\r' {
                 *lines.last_mut().unwrap() = offset + 1;
-            } else if matches!(character, '\r' | '\n') {
-                lines.push(offset + character.len_utf8());
+            } else {
+                lines.push(offset + 1);
             }
-            previous_cr = character == '\r';
         }
         Self { lines }
     }

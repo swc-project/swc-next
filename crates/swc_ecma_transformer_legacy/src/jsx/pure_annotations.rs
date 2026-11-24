@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use swc_next_ecma_ast::*;
 
@@ -6,9 +6,9 @@ use crate::common::resolver::context::Resolver;
 
 /// SWC's annotations for calls to known pure React and React DOM APIs.
 /// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/pure_annotations.rs>.
-pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut HashSet<u32>) {
+pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut FxHashSet<u32>) {
     let program = ast.root_program();
-    let mut imports = HashMap::new();
+    let mut imports = FxHashMap::default();
     for slot in program.body(ast).iter() {
         let Some(import) = ast.get_node_in_sub_range(slot).as_import_declaration(ast) else {
             continue;
@@ -41,7 +41,7 @@ pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut 
                 }
             };
             let id = resolver.symbol_of(local.node_id());
-            imports.insert(id, (src == "react-dom", name.to_owned()));
+            imports.insert(id, (src == "react-dom", name));
         }
     }
     if !imports.is_empty() {
@@ -57,15 +57,15 @@ pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut 
 struct PureAnnotations<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a Resolver,
-    imports: HashMap<SymbolId, (bool, String)>,
-    pure_positions: &'a mut HashSet<u32>,
+    imports: FxHashMap<SymbolId, (bool, &'ast str)>,
+    pure_positions: &'a mut FxHashSet<u32>,
 }
 
-impl PureAnnotations<'_, '_> {
-    fn import(&self, expression: Expr) -> Option<&(bool, String)> {
+impl<'ast> PureAnnotations<'_, 'ast> {
+    fn import(&self, expression: Expr) -> Option<(bool, &'ast str)> {
         let id = expression.as_identifier_reference(self.ast)?;
         let id = self.resolver.symbol(id.node_id())?;
-        self.imports.get(&id)
+        self.imports.get(&id).copied()
     }
 
     fn is_pure_call(&self, call: CallExpression) -> bool {
@@ -74,7 +74,7 @@ impl PureAnnotations<'_, '_> {
         }
         let callee = call.callee(self.ast);
         if let Some((react_dom, specifier)) = self.import(callee) {
-            return is_pure(*react_dom, specifier);
+            return is_pure(react_dom, specifier);
         }
         let Some(member) = callee.as_member_expression(self.ast) else {
             return false;
@@ -85,12 +85,12 @@ impl PureAnnotations<'_, '_> {
         let Some((react_dom, specifier)) = self.import(member.object(self.ast)) else {
             return false;
         };
-        matches!(specifier.as_str(), "default" | "*")
+        matches!(specifier, "default" | "*")
             && member
                 .property(self.ast)
                 .as_identifier_name(self.ast)
                 .is_some_and(|property| {
-                    is_pure(*react_dom, self.ast.get_utf8(property.name(self.ast)))
+                    is_pure(react_dom, self.ast.get_utf8(property.name(self.ast)))
                 })
     }
 }
