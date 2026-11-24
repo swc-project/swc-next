@@ -2,6 +2,8 @@ use std::collections::BTreeSet;
 
 use super::{CaseResult, CaseStatus, ConformanceConfig};
 
+pub(super) struct Divergences(&'static [Divergence]);
+
 struct Divergence {
     reason: &'static str,
     fixtures: &'static [Fixture],
@@ -25,12 +27,11 @@ const fn fixture(path: &'static str, options: &'static [&'static str]) -> Fixtur
 
 // List only snapshot mismatches with a verified reason. The option strings match
 // the normalized options shown by PRETTIER_FILTER. An empty string denotes default options.
-const KNOWN_DIVERGENCES: &[Divergence] = &[
+pub(super) const KNOWN_DIVERGENCES: Divergences = Divergences(&[
     Divergence {
         reason: "Preserve comments on their original side of operator and terminator tokens",
         fixtures: &[
-            fixture("js/babel-plugins/bigint.js", DEFAULT),
-            fixture("js/binary-expressions/chain-expression.js", DEFAULT),
+            fixture("js/binary-expression/chain-expression.js", DEFAULT),
             fixture("js/comments/binary-expressions.js", BOTH_SEMI_OPTIONS),
             fixture("js/comments/empty-statements.js", BOTH_SEMI_OPTIONS),
             fixture("js/comments/variable-declarator.js", BOTH_SEMI_OPTIONS),
@@ -46,21 +47,12 @@ const KNOWN_DIVERGENCES: &[Divergence] = &[
         )],
     },
     Divergence {
-        reason: "Prettier 3.9.9 changes these outputs on a second pass",
+        reason: "Prettier changes these outputs on a second pass",
         fixtures: &[
-            fixture(
-                "js/arrows/arrow-chain-with-trailing-comments.js",
-                BOTH_ARROW_PARENS,
-            ),
-            fixture("js/comments/tagged-template-literal.js", BOTH_SEMI_OPTIONS),
             fixture("jsx/comments/in-attributes.js", &["bracketSameLine: true"]),
             fixture(
                 "typescript/import-type/long-module-name/long-module-name4.ts",
                 DEFAULT,
-            ),
-            fixture(
-                "typescript/satisfies-operators/comments-unstable.ts",
-                BOTH_SEMI_OPTIONS,
             ),
         ],
     },
@@ -102,7 +94,7 @@ const KNOWN_DIVERGENCES: &[Divergence] = &[
     },
     Divergence {
         reason: "Keep comments before their array elision comma",
-        fixtures: &[fixture("js/arrays/numbers-with-holes.js", DEFAULT)],
+        fixtures: &[fixture("js/array-exprssion/numbers-with-holes.js", DEFAULT)],
     },
     Divergence {
         reason: "Preserve which lines TypeScript diagnostic directives cover",
@@ -118,7 +110,10 @@ const KNOWN_DIVERGENCES: &[Divergence] = &[
     },
     Divergence {
         reason: "Keep source parentheses around commented curried arrow bodies",
-        fixtures: &[fixture("js/arrows/currying-4.js", BOTH_ARROW_PARENS)],
+        fixtures: &[fixture(
+            "js/arrow-function/currying-4.js",
+            BOTH_ARROW_PARENS,
+        )],
     },
     Divergence {
         reason: "Preserve the complete hashbang payload",
@@ -145,48 +140,55 @@ const KNOWN_DIVERGENCES: &[Divergence] = &[
             fixture("typescript/interface2/comments.ts", ES5_TRAILING_COMMA),
         ],
     },
-];
+]);
 
-pub(super) fn reason_for(result: &CaseResult) -> Option<&'static str> {
-    if !matches!(result.status, CaseStatus::Mismatched) || !result.is_valid_output() {
-        return None;
-    }
-    KNOWN_DIVERGENCES
-        .iter()
-        .find(|divergence| {
-            divergence.fixtures.iter().any(|fixture| {
-                fixture.path == result.path && fixture.options.contains(&result.options.as_str())
+impl Divergences {
+    pub(super) fn reason_for(&self, result: &CaseResult) -> Option<&'static str> {
+        if !matches!(result.status, CaseStatus::Mismatched) || !result.is_valid_output() {
+            return None;
+        }
+        self.0
+            .iter()
+            .find(|divergence| {
+                divergence.fixtures.iter().any(|fixture| {
+                    fixture.path == result.path
+                        && fixture.options.contains(&result.options.as_str())
+                })
             })
-        })
-        .map(|divergence| divergence.reason)
-}
+            .map(|divergence| divergence.reason)
+    }
 
-pub(super) fn stale_errors(config: ConformanceConfig, results: &[CaseResult]) -> Vec<String> {
-    let mismatches = results
-        .iter()
-        .filter(|result| matches!(result.status, CaseStatus::Mismatched))
-        .map(|result| (result.path.as_str(), result.options.as_str()))
-        .collect::<BTreeSet<_>>();
-    let mut errors = Vec::new();
-    for divergence in KNOWN_DIVERGENCES {
-        for fixture in divergence.fixtures {
-            let (root, _) = fixture.path.split_once('/').unwrap();
-            if !config.fixture_roots.contains(&root) {
-                continue;
-            }
-            for &options in fixture.options {
-                if !mismatches.contains(&(fixture.path, options)) {
-                    let label = option_label(options);
-                    errors.push(format!(
-                        "{} ({label}): stale known divergence; no output mismatch",
-                        fixture.path
-                    ));
+    pub(super) fn stale_errors(
+        &self,
+        config: ConformanceConfig,
+        results: &[CaseResult],
+    ) -> Vec<String> {
+        let mismatches = results
+            .iter()
+            .filter(|result| matches!(result.status, CaseStatus::Mismatched))
+            .map(|result| (result.path.as_str(), result.options.as_str()))
+            .collect::<BTreeSet<_>>();
+        let mut errors = Vec::new();
+        for divergence in self.0 {
+            for fixture in divergence.fixtures {
+                let (root, _) = fixture.path.split_once('/').unwrap();
+                if !config.fixture_roots.contains(&root) {
+                    continue;
+                }
+                for &options in fixture.options {
+                    if !mismatches.contains(&(fixture.path, options)) {
+                        let label = option_label(options);
+                        errors.push(format!(
+                            "{} ({label}): stale known divergence; no output mismatch",
+                            fixture.path
+                        ));
+                    }
                 }
             }
         }
+        errors.sort();
+        errors
     }
-    errors.sort();
-    errors
 }
 
 pub(super) fn option_label(options: &str) -> &str {
@@ -194,5 +196,68 @@ pub(super) fn option_label(options: &str) -> &str {
         "default options"
     } else {
         options
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DEFAULT, Divergence, Divergences, fixture};
+    use crate::formatter::{CaseResult, CaseStatus, JAVASCRIPT};
+
+    const PATH: &str = "js/example.js";
+    const DIVERGENCES: Divergences = Divergences(&[Divergence {
+        reason: "Example divergence",
+        fixtures: &[fixture(PATH, DEFAULT)],
+    }]);
+
+    fn case_result(options: &str, status: CaseStatus) -> CaseResult {
+        CaseResult {
+            path: PATH.to_string(),
+            options: options.to_string(),
+            status,
+            debug_diff: None,
+            ast_debug_diff: None,
+            ast_parity: Some(true),
+            ast_error: None,
+            idempotent: Some(true),
+            second_pass_error: false,
+        }
+    }
+
+    #[test]
+    fn divergence_options() {
+        let mismatch = case_result("", CaseStatus::Mismatched);
+        assert_eq!(
+            DIVERGENCES.reason_for(&mismatch),
+            Some("Example divergence")
+        );
+        assert!(DIVERGENCES.stale_errors(JAVASCRIPT, &[mismatch]).is_empty());
+
+        let matched = case_result("", CaseStatus::Matched);
+        let other_option = case_result("semi: false", CaseStatus::Mismatched);
+        assert_eq!(DIVERGENCES.reason_for(&other_option), None);
+        assert_eq!(
+            DIVERGENCES
+                .stale_errors(JAVASCRIPT, &[matched, other_option])
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn divergence_output_checks() {
+        let mut ast_mismatch = case_result("", CaseStatus::Mismatched);
+        ast_mismatch.ast_parity = Some(false);
+        assert_eq!(DIVERGENCES.reason_for(&ast_mismatch), None);
+
+        let mut unstable = case_result("", CaseStatus::Mismatched);
+        unstable.idempotent = Some(false);
+        assert_eq!(DIVERGENCES.reason_for(&unstable), None);
+
+        let invalid = case_result("", CaseStatus::StructuralError(String::new()));
+        assert_eq!(DIVERGENCES.reason_for(&invalid), None);
+
+        let panic = case_result("", CaseStatus::Panic(String::new()));
+        assert_eq!(DIVERGENCES.reason_for(&panic), None);
     }
 }

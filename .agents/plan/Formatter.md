@@ -5,9 +5,9 @@ AST. Compatibility is defined by printed output and deliberate formatting
 choices. Formatting must preserve program semantics. Semantic preservation takes
 precedence over matching reference output.
 
-Prettier 3.9.9 is the pinned conformance baseline. When output differs, check
-the latest Prettier release and current `main` with the same input and equivalent
-options. A difference alone does not establish a bug. Do not reproduce known
+The conformance tests use a pinned version of Prettier. When output differs,
+check the latest Prettier release and current `main` with the same input and
+equivalent options. A difference alone does not establish a bug. Do not reproduce known
 Prettier bugs just to match the pinned output.
 
 ## Public contract
@@ -128,7 +128,7 @@ before printing chooses line breaks or removes optional punctuation.
 
 JSX formatting preserves significant runs made solely of ASCII spaces, including
 adjacent string-expression children. It may emit explicit JSX string expressions
-where Prettier 3.9.9 collapses those spaces.
+to preserve those spaces.
 
 ## Embedded languages
 

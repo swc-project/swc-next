@@ -58,6 +58,7 @@ export function parseConformanceHeader(snapshot: string, header: string): Confor
   if (kind === "formatter") {
     const passed = count("Passed");
     const outcomes = ["Snapshot matched", "Mismatched", "Format errors", "Panicked", "Parse errors"].map(count);
+    if (fields.has("Unparsable output")) outcomes.push(count("Unparsable output"));
     const notIdempotent = count("Not idempotent");
     if (outcomes.some((outcome) => outcome.total !== passed.total) || outcomes.reduce((total, outcome) => total + outcome.passed, 0) !== passed.total || passed.passed > outcomes[0].passed || notIdempotent.total !== passed.total) throw new Error(`Inconsistent formatter counts: ${snapshot}`);
     return { kind, suite: `prettier_${suite}`, snapshot, total: passed.total, passed: passed.passed, failed: passed.total - passed.passed };
