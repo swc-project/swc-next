@@ -30383,6 +30383,37 @@
         "prettierNative": "x = cond ? (\n  /* outer head */ a /** @type {X} */ /* outer tail */\n) : (\n  <B>\n    {a}\n    <C />\n  </B>\n);\n"
       }
     ],
+    "jsx/ignored-asi-gap/member.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a;\n// prettier-ignore\n<div  />.x\n",
+        "prettierNative": "a\n// prettier-ignore\n;<div  />.x\n"
+      }
+    ],
+    "jsx/ignored-asi-gap/trailing-ignore.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a;\n<div/>  +  c /* prettier-ignore */;\n",
+        "prettierNative": "a\n;<div/>  +  c /* prettier-ignore */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "a;\n<div/>  +  c /* prettier-ignore */;\n",
+        "prettierNative": "a;\n<div/>  +  c; /* prettier-ignore */\n"
+      }
+    ],
     "jsx/logical-suffix/arrow.jsx": [
       {
         "options": {
@@ -38273,6 +38304,26 @@
         "prettierNative": "switch (0 as number) {\n  case 1:\n    break;\n  /* @ts-ignore */ default:\n    missing();\n}\n"
       }
     ],
+    "ts/control-flow/diagnostic-case-gap/ignored-angle-before-case.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    0;\n    /* prettier-ignore */ <number>1  +  2; /* @ts-expect-error */ case 2:\n    missing()\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    0\n    /* prettier-ignore */ ;<number>1  +  2\n  /* @ts-expect-error */ case 2:\n    missing()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "switch (0 as number) {\n  case 1:\n    0;\n    /* prettier-ignore */ <number>1  +  2; /* @ts-expect-error */ case 2:\n    missing();\n}\n",
+        "prettierNative": "switch (0 as number) {\n  case 1:\n    0;\n    /* prettier-ignore */ <number>1  +  2;\n  /* @ts-expect-error */ case 2:\n    missing();\n}\n"
+      }
+    ],
     "ts/control-flow/diagnostic-keyword-gap/input.ts": [
       {
         "options": {
@@ -43953,6 +44004,17 @@
         "prettierNative": "invoke(\n  /* outer */\n  (/* inner */\n  first,\n  last),\n  // @ts-ignore\n)\n\ninvoke(\n  (/* inner */\n  first,\n  last),\n  // @ts-ignore\n)\n"
       }
     ],
+    "ts/statements/ignored-asi-gap/angle-assertion.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a;\n/* prettier-ignore */ <any>b  +  c\n",
+        "prettierNative": "a\n/* prettier-ignore */ ;<any>b  +  c\n"
+      }
+    ],
     "ts/statements/ignored-string-barriers/ts-declare-module.ts": [
       {
         "options": {
@@ -49557,6 +49619,17 @@
         },
         "swcPlugin": "type T =\n  | /* head */ First\n  // member tail\n  | Second;\n",
         "prettierNative": "type T =\n  /* head */ | First\n  // member tail\n  | Second;\n"
+      }
+    ],
+    "tsx/ignored-asi-gap/generic-arrow.tsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a;\n// prettier-ignore\n<T,>( x: T ) => x\n",
+        "prettierNative": "a\n// prettier-ignore\n;<T,>( x: T ) => x\n"
       }
     ]
   }

@@ -290,6 +290,15 @@ struct PreparedStatement<'ast> {
 }
 
 impl PreparedStatement<'_> {
+    fn has_verbatim_mode(&self, previous_tail: Option<&StatementAnnotationTail<'_>>) -> bool {
+        self.mode == ContentMode::Verbatim
+            || previous_tail.is_some_and(|tail| tail.suppression.following == ContentMode::Verbatim)
+            || self
+                .annotation_tail
+                .as_ref()
+                .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
+    }
+
     fn can_omit(
         &self,
         ast: &Ast<'_>,
@@ -357,6 +366,22 @@ impl StatementItem {
             }
             _ => None,
         }
+    }
+
+    fn closes_type_declaration(self, ast: &Ast<'_>) -> bool {
+        self.declaration(ast).is_some_and(|declaration| {
+            matches!(
+                ast.decl_data(declaration),
+                DeclData::TsFunction(_)
+                    | DeclData::TsTypeAliasDeclaration(_)
+                    | DeclData::TsInterfaceDeclaration(_)
+                    | DeclData::TsModuleDeclaration(_)
+                    | DeclData::TsGlobalDeclaration(_)
+                    | DeclData::TsImportEqualsDeclaration(_)
+                    | DeclData::TsEnumDeclaration(_)
+            )
+        }) || matches!(self, Self::Statement(node)
+            if matches!(ast.stmt_data(node), StmtData::TsNamespaceExportDeclaration(_)))
     }
 
     fn needs_terminator_before_block(mut self, ast: &Ast<'_>) -> bool {
@@ -915,6 +940,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None
                 }
             });
+            let source_terminator = source_terminator.or_else(|| {
+                if self.options.semicolons == Semicolons::AsNeeded
+                    && self.has_suppression
+                    && let Some(next) = pending.as_ref()
+                    && let Some(terminator) = self.statement_source_terminator(statement_span)
+                    && self.statement_starts_with_verbatim_angle(
+                        next,
+                        annotation_tail.as_ref(),
+                        statements.peek().copied(),
+                        span.end,
+                    )
+                    && !statement.closes_type_declaration(ast)
+                {
+                    // Keep the boundary on the preceding statement, outside the ignored head.
+                    Some(terminator)
+                } else {
+                    None
+                }
+            });
             let source_packet = source_line
                 .outgoing
                 .map(|span| StatementSourcePacket {
@@ -981,18 +1025,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && let StatementItem::Statement(next_statement) = next.item
                     && let StmtData::ExpressionStatement(expression) = ast.stmt_data(next_statement)
                 {
-                    let verbatim = next.mode == ContentMode::Verbatim
-                        || annotation_tail.as_ref().is_some_and(|tail| {
-                            tail.suppression.following == ContentMode::Verbatim
-                        })
-                        || next
-                            .annotation_tail
-                            .as_ref()
-                            .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim);
                     FollowingSyntax::ExpressionStatement {
                         expression: expression.expression(ast),
                         string_statement,
-                        mode: if verbatim {
+                        mode: if next.has_verbatim_mode(annotation_tail.as_ref()) {
                             ContentMode::Verbatim
                         } else {
                             ContentMode::Formatted
@@ -1551,6 +1587,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_trailing_comment_run(comments, None, None, writer)?;
         }
         Ok((end, following_gap))
+    }
+
+    fn statement_starts_with_verbatim_angle(
+        &self,
+        statement: &PreparedStatement<'ast>,
+        previous_tail: Option<&StatementAnnotationTail<'ast>>,
+        following: Option<StatementItem>,
+        sequence_end: u32,
+    ) -> bool {
+        let ast = self.ast;
+        let StatementItem::Statement(node) = statement.item else {
+            return false;
+        };
+        let StmtData::ExpressionStatement(expression) = ast.stmt_data(node) else {
+            return false;
+        };
+        if !self
+            .source(expression.expression(ast).span(ast))
+            .starts_with('<')
+        {
+            return false;
+        }
+        if statement.has_verbatim_mode(previous_tail) {
+            return true;
+        }
+        // The statement's own tail can also select its raw head.
+        let (limit, relation) = following
+            .map_or((sequence_end, StatementTailRelation::Terminal), |item| {
+                (item.span(ast).start, StatementTailRelation::Statement)
+            });
+        self.prepare_statement_suppression_tail_at(statement.item, statement.span, limit, relation)
+            .is_some_and(|tail| tail.modes.current == ContentMode::Verbatim)
     }
 
     fn prepare_sequence_statement(
@@ -2221,25 +2289,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         statement: Stmt,
         boundary: StatementBoundary,
     ) -> StatementBoundary {
-        let type_declaration = StatementItem::Statement(statement)
-            .declaration(self.ast)
-            .is_some_and(|declaration| {
-                matches!(
-                    self.ast.decl_data(declaration),
-                    DeclData::TsFunction(_)
-                        | DeclData::TsTypeAliasDeclaration(_)
-                        | DeclData::TsInterfaceDeclaration(_)
-                        | DeclData::TsModuleDeclaration(_)
-                        | DeclData::TsGlobalDeclaration(_)
-                        | DeclData::TsImportEqualsDeclaration(_)
-                        | DeclData::TsEnumDeclaration(_)
-                )
-            })
-            || matches!(
-                self.ast.stmt_data(statement),
-                StmtData::TsNamespaceExportDeclaration(_)
-            );
-        if type_declaration {
+        if StatementItem::Statement(statement).closes_type_declaration(self.ast) {
             boundary.type_declaration()
         } else {
             boundary
